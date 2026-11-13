@@ -3,7 +3,6 @@ package interactor
 import (
 	"context"
 	"errors"
-	"fmt"
 	"maps"
 	"slices"
 	"strings"
@@ -180,7 +179,7 @@ func (i *Trigger) ExecuteAPITrigger(ctx context.Context, p interfaces.ExecuteAPI
 	// No workspace membership is required — the token is sufficient proof of authorization.
 	if trigger.EventSource() == "API_DRIVEN" {
 		if !trigger.VerifyAuthToken(p.AuthenticationToken) {
-			return nil, fmt.Errorf("invalid auth token")
+			return nil, interfaces.ErrInvalidTriggerToken
 		}
 	} else {
 		if err := i.checkPermission(ctx, rbac.ActionCreate, trigger.Workspace()); err != nil {

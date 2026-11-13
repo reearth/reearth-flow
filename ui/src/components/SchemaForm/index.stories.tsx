@@ -137,7 +137,6 @@ const Harness: React.FC<HarnessProps> = ({
             onFieldFocus={setFocusedKey}
             onChange={handleChange}
             onValidationChange={setValid}
-            onEditorOpen={handleEditorOpen}
             onPythonEditorOpen={handleEditorOpen}
             onFlowExprEditorOpen={handleEditorOpen}
           />

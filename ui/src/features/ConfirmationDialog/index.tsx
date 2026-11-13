@@ -15,6 +15,8 @@ type Props = {
   description: string;
   isOpen: boolean;
   confirmDisabled?: boolean;
+  confirmLabel?: string;
+  cancelLabel?: string;
   onClose: () => void;
   onConfirm: () => void;
 };
@@ -24,6 +26,8 @@ const ConfirmationDialog: React.FC<Props> = ({
   description,
   isOpen,
   confirmDisabled,
+  confirmLabel,
+  cancelLabel,
   onClose,
   onConfirm,
 }) => {
@@ -36,9 +40,11 @@ const ConfirmationDialog: React.FC<Props> = ({
           <AlertDialogDescription>{description}</AlertDialogDescription>
         </AlertDialogHeader>
         <AlertDialogFooter>
-          <AlertDialogCancel onClick={onClose}>{t("Cancel")}</AlertDialogCancel>
+          <AlertDialogCancel onClick={onClose}>
+            {cancelLabel ?? t("Cancel")}
+          </AlertDialogCancel>
           <AlertDialogAction disabled={!!confirmDisabled} onClick={onConfirm}>
-            {t("Continue")}
+            {confirmLabel ?? t("Continue")}
           </AlertDialogAction>
         </AlertDialogFooter>
       </AlertDialogContent>
