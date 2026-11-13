@@ -1,4 +1,4 @@
-import { DataTable as Table } from "@flow/components";
+import { DataTable as Table, UserAvatar } from "@flow/components";
 import { JOBS_FETCH_RATE } from "@flow/lib/gql/job/useQueries";
 import { useT } from "@flow/lib/i18n";
 import type { AppColumnDef } from "@flow/lib/table/features";
@@ -8,7 +8,7 @@ import { formatTimestamp } from "@flow/utils/timestamp";
 
 import { JobRunDialog } from "./components";
 import useHooks from "./hooks";
-import useJobRunBy from "./useJobRunBy";
+import useJobStarter from "./useJobStarter";
 
 const JobsManager: React.FC = () => {
   const t = useT();
@@ -28,7 +28,7 @@ const JobsManager: React.FC = () => {
     handleSortChange,
     setCurrentPage,
   } = useHooks();
-  const runBy = useJobRunBy();
+  const { runBy, triggerName } = useJobStarter();
 
   const columns: AppColumnDef<Job>[] = [
     {
@@ -40,9 +40,26 @@ const JobsManager: React.FC = () => {
       header: t("Deployment Description"),
     },
     {
+      id: "trigger",
+      accessorFn: (job) => triggerName(job),
+      header: t("Trigger"),
+      cell: ({ getValue }) => getValue<string | undefined>() ?? "—",
+    },
+    {
       id: "runBy",
-      accessorFn: (job) => runBy(job),
-      header: t("Run By"),
+      accessorFn: (job) => runBy(job)?.name,
+      header: t("Run by"),
+      cell: ({ row }) => {
+        const user = runBy(row.original);
+        return user ? (
+          <span className="flex min-w-0 items-center gap-1.5">
+            <UserAvatar user={user} className="size-4" />
+            <span className="truncate">{user.name}</span>
+          </span>
+        ) : (
+          "—"
+        );
+      },
     },
     {
       accessorKey: "status",

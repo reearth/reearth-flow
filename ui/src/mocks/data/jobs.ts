@@ -39,8 +39,8 @@ export const mockJobs: JobFragment[] = [
     outputURLs: [],
     userFacingLogsURL: null,
     runById: "user-2",
-    triggerId: null,
-    trigger: null,
+    triggerId: "trigger-2",
+    trigger: { id: "trigger-2", description: "Building quality check" },
   },
   {
     id: "job-3",
