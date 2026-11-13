@@ -105,20 +105,17 @@ const FlowExprEditorDialog: React.FC<Props> = ({
     [codeType],
   );
 
-  const handleAssetSelect = useCallback(
-    (asset: Asset) => {
-      insertAtCursor(asset.url);
+  const insertUrl = useCallback(
+    (url: string) => {
+      insertAtCursor(codeType === "flowExpr" ? JSON.stringify(url) : url);
       setShowDialog(undefined);
     },
-    [insertAtCursor],
+    [codeType, insertAtCursor],
   );
 
-  const handleCmsItemValue = useCallback(
-    (url: string) => {
-      insertAtCursor(url);
-      setShowDialog(undefined);
-    },
-    [insertAtCursor],
+  const handleAssetSelect = useCallback(
+    (asset: Asset) => insertUrl(asset.url),
+    [insertUrl],
   );
 
   const handleVariableSelect = useCallback(
@@ -248,9 +245,7 @@ const FlowExprEditorDialog: React.FC<Props> = ({
                 onChange={setCodeValue}
                 attributeSuggestions={attributeSuggestions}
                 variableSuggestions={variableSuggestions}
-                placeholder={t(
-                  'e.g. Url(variables.get("BASE_DIR")) / "filename"',
-                )}
+                placeholder={t('e.g. variables["BASE_DIR"] + "/filename"')}
               />
             </TabsContent>
             <TabsContent
@@ -270,7 +265,7 @@ const FlowExprEditorDialog: React.FC<Props> = ({
               {codeType === "flowExpr" ? (
                 <span>
                   {t(
-                    'FlowExpr: variables["VAR"], attributes["attr"], Url(...), math.sin(...). API is still stabilising.',
+                    'FlowExpr: variables["VAR"], attributes["attr"], "a" + "b", math.sin(...). API is still stabilising.',
                   )}
                 </span>
               ) : (
@@ -299,7 +294,7 @@ const FlowExprEditorDialog: React.FC<Props> = ({
       {showDialog === "cms" && (
         <CmsIntegrationDialog
           onDialogClose={() => setShowDialog(undefined)}
-          onCmsItemValue={handleCmsItemValue}
+          onCmsItemValue={insertUrl}
         />
       )}
     </>
