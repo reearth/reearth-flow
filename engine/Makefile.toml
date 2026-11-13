@@ -58,6 +58,10 @@ cargo test -p reearth-flow-tests --all-targets --features new-geometry \
   file::reader::shapefile ${@:-}
 cargo test -p reearth-flow-tests --all-targets --features new-geometry \
   geometry::jp_mesh_code_extractor ${@:-}
+cargo test -p reearth-flow-tests --all-targets --features new-geometry \
+  geometry::jp_standard_grid_accumulator ${@:-}
+cargo test -p reearth-flow-tests --all-targets --features new-geometry \
+  geometry::jp_mesh_code_replacer ${@:-}
 ''']
 
 # Runs in the new-geometry world. Every test case whose `workflow_test.json`
