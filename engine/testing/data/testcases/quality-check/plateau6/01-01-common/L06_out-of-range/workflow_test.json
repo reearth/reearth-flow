@@ -1,0 +1,48 @@
+{
+  "description": "Test L06 for plateau6",
+  "workflowPath": "quality-check/plateau6/01-common/workflow.yml",
+  "workflowVariables": [
+    {
+      "name": "cityGmlPath",
+      "value": "bldg_.zip"
+    },
+    {
+      "name": "codelistsPath",
+      "value": "codelists_.zip"
+    },
+    {
+      "name": "schemasPath",
+      "value": "schemas_.zip"
+    },
+    {
+      "name": "objectListsPath",
+      "value": "../../../../../fixtures/plateau6-citymodel/13997_tokyo_udx-mlit_2026_citygml_1_sample-tokyoCG3_op/13997_milt_2026_objectlist_sample-tokyoCG3_op__empty.xlsx"
+    }
+  ],
+  "zipBeforeTest": [
+    {
+      "path": "udx/bldg",
+      "name": "bldg_.zip"
+    },
+    {
+      "path": "../../../../../fixtures/plateau6-citymodel/13997_tokyo_udx-mlit_2026_citygml_1_sample-tokyoCG3_op/codelists",
+      "name": "codelists_.zip"
+    },
+    {
+      "path": "../../../../../fixtures/plateau6-citymodel/13997_tokyo_udx-mlit_2026_citygml_1_sample-tokyoCG3_op/schemas",
+      "name": "schemas_.zip"
+    }
+  ],
+  "expectedOutput": {
+    "expectedFile": "01_共通_L06エラー.csv"
+  },
+  "summaryOutput": {
+    "errorCountSummary": {
+      "expectedFile": "summary_common.json"
+    },
+    "fileErrorSummary": {
+      "expectedFile": "01_共通.csv"
+    }
+  },
+  "expectResultOkFile": false
+}
