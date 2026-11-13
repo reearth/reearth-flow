@@ -2,10 +2,15 @@ package interfaces
 
 import (
 	"context"
+	"errors"
 
 	"github.com/reearth/reearth-flow/api/pkg/id"
 	"github.com/reearth/reearth-flow/api/pkg/parameter"
 )
+
+// ErrDuplicateParameterName refuses a save that would leave two of a
+// project's variables with one name; the worker receives them keyed by name.
+var ErrDuplicateParameterName = errors.New("workflow variable names are used more than once")
 
 type DeclareParameterParam struct {
 	DefaultValue any

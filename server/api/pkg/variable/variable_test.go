@@ -132,7 +132,7 @@ func TestToWorkerMap(t *testing.T) {
 				"text": {Key: "text", Type: parameter.TypeText, Value: "hello world"},
 			},
 			want: map[string]string{
-				"text": "hello world",
+				"text": `"hello world"`,
 			},
 		},
 		{
@@ -141,7 +141,7 @@ func TestToWorkerMap(t *testing.T) {
 				"color": {Key: "color", Type: parameter.TypeColor, Value: "#FF0000"},
 			},
 			want: map[string]string{
-				"color": "#FF0000",
+				"color": `"#FF0000"`,
 			},
 		},
 		{
@@ -168,7 +168,7 @@ func TestToWorkerMap(t *testing.T) {
 				"datetime": {Key: "datetime", Type: parameter.TypeDatetime, Value: now},
 			},
 			want: map[string]string{
-				"datetime": now.Format(time.RFC3339),
+				"datetime": `"` + now.Format(time.RFC3339) + `"`,
 			},
 		},
 		{
@@ -177,7 +177,7 @@ func TestToWorkerMap(t *testing.T) {
 				"datetime": {Key: "datetime", Type: parameter.TypeDatetime, Value: "2024-01-01"},
 			},
 			want: map[string]string{
-				"datetime": "2024-01-01",
+				"datetime": `"2024-01-01"`,
 			},
 		},
 		{
@@ -202,10 +202,29 @@ func TestToWorkerMap(t *testing.T) {
 				"list":   {Key: "list", Type: parameter.TypeArray},
 			},
 			want: map[string]string{
-				"text":   "",
-				"number": "",
-				"when":   "",
+				"text":   "null",
+				"number": "null",
+				"when":   "null",
 				"list":   "null",
+			},
+		},
+		{
+			name: "values the engine would otherwise retype",
+			input: map[string]variable.Variable{
+				"color":   {Key: "color", Type: parameter.TypeColor, Value: "#ff0000"},
+				"digits":  {Key: "digits", Type: parameter.TypeText, Value: "123"},
+				"truthy":  {Key: "truthy", Type: parameter.TypeText, Value: "true"},
+				"comment": {Key: "comment", Type: parameter.TypeText, Value: "a # b"},
+				"empty":   {Key: "empty", Type: parameter.TypeText, Value: ""},
+				"million": {Key: "million", Type: parameter.TypeNumber, Value: 1000000.0},
+			},
+			want: map[string]string{
+				"color":   `"#ff0000"`,
+				"digits":  `"123"`,
+				"truthy":  `"true"`,
+				"comment": `"a # b"`,
+				"empty":   `""`,
+				"million": "1000000",
 			},
 		},
 		{
@@ -216,7 +235,7 @@ func TestToWorkerMap(t *testing.T) {
 				"bool":   {Key: "bool", Type: parameter.TypeYesNo, Value: false},
 			},
 			want: map[string]string{
-				"text":   "hello",
+				"text":   `"hello"`,
 				"number": "42",
 				"bool":   "false",
 			},
@@ -254,14 +273,13 @@ func TestToString(t *testing.T) {
 		want     string
 	}{
 		{
-			// Sent empty, which the engine reads as no value, not as the text "<nil>".
 			name: "nil value",
 			variable: variable.Variable{
 				Key:   "nil",
 				Type:  parameter.TypeText,
 				Value: nil,
 			},
-			want: "",
+			want: "null",
 		},
 		{
 			name: "array value",

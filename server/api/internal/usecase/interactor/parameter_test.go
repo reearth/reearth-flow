@@ -2,6 +2,7 @@ package interactor
 
 import (
 	"context"
+	"sort"
 	"testing"
 	"time"
 
@@ -519,4 +520,103 @@ func TestParameter_UpdateParameters_NonexistentProject(t *testing.T) {
 
 	assert.Nil(t, result)
 	assert.Same(t, rerror.ErrNotFound, err)
+}
+
+func TestParameter_DuplicateNames(t *testing.T) {
+	declare := func(t *testing.T, i interfaces.Parameter, ctx context.Context, pid id.ProjectID, name string) *parameter.Parameter {
+		t.Helper()
+		p, err := i.DeclareParameter(ctx, interfaces.DeclareParameterParam{ProjectID: pid, Name: name, Type: parameter.TypeText})
+		assert.NoError(t, err)
+		return p
+	}
+	rename := func(p *parameter.Parameter, name string) interfaces.UpdateParameterParam {
+		return interfaces.UpdateParameterParam{ParamID: p.ID(), NameValue: name, TypeValue: p.Type()}
+	}
+	names := func(t *testing.T, i interfaces.Parameter, ctx context.Context, pid id.ProjectID) []string {
+		t.Helper()
+		params, err := i.FetchByProject(ctx, pid)
+		assert.NoError(t, err)
+		out := []string{}
+		for _, p := range *params {
+			out = append(out, p.Name())
+		}
+		sort.Strings(out)
+		return out
+	}
+
+	t.Run("declaring a name in use is refused", func(t *testing.T) {
+		i, ctx, _, pid := setupParameterInteractor()
+		declare(t, i, ctx, pid, "area")
+
+		_, err := i.DeclareParameter(ctx, interfaces.DeclareParameterParam{ProjectID: pid, Name: "area", Type: parameter.TypeText})
+
+		assert.ErrorIs(t, err, interfaces.ErrDuplicateParameterName)
+		assert.ErrorContains(t, err, "area")
+		assert.Equal(t, []string{"area"}, names(t, i, ctx, pid))
+	})
+
+	t.Run("renaming to a name in use is refused", func(t *testing.T) {
+		i, ctx, _, pid := setupParameterInteractor()
+		declare(t, i, ctx, pid, "area")
+		lang := declare(t, i, ctx, pid, "lang")
+
+		_, err := i.UpdateParameter(ctx, rename(lang, "area"))
+
+		assert.ErrorIs(t, err, interfaces.ErrDuplicateParameterName)
+		assert.Equal(t, []string{"area", "lang"}, names(t, i, ctx, pid))
+	})
+
+	t.Run("an update that keeps its own name is allowed", func(t *testing.T) {
+		i, ctx, _, pid := setupParameterInteractor()
+		area := declare(t, i, ctx, pid, "area")
+
+		_, err := i.UpdateParameter(ctx, rename(area, "area"))
+
+		assert.NoError(t, err)
+	})
+
+	t.Run("a batch that leaves two variables one name is refused before any write", func(t *testing.T) {
+		i, ctx, _, pid := setupParameterInteractor()
+		area := declare(t, i, ctx, pid, "area")
+		lang := declare(t, i, ctx, pid, "lang")
+
+		_, err := i.UpdateParameters(ctx, interfaces.UpdateParametersParam{
+			ProjectID: pid,
+			Deletes:   id.ParameterIDList{area.ID()},
+			Creates:   []interfaces.DeclareParameterParam{{Name: "city", Type: parameter.TypeText}},
+			Updates:   []interfaces.UpdateParameterParam{rename(lang, "city")},
+		})
+
+		assert.ErrorIs(t, err, interfaces.ErrDuplicateParameterName)
+		assert.ErrorContains(t, err, "city")
+		assert.Equal(t, []string{"area", "lang"}, names(t, i, ctx, pid))
+	})
+
+	t.Run("a batch can swap two names", func(t *testing.T) {
+		i, ctx, _, pid := setupParameterInteractor()
+		area := declare(t, i, ctx, pid, "area")
+		lang := declare(t, i, ctx, pid, "lang")
+
+		_, err := i.UpdateParameters(ctx, interfaces.UpdateParametersParam{
+			ProjectID: pid,
+			Updates:   []interfaces.UpdateParameterParam{rename(area, "lang"), rename(lang, "area")},
+		})
+
+		assert.NoError(t, err)
+		assert.Equal(t, []string{"area", "lang"}, names(t, i, ctx, pid))
+	})
+
+	t.Run("a batch can reuse a deleted variable's name", func(t *testing.T) {
+		i, ctx, _, pid := setupParameterInteractor()
+		area := declare(t, i, ctx, pid, "area")
+
+		_, err := i.UpdateParameters(ctx, interfaces.UpdateParametersParam{
+			ProjectID: pid,
+			Deletes:   id.ParameterIDList{area.ID()},
+			Creates:   []interfaces.DeclareParameterParam{{Name: "area", Type: parameter.TypeNumber}},
+		})
+
+		assert.NoError(t, err)
+		assert.Equal(t, []string{"area"}, names(t, i, ctx, pid))
+	})
 }

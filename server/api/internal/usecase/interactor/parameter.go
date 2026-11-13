@@ -3,7 +3,9 @@ package interactor
 import (
 	"context"
 	"errors"
+	"fmt"
 	"sort"
+	"strings"
 
 	accountsid "github.com/reearth/reearth-accounts/server/pkg/id"
 
@@ -38,6 +40,10 @@ func (i *Parameter) checkPermission(ctx context.Context, action string, workspac
 }
 
 func (i *Parameter) DeclareParameter(ctx context.Context, param interfaces.DeclareParameterParam) (*parameter.Parameter, error) {
+	return i.declareParameter(ctx, param, true)
+}
+
+func (i *Parameter) declareParameter(ctx context.Context, param interfaces.DeclareParameterParam, checkName bool) (*parameter.Parameter, error) {
 	proj, err := i.projectRepo.FindByID(ctx, param.ProjectID)
 	if err != nil {
 		return nil, err
@@ -60,13 +66,25 @@ func (i *Parameter) DeclareParameter(ctx context.Context, param interfaces.Decla
 			return rerror.ErrNotFound
 		}
 
+		params, err := i.paramRepo.FindByProject(ctx, param.ProjectID)
+		if err != nil {
+			return err
+		}
+		if checkName {
+			names := []string{param.Name}
+			if params != nil {
+				for _, p := range *params {
+					names = append(names, p.Name())
+				}
+			}
+			if err := ensureUniqueNames(names); err != nil {
+				return err
+			}
+		}
+
 		// Get next index if not specified
 		var index int
 		if param.Index == nil {
-			params, err := i.paramRepo.FindByProject(ctx, param.ProjectID)
-			if err != nil {
-				return err
-			}
 			if params != nil {
 				index = params.MaxIndex() + 1
 			}
@@ -116,6 +134,14 @@ func (i *Parameter) UpdateParameters(ctx context.Context, param interfaces.Updat
 		return nil, rerror.ErrNotFound
 	}
 
+	existing, err := i.paramRepo.FindByProject(ctx, param.ProjectID)
+	if err != nil {
+		return nil, err
+	}
+	if err := ensureUniqueNames(namesAfterUpdate(existing, param)); err != nil {
+		return nil, err
+	}
+
 	if len(param.Deletes) > 0 {
 		if _, err := i.RemoveParameters(ctx, param.Deletes); err != nil {
 			return nil, err
@@ -124,21 +150,13 @@ func (i *Parameter) UpdateParameters(ctx context.Context, param interfaces.Updat
 
 	for _, createParam := range param.Creates {
 		createParam.ProjectID = param.ProjectID
-		if _, err := i.DeclareParameter(ctx, createParam); err != nil {
+		if _, err := i.declareParameter(ctx, createParam, false); err != nil {
 			return nil, err
 		}
 	}
 
 	for _, updateParam := range param.Updates {
-		if _, err := i.UpdateParameter(ctx, interfaces.UpdateParameterParam{
-			DefaultValue:  updateParam.DefaultValue,
-			Config:        updateParam.Config,
-			NameValue:     updateParam.NameValue,
-			RequiredValue: updateParam.RequiredValue,
-			PublicValue:   updateParam.PublicValue,
-			TypeValue:     updateParam.TypeValue,
-			ParamID:       updateParam.ParamID,
-		}); err != nil {
+		if _, err := i.updateParameter(ctx, updateParam, false); err != nil {
 			return nil, err
 		}
 	}
@@ -439,6 +457,10 @@ func (i *Parameter) UpdateParameterOrder(ctx context.Context, param interfaces.U
 }
 
 func (i *Parameter) UpdateParameter(ctx context.Context, param interfaces.UpdateParameterParam) (*parameter.Parameter, error) {
+	return i.updateParameter(ctx, param, true)
+}
+
+func (i *Parameter) updateParameter(ctx context.Context, param interfaces.UpdateParameterParam, checkName bool) (*parameter.Parameter, error) {
 	target, err := i.paramRepo.FindByID(ctx, param.ParamID)
 	if err != nil {
 		return nil, err
@@ -468,6 +490,24 @@ func (i *Parameter) UpdateParameter(ctx context.Context, param interfaces.Update
 			return rerror.ErrNotFound
 		}
 
+		if checkName && p.Name() != param.NameValue {
+			params, err := i.paramRepo.FindByProject(ctx, p.ProjectID())
+			if err != nil {
+				return err
+			}
+			names := []string{param.NameValue}
+			if params != nil {
+				for _, other := range *params {
+					if other.ID() != p.ID() {
+						names = append(names, other.Name())
+					}
+				}
+			}
+			if err := ensureUniqueNames(names); err != nil {
+				return err
+			}
+		}
+
 		p.SetDefaultValue(param.DefaultValue)
 		p.SetName(param.NameValue)
 		p.SetType(param.TypeValue)
@@ -480,4 +520,53 @@ func (i *Parameter) UpdateParameter(ctx context.Context, param interfaces.Update
 		return nil, err
 	}
 	return p, nil
+}
+
+func namesAfterUpdate(existing *parameter.ParameterList, param interfaces.UpdateParametersParam) []string {
+	deleted := make(map[id.ParameterID]struct{}, len(param.Deletes))
+	for _, pid := range param.Deletes {
+		deleted[pid] = struct{}{}
+	}
+	renamed := make(map[id.ParameterID]string, len(param.Updates))
+	for _, u := range param.Updates {
+		renamed[u.ParamID] = u.NameValue
+	}
+
+	names := make([]string, 0, len(param.Creates))
+	if existing != nil {
+		for _, p := range *existing {
+			if _, ok := deleted[p.ID()]; ok {
+				continue
+			}
+			if name, ok := renamed[p.ID()]; ok {
+				names = append(names, name)
+				continue
+			}
+			names = append(names, p.Name())
+		}
+	}
+	for _, c := range param.Creates {
+		names = append(names, c.Name)
+	}
+	return names
+}
+
+func ensureUniqueNames(names []string) error {
+	seen := make(map[string]struct{}, len(names))
+	dup := map[string]struct{}{}
+	for _, n := range names {
+		if _, ok := seen[n]; ok {
+			dup[n] = struct{}{}
+		}
+		seen[n] = struct{}{}
+	}
+	if len(dup) == 0 {
+		return nil
+	}
+	out := make([]string, 0, len(dup))
+	for n := range dup {
+		out = append(out, n)
+	}
+	sort.Strings(out)
+	return fmt.Errorf("%w: %s", interfaces.ErrDuplicateParameterName, strings.Join(out, ", "))
 }
