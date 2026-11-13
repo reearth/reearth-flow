@@ -84,7 +84,8 @@ pub fn execute_logging_error_test(fixture_dir: &str, workflow_name: &str) -> Log
 fn execute_workflow(fixture_dir: &str, workflow_name: &str, expect_success: bool) -> LogTestResult {
     // Ensure action logging is enabled regardless of CI environment variables.
     // ACTION_LOG_DISABLE is a Lazy<bool> static, so this must be set before its first evaluation.
-    env::set_var("FLOW_RUNTIME_ACTION_LOG_DISABLE", "false");
+    // FIXME: Audit that the environment access only happens in single-threaded code.
+    unsafe { env::set_var("FLOW_RUNTIME_ACTION_LOG_DISABLE", "false") };
 
     let workflow_bytes = Fixtures::get(&format!("{fixture_dir}/workflow.yml"))
         .expect("missing workflow.yml fixture");

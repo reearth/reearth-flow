@@ -48,7 +48,7 @@ impl<const N: usize> Default for IndexBuffer<N> {
 /// macro, giving 3x3 = 9 monomorphizations of one generic impl.
 #[macro_export]
 macro_rules! dispatch_index {
-    ($buf:expr, |$Idx:ident, $slice:ident| $body:expr) => {
+    ($buf:expr_2021, |$Idx:ident, $slice:ident| $body:expr_2021) => {
         match $buf {
             $crate::index::IndexBuffer::U8(v) => {
                 type $Idx = u8;
@@ -144,7 +144,7 @@ unsafe fn fill_uninit<const N: usize, T, F>(
 ) -> Vec<[T; N]>
 where
     F: Fn(u32) -> T + Copy,
-{
+{ unsafe {
     let mut v: Vec<[T; N]> = Vec::with_capacity(len);
     let start = v.as_mut_ptr();
     let end = start.add(len);
@@ -159,7 +159,7 @@ where
     }
     v.set_len(dst.offset_from(start) as usize);
     v
-}
+}}
 
 impl<const N: usize> IndexBuffer<N> {
     /// The width this buffer currently stores its indices in.
@@ -288,13 +288,13 @@ impl<const N: usize> IndexBuffer<N> {
         width: IndexWidth,
         len: usize,
         iter: impl IntoIterator<Item = [u32; N]>,
-    ) -> Self {
+    ) -> Self { unsafe {
         match width {
             IndexWidth::U8 => IndexBuffer::U8(fill_uninit(len, iter, |x| x as u8)),
             IndexWidth::U16 => IndexBuffer::U16(fill_uninit(len, iter, |x| x as u16)),
             IndexWidth::U32 => IndexBuffer::U32(fill_uninit(len, iter, |x| x)),
         }
-    }
+    }}
 }
 
 impl<const N: usize> FromIterator<[u32; N]> for IndexBuffer<N> {

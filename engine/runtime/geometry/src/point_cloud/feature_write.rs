@@ -214,7 +214,7 @@ impl schemars::JsonSchema for super::PointCloud {
     fn schema_name() -> String {
         "PointCloud".to_string()
     }
-    fn json_schema(generator: &mut schemars::gen::SchemaGenerator) -> schemars::schema::Schema {
+    fn json_schema(generator: &mut schemars::r#gen::SchemaGenerator) -> schemars::schema::Schema {
         <PointCloud as schemars::JsonSchema>::json_schema(generator)
     }
 }

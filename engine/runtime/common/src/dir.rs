@@ -150,15 +150,15 @@ pub fn move_files_with_structure(dest: &Path, files: &[Uri]) -> crate::Result<()
         // Remove empty directories up to (but not including) common_base
         let mut current = dir.as_path();
         while current != common_base && current.starts_with(&common_base) {
-            if let Ok(entries) = fs::read_dir(current) {
+            match fs::read_dir(current) { Ok(entries) => {
                 if entries.count() == 0 {
                     let _ = fs::remove_dir(current);
                 } else {
                     break;
                 }
-            } else {
+            } _ => {
                 break;
-            }
+            }}
             current = match current.parent() {
                 Some(p) => p,
                 None => break,

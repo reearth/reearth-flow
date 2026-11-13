@@ -11,7 +11,8 @@ static INIT: Once = Once::new();
 
 pub(crate) fn init_test_env() {
     INIT.call_once(|| {
-        env::set_var("FLOW_RUNTIME_ACTION_LOG_DISABLE", "true");
+        // FIXME: Audit that the environment access only happens in single-threaded code.
+        unsafe { env::set_var("FLOW_RUNTIME_ACTION_LOG_DISABLE", "true") };
     })
 }
 

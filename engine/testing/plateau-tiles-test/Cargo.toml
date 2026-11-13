@@ -1,7 +1,7 @@
 [package]
 name = "plateau-tiles-test"
 version = "0.2.246"
-edition = "2021"
+edition.workspace = true
 
 [features]
 default = []

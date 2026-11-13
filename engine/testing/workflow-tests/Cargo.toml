@@ -1,7 +1,7 @@
 [package]
 name = "workflow-tests"
 version = "0.1.436"
-edition = "2021"
+edition.workspace = true
 
 [features]
 default = []

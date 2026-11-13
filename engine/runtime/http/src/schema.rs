@@ -84,7 +84,7 @@ impl SchemaDiskCache {
         &'a self,
         client: &BlockingHttpClient,
         base_dir: Option<&Path>,
-    ) -> impl SchemaFetcher + 'a {
+    ) -> impl SchemaFetcher + 'a + use<'a> {
         let file = match base_dir {
             Some(dir) => FileFetcher::with_base_dir(dir),
             None => FileFetcher::new(),

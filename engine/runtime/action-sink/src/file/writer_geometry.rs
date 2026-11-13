@@ -3,7 +3,7 @@ use indexmap::IndexMap;
 use reearth_flow_geometry::types::geometry::{Geometry2D, Geometry3D};
 use reearth_flow_types::{Geometry, GeometryValue};
 use schemars::{
-    gen::SchemaGenerator,
+    r#gen::SchemaGenerator,
     schema::{InstanceType, Metadata, ObjectValidation, Schema, SchemaObject, SubschemaValidation},
     JsonSchema,
 };

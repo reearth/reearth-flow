@@ -100,12 +100,12 @@ impl Processor for AttributeFlattener {
         let mut feature = ctx.feature.clone();
         for attribute in &self.params.attributes {
             if feature.get(attribute).is_some() {
-                if let Some(AttributeValue::Map(value)) = feature.get(attribute).cloned() {
+                match feature.get(attribute).cloned() { Some(AttributeValue::Map(value)) => {
                     feature.extend(value);
                     feature.remove(attribute);
-                } else {
+                } _ => {
                     continue;
-                }
+                }}
             }
         }
         fw.send(ctx.new_with_feature_and_port(feature, FEATURES_PORT.clone()));

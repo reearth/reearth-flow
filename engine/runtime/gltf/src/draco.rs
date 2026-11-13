@@ -62,7 +62,7 @@ where
 
 /// JSON schema for the quantization error: a positive number, or absent.
 fn quantization_error_schema(
-    generator: &mut schemars::gen::SchemaGenerator,
+    generator: &mut schemars::r#gen::SchemaGenerator,
 ) -> schemars::schema::Schema {
     let mut schema = <Option<f64>>::json_schema(generator).into_object();
     schema.number().exclusive_minimum = Some(0.0);

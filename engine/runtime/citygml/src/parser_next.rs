@@ -191,12 +191,11 @@ impl Parser {
                             &mut self.ns_registry,
                             &mut self.malformations,
                         )?;
-                        if let Some(feature_node) =
-                            member.children.iter().find_map(|child| match child {
+                        match member.children.iter().find_map(|child| match child {
                                 RawChild::Element(node) => Some(Arc::clone(node)),
                                 _ => None,
                             })
-                        {
+                        { Some(feature_node) => {
                             let stripped = self.split_geometry(&feature_node);
                             name_city_object(
                                 &mut self.malformations[before..],
@@ -206,11 +205,11 @@ impl Parser {
                             collect_ids(&stripped, source_url_arc.as_str(), &mut self.raw_registry);
                             collect_nested_appearances(&stripped, &mut self.appearance_members);
                             self.pending.push(stripped);
-                        } else {
+                        } _ => {
                             tracing::warn!(
                                 "citygml: empty cityObjectMember/featureMember, skipped"
                             );
-                        }
+                        }}
                     } else if ln == "appearanceMember" {
                         let member = Arc::new(parse_element(
                             &mut reader,

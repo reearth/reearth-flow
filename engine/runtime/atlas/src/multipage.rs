@@ -130,7 +130,7 @@ pub fn build_atlas_multipage(
         materials
             .iter()
             .zip(&tiling)
-            .filter(|(_, &t)| !t)
+            .filter(|&(_, &t)| !t)
             .map(|(mat, _)| mat),
     )?;
 
@@ -235,7 +235,7 @@ pub fn build_atlas_multipage(
 
     // One page per tiling texture, holding the whole image so its UVs address it unchanged.
     let mut tiling_page: HashMap<&PathBuf, usize> = HashMap::new();
-    for (mat, _) in materials.iter().zip(&tiling).filter(|(_, &t)| t) {
+    for (mat, _) in materials.iter().zip(&tiling).filter(|&(_, &t)| t) {
         if tiling_page.contains_key(&mat.path) {
             continue;
         }

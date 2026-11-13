@@ -304,18 +304,18 @@ impl Processor for FootprintReplacer {
                 fw.send(ctx.new_with_feature_and_port(feature.clone(), REJECTED_PORT.clone()));
             }
             GeometryValue::FlowGeometry3D(geom) => {
-                if let Some(footprint) = create_footprint_from_geometry3d(feature, geom) {
+                match create_footprint_from_geometry3d(feature, geom) { Some(footprint) => {
                     fw.send(ctx.new_with_feature_and_port(footprint, FOOTPRINT_PORT.clone()));
-                } else {
+                } _ => {
                     fw.send(ctx.new_with_feature_and_port(feature.clone(), REJECTED_PORT.clone()));
-                }
+                }}
             }
             GeometryValue::CityGmlGeometry(citygml) => {
-                if let Some(footprint) = create_footprint_from_citygml(feature, citygml) {
+                match create_footprint_from_citygml(feature, citygml) { Some(footprint) => {
                     fw.send(ctx.new_with_feature_and_port(footprint, FOOTPRINT_PORT.clone()));
-                } else {
+                } _ => {
                     fw.send(ctx.new_with_feature_and_port(feature.clone(), REJECTED_PORT.clone()));
-                }
+                }}
             }
             _ => {
                 fw.send(ctx.new_with_feature_and_port(feature.clone(), REJECTED_PORT.clone()));

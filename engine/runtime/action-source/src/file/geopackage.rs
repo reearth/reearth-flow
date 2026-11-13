@@ -435,46 +435,46 @@ fn get_attribute_value(row: &SqliteRow, idx: usize) -> Result<AttributeValue, So
 
     match type_name {
         "BOOLEAN" | "BOOL" => {
-            if let Ok(v) = row.try_get::<bool, _>(idx) {
+            match row.try_get::<bool, _>(idx) { Ok(v) => {
                 Ok(AttributeValue::Bool(v))
-            } else {
+            } _ => {
                 Ok(AttributeValue::Null)
-            }
+            }}
         }
         "INTEGER" | "INT" | "INT4" | "INT8" | "BIGINT" | "SMALLINT" => {
-            if let Ok(v) = row.try_get::<i64, _>(idx) {
+            match row.try_get::<i64, _>(idx) { Ok(v) => {
                 Ok(AttributeValue::Number(serde_json::Number::from(v)))
-            } else if let Ok(v) = row.try_get::<i32, _>(idx) {
+            } _ => { match row.try_get::<i32, _>(idx) { Ok(v) => {
                 Ok(AttributeValue::Number(serde_json::Number::from(v)))
-            } else {
+            } _ => {
                 Ok(AttributeValue::Null)
-            }
+            }}}}
         }
         "REAL" | "DOUBLE" | "FLOAT" | "NUMERIC" => {
-            if let Ok(v) = row.try_get::<f64, _>(idx) {
+            match row.try_get::<f64, _>(idx) { Ok(v) => {
                 if let Some(n) = serde_json::Number::from_f64(v) {
                     Ok(AttributeValue::Number(n))
                 } else {
                     Ok(AttributeValue::String(v.to_string()))
                 }
-            } else {
+            } _ => {
                 Ok(AttributeValue::Null)
-            }
+            }}
         }
         "TEXT" | "VARCHAR" => {
-            if let Ok(v) = row.try_get::<String, _>(idx) {
+            match row.try_get::<String, _>(idx) { Ok(v) => {
                 Ok(AttributeValue::String(v))
-            } else {
+            } _ => {
                 Ok(AttributeValue::Null)
-            }
+            }}
         }
         "BLOB" => {
-            if let Ok(v) = row.try_get::<Vec<u8>, _>(idx) {
+            match row.try_get::<Vec<u8>, _>(idx) { Ok(v) => {
                 let encoded = base64::engine::general_purpose::STANDARD.encode(&v);
                 Ok(AttributeValue::String(encoded))
-            } else {
+            } _ => {
                 Ok(AttributeValue::Null)
-            }
+            }}
         }
         _ => Ok(AttributeValue::Null),
     }

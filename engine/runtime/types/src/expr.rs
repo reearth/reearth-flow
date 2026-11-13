@@ -252,7 +252,7 @@ impl<const MASK: u32> schemars::JsonSchema for Code<MASK> {
         false
     }
 
-    fn json_schema(_gen: &mut schemars::gen::SchemaGenerator) -> schemars::schema::Schema {
+    fn json_schema(_gen: &mut schemars::r#gen::SchemaGenerator) -> schemars::schema::Schema {
         use schemars::schema::*;
 
         let allowed_types: Vec<serde_json::Value> = CodeType::all_variants()
