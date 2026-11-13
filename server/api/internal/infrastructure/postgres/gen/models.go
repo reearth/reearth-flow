@@ -102,6 +102,7 @@ type Job struct {
 	TriggerID         *string
 	ScheduledAt       *time.Time
 	Origin            []byte
+	RunBy             *string
 }
 
 type NodeExecution struct {

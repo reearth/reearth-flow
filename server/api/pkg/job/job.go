@@ -40,6 +40,7 @@ type Job struct {
 	scheduledRun      *ScheduledRun
 	trigger           *id.TriggerID
 	origin            *Origin
+	runBy             *UserID
 	debug             *bool
 	batchStatus       *Status
 	workerStatus      *Status
@@ -232,6 +233,13 @@ func (j *Job) Origin() *Origin {
 
 func (j *Job) SetOrigin(o *Origin) {
 	j.origin = o
+}
+
+// RunBy is the user who started the job. It is nil for runs no user started,
+// such as scheduled and API trigger runs, and for jobs from before it was
+// recorded.
+func (j *Job) RunBy() *UserID {
+	return j.runBy.CloneRef()
 }
 
 func (j *Job) SetGCPJobID(gcpJobID string) {

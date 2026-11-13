@@ -388,6 +388,7 @@ func jobToParams(j *job.Job) (gen.UpsertJobParams, error) {
 		}
 		p.Origin = b
 	}
+	p.RunBy = j.RunBy().StringRef()
 	return p, nil
 }
 
@@ -473,6 +474,13 @@ func jobFromRow(row gen.Job) (*job.Job, error) {
 			return nil, err
 		}
 		b = b.Origin(o.model())
+	}
+	if row.RunBy != nil {
+		uid, err := accountsid.UserIDFrom(*row.RunBy)
+		if err != nil {
+			return nil, err
+		}
+		b = b.RunBy(&uid)
 	}
 	return b.Build()
 }

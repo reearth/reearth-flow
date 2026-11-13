@@ -24,3 +24,8 @@ func TestJob_TriggerAndOrigin(t *testing.T) {
 	t.Parallel()
 	repotest.JobTriggerAndOrigin(t, func(*testing.T) repo.Job { return NewJob() })
 }
+
+func TestJob_RunBy(t *testing.T) {
+	t.Parallel()
+	repotest.JobRunBy(t, func(*testing.T) repo.Job { return NewJob() })
+}

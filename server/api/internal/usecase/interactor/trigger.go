@@ -552,6 +552,7 @@ func (i *Trigger) ExecuteCMSTrigger(ctx context.Context, p interfaces.ExecuteCMS
 		Trigger(&tid).
 		Origin(&origin).
 		Workspace(d.Workspace()).
+		RunBy(callerID(ctx)).
 		Status(job.StatusPending).
 		StartedAt(time.Now()).
 		Build()
