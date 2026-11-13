@@ -1,10 +1,5 @@
 id: d96b6af6-73e2-42ce-a5af-3eff30977392
 name: AddressConcatenator
-# Replaces bldg:address in __city_gml_attributes with its text, as plateau4's address flattening
-# did (and FME's get_address before it): the xAL 3.0 NameElement texts of AdministrativeArea,
-# Locality and SubLocality, in that order, joined with no separator. The country is left out.
-# A building with several addresses gets a list of strings; one whose address holds no text
-# loses bldg:address.
 nodes:
   - id: b3871b2a-bce0-43e9-b674-e99ba80f78ad
     name: InputRouter
