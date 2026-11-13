@@ -20,6 +20,7 @@ import {
 import AssetsDialog from "@flow/features/AssetsDialog";
 import CmsIntegrationDialog from "@flow/features/CmsIntegrationDialog";
 import { formatVariableValue } from "@flow/features/common/formatVariableValue";
+import { useWorkflowVars } from "@flow/hooks";
 import { useT } from "@flow/lib/i18n";
 import type { AppColumnDef } from "@flow/lib/table/features";
 import type { AnyWorkflowVariable, Asset } from "@flow/types";
@@ -51,6 +52,7 @@ const WorkflowVariablesRunDialog: React.FC<Props> = ({
   onDialogClose,
 }) => {
   const t = useT();
+  const { getUserFacingName } = useWorkflowVars();
 
   // A draft of the run's values, starting from the ones given.
   const [variables, setVariables] = useState<AnyWorkflowVariable[]>(
@@ -186,6 +188,7 @@ const WorkflowVariablesRunDialog: React.FC<Props> = ({
       {
         accessorKey: "type",
         header: t("Type"),
+        cell: ({ row }) => getUserFacingName(row.original.type),
       },
       {
         accessorKey: "defaultValue",
@@ -264,6 +267,7 @@ const WorkflowVariablesRunDialog: React.FC<Props> = ({
       handleVariableDialogOpen,
       isAtDefault,
       showVariableDialog,
+      getUserFacingName,
       t,
     ],
   );

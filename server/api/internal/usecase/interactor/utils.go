@@ -226,9 +226,9 @@ func isEmptyValue(v any) bool {
 }
 
 // normalizeRequestVars types an API call's `with` by the variables it
-// targets. A value its variable's type refuses fails the call, as a manual
-// run's override does, rather than reaching the worker as text the variable
-// cannot hold.
+// targets. A value its variable's type refuses, or a key the deployment does
+// not define, fails the call, as a manual run's override does, rather than
+// reaching the worker, which would ignore it.
 func normalizeRequestVars(
 	vars map[string]any,
 	schema map[string]variable.Variable,
@@ -238,38 +238,39 @@ func normalizeRequestVars(
 	}
 
 	out := map[string]variable.Variable{}
-	var invalid []string
+	var unknown, invalid []string
 	for k, v := range vars {
+		s, ok := schema[k]
+		if !ok {
+			unknown = append(unknown, k)
+			continue
+		}
 		if v == nil {
 			continue
 		}
-
-		// Prioritize schema
-		if s, ok := schema[k]; ok {
-			coerced, ok2 := coerceValue(v, s.Type)
-			if !ok2 {
-				invalid = append(invalid, k)
-				continue
-			}
-			out[k] = variable.Variable{
-				Key:   k,
-				Type:  s.Type,
-				Value: coerced,
-			}
+		coerced, ok := coerceValue(v, s.Type)
+		if !ok {
+			invalid = append(invalid, k)
 			continue
 		}
-
-		// If no schema, default to text
 		out[k] = variable.Variable{
 			Key:   k,
-			Type:  parameter.TypeText,
-			Value: fmt.Sprintf("%v", v),
+			Type:  s.Type,
+			Value: coerced,
 		}
 	}
 
+	var errs []error
+	if len(unknown) > 0 {
+		sort.Strings(unknown)
+		errs = append(errs, fmt.Errorf("%w: %s", interfaces.ErrUnknownVariable, strings.Join(unknown, ", ")))
+	}
 	if len(invalid) > 0 {
 		sort.Strings(invalid)
-		return nil, fmt.Errorf("%w: %s", interfaces.ErrInvalidVariableValue, strings.Join(invalid, ", "))
+		errs = append(errs, fmt.Errorf("%w: %s", interfaces.ErrInvalidVariableValue, strings.Join(invalid, ", ")))
+	}
+	if err := errors.Join(errs...); err != nil {
+		return nil, err
 	}
 	return out, nil
 }
@@ -345,9 +346,8 @@ func applyRunOverrides(
 // runParameters copies the deployment's variables with the values a run
 // resolved, so the job keeps a record of what it ran with. A variable the run
 // left without a value is kept with none. Values for keys the deployment does
-// not define (a trigger's stale value, an API call's extra `with`) reach the
-// worker too, so they follow in key order, belonging to project when there is
-// one.
+// not define (from the workflow file's own `with`) reach the worker too, so
+// they follow in key order, belonging to project when there is one.
 func runParameters(defs []*parameter.Parameter, final map[string]variable.Variable, project *parameter.ProjectID) []*parameter.Parameter {
 	out := make([]*parameter.Parameter, 0, len(defs)+len(final))
 	defined := make(map[string]struct{}, len(defs))
@@ -384,6 +384,30 @@ func runParameters(defs []*parameter.Parameter, final map[string]variable.Variab
 		return nil
 	}
 	return withProject(out, project)
+}
+
+func parameterSchema(defs []*parameter.Parameter) map[string]variable.Variable {
+	out := make(map[string]variable.Variable, len(defs))
+	for _, p := range defs {
+		if p != nil {
+			out[p.Name()] = variable.Variable{Key: p.Name(), Type: p.Type()}
+		}
+	}
+	return out
+}
+
+// A trigger can hold a value for a variable since removed.
+func definedVariables(vars, schema map[string]variable.Variable) map[string]variable.Variable {
+	if len(vars) == 0 {
+		return nil
+	}
+	out := make(map[string]variable.Variable, len(vars))
+	for k, v := range vars {
+		if _, ok := schema[k]; ok {
+			out[k] = v
+		}
+	}
+	return out
 }
 
 // withProject gives each of params that has no project pid, copying rather

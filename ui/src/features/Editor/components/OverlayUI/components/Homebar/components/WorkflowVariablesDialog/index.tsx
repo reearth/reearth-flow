@@ -206,6 +206,7 @@ const WorkflowVariablesDialog: React.FC<Props> = ({
       {
         accessorKey: "type",
         header: t("Type"),
+        cell: ({ row }) => getUserFacingName(row.original.type),
       },
       {
         accessorKey: "defaultValue",
@@ -289,6 +290,7 @@ const WorkflowVariablesDialog: React.FC<Props> = ({
       handleEditVariable,
       handleDeleteSingle,
       workflowVarAwareness,
+      getUserFacingName,
       t,
     ],
   );

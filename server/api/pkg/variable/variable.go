@@ -48,20 +48,13 @@ func ToWorkerMap(vars map[string]Variable) map[string]string {
 }
 
 func toString(v Variable) string {
-	switch v.Type {
-	case parameter.TypeText, parameter.TypeColor, parameter.TypeNumber, parameter.TypeYesNo, parameter.TypeDatetime:
-		if v.Value == nil {
-			return ""
-		}
-		if t, ok := v.Value.(time.Time); ok && v.Type == parameter.TypeDatetime {
-			return t.Format(time.RFC3339)
-		}
-		return fmt.Sprintf("%v", v.Value)
-	default:
-		b, err := json.Marshal(v.Value)
-		if err != nil {
-			return fmt.Sprintf("<marshal error: %v>", err)
-		}
-		return string(b)
+	value := v.Value
+	if t, ok := value.(time.Time); ok && v.Type == parameter.TypeDatetime {
+		value = t.Format(time.RFC3339)
 	}
+	b, err := json.Marshal(value)
+	if err != nil {
+		return fmt.Sprintf("<marshal error: %v>", err)
+	}
+	return string(b)
 }

@@ -3,6 +3,7 @@ import { ClientError } from "graphql-request";
 import { describe, expect, test } from "vitest";
 
 import {
+  toDuplicateVariableNames,
   toInvalidVariableValues,
   toMissingRequiredVariables,
   toUnknownVariables,
@@ -70,5 +71,24 @@ describe("refused deployment run variables", () => {
   test("ignores other errors", () => {
     expect(toUnknownVariables(serverError("something else"))).toBeUndefined();
     expect(toInvalidVariableValues(new Error("boom"))).toBeUndefined();
+  });
+});
+
+describe("toDuplicateVariableNames", () => {
+  test("names every variable the server lists", () => {
+    expect(
+      toDuplicateVariableNames(
+        serverError(
+          "workflow variable names are used more than once: area, city",
+        ),
+      ),
+    ).toEqual(["area", "city"]);
+  });
+
+  test("is undefined for any other error", () => {
+    expect(
+      toDuplicateVariableNames(serverError("something else")),
+    ).toBeUndefined();
+    expect(toDuplicateVariableNames(new Error("boom"))).toBeUndefined();
   });
 });

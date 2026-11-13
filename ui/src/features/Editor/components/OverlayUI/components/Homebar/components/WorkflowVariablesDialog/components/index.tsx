@@ -3,7 +3,7 @@ import { useContext, useState, useEffect, useRef } from "react";
 import { Input } from "@flow/components";
 import { useT } from "@flow/lib/i18n";
 import { cn } from "@flow/lib/utils";
-import type { AnyWorkflowVariable, VarType } from "@flow/types";
+import type { AnyWorkflowVariable } from "@flow/types";
 import { isProblemVariableName, removeWhiteSpace } from "@flow/utils";
 
 import { NameProblemsContext } from "../nameProblemsContext";
@@ -75,30 +75,6 @@ export const DefaultValueDisplay: React.FC<{
 }> = ({ variable }) => {
   const t = useT();
 
-  // Determine the original type from the user-facing name
-  const getOriginalType = (type: VarType): VarType => {
-    const typeMapping: Record<string, VarType> = {
-      [t("Attribute Name")]: "attribute_name",
-      [t("Choice")]: "choice",
-      [t("Color")]: "color",
-      [t("Coordinate System")]: "coordinate_system",
-      [t("Database Connection")]: "database_connection",
-      [t("Date and Time")]: "datetime",
-      [t("Geometry")]: "geometry",
-      [t("Message")]: "message",
-      [t("Number")]: "number",
-      [t("Password")]: "password",
-      [t("Reprojection File")]: "reprojection_file",
-      [t("Text")]: "text",
-      [t("Web Connection")]: "web_connection",
-      [t("Yes/No")]: "yes_no",
-      [t("Unsupported")]: "unsupported",
-    };
-
-    return typeMapping[type] || type;
-  };
-
-  const originalType = getOriginalType(variable.type);
   const { defaultValue } = variable;
 
   // Handle empty/undefined values
@@ -112,7 +88,7 @@ export const DefaultValueDisplay: React.FC<{
     );
   }
 
-  switch (originalType) {
+  switch (variable.type) {
     case "choice": {
       // Handle new choice format with config.choices
       if (

@@ -3,7 +3,6 @@ package interactor
 import (
 	"context"
 	"errors"
-	"maps"
 	"time"
 
 	accountsid "github.com/reearth/reearth-accounts/server/pkg/id"
@@ -203,14 +202,8 @@ func (i *Trigger) ExecuteAPITrigger(ctx context.Context, p interfaces.ExecuteAPI
 	// ones, so a run matches the workflow file that was deployed.
 	projectParams := projectParametersToMap(parameter.NewParameterList(deployment.Parameters()))
 
-	var triggerVars map[string]variable.Variable
-	if tvs := trigger.Variables(); len(tvs) > 0 {
-		triggerVars = variable.SliceToMap(tvs)
-	}
-
-	schema := map[string]variable.Variable{}
-	maps.Copy(schema, projectParams)
-	maps.Copy(schema, triggerVars)
+	schema := parameterSchema(deployment.Parameters())
+	triggerVars := definedVariables(variable.SliceToMap(trigger.Variables()), schema)
 
 	requestVars, err := normalizeRequestVars(p.Variables, schema)
 	if err != nil {
@@ -380,10 +373,7 @@ func (i *Trigger) ExecuteTimeDrivenTrigger(ctx context.Context, p interfaces.Exe
 	// ones, so a run matches the workflow file that was deployed.
 	projectParams := projectParametersToMap(parameter.NewParameterList(deployment.Parameters()))
 
-	var triggerVars map[string]variable.Variable
-	if tvs := trigger.Variables(); len(tvs) > 0 {
-		triggerVars = variable.SliceToMap(tvs)
-	}
+	triggerVars := definedVariables(variable.SliceToMap(trigger.Variables()), parameterSchema(deployment.Parameters()))
 
 	finalVarMap, err := resolveVariables(
 		ModeTimeDriven,

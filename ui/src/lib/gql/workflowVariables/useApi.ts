@@ -2,6 +2,7 @@ import { useToast } from "@flow/features/NotificationSystem/useToast";
 import { useT } from "@flow/lib/i18n";
 import type { CreateWorkflowVariable, VarType } from "@flow/types";
 
+import { toDuplicateVariableNames } from "./errors";
 import { useQueries } from "./useQueries";
 
 export const useWorkflowVariables = () => {
@@ -15,6 +16,14 @@ export const useWorkflowVariables = () => {
 
   const { toast } = useToast();
   const t = useT();
+  const duplicateNamesMessage = (err: unknown) => {
+    const names = toDuplicateVariableNames(err);
+    return names
+      ? t("Variable names must be unique: {{names}}", {
+          names: names.join(", "),
+        })
+      : undefined;
+  };
 
   const useGetWorkflowVariables = (projectId?: string) => {
     const { data, ...rest } = useWorkflowVariablesQuery(projectId);
@@ -56,10 +65,12 @@ export const useWorkflowVariables = () => {
       });
 
       return { workflowVariable, ...rest };
-    } catch (_err) {
+    } catch (err) {
       toast({
         title: t("Workflow Variable Creation Failed"),
-        description: t("There was an error creating a workflow variable."),
+        description:
+          duplicateNamesMessage(err) ??
+          t("There was an error creating a workflow variable."),
         variant: "warning",
       });
 
@@ -131,7 +142,9 @@ export const useWorkflowVariables = () => {
       console.error("Error updating workflow variables:", err);
       toast({
         title: t("Workflow Variables Update Failed"),
-        description: t("There was an error updating workflow variables."),
+        description:
+          duplicateNamesMessage(err) ??
+          t("There was an error updating workflow variables."),
         variant: "warning",
       });
       return { workflowVariables: [], ...rest };
