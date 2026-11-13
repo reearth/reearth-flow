@@ -1256,11 +1256,11 @@ impl crate::ops::Extrude for PolygonMesh3D {
             for ring in std::iter::once(&v.exterior).chain(v.interiors) {
                 let mut coords = ring.coords.to_vec();
                 corners.extend(ring.corners.clone());
-                if let (Some(&first), Some(last)) = (coords.first(), coords.last()) {
-                    if first != *last {
-                        coords.push(first);
-                        corners.push(ring.corners.start);
-                    }
+                if let (Some(&first), Some(last)) = (coords.first(), coords.last())
+                    && first != *last
+                {
+                    coords.push(first);
+                    corners.push(ring.corners.start);
                 }
                 rings.push(coords);
             }

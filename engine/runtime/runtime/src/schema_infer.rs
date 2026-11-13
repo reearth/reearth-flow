@@ -75,14 +75,14 @@ fn effective_output_ports(
                     ports.push(p);
                 }
             }
-        } else if action == crate::node::FEATURE_FILTER_ACTION {
-            if let Some(serde_json::Value::Array(conditions)) = with.get("conditions") {
-                for c in conditions {
-                    if let Some(serde_json::Value::String(port)) = c.get("outputPort") {
-                        let p = Port::new(port.clone());
-                        if !ports.contains(&p) {
-                            ports.push(p);
-                        }
+        } else if action == crate::node::FEATURE_FILTER_ACTION
+            && let Some(serde_json::Value::Array(conditions)) = with.get("conditions")
+        {
+            for c in conditions {
+                if let Some(serde_json::Value::String(port)) = c.get("outputPort") {
+                    let p = Port::new(port.clone());
+                    if !ports.contains(&p) {
+                        ports.push(p);
                     }
                 }
             }

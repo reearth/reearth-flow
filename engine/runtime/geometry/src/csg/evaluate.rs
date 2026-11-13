@@ -173,13 +173,12 @@ impl Arena {
         let (edge, _, _) = self.carrier(u, v);
         let (a, b) = (self.position(edge.0), self.position(edge.1));
         let t = (plane.w - dot3(plane.normal, a)) / dot3(plane.normal, sub3(b, a));
-        if let Some(recorded) = self.splits.get(&edge) {
-            if let Some(&(_, id)) = recorded
+        if let Some(recorded) = self.splits.get(&edge)
+            && let Some(&(_, id)) = recorded
                 .iter()
                 .find(|(seen, _)| seen.to_bits() == t.to_bits())
-            {
-                return id;
-            }
+        {
+            return id;
         }
         let id = self.push(lerp(a, b, t));
         self.on_edge.insert(id, (edge, t));

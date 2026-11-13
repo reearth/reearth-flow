@@ -634,10 +634,10 @@ fn eval_inner(expr: &Expr, env: &Env) -> Result<Value> {
     let pos = expr.span.start;
     let _depth = DepthGuard::enter(&AST_DEPTH)?;
     eval_node(expr, env).map_err(|mut e| {
-        if let Error::Eval { pos: ref mut p, .. } = e {
-            if *p == POS_UNSET {
-                *p = pos;
-            }
+        if let Error::Eval { pos: ref mut p, .. } = e
+            && *p == POS_UNSET
+        {
+            *p = pos;
         }
         e
     })

@@ -532,13 +532,13 @@ impl ChannelManager {
                 );
                 continue;
             }
-            if let Some(sender) = self.senders.get(sender_idx) {
-                if let Err(e) = sender.send_file_backed_op(&dest, &port, context) {
-                    tracing::error!(
-                        node_id = ?self.owner.id, ?e,
-                        "Failed to send spill FileBackedOp"
-                    );
-                }
+            if let Some(sender) = self.senders.get(sender_idx)
+                && let Err(e) = sender.send_file_backed_op(&dest, &port, context)
+            {
+                tracing::error!(
+                    node_id = ?self.owner.id, ?e,
+                    "Failed to send spill FileBackedOp"
+                );
             }
         }
     }

@@ -1034,10 +1034,10 @@ fn run_domain_of_definition_checks(
             ) {
                 Ok((process_result, group_xlinks)) => {
                     accumulator.result.extend(process_result);
-                    if is_city_object_group {
-                        if let Some(group) = accumulator.city_object_groups.last_mut() {
-                            group.xlinks = group_xlinks;
-                        }
+                    if is_city_object_group
+                        && let Some(group) = accumulator.city_object_groups.last_mut()
+                    {
+                        group.xlinks = group_xlinks;
                     }
                 }
                 Err(e) => {
@@ -1409,37 +1409,36 @@ fn process_member_node(
         // This handles cases where GML files are extracted to a temp directory but codelists are elsewhere
         let mut code = None;
         let mut dynamically_loaded_codelist;
-        if let Some(codelists_relative) = extract_codelists_relative_path(code_space) {
-            if let Some(dir_codelists) = get_dir_codelists(context.feature) {
-                // Build the expected path by finding matching entry in codelists dictionary
-                // We search for entries ending with the relative path since URI formats may vary
-                let suffix = format!("/{}", codelists_relative);
-                code = context
-                    .codelists
-                    .iter()
-                    .find(|(k, _)| k.ends_with(&suffix))
-                    .map(|(_, v)| v);
+        if let Some(codelists_relative) = extract_codelists_relative_path(code_space)
+            && let Some(dir_codelists) = get_dir_codelists(context.feature)
+        {
+            // Build the expected path by finding matching entry in codelists dictionary
+            // We search for entries ending with the relative path since URI formats may vary
+            let suffix = format!("/{}", codelists_relative);
+            code = context
+                .codelists
+                .iter()
+                .find(|(k, _)| k.ends_with(&suffix))
+                .map(|(_, v)| v);
 
-                // If not found by suffix, try direct join
-                if code.is_none() {
-                    if let Ok(resolved_path) = dir_codelists.join(&codelists_relative) {
-                        code = context.codelists.get(&resolved_path.to_string());
-                    }
-                }
+            // If not found by suffix, try direct join
+            if code.is_none()
+                && let Ok(resolved_path) = dir_codelists.join(&codelists_relative)
+            {
+                code = context.codelists.get(&resolved_path.to_string());
+            }
 
-                // If still not found in pre-loaded dictionary, try to load the codelist file dynamically
-                // This handles cases where the codelists dictionary was loaded from a different directory
-                if code.is_none() {
-                    if let Ok(resolved_path) = dir_codelists.join(&codelists_relative) {
-                        if let Ok(loaded) = try_load_codelist_file(
-                            Arc::clone(&context.ctx.storage_resolver),
-                            &resolved_path,
-                        ) {
-                            dynamically_loaded_codelist = loaded;
-                            code = Some(&dynamically_loaded_codelist);
-                        }
-                    }
-                }
+            // If still not found in pre-loaded dictionary, try to load the codelist file dynamically
+            // This handles cases where the codelists dictionary was loaded from a different directory
+            if code.is_none()
+                && let Ok(resolved_path) = dir_codelists.join(&codelists_relative)
+                && let Ok(loaded) = try_load_codelist_file(
+                    Arc::clone(&context.ctx.storage_resolver),
+                    &resolved_path,
+                )
+            {
+                dynamically_loaded_codelist = loaded;
+                code = Some(&dynamically_loaded_codelist);
             }
         }
 
@@ -1452,27 +1451,27 @@ fn process_member_node(
         }
 
         // If still not found and fallback path is provided, try the fallback path
-        if code.is_none() {
-            if let Some(fallback_path) = context.fallback_codelists_path {
-                // Extract the filename from codeSpace (e.g., "../../codelists/Building_class.xml" -> "Building_class.xml")
-                if let Some(filename) = Path::new(code_space.as_str()).file_name() {
-                    let fallback_code_space_path =
-                        fallback_path.join(Path::new(filename)).map_err(|e| {
-                            PlateauProcessorError::DomainOfDefinitionValidator(format!("{e:?}"))
-                        })?;
-                    // First try dictionary lookup
-                    code = context.codelists.get(&fallback_code_space_path.to_string());
+        if code.is_none()
+            && let Some(fallback_path) = context.fallback_codelists_path
+        {
+            // Extract the filename from codeSpace (e.g., "../../codelists/Building_class.xml" -> "Building_class.xml")
+            if let Some(filename) = Path::new(code_space.as_str()).file_name() {
+                let fallback_code_space_path =
+                    fallback_path.join(Path::new(filename)).map_err(|e| {
+                        PlateauProcessorError::DomainOfDefinitionValidator(format!("{e:?}"))
+                    })?;
+                // First try dictionary lookup
+                code = context.codelists.get(&fallback_code_space_path.to_string());
 
-                    // If not in dictionary, try dynamic loading
-                    if code.is_none() {
-                        if let Ok(loaded) = try_load_codelist_file(
-                            Arc::clone(&context.ctx.storage_resolver),
-                            &fallback_code_space_path,
-                        ) {
-                            dynamically_loaded_codelist = loaded;
-                            code = Some(&dynamically_loaded_codelist);
-                        }
-                    }
+                // If not in dictionary, try dynamic loading
+                if code.is_none()
+                    && let Ok(loaded) = try_load_codelist_file(
+                        Arc::clone(&context.ctx.storage_resolver),
+                        &fallback_code_space_path,
+                    )
+                {
+                    dynamically_loaded_codelist = loaded;
+                    code = Some(&dynamically_loaded_codelist);
                 }
             }
         }
@@ -1847,10 +1846,9 @@ fn collect_recursive(
         // gml:pos / gml:posList check
         if child.namespace_uri().as_deref() == Some(gml_ns)
             && (child_name == "pos" || child_name == "posList")
+            && let Some(content) = child.get_content()
         {
-            if let Some(content) = child.get_content() {
-                result.pos_contents.push(content);
-            }
+            result.pos_contents.push(content);
         }
 
         // xlink:href attribute check

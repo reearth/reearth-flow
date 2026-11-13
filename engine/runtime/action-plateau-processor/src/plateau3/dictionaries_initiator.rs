@@ -155,21 +155,19 @@ impl Processor for DictionariesInitiator {
         }
         let mut result_value = feature.clone();
         // Municipality name acquisition
-        if let Some(file) = self.codelists_map.get(dir_codelists) {
-            if let Some(city_code) = &self.params.city_code {
-                if let Some(name) = file.get(ADMIN_CODE_LIST) {
-                    if let Some(city_name) = name.get(city_code) {
-                        result_value.insert(
-                            Attribute::new("cityName"),
-                            AttributeValue::String(city_name.clone()),
-                        );
-                        result_value.insert(
-                            Attribute::new("cityCode"),
-                            AttributeValue::String(city_code.clone()),
-                        );
-                    }
-                }
-            }
+        if let Some(file) = self.codelists_map.get(dir_codelists)
+            && let Some(city_code) = &self.params.city_code
+            && let Some(name) = file.get(ADMIN_CODE_LIST)
+            && let Some(city_name) = name.get(city_code)
+        {
+            result_value.insert(
+                Attribute::new("cityName"),
+                AttributeValue::String(city_name.clone()),
+            );
+            result_value.insert(
+                Attribute::new("cityCode"),
+                AttributeValue::String(city_code.clone()),
+            );
         }
 
         result_value.insert(

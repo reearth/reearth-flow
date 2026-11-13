@@ -309,10 +309,10 @@ fn parse_from_string_and_number(
             // For auto-detection, numeric values are always interpreted as Unix seconds.
             // Milliseconds are NOT auto-detected to avoid ambiguity with historical dates.
             // Use explicit `unix_ms` input format for millisecond timestamps.
-            if let Some(n) = effective_i64 {
-                if let Ok(dt) = reearth_flow_common::datetime::try_from_unix_s(n) {
-                    return Ok(DateTime::Utc(dt));
-                }
+            if let Some(n) = effective_i64
+                && let Ok(dt) = reearth_flow_common::datetime::try_from_unix_s(n)
+            {
+                return Ok(DateTime::Utc(dt));
             }
             // Try string formats using the canonical DateTime::parse
             if let Some(s) = str_val {

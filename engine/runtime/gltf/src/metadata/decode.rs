@@ -591,10 +591,10 @@ pub fn feature_properties(
         return out;
     }
     for (name, data) in &table.properties {
-        if let Some(v) = data.values.get(row) {
-            if !matches!(v, AttributeValue::Null) {
-                out.insert(name.clone(), v.clone());
-            }
+        if let Some(v) = data.values.get(row)
+            && !matches!(v, AttributeValue::Null)
+        {
+            out.insert(name.clone(), v.clone());
         }
     }
     out

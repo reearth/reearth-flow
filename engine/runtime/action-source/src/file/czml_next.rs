@@ -409,10 +409,10 @@ fn packet_features(
 ) -> Result<Vec<Feature>, PositionProblem> {
     let base = extract_common_attributes(packet);
 
-    if let Some(position) = packet.get("position") {
-        if let Some(ts) = parse_time_tagged_position(position) {
-            return timeseries_features(&ts, &base, packet, params);
-        }
+    if let Some(position) = packet.get("position")
+        && let Some(ts) = parse_time_tagged_position(position)
+    {
+        return timeseries_features(&ts, &base, packet, params);
     }
 
     let geometry = packet_geometry(packet, params.force_2d)?;
@@ -440,20 +440,20 @@ fn packet_features(
 /// present but missing its positions is not malformed: it falls through to the next
 /// candidate, and a packet where every candidate falls through gets `Geometry::None`.
 fn packet_geometry(packet: &Value, force_2d: bool) -> Result<Geometry, PositionProblem> {
-    if let Some(positions) = packet.pointer("/polygon/positions") {
-        if let Some(coords) = position_list(positions)? {
-            let holes = packet
-                .pointer("/polygon/holes")
-                .map(|value| hole_rings(value, coords.frame))
-                .transpose()?
-                .unwrap_or_default();
-            return area_geometry(&coords, holes, force_2d);
-        }
+    if let Some(positions) = packet.pointer("/polygon/positions")
+        && let Some(coords) = position_list(positions)?
+    {
+        let holes = packet
+            .pointer("/polygon/holes")
+            .map(|value| hole_rings(value, coords.frame))
+            .transpose()?
+            .unwrap_or_default();
+        return area_geometry(&coords, holes, force_2d);
     }
-    if let Some(positions) = packet.pointer("/polyline/positions") {
-        if let Some(coords) = position_list(positions)? {
-            return line_geometry(&coords, force_2d);
-        }
+    if let Some(positions) = packet.pointer("/polyline/positions")
+        && let Some(coords) = position_list(positions)?
+    {
+        return line_geometry(&coords, force_2d);
     }
     if let Some(coordinates) = packet.pointer("/rectangle/coordinates") {
         // `extract_rectangle_bounds` (shared with the old world, not to be touched
@@ -475,10 +475,10 @@ fn packet_geometry(packet: &Value, force_2d: bool) -> Result<Geometry, PositionP
             None => {}
         }
     }
-    if let Some(positions) = packet.pointer("/corridor/positions") {
-        if let Some(coords) = position_list(positions)? {
-            return line_geometry(&coords, force_2d);
-        }
+    if let Some(positions) = packet.pointer("/corridor/positions")
+        && let Some(coords) = position_list(positions)?
+    {
+        return line_geometry(&coords, force_2d);
     }
     if let (Some(ellipse), Some(value)) = (packet.get("ellipse"), packet.get("position")) {
         // `position`, not `position_list`: an ellipse's centre is a singular CZML
@@ -487,16 +487,16 @@ fn packet_geometry(packet: &Value, force_2d: bool) -> Result<Geometry, PositionP
         // cartesian centre (groups of four) pass the "multiple of three" check
         // whenever the sample count made the total divisible by three, and be
         // silently misread as a run of bogus triples.
-        if let Some(coords) = position(value)? {
-            if let Some(&centre) = coords.triples.first() {
-                return ellipse_geometry(ellipse, coords.frame, centre, force_2d);
-            }
+        if let Some(coords) = position(value)?
+            && let Some(&centre) = coords.triples.first()
+        {
+            return ellipse_geometry(ellipse, coords.frame, centre, force_2d);
         }
     }
-    if let Some(positions) = packet.pointer("/wall/positions") {
-        if let Some(coords) = position_list(positions)? {
-            return line_geometry(&coords, force_2d);
-        }
+    if let Some(positions) = packet.pointer("/wall/positions")
+        && let Some(coords) = position_list(positions)?
+    {
+        return line_geometry(&coords, force_2d);
     }
     if let Some(value) = packet.get("position") {
         // Mirrors the old world's `has_other_geom` guard: a packet whose `polygon`,
@@ -513,10 +513,8 @@ fn packet_geometry(packet: &Value, force_2d: bool) -> Result<Geometry, PositionP
             || packet.get("corridor").is_some()
             || packet.get("ellipse").is_some()
             || packet.get("wall").is_some();
-        if !has_other_geometry {
-            if let Some(coords) = position(value)? {
-                return point_geometry(&coords, force_2d);
-            }
+        if !has_other_geometry && let Some(coords) = position(value)? {
+            return point_geometry(&coords, force_2d);
         }
     }
     Ok(Geometry::None)

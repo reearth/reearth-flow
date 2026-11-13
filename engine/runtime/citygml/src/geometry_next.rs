@@ -167,10 +167,10 @@ impl Parser {
                 if m.file.is_empty() {
                     m.file = file.clone();
                 }
-                if m.location.is_empty() {
-                    if let Some(rid) = &id {
-                        m.location = rid.clone();
-                    }
+                if m.location.is_empty()
+                    && let Some(rid) = &id
+                {
+                    m.location = rid.clone();
                 }
             }
             let (geometry, faces) = result?;

@@ -489,13 +489,13 @@ where
         let mut extensions = span.extensions_mut();
         extensions.insert(fields.clone());
 
-        if span.name() == "workflow_execution" {
-            if let Some(workflow_name) = fields.workflow_name {
-                let mut workflow_info = self.handler.workflow_info.write();
-                *workflow_info = Some(WorkflowExecutionInfo {
-                    workflow_name: workflow_name.clone(),
-                });
-            }
+        if span.name() == "workflow_execution"
+            && let Some(workflow_name) = fields.workflow_name
+        {
+            let mut workflow_info = self.handler.workflow_info.write();
+            *workflow_info = Some(WorkflowExecutionInfo {
+                workflow_name: workflow_name.clone(),
+            });
         }
     }
 
@@ -530,14 +530,13 @@ where
 
             if target.contains("reearth_flow_runner::log_event_handler")
                 && (event_node_id.is_none() || event_node_name.is_none())
+                && let Some((tls_node_id, tls_node_name)) = node_info_tls::get_node_info()
             {
-                if let Some((tls_node_id, tls_node_name)) = node_info_tls::get_node_info() {
-                    if event_node_id.is_none() {
-                        event_node_id = Some(tls_node_id);
-                    }
-                    if event_node_name.is_none() {
-                        event_node_name = tls_node_name;
-                    }
+                if event_node_id.is_none() {
+                    event_node_id = Some(tls_node_id);
+                }
+                if event_node_name.is_none() {
+                    event_node_name = tls_node_name;
                 }
             }
 

@@ -691,10 +691,10 @@ impl CityGmlAttributeInserter {
                     }
 
                     if building_depth == Some(depth) {
-                        if let Some(ref gml_id) = current_gml_id {
-                            if let Some(values) = self.elements.get(gml_id) {
-                                self.write_measure_attributes(&mut writer, values)?;
-                            }
+                        if let Some(ref gml_id) = current_gml_id
+                            && let Some(values) = self.elements.get(gml_id)
+                        {
+                            self.write_measure_attributes(&mut writer, values)?;
                         }
                         building_depth = None;
                         current_gml_id = None;
@@ -710,15 +710,14 @@ impl CityGmlAttributeInserter {
                     })?;
                 }
                 Ok(Event::Text(ref e)) => {
-                    if in_image_uri {
-                        if let Ok(text) = e.unescape() {
-                            image_uri_text.push_str(&text);
-                        }
+                    if in_image_uri && let Ok(text) = e.unescape() {
+                        image_uri_text.push_str(&text);
                     }
-                    if collect_rings && in_pos_list {
-                        if let Ok(text) = e.unescape() {
-                            pos_list_text.push_str(&text);
-                        }
+                    if collect_rings
+                        && in_pos_list
+                        && let Ok(text) = e.unescape()
+                    {
+                        pos_list_text.push_str(&text);
                     }
                     writer.write_event(Event::Text(e.clone())).map_err(|e| {
                         CityGmlAttributeInserterError::Process(format!("XML write error: {e}"))

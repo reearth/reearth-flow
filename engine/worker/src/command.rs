@@ -218,10 +218,10 @@ impl RunWorkerCommand {
         set_pubsub_context(pubsub.clone(), workflow_id, meta.job_id, handle)
             .map_err(Error::init)?;
 
-        if let Some(name) = workflow_name {
-            if let Some(handler) = USER_FACING_LOG_HANDLER.get() {
-                handler.set_workflow_name(name);
-            }
+        if let Some(name) = workflow_name
+            && let Some(handler) = USER_FACING_LOG_HANDLER.get()
+        {
+            handler.set_workflow_name(name);
         }
 
         let mut workflow = match Workflow::try_from(workflow_yaml.as_str()) {

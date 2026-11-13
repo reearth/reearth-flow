@@ -370,10 +370,10 @@ pub fn build_feature_objects(
     // Place each object in its parent, in pre-order, then build the orphans.
     let mut children: Vec<Vec<usize>> = vec![Vec::new(); nodes.len()];
     for (node, entry) in nodes.iter().enumerate().skip(1) {
-        if entry.kept {
-            if let Some(parent) = entry.parent {
-                children[parent].push(node);
-            }
+        if entry.kept
+            && let Some(parent) = entry.parent
+        {
+            children[parent].push(node);
         }
     }
     let mut builder = Builder {
@@ -893,17 +893,17 @@ pub fn join(features: Vec<FeatureObjects>, schema: &SchemaSet) -> Joined {
         if copies[feature] {
             continue;
         }
-        if !nested[feature] {
-            if let Some(root) = assembly.roots[feature].take() {
-                let mut roots = vec![feature];
-                let object = assembly.fill(root, feature, None, &mut roots);
-                roots.sort_unstable();
-                top.push(TopLevel {
-                    object,
-                    orphan: false,
-                    roots,
-                });
-            }
+        if !nested[feature]
+            && let Some(root) = assembly.roots[feature].take()
+        {
+            let mut roots = vec![feature];
+            let object = assembly.fill(root, feature, None, &mut roots);
+            roots.sort_unstable();
+            top.push(TopLevel {
+                object,
+                orphan: false,
+                roots,
+            });
         }
         for (i, orphan) in feature_orphans.into_iter().enumerate() {
             let mut roots = Vec::new();

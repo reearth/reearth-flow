@@ -48,10 +48,10 @@ pub fn find_cesium_tile_directories(base_path: &Path) -> Result<Vec<String>, Str
         .filter_map(|e| e.ok())
         .filter(|e| e.path().is_file() && e.file_name() == "tileset.json")
     {
-        if let Ok(rel) = entry.path().parent().unwrap().strip_prefix(base_path) {
-            if let Some(first_component) = rel.iter().next() {
-                dirs.insert(first_component.to_string_lossy().to_string());
-            }
+        if let Ok(rel) = entry.path().parent().unwrap().strip_prefix(base_path)
+            && let Some(first_component) = rel.iter().next()
+        {
+            dirs.insert(first_component.to_string_lossy().to_string());
         }
     }
 

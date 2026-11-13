@@ -88,10 +88,10 @@ pub(crate) fn face_overlap_conflicts_2d(view: &AreaView<'_>, mut emit: impl FnMu
         for (inner, outer) in [(i, j), (j, i)] {
             let sample =
                 *samples[inner].get_or_insert_with(|| face_interior_point(view.face(inner)));
-            if let Some(p) = sample {
-                if face_position(p, view.face(outer)) == CoordPos::Inside {
-                    emit(FaceConflict2D::Contained { face: inner });
-                }
+            if let Some(p) = sample
+                && face_position(p, view.face(outer)) == CoordPos::Inside
+            {
+                emit(FaceConflict2D::Contained { face: inner });
             }
         }
     });

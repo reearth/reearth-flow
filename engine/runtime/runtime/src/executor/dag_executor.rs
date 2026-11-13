@@ -467,10 +467,10 @@ fn start_source<F: Send + 'static + Future + Unpin + Debug>(
                 // CannotSendToChannel here means the listener quit gracefully
                 // — swallowed, not a real failure.
                 Err(e) => {
-                    if let ExecutionError::Source(e) = &e {
-                        if let Some(ExecutionError::CannotSendToChannel(_)) = e.downcast_ref() {
-                            return (NodeOutcome::default(), Ok(()));
-                        }
+                    if let ExecutionError::Source(e) = &e
+                        && let Some(ExecutionError::CannotSendToChannel(_)) = e.downcast_ref()
+                    {
+                        return (NodeOutcome::default(), Ok(()));
                     }
                     Err(e)
                 }

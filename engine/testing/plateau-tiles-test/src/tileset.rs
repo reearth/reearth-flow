@@ -67,18 +67,17 @@ fn glb_content_uris(tile: &Value) -> Vec<String> {
         .get("content")
         .and_then(|c| c.get("uri"))
         .and_then(|u| u.as_str())
+        && uri.ends_with(".glb")
     {
-        if uri.ends_with(".glb") {
-            uris.push(uri.to_string());
-        }
+        uris.push(uri.to_string());
     }
 
     if let Some(contents) = tile.get("contents").and_then(|c| c.as_array()) {
         for item in contents {
-            if let Some(uri) = item.get("uri").and_then(|u| u.as_str()) {
-                if uri.ends_with(".glb") {
-                    uris.push(uri.to_string());
-                }
+            if let Some(uri) = item.get("uri").and_then(|u| u.as_str())
+                && uri.ends_with(".glb")
+            {
+                uris.push(uri.to_string());
             }
         }
     }

@@ -126,13 +126,13 @@ impl ProcessorFactory for FeatureFilterFactory {
             .map(|port| (port, input.clone()))
             .collect();
 
-        if let Some(with) = with {
-            if let Some(Value::Array(conditions)) = with.get("conditions") {
-                for condition in conditions {
-                    if let Some(Value::String(port)) = condition.get("outputPort") {
-                        map.entry(Port::new(port.clone()))
-                            .or_insert_with(|| input.clone());
-                    }
+        if let Some(with) = with
+            && let Some(Value::Array(conditions)) = with.get("conditions")
+        {
+            for condition in conditions {
+                if let Some(Value::String(port)) = condition.get("outputPort") {
+                    map.entry(Port::new(port.clone()))
+                        .or_insert_with(|| input.clone());
                 }
             }
         }

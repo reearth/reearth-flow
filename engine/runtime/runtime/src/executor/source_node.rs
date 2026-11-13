@@ -358,11 +358,11 @@ pub async fn create_source_node<F>(
 
         // ★ incremental: run only selected sources
         let node_id = dag.graph()[node_index].handle.id.clone();
-        if let Some(set) = execute_node_ids.as_ref() {
-            if !set.contains(&node_id) {
-                tracing::info!("Skipping source node {} for incremental run", node_id);
-                continue;
-            }
+        if let Some(set) = execute_node_ids.as_ref()
+            && !set.contains(&node_id)
+        {
+            tracing::info!("Skipping source node {} for incremental run", node_id);
+            continue;
         }
 
         let node = dag.node_weight_mut(node_index);

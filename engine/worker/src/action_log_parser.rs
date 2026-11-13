@@ -167,13 +167,13 @@ impl LogParser {
                 error = error[CHANNEL_ERROR_PREFIX.len()..error.len() - CHANNEL_ERROR_SUFFIX.len()]
                     .to_string();
 
-                if let Some(paren_start) = error.find('(') {
-                    if let Some(quote_start) = error[paren_start..].find('"') {
-                        let quote_start = paren_start + quote_start + 1;
-                        if let Some(quote_end) = error[quote_start..].find('"') {
-                            let quote_end = quote_start + quote_end;
-                            error = error[quote_start..quote_end].to_string();
-                        }
+                if let Some(paren_start) = error.find('(')
+                    && let Some(quote_start) = error[paren_start..].find('"')
+                {
+                    let quote_start = paren_start + quote_start + 1;
+                    if let Some(quote_end) = error[quote_start..].find('"') {
+                        let quote_end = quote_start + quote_end;
+                        error = error[quote_start..quote_end].to_string();
                     }
                 }
             }

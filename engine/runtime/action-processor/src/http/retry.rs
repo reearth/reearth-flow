@@ -29,21 +29,21 @@ pub(crate) fn execute_with_retry(
 
         match client.send_request(method_clone, &url, headers_clone, query_clone, body_clone) {
             Ok(response) => {
-                if let Some(cfg) = config {
-                    if should_retry_status(response.status_code, cfg) && attempt + 1 < max_attempts
-                    {
-                        let mut header_map = HeaderMap::new();
-                        for (k, v) in &response.headers {
-                            if let (Ok(name), Ok(value)) =
-                                (k.parse::<HeaderName>(), v.parse::<HeaderValue>())
-                            {
-                                header_map.insert(name, value);
-                            }
+                if let Some(cfg) = config
+                    && should_retry_status(response.status_code, cfg)
+                    && attempt + 1 < max_attempts
+                {
+                    let mut header_map = HeaderMap::new();
+                    for (k, v) in &response.headers {
+                        if let (Ok(name), Ok(value)) =
+                            (k.parse::<HeaderName>(), v.parse::<HeaderValue>())
+                        {
+                            header_map.insert(name, value);
                         }
-                        let delay = calculate_backoff_delay(cfg, attempt, &header_map);
-                        thread::sleep(delay);
-                        continue;
                     }
+                    let delay = calculate_backoff_delay(cfg, attempt, &header_map);
+                    thread::sleep(delay);
+                    continue;
                 }
 
                 return Ok(response);
@@ -96,10 +96,10 @@ fn calculate_backoff_delay(config: &RetryConfig, attempt: u32, headers: &HeaderM
 
     // Check for Retry-After header, capped at the configured maximum delay so
     // a server cannot stall a worker thread indefinitely.
-    if config.honor_retry_after {
-        if let Some(retry_after) = parse_retry_after_header(headers) {
-            return retry_after.min(max_delay);
-        }
+    if config.honor_retry_after
+        && let Some(retry_after) = parse_retry_after_header(headers)
+    {
+        return retry_after.min(max_delay);
     }
 
     let delay_ms = config.initial_delay_ms as f64 * config.backoff_multiplier.powi(attempt as i32);

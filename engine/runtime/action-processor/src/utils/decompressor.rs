@@ -10,10 +10,10 @@ use reearth_flow_storage::{resolve::StorageResolver, storage::Storage};
 use reearth_flow_types::FilePath;
 
 pub(crate) fn is_extractable_archive(path: &Uri) -> bool {
-    if let Some(ext) = path.path().as_path().extension() {
-        if let Some(ext) = ext.to_str() {
-            return ["zip", "7z", "7zip"].contains(&ext);
-        }
+    if let Some(ext) = path.path().as_path().extension()
+        && let Some(ext) = ext.to_str()
+    {
+        return ["zip", "7z", "7zip"].contains(&ext);
     }
     false
 }
@@ -28,16 +28,16 @@ pub(crate) fn extract_archive(
             "Failed to resolve `root_output_path` error: {e}"
         ))
     })?;
-    if let Some(ext) = source_dataset.path().as_path().extension() {
-        if let Some(ext) = ext.to_str() {
-            if ["7z", "7zip"].contains(&ext) {
-                let file = get_archive_file_handle(source_dataset, Arc::clone(&storage_resolver))?;
-                return extract_sevenz(file, root_output_path);
-            }
-            if ext == "zip" {
-                let file = get_archive_file_handle(source_dataset, Arc::clone(&storage_resolver))?;
-                return extract_zip(file, root_output_path, root_output_storage);
-            }
+    if let Some(ext) = source_dataset.path().as_path().extension()
+        && let Some(ext) = ext.to_str()
+    {
+        if ["7z", "7zip"].contains(&ext) {
+            let file = get_archive_file_handle(source_dataset, Arc::clone(&storage_resolver))?;
+            return extract_sevenz(file, root_output_path);
+        }
+        if ext == "zip" {
+            let file = get_archive_file_handle(source_dataset, Arc::clone(&storage_resolver))?;
+            return extract_zip(file, root_output_path, root_output_storage);
         }
     }
     Err(super::errors::ProcessorUtilError::Decompressor(
@@ -149,18 +149,18 @@ fn extract_zip<R: Read + Seek>(
                 })?;
             continue;
         }
-        if let Some(p) = outpath.parent() {
-            if !storage.exists_sync(p.path().as_path()).map_err(|e| {
+        if let Some(p) = outpath.parent()
+            && !storage.exists_sync(p.path().as_path()).map_err(|e| {
                 super::errors::ProcessorUtilError::Decompressor(format!(
                     "Storage exists error with: error = {e:?}"
                 ))
-            })? {
-                storage.create_dir_sync(p.path().as_path()).map_err(|e| {
-                    super::errors::ProcessorUtilError::Decompressor(format!(
-                        "Create dir error with: error = {e:?}"
-                    ))
-                })?;
-            }
+            })?
+        {
+            storage.create_dir_sync(p.path().as_path()).map_err(|e| {
+                super::errors::ProcessorUtilError::Decompressor(format!(
+                    "Create dir error with: error = {e:?}"
+                ))
+            })?;
         }
         let mut buf = Vec::<u8>::new();
         entry.read_to_end(&mut buf).map_err(|e| {

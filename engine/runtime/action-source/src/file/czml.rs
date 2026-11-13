@@ -602,99 +602,92 @@ fn extract_geometry(
     packet: &Value,
     force_2d: bool,
 ) -> Result<Option<Geometry>, crate::errors::SourceError> {
-    if let Some(polygon) = packet.get("polygon") {
-        if let Some(positions) = polygon.get("positions") {
-            if let Some(coords) = extract_cartographic_degrees(positions) {
-                let holes = if let Some(holes_value) = polygon.get("holes") {
-                    extract_polygon_holes(holes_value)
-                } else {
-                    vec![]
-                };
+    if let Some(polygon) = packet.get("polygon")
+        && let Some(positions) = polygon.get("positions")
+        && let Some(coords) = extract_cartographic_degrees(positions)
+    {
+        let holes = if let Some(holes_value) = polygon.get("holes") {
+            extract_polygon_holes(holes_value)
+        } else {
+            vec![]
+        };
 
-                let geometry = convert_polygon_coords(&coords, holes, force_2d)?;
-                return Ok(Some(Geometry {
-                    epsg: Some(4326),
-                    value: geometry,
-                }));
-            }
-        }
+        let geometry = convert_polygon_coords(&coords, holes, force_2d)?;
+        return Ok(Some(Geometry {
+            epsg: Some(4326),
+            value: geometry,
+        }));
     }
 
-    if let Some(polyline) = packet.get("polyline") {
-        if let Some(positions) = polyline.get("positions") {
-            if let Some(coords) = extract_cartographic_degrees(positions) {
-                let geometry = convert_line_coords(&coords, force_2d)?;
-                return Ok(Some(Geometry {
-                    epsg: Some(4326),
-                    value: geometry,
-                }));
-            }
-        }
+    if let Some(polyline) = packet.get("polyline")
+        && let Some(positions) = polyline.get("positions")
+        && let Some(coords) = extract_cartographic_degrees(positions)
+    {
+        let geometry = convert_line_coords(&coords, force_2d)?;
+        return Ok(Some(Geometry {
+            epsg: Some(4326),
+            value: geometry,
+        }));
     }
 
-    if let Some(rectangle) = packet.get("rectangle") {
-        if let Some(coordinates) = rectangle.get("coordinates") {
-            if let Some(wsen) = extract_rectangle_bounds(coordinates) {
-                let geometry = convert_rectangle_to_polygon(wsen, force_2d)?;
-                return Ok(Some(Geometry {
-                    epsg: Some(4326),
-                    value: geometry,
-                }));
-            }
-        }
+    if let Some(rectangle) = packet.get("rectangle")
+        && let Some(coordinates) = rectangle.get("coordinates")
+        && let Some(wsen) = extract_rectangle_bounds(coordinates)
+    {
+        let geometry = convert_rectangle_to_polygon(wsen, force_2d)?;
+        return Ok(Some(Geometry {
+            epsg: Some(4326),
+            value: geometry,
+        }));
     }
 
-    if let Some(corridor) = packet.get("corridor") {
-        if let Some(positions) = corridor.get("positions") {
-            if let Some(coords) = extract_cartographic_degrees(positions) {
-                let geometry = convert_line_coords(&coords, force_2d)?;
-                return Ok(Some(Geometry {
-                    epsg: Some(4326),
-                    value: geometry,
-                }));
-            }
-        }
+    if let Some(corridor) = packet.get("corridor")
+        && let Some(positions) = corridor.get("positions")
+        && let Some(coords) = extract_cartographic_degrees(positions)
+    {
+        let geometry = convert_line_coords(&coords, force_2d)?;
+        return Ok(Some(Geometry {
+            epsg: Some(4326),
+            value: geometry,
+        }));
     }
 
-    if let Some(ellipse) = packet.get("ellipse") {
-        if let Some(position) = packet.get("position") {
-            if let Some(center_coords) = extract_cartographic_degrees(position) {
-                if center_coords.len() >= 2 {
-                    let semi_major = ellipse
-                        .get("semiMajorAxis")
-                        .and_then(|v| v.as_f64())
-                        .unwrap_or(100.0);
-                    let semi_minor = ellipse
-                        .get("semiMinorAxis")
-                        .and_then(|v| v.as_f64())
-                        .unwrap_or(100.0);
-                    let geometry = create_ellipse_polygon(
-                        center_coords[0],
-                        center_coords[1],
-                        center_coords.get(2).copied().unwrap_or(0.0),
-                        semi_major,
-                        semi_minor,
-                        force_2d,
-                    )?;
-                    return Ok(Some(Geometry {
-                        epsg: Some(4326),
-                        value: geometry,
-                    }));
-                }
-            }
-        }
+    if let Some(ellipse) = packet.get("ellipse")
+        && let Some(position) = packet.get("position")
+        && let Some(center_coords) = extract_cartographic_degrees(position)
+        && center_coords.len() >= 2
+    {
+        let semi_major = ellipse
+            .get("semiMajorAxis")
+            .and_then(|v| v.as_f64())
+            .unwrap_or(100.0);
+        let semi_minor = ellipse
+            .get("semiMinorAxis")
+            .and_then(|v| v.as_f64())
+            .unwrap_or(100.0);
+        let geometry = create_ellipse_polygon(
+            center_coords[0],
+            center_coords[1],
+            center_coords.get(2).copied().unwrap_or(0.0),
+            semi_major,
+            semi_minor,
+            force_2d,
+        )?;
+        return Ok(Some(Geometry {
+            epsg: Some(4326),
+            value: geometry,
+        }));
     }
 
-    if let Some(wall) = packet.get("wall") {
-        if let Some(positions) = wall.get("positions") {
-            if let Some(coords) = extract_cartographic_degrees(positions) {
-                let geometry = convert_line_coords(&coords, force_2d)?;
-                return Ok(Some(Geometry {
-                    epsg: Some(4326),
-                    value: geometry,
-                }));
-            }
-        }
+    if let Some(wall) = packet.get("wall")
+        && let Some(positions) = wall.get("positions")
+        && let Some(coords) = extract_cartographic_degrees(positions)
+    {
+        let geometry = convert_line_coords(&coords, force_2d)?;
+        return Ok(Some(Geometry {
+            epsg: Some(4326),
+            value: geometry,
+        }));
     }
 
     if let Some(position) = packet.get("position") {
@@ -705,24 +698,23 @@ fn extract_geometry(
             || packet.get("ellipse").is_some()
             || packet.get("wall").is_some();
 
-        if !has_other_geom {
-            if let Some(coords) = extract_cartographic_degrees(position) {
-                if coords.len() >= 3 {
-                    let point = if force_2d {
-                        GeometryValue::FlowGeometry2D(Geometry2D::Point(Point2D::from([
-                            coords[0], coords[1],
-                        ])))
-                    } else {
-                        GeometryValue::FlowGeometry3D(Geometry3D::Point(Point3D::from([
-                            coords[0], coords[1], coords[2],
-                        ])))
-                    };
-                    return Ok(Some(Geometry {
-                        epsg: Some(4326),
-                        value: point,
-                    }));
-                }
-            }
+        if !has_other_geom
+            && let Some(coords) = extract_cartographic_degrees(position)
+            && coords.len() >= 3
+        {
+            let point = if force_2d {
+                GeometryValue::FlowGeometry2D(Geometry2D::Point(Point2D::from([
+                    coords[0], coords[1],
+                ])))
+            } else {
+                GeometryValue::FlowGeometry3D(Geometry3D::Point(Point3D::from([
+                    coords[0], coords[1], coords[2],
+                ])))
+            };
+            return Ok(Some(Geometry {
+                epsg: Some(4326),
+                value: point,
+            }));
         }
     }
 
@@ -736,37 +728,25 @@ fn extract_cartographic_degrees(value: &Value) -> Option<Vec<f64>> {
     }
 
     if let Some(obj) = value.as_object() {
-        if let Some(deg) = obj.get("cartographicDegrees") {
-            if let Some(arr) = deg.as_array() {
-                if arr.len() == 3 && arr.iter().all(|v| v.is_number()) {
-                    let coords: Option<Vec<f64>> = arr.iter().map(|v| v.as_f64()).collect();
-                    return coords;
-                }
-                // Time-tagged arrays are handled by parse_time_tagged_position
-                if arr.len() > 3 && arr.len() % 4 == 0 {
-                    return None;
-                }
+        if let Some(deg) = obj.get("cartographicDegrees")
+            && let Some(arr) = deg.as_array()
+        {
+            if arr.len() == 3 && arr.iter().all(|v| v.is_number()) {
                 let coords: Option<Vec<f64>> = arr.iter().map(|v| v.as_f64()).collect();
                 return coords;
             }
+            // Time-tagged arrays are handled by parse_time_tagged_position
+            if arr.len() > 3 && arr.len() % 4 == 0 {
+                return None;
+            }
+            let coords: Option<Vec<f64>> = arr.iter().map(|v| v.as_f64()).collect();
+            return coords;
         }
 
-        if let Some(rad) = obj.get("cartographicRadians") {
-            if let Some(arr) = rad.as_array() {
-                if arr.len() == 3 && arr.iter().all(|v| v.is_number()) {
-                    let coords: Option<Vec<f64>> = arr
-                        .iter()
-                        .enumerate()
-                        .map(|(i, v)| {
-                            v.as_f64()
-                                .map(|val| if i % 3 < 2 { val.to_degrees() } else { val })
-                        })
-                        .collect();
-                    return coords;
-                }
-                if arr.len() > 3 && arr.len() % 4 == 0 {
-                    return None;
-                }
+        if let Some(rad) = obj.get("cartographicRadians")
+            && let Some(arr) = rad.as_array()
+        {
+            if arr.len() == 3 && arr.iter().all(|v| v.is_number()) {
                 let coords: Option<Vec<f64>> = arr
                     .iter()
                     .enumerate()
@@ -777,6 +757,18 @@ fn extract_cartographic_degrees(value: &Value) -> Option<Vec<f64>> {
                     .collect();
                 return coords;
             }
+            if arr.len() > 3 && arr.len() % 4 == 0 {
+                return None;
+            }
+            let coords: Option<Vec<f64>> = arr
+                .iter()
+                .enumerate()
+                .map(|(i, v)| {
+                    v.as_f64()
+                        .map(|val| if i % 3 < 2 { val.to_degrees() } else { val })
+                })
+                .collect();
+            return coords;
         }
     }
 
@@ -786,17 +778,15 @@ fn extract_cartographic_degrees(value: &Value) -> Option<Vec<f64>> {
 fn extract_polygon_holes(value: &Value) -> Vec<Vec<f64>> {
     let mut holes = Vec::new();
 
-    if let Some(obj) = value.as_object() {
-        if let Some(deg) = obj.get("cartographicDegrees") {
-            if let Some(arr) = deg.as_array() {
-                for hole_value in arr {
-                    if let Some(hole_coords) = hole_value.as_array() {
-                        let coords: Option<Vec<f64>> =
-                            hole_coords.iter().map(|v| v.as_f64()).collect();
-                        if let Some(coords) = coords {
-                            holes.push(coords);
-                        }
-                    }
+    if let Some(obj) = value.as_object()
+        && let Some(deg) = obj.get("cartographicDegrees")
+        && let Some(arr) = deg.as_array()
+    {
+        for hole_value in arr {
+            if let Some(hole_coords) = hole_value.as_array() {
+                let coords: Option<Vec<f64>> = hole_coords.iter().map(|v| v.as_f64()).collect();
+                if let Some(coords) = coords {
+                    holes.push(coords);
                 }
             }
         }
@@ -912,26 +902,24 @@ fn convert_line_coords(
 
 fn extract_rectangle_bounds(value: &Value) -> Option<Vec<f64>> {
     if let Some(obj) = value.as_object() {
-        if let Some(wsen) = obj.get("wsenDegrees") {
-            if let Some(arr) = wsen.as_array() {
-                if arr.len() >= 4 {
-                    let bounds: Option<Vec<f64>> = arr.iter().map(|v| v.as_f64()).collect();
-                    return bounds;
-                }
-            }
+        if let Some(wsen) = obj.get("wsenDegrees")
+            && let Some(arr) = wsen.as_array()
+            && arr.len() >= 4
+        {
+            let bounds: Option<Vec<f64>> = arr.iter().map(|v| v.as_f64()).collect();
+            return bounds;
         }
         // CZML's RectangleCoordinates names this `wsen` (radians); there is no
         // `wsenRadians` in the schema.
-        if let Some(wsen) = obj.get("wsen") {
-            if let Some(arr) = wsen.as_array() {
-                if arr.len() >= 4 {
-                    let bounds: Option<Vec<f64>> = arr
-                        .iter()
-                        .map(|v| v.as_f64().map(|val| val.to_degrees()))
-                        .collect();
-                    return bounds;
-                }
-            }
+        if let Some(wsen) = obj.get("wsen")
+            && let Some(arr) = wsen.as_array()
+            && arr.len() >= 4
+        {
+            let bounds: Option<Vec<f64>> = arr
+                .iter()
+                .map(|v| v.as_f64().map(|val| val.to_degrees()))
+                .collect();
+            return bounds;
         }
     }
     None

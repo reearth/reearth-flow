@@ -549,11 +549,11 @@ fn for_each_property_mut(object: &mut ObjectNode, f: &mut impl FnMut(&mut XmlPro
 /// `out`, once. A property left out by placement never gets here, so its list
 /// is not copied for nothing.
 fn collect_code_spaces(property: &XmlProperty, stageable: &[String], out: &mut Vec<String>) {
-    if let Some(url) = property.attr("codeSpace") {
-        if stageable.iter().any(|candidate| candidate == url) && !out.iter().any(|seen| seen == url)
-        {
-            out.push(url.to_owned());
-        }
+    if let Some(url) = property.attr("codeSpace")
+        && stageable.iter().any(|candidate| candidate == url)
+        && !out.iter().any(|seen| seen == url)
+    {
+        out.push(url.to_owned());
     }
     for child in &property.children {
         collect_code_spaces(child, stageable, out);
@@ -563,10 +563,10 @@ fn collect_code_spaces(property: &XmlProperty, stageable: &[String], out: &mut V
 /// Point every staged `codeSpace` in `property`'s tree at its copy.
 fn remap_code_spaces(property: &mut XmlProperty, remap: &HashMap<String, String>) {
     for (name, value) in &mut property.attrs {
-        if name == "codeSpace" {
-            if let Some(staged) = remap.get(value.as_str()) {
-                value.clone_from(staged);
-            }
+        if name == "codeSpace"
+            && let Some(staged) = remap.get(value.as_str())
+        {
+            value.clone_from(staged);
         }
     }
     for child in &mut property.children {

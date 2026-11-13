@@ -91,10 +91,10 @@ fn check_mesh_unclosed_rings<const N: usize>(
         interior_offsets,
         |ring, _, _| {
             // Only materialize the coords when the endpoints actually differ.
-            if let (Some(&first), Some(&last)) = (ring.first(), ring.last()) {
-                if vertices[first as usize] != vertices[last as usize] {
-                    push(frame, &ring_coords(vertices, ring), report);
-                }
+            if let (Some(&first), Some(&last)) = (ring.first(), ring.last())
+                && vertices[first as usize] != vertices[last as usize]
+            {
+                push(frame, &ring_coords(vertices, ring), report);
             }
         },
     );

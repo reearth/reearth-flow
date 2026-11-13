@@ -270,10 +270,10 @@ pub fn linestring_has_self_intersection_3d<
     geom: &LineString<T, Z>,
     tolerance: Option<f64>,
 ) -> bool {
-    if let Some(planarity_info) = is_linestring_planar(geom, 1e-6) {
-        if let Some(rotated_geom) = rotate_linestring_to_xy_plane(geom, &planarity_info) {
-            return linestring_has_self_intersection(&rotated_geom, tolerance);
-        }
+    if let Some(planarity_info) = is_linestring_planar(geom, 1e-6)
+        && let Some(rotated_geom) = rotate_linestring_to_xy_plane(geom, &planarity_info)
+    {
+        return linestring_has_self_intersection(&rotated_geom, tolerance);
     }
 
     // If not planar or rotation failed, use 2D projection method (fallback)

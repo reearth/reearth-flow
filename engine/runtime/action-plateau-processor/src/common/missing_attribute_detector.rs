@@ -465,89 +465,79 @@ impl MissingAttributeDetector {
         if let Some(required_attributes) = buffer
             .feature_types_to_required_attributes
             .get(&feature_type)
+            && !required_attributes.is_empty()
         {
-            if !required_attributes.is_empty() {
-                for paths in required_attributes.iter() {
-                    match paths.len() {
-                        0 => {}
-                        1 => {
-                            if !path_exists(
-                                &paths[0],
-                                &collected.all_qnames,
-                                &collected.contiguous_paths,
-                            ) {
-                                missing_required.push(paths[0].clone());
+            for paths in required_attributes.iter() {
+                match paths.len() {
+                    0 => {}
+                    1 => {
+                        if !path_exists(
+                            &paths[0],
+                            &collected.all_qnames,
+                            &collected.contiguous_paths,
+                        ) {
+                            missing_required.push(paths[0].clone());
+                        }
+                    }
+                    2.. => {
+                        let mut hit = true;
+                        for p in &paths[..paths.len() - 1] {
+                            if !path_exists(p, &collected.all_qnames, &collected.contiguous_paths) {
+                                hit = false;
+                                break;
                             }
                         }
-                        2.. => {
-                            let mut hit = true;
-                            for p in &paths[..paths.len() - 1] {
-                                if !path_exists(
-                                    p,
-                                    &collected.all_qnames,
-                                    &collected.contiguous_paths,
-                                ) {
-                                    hit = false;
-                                    break;
-                                }
-                            }
-                            if hit
-                                && !path_exists(
-                                    &paths[paths.len() - 1],
-                                    &collected.all_qnames,
-                                    &collected.contiguous_paths,
-                                )
-                            {
-                                let joined = paths.join("/");
-                                missing_required.push(joined);
-                            }
+                        if hit
+                            && !path_exists(
+                                &paths[paths.len() - 1],
+                                &collected.all_qnames,
+                                &collected.contiguous_paths,
+                            )
+                        {
+                            let joined = paths.join("/");
+                            missing_required.push(joined);
                         }
                     }
                 }
-                buffer.required_counter += missing_required.len();
             }
+            buffer.required_counter += missing_required.len();
         }
 
         let mut missing_conditional = Vec::new();
         if let Some(conditional_attributes) = buffer
             .feature_types_to_conditional_attributes
             .get(&feature_type)
+            && !conditional_attributes.is_empty()
         {
-            if !conditional_attributes.is_empty() {
-                for paths in conditional_attributes.iter() {
-                    match paths.len() {
-                        0 => {}
-                        1 => {
-                            if !path_exists(
-                                &paths[0],
-                                &collected.all_qnames,
-                                &collected.contiguous_paths,
-                            ) {
-                                missing_conditional.push(paths[0].clone());
+            for paths in conditional_attributes.iter() {
+                match paths.len() {
+                    0 => {}
+                    1 => {
+                        if !path_exists(
+                            &paths[0],
+                            &collected.all_qnames,
+                            &collected.contiguous_paths,
+                        ) {
+                            missing_conditional.push(paths[0].clone());
+                        }
+                    }
+                    2.. => {
+                        let mut hit = true;
+                        for p in &paths[..paths.len() - 1] {
+                            if !path_exists(p, &collected.all_qnames, &collected.contiguous_paths) {
+                                hit = false;
+                                break;
                             }
                         }
-                        2.. => {
-                            let mut hit = true;
-                            for p in &paths[..paths.len() - 1] {
-                                if !path_exists(
-                                    p,
-                                    &collected.all_qnames,
-                                    &collected.contiguous_paths,
-                                ) {
-                                    hit = false;
-                                    break;
-                                }
-                            }
-                            if hit
-                                && !path_exists(
-                                    &paths[paths.len() - 1],
-                                    &collected.all_qnames,
-                                    &collected.contiguous_paths,
-                                )
-                            {
-                                let joined = paths.join("/");
-                                missing_conditional.push(joined);
-                            }
+                        if hit
+                            && !path_exists(
+                                &paths[paths.len() - 1],
+                                &collected.all_qnames,
+                                &collected.contiguous_paths,
+                            )
+                        {
+                            let joined = paths.join("/");
+                            missing_conditional.push(joined);
                         }
                     }
                 }
@@ -804,23 +794,20 @@ fn count_lod_from_collected(collected: &CollectedInfo, package: &str) -> [usize;
     let mut lod_count = [0; 5];
 
     if package == "dem" {
-        if let Some(text) = &collected.dem_lod_text {
-            if let Ok(lod) = text.trim().parse::<usize>() {
-                if lod <= 4 {
-                    lod_count[lod] += 1;
-                }
-            }
+        if let Some(text) = &collected.dem_lod_text
+            && let Ok(lod) = text.trim().parse::<usize>()
+            && lod <= 4
+        {
+            lod_count[lod] += 1;
         }
     } else {
         for tag in &collected.root_child_names {
-            if let Some(captures) = LOD_TAG_PATTERN.captures(tag) {
-                if let Some(lod_match) = captures.get(1) {
-                    if let Ok(lod) = lod_match.as_str().parse::<usize>() {
-                        if lod <= 4 {
-                            lod_count[lod] += 1;
-                        }
-                    }
-                }
+            if let Some(captures) = LOD_TAG_PATTERN.captures(tag)
+                && let Some(lod_match) = captures.get(1)
+                && let Ok(lod) = lod_match.as_str().parse::<usize>()
+                && lod <= 4
+            {
+                lod_count[lod] += 1;
             }
         }
     }

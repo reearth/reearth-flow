@@ -984,10 +984,10 @@ fn overlay_2d_disk(
             // cut off the target area by upper areas
             let mut target = area_i.clone();
             for &j in &overlapping {
-                if i < j {
-                    if let Some(area_j) = &areas[j] {
-                        target = area_difference(&target, area_j)?;
-                    }
+                if i < j
+                    && let Some(area_j) = &areas[j]
+                {
+                    target = area_difference(&target, area_j)?;
                 }
             }
 

@@ -28,10 +28,10 @@ pub fn run_workflow(
     .unwrap();
 
     let workflow_json_path = output_dir.join("workflow.json");
-    if let Ok(yaml_value) = serde_yaml::from_str::<serde_yaml::Value>(&yaml_str) {
-        if let Ok(json_str) = serde_json::to_string_pretty(&yaml_value) {
-            let _ = fs::write(&workflow_json_path, json_str);
-        }
+    if let Ok(yaml_value) = serde_yaml::from_str::<serde_yaml::Value>(&yaml_str)
+        && let Ok(json_str) = serde_json::to_string_pretty(&yaml_value)
+    {
+        let _ = fs::write(&workflow_json_path, json_str);
     }
 
     let mut workflow: Workflow = Workflow::try_from(yaml_str.as_str()).unwrap();

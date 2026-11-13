@@ -166,12 +166,12 @@ impl HttpCallerFactory {
         }
 
         // Validate rate limit configuration to prevent division by zero
-        if let Some(rate_limit) = &params.rate_limit {
-            if rate_limit.requests == 0 {
-                return Err(HttpProcessorError::CallerFactory(
-                    "Rate limit 'requests' must be greater than 0".to_string(),
-                ));
-            }
+        if let Some(rate_limit) = &params.rate_limit
+            && rate_limit.requests == 0
+        {
+            return Err(HttpProcessorError::CallerFactory(
+                "Rate limit 'requests' must be greater than 0".to_string(),
+            ));
         }
 
         // A multipart body cannot be cloned for a retry, so the combination

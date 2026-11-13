@@ -140,17 +140,17 @@ impl Processor for ListIndexer {
                 let mut new_key = key.into_inner();
 
                 // Apply prefix if specified
-                if let Some(ref prefix) = self.copied_attribute_prefix {
-                    if !prefix.is_empty() {
-                        new_key = format!("{prefix}{new_key}");
-                    }
+                if let Some(ref prefix) = self.copied_attribute_prefix
+                    && !prefix.is_empty()
+                {
+                    new_key = format!("{prefix}{new_key}");
                 }
 
                 // Apply suffix if specified
-                if let Some(ref suffix) = self.copied_attribute_suffix {
-                    if !suffix.is_empty() {
-                        new_key = format!("{new_key}{suffix}");
-                    }
+                if let Some(ref suffix) = self.copied_attribute_suffix
+                    && !suffix.is_empty()
+                {
+                    new_key = format!("{new_key}{suffix}");
                 }
 
                 // Add the attribute to the feature

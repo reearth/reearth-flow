@@ -249,12 +249,10 @@ impl Processor for AttributeMapper {
                         continue;
                     } else if let (Some(parent_attribute), Some(child_attribute)) =
                         (&mapper.parent_attribute, &mapper.child_attribute)
+                        && let Some(AttributeValue::Map(parent)) = feature.get(parent_attribute)
+                        && let Some(child) = parent.get(child_attribute.as_str())
                     {
-                        if let Some(AttributeValue::Map(parent)) = feature.get(parent_attribute) {
-                            if let Some(child) = parent.get(child_attribute.as_str()) {
-                                attributes.insert(Attribute::new(attribute.clone()), child.clone());
-                            }
-                        }
+                        attributes.insert(Attribute::new(attribute.clone()), child.clone());
                     }
                 }
                 None => {

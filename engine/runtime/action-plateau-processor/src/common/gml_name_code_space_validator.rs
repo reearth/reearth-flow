@@ -436,13 +436,13 @@ fn find_uncoded_gml_names(
                 }
             }
             Event::End(_) => {
-                if let Some(target) = open.take_if(|target| target.depth == depth) {
-                    if !target.has_name {
-                        errors.push(UncodedGmlNameError {
-                            gml_id: target.gml_id,
-                            gml_name: String::new(),
-                        });
-                    }
+                if let Some(target) = open.take_if(|target| target.depth == depth)
+                    && !target.has_name
+                {
+                    errors.push(UncodedGmlNameError {
+                        gml_id: target.gml_id,
+                        gml_name: String::new(),
+                    });
                 }
                 depth -= 1;
             }

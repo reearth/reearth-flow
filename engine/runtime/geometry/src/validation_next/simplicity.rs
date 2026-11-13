@@ -233,10 +233,10 @@ where
             return;
         }
         let ((a1, b1), (a2, b2)) = (edges[i], edges[j]);
-        if let Some(p) = touch(a1, b1, a2, b2) {
-            if !points.contains(&p) {
-                points.push(p);
-            }
+        if let Some(p) = touch(a1, b1, a2, b2)
+            && !points.contains(&p)
+        {
+            points.push(p);
         }
     });
     points

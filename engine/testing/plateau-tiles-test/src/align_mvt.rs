@@ -166,10 +166,10 @@ fn features_by_ident(
             let geom_type = feature.r#type.unwrap_or(0);
 
             // Filter by geometry type if specified
-            if let Some(filter_type) = filter_geom_type {
-                if geom_type != filter_type as i32 {
-                    continue;
-                }
+            if let Some(filter_type) = filter_geom_type
+                && geom_type != filter_type as i32
+            {
+                continue;
             }
 
             // Decode tags to JSON object
@@ -224,22 +224,21 @@ pub fn align_mvt_features(
         let filter = |path: &Path| -> bool {
             if let Ok(rel) = path.strip_prefix(dir1).or_else(|_| path.strip_prefix(dir2)) {
                 let parts: Vec<_> = rel.iter().collect();
-                if parts.len() >= 2 {
-                    if let Some(z_str) = parts[1].to_str() {
-                        if let Ok(z) = z_str.parse::<u32>() {
-                            if let Some(min) = zmin {
-                                if z < min {
-                                    return false;
-                                }
-                            }
-                            if let Some(max) = zmax {
-                                if z > max {
-                                    return false;
-                                }
-                            }
-                            return true;
-                        }
+                if parts.len() >= 2
+                    && let Some(z_str) = parts[1].to_str()
+                    && let Ok(z) = z_str.parse::<u32>()
+                {
+                    if let Some(min) = zmin
+                        && z < min
+                    {
+                        return false;
                     }
+                    if let Some(max) = zmax
+                        && z > max
+                    {
+                        return false;
+                    }
+                    return true;
                 }
             }
             false
