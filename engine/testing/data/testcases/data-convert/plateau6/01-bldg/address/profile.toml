@@ -1,10 +1,5 @@
 # to test:
-# - bldg:address is all xAL:AdministrativeArea / xAL:Locality NameElement texts
-#   (prefecture + city) followed by the xAL:SubLocality name,
-#   e.g. 福島県福島市下野寺字薬師堂
-#
-# source: 07201 Fukushima-shi tile 56405303 (37 buildings, 31 with SubLocality),
-# migrated to CityGML 3.0 / i-UR 4.0 by citygml2to3 migrations/bldg_address.rs
+# - address concatenation
 
 citygml_zip_name = "07201_fukushima-shi_city_2024_citygml_1_op_bldg.zip"
 
