@@ -1,4 +1,4 @@
-# CityGML 2.0 and i-UR schema bundle	licence statements in NOTICE.md
+# CityGML 2.0 schema bundle	licence statements in NOTICE.md
 path	size	sha256	source_url	license
 docs.oasis-open.org/election/external/xAL.xsd	74544	cc8353e803f2ccb594cea247b00935477d672f2c5b5affc95a04cb3721a50f0e	http://docs.oasis-open.org/election/external/xAL.xsd	OASIS
 schemas.opengis.net/citygml/2.0/cityGMLBase.xsd	22276	f87fe8de043a835ca6dedef7d198ac53fbe0aa8d6496b4d230145c765f38f431	http://schemas.opengis.net/citygml/2.0/cityGMLBase.xsd	OGC
@@ -46,12 +46,6 @@ schemas.opengis.net/gml/3.1.1/base/units.xsd	11368	d7044a7aac4f4ed239dc5d6075cb9
 schemas.opengis.net/gml/3.1.1/base/valueObjects.xsd	18439	3e2eb6a488ec4ed70089b9ec8edc0d830305dd5efc8c754b6dec57566332679d	http://schemas.opengis.net/gml/3.1.1/base/valueObjects.xsd	OGC
 schemas.opengis.net/gml/3.1.1/smil/smil20-language.xsd	5155	71a6af850b0701b34c594ba749ed42ce621cf669b3cb0ec339ce9dd254314787	http://schemas.opengis.net/gml/3.1.1/smil/smil20-language.xsd	W3C
 schemas.opengis.net/gml/3.1.1/smil/smil20.xsd	9628	3e5224ef365247c202680e64d8e7bba4882697bc38442bbb883a8dd12cb86315	http://schemas.opengis.net/gml/3.1.1/smil/smil20.xsd	W3C
-www.geospatial.jp/iur/schemas/urf/3.0/urbanFunction.xsd	158432	06a9fddabcff5e1cc99478a020882cc961cc6f9ccab1e469e0463f405da3ba18	https://www.geospatial.jp/iur/schemas/urf/3.0/urbanFunction.xsd	PDL-1.0
-www.geospatial.jp/iur/schemas/urf/3.1/urbanFunction.xsd	167386	44872a231c65ef6f88cfb4fc5fc6f598e8a43ca68f9cac4fecd995a95f269dc9	https://www.geospatial.jp/iur/schemas/urf/3.1/urbanFunction.xsd	PDL-1.0
-www.geospatial.jp/iur/schemas/urf/3.2/urbanFunction.xsd	141272	9de3eca641cc18ee59e90659cdb821626036ad13e58cb2bd9d807175b81eb9ea	https://www.geospatial.jp/iur/schemas/urf/3.2/urbanFunction.xsd	PDL-1.0
-www.geospatial.jp/iur/schemas/uro/3.0/urbanObject.xsd	198500	77c76e3d6dc7c71567eae735bb10076814ba03f2fc154197f162d13148aedee3	https://www.geospatial.jp/iur/schemas/uro/3.0/urbanObject.xsd	PDL-1.0
-www.geospatial.jp/iur/schemas/uro/3.1/urbanObject.xsd	200995	dd6ada3fdbfa1a33054f0b434ca3027ed53081b938d0f5ecc4546f46b4e2e9b2	https://www.geospatial.jp/iur/schemas/uro/3.1/urbanObject.xsd	PDL-1.0
-www.geospatial.jp/iur/schemas/uro/3.2/urbanObject.xsd	182292	faf5cf5cbc80ad0482f61b66929e5176f283fa5b3560975fd7057b7715dad2f2	https://www.geospatial.jp/iur/schemas/uro/3.2/urbanObject.xsd	PDL-1.0
 www.w3.org/1999/xlink.xsd	8322	c3dbbaa28b884377ecd4a6c49d1f12566d8227cb0dce8ced10c0f66f8fa266e3	http://www.w3.org/1999/xlink.xsd	W3C
 www.w3.org/2001/xml.xsd	8836	61960fb3131e38022caad5360e2f33a3382578ab3c80cd58bd74320ede61b20c	http://www.w3.org/2001/xml.xsd	W3C
 www.w3.org/2009/01/xml.xsd	8838	cc701736c42cc64126fad063bb95f94484b5de3b5f808a86ea098b0957aff829	http://www.w3.org/2009/01/xml.xsd	W3C

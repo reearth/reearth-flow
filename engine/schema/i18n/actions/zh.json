@@ -1079,7 +1079,7 @@
         },
         "adeSchemas": {
           "title": "ADE Schemas",
-          "description": "可写出其类和属性的应用领域扩展（ADE），如PLATEAU i-UR，每项为Flow内置的模块或按路径指定的XSD。请列出要素使用的所有ADE：未列出的ADE中的类写为`gen:GenericCityObject`，嵌套在其中的对象写为顶层对象，其属性不写出。"
+          "description": "可写出其类和属性的应用领域扩展（ADE），如PLATEAU i-UR，每项指定其前缀（如`uro`）、命名空间和XSD位置。请列出要素使用的所有ADE：未列出的ADE中的类写为`gen:GenericCityObject`，嵌套在其中的对象写为顶层对象。"
         },
         "attributeKeys": {
           "title": "Attribute Keys",
@@ -1103,6 +1103,24 @@
         }
       },
       "definitionI18n": {
+        "AdeSchema": {
+          "declaredLocation": {
+            "title": "Declared Location",
+            "description": "Schema location written into the output's `xsi:schemaLocation` for this namespace, such as the official URL or a path relative to the output. Defaults to `schemaLocation`."
+          },
+          "namespace": {
+            "title": "Namespace",
+            "description": "The ADE's namespace, as declared by its XSD's `targetNamespace`."
+          },
+          "prefix": {
+            "title": "Prefix",
+            "description": "Prefix for the ADE, such as `uro`. It cannot reuse a CityGML 2.0 prefix."
+          },
+          "schemaLocation": {
+            "title": "Schema Location",
+            "description": "Path or expression for where to read the ADE's XSD, as an `https://` URL such as the official i-UR schema, or a `file://` or `gs://` path. Schemas it imports by relative path are read from beside it. Imports of the OGC schemas come from the copy built into Flow."
+          }
+        },
         "AttributeKeys": {
           "cityGmlAttributes": {
             "title": "CityGML Attributes",
@@ -1135,70 +1153,6 @@
           "parentGmlId": {
             "title": "父对象 gml:id",
             "description": "要素属性，保存该要素所嵌套的对象（另一个要素，或其中的嵌套对象）的 gml:id，按 gml:id 匹配。找不到父对象或父对象无法容纳该要素时，将其作为顶层对象写出并报告。默认为 `__citygml_parent_gml_id`。"
-          }
-        }
-      },
-      "enumI18n": {
-        "AdeSchema": {
-          "builtIn": {
-            "title": "Built-in Module",
-            "description": "模式内置于Flow的模块，如i-UR 3.2 Urban Object。",
-            "properties": {
-              "declaredLocation": {
-                "title": "Declared Location",
-                "description": "写入输出`xsi:schemaLocation`中此模块的模式位置。默认为PLATEAU数据集存放它的位置，如`../../schemas/iur/uro/3.2/urbanObject.xsd`。"
-              },
-              "module": {
-                "title": "Module",
-                "description": "内置模块，按其ADE、模块和版本命名，如`iur-uro-3.2`。其命名空间由其模式确定。"
-              },
-              "prefix": {
-                "title": "Prefix",
-                "description": "要素对此模块使用的前缀，与模块自身前缀不同时指定，如`iur-uro-3.2`的`uro`。不能重用CityGML 2.0的前缀。"
-              }
-            }
-          },
-          "file": {
-            "title": "Schema File",
-            "description": "从路径读取XSD的ADE。",
-            "properties": {
-              "declaredLocation": {
-                "title": "Declared Location",
-                "description": "写入输出`xsi:schemaLocation`中此命名空间的模式位置，如官方URL或相对于输出的路径。默认为`schemaLocation`。"
-              },
-              "namespace": {
-                "title": "Namespace",
-                "description": "ADE的命名空间，与其XSD的`targetNamespace`相同。"
-              },
-              "prefix": {
-                "title": "Prefix",
-                "description": "ADE的前缀，如`uro`。不能重用CityGML 2.0的前缀。"
-              },
-              "schemaLocation": {
-                "title": "Schema Location",
-                "description": "读取ADE的XSD的路径或表达式，为`file://`或`gs://`路径。其按相对路径导入的模式从其旁边读取，OGC模式的导入使用Flow内置的副本。"
-              }
-            }
-          }
-        },
-        "BuiltInAde": {
-          "iur-urf-3.0": {
-            "title": "i-UR 3.0 Urban Function (urf)"
-          },
-          "iur-urf-3.1": {
-            "title": "i-UR 3.1 Urban Function (urf)"
-          },
-          "iur-urf-3.2": {
-            "title": "i-UR 3.2 Urban Function (urf)"
-          },
-          "iur-uro-3.0": {
-            "title": "i-UR 3.0 Urban Object (uro)"
-          },
-          "iur-uro-3.1": {
-            "title": "i-UR 3.1 Urban Object (uro)"
-          },
-          "iur-uro-3.2": {
-            "title": "i-UR 3.2 Urban Object (uro)"
           }
         }
       }
