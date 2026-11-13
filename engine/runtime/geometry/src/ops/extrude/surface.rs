@@ -168,29 +168,28 @@ fn clean(faces: Vec<CapFace>, frame: OrientationFrame) -> Result<Cleaned, Extrud
             }
             rings.push(open);
         }
-        if let Some((exterior, holes)) = rings.split_first_mut() {
-            if !holes.is_empty() {
-                let points = |ring: &[usize]| -> Vec<[f64; 3]> {
-                    ring.iter().map(|&i| positions[i]).collect()
-                };
-                match ExteriorOrientation::new(frame, &points(exterior)) {
-                    Ok(ext) => {
-                        for hole in holes {
-                            match ext.hole_winding(&points(hole)) {
-                                HoleWinding::Opposite => {}
-                                HoleWinding::Same => {
-                                    hole.reverse();
-                                    changed = true;
-                                }
-                                HoleWinding::Undecidable(why) => {
-                                    pending.get_or_insert(undecidable(why));
-                                }
+        if let Some((exterior, holes)) = rings.split_first_mut()
+            && !holes.is_empty()
+        {
+            let points =
+                |ring: &[usize]| -> Vec<[f64; 3]> { ring.iter().map(|&i| positions[i]).collect() };
+            match ExteriorOrientation::new(frame, &points(exterior)) {
+                Ok(ext) => {
+                    for hole in holes {
+                        match ext.hole_winding(&points(hole)) {
+                            HoleWinding::Opposite => {}
+                            HoleWinding::Same => {
+                                hole.reverse();
+                                changed = true;
+                            }
+                            HoleWinding::Undecidable(why) => {
+                                pending.get_or_insert(undecidable(why));
                             }
                         }
                     }
-                    Err(why) => {
-                        pending.get_or_insert(undecidable(why));
-                    }
+                }
+                Err(why) => {
+                    pending.get_or_insert(undecidable(why));
                 }
             }
         }

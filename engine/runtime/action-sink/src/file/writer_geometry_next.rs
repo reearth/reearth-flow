@@ -555,10 +555,10 @@ fn coordinate_list<const N: usize>(swap: bool, coords: &[[f64; N]]) -> String {
 /// carry no such guarantee, so an open one is closed on the way out.
 fn closed_ring<const N: usize>(ring: &[[f64; N]]) -> Vec<[f64; N]> {
     let mut ring = ring.to_vec();
-    if let (Some(first), Some(last)) = (ring.first().copied(), ring.last().copied()) {
-        if first != last {
-            ring.push(first);
-        }
+    if let (Some(first), Some(last)) = (ring.first().copied(), ring.last().copied())
+        && first != last
+    {
+        ring.push(first);
     }
     ring
 }

@@ -975,11 +975,11 @@ impl GridDivider {
         if self.angular_warned {
             return;
         }
-        if let Some(frame) = ctx.feature.geometry.frame() {
-            if matches!(frame.unit_kind(), UnitKind::Angular) {
-                self.angular_warned = true;
-                ctx.warn(DiagnosticDraft::new(ErrorCode::GridAngularFrame));
-            }
+        if let Some(frame) = ctx.feature.geometry.frame()
+            && matches!(frame.unit_kind(), UnitKind::Angular)
+        {
+            self.angular_warned = true;
+            ctx.warn(DiagnosticDraft::new(ErrorCode::GridAngularFrame));
         }
     }
 

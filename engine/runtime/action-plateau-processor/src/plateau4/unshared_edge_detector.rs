@@ -194,10 +194,10 @@ impl GroupState {
     /// Get or insert an attribute set, returning its index for tagging edges.
     fn get_or_insert_attrs(&mut self, attrs: &IndexMap<Attribute, AttributeValue>) -> u32 {
         let hash = hash_attrs(attrs);
-        if let Some(&idx) = self.attrs_dedup.get(&hash) {
-            if self.attrs_store[idx as usize] == *attrs {
-                return idx;
-            }
+        if let Some(&idx) = self.attrs_dedup.get(&hash)
+            && self.attrs_store[idx as usize] == *attrs
+        {
+            return idx;
         }
         let idx = self.attrs_store.len() as u32;
         self.attrs_store.push(attrs.clone());
@@ -415,19 +415,17 @@ impl UnsharedEdgeDetector {
         if let Some(AttributeValue::Number(n)) = feature
             .attributes
             .get(&Attribute::new(ATTR_IS_INCORRECT_NUM_VERTICES))
+            && n.as_f64().is_some_and(|v| v != 0.0)
         {
-            if n.as_f64().is_some_and(|v| v != 0.0) {
-                return true;
-            }
+            return true;
         }
 
         // Check for not closed
         if let Some(AttributeValue::Number(n)) =
             feature.attributes.get(&Attribute::new(ATTR_IS_NOT_CLOSED))
+            && n.as_f64().is_some_and(|v| v != 0.0)
         {
-            if n.as_f64().is_some_and(|v| v != 0.0) {
-                return true;
-            }
+            return true;
         }
 
         false

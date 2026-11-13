@@ -203,10 +203,10 @@ pub fn validate_job_id(job_id: &str) -> Result<(), String> {
 
 /// Remove the work root; never panics. Logs on failure.
 pub fn cleanup_work_root(root: &Path) {
-    if root.exists() {
-        if let Err(e) = std::fs::remove_dir_all(root) {
-            eprintln!("[wrapper] failed to cleanup {root:?}: {e}");
-        }
+    if root.exists()
+        && let Err(e) = std::fs::remove_dir_all(root)
+    {
+        eprintln!("[wrapper] failed to cleanup {root:?}: {e}");
     }
 }
 
@@ -678,10 +678,10 @@ mod bounded_tests {
 
     async fn read_pid(pid_file: &Path) -> String {
         for _ in 0..100 {
-            if let Ok(pid) = std::fs::read_to_string(pid_file) {
-                if !pid.trim().is_empty() {
-                    return pid.trim().to_string();
-                }
+            if let Ok(pid) = std::fs::read_to_string(pid_file)
+                && !pid.trim().is_empty()
+            {
+                return pid.trim().to_string();
             }
             tokio::time::sleep(Duration::from_millis(20)).await;
         }

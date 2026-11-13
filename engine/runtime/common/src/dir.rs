@@ -135,10 +135,10 @@ pub fn move_files_with_structure(dest: &Path, files: &[Uri]) -> crate::Result<()
         }
 
         // Remember the source directory for cleanup
-        if let Some(parent) = file_path.parent() {
-            if parent != common_base {
-                source_dirs_to_cleanup.push(parent.to_path_buf());
-            }
+        if let Some(parent) = file_path.parent()
+            && parent != common_base
+        {
+            source_dirs_to_cleanup.push(parent.to_path_buf());
         }
 
         move_file(file_path, &dest_path).map_err(Error::dir)?;

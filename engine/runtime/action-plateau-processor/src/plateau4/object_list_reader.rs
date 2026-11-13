@@ -219,17 +219,17 @@ fn should_process_row(columns: &[String]) -> bool {
 }
 
 fn expand_row_for_special_prefix(row: Vec<String>) -> Vec<Vec<String>> {
-    if let Some(prefix) = row.first() {
-        if prefix.starts_with("fld/") {
-            return ["fld", "tnm", "htd", "ifld", "rfld"]
-                .iter()
-                .map(|prefix| {
-                    let mut new_row = row.clone();
-                    new_row[0] = prefix.to_string();
-                    new_row
-                })
-                .collect();
-        }
+    if let Some(prefix) = row.first()
+        && prefix.starts_with("fld/")
+    {
+        return ["fld", "tnm", "htd", "ifld", "rfld"]
+            .iter()
+            .map(|prefix| {
+                let mut new_row = row.clone();
+                new_row[0] = prefix.to_string();
+                new_row
+            })
+            .collect();
     }
     vec![row]
 }

@@ -252,15 +252,15 @@ impl Processor for JSONFragmenter {
                 );
             }
 
-            if opts.flatten_query_result {
-                if let Value::Object(obj) = &matched_value {
-                    flatten_object(
-                        &mut new_feature,
-                        obj,
-                        opts.attribute_prefix.as_deref().unwrap_or(""),
-                        opts.recursively_flatten,
-                    );
-                }
+            if opts.flatten_query_result
+                && let Value::Object(obj) = &matched_value
+            {
+                flatten_object(
+                    &mut new_feature,
+                    obj,
+                    opts.attribute_prefix.as_deref().unwrap_or(""),
+                    opts.recursively_flatten,
+                );
             }
 
             fw.send(ctx.new_with_feature_and_port(new_feature, FEATURES_PORT.clone()));

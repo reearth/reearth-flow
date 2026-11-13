@@ -364,13 +364,13 @@ pub(crate) fn append_theme(
     back: Option<FaceBinding>,
     uv_sets: Vec<UvSet>,
 ) -> Result<(), Error> {
-    if let Some(app) = appearance.as_ref() {
-        if app.themes.iter().any(|b| b.theme == theme) {
-            return Err(Error::invalid_appearance(format!(
-                "theme `{}` is already set",
-                theme.0
-            )));
-        }
+    if let Some(app) = appearance.as_ref()
+        && app.themes.iter().any(|b| b.theme == theme)
+    {
+        return Err(Error::invalid_appearance(format!(
+            "theme `{}` is already set",
+            theme.0
+        )));
     }
 
     // Offset before mutating anything, so an overflow leaves the geometry unchanged.
@@ -432,14 +432,14 @@ pub(crate) fn validate_uv_coupling(
                 channel.0
             )));
         }
-        if let UvSource::Explicit(coords) = uv {
-            if coords.len() != corner_count {
-                return Err(Error::invalid_appearance(format!(
-                    "UV length {} for channel {} does not match the corner count {corner_count}",
-                    coords.len(),
-                    channel.0
-                )));
-            }
+        if let UvSource::Explicit(coords) = uv
+            && coords.len() != corner_count
+        {
+            return Err(Error::invalid_appearance(format!(
+                "UV length {} for channel {} does not match the corner count {corner_count}",
+                coords.len(),
+                channel.0
+            )));
         }
     }
     Ok(())

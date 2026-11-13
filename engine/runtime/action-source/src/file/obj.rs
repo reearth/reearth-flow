@@ -874,57 +874,57 @@ pub(super) fn parse_mtl_str(content: &str, mtl_uri: &Uri) -> HashMap<String, Mat
                 }
             }
             "Ka" if parts.len() >= 4 => {
-                if let Some(ref mut mat) = current_material {
-                    if let (Ok(r), Ok(g), Ok(b)) = (
+                if let Some(ref mut mat) = current_material
+                    && let (Ok(r), Ok(g), Ok(b)) = (
                         parts[1].parse::<f32>(),
                         parts[2].parse::<f32>(),
                         parts[3].parse::<f32>(),
-                    ) {
-                        mat.ambient = Some([r, g, b]);
-                    }
+                    )
+                {
+                    mat.ambient = Some([r, g, b]);
                 }
             }
             "Kd" if parts.len() >= 4 => {
-                if let Some(ref mut mat) = current_material {
-                    if let (Ok(r), Ok(g), Ok(b)) = (
+                if let Some(ref mut mat) = current_material
+                    && let (Ok(r), Ok(g), Ok(b)) = (
                         parts[1].parse::<f32>(),
                         parts[2].parse::<f32>(),
                         parts[3].parse::<f32>(),
-                    ) {
-                        mat.diffuse = Some([r, g, b]);
-                    }
+                    )
+                {
+                    mat.diffuse = Some([r, g, b]);
                 }
             }
             "Ks" if parts.len() >= 4 => {
-                if let Some(ref mut mat) = current_material {
-                    if let (Ok(r), Ok(g), Ok(b)) = (
+                if let Some(ref mut mat) = current_material
+                    && let (Ok(r), Ok(g), Ok(b)) = (
                         parts[1].parse::<f32>(),
                         parts[2].parse::<f32>(),
                         parts[3].parse::<f32>(),
-                    ) {
-                        mat.specular = Some([r, g, b]);
-                    }
+                    )
+                {
+                    mat.specular = Some([r, g, b]);
                 }
             }
             "Ns" if parts.len() >= 2 => {
-                if let Some(ref mut mat) = current_material {
-                    if let Ok(ns) = parts[1].parse::<f32>() {
-                        mat.shininess = Some(ns);
-                    }
+                if let Some(ref mut mat) = current_material
+                    && let Ok(ns) = parts[1].parse::<f32>()
+                {
+                    mat.shininess = Some(ns);
                 }
             }
             "d" | "Tr" if parts.len() >= 2 => {
-                if let Some(ref mut mat) = current_material {
-                    if let Ok(d) = parts[1].parse::<f32>() {
-                        mat.transparency = Some(d);
-                    }
+                if let Some(ref mut mat) = current_material
+                    && let Ok(d) = parts[1].parse::<f32>()
+                {
+                    mat.transparency = Some(d);
                 }
             }
             "illum" if parts.len() >= 2 => {
-                if let Some(ref mut mat) = current_material {
-                    if let Ok(illum) = parts[1].parse::<i32>() {
-                        mat.illumination = Some(illum);
-                    }
+                if let Some(ref mut mat) = current_material
+                    && let Ok(illum) = parts[1].parse::<i32>()
+                {
+                    mat.illumination = Some(illum);
                 }
             }
             "map_Kd" if parts.len() >= 2 => {

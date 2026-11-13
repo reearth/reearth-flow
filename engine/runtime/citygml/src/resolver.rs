@@ -390,10 +390,10 @@ fn construct(
         if m.file.is_empty() {
             m.file = node.file.clone();
         }
-        if m.location.is_empty() {
-            if let Some(id) = &node.id {
-                m.location = id.clone();
-            }
+        if m.location.is_empty()
+            && let Some(id) = &node.id
+        {
+            m.location = id.clone();
         }
     }
     built

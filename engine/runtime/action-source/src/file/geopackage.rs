@@ -361,10 +361,10 @@ async fn get_geometry_column(
         SourceError::GeoPackageReader(format!("Failed to query geometry column: {e}"))
     })?;
 
-    if let Some(row) = rows.first() {
-        if let Ok(col_name) = row.try_get::<String, _>(0) {
-            return Ok(col_name);
-        }
+    if let Some(row) = rows.first()
+        && let Ok(col_name) = row.try_get::<String, _>(0)
+    {
+        return Ok(col_name);
     }
 
     Ok("geom".to_string())
@@ -381,10 +381,10 @@ async fn get_layer_srs_id(adapter: &SqlAdapter, table_name: &str) -> Result<i32,
         .await
         .map_err(|e| SourceError::GeoPackageReader(format!("Failed to query SRS ID: {e}")))?;
 
-    if let Some(row) = rows.first() {
-        if let Ok(srs_id) = row.try_get::<i32, _>(0) {
-            return Ok(srs_id);
-        }
+    if let Some(row) = rows.first()
+        && let Ok(srs_id) = row.try_get::<i32, _>(0)
+    {
+        return Ok(srs_id);
     }
 
     Ok(4326)
@@ -556,17 +556,13 @@ fn parse_wkb(wkb: &[u8], srs_id: i32, force_2d: bool) -> Result<Geometry, Source
         .map_err(|e| SourceError::GeoPackageReader(format!("Failed to read byte order: {e}")))?;
 
     let wkb_type = if byte_order == 0x01 {
-        let t = cursor
+        cursor
             .read_u32::<LittleEndian>()
-            .map_err(|e| SourceError::GeoPackageReader(format!("Failed to read WKB type: {e}")))?;
-
-        t
+            .map_err(|e| SourceError::GeoPackageReader(format!("Failed to read WKB type: {e}")))?
     } else {
-        let t = cursor
+        cursor
             .read_u32::<BigEndian>()
-            .map_err(|e| SourceError::GeoPackageReader(format!("Failed to read WKB type: {e}")))?;
-
-        t
+            .map_err(|e| SourceError::GeoPackageReader(format!("Failed to read WKB type: {e}")))?
     };
 
     let has_z = (wkb_type & 0x80000000) != 0;

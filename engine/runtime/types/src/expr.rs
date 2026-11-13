@@ -82,10 +82,10 @@ thread_local! {
 fn base_env(variables: &Variables) -> ExprEnv {
     EVAL_ENV.with(|cell| {
         let mut slot = cell.borrow_mut();
-        if let Some((cached, env)) = slot.as_ref() {
-            if Arc::ptr_eq(cached, variables) {
-                return env.clone();
-            }
+        if let Some((cached, env)) = slot.as_ref()
+            && Arc::ptr_eq(cached, variables)
+        {
+            return env.clone();
         }
         let env = reearth_flow_expr::new_root_env();
         env_bind(

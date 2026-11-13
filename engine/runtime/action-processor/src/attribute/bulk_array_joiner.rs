@@ -106,11 +106,11 @@ impl Processor for AttributeBulkArrayJoiner {
             let AttributeValue::Array(value) = value else {
                 continue;
             };
-            if value.len() == 1 {
-                if let Some(AttributeValue::Map(v)) = value.first() {
-                    new_attributes.insert(key.clone(), AttributeValue::Map(v.clone()));
-                    continue;
-                }
+            if value.len() == 1
+                && let Some(AttributeValue::Map(v)) = value.first()
+            {
+                new_attributes.insert(key.clone(), AttributeValue::Map(v.clone()));
+                continue;
             }
             let mut new_value = Vec::<String>::new();
             for detail in value {

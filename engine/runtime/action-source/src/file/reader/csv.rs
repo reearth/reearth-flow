@@ -144,10 +144,10 @@ pub(crate) async fn read_csv(
     // `read_merged_header` returns an empty list, and column names are only
     // auto-generated from the first data row inside the loop below -- so that
     // path validates there instead, right after the header is synthesised.
-    if header_rows != 0 {
-        if let Some(config) = &props.geometry {
-            validate_geometry_columns(&header, config)?;
-        }
+    if header_rows != 0
+        && let Some(config) = &props.geometry
+    {
+        validate_geometry_columns(&header, config)?;
     }
 
     let mut data_rows = 0usize;

@@ -135,11 +135,11 @@ impl SchemaAccumulator {
             let ty = attr_type_of(value);
             let entry = self.seen.entry(name.clone()).or_insert((Some(ty), 0));
             entry.1 += 1;
-            if let Some(existing) = entry.0 {
-                if existing != ty {
-                    // Differing types across features collapse to Unknown.
-                    entry.0 = None;
-                }
+            if let Some(existing) = entry.0
+                && existing != ty
+            {
+                // Differing types across features collapse to Unknown.
+                entry.0 = None;
             }
         }
     }

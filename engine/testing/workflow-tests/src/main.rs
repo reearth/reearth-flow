@@ -554,27 +554,27 @@ impl TestContext {
 
         if let Some(summary) = &self.profile.summary_output {
             // Error count summary validation
-            if let Some(error_count) = &summary.error_count_summary {
-                if let Err(e) = self.verify_error_count_summary(error_count) {
-                    tracing::error!(
-                        test_name = %self.test_name,
-                        error = %e,
-                        "Failed to verify error count summary"
-                    );
-                    return Err(e);
-                }
+            if let Some(error_count) = &summary.error_count_summary
+                && let Err(e) = self.verify_error_count_summary(error_count)
+            {
+                tracing::error!(
+                    test_name = %self.test_name,
+                    error = %e,
+                    "Failed to verify error count summary"
+                );
+                return Err(e);
             }
 
             // File error summary validation
-            if let Some(file_error) = &summary.file_error_summary {
-                if let Err(e) = self.verify_file_error_summary(file_error) {
-                    tracing::error!(
-                        test_name = %self.test_name,
-                        error = %e,
-                        "Failed to verify file error summary"
-                    );
-                    return Err(e);
-                }
+            if let Some(file_error) = &summary.file_error_summary
+                && let Err(e) = self.verify_file_error_summary(file_error)
+            {
+                tracing::error!(
+                    test_name = %self.test_name,
+                    error = %e,
+                    "Failed to verify file error summary"
+                );
+                return Err(e);
             }
         }
         Ok(())
@@ -767,12 +767,11 @@ impl TestContext {
 
         let mut result = HashMap::new();
         for item in array {
-            if let Some(obj) = item.as_object() {
-                if let (Some(name), Some(value)) = (obj.get(name_field), obj.get(value_field)) {
-                    if let Some(name_str) = name.as_str() {
-                        result.insert(name_str.to_string(), value.clone());
-                    }
-                }
+            if let Some(obj) = item.as_object()
+                && let (Some(name), Some(value)) = (obj.get(name_field), obj.get(value_field))
+                && let Some(name_str) = name.as_str()
+            {
+                result.insert(name_str.to_string(), value.clone());
             }
         }
         Ok(result)
@@ -1324,13 +1323,12 @@ impl TestContext {
         let mut file_exists = false;
         for entry in fs::read_dir(&self.output_dir)? {
             let entry = entry?;
-            if entry.file_type()?.is_file() {
-                if let Some(filename) = entry.file_name().to_str() {
-                    if filename.ends_with("qc_result_ok") {
-                        file_exists = true;
-                        break;
-                    }
-                }
+            if entry.file_type()?.is_file()
+                && let Some(filename) = entry.file_name().to_str()
+                && filename.ends_with("qc_result_ok")
+            {
+                file_exists = true;
+                break;
             }
         }
 
@@ -1374,11 +1372,11 @@ impl TestContext {
         let mut expected_files: HashSet<String> = HashSet::new();
 
         // From expectedOutput
-        if let Some(output) = &self.profile.expected_output {
-            if let Some(files) = &output.expected_file {
-                for file in files.as_vec() {
-                    expected_files.insert(file);
-                }
+        if let Some(output) = &self.profile.expected_output
+            && let Some(files) = &output.expected_file
+        {
+            for file in files.as_vec() {
+                expected_files.insert(file);
             }
         }
 

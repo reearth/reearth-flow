@@ -178,18 +178,18 @@ pub async fn extract(
         } else if filepath.extension().is_none() {
             continue;
         }
-        if let Some(p) = outpath.parent() {
-            if !storage.exists(p.path().as_path()).await.map_err(|e| {
+        if let Some(p) = outpath.parent()
+            && !storage.exists(p.path().as_path()).await.map_err(|e| {
                 crate::errors::SourceError::FilePathExtractor(format!(
                     "Storage exists error with: error = {e:?}"
                 ))
-            })? {
-                storage.create_dir(p.path().as_path()).await.map_err(|e| {
-                    crate::errors::SourceError::FilePathExtractor(format!(
-                        "Create dir error with: error = {e:?}"
-                    ))
-                })?;
-            }
+            })?
+        {
+            storage.create_dir(p.path().as_path()).await.map_err(|e| {
+                crate::errors::SourceError::FilePathExtractor(format!(
+                    "Create dir error with: error = {e:?}"
+                ))
+            })?;
         }
         let mut entry_reader = reader.reader_without_entry(i).await.map_err(|e| {
             crate::errors::SourceError::FilePathExtractor(format!(

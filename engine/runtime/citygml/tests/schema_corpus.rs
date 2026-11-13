@@ -121,15 +121,15 @@ fn read(path: &Path) -> Result<Document, String> {
         match &event {
             Event::Start(e) | Event::Empty(e) => {
                 let name = qname(&resolved, e.local_name().as_ref());
-                if depth == 0 {
-                    if let Ok(Some(attr)) = e.try_get_attribute("xsi:schemaLocation") {
-                        doc.schema_location = attr
-                            .unescape_value()
-                            .map_err(|e| e.to_string())?
-                            .split_whitespace()
-                            .map(str::to_owned)
-                            .collect();
-                    }
+                if depth == 0
+                    && let Ok(Some(attr)) = e.try_get_attribute("xsi:schemaLocation")
+                {
+                    doc.schema_location = attr
+                        .unescape_value()
+                        .map_err(|e| e.to_string())?
+                        .split_whitespace()
+                        .map(str::to_owned)
+                        .collect();
                 }
                 match member {
                     Some(m) if depth == m + 1 => doc.objects.push((name, Vec::new())),

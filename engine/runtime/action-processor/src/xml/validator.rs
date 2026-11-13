@@ -282,7 +282,7 @@ impl XmlValidator {
 
     /// Get XML content as bytes for streaming validation (more memory efficient)
     fn get_xml_content_bytes(&self, ctx: &ExecutorContext, feature: &Feature) -> Result<Bytes> {
-        let result = match self.params.input_type {
+        match self.params.input_type {
             XmlInputType::File => {
                 let uri = feature
                     .attributes
@@ -321,8 +321,7 @@ impl XmlValidator {
                 };
                 Ok(Bytes::from(content.as_bytes().to_vec()))
             }
-        };
-        result
+        }
     }
 
     fn send_syntax_error(ctx: &ExecutorContext, fw: &ProcessorChannelForwarder, feature: &Feature) {

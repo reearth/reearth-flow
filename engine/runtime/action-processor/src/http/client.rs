@@ -145,10 +145,10 @@ fn read_body_capped(
         return Ok(body);
     };
 
-    if let Some(len) = content_length {
-        if len > max_size {
-            return Err(size_exceeded(len, max_size));
-        }
+    if let Some(len) = content_length
+        && len > max_size
+    {
+        return Err(size_exceeded(len, max_size));
     }
 
     read_to_end_capped(reader, max_size)

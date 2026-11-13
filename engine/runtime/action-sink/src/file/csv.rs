@@ -241,11 +241,11 @@ fn write_records<W: std::io::Write>(
     };
 
     // Write header
-    if let Some(ref fields) = header_fields {
-        if !fields.is_empty() {
-            wtr.write_record(fields)
-                .map_err(|e| crate::errors::SinkError::CsvWriter(format!("{e:?}")))?;
-        }
+    if let Some(ref fields) = header_fields
+        && !fields.is_empty()
+    {
+        wtr.write_record(fields)
+            .map_err(|e| crate::errors::SinkError::CsvWriter(format!("{e:?}")))?;
     }
 
     // Accumulated over the rows so one line reports the file's failures rather

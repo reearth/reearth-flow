@@ -375,10 +375,10 @@ fn read_candidates(input: &Uri) -> Vec<Uri> {
     };
     let stem = strip_feature_extension(&name);
     for ext in FEATURE_EXTENSIONS {
-        if let Ok(candidate) = dir.join(format!("{stem}{ext}")) {
-            if candidate.as_str() != input.as_str() {
-                candidates.push(candidate);
-            }
+        if let Ok(candidate) = dir.join(format!("{stem}{ext}"))
+            && candidate.as_str() != input.as_str()
+        {
+            candidates.push(candidate);
         }
     }
     candidates

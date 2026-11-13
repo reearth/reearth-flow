@@ -366,11 +366,11 @@ fn extract_geometry_data(geometry: &FlowGeometry3D) -> VertexData {
             for coord in polygon.exterior().coords() {
                 vertices.push([coord.x, coord.y, coord.z]);
             }
-            if vertices.len() >= 3 {
-                if let Some(normal) = calculate_polygon_normal(&vertices) {
-                    for _ in &vertices {
-                        normals.push(normal);
-                    }
+            if vertices.len() >= 3
+                && let Some(normal) = calculate_polygon_normal(&vertices)
+            {
+                for _ in &vertices {
+                    normals.push(normal);
                 }
             }
         }
@@ -382,11 +382,11 @@ fn extract_geometry_data(geometry: &FlowGeometry3D) -> VertexData {
                 }
                 // Calculate normals for each polygon
                 let poly_verts = &vertices[start_idx..];
-                if poly_verts.len() >= 3 {
-                    if let Some(normal) = calculate_polygon_normal(poly_verts) {
-                        for _ in poly_verts {
-                            normals.push(normal);
-                        }
+                if poly_verts.len() >= 3
+                    && let Some(normal) = calculate_polygon_normal(poly_verts)
+                {
+                    for _ in poly_verts {
+                        normals.push(normal);
                     }
                 }
             }
@@ -429,85 +429,81 @@ fn extract_material_name(
     if let Some(material_props) = feature
         .attributes
         .get(&Attribute::new("materialProperties"))
+        && let Some(props_map) = material_props.as_map()
     {
-        if let Some(props_map) = material_props.as_map() {
-            // Process ALL materials and add them to the MTL library
-            // Use the first one for this feature's faces
-            let mut first_material_name: Option<String> = None;
+        // Process ALL materials and add them to the MTL library
+        // Use the first one for this feature's faces
+        let mut first_material_name: Option<String> = None;
 
-            for (mat_name, mat_value) in props_map {
-                if !materials.contains_key(mat_name.as_str()) {
-                    let mut material = Material {
-                        ambient: None,
-                        diffuse: None,
-                        specular: None,
-                        shininess: None,
-                        transparency: None,
-                    };
+        for (mat_name, mat_value) in props_map {
+            if !materials.contains_key(mat_name.as_str()) {
+                let mut material = Material {
+                    ambient: None,
+                    diffuse: None,
+                    specular: None,
+                    shininess: None,
+                    transparency: None,
+                };
 
-                    if let Some(mat_map) = mat_value.as_map() {
-                        // Extract diffuse color
-                        if let Some(reearth_flow_types::AttributeValue::Array(arr)) =
-                            mat_map.get("diffuse")
-                        {
-                            if arr.len() >= 3 {
-                                material.diffuse = Some([
-                                    arr[0].as_f64().unwrap_or(0.0) as f32,
-                                    arr[1].as_f64().unwrap_or(0.0) as f32,
-                                    arr[2].as_f64().unwrap_or(0.0) as f32,
-                                ]);
-                            }
-                        }
-                        // Extract ambient color
-                        if let Some(reearth_flow_types::AttributeValue::Array(arr)) =
-                            mat_map.get("ambient")
-                        {
-                            if arr.len() >= 3 {
-                                material.ambient = Some([
-                                    arr[0].as_f64().unwrap_or(0.0) as f32,
-                                    arr[1].as_f64().unwrap_or(0.0) as f32,
-                                    arr[2].as_f64().unwrap_or(0.0) as f32,
-                                ]);
-                            }
-                        }
-                        // Extract specular color
-                        if let Some(reearth_flow_types::AttributeValue::Array(arr)) =
-                            mat_map.get("specular")
-                        {
-                            if arr.len() >= 3 {
-                                material.specular = Some([
-                                    arr[0].as_f64().unwrap_or(0.0) as f32,
-                                    arr[1].as_f64().unwrap_or(0.0) as f32,
-                                    arr[2].as_f64().unwrap_or(0.0) as f32,
-                                ]);
-                            }
-                        }
-                        // Extract shininess
-                        if let Some(shininess_val) = mat_map.get("shininess") {
-                            if let Some(ns) = shininess_val.as_f64() {
-                                material.shininess = Some(ns as f32);
-                            }
-                        }
-                        // Extract transparency/opacity
-                        if let Some(transparency_val) = mat_map.get("transparency") {
-                            if let Some(d) = transparency_val.as_f64() {
-                                material.transparency = Some(d as f32);
-                            }
-                        }
+                if let Some(mat_map) = mat_value.as_map() {
+                    // Extract diffuse color
+                    if let Some(reearth_flow_types::AttributeValue::Array(arr)) =
+                        mat_map.get("diffuse")
+                        && arr.len() >= 3
+                    {
+                        material.diffuse = Some([
+                            arr[0].as_f64().unwrap_or(0.0) as f32,
+                            arr[1].as_f64().unwrap_or(0.0) as f32,
+                            arr[2].as_f64().unwrap_or(0.0) as f32,
+                        ]);
                     }
-
-                    materials.insert(mat_name.to_string(), material);
+                    // Extract ambient color
+                    if let Some(reearth_flow_types::AttributeValue::Array(arr)) =
+                        mat_map.get("ambient")
+                        && arr.len() >= 3
+                    {
+                        material.ambient = Some([
+                            arr[0].as_f64().unwrap_or(0.0) as f32,
+                            arr[1].as_f64().unwrap_or(0.0) as f32,
+                            arr[2].as_f64().unwrap_or(0.0) as f32,
+                        ]);
+                    }
+                    // Extract specular color
+                    if let Some(reearth_flow_types::AttributeValue::Array(arr)) =
+                        mat_map.get("specular")
+                        && arr.len() >= 3
+                    {
+                        material.specular = Some([
+                            arr[0].as_f64().unwrap_or(0.0) as f32,
+                            arr[1].as_f64().unwrap_or(0.0) as f32,
+                            arr[2].as_f64().unwrap_or(0.0) as f32,
+                        ]);
+                    }
+                    // Extract shininess
+                    if let Some(shininess_val) = mat_map.get("shininess")
+                        && let Some(ns) = shininess_val.as_f64()
+                    {
+                        material.shininess = Some(ns as f32);
+                    }
+                    // Extract transparency/opacity
+                    if let Some(transparency_val) = mat_map.get("transparency")
+                        && let Some(d) = transparency_val.as_f64()
+                    {
+                        material.transparency = Some(d as f32);
+                    }
                 }
 
-                // Remember the first material name
-                if first_material_name.is_none() {
-                    first_material_name = Some(mat_name.to_string());
-                }
+                materials.insert(mat_name.to_string(), material);
             }
 
-            if let Some(name) = first_material_name {
-                return Some(name);
+            // Remember the first material name
+            if first_material_name.is_none() {
+                first_material_name = Some(mat_name.to_string());
             }
+        }
+
+        if let Some(name) = first_material_name {
+            return Some(name);
         }
     }
 

@@ -49,13 +49,13 @@ where
     D: serde::Deserializer<'de>,
 {
     let error = Option::<f64>::deserialize(deserializer)?;
-    if let Some(error) = error {
-        if !error.is_finite() || error <= 0.0 {
-            return Err(serde::de::Error::invalid_value(
-                serde::de::Unexpected::Float(error),
-                &"a positive quantization error in meters",
-            ));
-        }
+    if let Some(error) = error
+        && (!error.is_finite() || error <= 0.0)
+    {
+        return Err(serde::de::Error::invalid_value(
+            serde::de::Unexpected::Float(error),
+            &"a positive quantization error in meters",
+        ));
     }
     Ok(error)
 }

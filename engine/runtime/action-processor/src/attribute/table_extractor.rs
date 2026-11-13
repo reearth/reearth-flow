@@ -195,17 +195,17 @@ impl Processor for AttributeTableExtractor {
             .get(&self.type_attribute)
             .and_then(|v| v.as_string());
 
-        if let Some(feature_type) = feature_type {
-            if let Some(rules) = self.table.get(&feature_type) {
-                for rule in rules {
-                    let src_segments: Vec<&str> = rule.source_path.split_whitespace().collect();
-                    if let Some(value) = resolve_path(&feature, &src_segments) {
-                        let value = coerce(&ctx, value, rule.data_type);
-                        let dst_segments: Vec<&str> =
-                            rule.destination_path.split_whitespace().collect();
-                        if !dst_segments.is_empty() {
-                            write_path(&mut feature, &dst_segments, value);
-                        }
+        if let Some(feature_type) = feature_type
+            && let Some(rules) = self.table.get(&feature_type)
+        {
+            for rule in rules {
+                let src_segments: Vec<&str> = rule.source_path.split_whitespace().collect();
+                if let Some(value) = resolve_path(&feature, &src_segments) {
+                    let value = coerce(&ctx, value, rule.data_type);
+                    let dst_segments: Vec<&str> =
+                        rule.destination_path.split_whitespace().collect();
+                    if !dst_segments.is_empty() {
+                        write_path(&mut feature, &dst_segments, value);
                     }
                 }
             }
