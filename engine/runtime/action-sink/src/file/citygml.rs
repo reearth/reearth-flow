@@ -57,7 +57,7 @@ use crate::errors::SinkError;
 use attribute_keys::{AttributeKeys, ResolvedKeys};
 use built_in_ade::{BuiltInAde, Preset};
 use classes::{CityClass, ClassResolver, Prefixes};
-use destination::{ArchiveWriter, Destination};
+use destination::{ArchiveWriter, Destination, FinishedArchive};
 use hierarchy::{
     build_feature_objects, ContainmentProperties, FeatureObjects, FeatureParts, TopLevel,
     TreeObject,
@@ -1794,12 +1794,16 @@ impl Sink for CityGmlWriterSink {
         // Each archive's last document, after which it is finished and
         // written. Documents are in path order, so an archive's documents are
         // written one after another and only one archive is open at a time.
+        // A local archive is built beside its file and moved onto it.
         let mut archives: BTreeMap<&str, ArchiveWriter> = BTreeMap::new();
         let mut last_of_archive: HashMap<&str, usize> = HashMap::new();
         for (index, document) in documents.iter().enumerate() {
             if document.entry.is_some() {
-                archives.entry(&document.output).or_default();
-                last_of_archive.insert(&document.output, index);
+                let output = document.output.as_str();
+                archives
+                    .entry(output)
+                    .or_insert_with(|| ArchiveWriter::for_output(outputs[output].uri()));
+                last_of_archive.insert(output, index);
             }
         }
 
@@ -1930,12 +1934,12 @@ impl DocumentEvents for FinishEvents<'_> {
             return Ok(());
         }
         // No document means no archive, as no document means no loose file.
-        if let Some(bytes) = self.archives[output].take()? {
-            self.outputs[output]
+        match self.archives[output].finish()? {
+            Some(FinishedArchive::Bytes(bytes)) => self.outputs[output]
                 .write(bytes)
-                .map_err(|e| SinkError::CityGmlWriter(e.to_string()))?;
+                .map_err(|e| SinkError::CityGmlWriter(e.to_string())),
+            Some(FinishedArchive::InPlace) | None => Ok(()),
         }
-        Ok(())
     }
 }
 
@@ -5888,6 +5892,76 @@ mod archive_tests {
             "{gml}"
         );
         assert_eq!(job.sandbox_files(), ["bunkyo.zip"]);
+    }
+
+    /// A local archive is built beside its file and moved onto it, with its
+    /// staged files, rather than read back and written through storage.
+    #[test]
+    fn a_local_zip_output_is_not_written_through_storage() {
+        let job = Job::new();
+        let before = crate::output::writes_on_this_thread();
+
+        job.run(
+            with("out/bunkyo.zip", Some("udx/bldg/x.gml")),
+            vec![
+                textured(&job.source("wall.png")),
+                classified_building(&job.source("Building_class.xml")),
+            ],
+        );
+
+        assert_eq!(crate::output::writes_on_this_thread(), before);
+        assert_eq!(
+            names(&job.archive("out/bunkyo.zip")),
+            [
+                "udx/bldg/x.gml",
+                "udx/bldg/x_appearance/wall.png",
+                "udx/bldg/x_codelists/Building_class.xml",
+            ]
+        );
+        // No temporary file is left beside it.
+        assert_eq!(job.sandbox_files(), ["out/bunkyo.zip"]);
+    }
+
+    /// Storage that is not a local folder takes the finished archive in one
+    /// write.
+    #[test]
+    fn a_zip_output_elsewhere_is_written_through_storage_once() {
+        use std::str::FromStr;
+
+        use reearth_flow_common::uri::Uri;
+
+        let job = Job::new();
+        let ctx = NodeContext {
+            sandbox_root: Uri::from_str("ram:///jobs/archive/").unwrap(),
+            ..job.ctx.clone()
+        };
+        let before = crate::output::writes_on_this_thread();
+
+        run_with(
+            &ctx,
+            with("bunkyo.zip", Some("udx/bldg/x.gml")),
+            vec![classified_building(&job.source("Building_class.xml"))],
+        )
+        .unwrap();
+
+        assert_eq!(crate::output::writes_on_this_thread(), before + 1);
+        let output = Uri::from_str("ram:///jobs/archive/bunkyo.zip").unwrap();
+        let bytes = ctx
+            .storage_resolver
+            .resolve(&output)
+            .unwrap()
+            .get_sync(output.path().as_path())
+            .unwrap();
+        let archive = zip::ZipArchive::new(Cursor::new(bytes)).unwrap();
+        let mut names: Vec<String> = archive
+            .file_names()
+            .map(|name| name.unwrap().into_owned())
+            .collect();
+        names.sort();
+        assert_eq!(
+            names,
+            ["udx/bldg/x.gml", "udx/bldg/x_codelists/Building_class.xml"]
+        );
     }
 
     #[test]

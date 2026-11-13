@@ -8,12 +8,14 @@
 use std::collections::HashSet;
 use std::fs::File;
 use std::io::{Read, Seek, SeekFrom};
+use std::path::{Path, PathBuf};
 use std::sync::{Arc, Mutex};
 
 use bytes::Bytes;
-use reearth_flow_common::uri::Uri;
+use reearth_flow_common::uri::{Protocol, Uri};
 use reearth_flow_common::zip::StreamingZipWriter;
 use reearth_flow_storage::resolve::StorageResolver;
+use tempfile::{NamedTempFile, TempPath};
 
 use crate::errors::SinkError;
 
@@ -220,26 +222,48 @@ pub fn default_entry_path(archive_output: &str) -> String {
     format!("{stem}.gml")
 }
 
-/// A zip archive built in a temporary file and written in one piece once
-/// finished.
+/// A zip archive built entry by entry in a temporary file.
 ///
-/// The temporary file keeps staged images out of memory while the document is
-/// built: only the finished archive is read back, as storage takes one buffer.
+/// The temporary file keeps staged images out of memory while the documents
+/// are built. Where it goes depends on where the archive is written:
+///
+/// - A local file (`file://`) is built beside its final path and renamed onto
+///   it once finished, so nothing is read back and a run that fails part way
+///   leaves no partial archive behind.
+/// - Any other storage takes one buffer, so the archive is built in an
+///   anonymous temporary file and its bytes are read back once finished, for
+///   the caller to write.
 ///
 /// Entries are added in the order they are written, so one archive can hold
 /// any number of documents, each with its staged folders. Paths are checked
 /// with [`validate_entry_path`] and must be unique.
 pub struct ArchiveWriter {
+    /// The local file the archive is renamed onto, or `None` to hand the
+    /// finished bytes back.
+    in_place: Option<PathBuf>,
     state: Mutex<ArchiveState>,
 }
 
 #[derive(Default)]
 struct ArchiveState {
-    /// Opened at the first entry and closed when the archive is taken, so an
-    /// archive holds a file only while its documents are being written.
+    /// Opened at the first entry and closed when the archive is finished, so
+    /// an archive holds a file only while its documents are being written.
     zip: Option<StreamingZipWriter<File>>,
+    /// The temporary file beside the final path an archive written in place
+    /// is built in. Dropping it removes the file, so a run that fails before
+    /// the archive is finished leaves nothing behind.
+    temp_path: Option<TempPath>,
     entries: HashSet<String>,
-    taken: bool,
+    finished: bool,
+}
+
+/// What finishing an archive leaves the caller to do.
+#[derive(Debug)]
+pub enum FinishedArchive {
+    /// The archive is at its final path; there is nothing left to write.
+    InPlace,
+    /// The archive's bytes, for the caller to write to storage.
+    Bytes(Bytes),
 }
 
 impl Default for ArchiveWriter {
@@ -249,9 +273,20 @@ impl Default for ArchiveWriter {
 }
 
 impl ArchiveWriter {
+    /// An archive whose finished bytes are handed back to be written.
     pub fn new() -> Self {
         Self {
+            in_place: None,
             state: Mutex::new(ArchiveState::default()),
+        }
+    }
+
+    /// An archive written to `output`: in place when that is a local file,
+    /// otherwise handed back as bytes.
+    pub fn for_output(output: &Uri) -> Self {
+        Self {
+            in_place: (output.protocol() == Protocol::File).then(|| output.path()),
+            ..Self::new()
         }
     }
 
@@ -262,7 +297,7 @@ impl ArchiveWriter {
             .state
             .lock()
             .map_err(|e| format!("archive state is poisoned: {e}"))?;
-        if state.taken {
+        if state.finished {
             return Err(format!(
                 "cannot add `{path}`: the archive is already finished"
             ));
@@ -270,15 +305,20 @@ impl ArchiveWriter {
         if state.entries.contains(path) {
             return Err(format!("`{path}` is already in the archive"));
         }
-        let zip = match &mut state.zip {
-            Some(zip) => zip,
-            None => {
-                let file = tempfile::tempfile().map_err(|e| {
+        if state.zip.is_none() {
+            let file = match &self.in_place {
+                Some(target) => {
+                    let (file, temp_path) = temp_file_beside(target)?.into_parts();
+                    state.temp_path = Some(temp_path);
+                    file
+                }
+                None => tempfile::tempfile().map_err(|e| {
                     format!("failed to create a temporary file for the zip archive: {e}")
-                })?;
-                state.zip.insert(StreamingZipWriter::new(file))
-            }
-        };
+                })?,
+            };
+            state.zip = Some(StreamingZipWriter::new(file));
+        }
+        let zip = state.zip.as_mut().expect("the archive was just opened");
         zip.write_entry(path, bytes).map_err(|e| e.to_string())?;
         state.entries.insert(path.to_string());
         Ok(())
@@ -291,26 +331,76 @@ impl ArchiveWriter {
             .map_or(true, |state| state.entries.is_empty())
     }
 
-    /// The finished archive's bytes, or `None` when nothing was added. Its
+    /// Finish the archive, or return `None` when nothing was added. Its
     /// temporary file is closed, and nothing more can be added.
-    pub fn take(&self) -> Result<Option<Bytes>, SinkError> {
+    pub fn finish(&self) -> Result<Option<FinishedArchive>, SinkError> {
         let failed = |e: &dyn std::fmt::Display| {
             SinkError::CityGmlWriter(format!("failed to finish the zip archive: {e}"))
         };
-        let zip = {
+        let (zip, temp_path) = {
             let mut state = self.state.lock().map_err(|e| failed(&e))?;
-            state.taken = true;
-            state.zip.take()
+            state.finished = true;
+            (state.zip.take(), state.temp_path.take())
         };
         let Some(zip) = zip else {
             return Ok(None);
         };
         let mut file = zip.finish().map_err(|e| failed(&e))?;
-        file.seek(SeekFrom::Start(0)).map_err(|e| failed(&e))?;
-        let mut bytes = Vec::new();
-        file.read_to_end(&mut bytes).map_err(|e| failed(&e))?;
-        Ok(Some(Bytes::from(bytes)))
+        match (&self.in_place, temp_path) {
+            (Some(target), Some(temp_path)) => {
+                file.sync_all().map_err(|e| failed(&e))?;
+                drop(file);
+                // On failure the error owns the temporary path and removes it.
+                temp_path.persist(target).map_err(|e| {
+                    failed(&format_args!(
+                        "failed to move it into place at {}: {}",
+                        target.display(),
+                        e.error
+                    ))
+                })?;
+                Ok(Some(FinishedArchive::InPlace))
+            }
+            _ => {
+                file.seek(SeekFrom::Start(0)).map_err(|e| failed(&e))?;
+                let mut bytes = Vec::new();
+                file.read_to_end(&mut bytes).map_err(|e| failed(&e))?;
+                Ok(Some(FinishedArchive::Bytes(Bytes::from(bytes))))
+            }
+        }
     }
+}
+
+/// A temporary file in the folder `target` goes in, created with that folder,
+/// so the finished archive can be renamed onto `target` without a copy.
+fn temp_file_beside(target: &Path) -> Result<NamedTempFile, String> {
+    let dir = target
+        .parent()
+        .filter(|dir| !dir.as_os_str().is_empty())
+        .ok_or_else(|| format!("the zip archive {} has no folder", target.display()))?;
+    std::fs::create_dir_all(dir)
+        .map_err(|e| format!("failed to create the folder {}: {e}", dir.display()))?;
+    let name = target
+        .file_name()
+        .map(|name| name.to_string_lossy().into_owned())
+        .unwrap_or_default();
+    let prefix = format!(".{name}.");
+    let mut builder = tempfile::Builder::new();
+    builder.prefix(&prefix).suffix(".tmp");
+    // A temporary file is private by default; the archive it becomes gets the
+    // permissions any other file the writer creates gets, under the umask.
+    #[cfg(unix)]
+    let permissions = {
+        use std::os::unix::fs::PermissionsExt;
+        std::fs::Permissions::from_mode(0o666)
+    };
+    #[cfg(unix)]
+    builder.permissions(permissions);
+    builder.tempfile_in(dir).map_err(|e| {
+        format!(
+            "failed to create a temporary file for the zip archive in {}: {e}",
+            dir.display()
+        )
+    })
 }
 
 #[cfg(test)]
@@ -381,7 +471,9 @@ mod tests {
     fn a_finished_archive_holds_its_entries() {
         let archive = ArchiveWriter::new();
         archive.add("udx/bldg/x.gml", b"<gml/>").unwrap();
-        let bytes = archive.take().unwrap().unwrap();
+        let Some(FinishedArchive::Bytes(bytes)) = archive.finish().unwrap() else {
+            panic!("an archive not written in place hands back its bytes");
+        };
         let mut zip = zip::ZipArchive::new(std::io::Cursor::new(bytes)).unwrap();
         let mut content = String::new();
         zip.by_name("udx/bldg/x.gml")
@@ -403,16 +495,134 @@ mod tests {
     fn an_archive_nothing_was_added_to_takes_as_none() {
         let archive = ArchiveWriter::new();
         assert!(archive.is_empty());
-        assert!(archive.take().unwrap().is_none());
+        assert!(archive.finish().unwrap().is_none());
     }
 
     #[test]
     fn a_taken_archive_takes_no_more_entries() {
         let archive = ArchiveWriter::new();
         archive.add("x.gml", b"one").unwrap();
-        assert!(archive.take().unwrap().is_some());
+        assert!(archive.finish().unwrap().is_some());
         let error = archive.add("y.gml", b"two").unwrap_err();
         assert!(error.contains("already finished"), "{error}");
-        assert!(archive.take().unwrap().is_none());
+        assert!(archive.finish().unwrap().is_none());
+    }
+
+    fn local(path: &Path) -> Uri {
+        use std::str::FromStr;
+        Uri::from_str(&format!("file://{}", path.display())).unwrap()
+    }
+
+    /// Every file under `dir`, relative to it.
+    fn files_in(dir: &Path) -> Vec<String> {
+        let mut files: Vec<String> = walkdir(dir)
+            .into_iter()
+            .map(|path| {
+                path.strip_prefix(dir)
+                    .unwrap()
+                    .to_string_lossy()
+                    .replace('\\', "/")
+            })
+            .collect();
+        files.sort();
+        files
+    }
+
+    fn walkdir(dir: &Path) -> Vec<PathBuf> {
+        let mut files = Vec::new();
+        for entry in std::fs::read_dir(dir).unwrap() {
+            let path = entry.unwrap().path();
+            if path.is_dir() {
+                files.extend(walkdir(&path));
+            } else {
+                files.push(path);
+            }
+        }
+        files
+    }
+
+    #[test]
+    fn a_local_archive_is_built_beside_its_path_and_moved_into_place() {
+        let dir = tempfile::tempdir().unwrap();
+        let target = dir.path().join("out/sub/x.zip");
+        let archive = ArchiveWriter::for_output(&local(&target));
+
+        archive.add("udx/x.gml", b"<gml/>").unwrap();
+        // While it is being written, only its temporary file is there, in the
+        // folder the archive goes in.
+        let pending = files_in(dir.path());
+        assert_eq!(pending.len(), 1, "{pending:?}");
+        assert!(
+            pending[0].starts_with("out/sub/.x.zip.") && pending[0].ends_with(".tmp"),
+            "{pending:?}"
+        );
+
+        assert!(matches!(
+            archive.finish().unwrap(),
+            Some(FinishedArchive::InPlace)
+        ));
+        assert_eq!(files_in(dir.path()), ["out/sub/x.zip"]);
+        let mut zip = zip::ZipArchive::new(File::open(&target).unwrap()).unwrap();
+        let mut content = String::new();
+        zip.by_name("udx/x.gml")
+            .unwrap()
+            .read_to_string(&mut content)
+            .unwrap();
+        assert_eq!(content, "<gml/>");
+    }
+
+    #[test]
+    fn a_local_archive_replaces_an_older_file() {
+        let dir = tempfile::tempdir().unwrap();
+        let target = dir.path().join("x.zip");
+        std::fs::write(&target, b"old").unwrap();
+        let archive = ArchiveWriter::for_output(&local(&target));
+        archive.add("x.gml", b"<gml/>").unwrap();
+        archive.finish().unwrap();
+        assert!(zip::ZipArchive::new(File::open(&target).unwrap()).is_ok());
+    }
+
+    #[test]
+    fn an_unfinished_local_archive_leaves_nothing_behind() {
+        let dir = tempfile::tempdir().unwrap();
+        let archive = ArchiveWriter::for_output(&local(&dir.path().join("x.zip")));
+        archive.add("x.gml", b"<gml/>").unwrap();
+        drop(archive);
+        assert!(files_in(dir.path()).is_empty());
+    }
+
+    #[test]
+    fn a_local_archive_nothing_was_added_to_creates_nothing() {
+        let dir = tempfile::tempdir().unwrap();
+        let archive = ArchiveWriter::for_output(&local(&dir.path().join("out/x.zip")));
+        assert!(archive.finish().unwrap().is_none());
+        assert!(files_in(dir.path()).is_empty());
+    }
+
+    #[cfg(unix)]
+    #[test]
+    fn a_local_archive_is_not_private_to_its_temporary_file() {
+        use std::os::unix::fs::PermissionsExt;
+
+        let dir = tempfile::tempdir().unwrap();
+        let target = dir.path().join("x.zip");
+        let archive = ArchiveWriter::for_output(&local(&target));
+        archive.add("x.gml", b"<gml/>").unwrap();
+        archive.finish().unwrap();
+        let loose = dir.path().join("loose");
+        std::fs::write(&loose, b"").unwrap();
+        let mode = |path: &Path| std::fs::metadata(path).unwrap().permissions().mode() & 0o777;
+        assert_eq!(mode(&target), mode(&loose));
+    }
+
+    #[test]
+    fn an_archive_in_other_storage_hands_back_its_bytes() {
+        use std::str::FromStr;
+        let archive = ArchiveWriter::for_output(&Uri::from_str("ram:///out/x.zip").unwrap());
+        archive.add("x.gml", b"<gml/>").unwrap();
+        assert!(matches!(
+            archive.finish().unwrap(),
+            Some(FinishedArchive::Bytes(_))
+        ));
     }
 }
