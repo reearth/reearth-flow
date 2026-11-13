@@ -16,3 +16,8 @@ func TestTrigger_SaveLastRefusal(t *testing.T) {
 	t.Parallel()
 	repotest.TriggerSaveLastRefusal(t, func(*testing.T) repo.Trigger { return NewTrigger() })
 }
+
+func TestTrigger_FindByEventSource(t *testing.T) {
+	t.Parallel()
+	repotest.TriggerFindByEventSource(t, func(*testing.T) repo.Trigger { return NewTrigger() })
+}

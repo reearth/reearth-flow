@@ -3,7 +3,10 @@ package interactor
 import (
 	"context"
 	"errors"
+	"fmt"
 	"maps"
+	"slices"
+	"strings"
 	"time"
 
 	accountsid "github.com/reearth/reearth-accounts/server/pkg/id"
@@ -70,12 +73,12 @@ func (i *Trigger) Fetch(ctx context.Context, ids []id.TriggerID) ([]*trigger.Tri
 	return triggers, nil
 }
 
-func (i *Trigger) FindByWorkspace(ctx context.Context, id accountsid.WorkspaceID, p *interfaces.PaginationParam, keyword *string) ([]*trigger.Trigger, *interfaces.PageBasedInfo, error) {
+func (i *Trigger) FindByWorkspace(ctx context.Context, id accountsid.WorkspaceID, p *interfaces.PaginationParam, filter interfaces.TriggerFilter) ([]*trigger.Trigger, *interfaces.PageBasedInfo, error) {
 	if err := i.checkPermission(ctx, rbac.ActionAny, id); err != nil {
 		return nil, nil, err
 	}
 
-	return i.triggerRepo.FindByWorkspace(ctx, id, p, keyword)
+	return i.triggerRepo.FindByWorkspace(ctx, id, p, filter)
 }
 
 func (i *Trigger) FindByID(ctx context.Context, id id.TriggerID) (*trigger.Trigger, error) {
@@ -115,9 +118,8 @@ func (i *Trigger) Create(ctx context.Context, param interfaces.CreateTriggerPara
 		if err != nil {
 			return err
 		}
-		// An API call can fill a required variable itself, so only its runs
-		// check them.
-		if param.EventSource != "API_DRIVEN" {
+		// API and CMS runs supply their own values, so required variables are checked per run.
+		if !fillsVariablesPerRun(param.EventSource) {
 			if err := ensureTriggerRequiredVariables(d, param.Variables); err != nil {
 				return err
 			}
@@ -250,10 +252,12 @@ func (i *Trigger) ExecuteAPITrigger(ctx context.Context, p interfaces.ExecuteAPI
 	defer func() { admission.settle(ctx, err) }()
 
 	deploymentID1 := deployment.ID()
+	triggerID := trigger.ID()
 
 	j, err := job.New().
 		NewID().
 		Deployment(&deploymentID1).
+		Trigger(&triggerID).
 		Workspace(deployment.Workspace()).
 		Status(job.StatusPending).
 		StartedAt(time.Now()).
@@ -410,10 +414,12 @@ func (i *Trigger) ExecuteTimeDrivenTrigger(ctx context.Context, p interfaces.Exe
 	defer func() { admission.settle(ctx, err) }()
 
 	deploymentID2 := deployment.ID()
+	triggerID := trigger.ID()
 
 	j, err := job.New().
 		NewID().
 		Deployment(&deploymentID2).
+		Trigger(&triggerID).
 		Workspace(deployment.Workspace()).
 		Status(job.StatusPending).
 		StartedAt(time.Now()).
@@ -469,6 +475,126 @@ func (i *Trigger) ExecuteTimeDrivenTrigger(ctx context.Context, p interfaces.Exe
 
 	if err := i.job.StartMonitoring(ctx, j, nil); err != nil {
 		log.Errorf("Failed to start monitoring for time-driven job %s: %v", j.ID(), err)
+		return nil, err
+	}
+
+	return j, nil
+}
+
+// ExecuteCMSTrigger runs a CMS trigger for one CMS item, as a user allowed to run jobs.
+func (i *Trigger) ExecuteCMSTrigger(ctx context.Context, p interfaces.ExecuteCMSTriggerParam) (_ *job.Job, err error) {
+	t, err := i.triggerRepo.FindByID(ctx, p.TriggerID)
+	if err != nil {
+		return nil, err
+	}
+	if t == nil {
+		return nil, rerror.ErrNotFound
+	}
+	if err := checkPermission(ctx, i.permissionChecker, rbac.ResourceJob, rbac.ActionCreate, t.Workspace()); err != nil {
+		return nil, err
+	}
+	if t.EventSource() != trigger.EventSourceTypeCMS {
+		return nil, interfaces.ErrTriggerNotCMS
+	}
+	if !t.Enabled() {
+		return nil, interfaces.ErrTriggerDisabled
+	}
+
+	d, err := i.deploymentRepo.FindByID(ctx, t.Deployment())
+	if err != nil {
+		return nil, err
+	}
+	if d == nil {
+		return nil, rerror.ErrNotFound
+	}
+
+	projectParams := projectParametersToMap(parameter.NewParameterList(d.Parameters()))
+	var triggerVars map[string]variable.Variable
+	if tvs := t.Variables(); len(tvs) > 0 {
+		triggerVars = variable.SliceToMap(tvs)
+	}
+	// An unknown variable means the CMS connection is stale after a redeploy.
+	if err := ensureKnownVariables(d.Parameters(), p.Variables); err != nil {
+		return nil, err
+	}
+	schema := map[string]variable.Variable{}
+	for _, param := range d.Parameters() {
+		if param != nil {
+			schema[param.Name()] = variable.Variable{Key: param.Name(), Type: param.Type()}
+		}
+	}
+	maps.Copy(schema, projectParams)
+	maps.Copy(schema, triggerVars)
+
+	itemVars, err := normalizeRequestVars(p.Variables, schema)
+	if err != nil {
+		return nil, err
+	}
+	finalVarMap, err := resolveVariables(ModeAPIDriven, projectParams, triggerVars, itemVars)
+	if err != nil {
+		return nil, err
+	}
+	if err := ensureRequiredParameters(d.Parameters(), finalVarMap); err != nil {
+		return nil, err
+	}
+
+	// A user running a trigger by hand runs its deployment by hand.
+	admission, err := i.planLimits.ensureCanRunDeployment(ctx, d.Workspace())
+	if err != nil {
+		return nil, err
+	}
+	defer func() { admission.settle(ctx, err) }()
+
+	did, tid, origin := d.ID(), t.ID(), p.Origin
+	j, err := job.New().
+		NewID().
+		Deployment(&did).
+		Trigger(&tid).
+		Origin(&origin).
+		Workspace(d.Workspace()).
+		Status(job.StatusPending).
+		StartedAt(time.Now()).
+		Build()
+	if err != nil {
+		return nil, err
+	}
+
+	metadataURL, err := i.file.UploadMetadata(ctx, j.ID().String(), []string{})
+	if err != nil {
+		return nil, err
+	}
+	if metadataURL != nil {
+		j.SetMetadataURL(metadataURL.String())
+	}
+	j.SetParameters(runParameters(d.Parameters(), finalVarMap, d.Project()))
+
+	t.SetLastTriggered(time.Now())
+	if err := i.saveTriggeredJob(ctx, admission, j, t); err != nil {
+		return nil, err
+	}
+
+	var projectID id.ProjectID
+	if d.Project() != nil {
+		projectID = *d.Project()
+	}
+
+	gcpJobID, err := i.batch.SubmitJob(ctx, j.ID(), d.WorkflowURL(), j.MetadataURL(), variable.ToWorkerMap(finalVarMap), projectID, d.Workspace(), nil, nil, admission.maxRun)
+	admission.markSubmitted(err)
+	if err != nil {
+		log.Debugfc(ctx, "[Trigger] CMS job submission failed: %v\n", err)
+		failJob(ctx, i.jobRepo, j)
+		return nil, interfaces.ErrJobCreationFailed
+	}
+
+	j.SetGCPJobID(gcpJobID)
+	if err := i.jobRepo.Save(ctx, j); err != nil {
+		log.Errorf("Failed to save CMS job %s with GCP ID: %v", j.ID(), err)
+		return nil, err
+	}
+	logJobEvent(ctx, jobEventSubmitted, j, "trigger", jobTriggerCMS, "trigger_id", t.ID().String())
+
+	if err := i.job.StartMonitoring(ctx, j, nil); err != nil {
+		log.Errorf("Failed to start monitoring for CMS job %s: %v", j.ID(), err)
 		return nil, err
 	}
 
@@ -557,10 +683,11 @@ func (i *Trigger) Update(ctx context.Context, param interfaces.UpdateTriggerPara
 			vars = param.Variables
 		}
 		source := t.EventSource()
-		if param.EventSource == "TIME_DRIVEN" || param.EventSource == "API_DRIVEN" {
+		switch param.EventSource {
+		case trigger.EventSourceTypeTimeDriven, trigger.EventSourceTypeAPIDriven, trigger.EventSourceTypeCMS:
 			source = param.EventSource
 		}
-		if source != "API_DRIVEN" {
+		if !fillsVariablesPerRun(source) {
 			if err := ensureTriggerRequiredVariables(d, vars); err != nil {
 				return err
 			}
@@ -586,6 +713,10 @@ func (i *Trigger) Update(ctx context.Context, param interfaces.UpdateTriggerPara
 			if originalEventSource != "API_DRIVEN" {
 				authToken = t.GenerateAuthToken()
 			}
+		case trigger.EventSourceTypeCMS:
+			t.SetEventSource(trigger.EventSourceTypeCMS)
+			t.SetTimeInterval("")
+			t.ClearAuthToken()
 		}
 
 		if param.Enabled != nil {
@@ -754,6 +885,26 @@ func ensureTriggerRequiredVariables(d *deployment.Deployment, vars []variable.Va
 		return err
 	}
 	return ensureRequiredParameters(params, resolved)
+}
+
+// ensureKnownVariables refuses values for variables the deployment does not declare.
+func ensureKnownVariables(params []*parameter.Parameter, vars map[string]any) error {
+	var unknown []string
+	for k := range vars {
+		if !slices.ContainsFunc(params, func(p *parameter.Parameter) bool { return p != nil && p.Name() == k }) {
+			unknown = append(unknown, k)
+		}
+	}
+	if len(unknown) == 0 {
+		return nil
+	}
+	slices.Sort(unknown)
+	return fmt.Errorf("%w: %s", interfaces.ErrUnknownVariable, strings.Join(unknown, ", "))
+}
+
+// fillsVariablesPerRun reports whether runs bring their own values (API and CMS triggers).
+func fillsVariablesPerRun(source trigger.EventSourceType) bool {
+	return source == trigger.EventSourceTypeAPIDriven || source == trigger.EventSourceTypeCMS
 }
 
 func isHourly(t *trigger.Trigger) bool {

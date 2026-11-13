@@ -130,6 +130,16 @@ func (b *JobBuilder) ScheduledRun(run *ScheduledRun) *JobBuilder {
 	return b
 }
 
+func (b *JobBuilder) Trigger(t *id.TriggerID) *JobBuilder {
+	b.j.trigger = t
+	return b
+}
+
+func (b *JobBuilder) Origin(o *Origin) *JobBuilder {
+	b.j.origin = o
+	return b
+}
+
 func (b *JobBuilder) Parameters(parameters []*parameter.Parameter) *JobBuilder {
 	b.j.parameters = parameters
 	return b

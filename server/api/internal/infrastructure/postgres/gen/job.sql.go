@@ -53,7 +53,7 @@ func (q *Queries) DeleteJobsByProject(ctx context.Context, projectID *string) er
 }
 
 const getJob = `-- name: GetJob :one
-SELECT id, workspace_id, deployment_id, project_id, project_version, gcp_job_id, logs_url, worker_logs_url, user_facing_logs_url, status, batch_status, worker_status, started_at, completed_at, metadata_url, output_urls, debug, parameters, mode, trigger_id, scheduled_at FROM jobs WHERE id = $1
+SELECT id, workspace_id, deployment_id, project_id, project_version, gcp_job_id, logs_url, worker_logs_url, user_facing_logs_url, status, batch_status, worker_status, started_at, completed_at, metadata_url, output_urls, debug, parameters, mode, trigger_id, scheduled_at, origin FROM jobs WHERE id = $1
 `
 
 func (q *Queries) GetJob(ctx context.Context, id string) (Job, error) {
@@ -81,12 +81,13 @@ func (q *Queries) GetJob(ctx context.Context, id string) (Job, error) {
 		&i.Mode,
 		&i.TriggerID,
 		&i.ScheduledAt,
+		&i.Origin,
 	)
 	return i, err
 }
 
 const getJobByScheduledRun = `-- name: GetJobByScheduledRun :one
-SELECT id, workspace_id, deployment_id, project_id, project_version, gcp_job_id, logs_url, worker_logs_url, user_facing_logs_url, status, batch_status, worker_status, started_at, completed_at, metadata_url, output_urls, debug, parameters, mode, trigger_id, scheduled_at FROM jobs WHERE trigger_id = $1 AND scheduled_at = $2
+SELECT id, workspace_id, deployment_id, project_id, project_version, gcp_job_id, logs_url, worker_logs_url, user_facing_logs_url, status, batch_status, worker_status, started_at, completed_at, metadata_url, output_urls, debug, parameters, mode, trigger_id, scheduled_at, origin FROM jobs WHERE trigger_id = $1 AND scheduled_at = $2
 `
 
 type GetJobByScheduledRunParams struct {
@@ -120,12 +121,13 @@ func (q *Queries) GetJobByScheduledRun(ctx context.Context, arg GetJobBySchedule
 		&i.Mode,
 		&i.TriggerID,
 		&i.ScheduledAt,
+		&i.Origin,
 	)
 	return i, err
 }
 
 const listJobsByIDs = `-- name: ListJobsByIDs :many
-SELECT id, workspace_id, deployment_id, project_id, project_version, gcp_job_id, logs_url, worker_logs_url, user_facing_logs_url, status, batch_status, worker_status, started_at, completed_at, metadata_url, output_urls, debug, parameters, mode, trigger_id, scheduled_at FROM jobs WHERE id = ANY($1::text[])
+SELECT id, workspace_id, deployment_id, project_id, project_version, gcp_job_id, logs_url, worker_logs_url, user_facing_logs_url, status, batch_status, worker_status, started_at, completed_at, metadata_url, output_urls, debug, parameters, mode, trigger_id, scheduled_at, origin FROM jobs WHERE id = ANY($1::text[])
 `
 
 func (q *Queries) ListJobsByIDs(ctx context.Context, dollar_1 []string) ([]Job, error) {
@@ -159,6 +161,7 @@ func (q *Queries) ListJobsByIDs(ctx context.Context, dollar_1 []string) ([]Job, 
 			&i.Mode,
 			&i.TriggerID,
 			&i.ScheduledAt,
+			&i.Origin,
 		); err != nil {
 			return nil, err
 		}
@@ -171,7 +174,7 @@ func (q *Queries) ListJobsByIDs(ctx context.Context, dollar_1 []string) ([]Job, 
 }
 
 const listRunningJobsByWorkspace = `-- name: ListRunningJobsByWorkspace :many
-SELECT id, workspace_id, deployment_id, project_id, project_version, gcp_job_id, logs_url, worker_logs_url, user_facing_logs_url, status, batch_status, worker_status, started_at, completed_at, metadata_url, output_urls, debug, parameters, mode, trigger_id, scheduled_at FROM jobs
+SELECT id, workspace_id, deployment_id, project_id, project_version, gcp_job_id, logs_url, worker_logs_url, user_facing_logs_url, status, batch_status, worker_status, started_at, completed_at, metadata_url, output_urls, debug, parameters, mode, trigger_id, scheduled_at, origin FROM jobs
 WHERE workspace_id = $1
   AND started_at >= $2
   AND status IN ('PENDING', 'RUNNING')
@@ -217,6 +220,7 @@ func (q *Queries) ListRunningJobsByWorkspace(ctx context.Context, arg ListRunnin
 			&i.Mode,
 			&i.TriggerID,
 			&i.ScheduledAt,
+			&i.Origin,
 		); err != nil {
 			return nil, err
 		}
@@ -234,8 +238,8 @@ INSERT INTO jobs (
   gcp_job_id, logs_url, worker_logs_url, user_facing_logs_url,
   status, batch_status, worker_status,
   started_at, completed_at, metadata_url, output_urls, debug, parameters, mode,
-  trigger_id, scheduled_at
-) VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16,$17,$18,$19,$20,$21)
+  trigger_id, scheduled_at, origin
+) VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16,$17,$18,$19,$20,$21,$22)
 ON CONFLICT (id) DO UPDATE SET
   workspace_id         = EXCLUDED.workspace_id,
   deployment_id        = EXCLUDED.deployment_id,
@@ -256,7 +260,8 @@ ON CONFLICT (id) DO UPDATE SET
   parameters           = EXCLUDED.parameters,
   mode                 = EXCLUDED.mode,
   trigger_id           = EXCLUDED.trigger_id,
-  scheduled_at         = EXCLUDED.scheduled_at
+  scheduled_at         = EXCLUDED.scheduled_at,
+  origin               = EXCLUDED.origin
 `
 
 type UpsertJobParams struct {
@@ -281,6 +286,7 @@ type UpsertJobParams struct {
 	Mode              string
 	TriggerID         *string
 	ScheduledAt       *time.Time
+	Origin            []byte
 }
 
 func (q *Queries) UpsertJob(ctx context.Context, arg UpsertJobParams) error {
@@ -306,6 +312,7 @@ func (q *Queries) UpsertJob(ctx context.Context, arg UpsertJobParams) error {
 		arg.Mode,
 		arg.TriggerID,
 		arg.ScheduledAt,
+		arg.Origin,
 	)
 	return err
 }

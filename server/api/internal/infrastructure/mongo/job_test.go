@@ -8,6 +8,7 @@ import (
 
 	"github.com/google/uuid"
 	"github.com/reearth/reearth-flow/api/internal/testutil/repotest"
+	"github.com/reearth/reearth-flow/api/internal/usecase/repo"
 	"github.com/reearth/reearthx/mongox"
 	"github.com/reearth/reearthx/usecasex"
 	"github.com/stretchr/testify/assert"
@@ -76,4 +77,9 @@ func TestJob_SaveIfRunningBelow_InTransaction(t *testing.T) {
 func TestJob_InitTwice(t *testing.T) {
 	r := connectJobDB(t)
 	assert.NoError(t, r.Init(context.Background()), "the admission collection already exists")
+}
+
+func TestJob_TriggerAndOrigin(t *testing.T) {
+	t.Parallel()
+	repotest.JobTriggerAndOrigin(t, func(t *testing.T) repo.Job { return connectJobDB(t) })
 }

@@ -292,3 +292,11 @@ func TestJob_ScheduledRun(t *testing.T) {
 		return postgres.NewJob(pgxx.NewClient(connect(t)))
 	})
 }
+
+func TestJob_TriggerAndOrigin(t *testing.T) {
+	t.Parallel()
+	connect := pgtest.Connect(t)
+	repotest.JobTriggerAndOrigin(t, func(t *testing.T) repo.Job {
+		return postgres.NewJob(pgxx.NewClient(connect(t)))
+	})
+}

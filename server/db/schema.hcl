@@ -502,6 +502,11 @@ table "jobs" {
     type = timestamptz
     null = true
   }
+  // Where outside Flow the job was started from.
+  column "origin" {
+    type = jsonb
+    null = true
+  }
 
   primary_key {
     columns = [column.id]

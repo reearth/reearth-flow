@@ -103,7 +103,7 @@ func TestToTrigger(t *testing.T) {
 		Description("daily").EventSource(trigger.EventSourceTypeTimeDriven).TimeInterval(trigger.TimeIntervalEveryDay).
 		Enabled(true).LastTriggered(last).MustBuild()
 
-	got := toTrigger(timed)
+	got := toTrigger(timed, triggerDeployment{})
 	assert.Equal(t, timed.ID().String(), got.GetId())
 	assert.Equal(t, timed.Deployment().String(), got.GetDeploymentId())
 	assert.Equal(t, flowv1.TriggerEventSource_TRIGGER_EVENT_SOURCE_TIME_DRIVEN, got.GetEventSource())
@@ -115,7 +115,7 @@ func TestToTrigger(t *testing.T) {
 	api := trigger.New().NewID().Workspace(accountsid.NewWorkspaceID()).Deployment(id.NewDeploymentID()).
 		Description("hook").EventSource(trigger.EventSourceTypeAPIDriven).MustBuild()
 	token := api.GenerateAuthToken()
-	got = toTrigger(api)
+	got = toTrigger(api, triggerDeployment{})
 	assert.Equal(t, flowv1.TriggerEventSource_TRIGGER_EVENT_SOURCE_API_DRIVEN, got.GetEventSource())
 	assert.Equal(t, flowv1.TriggerTimeInterval_TRIGGER_TIME_INTERVAL_UNSPECIFIED, got.GetTimeInterval())
 	assert.Nil(t, got.GetLastTriggeredAt(), "never triggered")
@@ -134,8 +134,7 @@ func TestToTrigger(t *testing.T) {
 	}
 	assert.Equal(t, flowv1.TriggerEventSource_TRIGGER_EVENT_SOURCE_UNSPECIFIED, toEventSource("WEBHOOK"))
 
-	assert.Nil(t, toTrigger(nil))
-	assert.Len(t, toTriggers([]*trigger.Trigger{timed, nil}), 1)
+	assert.Nil(t, toTrigger(nil, triggerDeployment{}))
 }
 
 func TestToJob(t *testing.T) {

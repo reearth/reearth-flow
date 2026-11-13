@@ -373,9 +373,20 @@ func jobToParams(j *job.Job) (gen.UpsertJobParams, error) {
 		}
 		p.Parameters = b
 	}
+	if t := j.Trigger(); t != nil {
+		tid := t.String()
+		p.TriggerID = &tid
+	}
 	if run := j.ScheduledRun(); run != nil {
 		tid, at := run.Trigger.String(), run.At
 		p.TriggerID, p.ScheduledAt = &tid, &at
+	}
+	if o := newJobOriginJSON(j.Origin()); o != nil {
+		b, err := json.Marshal(o)
+		if err != nil {
+			return gen.UpsertJobParams{}, err
+		}
+		p.Origin = b
 	}
 	return p, nil
 }
@@ -446,12 +457,69 @@ func jobFromRow(row gen.Job) (*job.Job, error) {
 	if row.Mode != "" {
 		b = b.Mode(job.Mode(row.Mode))
 	}
-	if row.TriggerID != nil && row.ScheduledAt != nil {
+	if row.TriggerID != nil {
 		tid, err := id.TriggerIDFrom(*row.TriggerID)
 		if err != nil {
 			return nil, err
 		}
-		b = b.ScheduledRun(&job.ScheduledRun{Trigger: tid, At: *row.ScheduledAt})
+		b = b.Trigger(&tid)
+		if row.ScheduledAt != nil {
+			b = b.ScheduledRun(&job.ScheduledRun{Trigger: tid, At: *row.ScheduledAt})
+		}
+	}
+	if len(row.Origin) > 0 {
+		var o jobOriginJSON
+		if err := json.Unmarshal(row.Origin, &o); err != nil {
+			return nil, err
+		}
+		b = b.Origin(o.model())
 	}
 	return b.Build()
+}
+
+// jobOriginJSON is a job's origin as stored in the jobs.origin column.
+type jobOriginJSON struct {
+	CMSItem *jobCMSItemOriginJSON `json:"cmsItem,omitempty"`
+}
+
+type jobCMSItemOriginJSON struct {
+	ProjectID    string `json:"projectId"`
+	ModelID      string `json:"modelId"`
+	ItemID       string `json:"itemId"`
+	ConnectionID string `json:"connectionId"`
+	ProjectName  string `json:"projectName"`
+	ModelName    string `json:"modelName"`
+	ItemTitle    string `json:"itemTitle"`
+}
+
+func newJobOriginJSON(o *job.Origin) *jobOriginJSON {
+	if o == nil || o.CMSItem == nil {
+		return nil
+	}
+	c := o.CMSItem
+	return &jobOriginJSON{CMSItem: &jobCMSItemOriginJSON{
+		ProjectID:    c.ProjectID,
+		ModelID:      c.ModelID,
+		ItemID:       c.ItemID,
+		ConnectionID: c.ConnectionID,
+		ProjectName:  c.ProjectName,
+		ModelName:    c.ModelName,
+		ItemTitle:    c.ItemTitle,
+	}}
+}
+
+func (o jobOriginJSON) model() *job.Origin {
+	if o.CMSItem == nil {
+		return nil
+	}
+	c := o.CMSItem
+	return &job.Origin{CMSItem: &job.CMSItemOrigin{
+		ProjectID:    c.ProjectID,
+		ModelID:      c.ModelID,
+		ItemID:       c.ItemID,
+		ConnectionID: c.ConnectionID,
+		ProjectName:  c.ProjectName,
+		ModelName:    c.ModelName,
+		ItemTitle:    c.ItemTitle,
+	}}
 }
