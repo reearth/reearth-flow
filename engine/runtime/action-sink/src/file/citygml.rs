@@ -37,7 +37,7 @@ use bytes::Bytes;
 use reearth_flow_citygml::schema::QName;
 use reearth_flow_citygml::schema::{AdeSource, SchemaSet};
 use reearth_flow_common::uri::Uri;
-use reearth_flow_diagnostics::{DiagnosticDraft, ErrorCode};
+use reearth_flow_diagnostics::{Diagnostic, DiagnosticDraft, ErrorCode};
 use reearth_flow_runtime::diagnostics::NodeDiagnosticsHandle;
 use reearth_flow_runtime::errors::BoxedError;
 use reearth_flow_runtime::event::EventHub;
@@ -149,8 +149,9 @@ pub fn write_citygml(
 ) -> Result<(), SinkError> {
     write_citygml_documents(
         std::slice::from_ref(destination),
+        &vec![Some(0); features.len()],
         &mut |_| Ok(()),
-        &vec![0; features.len()],
+        &mut |_| Ok(()),
         features,
         lod_mask,
         keys,
@@ -175,14 +176,20 @@ pub fn write_citygml(
 /// folders, folded over its own trees only. A document no tree reaches is not
 /// written.
 ///
+/// A feature given no document, `None` in `document_of`, follows the
+/// object it is nested into like any other; when it is top-level, `unplaced`
+/// is called with it once before any document is written, and its tree is
+/// left out unless that fails the write.
+///
 /// Documents are written in index order, and `done` is called with each
 /// index once its document is written or found to be empty, so an archive
 /// can be finished as soon as its last document is.
 #[allow(clippy::too_many_arguments)]
 pub fn write_citygml_documents(
     destinations: &[Destination],
+    document_of: &[Option<usize>],
+    unplaced: &mut dyn FnMut(usize) -> Result<(), SinkError>,
     done: &mut dyn FnMut(usize) -> Result<(), SinkError>,
-    document_of: &[usize],
     features: &[Feature],
     lod_mask: &LodMask,
     keys: &ResolvedKeys,
@@ -357,8 +364,17 @@ pub fn write_citygml_documents(
         }
     }
     let mut documents: Vec<Vec<TopLevel>> = destinations.iter().map(|_| Vec::new()).collect();
+    let mut reported = vec![false; features.len()];
     for tree in trees {
-        documents[document_of[root_of[tree.object.source]]].push(tree);
+        let root = root_of[tree.object.source];
+        match document_of[root] {
+            Some(document) => documents[document].push(tree),
+            None if !reported[root] => {
+                reported[root] = true;
+                unplaced(root)?;
+            }
+            None => {}
+        }
     }
 
     // Indexed by feature, which is each object's source.
@@ -375,8 +391,10 @@ pub fn write_citygml_documents(
     // The first feature given each document, which the legacy `srsName`
     // falls back to, as it fell back to the first feature of the only one.
     let mut first_given: Vec<Option<usize>> = vec![None; destinations.len()];
-    for (feature, &document) in document_of.iter().enumerate() {
-        first_given[document].get_or_insert(feature);
+    for (feature, document) in document_of.iter().enumerate() {
+        if let Some(document) = document {
+            first_given[*document].get_or_insert(feature);
+        }
     }
 
     for (document, (destination, trees)) in destinations.iter().zip(documents).enumerate() {
@@ -921,7 +939,7 @@ impl SinkFactory for CityGmlWriterFactory {
     }
 
     fn description(&self) -> &str {
-        "Writes features to one or more CityGML 2.0 files, or to a zip archive of them, with attributes named as CityGML properties such as bldg:measuredHeight in schema order, nested city objects such as boundary surfaces under their parents, and dem:TINRelief terrain as a gml:TriangulatedSurface when every face is a triangle. Attributes without a prefix are not written, and properties of an ADE such as uro: only when ADE Schemas lists it."
+        "Writes features to one or more CityGML 2.0 files, or to a zip archive of them, with attributes named as CityGML properties such as bldg:measuredHeight in schema order, nested city objects such as boundary surfaces under their parents, and dem:TINRelief terrain as a gml:TriangulatedSurface when every face is a triangle. Attributes without a prefix are not written, properties of an ADE such as uro: only when ADE Schemas lists it, and a codelist that cannot be copied beside the file keeps its original URL."
     }
 
     fn parameter_schema(&self) -> Option<schemars::schema::RootSchema> {
@@ -980,22 +998,22 @@ impl SinkFactory for CityGmlWriterFactory {
         let ade_schemas = params.ade_schemas.clone().unwrap_or_default();
         let ade = bind_ade_schemas(&ade_schemas, &ctx).map_err(SinkError::CityGmlWriterFactory)?;
         let output = params.output.compile().map_err(|e| {
-            SinkError::CityGmlWriterFactory(format!("Failed to compile `output`: {e}"))
+            SinkError::CityGmlWriterFactory(format!("Failed to compile Output File: {e}"))
         })?;
-        let archive_path = params
-            .archive_path
+        let path_in_archive = params
+            .path_in_archive
             .as_ref()
             .map(|code| code.compile())
             .transpose()
             .map_err(|e| {
-                SinkError::CityGmlWriterFactory(format!("Failed to compile `archivePath`: {e}"))
+                SinkError::CityGmlWriterFactory(format!("Failed to compile Path in Archive: {e}"))
             })?;
-        check_fixed_paths(&output, archive_path.as_ref(), &ctx)
+        check_fixed_paths(&output, path_in_archive.as_ref(), &ctx)
             .map_err(SinkError::CityGmlWriterFactory)?;
         Ok(Box::new(CityGmlWriterSink {
             params: CityGmlWriterCompiledParam {
                 output,
-                archive_path,
+                path_in_archive,
                 epsg_code: params.epsg_code,
                 pretty_print: params.pretty_print,
                 ade,
@@ -1006,50 +1024,77 @@ impl SinkFactory for CityGmlWriterFactory {
             document_of: Vec::new(),
             documents: Vec::new(),
             document_index: HashMap::new(),
-            failed: false,
+            path_errors: HashMap::new(),
         }))
     }
 }
 
-/// Where the document goes inside the archive when `output` names one, from
-/// the evaluated `archivePath`, or `None` for a loose file.
+/// The file one feature is written to, from its evaluated Output File and
+/// Path in Archive: Output File resolved in the job's output folder, so
+/// `x.zip` and `./x.zip` name one file, and the entry in the archive when
+/// that file is a zip archive.
 ///
-/// A blank `archivePath` counts as left out: the editor sends an empty value
+/// A blank Path in Archive counts as left out: the editor sends an empty value
 /// for a field that was typed in and cleared, which must not stop a plain
 /// `.gml` write nor refuse the default.
 ///
 /// Checked when the writer is built when both paths are fixed, and for each
 /// feature's own paths otherwise, before any document is written.
-fn archive_entry(output: &str, archive_path: Option<&str>) -> Result<Option<String>, String> {
-    let archive_path = archive_path.filter(|path| !path.trim().is_empty());
-    if !destination::is_archive_path(output) {
-        return match archive_path {
-            None => Ok(None),
+fn document_key(
+    sandbox_root: &Uri,
+    output: &str,
+    path_in_archive: Option<&str>,
+) -> Result<DocumentKey, String> {
+    let resolved = crate::output::validate_and_join(sandbox_root, output)
+        .map_err(|e| format!("Output File `{output}` cannot be written: {e}"))?;
+    let output = sandbox_relative(sandbox_root, &resolved).unwrap_or_else(|| output.to_owned());
+    // `out.zip/udx/a.gml` would write a folder named `out.zip`, which is
+    // almost always a path meant for inside the archive.
+    if let Some((folder, _)) = output
+        .rsplit_once('/')
+        .filter(|(folder, _)| folder.split('/').any(destination::is_archive_path))
+    {
+        return Err(format!(
+            "Output File `{output}` is inside a folder named like a zip archive, `{folder}`; \
+             to write inside a zip archive, end Output File in `.zip` and give the path inside it as Path in Archive"
+        ));
+    }
+    let path_in_archive = path_in_archive.filter(|path| !path.trim().is_empty());
+    if !destination::is_archive_path(&output) {
+        return match path_in_archive {
+            None => Ok(DocumentKey {
+                output,
+                entry: None,
+            }),
             Some(_) => Err(format!(
-                "`archivePath` is set, but `output` `{output}` does not end in `.zip`; \
-                 end the Output File in `.zip` to write an archive, or leave Path in Archive out"
+                "Path in Archive is set, but Output File `{output}` does not end in `.zip`; \
+                 end Output File in `.zip` to write a zip archive, or leave Path in Archive empty"
             )),
         };
     }
-    match archive_path {
+    let entry = match path_in_archive {
         None => {
-            let path = destination::default_entry_path(output);
+            let path = destination::default_entry_path(&output);
             destination::validate_entry_path(&path).map_err(|e| {
                 format!(
-                    "`archivePath` is left out, and the default taken from `output` `{output}` {e}; \
+                    "Path in Archive is empty, and the default taken from Output File `{output}` {e}; \
                      set Path in Archive"
                 )
             })?;
-            Ok(Some(path))
+            path
         }
         Some(path) => {
-            destination::validate_entry_path(path).map_err(|e| format!("`archivePath` {e}"))?;
-            Ok(Some(path.to_string()))
+            destination::validate_entry_path(path).map_err(|e| format!("Path in Archive {e}"))?;
+            path.to_string()
         }
-    }
+    };
+    Ok(DocumentKey {
+        output,
+        entry: Some(entry),
+    })
 }
 
-/// Check `output` and `archivePath` when the writer is built, if neither
+/// Check Output File and Path in Archive when the writer is built, if neither
 /// reads the feature, so a path that could not be written fails the run
 /// before any feature is read.
 ///
@@ -1057,21 +1102,21 @@ fn archive_entry(output: &str, archive_path: Option<&str>) -> Result<Option<Stri
 /// so it is left to [`CityGmlWriterSink::document`] for each feature.
 fn check_fixed_paths(
     output: &CompiledCode,
-    archive_path: Option<&CompiledCode>,
+    path_in_archive: Option<&CompiledCode>,
     ctx: &NodeContext,
 ) -> Result<(), String> {
     let fixed = |code: &CompiledCode| code.eval_string_variables_only(ctx.variables.clone()).ok();
     let Some(output) = fixed(output) else {
         return Ok(());
     };
-    let archive_path = match archive_path {
+    let path_in_archive = match path_in_archive {
         None => None,
         Some(code) => match fixed(code) {
             Some(path) => Some(path),
             None => return Ok(()),
         },
     };
-    archive_entry(&output, archive_path.as_deref()).map(|_| ())
+    document_key(&ctx.sandbox_root, &output, path_in_archive.as_deref()).map(|_| ())
 }
 
 /// The files several documents would be written as, checked before any is:
@@ -1079,23 +1124,8 @@ fn check_fixed_paths(
 /// their staged folders, a document inside another's staged folder would
 /// be mixed into its textures or codelists, and a document whose path runs
 /// through another's file or names its staged folder could not be written
-/// once the other is. One file cannot be both a document and an archive.
+/// once the other is.
 fn check_documents(documents: &[DocumentKey]) -> Result<(), String> {
-    // A path such as `x.zip/.` is a loose file that resolves to `x.zip`.
-    let archived: HashSet<&str> = documents
-        .iter()
-        .filter(|document| document.entry.is_some())
-        .map(|document| document.output.as_str())
-        .collect();
-    if let Some(loose) = documents
-        .iter()
-        .find(|document| document.entry.is_none() && archived.contains(document.output.as_str()))
-    {
-        return Err(format!(
-            "`{}` is given both as a CityGML file and as a zip archive; give one of them another path",
-            loose.output
-        ));
-    }
     // Loose files share the sandbox; each archive is a namespace of its own.
     let mut namespaces: BTreeMap<Option<&str>, Vec<&str>> = BTreeMap::new();
     for document in documents {
@@ -1449,12 +1479,12 @@ fn build_lod_mask(lod_filter: &Option<Vec<u8>>) -> Result<LodMask, String> {
 #[serde(rename_all = "camelCase")]
 pub struct CityGmlWriterParam {
     /// # Output File
-    /// Path of the CityGML file to create, as text or an expression over workflow variables and feature attributes; features with different paths are written to different files, each nested object with the top-level object it belongs to. A path ending in `.zip` is written as one zip archive holding the CityGML files and the textures and codelists copied beside them; a codelist that cannot be copied keeps its original URL.
+    /// Path of the CityGML file to create, as text or an expression over workflow variables and feature attributes, such as `"bldg/" + attributes["_meshcode"] + "_bldg_6697_op.gml"` for one file per mesh, where each nested object goes with the top-level object it belongs to. A path ending in `.zip` is one zip archive holding the CityGML files with their textures and codelists, written whole by this writer, so every feature for that archive must reach this writer.
     pub output: Code,
     /// # Path in Archive
-    /// Where the CityGML file goes inside the zip archive when Output File ends in `.zip`, as a path from the top of the archive with `/` between folders, given as text or an expression over workflow variables and feature attributes, such as `"udx/bldg/" + attributes["_meshcode"] + "_bldg_6697_op.gml"` for one file per mesh. Defaults to the archive's own name with `.gml`, at the top of the archive.
+    /// Only used when Output File ends in `.zip`: where the CityGML file goes inside the archive, as a path from its top with `/` between folders, given as text or an expression over workflow variables and feature attributes, such as `"udx/bldg/" + attributes["_meshcode"] + "_bldg_6697_op.gml"` for one file per mesh. Defaults to the archive's own name with `.gml`, at the top of the archive.
     #[serde(default)]
-    pub archive_path: Option<Code>,
+    pub path_in_archive: Option<Code>,
     /// # Pretty Print
     /// Whether to indent the output for readability. Defaults to true.
     #[serde(default = "default_pretty_print")]
@@ -1616,7 +1646,7 @@ fn load_ade_schemas(
 #[derive(Debug, Clone)]
 struct CityGmlWriterCompiledParam {
     output: CompiledCode,
-    archive_path: Option<CompiledCode>,
+    path_in_archive: Option<CompiledCode>,
     epsg_code: Option<u32>,
     pretty_print: Option<bool>,
     ade: Vec<AdeBinding>,
@@ -1636,56 +1666,41 @@ struct CityGmlWriterSink {
     lod_mask: LodMask,
     keys: ResolvedKeys,
     buffer: Vec<Feature>,
-    /// Per buffered feature, its index in `documents`.
-    document_of: Vec<usize>,
+    /// Per buffered feature, its index in `documents`, or `None` when its
+    /// paths failed, held in `path_errors`.
+    document_of: Vec<Option<usize>>,
     /// Each document the features were given, in arrival order.
     documents: Vec<DocumentKey>,
     document_index: HashMap<DocumentKey, usize>,
-    /// A feature's paths failed fatally. The runtime still calls `finish`
-    /// after `process` fails, which then writes nothing, so a failed run
-    /// leaves no partial file or archive behind.
-    failed: bool,
+    /// Why a buffered feature's paths failed, by its index. Reported only if
+    /// the feature turns out to be top-level: a nested object goes with the
+    /// object it belongs to, so its own paths are never used.
+    path_errors: HashMap<usize, (ErrorCode, String)>,
 }
 
 impl CityGmlWriterSink {
-    /// The document `ctx`'s feature is given by its evaluated paths, or
-    /// `None` when one could not be evaluated or names no file that can be
-    /// written and the reported diagnostic resolved below fatal, which leaves
-    /// the feature out.
-    fn document(&self, ctx: &ExecutorContext) -> Result<Option<DocumentKey>, BoxedError> {
-        let evaluate = |code: &CompiledCode, field: &str| {
+    /// The document `ctx`'s feature is given by its evaluated paths, or the
+    /// code and message to report should the feature turn out to be
+    /// top-level.
+    fn document(&self, ctx: &ExecutorContext) -> Result<DocumentKey, (ErrorCode, String)> {
+        let evaluate = |code: &CompiledCode, title: &str| {
             code.eval_string(&ctx.feature, ctx.variables.clone())
-                .map_err(|e| format!("failed to evaluate `{field}`: {e}"))
+                .map_err(|e| {
+                    (
+                        ErrorCode::ExprEvaluationFailed,
+                        format!("failed to evaluate {title}: {e}"),
+                    )
+                })
         };
-        let paths = evaluate(&self.params.output, "output").and_then(|output| {
-            let archive_path = self
-                .params
-                .archive_path
-                .as_ref()
-                .map(|code| evaluate(code, "archivePath"))
-                .transpose()?;
-            Ok((output, archive_path))
-        });
-        let (output, archive_path) = match paths {
-            Ok(paths) => paths,
-            Err(message) => {
-                ctx.report(
-                    DiagnosticDraft::new(ErrorCode::ExprEvaluationFailed).with_message(message),
-                )
-                .map_err(|diagnostic| -> BoxedError { Box::new(diagnostic) })?;
-                return Ok(None);
-            }
-        };
-        match archive_entry(&output, archive_path.as_deref()) {
-            Ok(entry) => Ok(Some(DocumentKey { output, entry })),
-            Err(message) => {
-                ctx.report(
-                    DiagnosticDraft::new(ErrorCode::CitygmlInvalidOutputPath).with_message(message),
-                )
-                .map_err(|diagnostic| -> BoxedError { Box::new(diagnostic) })?;
-                Ok(None)
-            }
-        }
+        let output = evaluate(&self.params.output, "Output File")?;
+        let path_in_archive = self
+            .params
+            .path_in_archive
+            .as_ref()
+            .map(|code| evaluate(code, "Path in Archive"))
+            .transpose()?;
+        document_key(&ctx.sandbox_root, &output, path_in_archive.as_deref())
+            .map_err(|message| (ErrorCode::CitygmlInvalidOutputPath, message))
     }
 }
 
@@ -1698,75 +1713,60 @@ impl Sink for CityGmlWriterSink {
     /// envelope and CRS are folded during conversion in `finish`.
     fn process(&mut self, ctx: ExecutorContext) -> Result<(), BoxedError> {
         let document = match self.document(&ctx) {
-            Ok(Some(document)) => document,
-            Ok(None) => return Ok(()),
-            Err(e) => {
-                self.failed = true;
-                return Err(e);
+            Ok(document) => Some(match self.document_index.get(&document) {
+                Some(&index) => index,
+                None => {
+                    let index = self.documents.len();
+                    self.document_index.insert(document.clone(), index);
+                    self.documents.push(document);
+                    index
+                }
+            }),
+            Err(error) => {
+                self.path_errors.insert(self.buffer.len(), error);
+                None
             }
         };
-        let index = match self.document_index.get(&document) {
-            Some(&index) => index,
-            None => {
-                let index = self.documents.len();
-                self.document_index.insert(document.clone(), index);
-                self.documents.push(document);
-                index
-            }
-        };
-        self.document_of.push(index);
+        self.document_of.push(document);
         self.buffer.push(ctx.feature);
         Ok(())
     }
 
     fn finish(&self, ctx: NodeContext) -> Result<(), BoxedError> {
-        // A failed feature already failed the run; nothing is written.
-        if self.failed || self.buffer.is_empty() {
+        if self.buffer.is_empty() {
             return Ok(());
         }
-
-        // Every output is checked against the sandbox before anything is
-        // written, and named by the path it resolves to there, so `x.zip` and
-        // `./x.zip` are one file rather than two that overwrite each other.
-        let mut outputs: BTreeMap<String, crate::SinkOutput> = BTreeMap::new();
-        let mut resolved: HashMap<&str, String> = HashMap::new();
-        for document in &self.documents {
-            if resolved.contains_key(document.output.as_str()) {
-                continue;
-            }
-            let out =
-                crate::SinkOutput::new(&ctx.sandbox_root, &document.output, &ctx.storage_resolver)
-                    .map_err(|e| SinkError::CityGmlWriter(e.to_string()))?;
-            let path = sandbox_relative(&ctx.sandbox_root, out.uri())
-                .unwrap_or_else(|| document.output.clone());
-            resolved.insert(&document.output, path.clone());
-            outputs.entry(path).or_insert(out);
-        }
-        let keys: Vec<DocumentKey> = self
-            .documents
-            .iter()
-            .map(|document| DocumentKey {
-                output: resolved[document.output.as_str()].clone(),
-                entry: document.entry.clone(),
-            })
-            .collect();
+        check_documents(&self.documents).map_err(SinkError::CityGmlWriter)?;
 
         // Documents in path order, so an archive's entries and the order files
         // are written in do not depend on the order features arrived in.
-        let mut documents: Vec<&DocumentKey> = keys.iter().collect();
-        documents.sort_unstable();
-        documents.dedup();
-        let document_of: Vec<usize> = self
+        let mut order: Vec<usize> = (0..self.documents.len()).collect();
+        order.sort_by(|&a, &b| self.documents[a].cmp(&self.documents[b]));
+        let mut rank = vec![0; order.len()];
+        for (position, &document) in order.iter().enumerate() {
+            rank[document] = position;
+        }
+        let documents: Vec<&DocumentKey> = order.iter().map(|&i| &self.documents[i]).collect();
+        let document_of: Vec<Option<usize>> = self
             .document_of
             .iter()
-            .map(|&i| {
-                documents
-                    .binary_search(&&keys[i])
-                    .expect("every key is among the documents")
-            })
+            .map(|document| document.map(|i| rank[i]))
             .collect();
-        let unique: Vec<DocumentKey> = documents.iter().map(|&key| key.clone()).collect();
-        check_documents(&unique).map_err(SinkError::CityGmlWriter)?;
+
+        // Every output is opened before anything is written; each was resolved
+        // in the output folder when its first feature was buffered.
+        let mut outputs: BTreeMap<&str, crate::SinkOutput> = BTreeMap::new();
+        for document in &documents {
+            if !outputs.contains_key(document.output.as_str()) {
+                let out = crate::SinkOutput::new(
+                    &ctx.sandbox_root,
+                    &document.output,
+                    &ctx.storage_resolver,
+                )
+                .map_err(|e| SinkError::CityGmlWriter(e.to_string()))?;
+                outputs.insert(&document.output, out);
+            }
+        }
 
         // Each archive's last document, after which it is finished and
         // written. Documents are in path order, so an archive's documents are
@@ -1806,7 +1806,7 @@ impl Sink for CityGmlWriterSink {
             .iter()
             .map(|document| match &document.entry {
                 None => Destination::Storage {
-                    output: outputs[&document.output].uri(),
+                    output: outputs[document.output.as_str()].uri(),
                     sandbox_root: &ctx.sandbox_root,
                 },
                 Some(path) => Destination::Archive {
@@ -1831,10 +1831,34 @@ impl Sink for CityGmlWriterSink {
             Ok(())
         };
 
-        write_citygml_documents(
+        // A top-level feature whose paths failed: reported now, as only the
+        // join tells a top-level feature from a nested one. A fatal report
+        // stops the write before any document is written.
+        let mut fatal: Option<Diagnostic> = None;
+        let mut unplaced = |feature: usize| -> Result<(), SinkError> {
+            let Some((code, message)) = self.path_errors.get(&feature) else {
+                return Ok(());
+            };
+            let feature_ctx = ExecutorContext::new_with_node_context_feature_and_port(
+                &ctx,
+                self.buffer[feature].clone(),
+                FEATURES_PORT.clone(),
+            );
+            match feature_ctx.report(DiagnosticDraft::new(*code).with_message(message.clone())) {
+                Ok(_) => Ok(()),
+                Err(diagnostic) => {
+                    let error = SinkError::CityGmlWriter(diagnostic.to_string());
+                    fatal = Some(diagnostic);
+                    Err(error)
+                }
+            }
+        };
+
+        let written = write_citygml_documents(
             &destinations,
-            &mut done,
             &document_of,
+            &mut unplaced,
+            &mut done,
             &self.buffer,
             &self.lod_mask,
             &self.keys,
@@ -1845,7 +1869,12 @@ impl Sink for CityGmlWriterSink {
             schema,
             &prefixes,
             &ade_locations,
-        )?;
+        );
+        // The diagnostic itself, so its code is not lost in a message.
+        if let Some(diagnostic) = fatal {
+            return Err(Box::new(diagnostic));
+        }
+        written?;
 
         Ok(())
     }
@@ -4547,6 +4576,46 @@ mod hierarchy_tests {
     }
 
     #[test]
+    fn a_nested_feature_whose_paths_fail_follows_its_building() {
+        let mut features = read(
+            &[("hierarchy.gml", &building())],
+            &["Building", "WallSurface", "Window"],
+            true,
+            None,
+        );
+        // Only the building has the attribute the path reads.
+        for feature in &mut features {
+            if gml_id_of(feature).as_deref() == Some("b1") {
+                feature.insert(
+                    "_meshcode",
+                    reearth_flow_types::AttributeValue::String("a".to_string()),
+                );
+            }
+        }
+        let tmp = tempdir().unwrap();
+        let handle = diagnostics();
+        let ctx = context(tmp.path(), Some(handle.clone()));
+        let with: HashMap<String, Value> = HashMap::from([
+            (
+                "output".to_string(),
+                json!({"type": "flowExpr", "value": r#"attributes["_meshcode"] + ".gml""#}),
+            ),
+            ("prettyPrint".to_string(), json!(false)),
+        ]);
+
+        run_with(&ctx, with, features).unwrap();
+
+        let xml = std::fs::read_to_string(tmp.path().join("a.gml")).unwrap();
+        assert_nested(&xml);
+        assert!(
+            inside(&xml, "<bldg:WallSurface ", "</bldg:WallSurface>")
+                .contains(r#"<bldg:opening><bldg:Window gml:id="win1">"#),
+            "{xml}"
+        );
+        assert!(handle.inner.drain_summaries().is_empty());
+    }
+
+    #[test]
     fn a_geometry_less_parent_of_joined_children_is_written_and_not_reported_empty() {
         let features = read(
             &[("hierarchy.gml", &building())],
@@ -5494,7 +5563,7 @@ mod archive_tests {
     fn with_codes(output: Value, archive_path: Option<Value>) -> HashMap<String, Value> {
         let mut with: HashMap<String, Value> = [("output".to_string(), output)].into();
         if let Some(archive_path) = archive_path {
-            with.insert("archivePath".to_string(), archive_path);
+            with.insert("pathInArchive".to_string(), archive_path);
         }
         with
     }
@@ -5893,7 +5962,7 @@ mod archive_tests {
         )
         .unwrap_err();
 
-        assert!(error.contains("`archivePath`"), "{error}");
+        assert!(error.contains("Path in Archive"), "{error}");
         assert_eq!(job.sandbox_files(), Vec::<String>::new());
     }
 
@@ -5911,7 +5980,7 @@ mod archive_tests {
         )
         .unwrap_err();
 
-        assert!(error.contains("`archivePath`"), "{error}");
+        assert!(error.contains("Path in Archive"), "{error}");
         assert_eq!(job.sandbox_files(), Vec::<String>::new());
     }
 
@@ -5931,7 +6000,7 @@ mod archive_tests {
         ctx: &NodeContext,
         with: HashMap<String, Value>,
         features: Vec<Feature>,
-    ) -> (Vec<BoxedError>, Result<(), String>) {
+    ) -> (Vec<BoxedError>, Result<(), BoxedError>) {
         let mut sink = CityGmlWriterFactory
             .build(
                 ctx.clone(),
@@ -5951,7 +6020,7 @@ mod archive_tests {
                 .err()
             })
             .collect();
-        (errors, sink.finish(ctx.clone()).map_err(|e| e.to_string()))
+        (errors, sink.finish(ctx.clone()))
     }
 
     fn code_of(error: &BoxedError) -> Option<ErrorCode> {
@@ -5961,7 +6030,7 @@ mod archive_tests {
     }
 
     #[test]
-    fn a_feature_whose_path_cannot_be_evaluated_leaves_no_partial_output() {
+    fn a_top_level_feature_whose_path_cannot_be_evaluated_fails_before_any_write() {
         let job = Job::new();
 
         let (errors, finished) = run_through(
@@ -5973,16 +6042,16 @@ mod archive_tests {
             ],
         );
 
+        assert!(errors.is_empty());
         assert_eq!(
-            errors.iter().map(code_of).collect::<Vec<_>>(),
-            [Some(ErrorCode::ExprEvaluationFailed)]
+            code_of(&finished.unwrap_err()),
+            Some(ErrorCode::ExprEvaluationFailed)
         );
-        assert_eq!(finished, Ok(()));
         assert_eq!(job.sandbox_files(), Vec::<String>::new());
     }
 
     #[test]
-    fn a_feature_whose_path_cannot_be_written_reports_it_and_leaves_no_output() {
+    fn a_top_level_feature_whose_path_cannot_be_written_fails_before_any_write() {
         let job = Job::new();
 
         let (errors, finished) = run_through(
@@ -5997,15 +6066,86 @@ mod archive_tests {
             ],
         );
 
+        assert!(errors.is_empty());
         assert_eq!(
-            errors.iter().map(code_of).collect::<Vec<_>>(),
-            [
-                Some(ErrorCode::CitygmlInvalidOutputPath),
-                Some(ErrorCode::CitygmlInvalidOutputPath)
-            ]
+            code_of(&finished.unwrap_err()),
+            Some(ErrorCode::CitygmlInvalidOutputPath)
         );
-        assert_eq!(finished, Ok(()));
         assert_eq!(job.sandbox_files(), Vec::<String>::new());
+    }
+
+    #[test]
+    fn an_output_file_that_leaves_the_output_folder_is_reported_for_its_feature() {
+        let job = Job::new();
+
+        let (errors, finished) = run_through(
+            &job.ctx,
+            with_codes(
+                expression(r#""../" + attributes["_meshcode"] + ".gml""#),
+                None,
+            ),
+            vec![in_mesh(classified_building("3001"), "a")],
+        );
+
+        assert!(errors.is_empty());
+        let error = finished.unwrap_err();
+        assert_eq!(code_of(&error), Some(ErrorCode::CitygmlInvalidOutputPath));
+        assert!(error.to_string().contains("Output File"), "{error}");
+        assert_eq!(job.sandbox_files(), Vec::<String>::new());
+    }
+
+    #[test]
+    fn a_path_error_demoted_below_fatal_leaves_its_feature_out() {
+        use reearth_flow_diagnostics::{
+            Disposition, DispositionPolicy, OverrideInput, PolicyInput,
+        };
+        use reearth_flow_runtime::diagnostics::NodeDiagnosticsHandle;
+        use reearth_flow_runtime::node::NodeHandle;
+
+        let job = Job::new();
+        let policy = DispositionPolicy::compile(PolicyInput {
+            overrides: vec![OverrideInput {
+                node: Some("n1".to_string()),
+                code: Some("expr.evaluation_failed".to_string()),
+                category: None,
+                disposition: Disposition::WarnDrop,
+            }],
+            ..Default::default()
+        })
+        .unwrap();
+        let handle = std::sync::Arc::new(NodeDiagnosticsHandle::new(
+            "n1".to_string(),
+            NodeHandle::for_test("n1"),
+            "writer".into(),
+            "CityGML Writer".into(),
+            std::sync::Arc::default(),
+            std::sync::Arc::new(policy),
+            true,
+        ));
+        let ctx = context(&job.sandbox(), Some(handle.clone()));
+
+        let (errors, finished) = run_through(
+            &ctx,
+            with_codes(literal("x.zip"), Some(expression(MESH_ENTRY))),
+            vec![
+                in_mesh(classified_building("3001"), "a"),
+                classified_building("3001"),
+            ],
+        );
+
+        assert!(errors.is_empty());
+        assert!(finished.is_ok(), "{finished:?}");
+        assert_eq!(
+            names(&job.archive("x.zip")),
+            ["udx/bldg/a_bldg_6697_op.gml"]
+        );
+        let summaries = handle.inner.drain_summaries();
+        assert!(
+            summaries
+                .iter()
+                .any(|summary| summary.code == ErrorCode::ExprEvaluationFailed),
+            "{summaries:?}"
+        );
     }
 
     #[test]
@@ -6032,24 +6172,35 @@ mod archive_tests {
     }
 
     #[test]
-    fn one_file_given_as_both_a_document_and_an_archive_fails_before_any_write() {
+    fn an_output_file_that_resolves_to_a_zip_is_that_archive() {
         let job = Job::new();
 
-        let error = run_with(
-            &job.ctx,
+        job.run(
             with_codes(expression(r#"attributes["_out"]"#), None),
             vec![
                 to_output(classified_building("3001"), "x.zip"),
                 to_output(classified_building("3001"), "x.zip/."),
             ],
-        )
-        .unwrap_err();
+        );
 
+        assert_eq!(names(&job.archive("x.zip")), ["x.gml"]);
+        assert_eq!(job.sandbox_files(), ["x.zip"]);
+    }
+
+    #[test]
+    fn an_output_file_inside_a_folder_named_like_a_zip_is_refused() {
+        let error = build(with("out.zip/udx/bldg/a.gml", None)).unwrap_err();
+        assert!(error.contains("folder named like a zip archive"), "{error}");
+        assert!(error.contains("Path in Archive"), "{error}");
+    }
+
+    #[test]
+    fn an_output_file_that_leaves_the_output_folder_fails_at_build() {
+        let error = build(with("../x.gml", None)).unwrap_err();
         assert!(
-            error.contains("both as a CityGML file and as a zip archive"),
+            error.contains("Output File `../x.gml` cannot be written"),
             "{error}"
         );
-        assert_eq!(job.sandbox_files(), Vec::<String>::new());
     }
 
     #[test]
@@ -6127,7 +6278,7 @@ mod archive_tests {
             Some(expression(r#""../" + "x.gml""#)),
         ))
         .unwrap_err();
-        assert!(error.contains("`archivePath`"), "{error}");
+        assert!(error.contains("Path in Archive"), "{error}");
 
         assert_eq!(
             build(with_codes(literal("x.zip"), Some(expression(MESH_ENTRY)))),
@@ -6144,10 +6295,12 @@ mod archive_tests {
         assert_eq!(job.sandbox_files(), Vec::<String>::new());
     }
 
+    /// Build the writer in a job whose output folder is sandboxed.
     fn build(with: HashMap<String, Value>) -> Result<(), String> {
+        let job = Job::new();
         CityGmlWriterFactory
             .build(
-                NodeContext::default(),
+                job.ctx.clone(),
                 EventHub::new(10),
                 "CityGML Writer".to_string(),
                 Some(with),
@@ -6159,7 +6312,7 @@ mod archive_tests {
     #[test]
     fn a_path_in_archive_needs_a_zip_output() {
         let error = build(with("x.gml", Some("udx/bldg/x.gml"))).unwrap_err();
-        assert!(error.contains("`archivePath`"), "{error}");
+        assert!(error.contains("Path in Archive"), "{error}");
         assert!(error.contains("`.zip`"), "{error}");
     }
 
@@ -6172,7 +6325,7 @@ mod archive_tests {
             "udx\\bldg\\x.gml",
         ] {
             let error = build(with("x.zip", Some(path))).unwrap_err();
-            assert!(error.contains("`archivePath`"), "{path:?}: {error}");
+            assert!(error.contains("Path in Archive"), "{path:?}: {error}");
         }
     }
 
@@ -6195,7 +6348,7 @@ mod archive_tests {
     #[test]
     fn a_default_entry_that_cannot_be_an_entry_fails_at_build() {
         let error = build(with("a:b.zip", None)).unwrap_err();
-        assert!(error.contains("`archivePath`"), "{error}");
+        assert!(error.contains("Path in Archive"), "{error}");
     }
 
     #[test]

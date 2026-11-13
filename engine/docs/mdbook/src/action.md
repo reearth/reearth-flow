@@ -2857,7 +2857,7 @@ Reads 3D city models from CityGML files.
 ### Type
 * sink
 ### Description
-Writes features to one or more CityGML 2.0 files, or to a zip archive of them, with attributes named as CityGML properties such as bldg:measuredHeight in schema order, nested city objects such as boundary surfaces under their parents, and dem:TINRelief terrain as a gml:TriangulatedSurface when every face is a triangle. Attributes without a prefix are not written, and properties of an ADE such as uro: only when ADE Schemas lists it.
+Writes features to one or more CityGML 2.0 files, or to a zip archive of them, with attributes named as CityGML properties such as bldg:measuredHeight in schema order, nested city objects such as boundary surfaces under their parents, and dem:TINRelief terrain as a gml:TriangulatedSurface when every face is a triangle. Attributes without a prefix are not written, properties of an ADE such as uro: only when ADE Schemas lists it, and a codelist that cannot be copied beside the file keeps its original URL.
 ### Parameters
 ```json
 {
@@ -2871,7 +2871,7 @@ Writes features to one or more CityGML 2.0 files, or to a zip archive of them, w
   "properties": {
     "output": {
       "title": "Output File",
-      "description": "Path of the CityGML file to create, as text or an expression over workflow variables and feature attributes; features with different paths are written to different files, each nested object with the top-level object it belongs to. A path ending in `.zip` is written as one zip archive holding the CityGML files and the textures and codelists copied beside them; a codelist that cannot be copied keeps its original URL.",
+      "description": "Path of the CityGML file to create, as text or an expression over workflow variables and feature attributes, such as `\"bldg/\" + attributes[\"_meshcode\"] + \"_bldg_6697_op.gml\"` for one file per mesh, where each nested object goes with the top-level object it belongs to. A path ending in `.zip` is one zip archive holding the CityGML files with their textures and codelists, written whole by this writer, so every feature for that archive must reach this writer.",
       "type": "object",
       "format": "code",
       "required": [
@@ -2891,9 +2891,9 @@ Writes features to one or more CityGML 2.0 files, or to a zip archive of them, w
         }
       }
     },
-    "archivePath": {
+    "pathInArchive": {
       "title": "Path in Archive",
-      "description": "Where the CityGML file goes inside the zip archive when Output File ends in `.zip`, as a path from the top of the archive with `/` between folders, given as text or an expression over workflow variables and feature attributes, such as `\"udx/bldg/\" + attributes[\"_meshcode\"] + \"_bldg_6697_op.gml\"` for one file per mesh. Defaults to the archive's own name with `.gml`, at the top of the archive.",
+      "description": "Only used when Output File ends in `.zip`: where the CityGML file goes inside the archive, as a path from its top with `/` between folders, given as text or an expression over workflow variables and feature attributes, such as `\"udx/bldg/\" + attributes[\"_meshcode\"] + \"_bldg_6697_op.gml\"` for one file per mesh. Defaults to the archive's own name with `.gml`, at the top of the archive.",
       "default": null,
       "type": [
         "object",

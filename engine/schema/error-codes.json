@@ -71,10 +71,10 @@
   },
   {
     "code": "citygml.invalid_output_path",
-    "category": "io",
+    "category": "config",
     "defaultDisposition": "fatal",
     "message": "the output paths evaluated for this feature cannot be written",
-    "help": "Output File must be a relative path in the job's output folder. Path in Archive is only allowed when Output File ends in `.zip`, and must be a path from the top of the archive with `/` between folders, without `..`, `\\`, `:` or empty folders."
+    "help": "Set Output File to a relative path inside the job's output folder; to write inside a zip archive, end Output File in `.zip` and give the path inside it as Path in Archive. Path in Archive needs an Output File ending in `.zip`, and must be a path from the top of the archive with `/` between folders, without `..`, `\\`, `:` or empty folders."
   },
   {
     "code": "citygml.lod1_shell_conflict",

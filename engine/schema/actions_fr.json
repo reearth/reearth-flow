@@ -2926,7 +2926,7 @@
     {
       "name": "CityGML Writer",
       "type": "sink",
-      "description": "Écrit les entités dans un ou plusieurs fichiers CityGML 2.0, ou dans une archive zip qui les contient, avec les attributs nommés comme des propriétés CityGML, telles que bldg:measuredHeight, dans l'ordre du schéma, les objets urbains imbriqués, tels que les surfaces limites, sous leurs parents, et le terrain dem:TINRelief comme gml:TriangulatedSurface lorsque toutes ses faces sont des triangles. Les attributs sans préfixe ne sont pas écrits, et les propriétés d'une ADE telle que uro: seulement lorsque ADE Schemas la liste.",
+      "description": "Écrit les entités dans un ou plusieurs fichiers CityGML 2.0, ou dans une archive zip qui les contient, avec les attributs nommés comme des propriétés CityGML, telles que bldg:measuredHeight, dans l'ordre du schéma, les objets urbains imbriqués, tels que les surfaces limites, sous leurs parents, et le terrain dem:TINRelief comme gml:TriangulatedSurface lorsque toutes ses faces sont des triangles. Les attributs sans préfixe ne sont pas écrits, les propriétés d'une ADE telle que uro: seulement lorsque ADE Schemas la liste, et une liste de codes qui ne peut pas être copiée à côté du fichier conserve son URL d'origine.",
       "parameter": {
         "$schema": "http://json-schema.org/draft-07/schema#",
         "title": "CityGmlWriterParam",
@@ -2938,7 +2938,7 @@
         "properties": {
           "output": {
             "title": "Output File",
-            "description": "Chemin du fichier CityGML à créer, sous forme de texte ou d'expression sur les variables du workflow et les attributs de l'entité ; les entités dont les chemins diffèrent sont écrites dans des fichiers différents, chaque objet imbriqué avec l'objet de premier niveau auquel il appartient. Un chemin se terminant par `.zip` est écrit sous forme d'une archive zip unique contenant les fichiers CityGML ainsi que les textures et listes de codes copiées à côté d'eux ; une liste de codes qui ne peut pas être copiée conserve son URL d'origine.",
+            "description": "Chemin du fichier CityGML à créer, sous forme de texte ou d'expression sur les variables du workflow et les attributs de l'entité, par exemple `\"bldg/\" + attributes[\"_meshcode\"] + \"_bldg_6697_op.gml\"` pour un fichier par maille, chaque objet imbriqué allant avec l'objet de premier niveau auquel il appartient. Un chemin se terminant par `.zip` est une archive zip unique contenant les fichiers CityGML avec leurs textures et listes de codes, écrite en entier par cette action, donc toutes les entités de cette archive doivent parvenir à cette action.",
             "type": "object",
             "format": "code",
             "required": [
@@ -2958,9 +2958,9 @@
               }
             }
           },
-          "archivePath": {
+          "pathInArchive": {
             "title": "Chemin dans l'archive",
-            "description": "Emplacement du fichier CityGML dans l'archive zip lorsque le fichier de sortie se termine par `.zip`, sous forme de chemin depuis la racine de l'archive avec `/` entre les dossiers, donné comme texte ou expression sur les variables du workflow et les attributs de l'entité, par exemple `\"udx/bldg/\" + attributes[\"_meshcode\"] + \"_bldg_6697_op.gml\"` pour un fichier par maille. Par défaut, le nom de l'archive elle-même avec `.gml`, à la racine de l'archive.",
+            "description": "Utilisé uniquement lorsque Output File se termine par `.zip` : emplacement du fichier CityGML dans l'archive, sous forme de chemin depuis sa racine avec `/` entre les dossiers, donné comme texte ou expression sur les variables du workflow et les attributs de l'entité, par exemple `\"udx/bldg/\" + attributes[\"_meshcode\"] + \"_bldg_6697_op.gml\"` pour un fichier par maille. Par défaut, le nom de l'archive elle-même avec `.gml`, à la racine de l'archive.",
             "default": null,
             "type": [
               "object",
