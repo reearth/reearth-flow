@@ -10,7 +10,6 @@ generate_truth = true
 
 [convs.cesium_attributes.lod1.casts]
 ".attributes" = "json"
-# type-only differences between FME and flow, unrelated to the address
 ".attributes.meshcode" = "string"
 ".uro:BuildingDetailAttribute_uro:surveyYear" = "int"
 ".attributes.bldg:yearOfConstruction" = "int"

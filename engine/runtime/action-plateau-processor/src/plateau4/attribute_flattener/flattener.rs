@@ -38,8 +38,7 @@ pub(super) fn sort_fld_entries(entries: &mut [FldSortEntry]) {
     entries.sort_by(|a, b| a.sort_key().cmp(&b.sort_key()));
 }
 
-/// Push a string, or each string of an array, onto `out`. The reader unwraps single-element
-/// arrays, so a repeatable string element arrives as either.
+/// Push a string, or each string of an array, onto `out`.
 fn push_strings(value: &AttributeValue, out: &mut Vec<String>) {
     match value {
         AttributeValue::String(s) => out.push(s.clone()),
