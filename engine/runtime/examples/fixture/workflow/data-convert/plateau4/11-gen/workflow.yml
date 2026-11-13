@@ -251,35 +251,6 @@ graphs:
           skipUnexposedAttributes: true
           colonToUnderscore: true
 
-      - id: 279d9bf0-6a00-448b-a9c4-4611e83366b3
-        name: MVTWriterFullAttributes
-        type: action
-        action: MVTWriter
-        with:
-          layerName: |
-            let gml_name_code = env.get("__value").__gml_name_code;
-            "gen_" + gml_name_code
-          minZoom: 8
-          maxZoom: 16
-          extent: 4096
-          extentAtMaxZoom: 65536
-          keepAllAtMaxZoom: true
-          output: |
-            let gml_name_code = env.get("__value").__gml_name_code;
-            file::join_path(env.get("workerArtifactPath"), "gen_" + gml_name_code + "_lod" + env.get("__value").__lod + "_full_attributes")
-          compressOutput: |
-            let artifact = env.get("workerArtifactPath");
-            let city_gml = file::extract_filename_without_ext(env.get("cityGmlPath"));
-            let lod = env.get("__value").__lod;
-            let gml_name_code = env.get("__value").__gml_name_code;
-            let suffix = "_gen";
-            if city_gml.ends_with(suffix) {
-              city_gml = city_gml.sub_string(0, city_gml.len() - suffix.len());
-            }
-            file::join_path(artifact, city_gml + "_gen_" + gml_name_code + "_mvt_lod" + lod + "_full_attributes.zip")
-          skipUnexposedAttributes: true
-          colonToUnderscore: true
-
       # 3D branch
       - id: 9b751be1-8355-4bcd-8b71-22c6e8d5a817
         name: VerticalReprojector
@@ -321,30 +292,6 @@ graphs:
               city_gml = city_gml.sub_string(0, city_gml.len() - suffix.len());
             }
             file::join_path(artifact, city_gml + "_gen_" + gml_name_code + "_3dtiles_lod" + lod + ".zip")
-
-      - id: a3618a0f-7ec9-4e7c-b67b-7ca7959c598c
-        name: Cesium3DTilesWriterFullAttributes
-        type: action
-        action: Cesium3DTilesWriter
-        with:
-          dracoCompression:
-            enabled:
-              quantizationError: 0.01
-          wrapTolerance: 0.1
-          skipUnexposedAttributes: true
-          output: |
-            let gml_name_code = env.get("__value").__gml_name_code;
-            file::join_path(env.get("workerArtifactPath"), "gen_" + gml_name_code + "_lod" + env.get("__value").__lod + "_3dtiles_full_attributes")
-          compressOutput: |
-            let artifact = env.get("workerArtifactPath");
-            let city_gml = file::extract_filename_without_ext(env.get("cityGmlPath"));
-            let lod = env.get("__value").__lod;
-            let gml_name_code = env.get("__value").__gml_name_code;
-            let suffix = "_gen";
-            if city_gml.ends_with(suffix) {
-              city_gml = city_gml.sub_string(0, city_gml.len() - suffix.len());
-            }
-            file::join_path(artifact, city_gml + "_gen_" + gml_name_code + "_3dtiles_lod" + lod + "_full_attributes.zip")
 
     edges:
       # FeatureCreator -> FolderAndFilePathReader
@@ -502,18 +449,6 @@ graphs:
       - id: 56053ebe-7ac5-4283-9340-48a8f14e7590
         from: f26fe812-ad3b-4cab-9ea3-397b521c6dfd
         to: a3870479-0ad9-4497-99bd-42438ccc0ffa
-        fromPort: flatSchema
-        toPort: schema
-      # FeatureSorter3D -> Cesium3DTilesWriterFullAttributes
-      - id: 0a43190b-f19a-434d-8be4-df00ef936f7c
-        from: 12e642f3-d42a-4bd5-b298-4f33ac1c281c
-        to: a3618a0f-7ec9-4e7c-b67b-7ca7959c598c
-        fromPort: default
-        toPort: default
-      # AttributeFlattener -> Cesium3DTilesWriterFullAttributes (schema)
-      - id: 221f2e2f-0c5e-407d-9cfd-accde52a98ef
-        from: f26fe812-ad3b-4cab-9ea3-397b521c6dfd
-        to: a3618a0f-7ec9-4e7c-b67b-7ca7959c598c
         fromPort: schema
         toPort: schema
       # TwoDimensionForcer -> FeatureSorter
@@ -532,16 +467,5 @@ graphs:
       - id: e0adccfb-46f1-4706-89f6-7b60853eb1a1
         from: f26fe812-ad3b-4cab-9ea3-397b521c6dfd
         to: 9bfcb0a4-0f66-494a-aa93-d26831f6221f
-        fromPort: flatSchema
-        toPort: schema
-      # FeatureSorter -> MVTWriterFullAttributes
-      - id: 42bca81c-f3df-4a29-b688-dcc293f1a0d6
-        from: 6d0c2b4e-5f8a-4c71-9e3d-2a7b1f04c9e8
-        to: 279d9bf0-6a00-448b-a9c4-4611e83366b3
-        fromPort: default
-        toPort: default
-      - id: 34aa86af-e6ef-417a-8532-24eae0e03532
-        from: f26fe812-ad3b-4cab-9ea3-397b521c6dfd
-        to: 279d9bf0-6a00-448b-a9c4-4611e83366b3
         fromPort: schema
         toPort: schema
