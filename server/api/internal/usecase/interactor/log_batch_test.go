@@ -135,3 +135,47 @@ func TestLogInteractor_GetLogsBatch_EmptyBatch_DeniesAndTouchesNothing(t *testin
 	assert.Equal(t, 0, jobRepo.findByIDsHits, "no repo call should happen for a denied empty batch")
 	assert.Empty(t, redis.calls)
 }
+
+// batchingLiveStore implements gateway.LogsBatchReader on top of the counting
+// gateway, recording each batch it is asked for.
+type batchingLiveStore struct {
+	batches [][]id.JobID
+	countingRedisGateway
+}
+
+func (m *batchingLiveStore) GetLogsBatch(_ context.Context, _ time.Time, _ time.Time, jobIDs []id.JobID) (map[id.JobID][]*log.Log, error) {
+	m.mu.Lock()
+	defer m.mu.Unlock()
+	m.batches = append(m.batches, append([]id.JobID(nil), jobIDs...))
+	res := map[id.JobID][]*log.Log{}
+	for _, jid := range jobIDs {
+		res[jid] = []*log.Log{log.NewLog(jid, nil, time.Now(), log.LevelInfo, "batched")}
+	}
+	return res, nil
+}
+
+func TestLogInteractor_GetLogsBatch_UsesBatchReaderForAllowedJobsOnly(t *testing.T) {
+	t.Parallel()
+
+	wsAllowed := accountsid.NewWorkspaceID()
+	wsDenied := accountsid.NewWorkspaceID()
+	jobRepo := &countingJobRepo{Job: memory.NewJob()}
+	store := &batchingLiveStore{}
+
+	allowedA := newJobIn(t, jobRepo, wsAllowed)
+	allowedB := newJobIn(t, jobRepo, wsAllowed)
+	deniedJob := newJobIn(t, jobRepo, wsDenied)
+
+	checker := &multiWorkspaceChecker{allowed: map[accountsid.WorkspaceID]bool{wsAllowed: true, wsDenied: false}}
+	li := &LogInteractor{jobRepo: jobRepo, logsGatewayRedis: store, permissionChecker: checker}
+
+	res, err := li.GetLogsBatch(context.Background(), time.Now().Add(-time.Hour), []id.JobID{allowedA, deniedJob, allowedB})
+	require.NoError(t, err)
+
+	require.Len(t, store.batches, 1, "the batch reader should be called once for the whole batch")
+	assert.ElementsMatch(t, []id.JobID{allowedA, allowedB}, store.batches[0], "a denied job must not reach the store")
+	assert.Empty(t, store.calls, "per-job GetLogs should not be used when the store can batch")
+	require.Len(t, res, 2)
+	assert.Equal(t, "batched", res[allowedA][0].Message())
+	assert.NotContains(t, res, deniedJob)
+}

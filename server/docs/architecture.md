@@ -83,7 +83,7 @@
 
 1. **API Server** (`api/`) - Primary GraphQL API, authentication, job coordination
 2. **WebSocket Server** (`websocket-go/`) - Real-time collaboration, depends on API for authentication
-3. **Subscriber** (`subscriber/`) - Processes Pub/Sub events, writes to MongoDB and Redis
+3. **Subscriber** (`subscriber/`) - Processes Pub/Sub events, writes to MongoDB and Redis (or, with `LIVE_BACKEND=postgres`, to UNLOGGED Postgres tables)
 
 ### Starting Services
 

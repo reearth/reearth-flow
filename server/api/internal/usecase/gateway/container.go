@@ -5,7 +5,7 @@ import "time"
 type Container struct {
 	File           File
 	Batch          Batch
-	Redis          Redis
+	LiveStore      LiveStore
 	Scheduler      Scheduler
 	CMS            CMS
 	CloudRunWorker CloudRunWorker
