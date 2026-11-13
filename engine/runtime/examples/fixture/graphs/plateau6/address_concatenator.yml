@@ -21,37 +21,23 @@ nodes:
             value: |
               tree = attributes.get("__city_gml_attributes");
               if type(tree) == dict and "bldg:address" in tree {
-                # bldg:address and xAL:NameElement may repeat, everything between occurs once
-                addrs = tree["bldg:address"];
-                if type(addrs) != list { addrs = [addrs]; }
-                texts = [];
-                for a in addrs {
-                  ad = a["core:Address"]["core:xalAddress"]["xAL:Address"];
-                  parts = [];
-                  area = ad.get("xAL:AdministrativeArea");
-                  if area != null { parts.append(area); }
-                  loc = ad.get("xAL:Locality");
-                  if loc != null {
-                    parts.append(loc);
-                    sub = loc.get("xAL:SubLocality");
-                    if sub != null { parts.append(sub); }
-                  }
-                  pieces = [];
-                  for p in parts {
-                    names = p["xAL:NameElement"];
-                    if type(names) != list { names = [names]; }
-                    pieces = pieces + names;
-                  }
-                  s = "".join(pieces);
-                  if s != "" { texts.append(s); }
+                ad = tree["bldg:address"]["core:Address"]["core:xalAddress"]["xAL:Address"];
+                parts = [];
+                area = ad.get("xAL:AdministrativeArea");
+                if area != null { parts.append(area); }
+                loc = ad.get("xAL:Locality");
+                if loc != null {
+                  parts.append(loc);
+                  sub = loc.get("xAL:SubLocality");
+                  if sub != null { parts.append(sub); }
                 }
-                if len(texts) == 0 {
-                  tree.pop("bldg:address");
-                } else if len(texts) == 1 {
-                  tree["bldg:address"] = texts[0];
-                } else {
-                  tree["bldg:address"] = texts;
+                pieces = [];
+                for p in parts {
+                  names = p["xAL:NameElement"];
+                  if type(names) != list { names = [names]; }
+                  pieces = pieces + names;
                 }
+                tree["bldg:address"] = "".join(pieces);
               }
               tree
 
