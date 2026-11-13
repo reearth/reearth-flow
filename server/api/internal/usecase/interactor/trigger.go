@@ -3,8 +3,6 @@ package interactor
 import (
 	"context"
 	"errors"
-	"fmt"
-	"maps"
 	"time"
 
 	accountsid "github.com/reearth/reearth-accounts/server/pkg/id"
