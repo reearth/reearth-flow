@@ -134,6 +134,8 @@ export type DeleteWorkspaceInput = {
 
 export type EventSourceType =
   | 'API_DRIVEN'
+  /** Run by Re:Earth CMS for its items. */
+  | 'CMS'
   | 'TIME_DRIVEN';
 
 export type ExecuteDeploymentInput = {
@@ -315,7 +317,7 @@ export type TimeInterval =
 
 /** Why a scheduled run was refused. */
 export type TriggerRefusalCode =
-  /** The workspace already runs as many jobs as its plan allows. */
+  /** The workspace already ran as many jobs as its plan allowed. No longer recorded; kept for refusals recorded before. */
   | 'CONCURRENT_JOB_LIMIT'
   /** The trigger's deployment no longer exists. */
   | 'DEPLOYMENT_NOT_FOUND'
@@ -324,6 +326,8 @@ export type TriggerRefusalCode =
   | 'NOT_ALLOWED'
   /** The server could not start the run. */
   | 'SERVER_ERROR'
+  /** The workspace has used all of its plan's time-driven trigger runs for the day. */
+  | 'TIME_DRIVEN_TRIGGER_RUNS_DAILY_LIMIT'
   | 'TRIGGER_DISABLED';
 
 export type UnshareProjectInput = {
@@ -548,7 +552,7 @@ export type ExecuteDeploymentMutationVariables = Exact<{
 }>;
 
 
-export type ExecuteDeploymentMutation = { executeDeployment: { job: { id: string, workspaceId: string, status: JobStatus, startedAt: any, completedAt: any, outputURLs: Array<string> | null, userFacingLogsURL: string | null, debug: boolean | null, deployment: { id: string, description: string } | null } } | null };
+export type ExecuteDeploymentMutation = { executeDeployment: { job: { id: string, workspaceId: string, status: JobStatus, startedAt: any, completedAt: any, outputURLs: Array<string> | null, userFacingLogsURL: string | null, debug: boolean | null, runById: string | null, triggerId: string | null, deployment: { id: string, description: string } | null, trigger: { id: string, description: string } | null } } | null };
 
 export type GetDeploymentsQueryVariables = Exact<{
   workspaceId: string;
@@ -648,7 +652,7 @@ export type TriggerFragment = { id: string, createdAt: any, updatedAt: any, last
 
 export type DiagnosticFragment = { code: string, category: string, severity: string, effectiveDisposition: string | null, nodeId: string | null, actionType: string | null, featureId: string | null, message: string, help: string | null, aggregatedCount: number | null, sampleFeatureIds: Array<string> | null };
 
-export type JobFragment = { id: string, workspaceId: string, status: JobStatus, startedAt: any, completedAt: any, outputURLs: Array<string> | null, userFacingLogsURL: string | null, debug: boolean | null, deployment: { id: string, description: string } | null };
+export type JobFragment = { id: string, workspaceId: string, status: JobStatus, startedAt: any, completedAt: any, outputURLs: Array<string> | null, userFacingLogsURL: string | null, debug: boolean | null, runById: string | null, triggerId: string | null, deployment: { id: string, description: string } | null, trigger: { id: string, description: string } | null };
 
 export type AssetFragment = { id: string, workspaceId: string, createdAt: any, fileName: string, size: any, contentType: string, name: string, url: string, uuid: string, flatFiles: boolean, public: boolean, archiveExtractionStatus: ArchiveExtractionStatus | null };
 
@@ -693,21 +697,21 @@ export type GetJobsQueryVariables = Exact<{
 }>;
 
 
-export type GetJobsQuery = { jobs: { totalCount: number, nodes: Array<{ id: string, workspaceId: string, status: JobStatus, startedAt: any, completedAt: any, outputURLs: Array<string> | null, userFacingLogsURL: string | null, debug: boolean | null, deployment: { id: string, description: string } | null } | null>, pageInfo: { totalCount: number, currentPage: number | null, totalPages: number | null } } };
+export type GetJobsQuery = { jobs: { totalCount: number, nodes: Array<{ id: string, workspaceId: string, status: JobStatus, startedAt: any, completedAt: any, outputURLs: Array<string> | null, userFacingLogsURL: string | null, debug: boolean | null, runById: string | null, triggerId: string | null, deployment: { id: string, description: string } | null, trigger: { id: string, description: string } | null } | null>, pageInfo: { totalCount: number, currentPage: number | null, totalPages: number | null } } };
 
 export type GetJobQueryVariables = Exact<{
   id: string;
 }>;
 
 
-export type GetJobQuery = { job: { id: string, workspaceId: string, status: JobStatus, startedAt: any, completedAt: any, outputURLs: Array<string> | null, userFacingLogsURL: string | null, debug: boolean | null, variables: Array<{ key: string, type: ParameterType, value: any }>, deployment: { id: string, description: string } | null } | null };
+export type GetJobQuery = { job: { id: string, workspaceId: string, status: JobStatus, startedAt: any, completedAt: any, outputURLs: Array<string> | null, userFacingLogsURL: string | null, debug: boolean | null, runById: string | null, triggerId: string | null, variables: Array<{ key: string, type: ParameterType, value: any }>, deployment: { id: string, description: string } | null, trigger: { id: string, description: string } | null } | null };
 
 export type CancelJobMutationVariables = Exact<{
   input: CancelJobInput;
 }>;
 
 
-export type CancelJobMutation = { cancelJob: { job: { id: string, workspaceId: string, status: JobStatus, startedAt: any, completedAt: any, outputURLs: Array<string> | null, userFacingLogsURL: string | null, debug: boolean | null, deployment: { id: string, description: string } | null } | null } };
+export type CancelJobMutation = { cancelJob: { job: { id: string, workspaceId: string, status: JobStatus, startedAt: any, completedAt: any, outputURLs: Array<string> | null, userFacingLogsURL: string | null, debug: boolean | null, runById: string | null, triggerId: string | null, deployment: { id: string, description: string } | null, trigger: { id: string, description: string } | null } | null } };
 
 export type CreateProjectMutationVariables = Exact<{
   input: CreateProjectInput;
@@ -761,14 +765,14 @@ export type RunProjectMutationVariables = Exact<{
 }>;
 
 
-export type RunProjectMutation = { runProject: { job: { id: string, workspaceId: string, status: JobStatus, startedAt: any, completedAt: any, outputURLs: Array<string> | null, userFacingLogsURL: string | null, debug: boolean | null, deployment: { id: string, description: string } | null } } | null };
+export type RunProjectMutation = { runProject: { job: { id: string, workspaceId: string, status: JobStatus, startedAt: any, completedAt: any, outputURLs: Array<string> | null, userFacingLogsURL: string | null, debug: boolean | null, runById: string | null, triggerId: string | null, deployment: { id: string, description: string } | null, trigger: { id: string, description: string } | null } } | null };
 
 export type PreviewSchemaMutationVariables = Exact<{
   input: PreviewSchemaInput;
 }>;
 
 
-export type PreviewSchemaMutation = { previewSchema: { job: { id: string, workspaceId: string, status: JobStatus, startedAt: any, completedAt: any, outputURLs: Array<string> | null, userFacingLogsURL: string | null, debug: boolean | null, deployment: { id: string, description: string } | null } } };
+export type PreviewSchemaMutation = { previewSchema: { job: { id: string, workspaceId: string, status: JobStatus, startedAt: any, completedAt: any, outputURLs: Array<string> | null, userFacingLogsURL: string | null, debug: boolean | null, runById: string | null, triggerId: string | null, deployment: { id: string, description: string } | null, trigger: { id: string, description: string } | null } } };
 
 export type CopyProjectMutationVariables = Exact<{
   projectId: string;
@@ -1170,6 +1174,12 @@ export const JobFragmentDoc = gql`
   userFacingLogsURL
   debug
   deployment {
+    id
+    description
+  }
+  runById
+  triggerId
+  trigger {
     id
     description
   }

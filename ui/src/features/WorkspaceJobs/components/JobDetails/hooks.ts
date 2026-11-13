@@ -12,6 +12,8 @@ import {
   toArtifactFiles,
 } from "@flow/utils";
 
+import useJobRunBy from "../../useJobRunBy";
+
 export default ({ jobId }: { jobId: string }) => {
   const t = useT();
   const { navigate } = useRouter();
@@ -21,6 +23,7 @@ export default ({ jobId }: { jobId: string }) => {
   const { data: jobStatus } = useSubscription("GetSubscribedJobStatus", jobId);
 
   const { job, refetch } = useGetJob(jobId);
+  const runBy = useJobRunBy();
 
   // Poll for outputURLs after job completes (they are generated asynchronously)
   useEffect(() => {
@@ -72,6 +75,11 @@ export default ({ jobId }: { jobId: string }) => {
               value: job.deploymentDescription || t("N/A"),
             },
             {
+              id: "runBy",
+              name: t("Run By"),
+              value: runBy(job),
+            },
+            {
               id: "status",
               name: t("Status"),
               value: getJobStatusLabel(jobStatus || job.status, t),
@@ -98,7 +106,7 @@ export default ({ jobId }: { jobId: string }) => {
             ),
           ]
         : undefined,
-    [t, job, jobStatus],
+    [t, job, jobStatus, runBy],
   );
 
   // The server returns the job's artifacts as one flat list of URLs, so the

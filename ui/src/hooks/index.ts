@@ -21,3 +21,4 @@ export { default as useGraphStaleness } from "./useGraphStaleness";
 export { default as useArtifactZipDownload } from "./useArtifactZipDownload";
 export { default as useDeploymentChanges } from "./useDeploymentChanges";
 export { default as useRestrictedWorkspaces } from "./useRestrictedWorkspaces";
+export { default as useWorkspaceUsers } from "./useWorkspaceUsers";

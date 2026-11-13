@@ -256,6 +256,9 @@ export const typeDefs = `
     droppedEventCount: Int
     nodeDiagnostics(nodeId: String!): [Diagnostic!]
     variables: [Variable!]!
+    triggerId: ID
+    trigger: Trigger
+    runById: ID
   }
 
   type Variable {

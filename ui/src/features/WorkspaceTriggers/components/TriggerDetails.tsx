@@ -94,6 +94,9 @@ const TriggerDetails: React.FC<Props> = ({
           "A required workflow variable has no value, or a value does not fit its type.",
         ),
         NOT_ALLOWED: t("The run was not allowed."),
+        TIME_DRIVEN_TRIGGER_RUNS_DAILY_LIMIT: t(
+          "The workspace has used all of its plan's scheduled runs for the day.",
+        ),
         CONCURRENT_JOB_LIMIT: t(
           "The workspace was running as many jobs as its plan allows.",
         ),

@@ -21,6 +21,9 @@ export const mockJobs: JobFragment[] = [
       "https://output.reearth.io/job-1/processed_data.geojson",
     ],
     userFacingLogsURL: null,
+    runById: "user-1",
+    triggerId: null,
+    trigger: null,
   },
   {
     id: "job-2",
@@ -35,6 +38,9 @@ export const mockJobs: JobFragment[] = [
     completedAt: null,
     outputURLs: [],
     userFacingLogsURL: null,
+    runById: "user-2",
+    triggerId: null,
+    trigger: null,
   },
   {
     id: "job-3",
@@ -49,6 +55,9 @@ export const mockJobs: JobFragment[] = [
     completedAt: "2024-01-25T09:18:45Z",
     outputURLs: [],
     userFacingLogsURL: null,
+    runById: null,
+    triggerId: "trigger-1",
+    trigger: { id: "trigger-1", description: "Nightly import" },
   },
   {
     id: "job-4",
@@ -63,6 +72,9 @@ export const mockJobs: JobFragment[] = [
     completedAt: null,
     outputURLs: [],
     userFacingLogsURL: null,
+    runById: null,
+    triggerId: "trigger-deleted",
+    trigger: null,
   },
   {
     id: "job-5",
@@ -77,6 +89,9 @@ export const mockJobs: JobFragment[] = [
     completedAt: "2024-01-20T11:35:15Z",
     outputURLs: [],
     userFacingLogsURL: null,
+    runById: null,
+    triggerId: null,
+    trigger: null,
   },
 ];
 

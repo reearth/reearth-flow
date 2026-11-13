@@ -125,6 +125,12 @@ fragment Job on Job {
     id
     description
   }
+  runById
+  triggerId
+  trigger {
+    id
+    description
+  }
 }
 
 fragment Asset on Asset {

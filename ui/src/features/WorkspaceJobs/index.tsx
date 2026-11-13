@@ -8,6 +8,7 @@ import { formatTimestamp } from "@flow/utils/timestamp";
 
 import { JobRunDialog } from "./components";
 import useHooks from "./hooks";
+import useJobRunBy from "./useJobRunBy";
 
 const JobsManager: React.FC = () => {
   const t = useT();
@@ -27,6 +28,7 @@ const JobsManager: React.FC = () => {
     handleSortChange,
     setCurrentPage,
   } = useHooks();
+  const runBy = useJobRunBy();
 
   const columns: AppColumnDef<Job>[] = [
     {
@@ -36,6 +38,11 @@ const JobsManager: React.FC = () => {
     {
       accessorKey: "deploymentDescription",
       header: t("Deployment Description"),
+    },
+    {
+      id: "runBy",
+      accessorFn: (job) => runBy(job),
+      header: t("Run By"),
     },
     {
       accessorKey: "status",
