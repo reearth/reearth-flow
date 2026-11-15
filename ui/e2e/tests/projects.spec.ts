@@ -13,8 +13,12 @@ test.describe("Project lifecycle", { tag: "@smoke" }, () => {
   });
 
   test.afterEach(async () => {
+    // Reload so a dialog left open by a failed step can't block deletion.
+    await projects.goto();
     for (const name of createdNames.splice(0)) {
-      await projects.deleteProjectIfExists(name).catch(() => {});
+      await projects
+        .deleteProjectIfExists(name)
+        .catch((e) => console.warn(`cleanup: failed to delete ${name}:`, e));
     }
   });
 

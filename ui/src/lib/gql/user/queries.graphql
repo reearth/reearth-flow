@@ -5,6 +5,9 @@ query GetMe {
     email
     myWorkspaceId
     lang
+    metadata {
+      photoURL
+    }
   }
 }
 
@@ -15,6 +18,9 @@ query GetMeAndWorkspaces {
     email
     myWorkspaceId
     lang
+    metadata {
+      photoURL
+    }
     workspaces {
       ...Workspace
     }

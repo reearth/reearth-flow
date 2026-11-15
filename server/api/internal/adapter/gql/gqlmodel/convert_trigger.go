@@ -81,6 +81,8 @@ func ToEventSourceType(t trigger.EventSourceType) EventSourceType {
 		return EventSourceTypeTimeDriven
 	case trigger.EventSourceTypeAPIDriven:
 		return EventSourceTypeAPIDriven
+	case trigger.EventSourceTypeCMS:
+		return EventSourceTypeCms
 	default:
 		return ""
 	}
@@ -92,6 +94,8 @@ func FromEventSourceType(t EventSourceType) trigger.EventSourceType {
 		return trigger.EventSourceTypeTimeDriven
 	case EventSourceTypeAPIDriven:
 		return trigger.EventSourceTypeAPIDriven
+	case EventSourceTypeCms:
+		return trigger.EventSourceTypeCMS
 	default:
 		return ""
 	}

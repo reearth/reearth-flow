@@ -1,6 +1,8 @@
 pub mod attribute_keys;
 pub mod built_in_ade;
 pub mod classes;
+/// Loose files or a zip archive.
+pub mod destination;
 pub mod hierarchy;
 /// The converter→writer seam. Shared and unconditional.
 pub mod model;
@@ -35,7 +37,7 @@ use bytes::Bytes;
 use reearth_flow_citygml::schema::QName;
 use reearth_flow_citygml::schema::{AdeSource, SchemaSet};
 use reearth_flow_common::uri::Uri;
-use reearth_flow_diagnostics::ErrorCode;
+use reearth_flow_diagnostics::{Diagnostic, DiagnosticDraft, ErrorCode};
 use reearth_flow_runtime::diagnostics::NodeDiagnosticsHandle;
 use reearth_flow_runtime::errors::BoxedError;
 use reearth_flow_runtime::event::EventHub;
@@ -44,7 +46,9 @@ use reearth_flow_runtime::node::{Port, Sink, SinkFactory, FEATURES_PORT};
 use reearth_flow_storage::resolve::StorageResolver;
 use reearth_flow_types::conversion::CrsCoverage;
 use reearth_flow_types::lod::LodMask;
-use reearth_flow_types::{AttributeValue, Attributes, Code, Feature, CITYGML_ROOT_GML_ID_KEY};
+use reearth_flow_types::{
+    AttributeValue, Attributes, Code, CompiledCode, Feature, CITYGML_ROOT_GML_ID_KEY,
+};
 use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
@@ -53,6 +57,7 @@ use crate::errors::SinkError;
 use attribute_keys::{AttributeKeys, ResolvedKeys};
 use built_in_ade::{BuiltInAde, Preset};
 use classes::{CityClass, ClassResolver, Prefixes};
+use destination::{ArchiveWriter, Destination};
 use hierarchy::{
     build_feature_objects, ContainmentProperties, FeatureObjects, FeatureParts, TopLevel,
     TreeObject,
@@ -105,6 +110,119 @@ pub fn write_citygml_to_storage(
     prefixes: &Prefixes,
     ade_locations: &[(String, String)],
 ) -> Result<(), SinkError> {
+    write_citygml(
+        &Destination::Storage {
+            output,
+            sandbox_root,
+        },
+        features,
+        lod_mask,
+        keys,
+        epsg_code,
+        pretty_print,
+        storage_resolver,
+        diagnostics,
+        schema,
+        prefixes,
+        ade_locations,
+    )
+}
+
+/// [`write_citygml_to_storage`] to any [`Destination`]: loose in storage, or
+/// as one document of a zip archive, its staged files beside it there.
+///
+/// Nothing is written when no document is, so an archive that receives no
+/// document stays empty.
+#[allow(clippy::too_many_arguments)]
+pub fn write_citygml(
+    destination: &Destination,
+    features: &[Feature],
+    lod_mask: &LodMask,
+    keys: &ResolvedKeys,
+    epsg_code: Option<u32>,
+    pretty_print: bool,
+    storage_resolver: &Arc<StorageResolver>,
+    diagnostics: Option<&NodeDiagnosticsHandle>,
+    schema: &SchemaSet,
+    prefixes: &Prefixes,
+    ade_locations: &[(String, String)],
+) -> Result<(), SinkError> {
+    write_citygml_documents(
+        std::slice::from_ref(destination),
+        &vec![Some(0); features.len()],
+        &mut NoEvents,
+        features,
+        lod_mask,
+        keys,
+        epsg_code,
+        pretty_print,
+        storage_resolver,
+        diagnostics,
+        schema,
+        prefixes,
+        ade_locations,
+    )
+}
+
+/// What [`write_citygml_documents`] tells its caller as it goes.
+pub trait DocumentEvents {
+    /// A top-level feature given no document, once per feature and before any
+    /// document is written: its tree is left out unless this fails the write.
+    fn unplaced(&mut self, _feature: usize) -> Result<(), SinkError> {
+        Ok(())
+    }
+
+    /// Per document, whether any tree is written to it, once every tree is
+    /// assigned and before any document is written. A document only nested
+    /// objects were given receives none, as they go with their parents.
+    fn assigned(&mut self, _receives: &[bool]) -> Result<(), SinkError> {
+        Ok(())
+    }
+
+    /// A document was written, or found to receive nothing, so an archive can
+    /// be finished as soon as its last document is.
+    fn done(&mut self, _document: usize) -> Result<(), SinkError> {
+        Ok(())
+    }
+}
+
+/// [`DocumentEvents`] that need nothing done.
+pub struct NoEvents;
+
+impl DocumentEvents for NoEvents {}
+
+/// [`write_citygml`] to several documents: `document_of[i]` is the index in
+/// `destinations` of the document feature `i` was given.
+///
+/// The features are converted and joined as one, so a feature nested into
+/// another object goes with that object's tree, whichever document the tree's
+/// top-level feature was given: a wall surface stays with its building, and
+/// an object of a feature that cannot be nested goes with that feature. Each
+/// document then gets its own `gml:boundedBy`, `srsName`, `gml:id`s and staged
+/// folders, folded over its own trees only. A document no tree reaches is not
+/// written.
+///
+/// A feature given no document, `None` in `document_of`, follows the
+/// object it is nested into like any other, and is told to `events` when it
+/// is top-level. Documents are written in index order; see
+/// [`DocumentEvents`] for what is told when.
+#[allow(clippy::too_many_arguments)]
+pub fn write_citygml_documents(
+    destinations: &[Destination],
+    document_of: &[Option<usize>],
+    events: &mut dyn DocumentEvents,
+    features: &[Feature],
+    lod_mask: &LodMask,
+    keys: &ResolvedKeys,
+    epsg_code: Option<u32>,
+    pretty_print: bool,
+    storage_resolver: &Arc<StorageResolver>,
+    diagnostics: Option<&NodeDiagnosticsHandle>,
+    schema: &SchemaSet,
+    prefixes: &Prefixes,
+    ade_locations: &[(String, String)],
+) -> Result<(), SinkError> {
+    debug_assert_eq!(document_of.len(), features.len());
     if features.is_empty() {
         return Ok(());
     }
@@ -197,7 +315,8 @@ pub fn write_citygml_to_storage(
         stageable.push(properties.code_spaces);
     }
 
-    let joined = hierarchy::join(objects, schema);
+    let unplaced: Vec<bool> = document_of.iter().map(Option::is_none).collect();
+    let joined = hierarchy::join(objects, schema, &unplaced);
     // Terrain that cannot be written is rejected here, before the gate below
     // decides which trees have geometry and whether there is a document.
     #[cfg(feature = "new-geometry")]
@@ -212,22 +331,17 @@ pub fn write_citygml_to_storage(
     // geometry; its orphans are always written.
     let mut root_written = vec![false; features.len()];
     let mut written = vec![false; features.len()];
-    let mut top: Vec<ObjectNode> = Vec::new();
-    for TopLevel {
-        object,
-        orphan,
-        roots,
-    } in joined.top
-    {
-        if !orphan && !object.has_geometry() {
+    let mut trees: Vec<TopLevel> = Vec::new();
+    for tree in joined.top {
+        if !tree.orphan && !tree.object.has_geometry() {
             continue;
         }
-        for source in roots {
+        for &source in &tree.roots {
             root_written[source] = true;
             written[source] = true;
         }
-        written[object.source] = true;
-        top.push(object);
+        written[tree.object.source] = true;
+        trees.push(tree);
     }
 
     if let Some(diagnostics) = diagnostics {
@@ -262,64 +376,31 @@ pub fn write_citygml_to_storage(
         }
     }
 
-    // Every feature was filtered out or held nothing writable: no document.
-    if top.is_empty() {
-        return Ok(());
-    }
-
-    // Folded over the features that reach the file only: a copy the join
-    // left out may hold another CRS, a wider extent or a texture the
-    // document never references.
-    let mut envelope: Option<BoundingEnvelope> = None;
-    let mut crs = CrsCoverage::default();
-    let mut textures: Vec<TextureRef> = Vec::new();
-    let mut texture_keys: HashSet<String> = HashSet::new();
-    for (object, _) in converted
-        .iter()
-        .zip(&written)
-        .filter(|(_, written)| **written)
-    {
-        if let Some(object_envelope) = &object.envelope {
-            match &mut envelope {
-                Some(existing) => existing.merge(object_envelope),
-                None => envelope = Some(object_envelope.clone()),
+    // Each tree goes to the document its owner was given: a top-level
+    // feature's tree with the features joined into it, and an orphan with the
+    // tree its feature was joined into, however deep.
+    let owner = hierarchy::owners(
+        trees
+            .iter()
+            .map(|tree| (tree.object.source, tree.roots.as_slice())),
+        features.len(),
+    );
+    let mut documents: Vec<Vec<TopLevel>> = destinations.iter().map(|_| Vec::new()).collect();
+    let mut reported = vec![false; features.len()];
+    for tree in trees {
+        let root = owner[tree.object.source];
+        match document_of[root] {
+            Some(document) => documents[document].push(tree),
+            None if !reported[root] => {
+                reported[root] = true;
+                events.unplaced(root)?;
             }
-        }
-        crs = crs.and(object.crs);
-        for texture in &object.textures {
-            if texture_keys.insert(texture.key.clone()) {
-                textures.push(texture.clone());
-            }
+            None => {}
         }
     }
+    let receives: Vec<bool> = documents.iter().map(|trees| !trees.is_empty()).collect();
+    events.assigned(&receives)?;
 
-    let mut code_spaces: Vec<String> = Vec::new();
-    for object in &top {
-        for_each_property(object, &mut |source, property| {
-            collect_code_spaces(property, &stageable[source], &mut code_spaces)
-        });
-    }
-
-    let srs_name = converter::srs_name(features, epsg_code, crs)?;
-    let uri_remap = stage_textures(
-        &textures,
-        output,
-        sandbox_root,
-        storage_resolver,
-        converter::STRICT_TEXTURE_STAGING,
-    )?;
-    let code_space_remap = stage_codelists(
-        &code_spaces,
-        output,
-        sandbox_root,
-        storage_resolver,
-        diagnostics,
-    )?;
-    for object in &mut top {
-        for_each_property_mut(object, &mut |property| {
-            remap_code_spaces(property, &code_space_remap)
-        });
-    }
     // Indexed by feature, which is each object's source.
     let appearances: Vec<Option<&AppearanceBundle>> = converted
         .iter()
@@ -330,72 +411,142 @@ pub fn write_citygml_to_storage(
                 .then_some(&object.appearance)
         })
         .collect();
-    let mut lod1_surfaces_dropped: BTreeMap<usize, usize> = BTreeMap::new();
-    let mut geometry_not_written: BTreeMap<usize, usize> = BTreeMap::new();
-    let mut tin_appearance_dropped: BTreeMap<usize, usize> = BTreeMap::new();
 
-    let buffer_size = (features.len() * 4096).clamp(32 * 1024, 512 * 1024);
-    let mut xml_buffer = Vec::with_capacity(buffer_size);
-    {
-        let buf_writer = BufWriter::with_capacity(buffer_size, &mut xml_buffer);
-        let mut xml_writer = CityGmlXmlWriter::new(buf_writer, pretty_print, srs_name);
-        xml_writer.set_uri_remap(uri_remap);
-        xml_writer.set_schema(schema, prefixes.clone());
-
-        xml_writer.write_header(envelope.as_ref(), ade_locations)?;
-
-        for object in top {
-            let outcome = xml_writer.write_object_tree(object, &appearances)?;
-            for (source, dropped) in outcome.lod1_surfaces_dropped {
-                *lod1_surfaces_dropped.entry(source).or_default() += dropped;
-            }
-            for (source, left_out) in outcome.geometry_not_written {
-                *geometry_not_written.entry(source).or_default() += left_out;
-            }
-            for (source, dropped) in outcome.tin_appearance_dropped {
-                *tin_appearance_dropped.entry(source).or_default() += dropped;
-            }
-        }
-
-        xml_writer.write_footer()?;
-    }
-
-    if let Some(diagnostics) = diagnostics {
-        // Once per feature, however many of its geometries, its nested
-        // objects' included, had no property: the row names the feature, which
-        // is what a user acts on.
-        for source in geometry_not_written.into_keys() {
-            diagnostics.report_warn(
-                ErrorCode::CitygmlGeometryNotWritten,
-                Some(features[source].id),
-            );
-        }
-        // Once per feature too: the terrain is written, only its paint is not.
-        for source in tin_appearance_dropped.into_keys() {
-            diagnostics.report_warn(
-                ErrorCode::CitygmlTinAppearanceDropped,
-                Some(features[source].id),
-            );
-        }
-        // The XSD permits both `lod1Solid` and `lod1MultiSurface`, so the
-        // schema gate cannot see this one and it is reported here instead of
-        // dropped in silence, against the feature each dropped surface came
-        // from.
-        for source in lod1_surfaces_dropped.into_keys() {
-            diagnostics.report_drop(
-                ErrorCode::CitygmlLod1ShellConflict,
-                Some(features[source].id),
-                Some(true),
-            );
+    // The first feature given each document, which the legacy `srsName`
+    // falls back to, as it fell back to the first feature of the only one.
+    let mut first_given: Vec<Option<usize>> = vec![None; destinations.len()];
+    for (feature, document) in document_of.iter().enumerate() {
+        if let Some(document) = document {
+            first_given[*document].get_or_insert(feature);
         }
     }
 
-    let storage = storage_resolver
-        .resolve(output)
-        .map_err(SinkError::citygml_writer)?;
-    storage
-        .put_sync(output.path().as_path(), Bytes::from(xml_buffer))
-        .map_err(SinkError::citygml_writer)?;
+    for (document, (destination, trees)) in destinations.iter().zip(documents).enumerate() {
+        // Every feature given this document was filtered out, held nothing
+        // writable or was joined into another document's tree: no document.
+        if trees.is_empty() {
+            events.done(document)?;
+            continue;
+        }
+        let first = &features[first_given[document].unwrap_or(0)];
+        // The features that reach this document, in feature order, so textures
+        // are de-duplicated in the order a single document would see them.
+        let mut written: Vec<usize> = Vec::new();
+        let mut top: Vec<ObjectNode> = Vec::with_capacity(trees.len());
+        for tree in trees {
+            written.extend(tree.roots);
+            written.push(tree.object.source);
+            top.push(tree.object);
+        }
+        written.sort_unstable();
+        written.dedup();
+
+        // Folded over the features that reach the file only: a copy the join
+        // left out may hold another CRS, a wider extent or a texture the
+        // document never references.
+        let mut envelope: Option<BoundingEnvelope> = None;
+        let mut crs = CrsCoverage::default();
+        let mut textures: Vec<TextureRef> = Vec::new();
+        let mut texture_keys: HashSet<String> = HashSet::new();
+        for object in written.iter().map(|&source| &converted[source]) {
+            if let Some(object_envelope) = &object.envelope {
+                match &mut envelope {
+                    Some(existing) => existing.merge(object_envelope),
+                    None => envelope = Some(object_envelope.clone()),
+                }
+            }
+            crs = crs.and(object.crs);
+            for texture in &object.textures {
+                if texture_keys.insert(texture.key.clone()) {
+                    textures.push(texture.clone());
+                }
+            }
+        }
+
+        let mut code_spaces: Vec<String> = Vec::new();
+        for object in &top {
+            for_each_property(object, &mut |source, property| {
+                collect_code_spaces(property, &stageable[source], &mut code_spaces)
+            });
+        }
+
+        let srs_name = converter::srs_name(std::slice::from_ref(first), epsg_code, crs)?;
+        let uri_remap = stage_textures_to(
+            &textures,
+            destination,
+            storage_resolver,
+            converter::STRICT_TEXTURE_STAGING,
+        )?;
+        let code_space_remap =
+            stage_codelists(&code_spaces, destination, storage_resolver, diagnostics)?;
+        for object in &mut top {
+            for_each_property_mut(object, &mut |property| {
+                remap_code_spaces(property, &code_space_remap)
+            });
+        }
+        let mut lod1_surfaces_dropped: BTreeMap<usize, usize> = BTreeMap::new();
+        let mut geometry_not_written: BTreeMap<usize, usize> = BTreeMap::new();
+        let mut tin_appearance_dropped: BTreeMap<usize, usize> = BTreeMap::new();
+
+        let buffer_size = (written.len() * 4096).clamp(32 * 1024, 512 * 1024);
+        let mut xml_buffer = Vec::with_capacity(buffer_size);
+        {
+            let buf_writer = BufWriter::with_capacity(buffer_size, &mut xml_buffer);
+            let mut xml_writer = CityGmlXmlWriter::new(buf_writer, pretty_print, srs_name);
+            xml_writer.set_uri_remap(uri_remap);
+            xml_writer.set_schema(schema, prefixes.clone());
+
+            xml_writer.write_header(envelope.as_ref(), ade_locations)?;
+
+            for object in top {
+                let outcome = xml_writer.write_object_tree(object, &appearances)?;
+                for (source, dropped) in outcome.lod1_surfaces_dropped {
+                    *lod1_surfaces_dropped.entry(source).or_default() += dropped;
+                }
+                for (source, left_out) in outcome.geometry_not_written {
+                    *geometry_not_written.entry(source).or_default() += left_out;
+                }
+                for (source, dropped) in outcome.tin_appearance_dropped {
+                    *tin_appearance_dropped.entry(source).or_default() += dropped;
+                }
+            }
+
+            xml_writer.write_footer()?;
+        }
+
+        if let Some(diagnostics) = diagnostics {
+            // Once per feature, however many of its geometries, its nested
+            // objects' included, had no property: the row names the feature, which
+            // is what a user acts on.
+            for source in geometry_not_written.into_keys() {
+                diagnostics.report_warn(
+                    ErrorCode::CitygmlGeometryNotWritten,
+                    Some(features[source].id),
+                );
+            }
+            // Once per feature too: the terrain is written, only its paint is not.
+            for source in tin_appearance_dropped.into_keys() {
+                diagnostics.report_warn(
+                    ErrorCode::CitygmlTinAppearanceDropped,
+                    Some(features[source].id),
+                );
+            }
+            // The XSD permits both `lod1Solid` and `lod1MultiSurface`, so the
+            // schema gate cannot see this one and it is reported here instead of
+            // dropped in silence, against the feature each dropped surface came
+            // from.
+            for source in lod1_surfaces_dropped.into_keys() {
+                diagnostics.report_drop(
+                    ErrorCode::CitygmlLod1ShellConflict,
+                    Some(features[source].id),
+                    Some(true),
+                );
+            }
+        }
+
+        destination.write_document(Bytes::from(xml_buffer), storage_resolver)?;
+        events.done(document)?;
+    }
 
     Ok(())
 }
@@ -574,44 +725,6 @@ fn remap_code_spaces(property: &mut XmlProperty, remap: &HashMap<String, String>
     }
 }
 
-/// A directory files are staged into beside the GML file.
-struct StagingDir {
-    /// `{gml_stem}_{suffix}`, the GML-relative prefix the document names
-    /// staged files by.
-    name: String,
-    /// The same directory relative to the sandbox root, which is where it is
-    /// written.
-    path: String,
-}
-
-fn staging_dir(output: &Uri, sandbox_root: &Uri, suffix: &str) -> Result<StagingDir, SinkError> {
-    let gml_stem = output
-        .path()
-        .file_stem()
-        .map(|s| s.to_string_lossy().into_owned())
-        .unwrap_or_default();
-    let name = format!("{gml_stem}_{suffix}");
-
-    let sandbox_root_str = sandbox_root.as_str().trim_end_matches('/');
-    let output_str = output.as_str();
-    // `SinkOutput::new` builds `output` from `sandbox_root`, so a failed strip
-    // means something upstream is broken. Fail rather than flatten the layout.
-    let gml_rel_path: String = output_str
-        .strip_prefix(sandbox_root_str)
-        .map(|s| s.trim_start_matches('/').to_string())
-        .ok_or_else(|| {
-            SinkError::CityGmlWriter(format!(
-                "output URI {output} is not under sandbox_root {sandbox_root_str}; \
-                 refusing to fall back to a flat {suffix} directory"
-            ))
-        })?;
-    let path = match gml_rel_path.rsplit_once('/') {
-        Some((parent, _)) if !parent.is_empty() => format!("{parent}/{name}"),
-        _ => name.clone(),
-    };
-    Ok(StagingDir { name, path })
-}
-
 /// Copy every codelist in `code_spaces` into `{gml_stem}_codelists/` beside the
 /// GML file and return the URL → relative-path remap for `codeSpace`.
 ///
@@ -622,27 +735,17 @@ fn staging_dir(output: &Uri, sandbox_root: &Uri, suffix: &str) -> Result<Staging
 /// list for anything that can reach it, and the miss is reported.
 fn stage_codelists(
     code_spaces: &[String],
-    output: &Uri,
-    sandbox_root: &Uri,
+    destination: &Destination,
     storage_resolver: &Arc<StorageResolver>,
     diagnostics: Option<&NodeDiagnosticsHandle>,
 ) -> Result<HashMap<String, String>, SinkError> {
-    let dir = staging_dir(output, sandbox_root, "codelists")?;
+    let dir = destination.staging_dir("codelists")?;
     let mut remap: HashMap<String, String> = HashMap::new();
     let mut staged_names: HashSet<String> = HashSet::new();
     for url in code_spaces {
         let staged = load_codelist(url, storage_resolver).and_then(|(filename, bytes)| {
             let staged_name = unique_staged_name(&filename, &staged_names);
-            let rel_path = format!("{}/{}", dir.path, staged_name);
-            crate::SinkOutput::new(sandbox_root, &rel_path, storage_resolver)
-                .map_err(|e| {
-                    format!(
-                        "failed to acquire sandboxed SinkOutput for codelist destination \
-                         '{rel_path}': {e}"
-                    )
-                })?
-                .write(bytes)
-                .map_err(|e| format!("failed to write codelist file '{rel_path}': {e}"))?;
+            destination.write_staged(&dir, &staged_name, bytes, "codelist", storage_resolver)?;
             Ok(staged_name)
         });
         match staged {
@@ -689,12 +792,34 @@ pub fn core_schema() -> Result<&'static SchemaSet, SinkError> {
     })
 }
 
+/// [`stage_textures_to`] beside a document loose in storage.
+#[cfg(test)]
+fn stage_textures(
+    textures: &[TextureRef],
+    output: &Uri,
+    sandbox_root: &Uri,
+    storage_resolver: &Arc<StorageResolver>,
+    strict: bool,
+) -> Result<HashMap<String, String>, SinkError> {
+    stage_textures_to(
+        textures,
+        &Destination::Storage {
+            output,
+            sandbox_root,
+        },
+        storage_resolver,
+        strict,
+    )
+}
+
 /// Stage every referenced image into `{gml_stem}_appearance/` beside the GML file
 /// and return the key → relative-path remap the writer rewrites `app:imageURI` with.
 ///
-/// Destinations go through [`crate::SinkOutput`], so a hostile source URI cannot
-/// escape the sandbox. Returned paths are relative to the GML file, which is what
-/// `app:imageURI` means.
+/// Loose destinations go through [`crate::SinkOutput`], so a hostile source URI
+/// cannot escape the sandbox, and archive entries through
+/// [`destination::validate_entry_path`], so none can escape the archive.
+/// Returned paths are relative to the GML file, which is what `app:imageURI`
+/// means, so they resolve the same either way.
 ///
 /// `textures` arrives deduplicated by [`TextureRef::key`]. What still needs
 /// disambiguating is the destination *basename*: only a URI's last segment becomes
@@ -705,14 +830,13 @@ pub fn core_schema() -> Result<&'static SchemaSet, SinkError> {
 /// `converter::STRICT_TEXTURE_STAGING`): the legacy path warns and leaves the
 /// original URI in place, the unified path fails the write. A destination that
 /// cannot be derived at all is fatal in both.
-fn stage_textures(
+fn stage_textures_to(
     textures: &[TextureRef],
-    output: &Uri,
-    sandbox_root: &Uri,
+    destination: &Destination,
     storage_resolver: &Arc<StorageResolver>,
     strict: bool,
 ) -> Result<HashMap<String, String>, SinkError> {
-    let dir = staging_dir(output, sandbox_root, "appearance")?;
+    let dir = destination.staging_dir("appearance")?;
 
     let mut uri_remap: HashMap<String, String> = HashMap::new();
     let mut staged_names: HashSet<String> = HashSet::new();
@@ -730,26 +854,10 @@ fn stage_textures(
         // Only a texture about to be written claims a name, so a skipped one
         // leaves the un-suffixed name free.
         let staged_name = unique_staged_name(&filename, &staged_names);
-        let texture_rel_path = format!("{}/{}", dir.path, staged_name);
-        let dst_out =
-            match crate::SinkOutput::new(sandbox_root, &texture_rel_path, storage_resolver) {
-                Ok(o) => o,
-                Err(e) => {
-                    report_texture_failure(
-                        strict,
-                        format!(
-                            "failed to acquire sandboxed SinkOutput for texture destination \
-                             '{texture_rel_path}': {e}"
-                        ),
-                    )?;
-                    continue;
-                }
-            };
-        if let Err(e) = dst_out.write(bytes) {
-            report_texture_failure(
-                strict,
-                format!("failed to write texture file '{texture_rel_path}': {e}"),
-            )?;
+        if let Err(reason) =
+            destination.write_staged(&dir, &staged_name, bytes, "texture", storage_resolver)
+        {
+            report_texture_failure(strict, reason)?;
             continue;
         }
         uri_remap.insert(texture.key.clone(), format!("{}/{}", dir.name, staged_name));
@@ -855,7 +963,7 @@ impl SinkFactory for CityGmlWriterFactory {
     }
 
     fn description(&self) -> &str {
-        "Writes features to one CityGML 2.0 file, with attributes named as CityGML properties such as bldg:measuredHeight in schema order, nested city objects such as boundary surfaces under their parents, and dem:TINRelief terrain as a gml:TriangulatedSurface when every face is a triangle. Attributes without a prefix are not written, and properties of an ADE such as uro: only when ADE Schemas lists it."
+        "Writes features to one or more CityGML 2.0 files, or to a zip archive of them, with attributes named as CityGML properties such as bldg:measuredHeight in schema order, nested city objects such as boundary surfaces under their parents, and dem:TINRelief terrain as a gml:TriangulatedSurface when every face is a triangle. Attributes without a prefix are not written, properties of an ADE such as uro: only when ADE Schemas lists it, and a codelist that cannot be copied beside the file keeps its original URL."
     }
 
     fn parameter_schema(&self) -> Option<schemars::schema::RootSchema> {
@@ -913,19 +1021,23 @@ impl SinkFactory for CityGmlWriterFactory {
             .map_err(SinkError::CityGmlWriterFactory)?;
         let ade_schemas = params.ade_schemas.clone().unwrap_or_default();
         let ade = bind_ade_schemas(&ade_schemas, &ctx).map_err(SinkError::CityGmlWriterFactory)?;
-        let output = params
-            .output
-            .compile()
+        let output = params.output.compile().map_err(|e| {
+            SinkError::CityGmlWriterFactory(format!("Failed to compile Output File: {e}"))
+        })?;
+        let path_in_archive = params
+            .path_in_archive
+            .as_ref()
+            .map(|code| code.compile())
+            .transpose()
             .map_err(|e| {
-                SinkError::CityGmlWriterFactory(format!("Failed to compile `output`: {e}"))
-            })?
-            .eval_string_variables_only(ctx.variables.clone())
-            .map_err(|e| {
-                SinkError::CityGmlWriterFactory(format!("Failed to evaluate `output`: {e}"))
+                SinkError::CityGmlWriterFactory(format!("Failed to compile Path in Archive: {e}"))
             })?;
+        check_fixed_paths(&output, path_in_archive.as_ref(), &ctx)
+            .map_err(SinkError::CityGmlWriterFactory)?;
         Ok(Box::new(CityGmlWriterSink {
             params: CityGmlWriterCompiledParam {
                 output,
+                path_in_archive,
                 epsg_code: params.epsg_code,
                 pretty_print: params.pretty_print,
                 ade,
@@ -933,8 +1045,202 @@ impl SinkFactory for CityGmlWriterFactory {
             lod_mask,
             keys,
             buffer: Vec::new(),
+            document_of: Vec::new(),
+            documents: Vec::new(),
+            document_index: HashMap::new(),
+            path_errors: HashMap::new(),
         }))
     }
+}
+
+/// The file one feature is written to, from its evaluated Output File and
+/// Path in Archive: Output File resolved in the job's output folder, so
+/// `x.zip` and `./x.zip` name one file, and the entry in the archive when
+/// that file is a zip archive.
+///
+/// A blank Path in Archive counts as left out: the editor sends an empty value
+/// for a field that was typed in and cleared, which must not stop a plain
+/// `.gml` write nor refuse the default.
+///
+/// Checked when the writer is built when both paths are fixed, and for each
+/// feature's own paths otherwise, before any document is written.
+fn document_key(
+    sandbox_root: &Uri,
+    output: &str,
+    path_in_archive: Option<&str>,
+) -> Result<DocumentKey, String> {
+    let resolved = crate::output::validate_and_join(sandbox_root, output)
+        .map_err(|e| format!("Output File `{output}` cannot be written: {e}"))?;
+    let output = sandbox_relative(sandbox_root, &resolved).unwrap_or_else(|| output.to_owned());
+    // `out.zip/udx/a.gml` would write a folder named `out.zip`, which is
+    // almost always a path meant for inside the archive.
+    if let Some((folder, _)) = output
+        .rsplit_once('/')
+        .filter(|(folder, _)| folder.split('/').any(destination::is_archive_path))
+    {
+        return Err(format!(
+            "Output File `{output}` is inside a folder named like a zip archive, `{folder}`; \
+             to write inside a zip archive, end Output File in `.zip` and give the path inside it as Path in Archive"
+        ));
+    }
+    let path_in_archive = path_in_archive.filter(|path| !path.trim().is_empty());
+    if !destination::is_archive_path(&output) {
+        return match path_in_archive {
+            None => Ok(DocumentKey {
+                output,
+                entry: None,
+            }),
+            Some(_) => Err(format!(
+                "Path in Archive is set, but Output File `{output}` does not end in `.zip`; \
+                 end Output File in `.zip` to write a zip archive, or leave Path in Archive empty"
+            )),
+        };
+    }
+    let entry = match path_in_archive {
+        None => {
+            let path = destination::default_entry_path(&output);
+            destination::validate_entry_path(&path).map_err(|e| {
+                format!(
+                    "Path in Archive is empty, and the default taken from Output File `{output}` {e}; \
+                     set Path in Archive"
+                )
+            })?;
+            path
+        }
+        Some(path) => {
+            destination::validate_entry_path(path).map_err(|e| format!("Path in Archive {e}"))?;
+            path.to_string()
+        }
+    };
+    Ok(DocumentKey {
+        output,
+        entry: Some(entry),
+    })
+}
+
+/// Check Output File and Path in Archive when the writer is built, if neither
+/// reads the feature, so a path that could not be written fails the run
+/// before any feature is read.
+///
+/// One that reads the feature does not evaluate over workflow variables alone,
+/// so it is left to [`CityGmlWriterSink::document`] for each feature.
+fn check_fixed_paths(
+    output: &CompiledCode,
+    path_in_archive: Option<&CompiledCode>,
+    ctx: &NodeContext,
+) -> Result<(), String> {
+    let fixed = |code: &CompiledCode| code.eval_string_variables_only(ctx.variables.clone()).ok();
+    let Some(output) = fixed(output) else {
+        return Ok(());
+    };
+    let path_in_archive = match path_in_archive {
+        None => None,
+        Some(code) => match fixed(code) {
+            Some(path) => Some(path),
+            None => return Ok(()),
+        },
+    };
+    document_key(&ctx.sandbox_root, &output, path_in_archive.as_deref()).map(|_| ())
+}
+
+/// The files several documents would be written as, checked before any is:
+/// two documents whose files share a folder and a name stem would share
+/// their staged folders, a document inside another's staged folder would
+/// be mixed into its textures or codelists, and a document whose path runs
+/// through another's file or names its staged folder could not be written
+/// once the other is.
+fn check_documents(documents: &[DocumentKey]) -> Result<(), String> {
+    // Loose files share the sandbox; each archive is a namespace of its own.
+    let mut namespaces: BTreeMap<Option<&str>, Vec<&str>> = BTreeMap::new();
+    for document in documents {
+        match &document.entry {
+            None => namespaces.entry(None).or_default().push(&document.output),
+            Some(entry) => {
+                namespaces
+                    .entry(Some(&document.output))
+                    .or_default()
+                    .push(entry);
+                namespaces.entry(None).or_default().push(&document.output);
+            }
+        }
+    }
+    for (archive, mut paths) in namespaces {
+        paths.sort_unstable();
+        paths.dedup();
+        let place = |path: &str| match archive {
+            None => format!("`{path}`"),
+            Some(archive) => format!("`{path}` in `{archive}`"),
+        };
+        let staged = |path: &str| -> Option<(String, [String; 2])> {
+            // An archive's own path stages nothing beside it.
+            if archive.is_none() && destination::is_archive_path(path) {
+                return None;
+            }
+            let (parent, file_name) = match path.rsplit_once('/') {
+                Some((parent, file_name)) => (format!("{parent}/"), file_name),
+                None => (String::new(), path),
+            };
+            let stem = format!("{parent}{}", destination::file_stem(file_name));
+            Some((
+                stem.clone(),
+                [format!("{stem}_appearance/"), format!("{stem}_codelists/")],
+            ))
+        };
+        for &path in &paths {
+            let as_folder = format!("{path}/");
+            if let Some(inside) = paths.iter().find(|inside| inside.starts_with(&as_folder)) {
+                return Err(format!(
+                    "{} is inside {}, which is a file; give one of them another path",
+                    place(inside),
+                    place(path)
+                ));
+            }
+        }
+        let mut stems: HashMap<String, &str> = HashMap::new();
+        for &path in &paths {
+            let Some((stem, folders)) = staged(path) else {
+                continue;
+            };
+            if let Some(other) = stems.insert(stem, path) {
+                return Err(format!(
+                    "{} and {} would share their texture and codelist folders; give the files different names",
+                    place(other),
+                    place(path)
+                ));
+            }
+            for &inside in &paths {
+                if folders
+                    .iter()
+                    .any(|folder| inside == folder.trim_end_matches('/'))
+                {
+                    return Err(format!(
+                        "{} is the folder staged beside {}; give it another path",
+                        place(inside),
+                        place(path)
+                    ));
+                }
+                if folders
+                    .iter()
+                    .any(|folder| inside.starts_with(folder.as_str()))
+                {
+                    return Err(format!(
+                        "{} is inside the folder staged beside {}; move it out",
+                        place(inside),
+                        place(path)
+                    ));
+                }
+            }
+        }
+    }
+    Ok(())
+}
+
+/// `uri`'s path below `sandbox_root`, with `/` between folders, or `None`
+/// when it is not below it.
+fn sandbox_relative(sandbox_root: &Uri, uri: &Uri) -> Option<String> {
+    let root = sandbox_root.as_str().trim_end_matches('/');
+    let path = uri.as_str().strip_prefix(root)?.strip_prefix('/')?;
+    (!path.is_empty()).then(|| path.to_owned())
 }
 
 /// Evaluate each `file` entry's `schemaLocation`, check the entries and
@@ -1197,8 +1503,12 @@ fn build_lod_mask(lod_filter: &Option<Vec<u8>>) -> Result<LodMask, String> {
 #[serde(rename_all = "camelCase")]
 pub struct CityGmlWriterParam {
     /// # Output File
-    /// Path of the CityGML file to create, as text or an expression over workflow variables, evaluated once rather than per feature.
+    /// Path of the CityGML file to create, as text or an expression over workflow variables and feature attributes, such as `"bldg/" + attributes["_meshcode"] + "_bldg_6697_op.gml"` for one file per mesh, where each nested object goes with the top-level object it belongs to. A path ending in `.zip` is one zip archive holding the CityGML files with their textures and codelists, written whole by this writer, so every feature for that archive must reach this writer.
     pub output: Code,
+    /// # Path in Archive
+    /// Only used when Output File ends in `.zip`: where the CityGML file goes inside the archive, as a path from its top with `/` between folders, given as text or an expression over workflow variables and feature attributes, such as `"udx/bldg/" + attributes["_meshcode"] + "_bldg_6697_op.gml"` for one file per mesh. Defaults to the archive's own name with `.gml`, at the top of the archive.
+    #[serde(default)]
+    pub path_in_archive: Option<Code>,
     /// # Pretty Print
     /// Whether to indent the output for readability. Defaults to true.
     #[serde(default = "default_pretty_print")]
@@ -1359,10 +1669,19 @@ fn load_ade_schemas(
 
 #[derive(Debug, Clone)]
 struct CityGmlWriterCompiledParam {
-    output: String,
+    output: CompiledCode,
+    path_in_archive: Option<CompiledCode>,
     epsg_code: Option<u32>,
     pretty_print: Option<bool>,
     ade: Vec<AdeBinding>,
+}
+
+/// The file one document is written as: a loose file at `output`, or the
+/// entry at `entry` in the archive at `output`.
+#[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord, Hash)]
+struct DocumentKey {
+    output: String,
+    entry: Option<String>,
 }
 
 #[derive(Debug, Clone)]
@@ -1371,6 +1690,42 @@ struct CityGmlWriterSink {
     lod_mask: LodMask,
     keys: ResolvedKeys,
     buffer: Vec<Feature>,
+    /// Per buffered feature, its index in `documents`, or `None` when its
+    /// paths failed, held in `path_errors`.
+    document_of: Vec<Option<usize>>,
+    /// Each document the features were given, in arrival order.
+    documents: Vec<DocumentKey>,
+    document_index: HashMap<DocumentKey, usize>,
+    /// Why a buffered feature's paths failed, by its index. Reported only if
+    /// the feature turns out to be top-level: a nested object goes with the
+    /// object it belongs to, so its own paths are never used.
+    path_errors: HashMap<usize, (ErrorCode, String)>,
+}
+
+impl CityGmlWriterSink {
+    /// The document `ctx`'s feature is given by its evaluated paths, or the
+    /// code and message to report should the feature turn out to be
+    /// top-level.
+    fn document(&self, ctx: &ExecutorContext) -> Result<DocumentKey, (ErrorCode, String)> {
+        let evaluate = |code: &CompiledCode, title: &str| {
+            code.eval_string(&ctx.feature, ctx.variables.clone())
+                .map_err(|e| {
+                    (
+                        ErrorCode::ExprEvaluationFailed,
+                        format!("failed to evaluate {title}: {e}"),
+                    )
+                })
+        };
+        let output = evaluate(&self.params.output, "Output File")?;
+        let path_in_archive = self
+            .params
+            .path_in_archive
+            .as_ref()
+            .map(|code| evaluate(code, "Path in Archive"))
+            .transpose()?;
+        document_key(&ctx.sandbox_root, &output, path_in_archive.as_deref())
+            .map_err(|message| (ErrorCode::CitygmlInvalidOutputPath, message))
+    }
 }
 
 impl Sink for CityGmlWriterSink {
@@ -1378,16 +1733,75 @@ impl Sink for CityGmlWriterSink {
         "CityGML Writer"
     }
 
-    /// Buffering only; the envelope and CRS are folded during conversion in `finish`.
+    /// Buffering only, with the document the feature's paths give it; the
+    /// envelope and CRS are folded during conversion in `finish`.
     fn process(&mut self, ctx: ExecutorContext) -> Result<(), BoxedError> {
+        let document = match self.document(&ctx) {
+            Ok(document) => Some(match self.document_index.get(&document) {
+                Some(&index) => index,
+                None => {
+                    let index = self.documents.len();
+                    self.document_index.insert(document.clone(), index);
+                    self.documents.push(document);
+                    index
+                }
+            }),
+            Err(error) => {
+                self.path_errors.insert(self.buffer.len(), error);
+                None
+            }
+        };
+        self.document_of.push(document);
         self.buffer.push(ctx.feature);
         Ok(())
     }
 
     fn finish(&self, ctx: NodeContext) -> Result<(), BoxedError> {
-        let path = self.params.output.as_str();
-        let out = crate::SinkOutput::new(&ctx.sandbox_root, path, &ctx.storage_resolver)
-            .map_err(|e| SinkError::CityGmlWriter(e.to_string()))?;
+        if self.buffer.is_empty() {
+            return Ok(());
+        }
+
+        // Documents in path order, so an archive's entries and the order files
+        // are written in do not depend on the order features arrived in.
+        let mut order: Vec<usize> = (0..self.documents.len()).collect();
+        order.sort_by(|&a, &b| self.documents[a].cmp(&self.documents[b]));
+        let mut rank = vec![0; order.len()];
+        for (position, &document) in order.iter().enumerate() {
+            rank[document] = position;
+        }
+        let documents: Vec<&DocumentKey> = order.iter().map(|&i| &self.documents[i]).collect();
+        let document_of: Vec<Option<usize>> = self
+            .document_of
+            .iter()
+            .map(|document| document.map(|i| rank[i]))
+            .collect();
+
+        // Every output is opened before anything is written; each was resolved
+        // in the output folder when its first feature was buffered.
+        let mut outputs: BTreeMap<&str, crate::SinkOutput> = BTreeMap::new();
+        for document in &documents {
+            if !outputs.contains_key(document.output.as_str()) {
+                let out = crate::SinkOutput::new(
+                    &ctx.sandbox_root,
+                    &document.output,
+                    &ctx.storage_resolver,
+                )
+                .map_err(|e| SinkError::CityGmlWriter(e.to_string()))?;
+                outputs.insert(&document.output, out);
+            }
+        }
+
+        // Each archive's last document, after which it is finished and
+        // written. Documents are in path order, so an archive's documents are
+        // written one after another and only one archive is open at a time.
+        let mut archives: BTreeMap<&str, ArchiveWriter> = BTreeMap::new();
+        let mut last_of_archive: HashMap<&str, usize> = HashMap::new();
+        for (index, document) in documents.iter().enumerate() {
+            if document.entry.is_some() {
+                archives.entry(&document.output).or_default();
+                last_of_archive.insert(&document.output, index);
+            }
+        }
 
         // The core set is loaded once per process; a set with ADEs, once per finish.
         let loaded;
@@ -1411,9 +1825,33 @@ impl Sink for CityGmlWriterSink {
             .map(|binding| (binding.namespace.clone(), binding.declared_location.clone()))
             .collect();
 
-        write_citygml_to_storage(
-            out.uri(),
-            &ctx.sandbox_root,
+        let destinations: Vec<Destination> = documents
+            .iter()
+            .map(|document| match &document.entry {
+                None => Destination::Storage {
+                    output: outputs[document.output.as_str()].uri(),
+                    sandbox_root: &ctx.sandbox_root,
+                },
+                Some(path) => Destination::Archive {
+                    archive: &archives[document.output.as_str()],
+                    path,
+                },
+            })
+            .collect();
+
+        let mut events = FinishEvents {
+            sink: self,
+            ctx: &ctx,
+            documents: &documents,
+            outputs: &outputs,
+            archives: &archives,
+            last_of_archive,
+            fatal: None,
+        };
+        let written = write_citygml_documents(
+            &destinations,
+            &document_of,
+            &mut events,
             &self.buffer,
             &self.lod_mask,
             &self.keys,
@@ -1424,8 +1862,79 @@ impl Sink for CityGmlWriterSink {
             schema,
             &prefixes,
             &ade_locations,
-        )?;
+        );
+        // The diagnostic itself, so its code is not lost in a message.
+        if let Some(diagnostic) = events.fatal {
+            return Err(Box::new(diagnostic));
+        }
+        written?;
 
+        Ok(())
+    }
+}
+
+/// What [`CityGmlWriterSink::finish`] does as the documents are written.
+struct FinishEvents<'a> {
+    sink: &'a CityGmlWriterSink,
+    ctx: &'a NodeContext,
+    /// In path order, as indexed by the writer.
+    documents: &'a [&'a DocumentKey],
+    outputs: &'a BTreeMap<&'a str, crate::SinkOutput>,
+    archives: &'a BTreeMap<&'a str, ArchiveWriter>,
+    /// Each archive's last document, after which it is finished and written.
+    last_of_archive: HashMap<&'a str, usize>,
+    /// The diagnostic a fatal path error raised, returned as it is.
+    fatal: Option<Diagnostic>,
+}
+
+impl DocumentEvents for FinishEvents<'_> {
+    /// A top-level feature whose paths failed: reported now, as only the join
+    /// tells a top-level feature from a nested one. A fatal report stops the
+    /// write before any document is written.
+    fn unplaced(&mut self, feature: usize) -> Result<(), SinkError> {
+        let Some((code, message)) = self.sink.path_errors.get(&feature) else {
+            return Ok(());
+        };
+        let feature_ctx = ExecutorContext::new_with_node_context_feature_and_port(
+            self.ctx,
+            self.sink.buffer[feature].clone(),
+            FEATURES_PORT.clone(),
+        );
+        match feature_ctx.report(DiagnosticDraft::new(*code).with_message(message.clone())) {
+            Ok(_) => Ok(()),
+            Err(diagnostic) => {
+                let error = SinkError::CityGmlWriter(diagnostic.to_string());
+                self.fatal = Some(diagnostic);
+                Err(error)
+            }
+        }
+    }
+
+    /// The files are checked against each other only once the join shows
+    /// which are written: a path only nested objects were given is unused.
+    fn assigned(&mut self, receives: &[bool]) -> Result<(), SinkError> {
+        let written: Vec<DocumentKey> = self
+            .documents
+            .iter()
+            .zip(receives)
+            .filter(|(_, receives)| **receives)
+            .map(|(document, _)| (*document).clone())
+            .collect();
+        check_documents(&written).map_err(SinkError::CityGmlWriter)
+    }
+
+    fn done(&mut self, index: usize) -> Result<(), SinkError> {
+        let document = self.documents[index];
+        let output = document.output.as_str();
+        if document.entry.is_none() || self.last_of_archive[output] != index {
+            return Ok(());
+        }
+        // No document means no archive, as no document means no loose file.
+        if let Some(bytes) = self.archives[output].take()? {
+            self.outputs[output]
+                .write(bytes)
+                .map_err(|e| SinkError::CityGmlWriter(e.to_string()))?;
+        }
         Ok(())
     }
 }
@@ -2707,7 +3216,7 @@ mod attributes_tests {
         assert_eq!(count(ErrorCode::CitygmlUnknownFeatureType), 1);
     }
 
-    fn classified_building(code_space: &str) -> Feature {
+    pub(super) fn classified_building(code_space: &str) -> Feature {
         building_with_source_properties(&[
             ("bldg:class", json!("普通建物")),
             ("bldg:class_code", json!("3001")),
@@ -3558,6 +4067,8 @@ mod ade_schemas_tests {
 mod hierarchy_tests {
     use std::collections::{HashMap, HashSet};
 
+    use pretty_assertions::assert_eq;
+
     use reearth_flow_citygml::parser::{CityGmlVersion, Parser};
     use reearth_flow_citygml::pipeline::build_features;
     use reearth_flow_diagnostics::{Diagnostic, ErrorCode};
@@ -4073,6 +4584,171 @@ mod hierarchy_tests {
         assert_nested(&xml);
         assert_eq!(xml.matches("<core:cityObjectMember>").count(), 1, "{xml}");
         assert!(diagnostics.is_empty(), "{diagnostics:?}");
+    }
+
+    /// A wall and a window given other meshes than their building's still
+    /// go into the building's document, nested where they belong.
+    #[test]
+    fn nested_features_follow_their_building_into_its_document() {
+        let mut features = read(
+            &[("hierarchy.gml", &building())],
+            &["Building", "WallSurface", "Window"],
+            true,
+            None,
+        );
+        assert_eq!(features.len(), 3);
+        for feature in &mut features {
+            let mesh = match gml_id_of(feature).as_deref() {
+                Some("b1") => "a",
+                Some("w1") => "b",
+                _ => "c",
+            };
+            feature.insert(
+                "_meshcode",
+                reearth_flow_types::AttributeValue::String(mesh.to_string()),
+            );
+        }
+        let tmp = tempdir().unwrap();
+        let handle = diagnostics();
+        let ctx = context(tmp.path(), Some(handle.clone()));
+        let with: HashMap<String, Value> = HashMap::from([
+            (
+                "output".to_string(),
+                json!({"type": "flowExpr", "value": r#"attributes["_meshcode"] + ".gml""#}),
+            ),
+            ("prettyPrint".to_string(), json!(false)),
+        ]);
+
+        run_with(&ctx, with, features).unwrap();
+
+        assert!(!tmp.path().join("b.gml").exists());
+        assert!(!tmp.path().join("c.gml").exists());
+        let xml = std::fs::read_to_string(tmp.path().join("a.gml")).unwrap();
+        assert_nested(&xml);
+        assert!(
+            inside(&xml, "<bldg:WallSurface ", "</bldg:WallSurface>")
+                .contains(r#"<bldg:opening><bldg:Window gml:id="win1">"#),
+            "{xml}"
+        );
+        assert_eq!(xml.matches("<core:cityObjectMember>").count(), 1, "{xml}");
+        assert!(handle.inner.drain_summaries().is_empty());
+    }
+
+    #[test]
+    fn a_nested_feature_whose_paths_fail_follows_its_building() {
+        let mut features = read(
+            &[("hierarchy.gml", &building())],
+            &["Building", "WallSurface", "Window"],
+            true,
+            None,
+        );
+        // Only the building has the attribute the path reads.
+        for feature in &mut features {
+            if gml_id_of(feature).as_deref() == Some("b1") {
+                feature.insert(
+                    "_meshcode",
+                    reearth_flow_types::AttributeValue::String("a".to_string()),
+                );
+            }
+        }
+        let tmp = tempdir().unwrap();
+        let handle = diagnostics();
+        let ctx = context(tmp.path(), Some(handle.clone()));
+        let with: HashMap<String, Value> = HashMap::from([
+            (
+                "output".to_string(),
+                json!({"type": "flowExpr", "value": r#"attributes["_meshcode"] + ".gml""#}),
+            ),
+            ("prettyPrint".to_string(), json!(false)),
+        ]);
+
+        run_with(&ctx, with, features).unwrap();
+
+        let xml = std::fs::read_to_string(tmp.path().join("a.gml")).unwrap();
+        assert_nested(&xml);
+        assert!(
+            inside(&xml, "<bldg:WallSurface ", "</bldg:WallSurface>")
+                .contains(r#"<bldg:opening><bldg:Window gml:id="win1">"#),
+            "{xml}"
+        );
+        assert!(handle.inner.drain_summaries().is_empty());
+    }
+
+    /// `features` with `_meshcode` set from each feature's `gml:id`.
+    fn with_meshcodes(
+        features: &mut [Feature],
+        mesh_of: impl Fn(Option<&str>) -> Option<&'static str>,
+    ) {
+        for feature in features {
+            if let Some(mesh) = mesh_of(gml_id_of(feature).as_deref()) {
+                feature.insert(
+                    "_meshcode",
+                    reearth_flow_types::AttributeValue::String(mesh.to_string()),
+                );
+            }
+        }
+    }
+
+    fn output_from(expression: &str) -> HashMap<String, Value> {
+        HashMap::from([
+            (
+                "output".to_string(),
+                json!({"type": "flowExpr", "value": expression}),
+            ),
+            ("prettyPrint".to_string(), json!(false)),
+        ])
+    }
+
+    #[test]
+    fn a_path_only_nested_objects_were_given_is_not_checked_or_written() {
+        let mut features = read(
+            &[("hierarchy.gml", &building())],
+            &["Building", "WallSurface", "Window"],
+            true,
+            None,
+        );
+        // `a.xml` would share `a.gml`'s staged folders, but only the wall
+        // was given it, and the wall goes with its building.
+        with_meshcodes(&mut features, |id| match id {
+            Some("w1") => Some("a.xml"),
+            _ => Some("a.gml"),
+        });
+        let tmp = tempdir().unwrap();
+        let ctx = context(tmp.path(), Some(diagnostics()));
+
+        run_with(&ctx, output_from(r#"attributes["_meshcode"]"#), features).unwrap();
+
+        assert!(!tmp.path().join("a.xml").exists());
+        let xml = std::fs::read_to_string(tmp.path().join("a.gml")).unwrap();
+        assert_nested(&xml);
+    }
+
+    #[test]
+    fn of_two_copies_of_a_building_the_one_whose_path_works_is_kept() {
+        let mut features = read(
+            &[("a.gml", &building()), ("a.gml", &building())],
+            &["Building"],
+            true,
+            None,
+        );
+        assert_eq!(features.len(), 2);
+        // Only the copy that arrives second can be placed.
+        features[1].insert(
+            "_meshcode",
+            reearth_flow_types::AttributeValue::String("a".to_string()),
+        );
+        let tmp = tempdir().unwrap();
+        let ctx = context(tmp.path(), Some(diagnostics()));
+
+        run_with(
+            &ctx,
+            output_from(r#"attributes["_meshcode"] + ".gml""#),
+            features,
+        )
+        .unwrap();
+
+        let xml = std::fs::read_to_string(tmp.path().join("a.gml")).unwrap();
+        assert_eq!(xml.matches("<bldg:Building ").count(), 1, "{xml}");
     }
 
     #[test]
@@ -4886,5 +5562,935 @@ mod hierarchy_tests {
             reported_for(&diagnostics, ErrorCode::CitygmlEmptyGeometry),
             [t2]
         );
+    }
+}
+
+#[cfg(test)]
+mod archive_tests {
+    use std::collections::HashMap;
+    use std::io::{Cursor, Read};
+    use std::path::Path;
+
+    use pretty_assertions::assert_eq;
+    use reearth_flow_diagnostics::{Diagnostic, ErrorCode};
+    use reearth_flow_runtime::errors::BoxedError;
+    use reearth_flow_runtime::event::EventHub;
+    use reearth_flow_runtime::executor_operation::{ExecutorContext, NodeContext};
+    use reearth_flow_runtime::node::{SinkFactory, FEATURES_PORT};
+    use reearth_flow_types::Feature;
+    use serde_json::{json, Value};
+    use tempfile::{tempdir, TempDir};
+
+    use super::ade_schemas_tests::{context, run_with};
+    use super::attributes_tests::classified_building;
+    use super::CityGmlWriterFactory;
+
+    /// A one-triangle generic object painted with the image at `texture`.
+    #[cfg(not(feature = "new-geometry"))]
+    fn textured(texture: &str) -> Feature {
+        use reearth_flow_geometry::types::coordinate::{Coordinate, Coordinate3D};
+        use reearth_flow_geometry::types::line_string::{LineString2D, LineString3D};
+        use reearth_flow_geometry::types::multi_polygon::MultiPolygon2D;
+        use reearth_flow_geometry::types::no_value::NoValue;
+        use reearth_flow_geometry::types::polygon::{Polygon2D, Polygon3D};
+        use reearth_flow_types::geometry::{
+            CityGmlGeometry, GeometryType, GeometryValue, GmlGeometry,
+        };
+        use reearth_flow_types::material::Texture;
+        use reearth_flow_types::{Attributes, Geometry};
+
+        let ring = LineString3D::new(vec![
+            Coordinate3D::new__(139.0, 35.0, 0.0),
+            Coordinate3D::new__(139.1, 35.0, 0.0),
+            Coordinate3D::new__(139.0, 35.1, 0.0),
+            Coordinate3D::new__(139.0, 35.0, 0.0),
+        ]);
+        let mut surface = GmlGeometry::new(GeometryType::Surface, Some(0));
+        surface.polygons.push(Polygon3D::new(ring, vec![]));
+        surface.len = 1;
+        let uv = LineString2D::new(
+            [[0.0, 0.0], [1.0, 0.0], [0.5, 1.0], [0.0, 0.0]]
+                .into_iter()
+                .map(Coordinate::<f64, NoValue>::from)
+                .collect(),
+        );
+        let geometry = CityGmlGeometry {
+            polygon_textures: vec![Some(0)],
+            polygon_uvs: MultiPolygon2D::new(vec![Polygon2D::new(uv, vec![])]),
+            ..CityGmlGeometry::new(
+                vec![surface],
+                vec![],
+                vec![Texture {
+                    uri: url::Url::parse(texture).unwrap(),
+                }],
+            )
+        };
+        Feature::new_with_attributes_and_geometry(
+            Attributes::new(),
+            Geometry::new_with(6697, GeometryValue::CityGmlGeometry(geometry)),
+        )
+    }
+
+    /// A one-triangle generic object painted with the image at `texture`.
+    #[cfg(feature = "new-geometry")]
+    fn textured(texture: &str) -> Feature {
+        use std::str::FromStr;
+        use std::sync::Arc;
+
+        use reearth_flow_common::uri::Uri;
+        use reearth_flow_geometry::appearance::{
+            ChannelId, Material, PhongMaterial, Raster, Sampler, Texture, ThemeId, UvSource,
+        };
+        use reearth_flow_geometry::coordinate::{CoordinateFrame, EpsgCode};
+        use reearth_flow_geometry::polygon::Polygon3D;
+        use reearth_flow_geometry::{Euclidean3DGeometry, Geometry};
+
+        let mut polygon = Polygon3D::from_rings(
+            CoordinateFrame::Crs(EpsgCode::new(6697)),
+            vec![
+                [35.0, 139.0, 0.0],
+                [35.1, 139.0, 0.0],
+                [35.0, 139.1, 0.0],
+                [35.0, 139.0, 0.0],
+            ],
+            Vec::<Vec<[f64; 3]>>::new(),
+        );
+        polygon
+            .set_appearance(
+                ThemeId(Arc::from("rgbTexture")),
+                Material::Phong(PhongMaterial {
+                    diffuse: [0.5, 0.5, 0.5],
+                    specular: [0.0; 3],
+                    emissive: [0.0; 3],
+                    ambient_intensity: 0.5,
+                    shininess: 0.0,
+                    transparency: 0.0,
+                    diffuse_map: Some(Texture {
+                        raster: Arc::new(Raster::Uri(Uri::from_str(texture).unwrap())),
+                        sampler: Sampler::default(),
+                        transform: None,
+                        uv_channel: ChannelId::default(),
+                    }),
+                    emissive_map: None,
+                    normal_map: None,
+                }),
+                Some(UvSource::Explicit(
+                    vec![[0.0, 0.0], [1.0, 0.0], [0.5, 1.0], [0.0, 0.0]].into_boxed_slice(),
+                )),
+            )
+            .unwrap();
+        Feature::from(Geometry::Euclidean3D(Euclidean3DGeometry::Polygon(
+            Box::new(polygon),
+        )))
+    }
+
+    fn literal(value: &str) -> Value {
+        json!({ "type": "string", "value": value })
+    }
+
+    fn with(output: &str, archive_path: Option<&str>) -> HashMap<String, Value> {
+        with_codes(literal(output), archive_path.map(literal))
+    }
+
+    fn expression(value: &str) -> Value {
+        json!({ "type": "flowExpr", "value": value })
+    }
+
+    fn with_codes(output: Value, archive_path: Option<Value>) -> HashMap<String, Value> {
+        let mut with: HashMap<String, Value> = [("output".to_string(), output)].into();
+        if let Some(archive_path) = archive_path {
+            with.insert("pathInArchive".to_string(), archive_path);
+        }
+        with
+    }
+
+    /// `feature` with `_meshcode` set to `meshcode`.
+    fn in_mesh(mut feature: Feature, meshcode: &str) -> Feature {
+        feature.insert(
+            "_meshcode",
+            reearth_flow_types::AttributeValue::String(meshcode.to_string()),
+        );
+        feature
+    }
+
+    /// The PLATEAU layout: one document per mesh under `udx/bldg/`.
+    const MESH_ENTRY: &str = r#""udx/bldg/" + attributes["_meshcode"] + "_bldg_6697_op.gml""#;
+
+    /// A temp directory with the sandbox at `out/`, and a source image and
+    /// codelist outside it.
+    struct Job {
+        dir: TempDir,
+        ctx: NodeContext,
+    }
+
+    impl Job {
+        fn new() -> Self {
+            let dir = tempdir().unwrap();
+            std::fs::create_dir_all(dir.path().join("out")).unwrap();
+            std::fs::create_dir_all(dir.path().join("src")).unwrap();
+            std::fs::write(dir.path().join("src/wall.png"), b"png bytes").unwrap();
+            std::fs::write(
+                dir.path().join("src/Building_class.xml"),
+                "<gml:Dictionary>3001</gml:Dictionary>\n",
+            )
+            .unwrap();
+            let ctx = context(&dir.path().join("out"), None);
+            Self { dir, ctx }
+        }
+
+        fn source(&self, name: &str) -> String {
+            format!("file://{}/src/{name}", self.dir.path().display())
+        }
+
+        fn sandbox(&self) -> std::path::PathBuf {
+            self.dir.path().join("out")
+        }
+
+        fn run(&self, with: HashMap<String, Value>, features: Vec<Feature>) {
+            run_with(&self.ctx, with, features).unwrap();
+        }
+
+        /// Every entry of the archive at `path` under the sandbox, by name.
+        fn archive(&self, path: &str) -> Vec<(String, Vec<u8>)> {
+            let bytes = std::fs::read(self.sandbox().join(path)).unwrap();
+            let mut archive = zip::ZipArchive::new(Cursor::new(bytes)).unwrap();
+            let mut entries: Vec<(String, Vec<u8>)> = (0..archive.len())
+                .map(|i| {
+                    let mut entry = archive.by_index(i).unwrap();
+                    let mut content = Vec::new();
+                    entry.read_to_end(&mut content).unwrap();
+                    (entry.name().unwrap().to_string(), content)
+                })
+                .collect();
+            entries.sort();
+            entries
+        }
+
+        /// The archive's entry names in the order they were written.
+        fn archive_order(&self, path: &str) -> Vec<String> {
+            let bytes = std::fs::read(self.sandbox().join(path)).unwrap();
+            let mut archive = zip::ZipArchive::new(Cursor::new(bytes)).unwrap();
+            (0..archive.len())
+                .map(|i| archive.by_index(i).unwrap().name().unwrap().to_string())
+                .collect()
+        }
+
+        /// Every file under the sandbox, relative to it.
+        fn sandbox_files(&self) -> Vec<String> {
+            fn walk(root: &Path, dir: &Path, files: &mut Vec<String>) {
+                for entry in std::fs::read_dir(dir).unwrap() {
+                    let path = entry.unwrap().path();
+                    if path.is_dir() {
+                        walk(root, &path, files);
+                    } else {
+                        let relative = path.strip_prefix(root).unwrap();
+                        files.push(relative.to_string_lossy().replace('\\', "/"));
+                    }
+                }
+            }
+            let mut files = Vec::new();
+            walk(&self.sandbox(), &self.sandbox(), &mut files);
+            files.sort();
+            files
+        }
+    }
+
+    fn names(entries: &[(String, Vec<u8>)]) -> Vec<&str> {
+        entries.iter().map(|(name, _)| name.as_str()).collect()
+    }
+
+    fn entry<'a>(entries: &'a [(String, Vec<u8>)], name: &str) -> &'a [u8] {
+        entries
+            .iter()
+            .find(|(entry, _)| entry == name)
+            .map(|(_, content)| content.as_slice())
+            .unwrap_or_else(|| panic!("no `{name}` in {:?}", names(entries)))
+    }
+
+    /// Fails on anything that is not well-formed XML.
+    fn assert_well_formed(xml: &[u8]) {
+        let mut reader = quick_xml::Reader::from_reader(xml);
+        let mut buf = Vec::new();
+        loop {
+            match reader.read_event_into(&mut buf) {
+                Ok(quick_xml::events::Event::Eof) => break,
+                Ok(_) => buf.clear(),
+                Err(e) => panic!("the document does not parse: {e}"),
+            }
+        }
+    }
+
+    #[test]
+    fn a_zip_output_holds_the_document_at_its_path_in_the_archive() {
+        let job = Job::new();
+
+        job.run(
+            with("bunkyo.zip", Some("udx/bldg/x.gml")),
+            vec![classified_building("3001")],
+        );
+
+        let entries = job.archive("bunkyo.zip");
+        assert_eq!(names(&entries), ["udx/bldg/x.gml"]);
+        let gml = entry(&entries, "udx/bldg/x.gml");
+        assert_well_formed(gml);
+        assert!(String::from_utf8_lossy(gml).contains("<bldg:Building"));
+        assert_eq!(job.sandbox_files(), ["bunkyo.zip"]);
+    }
+
+    #[test]
+    fn textures_go_into_the_archive_beside_the_document() {
+        let job = Job::new();
+
+        job.run(
+            with("bunkyo.zip", Some("udx/bldg/x.gml")),
+            vec![textured(&job.source("wall.png"))],
+        );
+
+        let entries = job.archive("bunkyo.zip");
+        assert_eq!(
+            names(&entries),
+            ["udx/bldg/x.gml", "udx/bldg/x_appearance/wall.png"]
+        );
+        assert_eq!(
+            entry(&entries, "udx/bldg/x_appearance/wall.png"),
+            b"png bytes"
+        );
+        let gml = String::from_utf8_lossy(entry(&entries, "udx/bldg/x.gml")).into_owned();
+        assert!(
+            gml.contains("<app:imageURI>x_appearance/wall.png</app:imageURI>"),
+            "{gml}"
+        );
+        // Nothing staged lands outside the archive.
+        assert_eq!(job.sandbox_files(), ["bunkyo.zip"]);
+    }
+
+    #[test]
+    fn codelists_go_into_the_archive_beside_the_document() {
+        let job = Job::new();
+
+        job.run(
+            with("bunkyo.zip", Some("udx/bldg/x.gml")),
+            vec![classified_building(&job.source("Building_class.xml"))],
+        );
+
+        let entries = job.archive("bunkyo.zip");
+        assert_eq!(
+            names(&entries),
+            ["udx/bldg/x.gml", "udx/bldg/x_codelists/Building_class.xml"]
+        );
+        assert_eq!(
+            entry(&entries, "udx/bldg/x_codelists/Building_class.xml"),
+            b"<gml:Dictionary>3001</gml:Dictionary>\n"
+        );
+        let gml = String::from_utf8_lossy(entry(&entries, "udx/bldg/x.gml")).into_owned();
+        assert!(
+            gml.contains(r#"codeSpace="x_codelists/Building_class.xml""#),
+            "{gml}"
+        );
+        assert_eq!(job.sandbox_files(), ["bunkyo.zip"]);
+    }
+
+    #[test]
+    fn without_a_path_in_archive_the_document_is_named_after_the_archive() {
+        let job = Job::new();
+
+        job.run(
+            with("out/13105_bunkyo-ku_bldg.ZIP", None),
+            vec![textured(&job.source("wall.png"))],
+        );
+
+        let entries = job.archive("out/13105_bunkyo-ku_bldg.ZIP");
+        assert_eq!(
+            names(&entries),
+            [
+                "13105_bunkyo-ku_bldg.gml",
+                "13105_bunkyo-ku_bldg_appearance/wall.png"
+            ]
+        );
+    }
+
+    /// The archive holds the very document a loose write produces, so every
+    /// relative reference in it resolves the same way inside the archive.
+    #[test]
+    fn the_archived_document_is_the_loose_document() {
+        let loose = Job::new();
+        loose.run(
+            with("x.gml", None),
+            vec![
+                textured(&loose.source("wall.png")),
+                classified_building(&loose.source("Building_class.xml")),
+            ],
+        );
+        let archived = Job::new();
+        archived.run(
+            with("x.zip", None),
+            vec![
+                textured(&archived.source("wall.png")),
+                classified_building(&archived.source("Building_class.xml")),
+            ],
+        );
+
+        assert_eq!(
+            loose.sandbox_files(),
+            [
+                "x.gml",
+                "x_appearance/wall.png",
+                "x_codelists/Building_class.xml"
+            ]
+        );
+        let entries = archived.archive("x.zip");
+        assert_eq!(
+            names(&entries),
+            [
+                "x.gml",
+                "x_appearance/wall.png",
+                "x_codelists/Building_class.xml"
+            ]
+        );
+        for name in names(&entries) {
+            assert_eq!(
+                String::from_utf8_lossy(entry(&entries, name)),
+                String::from_utf8_lossy(&std::fs::read(loose.sandbox().join(name)).unwrap()),
+                "{name}"
+            );
+        }
+    }
+
+    #[test]
+    fn each_mesh_is_a_document_with_its_own_folders_in_one_archive() {
+        let job = Job::new();
+
+        job.run(
+            with_codes(
+                literal("13105_bunkyo-ku_bldg.zip"),
+                Some(expression(MESH_ENTRY)),
+            ),
+            vec![
+                in_mesh(textured(&job.source("wall.png")), "53394640"),
+                in_mesh(textured(&job.source("wall.png")), "53394641"),
+            ],
+        );
+
+        let entries = job.archive("13105_bunkyo-ku_bldg.zip");
+        assert_eq!(
+            names(&entries),
+            [
+                "udx/bldg/53394640_bldg_6697_op.gml",
+                "udx/bldg/53394640_bldg_6697_op_appearance/wall.png",
+                "udx/bldg/53394641_bldg_6697_op.gml",
+                "udx/bldg/53394641_bldg_6697_op_appearance/wall.png",
+            ]
+        );
+        for mesh in ["53394640", "53394641"] {
+            let gml = entry(&entries, &format!("udx/bldg/{mesh}_bldg_6697_op.gml"));
+            assert_well_formed(gml);
+            let gml = String::from_utf8_lossy(gml);
+            assert_eq!(gml.matches("<core:cityObjectMember>").count(), 1, "{gml}");
+            assert!(
+                gml.contains(&format!(
+                    "<app:imageURI>{mesh}_bldg_6697_op_appearance/wall.png</app:imageURI>"
+                )),
+                "{gml}"
+            );
+        }
+        assert_eq!(job.sandbox_files(), ["13105_bunkyo-ku_bldg.zip"]);
+    }
+
+    #[test]
+    fn documents_are_written_in_path_order_whatever_order_features_arrive_in() {
+        let job = Job::new();
+
+        job.run(
+            with_codes(literal("x.zip"), Some(expression(MESH_ENTRY))),
+            vec![
+                in_mesh(textured(&job.source("wall.png")), "b"),
+                in_mesh(textured(&job.source("wall.png")), "a"),
+            ],
+        );
+
+        assert_eq!(
+            job.archive_order("x.zip"),
+            [
+                "udx/bldg/a_bldg_6697_op_appearance/wall.png",
+                "udx/bldg/a_bldg_6697_op.gml",
+                "udx/bldg/b_bldg_6697_op_appearance/wall.png",
+                "udx/bldg/b_bldg_6697_op.gml",
+            ]
+        );
+    }
+
+    #[test]
+    fn a_loose_output_is_split_by_attribute_too() {
+        let job = Job::new();
+
+        job.run(
+            with_codes(
+                expression(r#""bldg/" + attributes["_meshcode"] + ".gml""#),
+                None,
+            ),
+            vec![
+                in_mesh(textured(&job.source("wall.png")), "53394640"),
+                in_mesh(textured(&job.source("wall.png")), "53394641"),
+                in_mesh(textured(&job.source("wall.png")), "53394640"),
+            ],
+        );
+
+        assert_eq!(
+            job.sandbox_files(),
+            [
+                "bldg/53394640.gml",
+                "bldg/53394640_appearance/wall.png",
+                "bldg/53394641.gml",
+                "bldg/53394641_appearance/wall.png",
+            ]
+        );
+        let gml = std::fs::read_to_string(job.sandbox().join("bldg/53394640.gml")).unwrap();
+        assert_eq!(gml.matches("<core:cityObjectMember>").count(), 2, "{gml}");
+    }
+
+    #[test]
+    fn documents_that_would_share_staged_folders_fail_before_any_write() {
+        let job = Job::new();
+
+        let error = run_with(
+            &job.ctx,
+            with_codes(
+                literal("x.zip"),
+                Some(expression(r#""udx/a." + attributes["_meshcode"]"#)),
+            ),
+            vec![
+                in_mesh(textured(&job.source("wall.png")), "gml"),
+                in_mesh(textured(&job.source("wall.png")), "xml"),
+            ],
+        )
+        .unwrap_err();
+
+        assert!(error.contains("would share"), "{error}");
+        assert_eq!(job.sandbox_files(), Vec::<String>::new());
+    }
+
+    #[test]
+    fn a_document_inside_another_documents_staged_folder_fails_before_any_write() {
+        let job = Job::new();
+
+        let error = run_with(
+            &job.ctx,
+            with_codes(expression(r#"attributes["_meshcode"]"#), None),
+            vec![
+                in_mesh(textured(&job.source("wall.png")), "a.gml"),
+                in_mesh(textured(&job.source("wall.png")), "a_appearance/b.gml"),
+            ],
+        )
+        .unwrap_err();
+
+        assert!(error.contains("is inside the folder"), "{error}");
+        assert_eq!(job.sandbox_files(), Vec::<String>::new());
+    }
+
+    #[test]
+    fn a_path_that_cannot_be_evaluated_for_a_feature_fails_the_run() {
+        let job = Job::new();
+
+        let error = run_with(
+            &job.ctx,
+            with_codes(literal("x.zip"), Some(expression(MESH_ENTRY))),
+            vec![textured(&job.source("wall.png"))],
+        )
+        .unwrap_err();
+
+        assert!(error.contains("Path in Archive"), "{error}");
+        assert_eq!(job.sandbox_files(), Vec::<String>::new());
+    }
+
+    #[test]
+    fn a_feature_whose_path_leaves_the_archive_fails_the_run() {
+        let job = Job::new();
+
+        let error = run_with(
+            &job.ctx,
+            with_codes(
+                literal("x.zip"),
+                Some(expression(r#""../" + attributes["_meshcode"] + ".gml""#)),
+            ),
+            vec![in_mesh(textured(&job.source("wall.png")), "a")],
+        )
+        .unwrap_err();
+
+        assert!(error.contains("Path in Archive"), "{error}");
+        assert_eq!(job.sandbox_files(), Vec::<String>::new());
+    }
+
+    /// `feature` with `_out` set to `output`.
+    fn to_output(mut feature: Feature, output: &str) -> Feature {
+        feature.insert(
+            "_out",
+            reearth_flow_types::AttributeValue::String(output.to_string()),
+        );
+        feature
+    }
+
+    /// Run the sink as the runtime does: every feature is processed whether
+    /// or not one before it failed, and `finish` is called anyway. The errors
+    /// `process` returned, and what `finish` returned.
+    fn run_through(
+        ctx: &NodeContext,
+        with: HashMap<String, Value>,
+        features: Vec<Feature>,
+    ) -> (Vec<BoxedError>, Result<(), BoxedError>) {
+        let mut sink = CityGmlWriterFactory
+            .build(
+                ctx.clone(),
+                EventHub::new(10),
+                "CityGML Writer".to_string(),
+                Some(with),
+            )
+            .unwrap();
+        let errors = features
+            .into_iter()
+            .filter_map(|feature| {
+                sink.process(ExecutorContext::new_with_node_context_feature_and_port(
+                    ctx,
+                    feature,
+                    FEATURES_PORT.clone(),
+                ))
+                .err()
+            })
+            .collect();
+        (errors, sink.finish(ctx.clone()))
+    }
+
+    fn code_of(error: &BoxedError) -> Option<ErrorCode> {
+        error
+            .downcast_ref::<Diagnostic>()
+            .map(|diagnostic| diagnostic.code)
+    }
+
+    #[test]
+    fn a_top_level_feature_whose_path_cannot_be_evaluated_fails_before_any_write() {
+        let job = Job::new();
+
+        let (errors, finished) = run_through(
+            &job.ctx,
+            with_codes(literal("x.zip"), Some(expression(MESH_ENTRY))),
+            vec![
+                in_mesh(textured(&job.source("wall.png")), "a"),
+                textured(&job.source("wall.png")),
+            ],
+        );
+
+        assert!(errors.is_empty());
+        assert_eq!(
+            code_of(&finished.unwrap_err()),
+            Some(ErrorCode::ExprEvaluationFailed)
+        );
+        assert_eq!(job.sandbox_files(), Vec::<String>::new());
+    }
+
+    #[test]
+    fn a_top_level_feature_whose_path_cannot_be_written_fails_before_any_write() {
+        let job = Job::new();
+
+        let (errors, finished) = run_through(
+            &job.ctx,
+            with_codes(
+                literal("x.zip"),
+                Some(expression(r#""../" + attributes["_meshcode"] + ".gml""#)),
+            ),
+            vec![
+                in_mesh(textured(&job.source("wall.png")), "a"),
+                in_mesh(textured(&job.source("wall.png")), "c"),
+            ],
+        );
+
+        assert!(errors.is_empty());
+        assert_eq!(
+            code_of(&finished.unwrap_err()),
+            Some(ErrorCode::CitygmlInvalidOutputPath)
+        );
+        assert_eq!(job.sandbox_files(), Vec::<String>::new());
+    }
+
+    #[test]
+    fn an_output_file_that_leaves_the_output_folder_is_reported_for_its_feature() {
+        let job = Job::new();
+
+        let (errors, finished) = run_through(
+            &job.ctx,
+            with_codes(
+                expression(r#""../" + attributes["_meshcode"] + ".gml""#),
+                None,
+            ),
+            vec![in_mesh(classified_building("3001"), "a")],
+        );
+
+        assert!(errors.is_empty());
+        let error = finished.unwrap_err();
+        assert_eq!(code_of(&error), Some(ErrorCode::CitygmlInvalidOutputPath));
+        assert!(error.to_string().contains("Output File"), "{error}");
+        assert_eq!(job.sandbox_files(), Vec::<String>::new());
+    }
+
+    #[test]
+    fn a_path_error_demoted_below_fatal_leaves_its_feature_out() {
+        use reearth_flow_diagnostics::{
+            Disposition, DispositionPolicy, OverrideInput, PolicyInput,
+        };
+        use reearth_flow_runtime::diagnostics::NodeDiagnosticsHandle;
+        use reearth_flow_runtime::node::NodeHandle;
+
+        let job = Job::new();
+        let policy = DispositionPolicy::compile(PolicyInput {
+            overrides: vec![OverrideInput {
+                node: Some("n1".to_string()),
+                code: Some("expr.evaluation_failed".to_string()),
+                category: None,
+                disposition: Disposition::WarnDrop,
+            }],
+            ..Default::default()
+        })
+        .unwrap();
+        let handle = std::sync::Arc::new(NodeDiagnosticsHandle::new(
+            "n1".to_string(),
+            NodeHandle::for_test("n1"),
+            "writer".into(),
+            "CityGML Writer".into(),
+            std::sync::Arc::default(),
+            std::sync::Arc::new(policy),
+            true,
+        ));
+        let ctx = context(&job.sandbox(), Some(handle.clone()));
+
+        let (errors, finished) = run_through(
+            &ctx,
+            with_codes(literal("x.zip"), Some(expression(MESH_ENTRY))),
+            vec![
+                in_mesh(classified_building("3001"), "a"),
+                classified_building("3001"),
+            ],
+        );
+
+        assert!(errors.is_empty());
+        assert!(finished.is_ok(), "{finished:?}");
+        assert_eq!(
+            names(&job.archive("x.zip")),
+            ["udx/bldg/a_bldg_6697_op.gml"]
+        );
+        let summaries = handle.inner.drain_summaries();
+        assert!(
+            summaries
+                .iter()
+                .any(|summary| summary.code == ErrorCode::ExprEvaluationFailed),
+            "{summaries:?}"
+        );
+    }
+
+    #[test]
+    fn outputs_that_resolve_to_one_file_are_one_archive() {
+        let job = Job::new();
+
+        job.run(
+            with_codes(
+                expression(r#"attributes["_out"]"#),
+                Some(expression(MESH_ENTRY)),
+            ),
+            vec![
+                to_output(in_mesh(classified_building("3001"), "a"), "x.zip"),
+                to_output(in_mesh(classified_building("3001"), "b"), "./x.zip"),
+            ],
+        );
+
+        let entries = job.archive("x.zip");
+        assert_eq!(
+            names(&entries),
+            ["udx/bldg/a_bldg_6697_op.gml", "udx/bldg/b_bldg_6697_op.gml"]
+        );
+        assert_eq!(job.sandbox_files(), ["x.zip"]);
+    }
+
+    #[test]
+    fn an_output_file_that_resolves_to_a_zip_is_that_archive() {
+        let job = Job::new();
+
+        job.run(
+            with_codes(expression(r#"attributes["_out"]"#), None),
+            vec![
+                to_output(classified_building("3001"), "x.zip"),
+                to_output(classified_building("3001"), "x.zip/."),
+            ],
+        );
+
+        assert_eq!(names(&job.archive("x.zip")), ["x.gml"]);
+        assert_eq!(job.sandbox_files(), ["x.zip"]);
+    }
+
+    #[test]
+    fn an_output_file_inside_a_folder_named_like_a_zip_is_refused() {
+        let error = build(with("out.zip/udx/bldg/a.gml", None)).unwrap_err();
+        assert!(error.contains("folder named like a zip archive"), "{error}");
+        assert!(error.contains("Path in Archive"), "{error}");
+    }
+
+    #[test]
+    fn an_output_file_that_leaves_the_output_folder_fails_at_build() {
+        let error = build(with("../x.gml", None)).unwrap_err();
+        assert!(
+            error.contains("Output File `../x.gml` cannot be written"),
+            "{error}"
+        );
+    }
+
+    #[test]
+    fn each_archive_of_many_is_finished_with_its_own_documents() {
+        let job = Job::new();
+
+        job.run(
+            with_codes(
+                expression(r#"attributes["_meshcode"] + ".zip""#),
+                Some(expression(MESH_ENTRY)),
+            ),
+            vec![
+                in_mesh(textured(&job.source("wall.png")), "b"),
+                in_mesh(classified_building("3001"), "a"),
+                in_mesh(textured(&job.source("wall.png")), "c"),
+                in_mesh(classified_building("3001"), "a"),
+            ],
+        );
+
+        assert_eq!(job.sandbox_files(), ["a.zip", "b.zip", "c.zip"]);
+        for mesh in ["a", "b", "c"] {
+            let entries = job.archive(&format!("{mesh}.zip"));
+            let gml = format!("udx/bldg/{mesh}_bldg_6697_op.gml");
+            assert_well_formed(entry(&entries, &gml));
+            assert!(
+                names(&entries)
+                    .iter()
+                    .all(|name| name.starts_with(&format!("udx/bldg/{mesh}_"))),
+                "{:?}",
+                names(&entries)
+            );
+        }
+    }
+
+    #[test]
+    fn a_document_whose_path_runs_through_another_fails_before_any_write() {
+        let job = Job::new();
+
+        let error = run_with(
+            &job.ctx,
+            with_codes(expression(r#"attributes["_meshcode"]"#), None),
+            vec![
+                in_mesh(classified_building("3001"), "a.gml"),
+                in_mesh(classified_building("3001"), "a.gml/b.gml"),
+            ],
+        )
+        .unwrap_err();
+
+        assert!(error.contains("which is a file"), "{error}");
+        assert_eq!(job.sandbox_files(), Vec::<String>::new());
+    }
+
+    #[test]
+    fn a_document_named_as_another_documents_staged_folder_fails_before_any_write() {
+        let job = Job::new();
+
+        let error = run_with(
+            &job.ctx,
+            with_codes(expression(r#"attributes["_meshcode"]"#), None),
+            vec![
+                in_mesh(textured(&job.source("wall.png")), "a.gml"),
+                in_mesh(classified_building("3001"), "a_appearance"),
+            ],
+        )
+        .unwrap_err();
+
+        assert!(error.contains("is the folder staged beside"), "{error}");
+        assert_eq!(job.sandbox_files(), Vec::<String>::new());
+    }
+
+    #[test]
+    fn a_path_over_variables_only_is_still_checked_at_build() {
+        let error = build(with_codes(
+            literal("x.zip"),
+            Some(expression(r#""../" + "x.gml""#)),
+        ))
+        .unwrap_err();
+        assert!(error.contains("Path in Archive"), "{error}");
+
+        assert_eq!(
+            build(with_codes(literal("x.zip"), Some(expression(MESH_ENTRY)))),
+            Ok(())
+        );
+    }
+
+    #[test]
+    fn nothing_written_means_no_archive() {
+        let job = Job::new();
+
+        job.run(with("bunkyo.zip", Some("udx/bldg/x.gml")), vec![]);
+
+        assert_eq!(job.sandbox_files(), Vec::<String>::new());
+    }
+
+    /// Build the writer in a job whose output folder is sandboxed.
+    fn build(with: HashMap<String, Value>) -> Result<(), String> {
+        let job = Job::new();
+        CityGmlWriterFactory
+            .build(
+                job.ctx.clone(),
+                EventHub::new(10),
+                "CityGML Writer".to_string(),
+                Some(with),
+            )
+            .map(|_| ())
+            .map_err(|e| e.to_string())
+    }
+
+    #[test]
+    fn a_path_in_archive_needs_a_zip_output() {
+        let error = build(with("x.gml", Some("udx/bldg/x.gml"))).unwrap_err();
+        assert!(error.contains("Path in Archive"), "{error}");
+        assert!(error.contains("`.zip`"), "{error}");
+    }
+
+    #[test]
+    fn a_path_in_archive_that_could_leave_it_is_refused() {
+        for path in [
+            "/udx/bldg/x.gml",
+            "../x.gml",
+            "udx/../../x.gml",
+            "udx\\bldg\\x.gml",
+        ] {
+            let error = build(with("x.zip", Some(path))).unwrap_err();
+            assert!(error.contains("Path in Archive"), "{path:?}: {error}");
+        }
+    }
+
+    /// The editor sends an empty value for a field typed in and cleared.
+    #[test]
+    fn a_blank_path_in_archive_counts_as_left_out() {
+        assert_eq!(build(with("x.gml", Some(""))), Ok(()));
+        assert_eq!(build(with("x.zip", Some(" "))), Ok(()));
+    }
+
+    #[test]
+    fn a_blank_path_in_archive_takes_the_default() {
+        let job = Job::new();
+
+        job.run(with("x.zip", Some("")), vec![classified_building("3001")]);
+
+        assert_eq!(names(&job.archive("x.zip")), ["x.gml"]);
+    }
+
+    #[test]
+    fn a_default_entry_that_cannot_be_an_entry_fails_at_build() {
+        let error = build(with("a:b.zip", None)).unwrap_err();
+        assert!(error.contains("Path in Archive"), "{error}");
+    }
+
+    #[test]
+    fn a_valid_path_in_archive_builds() {
+        assert_eq!(build(with("x.zip", Some("udx/bldg/x.gml"))), Ok(()));
+        assert_eq!(build(with("x.zip", None)), Ok(()));
+        assert_eq!(build(with("x.gml", None)), Ok(()));
     }
 }

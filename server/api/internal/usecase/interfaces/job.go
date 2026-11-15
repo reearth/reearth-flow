@@ -13,6 +13,9 @@ import (
 	"github.com/reearth/reearth-flow/api/pkg/job"
 )
 
+// ErrJobNotCancellable refuses to cancel a job that has already finished.
+var ErrJobNotCancellable error = errors.New("job cannot be cancelled")
+
 // ErrJobAlreadyRunning refuses a run on a workspace that already has as many
 // pending or running jobs as its plan allows.
 var ErrJobAlreadyRunning error = errors.New("this workspace already has as many jobs running as its plan allows")

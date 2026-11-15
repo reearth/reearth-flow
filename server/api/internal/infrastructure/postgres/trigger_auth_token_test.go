@@ -45,7 +45,7 @@ func TestTrigger_Save_StoresOnlyTokenHash(t *testing.T) {
 	// Listing maps columns by position, so it is checked separately.
 	page := &interfaces.PaginationParam{Page: &interfaces.PageBasedPaginationParam{Page: 1, PageSize: 10}}
 	for _, p := range []*interfaces.PaginationParam{nil, page} {
-		listed, _, err := r.FindByWorkspace(ctx, wid, p, nil)
+		listed, _, err := r.FindByWorkspace(ctx, wid, p, interfaces.TriggerFilter{})
 		require.NoError(t, err)
 		require.Len(t, listed, 1)
 		assert.True(t, listed[0].VerifyAuthToken(token))

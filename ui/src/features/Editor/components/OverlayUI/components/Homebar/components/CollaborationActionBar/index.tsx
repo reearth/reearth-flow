@@ -5,6 +5,7 @@ import {
   Popover,
   PopoverContent,
   PopoverTrigger,
+  PresenceAvatar,
 } from "@flow/components";
 import { useT } from "@flow/lib/i18n";
 import type { AwarenessUser } from "@flow/types";
@@ -54,14 +55,7 @@ const CollaborationActionBar: React.FC<Props> = ({
             onClick={() => onDialogOpen("collaboration")}>
             <div className="flex items-center -space-x-4">
               <div key={self?.clientId}>
-                <div
-                  className="flex size-6 items-center justify-center rounded-full ring-2 ring-secondary/20"
-                  style={{ backgroundColor: self?.color || undefined }}>
-                  <span className="text-xs font-medium text-white">
-                    {self.userName.charAt(0).toUpperCase()}
-                    {self.userName.charAt(1)}
-                  </span>
-                </div>
+                <PresenceAvatar user={self} />
               </div>
               {users &&
                 Object.entries(users)
@@ -69,16 +63,7 @@ const CollaborationActionBar: React.FC<Props> = ({
                   .map(([_key, value]) => {
                     return (
                       <div key={value.clientId}>
-                        <div
-                          className="flex size-6 items-center justify-center  rounded-full ring-2 ring-secondary/20"
-                          style={{
-                            backgroundColor: value.color || undefined,
-                          }}>
-                          <span className="text-xs font-medium text-white">
-                            {value.userName.charAt(0).toUpperCase()}
-                            {value.userName.charAt(1)}
-                          </span>
-                        </div>
+                        <PresenceAvatar user={value} />
                       </div>
                     );
                   })}

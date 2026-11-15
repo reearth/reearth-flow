@@ -109,6 +109,16 @@ type ComplexityRoot struct {
 		UpdatedAt func(childComplexity int) int
 	}
 
+	CMSItemJobOrigin struct {
+		ConnectionID func(childComplexity int) int
+		ItemID       func(childComplexity int) int
+		ItemTitle    func(childComplexity int) int
+		ModelID      func(childComplexity int) int
+		ModelName    func(childComplexity int) int
+		ProjectID    func(childComplexity int) int
+		ProjectName  func(childComplexity int) int
+	}
+
 	CMSItemsConnection struct {
 		Items      func(childComplexity int) int
 		TotalCount func(childComplexity int) int
@@ -285,9 +295,13 @@ type ComplexityRoot struct {
 		Logs              func(childComplexity int, since time.Time) int
 		LogsURL           func(childComplexity int) int
 		NodeDiagnostics   func(childComplexity int, nodeID string) int
+		Origin            func(childComplexity int) int
 		OutputURLs        func(childComplexity int) int
+		RunByID           func(childComplexity int) int
 		StartedAt         func(childComplexity int) int
 		Status            func(childComplexity int) int
+		Trigger           func(childComplexity int) int
+		TriggerID         func(childComplexity int) int
 		UserFacingLogsURL func(childComplexity int) int
 		Variables         func(childComplexity int) int
 		WorkerLogsURL     func(childComplexity int) int
@@ -299,6 +313,10 @@ type ComplexityRoot struct {
 		Nodes      func(childComplexity int) int
 		PageInfo   func(childComplexity int) int
 		TotalCount func(childComplexity int) int
+	}
+
+	JobOrigin struct {
+		CmsItem func(childComplexity int) int
 	}
 
 	JobPayload struct {
@@ -318,6 +336,7 @@ type ComplexityRoot struct {
 		Email         func(childComplexity int) int
 		ID            func(childComplexity int) int
 		Lang          func(childComplexity int) int
+		Metadata      func(childComplexity int) int
 		MyWorkspace   func(childComplexity int) int
 		MyWorkspaceID func(childComplexity int) int
 		Name          func(childComplexity int) int
@@ -691,6 +710,8 @@ type JobResolver interface {
 	FailedNodes(ctx context.Context, obj *gqlmodel.Job) ([]*gqlmodel.Diagnostic, error)
 	DroppedEventCount(ctx context.Context, obj *gqlmodel.Job) (*int, error)
 	NodeDiagnostics(ctx context.Context, obj *gqlmodel.Job, nodeID string) ([]*gqlmodel.Diagnostic, error)
+
+	Trigger(ctx context.Context, obj *gqlmodel.Job) (*gqlmodel.Trigger, error)
 }
 type MeResolver interface {
 	MyWorkspace(ctx context.Context, obj *gqlmodel.Me) (*gqlmodel.Workspace, error)
@@ -1038,6 +1059,49 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 		}
 
 		return e.complexity.CMSItem.UpdatedAt(childComplexity), true
+
+	case "CMSItemJobOrigin.connectionId":
+		if e.complexity.CMSItemJobOrigin.ConnectionID == nil {
+			break
+		}
+
+		return e.complexity.CMSItemJobOrigin.ConnectionID(childComplexity), true
+	case "CMSItemJobOrigin.itemId":
+		if e.complexity.CMSItemJobOrigin.ItemID == nil {
+			break
+		}
+
+		return e.complexity.CMSItemJobOrigin.ItemID(childComplexity), true
+	case "CMSItemJobOrigin.itemTitle":
+		if e.complexity.CMSItemJobOrigin.ItemTitle == nil {
+			break
+		}
+
+		return e.complexity.CMSItemJobOrigin.ItemTitle(childComplexity), true
+	case "CMSItemJobOrigin.modelId":
+		if e.complexity.CMSItemJobOrigin.ModelID == nil {
+			break
+		}
+
+		return e.complexity.CMSItemJobOrigin.ModelID(childComplexity), true
+	case "CMSItemJobOrigin.modelName":
+		if e.complexity.CMSItemJobOrigin.ModelName == nil {
+			break
+		}
+
+		return e.complexity.CMSItemJobOrigin.ModelName(childComplexity), true
+	case "CMSItemJobOrigin.projectId":
+		if e.complexity.CMSItemJobOrigin.ProjectID == nil {
+			break
+		}
+
+		return e.complexity.CMSItemJobOrigin.ProjectID(childComplexity), true
+	case "CMSItemJobOrigin.projectName":
+		if e.complexity.CMSItemJobOrigin.ProjectName == nil {
+			break
+		}
+
+		return e.complexity.CMSItemJobOrigin.ProjectName(childComplexity), true
 
 	case "CMSItemsConnection.items":
 		if e.complexity.CMSItemsConnection.Items == nil {
@@ -1708,12 +1772,24 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 		}
 
 		return e.complexity.Job.NodeDiagnostics(childComplexity, args["nodeId"].(string)), true
+	case "Job.origin":
+		if e.complexity.Job.Origin == nil {
+			break
+		}
+
+		return e.complexity.Job.Origin(childComplexity), true
 	case "Job.outputURLs":
 		if e.complexity.Job.OutputURLs == nil {
 			break
 		}
 
 		return e.complexity.Job.OutputURLs(childComplexity), true
+	case "Job.runById":
+		if e.complexity.Job.RunByID == nil {
+			break
+		}
+
+		return e.complexity.Job.RunByID(childComplexity), true
 	case "Job.startedAt":
 		if e.complexity.Job.StartedAt == nil {
 			break
@@ -1726,6 +1802,18 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 		}
 
 		return e.complexity.Job.Status(childComplexity), true
+	case "Job.trigger":
+		if e.complexity.Job.Trigger == nil {
+			break
+		}
+
+		return e.complexity.Job.Trigger(childComplexity), true
+	case "Job.triggerId":
+		if e.complexity.Job.TriggerID == nil {
+			break
+		}
+
+		return e.complexity.Job.TriggerID(childComplexity), true
 	case "Job.userFacingLogsURL":
 		if e.complexity.Job.UserFacingLogsURL == nil {
 			break
@@ -1775,6 +1863,13 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 		}
 
 		return e.complexity.JobConnection.TotalCount(childComplexity), true
+
+	case "JobOrigin.cmsItem":
+		if e.complexity.JobOrigin.CmsItem == nil {
+			break
+		}
+
+		return e.complexity.JobOrigin.CmsItem(childComplexity), true
 
 	case "JobPayload.job":
 		if e.complexity.JobPayload.Job == nil {
@@ -1838,6 +1933,12 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 		}
 
 		return e.complexity.Me.Lang(childComplexity), true
+	case "Me.metadata":
+		if e.complexity.Me.Metadata == nil {
+			break
+		}
+
+		return e.complexity.Me.Metadata(childComplexity), true
 	case "Me.myWorkspace":
 		if e.complexity.Me.MyWorkspace == nil {
 			break
@@ -4551,6 +4652,30 @@ extend type Mutation {
   droppedEventCount: Int
   "Diagnostics for one node. Pass an empty nodeId for the job-level bucket."
   nodeDiagnostics(nodeId: String!): [Diagnostic!]
+  "The trigger that started the job."
+  triggerId: ID
+  trigger: Trigger
+  "Where outside Flow the job was started from."
+  origin: JobOrigin
+  "The user who started the job. Null for runs no user started, such as scheduled and API trigger runs, and for jobs from before it was recorded."
+  runById: ID
+}
+
+"Where outside Flow a job was started from."
+type JobOrigin {
+  cmsItem: CMSItemJobOrigin
+}
+
+"The CMS item a run was started for. Names are a display snapshot."
+type CMSItemJobOrigin {
+  projectId: ID!
+  modelId: ID!
+  itemId: ID!
+  "The CMS Flow connection that started the run."
+  connectionId: ID!
+  projectName: String!
+  modelName: String!
+  itemTitle: String!
 }
 
 enum JobStatus {
@@ -4998,6 +5123,8 @@ type TriggerRefusal {
 enum EventSourceType {
     TIME_DRIVEN
     API_DRIVEN
+    "Run by Re:Earth CMS for its items."
+    CMS
 }
 
 "Why a scheduled run was refused."
@@ -5112,6 +5239,7 @@ type Me {
   myWorkspace: Workspace
   myWorkspaceId: ID!
   name: String!
+  metadata: UserMetadata!
   # Kept for backward compatibility.
   workspaces: [Workspace!]!
 }
@@ -7716,6 +7844,209 @@ func (ec *executionContext) fieldContext_CMSItem_updatedAt(_ context.Context, fi
 	return fc, nil
 }
 
+func (ec *executionContext) _CMSItemJobOrigin_projectId(ctx context.Context, field graphql.CollectedField, obj *gqlmodel.CMSItemJobOrigin) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		ec.fieldContext_CMSItemJobOrigin_projectId,
+		func(ctx context.Context) (any, error) {
+			return obj.ProjectID, nil
+		},
+		nil,
+		ec.marshalNID2githubᚗcomᚋreearthᚋreearthᚑflowᚋapiᚋinternalᚋadapterᚋgqlᚋgqlmodelᚐID,
+		true,
+		true,
+	)
+}
+
+func (ec *executionContext) fieldContext_CMSItemJobOrigin_projectId(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "CMSItemJobOrigin",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type ID does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _CMSItemJobOrigin_modelId(ctx context.Context, field graphql.CollectedField, obj *gqlmodel.CMSItemJobOrigin) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		ec.fieldContext_CMSItemJobOrigin_modelId,
+		func(ctx context.Context) (any, error) {
+			return obj.ModelID, nil
+		},
+		nil,
+		ec.marshalNID2githubᚗcomᚋreearthᚋreearthᚑflowᚋapiᚋinternalᚋadapterᚋgqlᚋgqlmodelᚐID,
+		true,
+		true,
+	)
+}
+
+func (ec *executionContext) fieldContext_CMSItemJobOrigin_modelId(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "CMSItemJobOrigin",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type ID does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _CMSItemJobOrigin_itemId(ctx context.Context, field graphql.CollectedField, obj *gqlmodel.CMSItemJobOrigin) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		ec.fieldContext_CMSItemJobOrigin_itemId,
+		func(ctx context.Context) (any, error) {
+			return obj.ItemID, nil
+		},
+		nil,
+		ec.marshalNID2githubᚗcomᚋreearthᚋreearthᚑflowᚋapiᚋinternalᚋadapterᚋgqlᚋgqlmodelᚐID,
+		true,
+		true,
+	)
+}
+
+func (ec *executionContext) fieldContext_CMSItemJobOrigin_itemId(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "CMSItemJobOrigin",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type ID does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _CMSItemJobOrigin_connectionId(ctx context.Context, field graphql.CollectedField, obj *gqlmodel.CMSItemJobOrigin) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		ec.fieldContext_CMSItemJobOrigin_connectionId,
+		func(ctx context.Context) (any, error) {
+			return obj.ConnectionID, nil
+		},
+		nil,
+		ec.marshalNID2githubᚗcomᚋreearthᚋreearthᚑflowᚋapiᚋinternalᚋadapterᚋgqlᚋgqlmodelᚐID,
+		true,
+		true,
+	)
+}
+
+func (ec *executionContext) fieldContext_CMSItemJobOrigin_connectionId(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "CMSItemJobOrigin",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type ID does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _CMSItemJobOrigin_projectName(ctx context.Context, field graphql.CollectedField, obj *gqlmodel.CMSItemJobOrigin) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		ec.fieldContext_CMSItemJobOrigin_projectName,
+		func(ctx context.Context) (any, error) {
+			return obj.ProjectName, nil
+		},
+		nil,
+		ec.marshalNString2string,
+		true,
+		true,
+	)
+}
+
+func (ec *executionContext) fieldContext_CMSItemJobOrigin_projectName(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "CMSItemJobOrigin",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type String does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _CMSItemJobOrigin_modelName(ctx context.Context, field graphql.CollectedField, obj *gqlmodel.CMSItemJobOrigin) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		ec.fieldContext_CMSItemJobOrigin_modelName,
+		func(ctx context.Context) (any, error) {
+			return obj.ModelName, nil
+		},
+		nil,
+		ec.marshalNString2string,
+		true,
+		true,
+	)
+}
+
+func (ec *executionContext) fieldContext_CMSItemJobOrigin_modelName(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "CMSItemJobOrigin",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type String does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _CMSItemJobOrigin_itemTitle(ctx context.Context, field graphql.CollectedField, obj *gqlmodel.CMSItemJobOrigin) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		ec.fieldContext_CMSItemJobOrigin_itemTitle,
+		func(ctx context.Context) (any, error) {
+			return obj.ItemTitle, nil
+		},
+		nil,
+		ec.marshalNString2string,
+		true,
+		true,
+	)
+}
+
+func (ec *executionContext) fieldContext_CMSItemJobOrigin_itemTitle(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "CMSItemJobOrigin",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type String does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
 func (ec *executionContext) _CMSItemsConnection_items(ctx context.Context, field graphql.CollectedField, obj *gqlmodel.CMSItemsConnection) (ret graphql.Marshaler) {
 	return graphql.ResolveField(
 		ctx,
@@ -8876,6 +9207,14 @@ func (ec *executionContext) fieldContext_CancelJobPayload_job(_ context.Context,
 				return ec.fieldContext_Job_droppedEventCount(ctx, field)
 			case "nodeDiagnostics":
 				return ec.fieldContext_Job_nodeDiagnostics(ctx, field)
+			case "triggerId":
+				return ec.fieldContext_Job_triggerId(ctx, field)
+			case "trigger":
+				return ec.fieldContext_Job_trigger(ctx, field)
+			case "origin":
+				return ec.fieldContext_Job_origin(ctx, field)
+			case "runById":
+				return ec.fieldContext_Job_runById(ctx, field)
 			}
 			return nil, fmt.Errorf("no field named %q was found under type Job", field.Name)
 		},
@@ -11466,6 +11805,158 @@ func (ec *executionContext) fieldContext_Job_nodeDiagnostics(ctx context.Context
 	return fc, nil
 }
 
+func (ec *executionContext) _Job_triggerId(ctx context.Context, field graphql.CollectedField, obj *gqlmodel.Job) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		ec.fieldContext_Job_triggerId,
+		func(ctx context.Context) (any, error) {
+			return obj.TriggerID, nil
+		},
+		nil,
+		ec.marshalOID2ᚖgithubᚗcomᚋreearthᚋreearthᚑflowᚋapiᚋinternalᚋadapterᚋgqlᚋgqlmodelᚐID,
+		true,
+		false,
+	)
+}
+
+func (ec *executionContext) fieldContext_Job_triggerId(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "Job",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type ID does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _Job_trigger(ctx context.Context, field graphql.CollectedField, obj *gqlmodel.Job) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		ec.fieldContext_Job_trigger,
+		func(ctx context.Context) (any, error) {
+			return ec.resolvers.Job().Trigger(ctx, obj)
+		},
+		nil,
+		ec.marshalOTrigger2ᚖgithubᚗcomᚋreearthᚋreearthᚑflowᚋapiᚋinternalᚋadapterᚋgqlᚋgqlmodelᚐTrigger,
+		true,
+		false,
+	)
+}
+
+func (ec *executionContext) fieldContext_Job_trigger(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "Job",
+		Field:      field,
+		IsMethod:   true,
+		IsResolver: true,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			switch field.Name {
+			case "id":
+				return ec.fieldContext_Trigger_id(ctx, field)
+			case "createdAt":
+				return ec.fieldContext_Trigger_createdAt(ctx, field)
+			case "updatedAt":
+				return ec.fieldContext_Trigger_updatedAt(ctx, field)
+			case "lastTriggered":
+				return ec.fieldContext_Trigger_lastTriggered(ctx, field)
+			case "workspaceId":
+				return ec.fieldContext_Trigger_workspaceId(ctx, field)
+			case "workspace":
+				return ec.fieldContext_Trigger_workspace(ctx, field)
+			case "deployment":
+				return ec.fieldContext_Trigger_deployment(ctx, field)
+			case "deploymentId":
+				return ec.fieldContext_Trigger_deploymentId(ctx, field)
+			case "eventSource":
+				return ec.fieldContext_Trigger_eventSource(ctx, field)
+			case "description":
+				return ec.fieldContext_Trigger_description(ctx, field)
+			case "authTokenHint":
+				return ec.fieldContext_Trigger_authTokenHint(ctx, field)
+			case "timeInterval":
+				return ec.fieldContext_Trigger_timeInterval(ctx, field)
+			case "enabled":
+				return ec.fieldContext_Trigger_enabled(ctx, field)
+			case "variables":
+				return ec.fieldContext_Trigger_variables(ctx, field)
+			case "lastRefusal":
+				return ec.fieldContext_Trigger_lastRefusal(ctx, field)
+			}
+			return nil, fmt.Errorf("no field named %q was found under type Trigger", field.Name)
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _Job_origin(ctx context.Context, field graphql.CollectedField, obj *gqlmodel.Job) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		ec.fieldContext_Job_origin,
+		func(ctx context.Context) (any, error) {
+			return obj.Origin, nil
+		},
+		nil,
+		ec.marshalOJobOrigin2ᚖgithubᚗcomᚋreearthᚋreearthᚑflowᚋapiᚋinternalᚋadapterᚋgqlᚋgqlmodelᚐJobOrigin,
+		true,
+		false,
+	)
+}
+
+func (ec *executionContext) fieldContext_Job_origin(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "Job",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			switch field.Name {
+			case "cmsItem":
+				return ec.fieldContext_JobOrigin_cmsItem(ctx, field)
+			}
+			return nil, fmt.Errorf("no field named %q was found under type JobOrigin", field.Name)
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _Job_runById(ctx context.Context, field graphql.CollectedField, obj *gqlmodel.Job) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		ec.fieldContext_Job_runById,
+		func(ctx context.Context) (any, error) {
+			return obj.RunByID, nil
+		},
+		nil,
+		ec.marshalOID2ᚖgithubᚗcomᚋreearthᚋreearthᚑflowᚋapiᚋinternalᚋadapterᚋgqlᚋgqlmodelᚐID,
+		true,
+		false,
+	)
+}
+
+func (ec *executionContext) fieldContext_Job_runById(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "Job",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type ID does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
 func (ec *executionContext) _JobConnection_nodes(ctx context.Context, field graphql.CollectedField, obj *gqlmodel.JobConnection) (ret graphql.Marshaler) {
 	return graphql.ResolveField(
 		ctx,
@@ -11526,6 +12017,14 @@ func (ec *executionContext) fieldContext_JobConnection_nodes(_ context.Context, 
 				return ec.fieldContext_Job_droppedEventCount(ctx, field)
 			case "nodeDiagnostics":
 				return ec.fieldContext_Job_nodeDiagnostics(ctx, field)
+			case "triggerId":
+				return ec.fieldContext_Job_triggerId(ctx, field)
+			case "trigger":
+				return ec.fieldContext_Job_trigger(ctx, field)
+			case "origin":
+				return ec.fieldContext_Job_origin(ctx, field)
+			case "runById":
+				return ec.fieldContext_Job_runById(ctx, field)
 			}
 			return nil, fmt.Errorf("no field named %q was found under type Job", field.Name)
 		},
@@ -11599,6 +12098,51 @@ func (ec *executionContext) fieldContext_JobConnection_totalCount(_ context.Cont
 	return fc, nil
 }
 
+func (ec *executionContext) _JobOrigin_cmsItem(ctx context.Context, field graphql.CollectedField, obj *gqlmodel.JobOrigin) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		ec.fieldContext_JobOrigin_cmsItem,
+		func(ctx context.Context) (any, error) {
+			return obj.CmsItem, nil
+		},
+		nil,
+		ec.marshalOCMSItemJobOrigin2ᚖgithubᚗcomᚋreearthᚋreearthᚑflowᚋapiᚋinternalᚋadapterᚋgqlᚋgqlmodelᚐCMSItemJobOrigin,
+		true,
+		false,
+	)
+}
+
+func (ec *executionContext) fieldContext_JobOrigin_cmsItem(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "JobOrigin",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			switch field.Name {
+			case "projectId":
+				return ec.fieldContext_CMSItemJobOrigin_projectId(ctx, field)
+			case "modelId":
+				return ec.fieldContext_CMSItemJobOrigin_modelId(ctx, field)
+			case "itemId":
+				return ec.fieldContext_CMSItemJobOrigin_itemId(ctx, field)
+			case "connectionId":
+				return ec.fieldContext_CMSItemJobOrigin_connectionId(ctx, field)
+			case "projectName":
+				return ec.fieldContext_CMSItemJobOrigin_projectName(ctx, field)
+			case "modelName":
+				return ec.fieldContext_CMSItemJobOrigin_modelName(ctx, field)
+			case "itemTitle":
+				return ec.fieldContext_CMSItemJobOrigin_itemTitle(ctx, field)
+			}
+			return nil, fmt.Errorf("no field named %q was found under type CMSItemJobOrigin", field.Name)
+		},
+	}
+	return fc, nil
+}
+
 func (ec *executionContext) _JobPayload_job(ctx context.Context, field graphql.CollectedField, obj *gqlmodel.JobPayload) (ret graphql.Marshaler) {
 	return graphql.ResolveField(
 		ctx,
@@ -11659,6 +12203,14 @@ func (ec *executionContext) fieldContext_JobPayload_job(_ context.Context, field
 				return ec.fieldContext_Job_droppedEventCount(ctx, field)
 			case "nodeDiagnostics":
 				return ec.fieldContext_Job_nodeDiagnostics(ctx, field)
+			case "triggerId":
+				return ec.fieldContext_Job_triggerId(ctx, field)
+			case "trigger":
+				return ec.fieldContext_Job_trigger(ctx, field)
+			case "origin":
+				return ec.fieldContext_Job_origin(ctx, field)
+			case "runById":
+				return ec.fieldContext_Job_runById(ctx, field)
 			}
 			return nil, fmt.Errorf("no field named %q was found under type Job", field.Name)
 		},
@@ -12025,6 +12577,47 @@ func (ec *executionContext) fieldContext_Me_name(_ context.Context, field graphq
 		IsResolver: false,
 		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
 			return nil, errors.New("field of type String does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _Me_metadata(ctx context.Context, field graphql.CollectedField, obj *gqlmodel.Me) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		ec.fieldContext_Me_metadata,
+		func(ctx context.Context) (any, error) {
+			return obj.Metadata, nil
+		},
+		nil,
+		ec.marshalNUserMetadata2ᚖgithubᚗcomᚋreearthᚋreearthᚑflowᚋapiᚋinternalᚋadapterᚋgqlᚋgqlmodelᚐUserMetadata,
+		true,
+		true,
+	)
+}
+
+func (ec *executionContext) fieldContext_Me_metadata(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "Me",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			switch field.Name {
+			case "description":
+				return ec.fieldContext_UserMetadata_description(ctx, field)
+			case "website":
+				return ec.fieldContext_UserMetadata_website(ctx, field)
+			case "photoURL":
+				return ec.fieldContext_UserMetadata_photoURL(ctx, field)
+			case "theme":
+				return ec.fieldContext_UserMetadata_theme(ctx, field)
+			case "lang":
+				return ec.fieldContext_UserMetadata_lang(ctx, field)
+			}
+			return nil, fmt.Errorf("no field named %q was found under type UserMetadata", field.Name)
 		},
 	}
 	return fc, nil
@@ -14854,6 +15447,14 @@ func (ec *executionContext) fieldContext_PreviewSchemaPayload_job(_ context.Cont
 				return ec.fieldContext_Job_droppedEventCount(ctx, field)
 			case "nodeDiagnostics":
 				return ec.fieldContext_Job_nodeDiagnostics(ctx, field)
+			case "triggerId":
+				return ec.fieldContext_Job_triggerId(ctx, field)
+			case "trigger":
+				return ec.fieldContext_Job_trigger(ctx, field)
+			case "origin":
+				return ec.fieldContext_Job_origin(ctx, field)
+			case "runById":
+				return ec.fieldContext_Job_runById(ctx, field)
 			}
 			return nil, fmt.Errorf("no field named %q was found under type Job", field.Name)
 		},
@@ -17641,6 +18242,14 @@ func (ec *executionContext) fieldContext_Query_job(ctx context.Context, field gr
 				return ec.fieldContext_Job_droppedEventCount(ctx, field)
 			case "nodeDiagnostics":
 				return ec.fieldContext_Job_nodeDiagnostics(ctx, field)
+			case "triggerId":
+				return ec.fieldContext_Job_triggerId(ctx, field)
+			case "trigger":
+				return ec.fieldContext_Job_trigger(ctx, field)
+			case "origin":
+				return ec.fieldContext_Job_origin(ctx, field)
+			case "runById":
+				return ec.fieldContext_Job_runById(ctx, field)
 			}
 			return nil, fmt.Errorf("no field named %q was found under type Job", field.Name)
 		},
@@ -17999,6 +18608,8 @@ func (ec *executionContext) fieldContext_Query_me(_ context.Context, field graph
 				return ec.fieldContext_Me_myWorkspaceId(ctx, field)
 			case "name":
 				return ec.fieldContext_Me_name(ctx, field)
+			case "metadata":
+				return ec.fieldContext_Me_metadata(ctx, field)
 			case "workspaces":
 				return ec.fieldContext_Me_workspaces(ctx, field)
 			}
@@ -18433,6 +19044,14 @@ func (ec *executionContext) fieldContext_RunProjectPayload_job(_ context.Context
 				return ec.fieldContext_Job_droppedEventCount(ctx, field)
 			case "nodeDiagnostics":
 				return ec.fieldContext_Job_nodeDiagnostics(ctx, field)
+			case "triggerId":
+				return ec.fieldContext_Job_triggerId(ctx, field)
+			case "trigger":
+				return ec.fieldContext_Job_trigger(ctx, field)
+			case "origin":
+				return ec.fieldContext_Job_origin(ctx, field)
+			case "runById":
+				return ec.fieldContext_Job_runById(ctx, field)
 			}
 			return nil, fmt.Errorf("no field named %q was found under type Job", field.Name)
 		},
@@ -19694,6 +20313,8 @@ func (ec *executionContext) fieldContext_UpdateMePayload_me(_ context.Context, f
 				return ec.fieldContext_Me_myWorkspaceId(ctx, field)
 			case "name":
 				return ec.fieldContext_Me_name(ctx, field)
+			case "metadata":
+				return ec.fieldContext_Me_metadata(ctx, field)
 			case "workspaces":
 				return ec.fieldContext_Me_workspaces(ctx, field)
 			}
@@ -25240,6 +25861,75 @@ func (ec *executionContext) _CMSItem(ctx context.Context, sel ast.SelectionSet, 
 	return out
 }
 
+var cMSItemJobOriginImplementors = []string{"CMSItemJobOrigin"}
+
+func (ec *executionContext) _CMSItemJobOrigin(ctx context.Context, sel ast.SelectionSet, obj *gqlmodel.CMSItemJobOrigin) graphql.Marshaler {
+	fields := graphql.CollectFields(ec.OperationContext, sel, cMSItemJobOriginImplementors)
+
+	out := graphql.NewFieldSet(fields)
+	deferred := make(map[string]*graphql.FieldSet)
+	for i, field := range fields {
+		switch field.Name {
+		case "__typename":
+			out.Values[i] = graphql.MarshalString("CMSItemJobOrigin")
+		case "projectId":
+			out.Values[i] = ec._CMSItemJobOrigin_projectId(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "modelId":
+			out.Values[i] = ec._CMSItemJobOrigin_modelId(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "itemId":
+			out.Values[i] = ec._CMSItemJobOrigin_itemId(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "connectionId":
+			out.Values[i] = ec._CMSItemJobOrigin_connectionId(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "projectName":
+			out.Values[i] = ec._CMSItemJobOrigin_projectName(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "modelName":
+			out.Values[i] = ec._CMSItemJobOrigin_modelName(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "itemTitle":
+			out.Values[i] = ec._CMSItemJobOrigin_itemTitle(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		default:
+			panic("unknown field " + strconv.Quote(field.Name))
+		}
+	}
+	out.Dispatch(ctx)
+	if out.Invalids > 0 {
+		return graphql.Null
+	}
+
+	atomic.AddInt32(&ec.deferred, int32(len(deferred)))
+
+	for label, dfs := range deferred {
+		ec.processDeferredGroup(graphql.DeferredGroup{
+			Label:    label,
+			Path:     graphql.GetPath(ctx),
+			FieldSet: dfs,
+			Context:  ctx,
+		})
+	}
+
+	return out
+}
+
 var cMSItemsConnectionImplementors = []string{"CMSItemsConnection"}
 
 func (ec *executionContext) _CMSItemsConnection(ctx context.Context, sel ast.SelectionSet, obj *gqlmodel.CMSItemsConnection) graphql.Marshaler {
@@ -26734,6 +27424,45 @@ func (ec *executionContext) _Job(ctx context.Context, sel ast.SelectionSet, obj 
 			}
 
 			out.Concurrently(i, func(ctx context.Context) graphql.Marshaler { return innerFunc(ctx, out) })
+		case "triggerId":
+			out.Values[i] = ec._Job_triggerId(ctx, field, obj)
+		case "trigger":
+			field := field
+
+			innerFunc := func(ctx context.Context, _ *graphql.FieldSet) (res graphql.Marshaler) {
+				defer func() {
+					if r := recover(); r != nil {
+						ec.Error(ctx, ec.Recover(ctx, r))
+					}
+				}()
+				res = ec._Job_trigger(ctx, field, obj)
+				return res
+			}
+
+			if field.Deferrable != nil {
+				dfs, ok := deferred[field.Deferrable.Label]
+				di := 0
+				if ok {
+					dfs.AddField(field)
+					di = len(dfs.Values) - 1
+				} else {
+					dfs = graphql.NewFieldSet([]graphql.CollectedField{field})
+					deferred[field.Deferrable.Label] = dfs
+				}
+				dfs.Concurrently(di, func(ctx context.Context) graphql.Marshaler {
+					return innerFunc(ctx, dfs)
+				})
+
+				// don't run the out.Concurrently() call below
+				out.Values[i] = graphql.Null
+				continue
+			}
+
+			out.Concurrently(i, func(ctx context.Context) graphql.Marshaler { return innerFunc(ctx, out) })
+		case "origin":
+			out.Values[i] = ec._Job_origin(ctx, field, obj)
+		case "runById":
+			out.Values[i] = ec._Job_runById(ctx, field, obj)
 		default:
 			panic("unknown field " + strconv.Quote(field.Name))
 		}
@@ -26783,6 +27512,42 @@ func (ec *executionContext) _JobConnection(ctx context.Context, sel ast.Selectio
 			if out.Values[i] == graphql.Null {
 				out.Invalids++
 			}
+		default:
+			panic("unknown field " + strconv.Quote(field.Name))
+		}
+	}
+	out.Dispatch(ctx)
+	if out.Invalids > 0 {
+		return graphql.Null
+	}
+
+	atomic.AddInt32(&ec.deferred, int32(len(deferred)))
+
+	for label, dfs := range deferred {
+		ec.processDeferredGroup(graphql.DeferredGroup{
+			Label:    label,
+			Path:     graphql.GetPath(ctx),
+			FieldSet: dfs,
+			Context:  ctx,
+		})
+	}
+
+	return out
+}
+
+var jobOriginImplementors = []string{"JobOrigin"}
+
+func (ec *executionContext) _JobOrigin(ctx context.Context, sel ast.SelectionSet, obj *gqlmodel.JobOrigin) graphql.Marshaler {
+	fields := graphql.CollectFields(ec.OperationContext, sel, jobOriginImplementors)
+
+	out := graphql.NewFieldSet(fields)
+	deferred := make(map[string]*graphql.FieldSet)
+	for i, field := range fields {
+		switch field.Name {
+		case "__typename":
+			out.Values[i] = graphql.MarshalString("JobOrigin")
+		case "cmsItem":
+			out.Values[i] = ec._JobOrigin_cmsItem(ctx, field, obj)
 		default:
 			panic("unknown field " + strconv.Quote(field.Name))
 		}
@@ -26972,6 +27737,11 @@ func (ec *executionContext) _Me(ctx context.Context, sel ast.SelectionSet, obj *
 			}
 		case "name":
 			out.Values[i] = ec._Me_name(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				atomic.AddUint32(&out.Invalids, 1)
+			}
+		case "metadata":
+			out.Values[i] = ec._Me_metadata(ctx, field, obj)
 			if out.Values[i] == graphql.Null {
 				atomic.AddUint32(&out.Invalids, 1)
 			}
@@ -32949,6 +33719,13 @@ func (ec *executionContext) marshalOCMSExportType2ᚖgithubᚗcomᚋreearthᚋre
 	return v
 }
 
+func (ec *executionContext) marshalOCMSItemJobOrigin2ᚖgithubᚗcomᚋreearthᚋreearthᚑflowᚋapiᚋinternalᚋadapterᚋgqlᚋgqlmodelᚐCMSItemJobOrigin(ctx context.Context, sel ast.SelectionSet, v *gqlmodel.CMSItemJobOrigin) graphql.Marshaler {
+	if v == nil {
+		return graphql.Null
+	}
+	return ec._CMSItemJobOrigin(ctx, sel, v)
+}
+
 func (ec *executionContext) marshalOCMSModel2ᚖgithubᚗcomᚋreearthᚋreearthᚑflowᚋapiᚋinternalᚋadapterᚋgqlᚋgqlmodelᚐCMSModel(ctx context.Context, sel ast.SelectionSet, v *gqlmodel.CMSModel) graphql.Marshaler {
 	if v == nil {
 		return graphql.Null
@@ -33242,6 +34019,13 @@ func (ec *executionContext) marshalOJob2ᚖgithubᚗcomᚋreearthᚋreearthᚑfl
 		return graphql.Null
 	}
 	return ec._Job(ctx, sel, v)
+}
+
+func (ec *executionContext) marshalOJobOrigin2ᚖgithubᚗcomᚋreearthᚋreearthᚑflowᚋapiᚋinternalᚋadapterᚋgqlᚋgqlmodelᚐJobOrigin(ctx context.Context, sel ast.SelectionSet, v *gqlmodel.JobOrigin) graphql.Marshaler {
+	if v == nil {
+		return graphql.Null
+	}
+	return ec._JobOrigin(ctx, sel, v)
 }
 
 func (ec *executionContext) marshalOJobPayload2ᚖgithubᚗcomᚋreearthᚋreearthᚑflowᚋapiᚋinternalᚋadapterᚋgqlᚋgqlmodelᚐJobPayload(ctx context.Context, sel ast.SelectionSet, v *gqlmodel.JobPayload) graphql.Marshaler {

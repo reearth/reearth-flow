@@ -29,6 +29,7 @@ const (
 	jobTriggerDeployment = "deployment"
 	jobTriggerAPI        = "api"
 	jobTriggerSchedule   = "schedule"
+	jobTriggerCMS        = "cms"
 )
 
 // Why the plan refused a job, logged as the reason field of a rejected event.
