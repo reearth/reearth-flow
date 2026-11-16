@@ -32,6 +32,7 @@ export const useProject = () => {
   const planLimitMessage = usePlanLimitMessage();
 
   const {
+    refetchProject,
     createProjectMutation,
     deleteProjectMutation,
     updateProjectMutation,
@@ -332,6 +333,7 @@ export const useProject = () => {
   return {
     useGetWorkspaceProjects,
     useGetProject,
+    refetchProject,
     useCheckProjectAlias,
     createProject,
     updateProject,

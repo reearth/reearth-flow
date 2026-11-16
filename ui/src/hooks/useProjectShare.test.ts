@@ -1,15 +1,16 @@
-import { renderHook } from "@testing-library/react";
-import * as Y from "yjs";
+import { act, renderHook } from "@testing-library/react";
 
-import type { Project, YDocMetadataValue } from "@flow/types";
+import type { Project } from "@flow/types";
 
 import useProjectShare from "./useProjectShare";
 
+const shareProject = vi.fn();
+const unshareProject = vi.fn();
+const refetchProject = vi.fn();
+
 vi.mock("@flow/lib/gql", () => ({
-  useSharedProject: () => ({
-    shareProject: vi.fn(),
-    unshareProject: vi.fn(),
-  }),
+  useSharedProject: () => ({ shareProject, unshareProject }),
+  useProject: () => ({ refetchProject }),
 }));
 
 const makeProject = (sharedToken?: string): Project => ({
@@ -29,68 +30,122 @@ const makeProject = (sharedToken?: string): Project => ({
   starred: false,
 });
 
-const setup = (initialToken?: string | null) => {
-  const yDoc = new Y.Doc();
-  const yMetadata = yDoc.getMap<YDocMetadataValue>("metadata");
-  if (initialToken !== undefined) yMetadata.set("sharingToken", initialToken);
+const urlFor = (token: string) => `${window.location.origin}/shared/${token}`;
 
-  let updates = 0;
-  yDoc.on("update", () => updates++);
+const renderShare = (project?: Project) =>
+  renderHook(
+    ({ currentProject }: { currentProject?: Project }) =>
+      useProjectShare({ currentProject }),
+    { initialProps: { currentProject: project } },
+  );
 
-  return { yDoc, yMetadata, getUpdateCount: () => updates };
-};
+beforeEach(() => {
+  shareProject.mockReset();
+  unshareProject.mockReset();
+  refetchProject.mockReset();
+});
 
 describe("useProjectShare", () => {
-  test("does not write when the doc already holds the server token", () => {
-    const { yDoc, getUpdateCount } = setup("token-1");
+  test("takes the sharing URL from the project", () => {
+    const { result } = renderShare(makeProject("token-1"));
 
-    renderHook(() =>
-      useProjectShare({ currentProject: makeProject("token-1"), yDoc }),
-    );
-
-    expect(getUpdateCount()).toBe(0);
+    expect(result.current.sharingUrl).toBe(urlFor("token-1"));
   });
 
-  test("does not write for an unshared project whose doc has no token", () => {
-    const { yDoc, yMetadata, getUpdateCount } = setup();
-
-    renderHook(() =>
-      useProjectShare({ currentProject: makeProject(undefined), yDoc }),
+  test("has no sharing URL for an unshared or unloaded project", () => {
+    expect(renderShare(makeProject()).result.current.sharingUrl).toBe(
+      undefined,
     );
-
-    expect(getUpdateCount()).toBe(0);
-    expect(yMetadata.has("sharingToken")).toBe(false);
+    expect(renderShare(undefined).result.current.sharingUrl).toBe(undefined);
   });
 
-  test("does not write before the project has loaded", () => {
-    const { yDoc, getUpdateCount } = setup("token-1");
+  test("calls no API on open", () => {
+    renderShare(makeProject("token-1"));
 
-    renderHook(() => useProjectShare({ currentProject: undefined, yDoc }));
-
-    expect(getUpdateCount()).toBe(0);
+    expect(shareProject).not.toHaveBeenCalled();
+    expect(unshareProject).not.toHaveBeenCalled();
+    expect(refetchProject).not.toHaveBeenCalled();
   });
 
-  test("writes the server token when the doc disagrees", () => {
-    const { yDoc, yMetadata, getUpdateCount } = setup(null);
+  test("fetches the project again when the share popover opens", () => {
+    const { result } = renderShare(makeProject());
 
-    const { result } = renderHook(() =>
-      useProjectShare({ currentProject: makeProject("token-2"), yDoc }),
-    );
+    act(() => result.current.handleProjectShareOpen());
 
-    expect(getUpdateCount()).toBe(1);
-    expect(yMetadata.get("sharingToken")).toBe("token-2");
-    expect(result.current.sharingUrl).toBe(
-      `${window.location.origin}/shared/token-2`,
-    );
+    expect(refetchProject).toHaveBeenCalledWith("project-1");
   });
 
-  test("clears the token when the server says the project is unshared", () => {
-    const { yDoc, yMetadata } = setup("token-1");
+  test("shows a new share before the project is fetched again", async () => {
+    shareProject.mockResolvedValue({
+      projectId: "project-1",
+      sharingUrl: "https://flow.test/shared/token-2",
+    });
+    const { result } = renderShare(makeProject());
 
-    renderHook(() =>
-      useProjectShare({ currentProject: makeProject(undefined), yDoc }),
+    await act(() => result.current.handleProjectShare(true));
+
+    expect(shareProject).toHaveBeenCalledWith({
+      projectId: "project-1",
+      workspaceId: "workspace-1",
+    });
+    expect(result.current.sharingUrl).toBe(urlFor("token-2"));
+  });
+
+  test("keeps the project's state when sharing fails", async () => {
+    shareProject.mockResolvedValue({
+      projectId: undefined,
+      sharingUrl: undefined,
+    });
+    const { result } = renderShare(makeProject());
+
+    await act(() => result.current.handleProjectShare(true));
+
+    expect(result.current.sharingUrl).toBe(undefined);
+  });
+
+  test("hides the URL as soon as unsharing starts", async () => {
+    let resolveUnshare: (value: { projectId?: string }) => void = () => {};
+    unshareProject.mockReturnValue(
+      new Promise((resolve) => (resolveUnshare = resolve)),
     );
+    const { result } = renderShare(makeProject("token-1"));
 
-    expect(yMetadata.get("sharingToken")).toBeNull();
+    let pending: Promise<void> = Promise.resolve();
+    act(() => {
+      pending = result.current.handleProjectShare(false);
+    });
+
+    expect(result.current.sharingUrl).toBe(undefined);
+
+    await act(async () => {
+      resolveUnshare({ projectId: "project-1" });
+      await pending;
+    });
+
+    expect(result.current.sharingUrl).toBe(undefined);
+  });
+
+  test("restores the URL when unsharing fails", async () => {
+    unshareProject.mockResolvedValue({ projectId: undefined });
+    const { result } = renderShare(makeProject("token-1"));
+
+    await act(() => result.current.handleProjectShare(false));
+
+    expect(result.current.sharingUrl).toBe(urlFor("token-1"));
+  });
+
+  test("follows the project again once it agrees with this user's change", async () => {
+    shareProject.mockResolvedValue({
+      projectId: "project-1",
+      sharingUrl: "https://flow.test/shared/token-2",
+    });
+    const { result, rerender } = renderShare(makeProject());
+
+    await act(() => result.current.handleProjectShare(true));
+    rerender({ currentProject: makeProject("token-2") });
+    // Another member unshares later.
+    rerender({ currentProject: makeProject() });
+
+    expect(result.current.sharingUrl).toBe(undefined);
   });
 });
