@@ -26,6 +26,7 @@ import {
   getDefaultValue,
   inferWorkflowVariableType,
 } from "@flow/features/WorkspaceProjects/components/WorkflowImport/inferVariableType";
+import { useWorkflowVars } from "@flow/hooks";
 import { useT } from "@flow/lib/i18n";
 import type { AppColumnDef } from "@flow/lib/table/features";
 import type {
@@ -72,6 +73,7 @@ const TriggerWorkflowVariablesMappingDialog: React.FC<
   onCancel,
 }) => {
   const t = useT();
+  const { getUserFacingName } = useWorkflowVars();
 
   const [variableMappings, setVariableMappings] = useState<
     TriggerVariableConfig[]
@@ -226,6 +228,7 @@ const TriggerWorkflowVariablesMappingDialog: React.FC<
       {
         accessorKey: "type",
         header: t("Type"),
+        cell: ({ row }) => getUserFacingName(row.original.type),
       },
       {
         accessorKey: "defaultValue",
@@ -301,6 +304,7 @@ const TriggerWorkflowVariablesMappingDialog: React.FC<
       handleVariableDialogOpen,
       isAtDefault,
       showVariableDialog,
+      getUserFacingName,
       t,
     ],
   );
