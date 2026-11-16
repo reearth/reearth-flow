@@ -530,6 +530,7 @@ func (i *Deployment) Execute(ctx context.Context, p interfaces.ExecuteDeployment
 		Debug(&debug).
 		Deployment(&did).
 		Workspace(dep.Workspace()).
+		RunBy(callerID(ctx)).
 		Status(job.StatusPending).
 		StartedAt(time.Now()).
 		Build()

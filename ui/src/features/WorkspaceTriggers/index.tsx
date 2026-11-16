@@ -11,7 +11,7 @@ import type { AppColumnDef } from "@flow/lib/table/features";
 import { useCurrentUserRole } from "@flow/stores";
 import type { Trigger } from "@flow/types";
 import { Role } from "@flow/types";
-import { formatTimestamp } from "@flow/utils";
+import { formatTimestamp, getEventSourceLabel } from "@flow/utils";
 
 import {
   TriggerAddDialog,
@@ -69,6 +69,7 @@ const TriggerManager: React.FC = () => {
     {
       accessorKey: "eventSource",
       header: t("Event Source"),
+      cell: ({ row }) => getEventSourceLabel(row.original.eventSource, t),
     },
     {
       accessorKey: "updatedAt",

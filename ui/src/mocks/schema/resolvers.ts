@@ -56,6 +56,14 @@ const jobVariables: Record<
 const cmsProjects = [...mockCmsProjects];
 const cmsModels = [...mockCmsModels];
 
+const toMockUserMetadata = (metadata: MockUser["metadata"]) => ({
+  description: metadata?.description ?? null,
+  website: metadata?.website ?? null,
+  photoURL: metadata?.photoURL ?? null,
+  theme: metadata?.theme ?? ThemeValues.Default,
+  lang: metadata?.lang ?? "en",
+});
+
 // Mirrors the CMS internal API: a project only resolves inside the workspace
 // that owns it, by id or alias.
 const findCmsProject = (workspaceId: string, projectIdOrAlias: string) =>
@@ -220,6 +228,7 @@ export const resolvers = {
     name: (user: MockUser) => user.name,
     email: (user: MockUser) => user.email,
     host: (user: MockUser) => user.host,
+    metadata: (user: MockUser) => toMockUserMetadata(user.metadata),
   },
 
   Me: {
@@ -227,6 +236,8 @@ export const resolvers = {
     name: (me: MockMe) => me.name,
     email: (me: MockMe) => me.email,
     lang: (me: MockMe) => me.lang,
+    metadata: (me: MockMe) =>
+      toMockUserMetadata(users.find((u) => u.id === me.id)?.metadata),
     auths: (me: MockMe) => me.auths,
     myWorkspaceId: (me: MockMe) => me.myWorkspaceId,
     myWorkspace: (me: MockMe) =>
@@ -1097,6 +1108,9 @@ export const resolvers = {
         outputURLs: [],
         userFacingLogsURL: null,
         deployment: null,
+        runById: getCurrentUser().id,
+        triggerId: null,
+        trigger: null,
       };
 
       jobs.push(newJob);
@@ -1158,6 +1172,9 @@ export const resolvers = {
         outputURLs: [],
         userFacingLogsURL: null,
         deployment: null,
+        runById: getCurrentUser().id,
+        triggerId: null,
+        trigger: null,
       };
 
       jobs.push(newJob);
@@ -1373,6 +1390,9 @@ export const resolvers = {
         outputURLs: [],
         userFacingLogsURL: null,
         deployment: null,
+        runById: getCurrentUser().id,
+        triggerId: null,
+        trigger: null,
       };
 
       jobs.push(newJob);

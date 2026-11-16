@@ -1,9 +1,14 @@
 //! Chain and ring simplicity: the shared detectors behind
-//! [`SelfIntersection`](super::ValidationType::SelfIntersection).
+//! [`SelfIntersection`](super::ValidationType::SelfIntersection), and the
+//! ring-touch detector behind
+//! [`InteriorConnectivity`](super::ValidationType::InteriorConnectivity).
 
+use std::collections::HashSet;
+
+use reearth_flow_common::union_find::UnionFind;
 use rstar::AABB;
 
-use super::{open_ring, DuplicateCoord, ValidationReport};
+use super::{open_ring, DuplicateCoord, IssuePart, ValidationReport};
 use crate::coordinate::CoordinateFrame;
 use crate::predicates::edge_set::{for_each_candidate_pair, Edge2, EdgeSet};
 use crate::predicates::kernel::{segment_intersection, SegmentIntersection};
@@ -202,4 +207,131 @@ pub(crate) fn check_ring_pair_3d(
             _ => {}
         }
     });
+}
+
+/// The points where two closed rings touch without crossing, each once, in the
+/// order found. `touch` decides one edge pair: the shared point of a touch, or
+/// `None` for a miss, a proper crossing or an overlap.
+fn ring_pair_touches<const N: usize>(
+    ring_a: &[[f64; N]],
+    ring_b: &[[f64; N]],
+    touch: &impl Fn([f64; N], [f64; N], [f64; N], [f64; N]) -> Option<[f64; N]>,
+) -> Vec<[f64; N]>
+where
+    [f64; N]: rstar::Point,
+{
+    let mut edges: Vec<([f64; N], [f64; N])> = ring_a.windows(2).map(|w| (w[0], w[1])).collect();
+    let n_a = edges.len();
+    edges.extend(ring_b.windows(2).map(|w| (w[0], w[1])));
+    let envelopes: Vec<AABB<[f64; N]>> = edges
+        .iter()
+        .map(|&(a, b)| AABB::from_corners(a, b))
+        .collect();
+    let mut points: Vec<[f64; N]> = Vec::new();
+    for_each_candidate_pair(&envelopes, |i, j| {
+        if (i < n_a) == (j < n_a) {
+            return;
+        }
+        let ((a1, b1), (a2, b2)) = (edges[i], edges[j]);
+        if let Some(p) = touch(a1, b1, a2, b2) {
+            if !points.contains(&p) {
+                points.push(p);
+            }
+        }
+    });
+    points
+}
+
+/// Report an [`InteriorConnectivity`](super::ValidationType::InteriorConnectivity)
+/// problem at each point where the rings of one face touch so that its
+/// interior falls apart, attributed to the touching ring pair. `rings[0]` is the
+/// exterior and the rest are holes, all closed and crossing neither themselves
+/// nor each other.
+///
+/// Rings and touch points form a graph with an edge from each ring to each
+/// point it touches. The interior is connected exactly when that graph has no
+/// cycle, so every touch that closes one is reported: a hole touching the
+/// exterior twice, or a chain of holes touching back to where it started. A
+/// point where three or more rings meet is a single node, so it closes no cycle
+/// on its own.
+fn check_interior_connected<const N: usize>(
+    frame: &CoordinateFrame,
+    rings: &[&[[f64; N]]],
+    touch: impl Fn([f64; N], [f64; N], [f64; N], [f64; N]) -> Option<[f64; N]>,
+    report: &mut ValidationReport,
+) where
+    [f64; N]: rstar::Point + DuplicateCoord,
+{
+    let mut points: Vec<[f64; N]> = Vec::new();
+    let mut links: Vec<(usize, usize, usize)> = Vec::new();
+    for i in 0..rings.len() {
+        for j in (i + 1)..rings.len() {
+            for p in ring_pair_touches(rings[i], rings[j], &touch) {
+                let k = points.iter().position(|q| *q == p).unwrap_or_else(|| {
+                    points.push(p);
+                    points.len() - 1
+                });
+                links.push((i, j, k));
+            }
+        }
+    }
+    let mut sets = UnionFind::<()>::new(rings.len() + points.len());
+    let mut linked: HashSet<(usize, usize)> = HashSet::new();
+    for (i, j, k) in links {
+        let point = rings.len() + k;
+        let mut cuts = false;
+        for ring in [i, j] {
+            if !linked.insert((ring, k)) {
+                continue;
+            }
+            if sets.root(ring) == sets.root(point) {
+                cuts = true;
+            } else {
+                sets.merge(ring, point);
+            }
+        }
+        if cuts {
+            report.record_part(IssuePart::RingPair(i, j), |r| {
+                push_point(frame, points[k], r)
+            });
+        }
+    }
+}
+
+/// [`check_interior_connected`] for the rings of a 2D face.
+pub(crate) fn check_interior_connected_2d(
+    frame: &CoordinateFrame,
+    rings: &[&[[f64; 2]]],
+    report: &mut ValidationReport,
+) {
+    check_interior_connected(
+        frame,
+        rings,
+        |a1, b1, a2, b2| match segment_intersection(a1, b1, a2, b2) {
+            Some(SegmentIntersection::SinglePoint {
+                intersection,
+                is_proper: false,
+            }) => Some(intersection),
+            _ => None,
+        },
+        report,
+    );
+}
+
+/// [`check_interior_connected`] for the rings of a 3D face, deciding edge pairs
+/// with the exact 3D kernel.
+pub(crate) fn check_interior_connected_3d(
+    frame: &CoordinateFrame,
+    rings: &[&[[f64; 3]]],
+    report: &mut ValidationReport,
+) {
+    check_interior_connected(
+        frame,
+        rings,
+        |a1, b1, a2, b2| match classify_segments_3d(a1, b1, a2, b2) {
+            Some(SegmentContact3D::Touch(p)) => Some(p),
+            _ => None,
+        },
+        report,
+    );
 }

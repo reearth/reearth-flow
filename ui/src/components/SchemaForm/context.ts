@@ -33,7 +33,6 @@ export type SchemaFormContextValue = {
   readonly?: boolean;
   fieldFocusMap?: Record<string, AwarenessUser[]>;
   onFieldFocus?: (key: string | null) => void;
-  onEditorOpen?: (context: EditorContext) => void;
   onPythonEditorOpen?: (context: EditorContext) => void;
   onFlowExprEditorOpen?: (context: EditorContext) => void;
 };

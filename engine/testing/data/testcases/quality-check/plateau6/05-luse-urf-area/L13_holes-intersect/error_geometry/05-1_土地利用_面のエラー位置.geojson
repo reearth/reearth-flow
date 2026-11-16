@@ -1,0 +1,26 @@
+{
+  "type": "FeatureCollection",
+  "features": [
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [1769.705, -37933.371, 0.0]
+      },
+      "properties": {
+        "index": 1,
+        "folder": "luse",
+        "filename": "533936_luse_6697_op.gml",
+        "featureType": "LandUse",
+        "gmlId": "luse_1518ee84-a469-4301-a421-265882f7dfb2",
+        "issue": "InteriorRingsIntersect"
+      }
+    }
+  ],
+  "crs": {
+    "type": "name",
+    "properties": {
+      "name": "urn:ogc:def:crs:EPSG::6677"
+    }
+  }
+}

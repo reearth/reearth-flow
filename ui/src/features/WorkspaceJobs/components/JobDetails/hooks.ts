@@ -6,7 +6,13 @@ import type { DetailsBoxContent } from "@flow/features/common";
 import { useJob } from "@flow/lib/gql/job";
 import { useSubscription } from "@flow/lib/gql/subscriptions/useSubscription";
 import { useT } from "@flow/lib/i18n";
-import { formatTimestamp, toArtifactFiles } from "@flow/utils";
+import {
+  formatTimestamp,
+  getJobStatusLabel,
+  toArtifactFiles,
+} from "@flow/utils";
+
+import useJobStarter from "../../useJobStarter";
 
 export default ({ jobId }: { jobId: string }) => {
   const t = useT();
@@ -17,6 +23,7 @@ export default ({ jobId }: { jobId: string }) => {
   const { data: jobStatus } = useSubscription("GetSubscribedJobStatus", jobId);
 
   const { job, refetch } = useGetJob(jobId);
+  const { runBy, triggerName } = useJobStarter();
 
   // Poll for outputURLs after job completes (they are generated asynchronously)
   useEffect(() => {
@@ -68,9 +75,21 @@ export default ({ jobId }: { jobId: string }) => {
               value: job.deploymentDescription || t("N/A"),
             },
             {
+              id: "trigger",
+              name: t("Trigger"),
+              value: triggerName(job) ?? "—",
+            },
+            {
+              id: "runBy",
+              name: t("Run by"),
+              value: runBy(job)?.name ?? "—",
+              type: runBy(job) ? "user" : undefined,
+              photoURL: runBy(job)?.photoURL,
+            },
+            {
               id: "status",
               name: t("Status"),
-              value: jobStatus || job.status,
+              value: getJobStatusLabel(jobStatus || job.status, t),
             },
             {
               id: "startedAt",
@@ -94,7 +113,7 @@ export default ({ jobId }: { jobId: string }) => {
             ),
           ]
         : undefined,
-    [t, job, jobStatus],
+    [t, job, jobStatus, runBy, triggerName],
   );
 
   // The server returns the job's artifacts as one flat list of URLs, so the

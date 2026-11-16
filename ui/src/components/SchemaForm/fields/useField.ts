@@ -17,7 +17,6 @@ export const useField = (path: FieldPath) => {
     readonly,
     fieldFocusMap,
     onFieldFocus,
-    onEditorOpen,
     onPythonEditorOpen,
     onFlowExprEditorOpen,
   } = useSchemaForm();
@@ -53,7 +52,6 @@ export const useField = (path: FieldPath) => {
     awarenessStyle: paramsAwarenessStyles(focusedUsers),
     onFocus: handleFocus,
     onBlur: handleBlur,
-    onEditorOpen,
     onPythonEditorOpen,
     onFlowExprEditorOpen,
   };

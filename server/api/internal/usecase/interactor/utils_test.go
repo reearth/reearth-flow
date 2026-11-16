@@ -3,7 +3,6 @@ package interactor
 import (
 	"context"
 	"encoding/json"
-	"fmt"
 	"slices"
 	"strings"
 	"testing"
@@ -273,14 +272,16 @@ func buildParameterList(t *testing.T, defs []map[string]interface{}) *parameter.
 }
 
 func TestNormalizeRequestVars(t *testing.T) {
+	t.Parallel()
 	arr := []interface{}{"a", "b"}
 
 	tests := []struct {
-		name     string
-		input    map[string]interface{}
-		schema   map[string]variable.Variable
-		expected map[string]variable.Variable
-		wantErr  string
+		name      string
+		input     map[string]interface{}
+		schema    map[string]variable.Variable
+		expected  map[string]variable.Variable
+		wantErrIs error
+		wantErr   string
 	}{
 		{
 			name:     "nil input returns nil",
@@ -295,36 +296,24 @@ func TestNormalizeRequestVars(t *testing.T) {
 			expected: nil,
 		},
 		{
-			name: "no schema: everything becomes TEXT",
+			name: "keys the schema does not define are refused",
 			input: map[string]interface{}{
-				"s":  "str",
-				"n":  10,
-				"b":  true,
-				"ar": arr,
+				"s":    "str",
+				"zeta": 10,
+				"alfa": nil,
 			},
-			schema: nil,
-			expected: map[string]variable.Variable{
-				"s": {
-					Key:   "s",
-					Type:  parameter.TypeText,
-					Value: "str",
-				},
-				"n": {
-					Key:   "n",
-					Type:  parameter.TypeText,
-					Value: "10",
-				},
-				"b": {
-					Key:   "b",
-					Type:  parameter.TypeText,
-					Value: "true",
-				},
-				"ar": {
-					Key:   "ar",
-					Type:  parameter.TypeText,
-					Value: fmt.Sprintf("%v", arr),
-				},
+			schema: map[string]variable.Variable{
+				"s": {Key: "s", Type: parameter.TypeText},
 			},
+			wantErrIs: interfaces.ErrUnknownVariable,
+			wantErr:   "alfa, zeta",
+		},
+		{
+			name:      "with no schema every key is refused",
+			input:     map[string]interface{}{"ar": arr},
+			schema:    nil,
+			wantErrIs: interfaces.ErrUnknownVariable,
+			wantErr:   "ar",
 		},
 		{
 			name: "with schema: primitive types coerced by type",
@@ -393,8 +382,10 @@ func TestNormalizeRequestVars(t *testing.T) {
 			schema: map[string]variable.Variable{
 				"n": {Key: "n", Type: parameter.TypeNumber},
 				"m": {Key: "m", Type: parameter.TypeNumber},
+				"s": {Key: "s", Type: parameter.TypeText},
 			},
-			wantErr: "m, n",
+			wantErrIs: interfaces.ErrInvalidVariableValue,
+			wantErr:   "m, n",
 		},
 		{
 			name: "nil values are skipped",
@@ -402,7 +393,10 @@ func TestNormalizeRequestVars(t *testing.T) {
 				"a": nil,
 				"b": "value",
 			},
-			schema: nil,
+			schema: map[string]variable.Variable{
+				"a": {Key: "a", Type: parameter.TypeText},
+				"b": {Key: "b", Type: parameter.TypeText},
+			},
 			expected: map[string]variable.Variable{
 				"b": {
 					Key:   "b",
@@ -413,7 +407,7 @@ func TestNormalizeRequestVars(t *testing.T) {
 		},
 	}
 
-	eqVarMap := func(expected, actual map[string]variable.Variable) {
+	eqVarMap := func(t *testing.T, expected, actual map[string]variable.Variable) {
 		if expected == nil {
 			assert.Nil(t, actual)
 			return
@@ -440,15 +434,16 @@ func TestNormalizeRequestVars(t *testing.T) {
 
 	for _, tc := range tests {
 		t.Run(tc.name, func(t *testing.T) {
+			t.Parallel()
 			actual, err := normalizeRequestVars(tc.input, tc.schema)
 			if tc.wantErr != "" {
-				assert.ErrorIs(t, err, interfaces.ErrInvalidVariableValue)
+				assert.ErrorIs(t, err, tc.wantErrIs)
 				assert.ErrorContains(t, err, tc.wantErr)
 				assert.Nil(t, actual)
 				return
 			}
 			assert.NoError(t, err)
-			eqVarMap(tc.expected, actual)
+			eqVarMap(t, tc.expected, actual)
 		})
 	}
 }

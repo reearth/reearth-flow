@@ -268,7 +268,3 @@ synchronisation; without that the edit is never applied at all.
 `validity.badInput` set, holding the characters in a buffer nothing can read.
 Rendering anything else — the stored value, or a draft of the raw text — resets
 the control and takes them with it.
-
-**`onEditorOpen` / `ValueEditorDialog` is currently unreachable.** It required a
-field typed `$ref: "#/definitions/Expr"`, which the engine no longer emits. The
-prop is kept plumbed for when something needs it.

@@ -2601,17 +2601,14 @@ Reads CityGML 2.0 files as 3D city models, resolving `gml:id` references within 
         "type": "string"
       }
     },
-    "keepAttributes": {
-      "title": "Keep Attributes",
-      "description": "When false, XML attributes (`@`-prefixed entries such as `@gml:id`, `@codeSpace`) are dropped from parsed features. Defaults to true.",
-      "default": true,
-      "type": "boolean"
-    },
-    "flattenMeasureTypes": {
-      "title": "Flatten Measure Types",
-      "description": "When true, elements with a single `uom` attribute and numeric text content are converted to a number value, with the unit stored as a sibling `{name}_uom` key. Defaults to false.",
-      "default": false,
-      "type": "boolean"
+    "hoistAttributes": {
+      "title": "Hoist Attributes",
+      "description": "Lists the XML attribute names, written as in the document (e.g. `uom`, `gml:id`), to hoist into the parent as sibling `{element}@{attribute}` keys at any depth. Unlisted attributes are dropped, and an empty list (the default) hoists nothing.",
+      "default": [],
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
     },
     "cityGmlAttributesKey": {
       "title": "CityGML Attributes Key",
@@ -2622,9 +2619,9 @@ Reads CityGML 2.0 files as 3D city models, resolving `gml:id` references within 
         "null"
       ]
     },
-    "keepCodeSpace": {
-      "title": "Keep Code Space",
-      "description": "When true, a coded value resolved against its codelist also keeps that codelist's location, resolved to a URL, in a sibling `{name}_codeSpace` key. Defaults to false.",
+    "keepAbsoluteCodeSpace": {
+      "title": "Keep Absolute Code Space",
+      "description": "Hoists every `codeSpace` as a sibling `{name}@codeSpace` key, with its location resolved to a URL against the document, even when `hoistAttributes` does not list it. Defaults to false.",
       "default": false,
       "type": "boolean"
     }
@@ -2709,15 +2706,9 @@ Reads CityGML 3.0 files as 3D city models, resolving `gml:id` references within 
         "type": "string"
       }
     },
-    "keepAttributes": {
-      "title": "Keep Attributes",
-      "description": "When false, XML attributes (`@`-prefixed entries such as `@gml:id`, `@codeSpace`) are dropped from parsed features. Defaults to true.",
-      "default": true,
-      "type": "boolean"
-    },
-    "flattenLeafAttributes": {
-      "title": "Flatten Leaf Attributes",
-      "description": "Attribute names (e.g. `uom`) that mark a leaf for collapsing: an element with exactly one XML attribute in this list, no child elements, and numeric text content is converted to a number value, with the attribute's value stored as a sibling `{name}_{attribute}` key. Empty (the default) disables this.",
+    "hoistAttributes": {
+      "title": "Hoist Attributes",
+      "description": "Lists the XML attribute names, written as in the document (e.g. `uom`, `gml:id`), to hoist into the parent as sibling `{element}@{attribute}` keys at any depth. Unlisted attributes are dropped, and an empty list (the default) hoists nothing.",
       "default": [],
       "type": "array",
       "items": {
@@ -2743,9 +2734,9 @@ Reads CityGML 3.0 files as 3D city models, resolving `gml:id` references within 
         }
       ]
     },
-    "keepCodeSpace": {
-      "title": "Keep Code Space",
-      "description": "When true, a coded value resolved against its codelist also keeps that codelist's location, resolved to a URL, in a sibling `{name}_codeSpace` key. Defaults to false.",
+    "keepAbsoluteCodeSpace": {
+      "title": "Keep Absolute Code Space",
+      "description": "Hoists every `codeSpace` as a sibling `{name}@codeSpace` key, with its location resolved to a URL against the document, even when `hoistAttributes` does not list it. Defaults to false.",
       "default": false,
       "type": "boolean"
     }
@@ -2866,7 +2857,7 @@ Reads 3D city models from CityGML files.
 ### Type
 * sink
 ### Description
-Writes features to one CityGML 2.0 file, with attributes named as CityGML properties such as bldg:measuredHeight in schema order, nested city objects such as boundary surfaces under their parents, and dem:TINRelief terrain as a gml:TriangulatedSurface when every face is a triangle. Attributes without a prefix are not written, and properties of an ADE such as uro: only when ADE Schemas lists it.
+Writes features to one or more CityGML 2.0 files, or to a zip archive of them, with attributes named as CityGML properties such as bldg:measuredHeight in schema order, nested city objects such as boundary surfaces under their parents, and dem:TINRelief terrain as a gml:TriangulatedSurface when every face is a triangle. Attributes without a prefix are not written, properties of an ADE such as uro: only when ADE Schemas lists it, and a codelist that cannot be copied beside the file keeps its original URL.
 ### Parameters
 ```json
 {
@@ -2880,8 +2871,34 @@ Writes features to one CityGML 2.0 file, with attributes named as CityGML proper
   "properties": {
     "output": {
       "title": "Output File",
-      "description": "Path of the CityGML file to create, as text or an expression over workflow variables, evaluated once rather than per feature.",
+      "description": "Path of the CityGML file to create, as text or an expression over workflow variables and feature attributes, such as `\"bldg/\" + attributes[\"_meshcode\"] + \"_bldg_6697_op.gml\"` for one file per mesh, where each nested object goes with the top-level object it belongs to. A path ending in `.zip` is one zip archive holding the CityGML files with their textures and codelists, written whole by this writer, so every feature for that archive must reach this writer.",
       "type": "object",
+      "format": "code",
+      "required": [
+        "type",
+        "value"
+      ],
+      "properties": {
+        "type": {
+          "type": "string",
+          "enum": [
+            "flowExpr",
+            "string"
+          ]
+        },
+        "value": {
+          "type": "string"
+        }
+      }
+    },
+    "pathInArchive": {
+      "title": "Path in Archive",
+      "description": "Only used when Output File ends in `.zip`: where the CityGML file goes inside the archive, as a path from its top with `/` between folders, given as text or an expression over workflow variables and feature attributes, such as `\"udx/bldg/\" + attributes[\"_meshcode\"] + \"_bldg_6697_op.gml\"` for one file per mesh. Defaults to the archive's own name with `.gml`, at the top of the archive.",
+      "default": null,
+      "type": [
+        "object",
+        "null"
+      ],
       "format": "code",
       "required": [
         "type",
@@ -4662,23 +4679,14 @@ Reads the CityGML 2.0 file each incoming feature points at, resolving gml:id and
         "type": "string"
       }
     },
-    "keepAttributes": {
-      "title": "Keep Attributes",
-      "description": "When false, XML attributes (`@`-prefixed entries such as `@gml:id`, `@codeSpace`) are dropped from parsed features. Defaults to true.",
-      "default": true,
-      "type": "boolean"
-    },
-    "flattenSingleChildObjects": {
-      "title": "Flatten Single-Child Object Nodes",
-      "description": "When true, a wrapper element whose only content is a single child element is dropped: the child is hoisted up and keyed by its own tag name, always wrapped in an array. Defaults to false.",
-      "default": false,
-      "type": "boolean"
-    },
-    "flattenMeasureTypes": {
-      "title": "Flatten Measure Types",
-      "description": "When true, elements with a single `uom` attribute and numeric text content are converted to a number value, with the unit stored as a sibling `{name}_uom` key. Defaults to false.",
-      "default": false,
-      "type": "boolean"
+    "hoistAttributes": {
+      "title": "Hoist Attributes",
+      "description": "Lists the XML attribute names, written as in the document (e.g. `uom`, `gml:id`), to hoist into the parent as sibling `{element}@{attribute}` keys at any depth. Unlisted attributes are dropped, and an empty list (the default) hoists nothing.",
+      "default": [],
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
     },
     "cityGmlAttributesKey": {
       "title": "CityGML Attributes Key",
@@ -4695,9 +4703,9 @@ Reads the CityGML 2.0 file each incoming feature points at, resolving gml:id and
       "default": true,
       "type": "boolean"
     },
-    "keepCodeSpace": {
-      "title": "Keep Code Space",
-      "description": "When true, a coded value resolved against its codelist also keeps that codelist's location, resolved to a URL, in a sibling `{name}_codeSpace` key. Defaults to false.",
+    "keepAbsoluteCodeSpace": {
+      "title": "Keep Absolute Code Space",
+      "description": "Hoists every `codeSpace` as a sibling `{name}@codeSpace` key, with its location resolved to a URL against the document, even when `hoistAttributes` does not list it. Defaults to false.",
       "default": false,
       "type": "boolean"
     }
@@ -4758,21 +4766,9 @@ Reads the CityGML 3.0 file each incoming feature points at, resolving gml:id and
         "type": "string"
       }
     },
-    "keepAttributes": {
-      "title": "Keep Attributes",
-      "description": "When false, XML attributes (`@`-prefixed entries such as `@gml:id`, `@codeSpace`) are dropped from parsed features. Defaults to true.",
-      "default": true,
-      "type": "boolean"
-    },
-    "flattenSingleChildObjects": {
-      "title": "Flatten Single-Child Object Nodes",
-      "description": "When true, a wrapper element whose only content is a single child element is dropped: the child is hoisted up and keyed by its own tag name, always wrapped in an array. Defaults to false.",
-      "default": false,
-      "type": "boolean"
-    },
-    "flattenLeafAttributes": {
-      "title": "Flatten Leaf Attributes",
-      "description": "Attribute names (e.g. `uom`) that mark a leaf for collapsing: an element with exactly one XML attribute in this list, no child elements, and numeric text content is converted to a number value, with the attribute's value stored as a sibling `{name}_{attribute}` key. Empty (the default) disables this.",
+    "hoistAttributes": {
+      "title": "Hoist Attributes",
+      "description": "Lists the XML attribute names, written as in the document (e.g. `uom`, `gml:id`), to hoist into the parent as sibling `{element}@{attribute}` keys at any depth. Unlisted attributes are dropped, and an empty list (the default) hoists nothing.",
       "default": [],
       "type": "array",
       "items": {
@@ -4810,9 +4806,9 @@ Reads the CityGML 3.0 file each incoming feature points at, resolving gml:id and
       "default": false,
       "type": "boolean"
     },
-    "keepCodeSpace": {
-      "title": "Keep Code Space",
-      "description": "When true, a coded value resolved against its codelist also keeps that codelist's location, resolved to a URL, in a sibling `{name}_codeSpace` key. Defaults to false.",
+    "keepAbsoluteCodeSpace": {
+      "title": "Keep Absolute Code Space",
+      "description": "Hoists every `codeSpace` as a sibling `{name}@codeSpace` key, with its location resolved to a URL against the document, even when `hoistAttributes` does not list it. Defaults to false.",
       "default": false,
       "type": "boolean"
     }
@@ -7232,13 +7228,23 @@ Validates feature geometry for issues such as duplicate points, corrupt geometry
     },
     "duplicateTolerance": {
       "title": "Duplicate Point Tolerance",
-      "description": "Optional distance within which two coordinates count as duplicates for the duplicate-points check. Omitted (the default) means exact-equality detection.",
+      "description": "Optional distance below which two coordinates count as duplicates for the duplicate-points check. Omitted (the default) means exact-equality detection.",
       "default": null,
       "type": [
         "number",
         "null"
       ],
       "format": "double"
+    },
+    "duplicateCounting": {
+      "title": "Duplicate Counting",
+      "description": "What one problem of the duplicate-points check stands for: `extraPoints` (the default) counts each coordinate close to an earlier one, `closePairs` counts each pair of close coordinates.",
+      "default": "extraPoints",
+      "allOf": [
+        {
+          "$ref": "#/definitions/DuplicateCounting"
+        }
+      ]
     },
     "degenerateThresholds": {
       "title": "Degeneracy Thresholds",
@@ -7326,6 +7332,27 @@ Validates feature geometry for issues such as duplicate points, corrupt geometry
             }
           },
           "additionalProperties": false
+        }
+      ]
+    },
+    "DuplicateCounting": {
+      "description": "What one problem of the duplicate-points check stands for. Both compare every pair of coordinates, adjacent or not, and differ only in the count: three mutually close points give 2 extra points but 3 close pairs.",
+      "oneOf": [
+        {
+          "title": "Extra Points",
+          "description": "One problem per coordinate close to an earlier one: the points to drop so that no two remain close.",
+          "type": "string",
+          "enum": [
+            "extraPoints"
+          ]
+        },
+        {
+          "title": "Close Pairs",
+          "description": "One problem per pair of close coordinates, located at both coordinates of the pair as a two-point geometry.",
+          "type": "string",
+          "enum": [
+            "closePairs"
+          ]
         }
       ]
     },

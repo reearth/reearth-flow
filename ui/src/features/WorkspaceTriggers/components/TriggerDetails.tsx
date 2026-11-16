@@ -24,7 +24,11 @@ import { useToast } from "@flow/features/NotificationSystem/useToast";
 import { useTrigger } from "@flow/lib/gql";
 import { useT } from "@flow/lib/i18n";
 import type { Trigger, TriggerRefusal, TriggerRefusalCode } from "@flow/types";
-import { formatTimestamp } from "@flow/utils";
+import {
+  formatTimestamp,
+  getEventSourceLabel,
+  getTimeIntervalLabel,
+} from "@flow/utils";
 import { copyToClipboard } from "@flow/utils/copyToClipboard";
 
 import { isRetrying } from "../lastRefusal";
@@ -90,6 +94,9 @@ const TriggerDetails: React.FC<Props> = ({
           "A required workflow variable has no value, or a value does not fit its type.",
         ),
         NOT_ALLOWED: t("The run was not allowed."),
+        TIME_DRIVEN_TRIGGER_RUNS_DAILY_LIMIT: t(
+          "The workspace has used all of its plan's scheduled runs for the day.",
+        ),
         CONCURRENT_JOB_LIMIT: t(
           "The workspace was running as many jobs as its plan allows.",
         ),
@@ -147,7 +154,8 @@ const TriggerDetails: React.FC<Props> = ({
             {
               id: "eventSource",
               name: t("Event Source"),
-              value: selectedTrigger.eventSource ?? t("N/A"),
+              value:
+                getEventSourceLabel(selectedTrigger.eventSource, t) ?? t("N/A"),
             },
             ...(selectedTrigger.eventSource === "API_DRIVEN"
               ? [
@@ -165,7 +173,9 @@ const TriggerDetails: React.FC<Props> = ({
                   {
                     id: "timeInterval",
                     name: t("Time Interval"),
-                    value: selectedTrigger.timeInterval ?? t("N/A"),
+                    value:
+                      getTimeIntervalLabel(selectedTrigger.timeInterval, t) ??
+                      t("N/A"),
                   },
                 ]
               : []),

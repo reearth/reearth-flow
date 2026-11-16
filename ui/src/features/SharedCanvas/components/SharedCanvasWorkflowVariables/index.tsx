@@ -9,6 +9,7 @@ import {
   DialogTitle,
   DataTable as Table,
 } from "@flow/components";
+import { useWorkflowVars } from "@flow/hooks";
 import { useT } from "@flow/lib/i18n";
 import type { AppColumnDef } from "@flow/lib/table/features";
 import type { AnyWorkflowVariable } from "@flow/types";
@@ -27,6 +28,7 @@ const SharedCanvasWorkflowVariablesDialog: React.FC<Props> = ({
   onCancel,
 }) => {
   const t = useT();
+  const { getUserFacingName } = useWorkflowVars();
 
   // Private variables are listed, but with their values redacted.
   const { workflowVariables } = useSharedWorkflowVariables();
@@ -45,6 +47,7 @@ const SharedCanvasWorkflowVariablesDialog: React.FC<Props> = ({
       {
         accessorKey: "type",
         header: t("Type"),
+        cell: ({ row }) => getUserFacingName(row.original.type),
       },
       {
         accessorKey: "defaultValue",
@@ -61,7 +64,7 @@ const SharedCanvasWorkflowVariablesDialog: React.FC<Props> = ({
         cell: ({ getValue }) => (getValue() ? t("Yes") : t("No")),
       },
     ],
-    [t],
+    [getUserFacingName, t],
   );
 
   return (

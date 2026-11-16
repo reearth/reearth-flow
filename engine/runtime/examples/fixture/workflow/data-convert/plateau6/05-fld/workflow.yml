@@ -13,6 +13,7 @@ with:
     - core:boundary
 graphs:
   - !include ../../../../graphs/plateau6/folder_and_file_path_reader.yml
+  - !include ../../../../graphs/plateau6/attribute_tree_measure_caster.yml
   - !include ../../../../graphs/plateau6/attribute_tree_pruner.yml
   - id: 30caedc7-02c8-4d0b-8ee7-64f8bae45134
     name: entry_point
@@ -57,11 +58,15 @@ graphs:
           dataset:
             type: flowExpr
             value: attributes["path"]
-          keepAttributes: false
           inheritInputAttributes: true
           cityGmlAttributesKey: __city_gml_attributes
-          flattenLeafAttributes:
+          hoistAttributes:
             - uom
+
+      - id: ad2abddd-0b5a-4f92-884c-a6730b3be69b
+        name: AttributeTreeMeasureCaster
+        type: subGraph
+        subGraphId: d9f0c1d7-3bd4-49d8-a8ba-f56994776d22
 
       - id: 68a1821a-4561-4317-89e4-f6299fc090ee
         name: AttributeMapperAfterReader
@@ -389,6 +394,11 @@ graphs:
         toPort: features
       - id: af0e115d-9bd8-4205-98ef-72c787165bcb
         from: e093f44f-42e6-4b0d-b320-7dea4058e6c1
+        to: ad2abddd-0b5a-4f92-884c-a6730b3be69b
+        fromPort: features
+        toPort: features
+      - id: 85d5d293-90da-4faa-a98a-258a8e0b2493
+        from: ad2abddd-0b5a-4f92-884c-a6730b3be69b
         to: 68a1821a-4561-4317-89e4-f6299fc090ee
         fromPort: features
         toPort: features

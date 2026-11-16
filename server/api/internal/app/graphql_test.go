@@ -79,6 +79,7 @@ func TestErrorPresenter_CodesTheErrorsClientsHandle(t *testing.T) {
 		{interfaces.ErrOperationDenied, "OPERATION_DENIED"},
 		{repo.ErrOperationDenied, "OPERATION_DENIED"},
 		{interfaces.ErrJobNotFinished, "JOB_NOT_FINISHED"},
+		{interfaces.ErrDeploymentHasTriggers, "DEPLOYMENT_HAS_TRIGGERS"},
 		{interfaces.ErrIntermediateDataNotFound, "INTERMEDIATE_DATA_NOT_FOUND"},
 		{interfaces.ErrViewsUnavailable, "VIEWS_UNAVAILABLE"},
 		{interfaces.ErrRenderTimedOut, "VIEW_RENDER_TIMED_OUT"},

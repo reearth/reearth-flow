@@ -62,11 +62,29 @@ func TestTriggerError(t *testing.T) {
 		assert.Contains(t, rec.Body.String(), `"code":"trigger_disabled"`)
 	})
 
-	t.Run("any other error: 500", func(t *testing.T) {
-		t.Parallel()
+	for name, tc := range map[string]struct {
+		err  error
+		want int
+	}{
+		"a wrong token: 401":                {interfaces.ErrInvalidTriggerToken, http.StatusUnauthorized},
+		"a wrapped wrong token: 401":        {fmt.Errorf("run: %w", interfaces.ErrInvalidTriggerToken), http.StatusUnauthorized},
+		"a caller without permission: 403":  {interfaces.ErrOperationDenied, http.StatusForbidden},
+		"no such trigger: 404":              {rerror.ErrNotFound, http.StatusNotFound},
+		"no such deployment: 404":           {interfaces.ErrDeploymentNotFound, http.StatusNotFound},
+		"a required variable missing: 400":  {interfaces.ErrRequiredVariableMissing, http.StatusBadRequest},
+		"a variable of the wrong type: 400": {interfaces.ErrInvalidVariableValue, http.StatusBadRequest},
+		"an unknown variable: 400":          {interfaces.ErrUnknownVariable, http.StatusBadRequest},
+		"any other error: 500":              {errors.New("boom"), http.StatusInternalServerError},
+	} {
+		t.Run(name, func(t *testing.T) {
+			t.Parallel()
 
-		assert.Equal(t, http.StatusInternalServerError, respond(t, errors.New("boom")).Code)
-	})
+			rec := respond(t, tc.err)
+
+			assert.Equal(t, tc.want, rec.Code)
+			assert.Contains(t, rec.Body.String(), tc.err.Error())
+		})
+	}
 }
 
 func TestRetryAfterSeconds(t *testing.T) {

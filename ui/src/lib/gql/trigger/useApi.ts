@@ -69,13 +69,14 @@ export const useTrigger = () => {
       });
       return { trigger: data?.trigger, authToken: data?.authToken, ...rest };
     } catch (err) {
+      const limitMessage = planLimitMessage(err);
       toast({
         title: t("Trigger Could Not Be Created"),
         description:
-          planLimitMessage(err) ??
+          limitMessage ??
           missingRequiredMessage(err) ??
           t("There was an error when creating the trigger."),
-        variant: "destructive",
+        variant: limitMessage ? "warning" : "destructive",
       });
       return { trigger: undefined, ...rest };
     }
@@ -117,13 +118,14 @@ export const useTrigger = () => {
         });
         return { trigger: undefined, ...rest };
       }
+      const limitMessage = planLimitMessage(err);
       toast({
         title: t("Trigger Could Not Be Updated"),
         description:
-          planLimitMessage(err) ??
+          limitMessage ??
           missingRequiredMessage(err) ??
           t("There was an error when updating the trigger."),
-        variant: "destructive",
+        variant: limitMessage ? "warning" : "destructive",
       });
       return { trigger: undefined, ...rest };
     }

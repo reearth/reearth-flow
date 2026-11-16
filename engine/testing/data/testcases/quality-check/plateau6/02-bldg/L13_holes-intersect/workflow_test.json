@@ -1,0 +1,59 @@
+{
+  "description": "Test L13 on plateau6. Two holes crossing each other, one error per hole.",
+  "workflowPath": "quality-check/plateau6/02-bldg/workflow.yml",
+  "workflowVariables": [
+    {
+      "name": "cityGmlPath",
+      "value": "bldg_.zip"
+    },
+    {
+      "name": "codelistsPath",
+      "value": "codelists_.zip"
+    },
+    {
+      "name": "schemasPath",
+      "value": "schemas_.zip"
+    },
+    {
+      "name": "objectListsPath",
+      "value": "../../../../../fixtures/plateau6-citymodel/13997_tokyo_udx-mlit_2026_citygml_1_sample-tokyoCG3_op/13997_milt_2026_objectlist_sample-tokyoCG3_op__empty.xlsx"
+    },
+    {
+      "name": "prcs",
+      "value": 6677
+    }
+  ],
+  "zipBeforeTest": [
+    {
+      "path": "udx/bldg",
+      "name": "bldg_.zip"
+    },
+    {
+      "path": "../../../../../fixtures/plateau6-citymodel/13997_tokyo_udx-mlit_2026_citygml_1_sample-tokyoCG3_op/codelists",
+      "name": "codelists_.zip"
+    },
+    {
+      "path": "../../../../../fixtures/plateau6-citymodel/13997_tokyo_udx-mlit_2026_citygml_1_sample-tokyoCG3_op/schemas",
+      "name": "schemas_.zip"
+    }
+  ],
+  "expectedOutput": {
+    "expectedFile": [
+      "02_建築物_LOD0面のエラー.csv",
+      "02_建築物_LOD2以上境界面のエラー.csv",
+      "error_geometry/02_建築物_LOD0面のエラー.geojson",
+      "error_geometry/02_建築物_LOD0面のエラー位置.geojson",
+      "error_geometry/02_建築物_LOD2以上境界面のエラー.geojson",
+      "error_geometry/02_建築物_LOD2以上境界面のエラー位置.geojson"
+    ]
+  },
+  "summaryOutput": {
+    "errorCountSummary": {
+      "expectedFile": "summary_bldg.json"
+    },
+    "fileErrorSummary": {
+      "expectedFile": "02_建築物_検査結果一覧.csv"
+    }
+  },
+  "expectResultOkFile": false
+}

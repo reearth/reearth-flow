@@ -1,6 +1,8 @@
+import { DownloadIcon } from "@phosphor-icons/react";
 import { useEffect, useMemo, useState } from "react";
 import type { ReactNode } from "react";
 
+import { IconButton } from "@flow/components";
 import { LogsTable } from "@flow/components/LogsTable";
 import { useJob } from "@flow/lib/gql/job";
 import { useSubscription } from "@flow/lib/gql/subscriptions/useSubscription";
@@ -9,6 +11,8 @@ import type { AppColumnDef } from "@flow/lib/table/features";
 import type { UserFacingLog } from "@flow/types";
 import { formatTimestamp } from "@flow/utils";
 import { parseJSONL } from "@flow/utils/jsonl";
+
+import { downloadLogs } from "./downloadLogs";
 
 type LogsConsoleProps = {
   jobId: string;
@@ -56,8 +60,12 @@ const LogsConsole: React.FC<LogsConsoleProps> = ({ jobId, leadingActions }) => {
   } | null>(null);
   const [failedJobId, setFailedJobId] = useState<string | null>(null);
 
+  const isFinished =
+    debugJob?.status === "completed" ||
+    debugJob?.status === "failed" ||
+    debugJob?.status === "cancelled";
   const logsUrl =
-    debugJob?.id === jobId && debugJob.status === "completed"
+    debugJob?.id === jobId && isFinished
       ? debugJob.userFacingLogsURL
       : undefined;
 
@@ -66,7 +74,10 @@ const LogsConsole: React.FC<LogsConsoleProps> = ({ jobId, leadingActions }) => {
 
   const isFetchingLogsUrl = !!logsUrl && !hasFetched && failedJobId !== jobId;
 
-  const logs = useMemo(() => urlLogs || liveLogs || [], [liveLogs, urlLogs]);
+  const logs = useMemo(
+    () => (urlLogs?.length ? urlLogs : liveLogs || []),
+    [liveLogs, urlLogs],
+  );
 
   useEffect(() => {
     if (!logsUrl || hasFetched) return;
@@ -77,6 +88,11 @@ const LogsConsole: React.FC<LogsConsoleProps> = ({ jobId, leadingActions }) => {
     (async () => {
       try {
         const response = await fetch(logsUrl, { signal: controller.signal });
+        if (!response.ok) {
+          if (controller.signal.aborted) return;
+          setFetchedLogs({ jobId, logs: [] });
+          return;
+        }
         const textData = await response.text();
         if (controller.signal.aborted) return;
         // Logs are JSONL there we have ensure they are parsed correctly and cleaned to be used
@@ -114,8 +130,21 @@ const LogsConsole: React.FC<LogsConsoleProps> = ({ jobId, leadingActions }) => {
     <LogsTable
       columns={columns}
       data={logs}
-      isFetching={!logs.length || isFetchingLogsUrl}
-      leadingActions={leadingActions}
+      isFetching={isFetchingLogsUrl || (!logs.length && !isFinished)}
+      leadingActions={
+        <>
+          {leadingActions}
+          <IconButton
+            size="icon"
+            variant="outline"
+            tooltipText={t("Download Logs")}
+            aria-label={t("Download Logs")}
+            disabled={!logs.length}
+            onClick={() => downloadLogs(jobId, logs)}
+            icon={<DownloadIcon />}
+          />
+        </>
+      }
       selectColumns
       showFiltering
     />

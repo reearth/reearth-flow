@@ -13,6 +13,7 @@ import type {
 } from "@flow/types";
 import { DeploymentOrderBy } from "@flow/types";
 import { OrderDirection } from "@flow/types/paginationOptions";
+import { getEventSourceLabels, getTimeIntervalLabels } from "@flow/utils";
 import { copyToClipboard } from "@flow/utils/copyToClipboard";
 
 import { useHourlySchedule } from "../../useHourlySchedule";
@@ -145,21 +146,13 @@ export default ({
     }
   };
 
-  const eventSources: Record<string, string> = {
-    API_DRIVEN: t("API Driven"),
-    TIME_DRIVEN: t("Time Driven"),
-  };
+  const eventSources = getEventSourceLabels(t);
 
   const handleSelectTimeInterval = (timeInterval: TimeInterval) => {
     setTimeInterval(timeInterval);
   };
 
-  const timeIntervals: Record<TimeInterval, string> = {
-    EVERY_DAY: t("Every Day"),
-    EVERY_HOUR: t("Every Hour"),
-    EVERY_WEEK: t("Every Week"),
-    EVERY_MONTH: t("Every Month"),
-  };
+  const timeIntervals = getTimeIntervalLabels(t);
 
   const handleTriggerCreation = useCallback(async () => {
     const workspaceId = currentWorkspace?.id;

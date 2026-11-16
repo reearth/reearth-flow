@@ -1,0 +1,195 @@
+id: c4200000-0000-4000-8000-000000000000
+name: PLATEAU6.LineChecks
+# Validates every line of the incoming geometry. Emits one feature per failed
+# check per line on `invalidLine` with the check name in `issue` and the error
+# count in `issueCount`, positioned at the line. `issueLocation` repeats every
+# spot found on those lines, as a point or for L07 as the two vertices of the
+# close pair. Geometry other than lines is ignored.
+nodes:
+  - id: c4200000-0000-4000-8000-000000000001
+    name: InputRouter
+    type: action
+    action: Input Router
+    with:
+      routingPort: features
+
+  - id: c4200000-0000-4000-8000-000000000002
+    name: GeometrySplitterMembers
+    type: action
+    action: Geometry Splitter
+
+  # A MultiCurve nested in another collection takes a second split to reach
+  # its lines. A line that is already alone passes through unchanged.
+  - id: c4200000-0000-4000-8000-000000000003
+    name: GeometrySplitterLines
+    type: action
+    action: Geometry Splitter
+
+  - id: c4200000-0000-4000-8000-000000000004
+    name: GeometryFilterCurve
+    type: action
+    action: Geometry Filter
+    with:
+      filterType: geometryType
+
+  # L07 (close vertices): every pair of vertices closer than 0.01 m, adjacent
+  # or not, is one error. The start and end of a closed line are not a pair.
+  # TODO: L07 (hasError exclusion): drop the `DuplicatePoints` results of city
+  # objects whose `urc:hasError` is 1, 2 or 3.
+  - id: c4200000-0000-4000-8000-000000000005
+    name: GeometryValidatorLine
+    type: action
+    action: Geometry Validator
+    with:
+      duplicateTolerance: 0.01
+      duplicateCounting: closePairs
+
+  - id: c4200000-0000-4000-8000-000000000006
+    name: AttributeManagerIssues
+    type: action
+    action: Attribute Manager
+    with:
+      operations:
+        - attribute: _issues
+          method: create
+          value:
+            type: flowExpr
+            value: |
+              names = {"DuplicatePoints": "DuplicateConsecutivePoints", "SelfIntersection": "SelfIntersection"};
+              checks = attributes["validationResult"]["checks"];
+              keys = itertools.filter(itertools.sorted(checks.keys()), fn(k) { k in ["DuplicatePoints", "SelfIntersection"] });
+              itertools.map(keys, fn(k) { {"issue": names[k], "issueCount": checks[k]} })
+
+  - id: c4200000-0000-4000-8000-00000000000c
+    name: ListExploderIssues
+    type: action
+    action: List Exploder
+    with:
+      sourceAttribute: _issues
+
+  # L08 (self-intersection): a line that intersects or touches itself, or
+  # overlaps its own edges, is one error however many spots it has.
+  - id: c4200000-0000-4000-8000-000000000007
+    name: AttributeManagerSelfIntersectionCount
+    type: action
+    action: Attribute Manager
+    with:
+      operations:
+        - attribute: issueCount
+          method: create
+          value:
+            type: flowExpr
+            value: |
+              count = attributes["issueCount"];
+              if attributes["issue"] == "SelfIntersection" { count = 1; }
+              count
+
+  - id: c4200000-0000-4000-8000-000000000008
+    name: InvalidLineRouter
+    type: action
+    action: Output Router
+    with:
+      routingPort: invalidLine
+
+  - id: c4200000-0000-4000-8000-000000000009
+    name: FeatureFilterIssueLocation
+    type: action
+    action: Feature Filter
+    with:
+      conditions:
+        - expr:
+            type: flowExpr
+            value: attributes["validationCheck"] in ["DuplicatePoints", "SelfIntersection"]
+          outputPort: reported
+
+  - id: c4200000-0000-4000-8000-00000000000a
+    name: AttributeManagerIssueLocation
+    type: action
+    action: Attribute Manager
+    with:
+      operations:
+        - attribute: issue
+          method: create
+          value:
+            type: flowExpr
+            value: |
+              names = {"DuplicatePoints": "DuplicateConsecutivePoints"};
+              check = attributes["validationCheck"];
+              names.get(check, check)
+
+  - id: c4200000-0000-4000-8000-00000000000b
+    name: IssueLocationRouter
+    type: action
+    action: Output Router
+    with:
+      routingPort: issueLocation
+
+edges:
+  - id: c4200000-0000-4000-8000-000000000101
+    from: c4200000-0000-4000-8000-000000000001
+    to: c4200000-0000-4000-8000-000000000002
+    fromPort: features
+    toPort: features
+  - id: c4200000-0000-4000-8000-000000000102
+    from: c4200000-0000-4000-8000-000000000002
+    to: c4200000-0000-4000-8000-000000000003
+    fromPort: features
+    toPort: features
+  - id: c4200000-0000-4000-8000-000000000103
+    from: c4200000-0000-4000-8000-000000000003
+    to: c4200000-0000-4000-8000-000000000004
+    fromPort: features
+    toPort: features
+  - id: c4200000-0000-4000-8000-000000000104
+    from: c4200000-0000-4000-8000-000000000004
+    to: c4200000-0000-4000-8000-000000000005
+    fromPort: curve
+    toPort: features
+
+  ## Lines
+  - id: c4200000-0000-4000-8000-000000000105
+    from: c4200000-0000-4000-8000-000000000005
+    to: c4200000-0000-4000-8000-000000000006
+    fromPort: failed
+    toPort: features
+  - id: c4200000-0000-4000-8000-000000000106
+    from: c4200000-0000-4000-8000-000000000006
+    to: c4200000-0000-4000-8000-00000000000c
+    fromPort: features
+    toPort: features
+  - id: c4200000-0000-4000-8000-00000000010b
+    from: c4200000-0000-4000-8000-00000000000c
+    to: c4200000-0000-4000-8000-000000000007
+    fromPort: features
+    toPort: features
+  - id: c4200000-0000-4000-8000-000000000107
+    from: c4200000-0000-4000-8000-000000000007
+    to: c4200000-0000-4000-8000-000000000008
+    fromPort: features
+    toPort: features
+
+  ## Issue locations
+  - id: c4200000-0000-4000-8000-000000000108
+    from: c4200000-0000-4000-8000-000000000005
+    to: c4200000-0000-4000-8000-000000000009
+    fromPort: issue-locations
+    toPort: features
+  - id: c4200000-0000-4000-8000-000000000109
+    from: c4200000-0000-4000-8000-000000000009
+    to: c4200000-0000-4000-8000-00000000000a
+    fromPort: reported
+    toPort: features
+  - id: c4200000-0000-4000-8000-00000000010a
+    from: c4200000-0000-4000-8000-00000000000a
+    to: c4200000-0000-4000-8000-00000000000b
+    fromPort: features
+    toPort: features
+
+ports:
+  outputs:
+    - id: invalidLine
+      nodeId: c4200000-0000-4000-8000-000000000008
+      port: features
+    - id: issueLocation
+      nodeId: c4200000-0000-4000-8000-00000000000b
+      port: features

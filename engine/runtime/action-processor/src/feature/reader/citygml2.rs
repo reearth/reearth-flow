@@ -91,11 +91,9 @@ impl ProcessorFactory for FeatureCityGml2ReaderFactory {
         Ok(Box::new(FeatureCityGml2Reader {
             dataset,
             extract_tags,
-            keep_attributes: params.keep_attributes,
-            flatten_single_child_objects: params.flatten_single_child_objects,
-            flatten_measure_types: params.flatten_measure_types,
+            hoist_attributes: params.hoist_attributes,
             city_gml_attributes_key: params.city_gml_attributes_key,
-            keep_code_space: params.keep_code_space,
+            keep_absolute_code_space: params.keep_absolute_code_space,
             inherit_input_attributes: params.inherit_input_attributes,
             parser,
             base_attributes: HashMap::new(),
@@ -118,22 +116,12 @@ pub struct FeatureCityGml2ReaderParam {
     /// top-level city objects unchanged.
     #[serde(default)]
     extract_tags: Vec<String>,
-    /// # Keep Attributes
-    /// When false, XML attributes (`@`-prefixed entries such as `@gml:id`, `@codeSpace`) are
-    /// dropped from parsed features. Defaults to true.
-    #[serde(default = "default_keep_attributes")]
-    keep_attributes: bool,
-    /// # Flatten Single-Child Object Nodes
-    /// When true, a wrapper element whose only content is a single child element is dropped: the
-    /// child is hoisted up and keyed by its own tag name, always wrapped in an array. Defaults to
-    /// false.
+    /// # Hoist Attributes
+    /// Lists the XML attribute names, written as in the document (e.g. `uom`, `gml:id`), to hoist
+    /// into the parent as sibling `{element}@{attribute}` keys at any depth. Unlisted attributes
+    /// are dropped, and an empty list (the default) hoists nothing.
     #[serde(default)]
-    flatten_single_child_objects: bool,
-    /// # Flatten Measure Types
-    /// When true, elements with a single `uom` attribute and numeric text content are converted to
-    /// a number value, with the unit stored as a sibling `{name}_uom` key. Defaults to false.
-    #[serde(default)]
-    flatten_measure_types: bool,
+    hoist_attributes: Vec<String>,
     /// # CityGML Attributes Key
     /// When set, parsed CityGML attributes are nested under this key in the output feature.
     /// When null, attributes are emitted at the top level. Defaults to null.
@@ -144,15 +132,11 @@ pub struct FeatureCityGml2ReaderParam {
     /// file. Defaults to true.
     #[serde(default = "default_inherit_input_attributes")]
     inherit_input_attributes: bool,
-    /// # Keep Code Space
-    /// When true, a coded value resolved against its codelist also keeps that codelist's
-    /// location, resolved to a URL, in a sibling `{name}_codeSpace` key. Defaults to false.
+    /// # Keep Absolute Code Space
+    /// Hoists every `codeSpace` as a sibling `{name}@codeSpace` key, with its location resolved
+    /// to a URL against the document, even when `hoistAttributes` does not list it. Defaults to false.
     #[serde(default)]
-    keep_code_space: bool,
-}
-
-fn default_keep_attributes() -> bool {
-    true
+    keep_absolute_code_space: bool,
 }
 
 fn default_inherit_input_attributes() -> bool {
@@ -162,11 +146,9 @@ fn default_inherit_input_attributes() -> bool {
 pub struct FeatureCityGml2Reader {
     dataset: CompiledCode,
     extract_tags: HashSet<String>,
-    keep_attributes: bool,
-    flatten_single_child_objects: bool,
-    flatten_measure_types: bool,
+    hoist_attributes: Vec<String>,
     city_gml_attributes_key: Option<String>,
-    keep_code_space: bool,
+    keep_absolute_code_space: bool,
     inherit_input_attributes: bool,
     parser: Parser,
     /// Input feature attributes keyed by resolved source file URL, merged into parsed features
@@ -187,11 +169,9 @@ impl Clone for FeatureCityGml2Reader {
         Self {
             dataset: self.dataset.clone(),
             extract_tags: self.extract_tags.clone(),
-            keep_attributes: self.keep_attributes,
-            flatten_single_child_objects: self.flatten_single_child_objects,
-            flatten_measure_types: self.flatten_measure_types,
+            hoist_attributes: self.hoist_attributes.clone(),
             city_gml_attributes_key: self.city_gml_attributes_key.clone(),
-            keep_code_space: self.keep_code_space,
+            keep_absolute_code_space: self.keep_absolute_code_space,
             inherit_input_attributes: self.inherit_input_attributes,
             parser: Parser::with_extract_tags(CityGmlVersion::V2, self.extract_tags.clone()),
             base_attributes: HashMap::new(),
@@ -251,24 +231,14 @@ impl Processor for FeatureCityGml2Reader {
         ctx: NodeContext,
         fw: &ProcessorChannelForwarder,
     ) -> Result<(), BoxedError> {
-        // This reader's own param stays a simple bool; the shared pipeline
-        // function takes a caller-declared attribute-name list, so translate
-        // at the boundary rather than changing this reader's exposed shape.
-        let flatten_leaf_attributes: Vec<String> = if self.flatten_measure_types {
-            vec!["uom".to_string()]
-        } else {
-            Vec::new()
-        };
         let next_parser = Parser::with_extract_tags(CityGmlVersion::V2, self.extract_tags.clone());
         for feature in build_features(
             std::mem::replace(&mut self.parser, next_parser),
             &self.extract_tags,
             &self.base_attributes,
             self.city_gml_attributes_key.as_deref(),
-            self.keep_attributes,
-            self.flatten_single_child_objects,
-            &flatten_leaf_attributes,
-            self.keep_code_space,
+            &self.hoist_attributes,
+            self.keep_absolute_code_space,
         ) {
             fw.send(ExecutorContext::new_with_node_context_feature_and_port(
                 &ctx,
@@ -298,11 +268,9 @@ mod parse_failure_tests {
         FeatureCityGml2Reader {
             dataset: CompiledCode::Literal(url.to_string()),
             extract_tags: HashSet::new(),
-            keep_attributes: true,
-            flatten_single_child_objects: false,
-            flatten_measure_types: false,
+            hoist_attributes: Vec::new(),
             city_gml_attributes_key: None,
-            keep_code_space: false,
+            keep_absolute_code_space: false,
             inherit_input_attributes: true,
             parser: Parser::with_extract_tags(CityGmlVersion::V2, HashSet::new()),
             base_attributes: HashMap::new(),

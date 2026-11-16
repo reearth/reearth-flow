@@ -21,6 +21,7 @@ var errorCodes = []struct {
 	// The repos refuse with their own sentinel, which reads the same.
 	{repo.ErrOperationDenied, "OPERATION_DENIED"},
 	{interfaces.ErrJobNotFinished, "JOB_NOT_FINISHED"},
+	{interfaces.ErrDeploymentHasTriggers, "DEPLOYMENT_HAS_TRIGGERS"},
 	{interfaces.ErrIntermediateDataNotFound, "INTERMEDIATE_DATA_NOT_FOUND"},
 	{interfaces.ErrViewsUnavailable, "VIEWS_UNAVAILABLE"},
 	{interfaces.ErrRenderTimedOut, "VIEW_RENDER_TIMED_OUT"},

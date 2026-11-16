@@ -2,8 +2,8 @@
 # Runs the utility network checks over every GML in the archive: the per-face
 # and shell-level checks of the LOD1 and LOD2 solids, the per-face checks of the
 # LOD2 and LOD3 surfaces, the continuity of every CompositeSurface among those
-# surfaces, and the geometry type each LOD is expected to have. LOD0 is counted
-# but not checked. The result sheet has one row per file, feature type and LOD,
+# surfaces, and the geometry type each LOD is expected to have. LOD0 takes only
+# the line checks. The result sheet has one row per file, feature type and LOD,
 # carrying the instance count alongside every error count.
 #
 # Only the geometry of the feature itself is checked and counted.
@@ -406,6 +406,149 @@ nodes:
         value: |
           "error_geometry/" + variables["packagePrefixes"][attributes["folder"]] + "_LOD2-3面のエラー.geojson"
       writeCrs: true
+
+  # --- LOD0 line checks ---
+  - id: dd000000-0000-4000-8000-00000000005c
+    name: LineChecks
+    type: subGraph
+    subGraphId: c4200000-0000-4000-8000-000000000000
+
+  - id: dd000000-0000-4000-8000-00000000005d
+    name: LineAttributeMapper
+    type: action
+    action: Attribute Mapper
+    with:
+      mappers:
+        - attribute: Index
+          valueAttribute: fileIndex
+        - attribute: Folder
+          valueAttribute: package
+        - attribute: Filename
+          valueAttribute: name
+        - attribute: FeatureType
+          expr:
+            type: flowExpr
+            value: attributes.get("__citygml_feature_type", "").split(":")[-1]
+        - attribute: LOD
+          expr:
+            type: flowExpr
+            value: attributes.get("lod", "")
+        - attribute: GmlId
+          expr:
+            type: flowExpr
+            value: attributes.get("__citygml_gml_id", "")
+        - attribute: "エラー数"
+          valueAttribute: issueCount
+        - attribute: "エラー内容"
+          expr:
+            type: flowExpr
+            value: attributes.get("issue", "UnknownError")
+
+  - id: dd000000-0000-4000-8000-00000000005e
+    name: LineCsvWriter
+    type: action
+    action: Feature Writer
+    with:
+      format:
+        type: csv
+      output:
+        type: flowExpr
+        value: |
+          variables["packagePrefixes"][attributes["Folder"]] + "_線のエラー.csv"
+
+  - id: dd000000-0000-4000-8000-00000000005f
+    name: LineAttributeMapperGeoJson
+    type: action
+    action: Attribute Mapper
+    with:
+      mappers:
+        - attribute: index
+          valueAttribute: fileIndex
+        - attribute: folder
+          valueAttribute: package
+        - attribute: filename
+          valueAttribute: name
+        - attribute: featureType
+          expr:
+            type: flowExpr
+            value: attributes.get("__citygml_feature_type", "").split(":")[-1]
+        - attribute: gmlId
+          expr:
+            type: flowExpr
+            value: attributes.get("__citygml_gml_id", "")
+        - attribute: lod
+          valueAttribute: lod
+        - attribute: issue
+          expr:
+            type: flowExpr
+            value: attributes.get("issue", "UnknownError")
+        - attribute: issueCount
+          valueAttribute: issueCount
+
+  - id: dd000000-0000-4000-8000-000000000060
+    name: LineGeoJsonWriter
+    type: action
+    action: Feature GeoJSON Writer
+    with:
+      output:
+        type: flowExpr
+        value: |
+          "error_geometry/" + variables["packagePrefixes"][attributes["folder"]] + "_線のエラー.geojson"
+      writeCrs: true
+
+  - id: dd000000-0000-4000-8000-000000000061
+    name: LineIssueLocationAttributeMapperGeoJson
+    type: action
+    action: Attribute Mapper
+    with:
+      mappers:
+        - attribute: index
+          valueAttribute: fileIndex
+        - attribute: folder
+          valueAttribute: package
+        - attribute: filename
+          valueAttribute: name
+        - attribute: featureType
+          expr:
+            type: flowExpr
+            value: attributes.get("__citygml_feature_type", "").split(":")[-1]
+        - attribute: gmlId
+          expr:
+            type: flowExpr
+            value: attributes.get("__citygml_gml_id", "")
+        - attribute: lod
+          valueAttribute: lod
+        - attribute: issue
+          expr:
+            type: flowExpr
+            value: attributes.get("issue", "UnknownError")
+
+  - id: dd000000-0000-4000-8000-000000000062
+    name: LineIssueLocationGeoJsonWriter
+    type: action
+    action: Feature GeoJSON Writer
+    with:
+      output:
+        type: flowExpr
+        value: |
+          "error_geometry/" + variables["packagePrefixes"][attributes["folder"]] + "_線のエラー位置.geojson"
+      writeCrs: true
+
+  - id: dd000000-0000-4000-8000-000000000063
+    name: LineErrorCounter
+    type: action
+    action: Statistics Calculator
+    with:
+      groupBy:
+        - Folder
+        - Filename
+        - FeatureType
+        - LOD
+      calculations:
+        - newAttribute: _num_line
+          expr:
+            type: flowExpr
+            value: attributes["エラー数"]
 
   - id: dd000000-0000-4000-8000-00000000001c
     name: SurfaceIssueLocationAttributeMapperGeoJson
@@ -1321,6 +1464,10 @@ nodes:
           expr:
             type: flowExpr
             value: attributes.get("_num_surface", 0)
+        - attribute: "線のエラー"
+          expr:
+            type: flowExpr
+            value: attributes.get("_num_line", 0)
         - attribute: "不連続なCompositeSurface"
           expr:
             type: flowExpr
@@ -1367,6 +1514,10 @@ nodes:
           expr:
             type: flowExpr
             value: attributes.get("面のエラー", 0)
+        - newAttribute: "線のエラー"
+          expr:
+            type: flowExpr
+            value: attributes.get("線のエラー", 0)
         - newAttribute: "不連続なCompositeSurface"
           expr:
             type: flowExpr
@@ -1382,6 +1533,7 @@ nodes:
                 attributes.get("立体のその他のエラー", 0),
                 attributes.get("立体の境界面のエラー", 0),
                 attributes.get("面のエラー", 0),
+                attributes.get("線のエラー", 0),
                 attributes.get("不連続なCompositeSurface", 0),
               ])
 
@@ -2106,6 +2258,68 @@ edges:
     to: dd000000-0000-4000-8000-00000000004a
     fromPort: features
     toPort: features
+
+  # LOD0 line checks
+  - id: dd000000-0000-4000-8000-0001000000b0
+    from: dd000000-0000-4000-8000-00000000000b
+    to: dd000000-0000-4000-8000-00000000005c
+    fromPort: lod0
+    toPort: features
+  - id: dd000000-0000-4000-8000-0001000000b1
+    from: dd000000-0000-4000-8000-00000000005c
+    to: dd000000-0000-4000-8000-00000000005d
+    fromPort: invalidLine
+    toPort: features
+  - id: dd000000-0000-4000-8000-0001000000b2
+    from: dd000000-0000-4000-8000-00000000005d
+    to: dd000000-0000-4000-8000-00000000005e
+    fromPort: features
+    toPort: features
+  - id: dd000000-0000-4000-8000-0001000000b3
+    from: dd000000-0000-4000-8000-00000000005e
+    to: dd000000-0000-4000-8000-000000000059
+    fromPort: features
+    toPort: features
+  - id: dd000000-0000-4000-8000-0001000000b4
+    from: dd000000-0000-4000-8000-00000000005c
+    to: dd000000-0000-4000-8000-00000000005f
+    fromPort: invalidLine
+    toPort: features
+  - id: dd000000-0000-4000-8000-0001000000b5
+    from: dd000000-0000-4000-8000-00000000005f
+    to: dd000000-0000-4000-8000-000000000060
+    fromPort: features
+    toPort: features
+  - id: dd000000-0000-4000-8000-0001000000b6
+    from: dd000000-0000-4000-8000-000000000060
+    to: dd000000-0000-4000-8000-000000000059
+    fromPort: features
+    toPort: features
+  - id: dd000000-0000-4000-8000-0001000000b7
+    from: dd000000-0000-4000-8000-00000000005c
+    to: dd000000-0000-4000-8000-000000000061
+    fromPort: issueLocation
+    toPort: features
+  - id: dd000000-0000-4000-8000-0001000000b8
+    from: dd000000-0000-4000-8000-000000000061
+    to: dd000000-0000-4000-8000-000000000062
+    fromPort: features
+    toPort: features
+  - id: dd000000-0000-4000-8000-0001000000b9
+    from: dd000000-0000-4000-8000-000000000062
+    to: dd000000-0000-4000-8000-000000000059
+    fromPort: features
+    toPort: features
+  - id: dd000000-0000-4000-8000-0001000000ba
+    from: dd000000-0000-4000-8000-00000000005d
+    to: dd000000-0000-4000-8000-000000000063
+    fromPort: features
+    toPort: features
+  - id: dd000000-0000-4000-8000-0001000000bb
+    from: dd000000-0000-4000-8000-000000000063
+    to: dd000000-0000-4000-8000-000000000054
+    fromPort: features
+    toPort: supplier
 
   # Instance counts
   - id: dd000000-0000-4000-8000-000100000084

@@ -126,12 +126,7 @@ impl Validate for TriangularMesh2D {
     fn check_duplicate_points(&self, params: &ValidationParams) -> ValidationReport {
         // Coincident vertices in the shared pool are a defect.
         ValidationReport::ran(|r| {
-            check_duplicate_points::<2>(
-                &self.frame,
-                self.vertices.iter().copied(),
-                params.duplicate_tolerance,
-                r,
-            )
+            check_duplicate_points::<2>(&self.frame, self.vertices.iter().copied(), params, r)
         })
     }
 
@@ -209,7 +204,7 @@ impl Validate for TriangularMesh3D {
             check_duplicate_points::<3>(
                 &self.frame,
                 self.data.vertices().iter().copied(),
-                params.duplicate_tolerance,
+                params,
                 r,
             )
         })

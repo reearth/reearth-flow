@@ -502,6 +502,16 @@ table "jobs" {
     type = timestamptz
     null = true
   }
+  // Where outside Flow the job was started from.
+  column "origin" {
+    type = jsonb
+    null = true
+  }
+  // The reearth-accounts ID of the user who started the job.
+  column "run_by" {
+    type = text
+    null = true
+  }
 
   primary_key {
     columns = [column.id]

@@ -23,11 +23,24 @@ type CreateTriggerParam struct {
 	Enabled      bool
 }
 
+// TriggerFilter narrows a workspace's triggers. A nil field matches all.
+type TriggerFilter struct {
+	Keyword     *string
+	EventSource *trigger.EventSourceType
+}
+
 type ExecuteAPITriggerParam struct {
 	NotificationURL     *string
 	Variables           map[string]interface{}
 	AuthenticationToken string
 	TriggerID           id.TriggerID
+}
+
+// ExecuteCMSTriggerParam is a run of a CMS trigger for one CMS item.
+type ExecuteCMSTriggerParam struct {
+	Variables map[string]any
+	Origin    job.Origin
+	TriggerID id.TriggerID
 }
 
 type ExecuteTimeDrivenTriggerParam struct {
@@ -50,6 +63,7 @@ type UpdateTriggerParam struct {
 
 var (
 	ErrTriggerNotFound     error = errors.New("trigger not found")
+	ErrInvalidTriggerToken error = errors.New("invalid auth token")
 	ErrInvalidEventSource  error = errors.New("invalid event source type")
 	ErrInvalidTimeInterval error = errors.New("invalid time interval")
 	ErrInvalidTriggerInput error = errors.New("only a time-driven trigger has a time interval")
@@ -74,6 +88,7 @@ var (
 	// Saving the trigger again sends its whole job, so it can be retried.
 	ErrTriggerScheduleNotUpdated error = errors.New("the trigger was saved, but its schedule could not be updated; save it again to retry")
 
+	ErrTriggerNotCMS        error = errors.New("trigger is not a CMS trigger")
 	ErrTriggerNotTimeDriven error = errors.New("trigger is not time-driven")
 
 	// ErrScheduledRunInProgress refuses a second job for a scheduled time a
@@ -99,9 +114,10 @@ func (e *APITriggerLimitError) Unwrap() error { return ErrAPITriggerDailyLimit }
 type Trigger interface {
 	ExecuteAPITrigger(context.Context, ExecuteAPITriggerParam) (*job.Job, error)
 	ExecuteTimeDrivenTrigger(context.Context, ExecuteTimeDrivenTriggerParam) (*job.Job, error)
+	ExecuteCMSTrigger(context.Context, ExecuteCMSTriggerParam) (*job.Job, error)
 	Fetch(context.Context, []id.TriggerID) ([]*trigger.Trigger, error)
 	FindByID(context.Context, id.TriggerID) (*trigger.Trigger, error)
-	FindByWorkspace(context.Context, accountsid.WorkspaceID, *PaginationParam, *string) ([]*trigger.Trigger, *PageBasedInfo, error)
+	FindByWorkspace(context.Context, accountsid.WorkspaceID, *PaginationParam, TriggerFilter) ([]*trigger.Trigger, *PageBasedInfo, error)
 	// Create, Update and RegenerateAuthToken return authToken only when they
 	// issued the trigger a new token. It is never returned again.
 	Create(context.Context, CreateTriggerParam) (_ *trigger.Trigger, authToken string, _ error)

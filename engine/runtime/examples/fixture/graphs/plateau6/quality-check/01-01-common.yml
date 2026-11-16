@@ -532,6 +532,10 @@ nodes:
           valueAttribute: upperLongitude
         - attribute: Upper Elevation
           valueAttribute: upperElevation
+        - attribute: "補足"
+          expr:
+            type: flowExpr
+            value: attributes.get("miscellaneous", "")
 
   - id: 1df16bdd-a8f2-5ace-b503-98a877daa7e3
     name: FeatureWriterExtentsValidation

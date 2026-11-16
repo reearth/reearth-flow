@@ -3,9 +3,9 @@
 //!
 //! i-UR attributes hang off one or more `bldg:adeOfAbstractBuilding` hooks (a
 //! single hook is stored as a Map, multiple as an Array); the survey year is an
-//! ISO date and the city code is `uro:city`. Extraction is lenient: a building
-//! without the relevant attributes simply produces no findings (rather than an
-//! error), and buildings are always emitted (never dropped).
+//! ISO date. Extraction is lenient: a building without the relevant attributes
+//! simply produces no findings (rather than an error), and buildings are always
+//! emitted (never dropped).
 
 use std::collections::HashMap;
 
@@ -13,7 +13,7 @@ use reearth_flow_runtime::errors::BoxedError;
 use reearth_flow_types::{Attribute, AttributeValue, Attributes, Feature};
 
 use crate::common::building_usage_attribute_validator::{
-    classify_city_code, usage_violation_messages, BuildingUsageAttributeStrategy, UsageAnalysis,
+    city_code_error, usage_violation_messages, BuildingUsageAttributeStrategy, UsageAnalysis,
 };
 
 /// Zero-sized strategy; passed as `&Plateau6BuildingUsageStrategy` (rvalue static
@@ -44,15 +44,8 @@ impl BuildingUsageAttributeStrategy for Plateau6BuildingUsageStrategy {
         }
 
         // Only buildings that carry a uro:BuildingIDAttribute are in scope.
-        let city_code_error = match ade_child_map(ade, "uro:BuildingIDAttribute") {
-            Some(id_attr) => match id_attr.get("uro:city") {
-                Some(AttributeValue::String(city_code)) if !city_code.is_empty() => {
-                    classify_city_code(city_code, city_code_to_name)
-                }
-                _ => Some("<未設定>".to_string()),
-            },
-            None => None,
-        };
+        let city_code_error = ade_child_map(ade, "uro:BuildingIDAttribute")
+            .and_then(|id_attr| city_code_error(id_attr, city_code_to_name));
 
         Ok(Some(UsageAnalysis {
             usage_messages,

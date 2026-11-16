@@ -2659,17 +2659,14 @@
               "type": "string"
             }
           },
-          "keepAttributes": {
-            "title": "属性の保持",
-            "description": "falseの場合、`@gml:id`や`@codeSpace`などの`@`プレフィックス付きXML属性はパースされた地物から除去される。デフォルトはtrue",
-            "default": true,
-            "type": "boolean"
-          },
-          "flattenMeasureTypes": {
-            "title": "計測タイプのフラット化",
-            "description": "trueの場合、単一の`uom`属性と数値テキストコンテンツを持つ要素は数値に変換され、単位は兄弟キー`{name}_uom`として格納される。デフォルトはfalse",
-            "default": false,
-            "type": "boolean"
+          "hoistAttributes": {
+            "title": "属性の持ち上げ",
+            "description": "持ち上げるXML属性名を、ドキュメントでの表記のまま（例: `uom`、`gml:id`）列挙し、任意の深さで親の兄弟キー`{element}@{attribute}`として持ち上げる。挙げていない属性は破棄され、空のリスト（デフォルト）では何も持ち上げない。",
+            "default": [],
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
           },
           "cityGmlAttributesKey": {
             "title": "CityGML属性キー",
@@ -2680,9 +2677,9 @@
               "null"
             ]
           },
-          "keepCodeSpace": {
-            "title": "コードスペースの保持",
-            "description": "trueの場合、コードリストで解決されたコード値は、そのコードリストの場所もURLに解決して兄弟キー`{name}_codeSpace`に保持する。デフォルトはfalse",
+          "keepAbsoluteCodeSpace": {
+            "title": "Keep Absolute Code Space",
+            "description": "`hoistAttributes`に含まれていなくても、すべての`codeSpace`を、ドキュメントを基準にURLに解決した場所として、兄弟キー`{name}@codeSpace`に持ち上げる。デフォルトはfalse。",
             "default": false,
             "type": "boolean"
           }
@@ -2770,15 +2767,9 @@
               "type": "string"
             }
           },
-          "keepAttributes": {
-            "title": "属性の保持",
-            "description": "falseの場合、`@gml:id`や`@codeSpace`などの`@`プレフィックス付きXML属性はパースされた地物から除去される。デフォルトはtrue",
-            "default": true,
-            "type": "boolean"
-          },
-          "flattenLeafAttributes": {
-            "title": "リーフ属性のフラット化",
-            "description": "折りたたみ対象のリーフを示す属性名（例: `uom`）。このリストの属性を1つだけ持ち、子要素を持たず、数値のテキスト内容を持つ要素は数値に変換され、その属性の値は兄弟キー`{name}_{attribute}`として格納される。空（デフォルト）の場合はこの機能を無効にする",
+          "hoistAttributes": {
+            "title": "属性の持ち上げ",
+            "description": "持ち上げるXML属性名を、ドキュメントでの表記のまま（例: `uom`、`gml:id`）列挙し、任意の深さで親の兄弟キー`{element}@{attribute}`として持ち上げる。挙げていない属性は破棄され、空のリスト（デフォルト）では何も持ち上げない。",
             "default": [],
             "type": "array",
             "items": {
@@ -2804,9 +2795,9 @@
               }
             ]
           },
-          "keepCodeSpace": {
-            "title": "コードスペースの保持",
-            "description": "trueの場合、コードリストで解決されたコード値は、そのコードリストの場所もURLに解決して兄弟キー`{name}_codeSpace`に保持する。デフォルトはfalse",
+          "keepAbsoluteCodeSpace": {
+            "title": "Keep Absolute Code Space",
+            "description": "`hoistAttributes`に含まれていなくても、すべての`codeSpace`を、ドキュメントを基準にURLに解決した場所として、兄弟キー`{name}@codeSpace`に持ち上げる。デフォルトはfalse。",
             "default": false,
             "type": "boolean"
           }
@@ -2935,7 +2926,7 @@
     {
       "name": "CityGML Writer",
       "type": "sink",
-      "description": "地物を1つのCityGML 2.0ファイルに書き出す。bldg:measuredHeightのようなCityGMLプロパティ名の属性はスキーマの順序で、境界面などの入れ子の都市オブジェクトは親の下に配置し、dem:TINReliefの地形は面がすべて三角形であればgml:TriangulatedSurfaceとして書き出す。接頭辞のない属性は書き出さず、uro: などのADEのプロパティはADEスキーマにそのADEを指定した場合のみ書き出す。",
+      "description": "地物を1つ以上のCityGML 2.0ファイル、またはそれらをまとめたzipアーカイブに書き出す。bldg:measuredHeightのようなCityGMLプロパティ名の属性はスキーマの順序で、境界面などの入れ子の都市オブジェクトは親の下に配置し、dem:TINReliefの地形は面がすべて三角形であればgml:TriangulatedSurfaceとして書き出す。接頭辞のない属性は書き出さず、uro: などのADEのプロパティはADEスキーマにそのADEを指定した場合のみ書き出し、ファイルの横にコピーできなかったコードリストは元のURLのまま参照する。",
       "parameter": {
         "$schema": "http://json-schema.org/draft-07/schema#",
         "title": "CityGmlWriter パラメータ",
@@ -2947,8 +2938,34 @@
         "properties": {
           "output": {
             "title": "出力ファイル",
-            "description": "作成するCityGMLファイルのパス。文字列、またはワークフロー変数を使う式で指定し、地物ごとではなく一度だけ評価する",
+            "description": "作成するCityGMLファイルのパスで、文字列、またはワークフロー変数と地物の属性を使う式で指定し（例: メッシュごとに1ファイルにする場合は`\"bldg/\" + attributes[\"_meshcode\"] + \"_bldg_6697_op.gml\"`）、入れ子のオブジェクトは所属するトップレベルのオブジェクトと同じファイルに書き出す。`.zip`で終わるパスは、CityGMLファイルとそのテクスチャ・コードリストをまとめた1つのzipアーカイブとしてこのアクションがまとめて書き出すため、そのアーカイブに入れる地物はすべてこのアクションに渡す必要がある。",
             "type": "object",
+            "format": "code",
+            "required": [
+              "type",
+              "value"
+            ],
+            "properties": {
+              "type": {
+                "type": "string",
+                "enum": [
+                  "flowExpr",
+                  "string"
+                ]
+              },
+              "value": {
+                "type": "string"
+              }
+            }
+          },
+          "pathInArchive": {
+            "title": "アーカイブ内のパス",
+            "description": "出力ファイルが`.zip`で終わる場合のみ使用し、zipアーカイブ内でCityGMLファイルを置くパスを、アーカイブの最上位からの相対パス（フォルダの区切りは`/`）として、文字列、またはワークフロー変数と地物の属性を使う式で指定する（例: メッシュごとに1ファイルにする場合は`\"udx/bldg/\" + attributes[\"_meshcode\"] + \"_bldg_6697_op.gml\"`）。省略した場合はアーカイブ名の拡張子を`.gml`にしたファイルをアーカイブの最上位に置く。",
+            "default": null,
+            "type": [
+              "object",
+              "null"
+            ],
             "format": "code",
             "required": [
               "type",
@@ -4779,23 +4796,14 @@
               "type": "string"
             }
           },
-          "keepAttributes": {
-            "title": "属性の保持",
-            "description": "falseの場合、`@gml:id`や`@codeSpace`などの`@`プレフィックス付きXML属性はパースされた地物から除去される。デフォルトはtrue",
-            "default": true,
-            "type": "boolean"
-          },
-          "flattenSingleChildObjects": {
-            "title": "単一子オブジェクトノードのフラット化",
-            "description": "trueの場合、単一の子要素のみを持つラッパー要素は除去され、子要素はその独自タグ名でキー付けされ、常に配列でラップされて上位に移動する。デフォルトはfalse",
-            "default": false,
-            "type": "boolean"
-          },
-          "flattenMeasureTypes": {
-            "title": "計測タイプのフラット化",
-            "description": "trueの場合、単一の`uom`属性と数値テキストコンテンツを持つ要素は数値に変換され、単位は兄弟キー`{name}_uom`として格納される。デフォルトはfalse",
-            "default": false,
-            "type": "boolean"
+          "hoistAttributes": {
+            "title": "属性の持ち上げ",
+            "description": "持ち上げるXML属性名を、ドキュメントでの表記のまま（例: `uom`、`gml:id`）列挙し、任意の深さで親の兄弟キー`{element}@{attribute}`として持ち上げる。挙げていない属性は破棄され、空のリスト（デフォルト）では何も持ち上げない。",
+            "default": [],
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
           },
           "cityGmlAttributesKey": {
             "title": "CityGML属性キー",
@@ -4812,9 +4820,9 @@
             "default": true,
             "type": "boolean"
           },
-          "keepCodeSpace": {
-            "title": "コードスペースの保持",
-            "description": "trueの場合、コードリストで解決されたコード値は、そのコードリストの場所もURLに解決して兄弟キー`{name}_codeSpace`に保持する。デフォルトはfalse",
+          "keepAbsoluteCodeSpace": {
+            "title": "Keep Absolute Code Space",
+            "description": "`hoistAttributes`に含まれていなくても、すべての`codeSpace`を、ドキュメントを基準にURLに解決した場所として、兄弟キー`{name}@codeSpace`に持ち上げる。デフォルトはfalse。",
             "default": false,
             "type": "boolean"
           }
@@ -4879,21 +4887,9 @@
               "type": "string"
             }
           },
-          "keepAttributes": {
-            "title": "属性の保持",
-            "description": "falseの場合、`@gml:id`や`@codeSpace`などの`@`プレフィックス付きXML属性はパースされたフィーチャーから除去される。デフォルトはtrue。",
-            "default": true,
-            "type": "boolean"
-          },
-          "flattenSingleChildObjects": {
-            "title": "単一子オブジェクトノードのフラット化",
-            "description": "trueの場合、単一の子要素のみを持つラッパー要素は除去され、子要素はその独自タグ名でキー付けされ、常に配列でラップされて上位に移動する。デフォルトはfalse。",
-            "default": false,
-            "type": "boolean"
-          },
-          "flattenLeafAttributes": {
-            "title": "リーフ属性のフラット化",
-            "description": "折りたたみ対象のリーフを示す属性名（例: `uom`）。このリストの属性を1つだけ持ち、子要素を持たず、数値のテキスト内容を持つ要素は数値に変換され、その属性の値は兄弟キー`{name}_{attribute}`として格納される。空（デフォルト）の場合はこの機能を無効にする。",
+          "hoistAttributes": {
+            "title": "属性の持ち上げ",
+            "description": "持ち上げるXML属性名を、ドキュメントでの表記のまま（例: `uom`、`gml:id`）列挙し、任意の深さで親の兄弟キー`{element}@{attribute}`として持ち上げる。挙げていない属性は破棄され、空のリスト（デフォルト）では何も持ち上げない。",
             "default": [],
             "type": "array",
             "items": {
@@ -4931,9 +4927,9 @@
             "default": false,
             "type": "boolean"
           },
-          "keepCodeSpace": {
-            "title": "コードスペースの保持",
-            "description": "trueの場合、コードリストで解決されたコード値は、そのコードリストの場所もURLに解決して兄弟キー`{name}_codeSpace`に保持する。デフォルトはfalse",
+          "keepAbsoluteCodeSpace": {
+            "title": "Keep Absolute Code Space",
+            "description": "`hoistAttributes`に含まれていなくても、すべての`codeSpace`を、ドキュメントを基準にURLに解決した場所として、兄弟キー`{name}@codeSpace`に持ち上げる。デフォルトはfalse。",
             "default": false,
             "type": "boolean"
           }
@@ -7438,13 +7434,23 @@
           },
           "duplicateTolerance": {
             "title": "重複点の許容誤差",
-            "description": "重複点チェックで2つの座標を重複とみなす距離。省略した場合（デフォルト）は完全一致で判定する",
+            "description": "重複点チェックで、距離がこの値未満の2つの座標を重複とみなす。省略した場合（デフォルト）は完全一致で判定する",
             "default": null,
             "type": [
               "number",
               "null"
             ],
             "format": "double"
+          },
+          "duplicateCounting": {
+            "title": "Duplicate Counting",
+            "description": "What one problem of the duplicate-points check stands for: `extraPoints` (the default) counts each coordinate close to an earlier one, `closePairs` counts each pair of close coordinates.",
+            "default": "extraPoints",
+            "allOf": [
+              {
+                "$ref": "#/definitions/DuplicateCounting"
+              }
+            ]
           },
           "degenerateThresholds": {
             "title": "縮退しきい値",
@@ -7532,6 +7538,27 @@
                   }
                 },
                 "additionalProperties": false
+              }
+            ]
+          },
+          "DuplicateCounting": {
+            "description": "What one problem of the duplicate-points check stands for. Both compare every pair of coordinates, adjacent or not, and differ only in the count: three mutually close points give 2 extra points but 3 close pairs.",
+            "oneOf": [
+              {
+                "title": "Extra Points",
+                "description": "One problem per coordinate close to an earlier one: the points to drop so that no two remain close.",
+                "type": "string",
+                "enum": [
+                  "extraPoints"
+                ]
+              },
+              {
+                "title": "Close Pairs",
+                "description": "One problem per pair of close coordinates, located at both coordinates of the pair as a two-point geometry.",
+                "type": "string",
+                "enum": [
+                  "closePairs"
+                ]
               }
             ]
           },

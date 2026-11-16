@@ -29,6 +29,7 @@ const CollaborationPopover: React.FC<Props> = ({
           clientId={self.clientId}
           userName={self?.userName}
           color={self.color}
+          photoURL={self.photoURL}
         />
       </div>
       {users && Object.entries(users).length >= 1 && (
@@ -45,6 +46,7 @@ const CollaborationPopover: React.FC<Props> = ({
                     key={value.clientId}
                     userName={value.userName}
                     color={value.color}
+                    photoURL={value.photoURL}
                     spotlightUserClientId={spotlightUserClientId}
                     onSpotlightUserSelect={onSpotlightUserSelect}
                     onSpotlightUserDeselect={onSpotlightUserDeselect}

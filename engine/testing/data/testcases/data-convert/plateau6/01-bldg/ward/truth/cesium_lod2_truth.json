@@ -142,11 +142,11 @@
       ],
       "con:height": {
         "con:Height": {
-          "con:value_uom": "m",
           "con:highReference": "highestRoofEdge",
           "con:lowReference": "lowestGroundPoint",
           "con:status": "measured",
-          "con:value": 16.1
+          "con:value": 16.1,
+          "con:value_uom": "m"
         }
       },
       "bldg:class": "堅ろう建物",
@@ -181,8 +181,8 @@
         },
         {
           "uro:BuildingDetailAttribute": {
-            "uro:buildingRoofEdgeArea_uom": "m2",
             "uro:buildingRoofEdgeArea": 2513.85514,
+            "uro:buildingRoofEdgeArea_uom": "m2",
             "uro:fireproofStructureType": "耐火",
             "uro:fireproofStructureType_code": "1001",
             "uro:urbanPlanType": "都市計画区域",

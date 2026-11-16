@@ -14,6 +14,7 @@ import (
 	"github.com/reearth/reearth-flow/api/pkg/id"
 	"github.com/reearth/reearth-flow/api/pkg/trigger"
 	"github.com/reearth/reearthx/log"
+	"github.com/reearth/reearthx/rerror"
 )
 
 type TriggerHandler struct {
@@ -167,6 +168,18 @@ func triggerError(c echo.Context, err error) error {
 		// Not a limit to wait out, so there is no Retry-After: the trigger runs
 		// again only once it is enabled.
 		return c.JSON(http.StatusConflict, map[string]string{"error": err.Error(), "code": codeTriggerDisabled})
+	case errors.Is(err, interfaces.ErrInvalidTriggerToken):
+		return c.JSON(http.StatusUnauthorized, map[string]string{"error": err.Error()})
+	case errors.Is(err, interfaces.ErrOperationDenied):
+		return c.JSON(http.StatusForbidden, map[string]string{"error": err.Error()})
+	case errors.Is(err, interfaces.ErrTriggerNotFound),
+		errors.Is(err, interfaces.ErrDeploymentNotFound),
+		errors.Is(err, rerror.ErrNotFound):
+		return c.JSON(http.StatusNotFound, map[string]string{"error": err.Error()})
+	case errors.Is(err, interfaces.ErrRequiredVariableMissing),
+		errors.Is(err, interfaces.ErrInvalidVariableValue),
+		errors.Is(err, interfaces.ErrUnknownVariable):
+		return c.JSON(http.StatusBadRequest, map[string]string{"error": err.Error()})
 	}
 	return c.JSON(http.StatusInternalServerError, map[string]string{"error": err.Error()})
 }

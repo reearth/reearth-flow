@@ -16,6 +16,13 @@ func (r *jobResolver) Deployment(ctx context.Context, obj *gqlmodel.Job) (*gqlmo
 	return dataloaders(ctx).Deployment.Load(*obj.DeploymentID)
 }
 
+func (r *jobResolver) Trigger(ctx context.Context, obj *gqlmodel.Job) (*gqlmodel.Trigger, error) {
+	if obj.TriggerID == nil {
+		return nil, nil
+	}
+	return dataloaders(ctx).Trigger.Load(*obj.TriggerID)
+}
+
 func (r *jobResolver) Workspace(ctx context.Context, obj *gqlmodel.Job) (*gqlmodel.Workspace, error) {
 	return dataloaders(ctx).Workspace.Load(obj.WorkspaceID)
 }
