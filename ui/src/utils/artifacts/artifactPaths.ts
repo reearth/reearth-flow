@@ -84,8 +84,42 @@ export const groupArtifactsByFolder = (
 };
 
 /**
- * Archive name for one folder's worth of files. The folder path is flattened
- * because a `/` cannot appear in a file name.
+ * Starting name for one folder's archive, without the extension. The folder
+ * path is flattened because a `/` cannot appear in a file name; the archive
+ * itself still holds the files under the full path.
  */
-export const folderArchiveName = (base: string, folderPath: string): string =>
-  `${base}_${folderPath.replace(/\//g, "_")}.zip`;
+export const folderArchiveName = (folderPath: string): string =>
+  folderPath.replace(/\//g, "_");
+
+// Characters no common file system accepts in a name, control characters included.
+// eslint-disable-next-line no-control-regex
+const UNSAFE_FILE_NAME_CHARS = /[\\/:*?"<>|\u0000-\u001f]/g;
+
+/**
+ * `name` made safe to save under, without the extension: characters a file
+ * system refuses become `_`, and a `.zip` the user typed is dropped so it is
+ * not doubled. Empty when nothing usable is left.
+ */
+export const toArchiveBaseName = (name: string): string => {
+  const base = name
+    .trim()
+    .replace(/\.zip$/i, "")
+    .replace(UNSAFE_FILE_NAME_CHARS, "_")
+    // Windows drops trailing dots and spaces itself, so drop them first.
+    .replace(/[. ]+$/, "")
+    .trim();
+  return /^\.*$/.test(base) ? "" : base;
+};
+
+/**
+ * `name` reduced to a name that needs no quoting in a shell or a URL, for the
+ * name the download suggests. Letters in any script, digits, `.`, `-` and `_`
+ * are kept; every run of anything else becomes one `_`, so
+ * "Shapefile to CityGML (LOD1)" becomes `Shapefile_to_CityGML_LOD1`. A name
+ * the user types is taken as they typed it.
+ */
+export const toSuggestedArchiveName = (name: string): string =>
+  toArchiveBaseName(name)
+    .replace(/[^\p{L}\p{N}._-]+/gu, "_")
+    .replace(/_{2,}/g, "_")
+    .replace(/^[._-]+|[._-]+$/g, "");

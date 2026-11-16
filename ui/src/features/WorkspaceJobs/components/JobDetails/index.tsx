@@ -55,7 +55,10 @@ const JobDetails: React.FC<Props> = ({ jobId, accessToken }) => {
         </div>
         {outputFiles.length > 0 && (
           <div className="flex max-w-[1200px] flex-col">
-            <OutputArtifacts files={outputFiles} archiveName={`job_${jobId}`} />
+            <OutputArtifacts
+              files={outputFiles}
+              archiveName={job.deploymentDescription || `job_${jobId}`}
+            />
           </div>
         )}
         <div className="flex items-center">

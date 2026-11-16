@@ -1,0 +1,52 @@
+﻿<?xml version="1.0" encoding="UTF-8"?>
+<gml:Dictionary xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xmlns:gml="http://www.opengis.net/gml" xsi:schemaLocation="http://www.opengis.net/gml http://schemas.opengis.net/gml/3.1.1/profiles/SimpleDictionary/1.0.0/gmlSimpleDictionaryProfile.xsd" gml:id="cl_b4bb86ae-bd3f-47eb-85e2-1cd0efac7eb8">
+<gml:name>KeyValuePairAttribute_key100</gml:name>
+<gml:dictionaryEntry>
+<gml:Definition gml:id="KeyValuePairAttribute_key100_1">
+<gml:description>耐火【H27.10.2～】</gml:description>
+<gml:name>1001</gml:name>
+</gml:Definition>
+</gml:dictionaryEntry>
+<gml:dictionaryEntry>
+<gml:Definition gml:id="KeyValuePairAttribute_key100_2">
+<gml:description>準耐火【H27.10.2～】</gml:description>
+<gml:name>1002</gml:name>
+</gml:Definition>
+</gml:dictionaryEntry>
+<gml:dictionaryEntry>
+<gml:Definition gml:id="KeyValuePairAttribute_key100_3">
+<gml:description>その他【H27.10.2～】</gml:description>
+<gml:name>1003</gml:name>
+</gml:Definition>
+</gml:dictionaryEntry>
+<gml:dictionaryEntry>
+<gml:Definition gml:id="KeyValuePairAttribute_key100_4">
+<gml:description>不明【H27.10.2～】</gml:description>
+<gml:name>1011</gml:name>
+</gml:Definition>
+</gml:dictionaryEntry>
+<gml:dictionaryEntry>
+<gml:Definition gml:id="KeyValuePairAttribute_key100_5">
+<gml:description>耐火【～H27.10.1】</gml:description>
+<gml:name>1021</gml:name>
+</gml:Definition>
+</gml:dictionaryEntry>
+<gml:dictionaryEntry>
+<gml:Definition gml:id="KeyValuePairAttribute_key100_6">
+<gml:description>準耐火（簡易耐火）【～H27.10.1】</gml:description>
+<gml:name>1022</gml:name>
+</gml:Definition>
+</gml:dictionaryEntry>
+<gml:dictionaryEntry>
+<gml:Definition gml:id="KeyValuePairAttribute_key100_7">
+<gml:description>木造【～H27.10.1】</gml:description>
+<gml:name>1023</gml:name>
+</gml:Definition>
+</gml:dictionaryEntry>
+<gml:dictionaryEntry>
+<gml:Definition gml:id="KeyValuePairAttribute_key100_8">
+<gml:description>不明【～H27.10.1】</gml:description>
+<gml:name>1031</gml:name>
+</gml:Definition>
+</gml:dictionaryEntry>
+</gml:Dictionary>
