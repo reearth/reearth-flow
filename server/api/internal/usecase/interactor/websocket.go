@@ -8,6 +8,7 @@ import (
 	"github.com/reearth/reearth-flow/api/internal/usecase/interfaces"
 	"github.com/reearth/reearth-flow/api/internal/usecase/repo"
 	"github.com/reearth/reearth-flow/api/pkg/id"
+	"github.com/reearth/reearth-flow/api/pkg/project"
 	ws "github.com/reearth/reearth-flow/api/pkg/websocket"
 	"github.com/reearth/reearthx/rerror"
 )
@@ -31,18 +32,40 @@ func NewWebsocket(client interfaces.WebsocketClient, projectRepo repo.Project, p
 // ResourceProject, not ResourceProjectDocument: Cerbos denies actions on resources
 // absent from its policy store, and projectDocument is not published there.
 func (i *Websocket) authorize(ctx context.Context, projectID string, action string) error {
-	pid, err := id.ProjectIDFrom(projectID)
-	if err != nil {
-		return rerror.ErrNotFound
-	}
-	proj, err := i.projectRepo.FindByID(ctx, pid)
+	_, err := i.authorizeProject(ctx, projectID, action)
+	return err
+}
+
+// authorizeWorkflowChange is authorize for a call that replaces the project's
+// workflow, which a locked project refuses. The lock is checked after the
+// permission, so a caller without access cannot learn whether it is locked.
+func (i *Websocket) authorizeWorkflowChange(ctx context.Context, projectID string) error {
+	proj, err := i.authorizeProject(ctx, projectID, rbac.ActionEdit)
 	if err != nil {
 		return err
 	}
-	if proj == nil {
-		return rerror.ErrNotFound
+	if proj.IsLocked() {
+		return interfaces.ErrProjectLocked
 	}
-	return checkPermission(ctx, i.permissionChecker, rbac.ResourceProject, action, proj.Workspace())
+	return nil
+}
+
+func (i *Websocket) authorizeProject(ctx context.Context, projectID string, action string) (*project.Project, error) {
+	pid, err := id.ProjectIDFrom(projectID)
+	if err != nil {
+		return nil, rerror.ErrNotFound
+	}
+	proj, err := i.projectRepo.FindByID(ctx, pid)
+	if err != nil {
+		return nil, err
+	}
+	if proj == nil {
+		return nil, rerror.ErrNotFound
+	}
+	if err := checkPermission(ctx, i.permissionChecker, rbac.ResourceProject, action, proj.Workspace()); err != nil {
+		return nil, err
+	}
+	return proj, nil
 }
 
 func (i *Websocket) GetLatest(ctx context.Context, docID string) (*ws.Document, error) {
@@ -98,7 +121,7 @@ func (i *Websocket) GetSnapshotState(ctx context.Context, docID string, snapshot
 
 // Rollback prunes every update above the target clock.
 func (i *Websocket) Rollback(ctx context.Context, docID string, version int) (*ws.Document, error) {
-	if err := i.authorize(ctx, docID, rbac.ActionEdit); err != nil {
+	if err := i.authorizeWorkflowChange(ctx, docID); err != nil {
 		return nil, err
 	}
 	return i.client.Rollback(ctx, docID, version)
@@ -124,7 +147,7 @@ func (i *Websocket) CreateSnapshot(ctx context.Context, docID string, version in
 
 // CopyDocument needs write on the destination and read access to the source.
 func (i *Websocket) CopyDocument(ctx context.Context, docID string, source string) error {
-	if err := i.authorize(ctx, docID, rbac.ActionEdit); err != nil {
+	if err := i.authorizeWorkflowChange(ctx, docID); err != nil {
 		return err
 	}
 	if err := i.authorize(ctx, source, rbac.ActionRead); err != nil {
@@ -134,7 +157,7 @@ func (i *Websocket) CopyDocument(ctx context.Context, docID string, source strin
 }
 
 func (i *Websocket) ImportDocument(ctx context.Context, docID string, data []byte) error {
-	if err := i.authorize(ctx, docID, rbac.ActionEdit); err != nil {
+	if err := i.authorizeWorkflowChange(ctx, docID); err != nil {
 		return err
 	}
 	return i.client.ImportDocument(ctx, docID, data)
