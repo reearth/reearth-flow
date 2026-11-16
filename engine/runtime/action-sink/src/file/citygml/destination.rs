@@ -350,6 +350,10 @@ impl ArchiveWriter {
             (Some(target), Some(temp_path)) => {
                 file.sync_all().map_err(|e| failed(&e))?;
                 drop(file);
+                // An archive that replaces one already there keeps that file's
+                // permissions, which the temporary file does not carry.
+                #[cfg(unix)]
+                inherit_mode(&temp_path, target).map_err(|e| failed(&e))?;
                 // On failure the error owns the temporary path and removes it.
                 temp_path.persist(target).map_err(|e| {
                     failed(&format_args!(
@@ -358,6 +362,10 @@ impl ArchiveWriter {
                         e.error
                     ))
                 })?;
+                // `persist` renames the file; the rename itself is durable only
+                // once the folder holding it is synchronized.
+                #[cfg(unix)]
+                sync_parent_dir(target).map_err(|e| failed(&e))?;
                 Ok(Some(FinishedArchive::InPlace))
             }
             _ => {
@@ -368,6 +376,38 @@ impl ArchiveWriter {
             }
         }
     }
+}
+
+/// Give `temp_path` the permissions of the file already at `target`, so that
+/// replacing an archive does not widen or narrow who may read it. Does nothing
+/// when nothing is there yet, or when its permissions cannot be read.
+#[cfg(unix)]
+fn inherit_mode(temp_path: &Path, target: &Path) -> Result<(), String> {
+    let Ok(existing) = std::fs::metadata(target) else {
+        return Ok(());
+    };
+    if !existing.is_file() {
+        return Ok(());
+    }
+    std::fs::set_permissions(temp_path, existing.permissions()).map_err(|e| {
+        format!(
+            "failed to carry the permissions of {} onto the new archive: {e}",
+            target.display()
+        )
+    })
+}
+
+/// Synchronize the folder `target` sits in, so the rename that put it there
+/// survives a crash of the host.
+#[cfg(unix)]
+fn sync_parent_dir(target: &Path) -> Result<(), String> {
+    let dir = target
+        .parent()
+        .filter(|dir| !dir.as_os_str().is_empty())
+        .unwrap_or_else(|| Path::new("."));
+    File::open(dir)
+        .and_then(|dir| dir.sync_all())
+        .map_err(|e| format!("failed to synchronize the folder {}: {e}", dir.display()))
 }
 
 /// A temporary file in the folder `target` goes in, created with that folder,
@@ -613,6 +653,24 @@ mod tests {
         std::fs::write(&loose, b"").unwrap();
         let mode = |path: &Path| std::fs::metadata(path).unwrap().permissions().mode() & 0o777;
         assert_eq!(mode(&target), mode(&loose));
+    }
+
+    #[cfg(unix)]
+    #[test]
+    fn a_replaced_local_archive_keeps_the_permissions_it_had() {
+        use std::os::unix::fs::PermissionsExt;
+
+        let dir = tempfile::tempdir().unwrap();
+        let target = dir.path().join("x.zip");
+        std::fs::write(&target, b"old").unwrap();
+        std::fs::set_permissions(&target, std::fs::Permissions::from_mode(0o600)).unwrap();
+
+        let archive = ArchiveWriter::for_output(&local(&target));
+        archive.add("x.gml", b"<gml/>").unwrap();
+        archive.finish().unwrap();
+
+        let mode = std::fs::metadata(&target).unwrap().permissions().mode() & 0o777;
+        assert_eq!(mode, 0o600, "the replaced archive took a wider mode");
     }
 
     #[test]
