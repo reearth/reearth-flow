@@ -274,7 +274,22 @@ export const typeDefs = `
     variables: [Variable!]!
     triggerId: ID
     trigger: Trigger
+    origin: JobOrigin
     runById: ID
+  }
+
+  type JobOrigin {
+    cmsItem: CMSItemJobOrigin
+  }
+
+  type CMSItemJobOrigin {
+    projectId: ID!
+    modelId: ID!
+    itemId: ID!
+    connectionId: ID!
+    projectName: String!
+    modelName: String!
+    itemTitle: String!
   }
 
   type Variable {

@@ -1,6 +1,7 @@
 import { useRouter } from "@tanstack/react-router";
 import { useCallback, useEffect, useMemo } from "react";
 
+import { config } from "@flow/config";
 import { toWorkflowVariablesDetail } from "@flow/features/common";
 import type { DetailsBoxContent } from "@flow/features/common";
 import { useJob } from "@flow/lib/gql/job";
@@ -12,6 +13,7 @@ import {
   toArtifactFiles,
 } from "@flow/utils";
 
+import { cmsItemPath, cmsItemUrl } from "../../cmsItem";
 import useJobStarter from "../../useJobStarter";
 
 export default ({ jobId }: { jobId: string }) => {
@@ -79,6 +81,21 @@ export default ({ jobId }: { jobId: string }) => {
               name: t("Trigger"),
               value: triggerName(job) ?? "—",
             },
+            ...(job.origin?.cmsItem
+              ? [
+                  {
+                    id: "startedFrom",
+                    name: t("Started from"),
+                    value: cmsItemPath(job.origin.cmsItem),
+                    href: cmsItemUrl(
+                      config().reearthCmsUrl,
+                      job.workspaceId,
+                      job.origin.cmsItem,
+                    ),
+                    badge: t("CMS"),
+                  },
+                ]
+              : []),
             {
               id: "runBy",
               name: t("Run by"),

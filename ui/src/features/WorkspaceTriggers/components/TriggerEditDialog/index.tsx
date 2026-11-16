@@ -139,6 +139,14 @@ const TriggerEditDialog: React.FC<Props> = ({
                   </p>
                 </DialogContentSection>
               )}
+            {selectedTrigger.eventSource === "API_DRIVEN" &&
+              updatedEventSource !== "API_DRIVEN" && (
+                <DialogContentSection>
+                  <p className="text-xs text-warning">
+                    {t("Saving removes this trigger's auth token.")}
+                  </p>
+                </DialogContentSection>
+              )}
             {updatedEventSource === "TIME_DRIVEN" && (
               <DialogContentSection>
                 <Label htmlFor="time-interval-selector">

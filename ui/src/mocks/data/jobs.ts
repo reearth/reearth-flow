@@ -24,6 +24,7 @@ export const mockJobs: JobFragment[] = [
     runById: "user-1",
     triggerId: null,
     trigger: null,
+    origin: null,
   },
   {
     id: "job-2",
@@ -41,6 +42,17 @@ export const mockJobs: JobFragment[] = [
     runById: "user-2",
     triggerId: "trigger-2",
     trigger: { id: "trigger-2", description: "Building quality check" },
+    origin: {
+      cmsItem: {
+        projectId: "cms-project-1",
+        modelId: "cms-model-1",
+        itemId: "cms-item-1",
+        connectionId: "cms-connection-1",
+        projectName: "Wayfarer",
+        modelName: "Buildings",
+        itemTitle: "Shinjuku 3-chome",
+      },
+    },
   },
   {
     id: "job-3",
@@ -58,6 +70,7 @@ export const mockJobs: JobFragment[] = [
     runById: null,
     triggerId: "trigger-1",
     trigger: { id: "trigger-1", description: "Nightly import" },
+    origin: null,
   },
   {
     id: "job-4",
@@ -75,6 +88,7 @@ export const mockJobs: JobFragment[] = [
     runById: null,
     triggerId: "trigger-deleted",
     trigger: null,
+    origin: null,
   },
   {
     id: "job-5",
@@ -92,6 +106,7 @@ export const mockJobs: JobFragment[] = [
     runById: null,
     triggerId: null,
     trigger: null,
+    origin: null,
   },
 ];
 

@@ -1,4 +1,4 @@
-import { DataTable as Table, UserAvatar } from "@flow/components";
+import { Badge, DataTable as Table, UserAvatar } from "@flow/components";
 import { JOBS_FETCH_RATE } from "@flow/lib/gql/job/useQueries";
 import { useT } from "@flow/lib/i18n";
 import type { AppColumnDef } from "@flow/lib/table/features";
@@ -43,7 +43,19 @@ const JobsManager: React.FC = () => {
       id: "trigger",
       accessorFn: (job) => triggerName(job),
       header: t("Trigger"),
-      cell: ({ getValue }) => getValue<string | undefined>() ?? "—",
+      cell: ({ getValue, row }) => {
+        const name = getValue<string | undefined>() ?? "—";
+        return row.original.origin?.cmsItem ? (
+          <span className="flex min-w-0 items-center gap-1.5">
+            <span className="truncate">{name}</span>
+            <Badge variant="secondary" className="shrink-0 rounded px-1.5">
+              {t("CMS")}
+            </Badge>
+          </span>
+        ) : (
+          name
+        );
+      },
     },
     {
       id: "runBy",

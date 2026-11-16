@@ -13,7 +13,11 @@ import type {
 } from "@flow/types";
 import { DeploymentOrderBy } from "@flow/types";
 import { OrderDirection } from "@flow/types/paginationOptions";
-import { getEventSourceLabels, getTimeIntervalLabels } from "@flow/utils";
+import {
+  getEventSourceLabels,
+  getTimeIntervalLabels,
+  isEventSource,
+} from "@flow/utils";
 import { copyToClipboard } from "@flow/utils/copyToClipboard";
 
 import { useHourlySchedule } from "../../useHourlySchedule";
@@ -99,7 +103,7 @@ export default ({
     useState<boolean>(false);
 
   useEffect(() => {
-    if (eventSource === "API_DRIVEN") {
+    if (eventSource !== "TIME_DRIVEN") {
       setTimeInterval(undefined);
     }
   }, [eventSource]);
@@ -137,7 +141,7 @@ export default ({
   };
 
   const handleSelectEventSource = (eventSource: string) => {
-    if (eventSource !== "API_DRIVEN" && eventSource !== "TIME_DRIVEN") return;
+    if (!isEventSource(eventSource)) return;
     setEventSource(eventSource);
     if (eventSource === "TIME_DRIVEN") {
       setTimeInterval("EVERY_DAY");
@@ -183,7 +187,7 @@ export default ({
       setCreatedTrigger(createdTrigger);
       setCreatedAuthToken(authToken);
 
-      if (eventSource === "TIME_DRIVEN") {
+      if (eventSource !== "API_DRIVEN") {
         setShowDialog(false);
       }
     } finally {
