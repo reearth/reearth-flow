@@ -674,7 +674,7 @@ graphs:
               file::join_path(artifact, city_gml + "_bldg_3dtiles_" + city_code + "_" + env.get("__value").cityNameEn + "_lod1.zip")
             }
 
-      # The highest LOD up to 3 in each city_code group gets the full-attribute textured output
+      # LOD1 and LOD2 go full only when they are the highest LOD in the city_code group; LOD3 is always full
       - id: 039eef98-c560-4235-bd97-c28537a15494
         name: HighestLodRouterByLod1
         type: action
@@ -696,19 +696,6 @@ graphs:
               outputPort: full
             - expr: |
                 !(env.get("__value").__max_lod == 2)
-              outputPort: flat
-
-      - id: a554591f-ad17-4818-8702-ed5a11c5a9be
-        name: HighestLodRouterByLod3
-        type: action
-        action: FeatureFilter
-        with:
-          conditions:
-            - expr: |
-                env.get("__value").__max_lod >= 3
-              outputPort: full
-            - expr: |
-                !(env.get("__value").__max_lod >= 3)
               outputPort: flat
 
       - id: 6a89176a-62f8-44eb-912f-20cadd707595
@@ -837,38 +824,6 @@ graphs:
               file::join_path(artifact, city_gml + "_bldg_3dtiles_lod2_no_texture.zip")
             } else {
               file::join_path(artifact, city_gml + "_bldg_3dtiles_" + city_code + "_" + env.get("__value").cityNameEn + "_lod2_no_texture.zip")
-            }
-
-      - id: 953f5c48-9875-4c78-a1d6-4619f8fdedd2
-        name: cesium3DTilesWriterByLod3
-        type: action
-        action: Cesium3DTilesWriter
-        with:
-          dracoCompression:
-            enabled:
-              quantizationError: 0.003
-          wrapTolerance: 0.1
-          output: |
-            let city_code = env.get("__value").city_code;
-            let artifact = env.get("workerArtifactPath");
-
-            if env.get("__value").baseCityCode == city_code {
-              file::join_path(artifact, "bldg_lod3")
-            } else {
-              file::join_path(artifact, "bldg_lod3_" + city_code)
-            }
-          compressOutput: |
-            let city_code = env.get("__value").city_code;
-            let artifact = env.get("workerArtifactPath");
-            let city_gml = file::extract_filename_without_ext(env.get("cityGmlPath"));
-            if city_gml.ends_with("_bldg") {
-              city_gml = city_gml.sub_string(0, city_gml.len() - 5);
-            }
-
-            if env.get("__value").baseCityCode == city_code {
-              file::join_path(artifact, city_gml + "_bldg_3dtiles_lod3.zip")
-            } else {
-              file::join_path(artifact, city_gml + "_bldg_3dtiles_" + city_code + "_" + env.get("__value").cityNameEn + "_lod3.zip")
             }
 
       - id: be688cbc-7c6a-4807-bc92-ef9ad287356a
@@ -1285,11 +1240,6 @@ graphs:
         to: fc4c3817-6efe-4d6e-8e82-ebd84d5e6e19
         fromPort: flatSchema
         toPort: schema
-      - id: 16173605-dccf-48bd-9f94-5b3792809d8a
-        from: 5daabfc0-2bda-4f8d-b206-d7a388469f7a
-        to: 953f5c48-9875-4c78-a1d6-4619f8fdedd2
-        fromPort: flatSchema
-        toPort: schema
       - id: b3438a6e-badd-4a08-9351-f35372593c16
         from: 5daabfc0-2bda-4f8d-b206-d7a388469f7a
         to: 990ff798-168a-496e-a20a-b428de6a9ec0
@@ -1353,16 +1303,6 @@ graphs:
         toPort: default
       - id: 8a003faa-457c-4308-999a-2f1806c1e946
         from: 8b05f9d4-1cb2-4071-a1da-c968431bc0d4
-        to: a554591f-ad17-4818-8702-ed5a11c5a9be
-        fromPort: default
-        toPort: default
-      - id: 24b31324-0f4e-459b-b807-7d30a0b8d0d0
-        from: a554591f-ad17-4818-8702-ed5a11c5a9be
         to: be688cbc-7c6a-4807-bc92-ef9ad287356a
-        fromPort: full
-        toPort: default
-      - id: eb79a52e-2118-4ca6-aa9d-3af17127afce
-        from: a554591f-ad17-4818-8702-ed5a11c5a9be
-        to: 953f5c48-9875-4c78-a1d6-4619f8fdedd2
-        fromPort: flat
+        fromPort: default
         toPort: default
