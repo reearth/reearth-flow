@@ -320,20 +320,11 @@ nodes:
           expr:
             type: flowExpr
             value: attributes.get("__citygml_geometry_gml_id") or attributes.get("__citygml_gml_id", "")
-        # Reaching this mapper already means the face is wound the wrong way, so
-        # the count and the two labels are fixed.
+        # L10 (per-boundary orientation): one row per misoriented boundary.
         - attribute: "エラー数"
-          expr:
-            type: flowExpr
-            value: "1"
+          valueAttribute: issueCount
         - attribute: "エラー内容"
-          expr:
-            type: string
-            value: Incorrect Orientation
-        - attribute: "面の向き"
-          expr:
-            type: string
-            value: right_hand_rule
+          valueAttribute: issue
 
   - id: db000000-0000-4000-8000-000000000016
     name: OrientationCsvWriter
@@ -370,17 +361,9 @@ nodes:
         - attribute: lod
           valueAttribute: lod
         - attribute: issue
-          expr:
-            type: string
-            value: Incorrect Orientation
+          valueAttribute: issue
         - attribute: issueCount
-          expr:
-            type: flowExpr
-            value: "1"
-        - attribute: orientation
-          expr:
-            type: string
-            value: right_hand_rule
+          valueAttribute: issueCount
 
   - id: db000000-0000-4000-8000-000000000018
     name: OrientationGeoJsonWriter
@@ -392,13 +375,6 @@ nodes:
         value: |
           "error_geometry/" + variables["packagePrefixes"][attributes["folder"]] + "_面の向き不正.geojson"
       writeCrs: true
-
-  # The original workspace has no orientation check above LOD0, so the port is
-  # consumed rather than left dangling.
-  - id: db000000-0000-4000-8000-000000000019
-    name: IncorrectOrientationSink
-    type: action
-    action: Noop Sink
 
   # --- Solid boundary checks ---
   - id: db000000-0000-4000-8000-00000000001a
@@ -1136,7 +1112,7 @@ edges:
   - id: db000000-0000-4000-8000-00010000001b
     from: db000000-0000-4000-8000-00000000000c
     to: db000000-0000-4000-8000-000000000015
-    fromPort: incorrectOrientation
+    fromPort: incorrectOrientationUpward
     toPort: features
   - id: db000000-0000-4000-8000-00010000001c
     from: db000000-0000-4000-8000-000000000015
@@ -1146,17 +1122,12 @@ edges:
   - id: db000000-0000-4000-8000-00010000001d
     from: db000000-0000-4000-8000-00000000000c
     to: db000000-0000-4000-8000-000000000017
-    fromPort: incorrectOrientation
+    fromPort: incorrectOrientationUpward
     toPort: features
   - id: db000000-0000-4000-8000-00010000001e
     from: db000000-0000-4000-8000-000000000017
     to: db000000-0000-4000-8000-000000000018
     fromPort: features
-    toPort: features
-  - id: db000000-0000-4000-8000-00010000001f
-    from: db000000-0000-4000-8000-00000000000e
-    to: db000000-0000-4000-8000-000000000019
-    fromPort: incorrectOrientation
     toPort: features
 
   # Solid checks

@@ -6,8 +6,8 @@ name: PLATEAU6.FloodingAreaTriangleChecks
 # A well-formed triangle is written as four coordinates (three corners plus the
 # repeated first one), winds counter-clockwise on the ground, and encloses a real
 # area. Each of those is reported on its own port, and a triangle can fail
-# several at once: the checks are independent, and the result sheet counts a
-# triangle once per column it offends.
+# several at once: the result sheet counts a triangle once per column it
+# offends.
 #
 # `triangles` carries every face that reached the checks, whether or not it
 # failed any, because matching edges between triangles is scoped differently per
@@ -15,9 +15,10 @@ name: PLATEAU6.FloodingAreaTriangleChecks
 # to this graph.
 #
 # A triangle is linear or point-like when two of its corners lie within 0.01 of
-# each other, or one corner lies within 0.01 of the opposite edge. That distance
-# is in the coordinate unit, so the incoming geometry must already be in a
-# projected frame.
+# each other, or one corner lies within 0.01 of the opposite edge, or when it has
+# no area on the ground. That distance is in the coordinate unit, so the incoming
+# geometry must already be in a projected frame. A linear or point-like triangle
+# has no winding, so it is not judged for orientation.
 nodes:
   - id: d8100000-0000-4000-8000-000000000001
     name: InputRouter
@@ -110,8 +111,9 @@ nodes:
       routingPort: incorrectVertexCount
 
   # --- Winding ---
-  # Keep the 3D face aside before it is flattened: the port is contracted to emit
-  # the triangle as modelled, not the outline the check reads.
+  # Only a triangle the collapse check did not find linear reaches here. Keep the
+  # 3D face aside before it is flattened: the port is contracted to emit the
+  # triangle as modelled, not the outline the check reads.
   - id: d8100000-0000-4000-8000-00000000000e
     name: GeometryExtractorFace
     type: action
@@ -131,9 +133,10 @@ nodes:
     type: action
     action: Geometry Validator
 
-  # Counter-clockwise on the ground is the only correct winding. A triangle that
-  # encloses nothing has no winding at all, and the requirement counts that as
-  # incorrect too rather than passing it over.
+  # L10 (per-boundary orientation): counter-clockwise on the ground is the only
+  # correct winding. A triangle that encloses nothing on the ground has no winding
+  # at all and is a linear or point-like triangle instead, also when it stands
+  # upright and so passes the collapse check.
   - id: d8100000-0000-4000-8000-000000000011
     name: FeatureFilterOrientation
     type: action
@@ -142,8 +145,14 @@ nodes:
       conditions:
         - expr:
             type: flowExpr
-            value: attributes["validationResult"]["checks"].get("Orientation", 0) > 0 or attributes["validationResult"]["checks"].get("Degenerate", 0) > 0
+            value: |
+              checks = attributes["validationResult"]["checks"];
+              checks.get("Orientation", 0) > 0 and checks.get("Degenerate", 0) == 0
           outputPort: incorrectOrientation
+        - expr:
+            type: flowExpr
+            value: attributes["validationResult"]["checks"].get("Degenerate", 0) > 0
+          outputPort: degenerate
 
   - id: d8100000-0000-4000-8000-000000000012
     name: GeometryReplacerFace
@@ -158,6 +167,13 @@ nodes:
     action: Output Router
     with:
       routingPort: incorrectOrientation
+
+  - id: d8100000-0000-4000-8000-000000000016
+    name: GeometryReplacerDegenerateFace
+    type: action
+    action: Geometry Replacer
+    with:
+      sourceAttribute: _originalTriangle
 
   # Geometry no step could handle is reported rather than dropped. The workflow
   # reading this graph decides what to call it; what matters here is that it
@@ -228,11 +244,16 @@ edges:
     fromPort: degenerate
     toPort: features
 
-  ## Winding
+  ## Winding, of the triangles the collapse check did not find linear
   - id: d8100000-0000-4000-8000-00000000010d
-    from: d8100000-0000-4000-8000-000000000004
+    from: d8100000-0000-4000-8000-000000000007
     to: d8100000-0000-4000-8000-00000000000e
-    fromPort: features
+    fromPort: success
+    toPort: features
+  - id: d8100000-0000-4000-8000-000000000117
+    from: d8100000-0000-4000-8000-000000000008
+    to: d8100000-0000-4000-8000-00000000000e
+    fromPort: unfiltered
     toPort: features
   - id: d8100000-0000-4000-8000-00000000010e
     from: d8100000-0000-4000-8000-00000000000e
@@ -264,6 +285,23 @@ edges:
   - id: d8100000-0000-4000-8000-000000000113
     from: d8100000-0000-4000-8000-000000000012
     to: d8100000-0000-4000-8000-000000000013
+    fromPort: rejected
+    toPort: features
+
+  ## Linear or point-like on the ground
+  - id: d8100000-0000-4000-8000-000000000118
+    from: d8100000-0000-4000-8000-000000000011
+    to: d8100000-0000-4000-8000-000000000016
+    fromPort: degenerate
+    toPort: features
+  - id: d8100000-0000-4000-8000-000000000119
+    from: d8100000-0000-4000-8000-000000000016
+    to: d8100000-0000-4000-8000-00000000000a
+    fromPort: features
+    toPort: features
+  - id: d8100000-0000-4000-8000-00000000011a
+    from: d8100000-0000-4000-8000-000000000016
+    to: d8100000-0000-4000-8000-00000000000a
     fromPort: rejected
     toPort: features
 

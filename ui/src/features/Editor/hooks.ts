@@ -234,10 +234,8 @@ export default ({
 
   const isReadOnly = isLocked || isReaderRestricted;
 
-  const { sharingUrl, handleProjectShare } = useProjectShare({
-    currentProject,
-    yDoc,
-  });
+  const { sharingUrl, handleProjectShare, handleProjectShareOpen } =
+    useProjectShare({ currentProject });
 
   const handleLayoutChange = useCallback(
     (algorithm: Algorithm, direction: Direction, applyToAll: boolean) => {
@@ -512,6 +510,7 @@ export default ({
     handleWorkflowDeployment,
     sharingUrl,
     handleProjectShare,
+    handleProjectShareOpen,
     handleCurrentProjectExport,
     handleWorkflowAdd: handleYWorkflowAdd,
     handleWorkflowChange: handleCurrentWorkflowIdChange,

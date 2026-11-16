@@ -39,8 +39,7 @@ graphs:
             featureType: kind
             gmlId: id
           adeSchemas:
-            - type: file
-              prefix: uro
+            - prefix: uro
               namespace: https://www.geospatial.jp/iur/uro/3.1
               schemaLocation:
                 type: flowExpr
