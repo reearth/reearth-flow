@@ -313,20 +313,11 @@ nodes:
           expr:
             type: flowExpr
             value: attributes.get("__citygml_geometry_gml_id") or attributes.get("__citygml_gml_id", "")
-        # Reaching this mapper already means the face is wound the wrong way, so
-        # the count and the two labels are fixed.
+        # L10 (per-boundary orientation): one row per misoriented boundary.
         - attribute: "エラー数"
-          expr:
-            type: flowExpr
-            value: "1"
+          valueAttribute: issueCount
         - attribute: "エラー内容"
-          expr:
-            type: string
-            value: Incorrect Orientation
-        - attribute: "面の向き"
-          expr:
-            type: string
-            value: right_hand_rule
+          valueAttribute: issue
 
   - id: da000000-0000-4000-8000-000000000014
     name: Lod0OrientationCsvWriter
@@ -338,7 +329,7 @@ nodes:
       output:
         type: flowExpr
         value: |
-          variables["packagePrefixes"][attributes["Folder"]] + "_LOD0面の向きエラー.csv"
+          variables["packagePrefixes"][attributes["Folder"]] + "_LOD0面の向き不正.csv"
 
   - id: da000000-0000-4000-8000-000000000015
     name: Lod0OrientationAttributeMapperGeoJson
@@ -363,17 +354,9 @@ nodes:
         - attribute: lod
           valueAttribute: lod
         - attribute: issue
-          expr:
-            type: string
-            value: Incorrect Orientation
+          valueAttribute: issue
         - attribute: issueCount
-          expr:
-            type: flowExpr
-            value: "1"
-        - attribute: orientation
-          expr:
-            type: string
-            value: right_hand_rule
+          valueAttribute: issueCount
 
   - id: da000000-0000-4000-8000-000000000016
     name: Lod0OrientationGeoJsonWriter
@@ -383,7 +366,7 @@ nodes:
       output:
         type: flowExpr
         value: |
-          "error_geometry/" + variables["packagePrefixes"][attributes["folder"]] + "_LOD0面の向きエラー.geojson"
+          "error_geometry/" + variables["packagePrefixes"][attributes["folder"]] + "_LOD0面の向き不正.geojson"
       writeCrs: true
 
   # --- LOD0 face overlaps ---
@@ -959,13 +942,6 @@ nodes:
         value: |
           "error_geometry/" + variables["packagePrefixes"][attributes["folder"]] + "_LOD2以上境界面のエラー位置.geojson"
       writeCrs: true
-
-  # The original workspace has no orientation check above LOD0, so the ports
-  # are consumed rather than left dangling.
-  - id: da000000-0000-4000-8000-00000000003a
-    name: IncorrectOrientationSink
-    type: action
-    action: Noop Sink
 
   # --- Solid boundary checks ---
   - id: da000000-0000-4000-8000-00000000003b
@@ -1544,7 +1520,7 @@ nodes:
           expr:
             type: flowExpr
             value: attributes.get("_num_lod0_surface", 0)
-        - attribute: "LOD0 面の向きエラー"
+        - attribute: "LOD0 面の向き不正"
           expr:
             type: flowExpr
             value: attributes.get("_num_lod0_orientation", 0)
@@ -1614,10 +1590,10 @@ nodes:
           expr:
             type: flowExpr
             value: attributes.get("LOD0 面のエラー", 0)
-        - newAttribute: "LOD0 面の向きエラー"
+        - newAttribute: "LOD0 面の向き不正"
           expr:
             type: flowExpr
-            value: attributes.get("LOD0 面の向きエラー", 0)
+            value: attributes.get("LOD0 面の向き不正", 0)
         - newAttribute: "LOD0 面の交差"
           expr:
             type: flowExpr
@@ -1665,7 +1641,7 @@ nodes:
             value: |
               itertools.sum([
                 attributes.get("LOD0 面のエラー", 0),
-                attributes.get("LOD0 面の向きエラー", 0),
+                attributes.get("LOD0 面の向き不正", 0),
                 attributes.get("LOD0 面の交差", 0),
                 attributes.get("LOD1 境界面のエラー", 0),
                 attributes.get("LOD1 非水密立体", 0),
@@ -1824,7 +1800,7 @@ edges:
   - id: da000000-0000-4000-8000-000100000013
     from: da000000-0000-4000-8000-00000000000c
     to: da000000-0000-4000-8000-000000000013
-    fromPort: incorrectOrientation
+    fromPort: incorrectOrientationUpward
     toPort: features
   - id: da000000-0000-4000-8000-000100000014
     from: da000000-0000-4000-8000-000000000013
@@ -1834,7 +1810,7 @@ edges:
   - id: da000000-0000-4000-8000-000100000015
     from: da000000-0000-4000-8000-00000000000c
     to: da000000-0000-4000-8000-000000000015
-    fromPort: incorrectOrientation
+    fromPort: incorrectOrientationUpward
     toPort: features
   - id: da000000-0000-4000-8000-000100000016
     from: da000000-0000-4000-8000-000000000015
@@ -1981,11 +1957,6 @@ edges:
     to: da000000-0000-4000-8000-000000000031
     fromPort: features
     toPort: features
-  - id: da000000-0000-4000-8000-000100000032
-    from: da000000-0000-4000-8000-00000000002b
-    to: da000000-0000-4000-8000-00000000003a
-    fromPort: incorrectOrientation
-    toPort: features
 
   # LOD2 and LOD3 face checks. CityGML 3.0 has no LOD4.
   - id: da000000-0000-4000-8000-000100000033
@@ -2032,11 +2003,6 @@ edges:
     from: da000000-0000-4000-8000-000000000038
     to: da000000-0000-4000-8000-000000000039
     fromPort: features
-    toPort: features
-  - id: da000000-0000-4000-8000-00010000003c
-    from: da000000-0000-4000-8000-000000000033
-    to: da000000-0000-4000-8000-00000000003a
-    fromPort: incorrectOrientation
     toPort: features
 
   # Solid checks

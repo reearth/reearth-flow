@@ -49,5 +49,5 @@
       "keyColumns": ["Filename", "フィーチャータイプ", "LOD"]
     }
   },
-  "expectResultOkFile": true
+  "expectResultOkFile": false
 }

@@ -1,0 +1,30 @@
+{
+  "type": "FeatureCollection",
+  "features": [
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Polygon",
+        "coordinates": [
+          [
+            [-7040.723919924366, -37237.72495300829, 2.61],
+            [-7037.870218234068, -37235.39743309454, 2.61],
+            [-7035.02020242294, -37237.72946485856, 2.61],
+            [-7040.723919924366, -37237.72495300829, 2.61]
+          ]
+        ]
+      },
+      "properties": {
+        "index": 1,
+        "folder": "fld/natl/arakawa_arakawa",
+        "filename": "53393690_fld_6697_l2_op.gml"
+      }
+    }
+  ],
+  "crs": {
+    "type": "name",
+    "properties": {
+      "name": "urn:ogc:def:crs:EPSG::6677"
+    }
+  }
+}

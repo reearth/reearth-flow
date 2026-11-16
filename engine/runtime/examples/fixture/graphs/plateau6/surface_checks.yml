@@ -3,16 +3,26 @@ name: PLATEAU6.SurfaceChecks
 # Validates every face of the incoming geometry. Emits one feature per failed
 # check per face on `invalidSurface` with the check name in `issue` and the
 # number of flagged spots in `issueCount`, except that a self-intersection is
-# one feature per ring and a crossing of two rings one feature per hole
-# involved, each counted once. Also emits every
-# face whose 2D exterior ring is wound against the coordinate frame on
-# `incorrectOrientation`. `issueLocation` repeats the same failures as a point
+# one feature per ring, a crossing of two rings one feature per hole involved,
+# and an interior wound the same way as its exterior one feature per interior
+# (L10), each counted once. `issueLocation` repeats the same failures as a point
 # at the first vertex of the spot each check flagged, or for L07 as the two
 # vertices of the close pair, for error detail output.
 # Geometry no step could handle also leaves via `invalidSurface`, so nothing is
 # dropped silently.
-# Both face ports emit the face as modelled: the orientation branch restores the
-# 3D face that its flattened check consumed.
+#
+# L10 (per-boundary orientation): a misoriented boundary of a face is one
+# feature, carrying the boundary as a line string and `issue` naming the
+# exterior or an interior boundary, on `incorrectOrientationUpward`. It judges
+# the face seen from above (exterior counter-clockwise, interiors clockwise), for
+# faces that represent an area on the ground. A caller that reads it drops the
+# `IncorrectInteriorOrientation` rows of `invalidSurface` and `issueLocation`
+# for the same faces, so an interior is not counted twice.
+#
+# A face with a degenerate boundary gets no orientation result at all, from
+# either judgement and for its other boundaries too. The degeneracy is reported
+# first and the orientation is judged once the face is fixed, as a
+# self-intersection holds back the hole checks (L13).
 nodes:
   - id: c4000000-0000-4000-8000-000000000001
     name: InputRouter
@@ -77,7 +87,7 @@ nodes:
       duplicateCounting: closePairs
 
   # Self-intersections and the hole checks are counted per ring or ring pair from
-  # the issue locations instead.
+  # the issue locations instead, and so is the orientation of an interior (L10).
   - id: c4000000-0000-4000-8000-000000000006
     name: AttributeManagerIssues
     type: action
@@ -93,14 +103,13 @@ nodes:
                 "DuplicatePoints": "DuplicateConsecutivePoints",
                 "InteriorRingContainment": "InteriorRingNotContainedInExteriorRing",
                 "Planarity": "NonPlanarSurface",
-                "Orientation": "IncorrectInteriorOrientation",
                 "UnclosedRing": "RingNotClosed",
                 "Degenerate": "DegenerateSurface",
                 "Finite": "NonFiniteCoordinate",
               };
               checks = attributes["validationResult"]["checks"];
-              per_part = ["SelfIntersection", "InteriorRingContainment", "InteriorConnectivity"];
-              keys = itertools.filter(itertools.sorted(checks.keys()), fn(k) { not (k in per_part) });
+              left_out = ["SelfIntersection", "InteriorRingContainment", "InteriorConnectivity", "Orientation"];
+              keys = itertools.filter(itertools.sorted(checks.keys()), fn(k) { not (k in left_out) });
               itertools.map(keys, fn(k) { {"issue": names.get(k, k), "issueCount": checks[k]} })
 
   - id: c4000000-0000-4000-8000-000000000007
@@ -117,23 +126,17 @@ nodes:
     with:
       routingPort: invalidSurface
 
-  # Only the exterior ring's winding is reported here. A hole wound the same way
-  # as its exterior is already a failed `Orientation` check on the 3D pass, so
-  # letting the holes through would report the same face twice.
-  - id: c4000000-0000-4000-8000-000000000012
-    name: HoleExtractorFace
-    type: action
-    action: Hole Extractor
-
-  # The absolute winding of a ring is a 2D property, so the exterior ring is
-  # flattened before the orientation check reads it.
+  # L10 (per-boundary orientation), judged from above: the absolute winding of a
+  # boundary is a 2D property, so the whole face is flattened first. A face with
+  # any boundary degenerate on the ground, such as a face standing upright, is
+  # not judged, so none of its boundaries is reported.
   - id: c4000000-0000-4000-8000-000000000009
     name: TwoDimensionForcer
     type: action
     action: Two Dimension Forcer
 
-  # Only its `Orientation` result is read; the 3D pass above owns every other
-  # check, so this one needs no thresholds of its own.
+  # Only its `Orientation` positions are read; the 3D pass above owns every
+  # other check, so this one needs no thresholds of its own.
   - id: c4000000-0000-4000-8000-00000000000a
     name: GeometryValidatorOutline
     type: action
@@ -147,9 +150,34 @@ nodes:
       conditions:
         - expr:
             type: flowExpr
-            value: attributes["validationResult"]["checks"].get("Orientation", 0) > 0
-          outputPort: incorrectOrientation
+            value: attributes["validationCheck"] == "Orientation"
+          outputPort: orientation
 
+  - id: c4000000-0000-4000-8000-00000000001b
+    name: AttributeManagerBoundaryUpward
+    type: action
+    action: Attribute Manager
+    with:
+      operations:
+        - attribute: issue
+          method: create
+          value:
+            type: flowExpr
+            value: |
+              issue = "IncorrectInteriorOrientation";
+              if attributes["validationRing"] == 0 {
+                issue = "IncorrectExteriorOrientation";
+              }
+              issue
+        - attribute: issueCount
+          method: create
+          value:
+            type: flowExpr
+            value: "1"
+
+  # The flagged boundary is taken from the face as modelled, so it keeps its
+  # elevation: the face is broken into its boundaries, exterior first, and the
+  # one at the flagged ring index is kept.
   - id: c4000000-0000-4000-8000-00000000000f
     name: GeometryReplacerFace
     type: action
@@ -157,12 +185,46 @@ nodes:
     with:
       sourceAttribute: original_face_geometry
 
+  - id: c4000000-0000-4000-8000-00000000001c
+    name: GeometryCoercerBoundaries
+    type: action
+    action: Geometry Coercer
+    with:
+      targetType: lineString
+
+  - id: c4000000-0000-4000-8000-00000000001d
+    name: GeometrySplitterBoundaries
+    type: action
+    action: Geometry Splitter
+
+  - id: c4000000-0000-4000-8000-00000000001e
+    name: FeatureCounterBoundary
+    type: action
+    action: Feature Counter
+    with:
+      countStart: 0
+      groupBy:
+        - _surface_id
+        - validationRing
+      outputAttribute: _boundary_index
+
+  - id: c4000000-0000-4000-8000-00000000001f
+    name: FeatureFilterFlaggedBoundary
+    type: action
+    action: Feature Filter
+    with:
+      conditions:
+        - expr:
+            type: flowExpr
+            value: attributes["_boundary_index"] == attributes["validationRing"]
+          outputPort: flagged
+
   - id: c4000000-0000-4000-8000-00000000000c
-    name: IncorrectOrientationRouter
+    name: IncorrectOrientationUpwardRouter
     type: action
     action: Output Router
     with:
-      routingPort: incorrectOrientation
+      routingPort: incorrectOrientationUpward
 
   # One feature per position the 3D pass flagged, carrying the position as its
   # geometry. Same name table as `AttributeManagerIssues`, applied to the
@@ -184,10 +246,10 @@ nodes:
                 "DuplicatePoints": "DuplicateConsecutivePoints",
                 "InteriorRingContainment": "InteriorRingNotContainedInExteriorRing",
                 "Planarity": "NonPlanarSurface",
-                "Orientation": "IncorrectInteriorOrientation",
                 "UnclosedRing": "RingNotClosed",
                 "Degenerate": "DegenerateSurface",
                 "Finite": "NonFiniteCoordinate",
+                "Orientation": "IncorrectInteriorOrientation",
               };
               check = attributes["validationCheck"];
               issue = names.get(check, check);
@@ -204,7 +266,8 @@ nodes:
   # overlaps its own edges, is one error however many spots it has. A hole
   # outside the exterior is one error per hole, and two rings that cross, touch
   # so that the interior falls apart, or nest are one error per hole involved
-  # (L13), so two holes crossing each other are two errors.
+  # (L13), so two holes crossing each other are two errors. An interior wound the
+  # same way as its exterior is one error per interior (L10).
   - id: c4000000-0000-4000-8000-000000000016
     name: FeatureFilterPerPartLocation
     type: action
@@ -213,7 +276,7 @@ nodes:
       conditions:
         - expr:
             type: flowExpr
-            value: attributes["validationCheck"] in ["SelfIntersection", "InteriorRingContainment", "InteriorConnectivity"]
+            value: attributes["validationCheck"] in ["SelfIntersection", "InteriorRingContainment", "InteriorConnectivity", "Orientation"]
           outputPort: perPart
 
   - id: c4000000-0000-4000-8000-000000000017
@@ -431,17 +494,11 @@ edges:
     fromPort: rejected
     toPort: features
 
-  ## Incorrect orientation
+  ## Incorrect orientation (L10), judged from above
   - id: c4000000-0000-4000-8000-000000000112
     from: c4000000-0000-4000-8000-00000000000e
-    to: c4000000-0000-4000-8000-000000000012
-    fromPort: features
-    toPort: features
-  # `hole` is deliberately unwired: interior rings are the 3D pass's business.
-  - id: c4000000-0000-4000-8000-000000000115
-    from: c4000000-0000-4000-8000-000000000012
     to: c4000000-0000-4000-8000-000000000009
-    fromPort: exterior
+    fromPort: features
     toPort: features
   - id: c4000000-0000-4000-8000-000000000109
     from: c4000000-0000-4000-8000-000000000009
@@ -451,20 +508,45 @@ edges:
   - id: c4000000-0000-4000-8000-00000000010a
     from: c4000000-0000-4000-8000-00000000000a
     to: c4000000-0000-4000-8000-00000000000b
-    fromPort: failed
+    fromPort: issue-locations
     toPort: features
   - id: c4000000-0000-4000-8000-00000000010b
     from: c4000000-0000-4000-8000-00000000000b
+    to: c4000000-0000-4000-8000-00000000001b
+    fromPort: orientation
+    toPort: features
+  - id: c4000000-0000-4000-8000-000000000122
+    from: c4000000-0000-4000-8000-00000000001b
     to: c4000000-0000-4000-8000-00000000000f
-    fromPort: incorrectOrientation
+    fromPort: features
     toPort: features
   - id: c4000000-0000-4000-8000-000000000113
     from: c4000000-0000-4000-8000-00000000000f
-    to: c4000000-0000-4000-8000-00000000000c
+    to: c4000000-0000-4000-8000-00000000001c
     fromPort: features
     toPort: features
-  # A face whose stored 3D geometry will not decode is still wound the wrong
-  # way, so it is reported with the 2D outline rather than dropped.
+  - id: c4000000-0000-4000-8000-000000000123
+    from: c4000000-0000-4000-8000-00000000001c
+    to: c4000000-0000-4000-8000-00000000001d
+    fromPort: features
+    toPort: features
+  - id: c4000000-0000-4000-8000-000000000124
+    from: c4000000-0000-4000-8000-00000000001d
+    to: c4000000-0000-4000-8000-00000000001e
+    fromPort: features
+    toPort: features
+  - id: c4000000-0000-4000-8000-000000000125
+    from: c4000000-0000-4000-8000-00000000001e
+    to: c4000000-0000-4000-8000-00000000001f
+    fromPort: features
+    toPort: features
+  - id: c4000000-0000-4000-8000-000000000126
+    from: c4000000-0000-4000-8000-00000000001f
+    to: c4000000-0000-4000-8000-00000000000c
+    fromPort: flagged
+    toPort: features
+  # A face whose stored 3D geometry will not decode is still reported, with
+  # the flattened boundary.
   - id: c4000000-0000-4000-8000-000000000114
     from: c4000000-0000-4000-8000-00000000000f
     to: c4000000-0000-4000-8000-00000000000c
@@ -474,11 +556,6 @@ edges:
   ## Geometry no step could handle is reported rather than dropped
   - id: c4000000-0000-4000-8000-00000000010c
     from: c4000000-0000-4000-8000-000000000005
-    to: c4000000-0000-4000-8000-00000000000d
-    fromPort: rejected
-    toPort: features
-  - id: c4000000-0000-4000-8000-000000000116
-    from: c4000000-0000-4000-8000-000000000012
     to: c4000000-0000-4000-8000-00000000000d
     fromPort: rejected
     toPort: features
@@ -503,7 +580,7 @@ ports:
     - id: invalidSurface
       nodeId: c4000000-0000-4000-8000-000000000008
       port: features
-    - id: incorrectOrientation
+    - id: incorrectOrientationUpward
       nodeId: c4000000-0000-4000-8000-00000000000c
       port: features
     - id: issueLocation

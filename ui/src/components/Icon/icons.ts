@@ -21,7 +21,10 @@ import FileTsv from "./Icons/FileTsv.svg?react";
 import FileZip from "./Icons/FileZip.svg?react";
 import House from "./Icons/House.svg?react";
 import Navara from "./Icons/Navara.svg?react";
+import ReearthBuildings from "./Icons/ReearthBuildings.svg?react";
 import ReearthDashboard from "./Icons/ReearthDashboard.svg?react";
+import ReearthPapers from "./Icons/ReearthPapers.svg?react";
+import ReearthTerrain from "./Icons/ReearthTerrain.svg?react";
 import ReearthVisualizer from "./Icons/ReearthVisualizer.svg?react";
 
 export default {
@@ -48,6 +51,9 @@ export default {
   fileZip: FileZip,
   house: House,
   navara: Navara,
+  reearthBuildings: ReearthBuildings,
   reearthDashboard: ReearthDashboard,
+  reearthPapers: ReearthPapers,
+  reearthTerrain: ReearthTerrain,
   reearthVisualizer: ReearthVisualizer,
 };
