@@ -372,7 +372,7 @@ mod tests {
         let mut processor = FeatureLodFilter {
             filter_key: Attribute::new("city_code"),
             fallback: true,
-            max_lod_attribute: Some(Attribute::new("__max_lod")),
+            max_lod_attribute: Some(Attribute::new("_max_lod")),
             buffer_features: HashMap::new(),
             max_lod: HashMap::new(),
         };
@@ -392,7 +392,7 @@ mod tests {
         assert!(!features.is_empty());
         for feature in features.iter() {
             assert_eq!(
-                feature.get(Attribute::new("__max_lod")),
+                feature.get(Attribute::new("_max_lod")),
                 Some(&AttributeValue::Number(3.into()))
             );
         }

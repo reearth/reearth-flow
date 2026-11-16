@@ -358,7 +358,7 @@ graphs:
         action: FeatureLodFilter
         with:
           filterKey: city_code
-          maxLodAttribute: __max_lod
+          maxLodAttribute: _max_lod
       # LOD4 sub-features are emitted individually; Building and BuildingPart are kept at LOD4 only as a fallback
       - id: 2d73ea7b-1ef8-4fdc-85b8-0a15f63bc924
         name: SubFeatureLod4Filter
@@ -682,7 +682,7 @@ graphs:
         with:
           conditions:
             - expr: |
-                env.get("__value").__max_lod == 1
+                env.get("__value")._max_lod == 1
               outputPort: full
 
       - id: e65aa903-1edf-4a99-894a-28c5849b88c2
@@ -692,10 +692,10 @@ graphs:
         with:
           conditions:
             - expr: |
-                env.get("__value").__max_lod == 2
+                env.get("__value")._max_lod == 2
               outputPort: full
             - expr: |
-                !(env.get("__value").__max_lod == 2)
+                !(env.get("__value")._max_lod == 2)
               outputPort: flat
 
       - id: 6a89176a-62f8-44eb-912f-20cadd707595
