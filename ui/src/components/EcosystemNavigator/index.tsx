@@ -150,7 +150,9 @@ const EcosystemNavigator: React.FC<Props> = ({
                   className="-mx-1 rounded px-1 py-0.5 group-hover:bg-primary"
                   name={name}
                 />
-                <LinkDescription>{description}</LinkDescription>
+                <LinkDescription className="wrap-break-word whitespace-normal">
+                  {description}
+                </LinkDescription>
               </div>
             </ExternalLink>
           ))}
