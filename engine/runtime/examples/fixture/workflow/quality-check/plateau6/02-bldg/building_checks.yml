@@ -573,7 +573,7 @@ nodes:
             value: (attributes.get("__citygml_geometry_feature_type") or attributes.get("__citygml_feature_type", "")).split(":")[-1]
         - attribute: LOD
           valueAttribute: lod
-        - attribute: "gml:id"
+        - attribute: GmlId
           expr:
             type: flowExpr
             value: attributes.get("__citygml_geometry_gml_id") or attributes.get("__citygml_gml_id", "")

@@ -231,22 +231,9 @@ nodes:
         value: |
           variables["packagePrefixes"][attributes["Folder"]] + "_面のエラー.csv"
 
-  # L10 (per-boundary orientation): LOD1 and LOD2 faces represent the road area
-  # and are judged from above. LOD3 faces are judged against their own normal,
-  # with the surface errors.
-  - id: d5000000-0000-4000-8000-00000000004a
-    name: OrientationUpwardLodFilter
-    type: action
-    action: Feature Filter
-    with:
-      conditions:
-        - expr:
-            type: flowExpr
-            value: str(attributes.get("lod", "")) in ["1", "2"]
-          outputPort: features
-
-  # A misoriented interior of an LOD1 or LOD2 face is counted with the
-  # orientation errors only, not again with the surface errors.
+  # L10 (per-boundary orientation): every face represents the road area and is
+  # judged from above, so a misoriented interior is counted with the orientation
+  # errors only, not again with the surface errors.
   - id: d5000000-0000-4000-8000-00000000004b
     name: SurfaceErrorUpwardOrientationFilter
     type: action
@@ -255,7 +242,7 @@ nodes:
       conditions:
         - expr:
             type: flowExpr
-            value: not (attributes.get("issue", "") == "IncorrectInteriorOrientation" and str(attributes.get("lod", "")) in ["1", "2"])
+            value: attributes.get("issue", "") != "IncorrectInteriorOrientation"
           outputPort: features
 
   - id: d5000000-0000-4000-8000-00000000004c
@@ -266,7 +253,7 @@ nodes:
       conditions:
         - expr:
             type: flowExpr
-            value: not (attributes.get("issue", "") == "IncorrectInteriorOrientation" and str(attributes.get("lod", "")) in ["1", "2"])
+            value: attributes.get("issue", "") != "IncorrectInteriorOrientation"
           outputPort: features
 
   - id: d5000000-0000-4000-8000-000000000011
@@ -1126,20 +1113,31 @@ nodes:
           expr:
             type: flowExpr
             value: attributes.get("線のエラー", 0)
+        # From the original implementation:
+        # 「LOD3については面の向き不正は自動合否判定に使わない。」
         - newAttribute: "面の向き不正"
           expr:
             type: flowExpr
-            value: attributes.get("面の向き不正", 0)
+            value: |
+              orientation = attributes.get("面の向き不正", 0);
+              if attributes.get("LOD", 0) >= 3 {
+                orientation = 0;
+              }
+              orientation
         # totalErrorCount drives qc_result_ok suppression at the entry graph.
         - newAttribute: totalErrorCount
           expr:
             type: flowExpr
             value: |
+              orientation = attributes.get("面の向き不正", 0);
+              if attributes.get("LOD", 0) >= 3 {
+                orientation = 0;
+              }
               itertools.sum([
                 attributes.get("xlink参照エラー", 0),
                 attributes.get("面のエラー", 0),
                 attributes.get("線のエラー", 0),
-                attributes.get("面の向き不正", 0),
+                orientation,
               ])
 
   # `totalErrorCount` only drives qc_result_ok; it is not one of the summary's counts.
@@ -1302,13 +1300,8 @@ edges:
     toPort: features
   - id: d5000000-0000-4000-8000-000100000013
     from: d5000000-0000-4000-8000-00000000000d
-    to: d5000000-0000-4000-8000-00000000004a
-    fromPort: incorrectOrientationUpward
-    toPort: features
-  - id: d5000000-0000-4000-8000-00010000006c
-    from: d5000000-0000-4000-8000-00000000004a
     to: d5000000-0000-4000-8000-000000000011
-    fromPort: features
+    fromPort: incorrectOrientationUpward
     toPort: features
   - id: d5000000-0000-4000-8000-000100000014
     from: d5000000-0000-4000-8000-000000000011
@@ -1400,9 +1393,9 @@ edges:
     fromPort: features
     toPort: features
   - id: d5000000-0000-4000-8000-000100000051
-    from: d5000000-0000-4000-8000-00000000004a
+    from: d5000000-0000-4000-8000-00000000000d
     to: d5000000-0000-4000-8000-00000000003d
-    fromPort: features
+    fromPort: incorrectOrientationUpward
     toPort: features
   - id: d5000000-0000-4000-8000-000100000052
     from: d5000000-0000-4000-8000-00000000003d

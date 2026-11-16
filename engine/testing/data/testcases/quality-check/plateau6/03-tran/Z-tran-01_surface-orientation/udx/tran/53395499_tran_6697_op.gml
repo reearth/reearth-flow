@@ -1,6 +1,6 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <!--
-  L10: misoriented faces, LOD1 judged from above and LOD3 against its own normal.
+  L10: misoriented faces, judged from above at every LOD.
 
   A single tran:Road in mesh 53395499 (EPSG:6697) with two boundaries, each
   holding a pair of polygons that differ only in their winding:
@@ -11,8 +11,7 @@
 
   Expected:
     - poly_1a4d...: exterior error.
-    - poly_3c6f...: no error. The exterior of an LOD3 face defines its normal,
-      so it is never reported.
+    - poly_3c6f...: exterior error, listed but not counted in the total.
 
   The objectlist used by the test is a provisional plateau4-derived Excel.
 -->

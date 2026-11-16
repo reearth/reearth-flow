@@ -1,5 +1,5 @@
 {
-  "description": "Test L10 for plateau6 03-tran. LOD1 faces are judged from above and LOD3 faces against their own normal.",
+  "description": "Test L10 for plateau6 03-tran.",
   "workflowPath": "quality-check/plateau6/03-tran/workflow.yml",
   "workflowVariables": [
     {

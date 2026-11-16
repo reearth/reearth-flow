@@ -24,6 +24,30 @@
         "issue": "IncorrectExteriorOrientation"
       },
       "id": "d52daabb-f30f-472a-87d6-0131fa120706"
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "LineString",
+        "coordinates": [
+          [-19450.138687888448, -18728.540348989056, 2.5],
+          [-19463.690713133037, -18728.510529831412, 2.5],
+          [-19463.66629284671, -18717.416027303098, 2.5],
+          [-19450.114284605497, -18717.44584649608, 2.5],
+          [-19450.138687888448, -18728.540348989056, 2.5]
+        ]
+      },
+      "properties": {
+        "index": 1,
+        "folder": "tran",
+        "filename": "53395499_tran_6697_op.gml",
+        "ftr_type": "AuxiliaryTrafficArea",
+        "gml_id": "tran_0d7a3b96-2f5e-4b18-946a-8d1f3c5e7a92",
+        "lod": 3,
+        "issue_cnt": 1,
+        "issue": "IncorrectExteriorOrientation"
+      },
+      "id": "fc5300fb-fc29-4bfa-9ee4-a4a31771da20"
     }
   ],
   "crs": {
