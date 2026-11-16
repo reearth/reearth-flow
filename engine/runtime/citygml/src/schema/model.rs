@@ -21,7 +21,9 @@ type Reader<'a> = &'a dyn Fn(&str) -> Result<Vec<u8>, String>;
 pub struct AdeSource {
     /// The target namespace the document must declare.
     pub namespace: String,
-    /// An absolute URL the reader understands, such as `gs://` or `file://`.
+    /// An absolute URL the reader understands, such as `https://`, `gs://` or
+    /// `file://`. Relative imports and includes are read only from the same
+    /// scheme, host and port.
     pub location: String,
 }
 
@@ -111,8 +113,7 @@ impl Location {
                 // authority; it is not "beside" this document, so it is not read.
                 (joined.scheme() == base.scheme()
                     && joined.host_str() == base.host_str()
-                    && joined.port() == base.port()
-                    && !matches!(joined.scheme(), "http" | "https"))
+                    && joined.port() == base.port())
                 .then(|| Location::Remote(joined.into()))
             }
         }
@@ -989,6 +990,49 @@ mod tests {
             "http://www.opengis.net/citygml/building/2.0",
             "_AbstractBuilding"
         )));
+    }
+
+    #[test]
+    fn an_https_ade_reads_its_relative_includes_through_the_reader() {
+        let read = reader(&[
+            ("https://example.test/ade/ade.xsd", ADE),
+            ("https://example.test/ade/part.xsd", PART),
+        ]);
+        let set = SchemaSet::with_ade_from(
+            &[AdeSource {
+                namespace: "urn:ade".into(),
+                location: "https://example.test/ade/ade.xsd".into(),
+            }],
+            &read,
+        )
+        .unwrap();
+        assert!(set
+            .global_elements()
+            .any(|q| q == &QName::new("urn:ade", "note")));
+    }
+
+    #[test]
+    fn an_https_network_path_import_is_not_read_from_another_host() {
+        let ade = ADE.replace(
+            r#"<xs:include schemaLocation="part.xsd"/>"#,
+            r#"<xs:import namespace="urn:elsewhere" schemaLocation="//other.test/x.xsd"/>"#,
+        );
+        let ade: &'static str = Box::leak(ade.into_boxed_str());
+        let other = PART.replace("urn:ade", "urn:elsewhere");
+        let other: &'static str = Box::leak(other.into_boxed_str());
+        let read = reader(&[
+            ("https://example.test/ade/ade.xsd", ade),
+            ("https://other.test/x.xsd", other),
+        ]);
+        let err = SchemaSet::with_ade_from(
+            &[AdeSource {
+                namespace: "urn:ade".into(),
+                location: "https://example.test/ade/ade.xsd".into(),
+            }],
+            &read,
+        )
+        .unwrap_err();
+        assert!(matches!(err, SchemaError::MissingImport { .. }), "{err}");
     }
 
     #[test]
