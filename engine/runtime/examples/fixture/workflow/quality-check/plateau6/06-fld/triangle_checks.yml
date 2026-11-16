@@ -15,9 +15,10 @@ name: PLATEAU6.FloodingAreaTriangleChecks
 # to this graph.
 #
 # A triangle is linear or point-like when two of its corners lie within 0.01 of
-# each other, or one corner lies within 0.01 of the opposite edge. That distance
-# is in the coordinate unit, so the incoming geometry must already be in a
-# projected frame.
+# each other, or one corner lies within 0.01 of the opposite edge, or when it has
+# no area on the ground. That distance is in the coordinate unit, so the incoming
+# geometry must already be in a projected frame. A triangle found linear both
+# ways is reported once.
 nodes:
   - id: d8100000-0000-4000-8000-000000000001
     name: InputRouter
@@ -52,6 +53,16 @@ nodes:
     action: Output Router
     with:
       routingPort: triangles
+
+  # Both the collapse check and the winding check can find a triangle linear, so
+  # each triangle is numbered to report it once.
+  - id: d8100000-0000-4000-8000-000000000015
+    name: FeatureCounterTriangleId
+    type: action
+    action: Feature Counter
+    with:
+      countStart: 1
+      outputAttribute: _triangle_id
 
   # --- Closure and vertex count ---
   - id: d8100000-0000-4000-8000-000000000006
@@ -132,8 +143,9 @@ nodes:
     action: Geometry Validator
 
   # L10 (per-boundary orientation): counter-clockwise on the ground is the only
-  # correct winding. A triangle that encloses nothing has no winding at all and
-  # is the linear or point-like triangle instead, so it is not counted here.
+  # correct winding. A triangle that encloses nothing on the ground has no winding
+  # at all and is a linear or point-like triangle instead, also when it stands
+  # upright and so passes the collapse check.
   - id: d8100000-0000-4000-8000-000000000011
     name: FeatureFilterOrientation
     type: action
@@ -146,6 +158,10 @@ nodes:
               checks = attributes["validationResult"]["checks"];
               checks.get("Orientation", 0) > 0 and checks.get("Degenerate", 0) == 0
           outputPort: incorrectOrientation
+        - expr:
+            type: flowExpr
+            value: attributes["validationResult"]["checks"].get("Degenerate", 0) > 0
+          outputPort: degenerate
 
   - id: d8100000-0000-4000-8000-000000000012
     name: GeometryReplacerFace
@@ -160,6 +176,21 @@ nodes:
     action: Output Router
     with:
       routingPort: incorrectOrientation
+
+  - id: d8100000-0000-4000-8000-000000000016
+    name: GeometryReplacerDegenerateFace
+    type: action
+    action: Geometry Replacer
+    with:
+      sourceAttribute: _originalTriangle
+
+  - id: d8100000-0000-4000-8000-000000000017
+    name: AttributeDuplicateFilterDegenerate
+    type: action
+    action: Attribute Duplicate Filter
+    with:
+      filterBy:
+        - _triangle_id
 
   # Geometry no step could handle is reported rather than dropped. The workflow
   # reading this graph decides what to call it; what matters here is that it
@@ -212,10 +243,16 @@ edges:
     fromPort: incorrectVertexCount
     toPort: features
 
+  - id: d8100000-0000-4000-8000-000000000117
+    from: d8100000-0000-4000-8000-000000000004
+    to: d8100000-0000-4000-8000-000000000015
+    fromPort: features
+    toPort: features
+
   ## Collapse
   # `rejected` is not wired: the ring checks reject the same face and report it.
   - id: d8100000-0000-4000-8000-000000000106
-    from: d8100000-0000-4000-8000-000000000004
+    from: d8100000-0000-4000-8000-000000000015
     to: d8100000-0000-4000-8000-000000000007
     fromPort: features
     toPort: features
@@ -226,13 +263,13 @@ edges:
     toPort: features
   - id: d8100000-0000-4000-8000-000000000109
     from: d8100000-0000-4000-8000-000000000008
-    to: d8100000-0000-4000-8000-00000000000a
+    to: d8100000-0000-4000-8000-000000000017
     fromPort: degenerate
     toPort: features
 
   ## Winding
   - id: d8100000-0000-4000-8000-00000000010d
-    from: d8100000-0000-4000-8000-000000000004
+    from: d8100000-0000-4000-8000-000000000015
     to: d8100000-0000-4000-8000-00000000000e
     fromPort: features
     toPort: features
@@ -267,6 +304,28 @@ edges:
     from: d8100000-0000-4000-8000-000000000012
     to: d8100000-0000-4000-8000-000000000013
     fromPort: rejected
+    toPort: features
+
+  ## Linear or point-like on the ground, reported once with the collapse findings
+  - id: d8100000-0000-4000-8000-000000000118
+    from: d8100000-0000-4000-8000-000000000011
+    to: d8100000-0000-4000-8000-000000000016
+    fromPort: degenerate
+    toPort: features
+  - id: d8100000-0000-4000-8000-000000000119
+    from: d8100000-0000-4000-8000-000000000016
+    to: d8100000-0000-4000-8000-000000000017
+    fromPort: features
+    toPort: features
+  - id: d8100000-0000-4000-8000-00000000011a
+    from: d8100000-0000-4000-8000-000000000016
+    to: d8100000-0000-4000-8000-000000000017
+    fromPort: rejected
+    toPort: features
+  - id: d8100000-0000-4000-8000-00000000011b
+    from: d8100000-0000-4000-8000-000000000017
+    to: d8100000-0000-4000-8000-00000000000a
+    fromPort: features
     toPort: features
 
   ## Geometry no step could handle

@@ -15,7 +15,8 @@
        encloses no area.
 
   Expected:
-    - Linear or point-like: 1 and 5.
+    - Linear or point-like: 1, 4 and 5. Triangle 4 stands upright, so it
+      encloses no area on the ground.
     - Incorrectly oriented: 2. Triangles 4 and 5 enclose no area on the
       ground, so they have no orientation.
     - Incorrect vertex count: 5.
