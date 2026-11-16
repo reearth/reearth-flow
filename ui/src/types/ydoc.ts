@@ -12,10 +12,17 @@ export type DeploymentTracking = {
   fingerprint: string;
 };
 
+// A project lock change, written into the document by the websocket server
+// only. `at` is when it changed, in Unix ms.
+export type ProjectLockSignal = {
+  locked: boolean;
+  at: number;
+};
+
 export type YDocMetadata = {
   initialized?: boolean;
   rollbackInProgress?: boolean;
-  isLocked?: boolean;
+  projectLock?: ProjectLockSignal;
   sharingToken?: string | null;
   layoutDirection?: Direction;
   layoutApplyToAll?: boolean;

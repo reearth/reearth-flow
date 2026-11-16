@@ -1,10 +1,14 @@
-import { useCallback, useEffect, useMemo } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { useY } from "react-yjs";
 import type { Doc } from "yjs";
 import { Map as YMap } from "yjs";
 
-import { useDebouncedCallback } from "@flow/hooks";
 import { useProject } from "@flow/lib/gql";
+import {
+  isNewerThanProject,
+  readProjectLock,
+  resolveProjectLock,
+} from "@flow/lib/yjs/projectLock";
 import type { Project, YDocMetadataValue } from "@flow/types";
 
 const emptyMetadata = new YMap<YDocMetadataValue>();
@@ -16,44 +20,42 @@ export default ({
   currentProject?: Project | undefined;
   yDoc: Doc | null;
 }) => {
-  const { updateProject } = useProject();
+  const { updateProject, refetchProject } = useProject();
 
   const yMetadata = useMemo(
     () => yDoc?.getMap<YDocMetadataValue>("metadata"),
     [yDoc],
   );
   const metadata = useY(yMetadata ?? emptyMetadata);
+  const signal = readProjectLock(metadata?.projectLock);
 
-  const isLocked: boolean =
-    metadata?.isLocked !== undefined
-      ? !!metadata.isLocked
-      : !!currentProject?.isLocked;
+  // The lock this user asked for, shown until the project reflects it.
+  const [requested, setRequested] = useState<boolean>();
 
-  // Keep ydoc in sync with server state
+  const resolved = resolveProjectLock(currentProject, signal);
+  const isLocked = requested ?? resolved;
+
   useEffect(() => {
-    if (!yMetadata || currentProject?.isLocked === undefined) return;
-    yMetadata.set("isLocked", !!currentProject.isLocked);
-  }, [yMetadata, currentProject?.isLocked]);
-
-  const debouncedUpdateProject = useDebouncedCallback(async (lock: boolean) => {
-    if (!currentProject) return;
-    try {
-      await updateProject({
-        projectId: currentProject.id,
-        isLocked: lock,
-      });
-    } catch (error) {
-      yMetadata?.set("isLocked", !lock);
-      console.error("Failed to update project lock status:", error);
+    if (requested !== undefined && resolved === requested) {
+      setRequested(undefined);
     }
-  }, 2000);
+  }, [requested, resolved]);
+
+  // Another user changed the lock: fetch the project so it catches up.
+  const projectId = currentProject?.id;
+  const signalIsNewer = isNewerThanProject(signal, currentProject);
+  useEffect(() => {
+    if (signalIsNewer && projectId) refetchProject(projectId);
+  }, [signalIsNewer, projectId, refetchProject]);
 
   const handleLockChange = useCallback(
-    (lock: boolean) => {
-      yMetadata?.set("isLocked", lock);
-      debouncedUpdateProject(lock);
+    async (lock: boolean) => {
+      if (!projectId || requested !== undefined) return;
+      setRequested(lock);
+      const { project } = await updateProject({ projectId, isLocked: lock });
+      if (!project) setRequested(undefined);
     },
-    [yMetadata, debouncedUpdateProject],
+    [projectId, requested, updateProject],
   );
 
   return {
