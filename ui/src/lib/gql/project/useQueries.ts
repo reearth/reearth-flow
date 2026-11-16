@@ -345,7 +345,13 @@ export const useQueries = () => {
       }),
   });
 
+  const refetchProject = (projectId: string) =>
+    queryClient.invalidateQueries({
+      queryKey: [ProjectQueryKeys.GetProject, projectId],
+    });
+
   return {
+    refetchProject,
     createProjectMutation,
     deleteProjectMutation,
     updateProjectMutation,
