@@ -163,6 +163,8 @@ func (i *Websocket) ImportDocument(ctx context.Context, docID string, data []byt
 	return i.client.ImportDocument(ctx, docID, data)
 }
 
+// DeleteDocument is not refused for a locked project: deleting the project is
+// its lifecycle, not an edit of its workflow, and needs ActionDelete anyway.
 func (i *Websocket) DeleteDocument(ctx context.Context, docID string) error {
 	if err := i.authorize(ctx, docID, rbac.ActionDelete); err != nil {
 		return err
