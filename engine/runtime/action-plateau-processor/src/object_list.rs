@@ -221,6 +221,55 @@ impl From<ObjectListValue> for AttributeValue {
     }
 }
 
+/// What an objectlist reader reads from a workbook.
+pub(crate) struct ObjectListContents {
+    pub(crate) feature_types: FeatureTypes,
+    pub(crate) object_list: ObjectListMap,
+    /// For L03 objectlist conformance; `None` for a generation without it.
+    pub(crate) definitions: Option<ObjectListDefinitions>,
+}
+
+/// L03 objectlist conformance: per package, every feature type (B: 地物名) the objectlist
+/// defines.
+#[derive(Clone, Debug, Serialize, Deserialize, Default, PartialEq)]
+pub(crate) struct ObjectListDefinitions(HashMap<String, HashMap<String, FeatureTypeDefinition>>);
+
+/// The rows of one feature type, whether creation targets (作成対象) or not.
+#[derive(Clone, Debug, Serialize, Deserialize, Default, PartialEq)]
+pub(crate) struct FeatureTypeDefinition {
+    /// The feature type's own row is a creation target (作成対象).
+    pub(crate) usable: bool,
+    /// `/`-separated element path of each attribute (主題属性・空間属性) or
+    /// association role (関連役割), and whether its row is a creation target
+    /// (作成対象).
+    pub(crate) paths: HashMap<String, bool>,
+}
+
+impl ObjectListDefinitions {
+    pub(crate) fn new(packages: HashMap<String, HashMap<String, FeatureTypeDefinition>>) -> Self {
+        Self(packages)
+    }
+
+    pub(crate) fn into_inner(self) -> HashMap<String, HashMap<String, FeatureTypeDefinition>> {
+        self.0
+    }
+}
+
+impl From<ObjectListDefinitions> for AttributeValue {
+    fn from(value: ObjectListDefinitions) -> Self {
+        // Serializing a map of plain structs cannot fail.
+        AttributeValue::from(serde_json::to_value(value).unwrap_or_default())
+    }
+}
+
+impl TryFrom<AttributeValue> for ObjectListDefinitions {
+    type Error = serde_json::Error;
+
+    fn try_from(value: AttributeValue) -> Result<Self, Self::Error> {
+        serde_json::from_value(serde_json::Value::from(value))
+    }
+}
+
 pub(crate) fn open_workbook(bytes: Bytes) -> Result<Xlsx<Cursor<Bytes>>, Error> {
     let reader = Cursor::new(bytes);
     calamine::open_workbook_from_rs(reader).map_err(Error::Workbook)

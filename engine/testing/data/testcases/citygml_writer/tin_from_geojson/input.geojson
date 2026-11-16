@@ -1,0 +1,13 @@
+{
+  "type": "FeatureCollection",
+  "features": [
+    {
+      "type": "Feature",
+      "properties": { "kind": "dem:TINRelief", "id": "t1" },
+      "geometry": {
+        "type": "Polygon",
+        "coordinates": [[[139.990, 36.130, 15.0], [139.991, 36.130, 15.5], [139.991, 36.131, 16.0], [139.990, 36.131, 15.5], [139.990, 36.130, 15.0]]]
+      }
+    }
+  ]
+}

@@ -1,0 +1,57 @@
+{
+  "description": "Test L08 on plateau6. Line self-intersections, self-contacts and edge overlaps, counted per line.",
+  "workflowPath": "quality-check/plateau6/03-tran/workflow.yml",
+  "workflowVariables": [
+    {
+      "name": "cityGmlPath",
+      "value": "rwy_.zip"
+    },
+    {
+      "name": "codelistsPath",
+      "value": "codelists_.zip"
+    },
+    {
+      "name": "schemasPath",
+      "value": "schemas_.zip"
+    },
+    {
+      "name": "objectListsPath",
+      "value": "../../../../../fixtures/plateau6-citymodel/13997_tokyo_udx-mlit_2026_citygml_1_sample-tokyoCG3_op/13997_milt_2026_objectlist_sample-tokyoCG3_op__empty.xlsx"
+    },
+    {
+      "name": "prcs",
+      "value": 6677
+    }
+  ],
+  "zipBeforeTest": [
+    {
+      "path": "udx/rwy",
+      "name": "rwy_.zip"
+    },
+    {
+      "path": "../../../../../fixtures/plateau6-citymodel/13997_tokyo_udx-mlit_2026_citygml_1_sample-tokyoCG3_op/codelists",
+      "name": "codelists_.zip"
+    },
+    {
+      "path": "../../../../../fixtures/plateau6-citymodel/13997_tokyo_udx-mlit_2026_citygml_1_sample-tokyoCG3_op/schemas",
+      "name": "schemas_.zip"
+    }
+  ],
+  "expectedOutput": {
+    "expectedFile": [
+      "03-2_鉄道_線のエラー.csv",
+      "error_geometry/03-2_鉄道_線のエラー.geojson",
+      "error_geometry/03-2_鉄道_線のエラー位置.geojson"
+    ]
+  },
+  "summaryOutput": {
+    "errorCountSummary": {
+      "expectedFile": "summary_tran.json"
+    },
+    "fileErrorSummary": {
+      "expectedFile": "03-2_鉄道_検査結果一覧.csv",
+      "keyColumns": ["Filename", "フィーチャータイプ", "LOD"]
+    }
+  },
+  "expectResultOkFile": false
+}

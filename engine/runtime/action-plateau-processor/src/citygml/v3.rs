@@ -8,6 +8,7 @@ use super::spec::CityGmlSpec;
 /// - `gml` changes from GML 3.1.1 to GML 3.2 (`.../gml/3.2`)
 /// - each citygml module changes from `/2.0` to `/3.0`
 /// - the construction module `con` is added
+/// - the dynamizer module `dyn` and the point cloud module `pcl` are added
 /// - `pbase` / `tex` are not used in 3.0
 pub static CITYGML3: CityGmlSpec = CityGmlSpec {
     gml_ns: "http://www.opengis.net/gml/3.2",
@@ -19,11 +20,13 @@ pub static CITYGML3: CityGmlSpec = CityGmlSpec {
         ("con", "http://www.opengis.net/citygml/construction/3.0"),
         ("core", "http://www.opengis.net/citygml/3.0"),
         ("dem", "http://www.opengis.net/citygml/relief/3.0"),
+        ("dyn", "http://www.opengis.net/citygml/dynamizer/3.0"),
         ("frn", "http://www.opengis.net/citygml/cityfurniture/3.0"),
         ("gen", "http://www.opengis.net/citygml/generics/3.0"),
         ("gml", "http://www.opengis.net/gml/3.2"),
         ("grp", "http://www.opengis.net/citygml/cityobjectgroup/3.0"),
         ("luse", "http://www.opengis.net/citygml/landuse/3.0"),
+        ("pcl", "http://www.opengis.net/citygml/pointcloud/3.0"),
         ("sch", "http://www.ascc.net/xml/schematron"),
         ("smil20", "http://www.w3.org/2001/SMIL20/"),
         ("smil20lang", "http://www.w3.org/2001/SMIL20/Language"),

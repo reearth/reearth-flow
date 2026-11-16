@@ -141,7 +141,7 @@ urn:oasis:names:tc:ciq:xal:3 ../../schemas/citygml/xAL/3.0/xAL.xsd">
 				<uro:BuildingIDAttribute>
 					<uro:buildingID>1621-bldg-77</uro:buildingID>
 					<uro:prefecture>16</uro:prefecture>
-					<uro:city>16211</uro:city>
+					<uro:city codeSpace="../../codelists/Common_localPublicAuthorities.xml">16211</uro:city>
 				</uro:BuildingIDAttribute>
 			</bldg:adeOfAbstractBuilding>
 		</bldg:Building>
@@ -254,7 +254,7 @@ urn:oasis:names:tc:ciq:xal:3 ../../schemas/citygml/xAL/3.0/xAL.xsd">
 				<uro:BuildingIDAttribute>
 					<uro:buildingID>16211-bldg-78</uro:buildingID>
 					<uro:prefecture>16</uro:prefecture>
-					<uro:city>16211</uro:city>
+					<uro:city codeSpace="../../codelists/Common_localPublicAuthorities.xml">16211</uro:city>
 				</uro:BuildingIDAttribute>
 			</bldg:adeOfAbstractBuilding>
 		</bldg:Building>
@@ -368,7 +368,7 @@ urn:oasis:names:tc:ciq:xal:3 ../../schemas/citygml/xAL/3.0/xAL.xsd">
 					<uro:buildingID>16211-bldg-79</uro:buildingID>
 					<uro:branchID>1</uro:branchID>
 					<uro:prefecture>16</uro:prefecture>
-					<uro:city>16211</uro:city>
+					<uro:city codeSpace="../../codelists/Common_localPublicAuthorities.xml">16211</uro:city>
 				</uro:BuildingIDAttribute>
 			</bldg:adeOfAbstractBuilding>
 		</bldg:Building>
@@ -482,7 +482,7 @@ urn:oasis:names:tc:ciq:xal:3 ../../schemas/citygml/xAL/3.0/xAL.xsd">
 					<uro:buildingID>16211-bldg-80</uro:buildingID>
 					<uro:branchID>A</uro:branchID>
 					<uro:prefecture>16</uro:prefecture>
-					<uro:city>16211</uro:city>
+					<uro:city codeSpace="../../codelists/Common_localPublicAuthorities.xml">16211</uro:city>
 				</uro:BuildingIDAttribute>
 			</bldg:adeOfAbstractBuilding>
 		</bldg:Building>
@@ -517,7 +517,7 @@ urn:oasis:names:tc:ciq:xal:3 ../../schemas/citygml/xAL/3.0/xAL.xsd">
 							<uro:buildingID>16211-bldg-81</uro:buildingID>
 							<uro:partID>1</uro:partID>
 							<uro:prefecture>16</uro:prefecture>
-							<uro:city>16211</uro:city>
+							<uro:city codeSpace="../../codelists/Common_localPublicAuthorities.xml">16211</uro:city>
 						</uro:BuildingIDAttribute>
 					</bldg:adeOfAbstractBuilding>
 				</bldg:BuildingPart>
@@ -526,7 +526,7 @@ urn:oasis:names:tc:ciq:xal:3 ../../schemas/citygml/xAL/3.0/xAL.xsd">
 				<uro:BuildingIDAttribute>
 					<uro:buildingID>16211-bldg-81</uro:buildingID>
 					<uro:prefecture>16</uro:prefecture>
-					<uro:city>16211</uro:city>
+					<uro:city codeSpace="../../codelists/Common_localPublicAuthorities.xml">16211</uro:city>
 				</uro:BuildingIDAttribute>
 			</bldg:adeOfAbstractBuilding>
 		</bldg:Building>
@@ -560,7 +560,7 @@ urn:oasis:names:tc:ciq:xal:3 ../../schemas/citygml/xAL/3.0/xAL.xsd">
 							<uro:buildingID>16211-bldg-82</uro:buildingID>
 							<uro:partID>B</uro:partID>
 							<uro:prefecture>16</uro:prefecture>
-							<uro:city>16211</uro:city>
+							<uro:city codeSpace="../../codelists/Common_localPublicAuthorities.xml">16211</uro:city>
 						</uro:BuildingIDAttribute>
 					</bldg:adeOfAbstractBuilding>
 				</bldg:BuildingPart>
@@ -569,7 +569,7 @@ urn:oasis:names:tc:ciq:xal:3 ../../schemas/citygml/xAL/3.0/xAL.xsd">
 				<uro:BuildingIDAttribute>
 					<uro:buildingID>16211-bldg-82</uro:buildingID>
 					<uro:prefecture>16</uro:prefecture>
-					<uro:city>16211</uro:city>
+					<uro:city codeSpace="../../codelists/Common_localPublicAuthorities.xml">16211</uro:city>
 				</uro:BuildingIDAttribute>
 			</bldg:adeOfAbstractBuilding>
 		</bldg:Building>

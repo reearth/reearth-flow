@@ -28,7 +28,7 @@ impl Validate for PointCloud {
             check_duplicate_points(
                 &self.frame,
                 self.segments.iter().flat_map(segment_positions),
-                params.duplicate_tolerance,
+                params,
                 r,
             )
         })

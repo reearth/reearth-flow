@@ -32,6 +32,9 @@ fragment Workspace on Workspace {
       id
       email
       name
+      metadata {
+        photoURL
+      }
     }
   }
 }
@@ -91,6 +94,11 @@ fragment Trigger on Trigger {
     ...Variable
   }
   enabled
+  lastRefusal {
+    refusedAt
+    code
+    retryUntil
+  }
 }
 
 fragment Diagnostic on Diagnostic {
@@ -117,6 +125,12 @@ fragment Job on Job {
   userFacingLogsURL
   debug
   deployment {
+    id
+    description
+  }
+  runById
+  triggerId
+  trigger {
     id
     description
   }

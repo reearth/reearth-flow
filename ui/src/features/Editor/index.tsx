@@ -136,6 +136,24 @@ export default function Editor({
     onNodesChange: handleNodesChange,
   });
 
+  // Kept apart from the context below so it keeps its identity when anything
+  // else there changes: the Workflow Variables dialog builds its table columns
+  // from it, and new columns remount the cells, taking focus out of an input.
+  const workflowVarAwareness = useMemo(
+    () => ({
+      onDialogOpen: handleWorkflowVarDialogOpen,
+      onDialogClose: handleWorkflowVarDialogClose,
+      onFieldFocus: handleWorkflowVarFieldFocus,
+      onEditStart: handleWorkflowVarEditStart,
+    }),
+    [
+      handleWorkflowVarDialogOpen,
+      handleWorkflowVarDialogClose,
+      handleWorkflowVarFieldFocus,
+      handleWorkflowVarEditStart,
+    ],
+  );
+
   const editorContext = useMemo(
     (): EditorContextType => ({
       isLocked,
@@ -147,12 +165,7 @@ export default function Editor({
       undoTrackerActionWrapper,
       awarenessSelectionsMap,
       yDoc,
-      workflowVarAwareness: {
-        onDialogOpen: handleWorkflowVarDialogOpen,
-        onDialogClose: handleWorkflowVarDialogClose,
-        onFieldFocus: handleWorkflowVarFieldFocus,
-        onEditStart: handleWorkflowVarEditStart,
-      },
+      workflowVarAwareness,
       staleNodeIds,
       workflowNodeIds,
       diagnosticSeverityByNodeId,
@@ -167,10 +180,7 @@ export default function Editor({
       undoTrackerActionWrapper,
       awarenessSelectionsMap,
       yDoc,
-      handleWorkflowVarDialogOpen,
-      handleWorkflowVarDialogClose,
-      handleWorkflowVarFieldFocus,
-      handleWorkflowVarEditStart,
+      workflowVarAwareness,
       staleNodeIds,
       workflowNodeIds,
       diagnosticSeverityByNodeId,

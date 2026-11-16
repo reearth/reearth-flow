@@ -59,3 +59,24 @@ func TestParameter_WithValue(t *testing.T) {
 	var nilParam *Parameter
 	assert.Nil(t, nilParam.WithValue("x"))
 }
+
+func TestParameter_WithProjectID(t *testing.T) {
+	t.Parallel()
+
+	updated := time.Date(2026, 1, 2, 3, 4, 5, 0, time.UTC)
+	p, _ := New().Name("area").Type(TypeText).DefaultValue("tokyo").UpdatedAt(updated).Build()
+	pid := NewProjectID()
+
+	got := p.WithProjectID(pid)
+
+	assert.Equal(t, pid, got.ProjectID())
+	assert.Equal(t, p.ID(), got.ID())
+	assert.Equal(t, p.Name(), got.Name())
+	assert.Equal(t, "tokyo", got.DefaultValue())
+	assert.Equal(t, updated, got.UpdatedAt())
+	own := p.ProjectID()
+	assert.True(t, own.IsNil(), "the original is not modified")
+
+	var nilParam *Parameter
+	assert.Nil(t, nilParam.WithProjectID(pid))
+}

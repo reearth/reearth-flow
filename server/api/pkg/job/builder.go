@@ -125,6 +125,26 @@ func (b *JobBuilder) ProjectVersion(projectVersion *int) *JobBuilder {
 	return b
 }
 
+func (b *JobBuilder) ScheduledRun(run *ScheduledRun) *JobBuilder {
+	b.j.scheduledRun = run
+	return b
+}
+
+func (b *JobBuilder) Trigger(t *id.TriggerID) *JobBuilder {
+	b.j.trigger = t
+	return b
+}
+
+func (b *JobBuilder) Origin(o *Origin) *JobBuilder {
+	b.j.origin = o
+	return b
+}
+
+func (b *JobBuilder) RunBy(uid *UserID) *JobBuilder {
+	b.j.runBy = uid.CloneRef()
+	return b
+}
+
 func (b *JobBuilder) Parameters(parameters []*parameter.Parameter) *JobBuilder {
 	b.j.parameters = parameters
 	return b

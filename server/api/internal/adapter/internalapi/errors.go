@@ -13,6 +13,9 @@ import (
 )
 
 var invalidArgumentErrors = []error{
+	interfaces.ErrRequiredVariableMissing,
+	interfaces.ErrInvalidVariableValue,
+	interfaces.ErrUnknownVariable,
 	project.ErrInvalidAlias,
 	project.ErrReservedAlias,
 	project.ErrInvalidVisibility,
@@ -37,8 +40,13 @@ func toStatus(ctx context.Context, err error) error {
 		return status.Error(codes.PermissionDenied, err.Error())
 	case errors.Is(err, interfaces.ErrProjectAliasAlreadyUsed):
 		return status.Error(codes.AlreadyExists, err.Error())
-	case errors.Is(err, interfaces.ErrPrivateProjectNotAllowed):
+	case errors.Is(err, interfaces.ErrPrivateProjectNotAllowed),
+		errors.Is(err, interfaces.ErrTriggerNotCMS),
+		errors.Is(err, interfaces.ErrTriggerDisabled),
+		errors.Is(err, interfaces.ErrJobNotCancellable):
 		return status.Error(codes.FailedPrecondition, err.Error())
+	case errors.Is(err, interfaces.ErrJobAlreadyRunning), errors.As(err, new(*interfaces.UsageLimitError)):
+		return status.Error(codes.ResourceExhausted, err.Error())
 	}
 	for _, e := range invalidArgumentErrors {
 		if errors.Is(err, e) {

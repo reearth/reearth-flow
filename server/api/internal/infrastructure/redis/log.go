@@ -2,9 +2,12 @@ package redis
 
 import (
 	"context"
+	"crypto/sha256"
 	"encoding/json"
 	"errors"
 	"fmt"
+	"strconv"
+	"strings"
 	"time"
 
 	"github.com/redis/go-redis/v9"
@@ -77,62 +80,98 @@ func (e *LogEntry) ToDomain() (*log.Log, error) {
 	), nil
 }
 
+// streamClockSkew widens the XRANGE lower bound to tolerate engine/Redis clock skew.
+const streamClockSkew = time.Minute
+
+// streamPageSize bounds each XRANGE reply.
+const streamPageSize = 1000
+
+// readJobStream pages through a per-job stream from since and calls fn once
+// per distinct payload (Pub/Sub redelivery can append duplicates).
+func (r *redisLog) readJobStream(ctx context.Context, streamKey string, since time.Time, fn func(data string)) error {
+	start := "-"
+	if ms := since.Add(-streamClockSkew).UnixMilli(); ms > 0 {
+		start = strconv.FormatInt(ms, 10)
+	}
+
+	// Keyed by digest so the map does not keep every payload alive.
+	seen := make(map[[sha256.Size]byte]struct{})
+	for {
+		// XRANGE on a missing key returns an empty slice, not redis.Nil.
+		msgs, err := r.client.XRangeN(ctx, streamKey, start, "+", streamPageSize).Result()
+		if err != nil {
+			return fmt.Errorf("failed to xrange redis stream=%s: %w", streamKey, err)
+		}
+
+		for _, msg := range msgs {
+			data, ok := msg.Values["data"].(string)
+			if !ok {
+				reearth_log.Warnfc(ctx, "redis: stream entry %s in %s has no data field", msg.ID, streamKey)
+				continue
+			}
+			digest := sha256.Sum256([]byte(data))
+			if _, dup := seen[digest]; dup {
+				continue
+			}
+			seen[digest] = struct{}{}
+			fn(data)
+		}
+
+		if len(msgs) < streamPageSize {
+			return nil
+		}
+		next, err := nextStreamID(msgs[len(msgs)-1].ID)
+		if err != nil {
+			return fmt.Errorf("invalid stream id in %s: %w", streamKey, err)
+		}
+		start = next
+	}
+}
+
+// nextStreamID returns the smallest stream ID after id ("ms-seq").
+func nextStreamID(id string) (string, error) {
+	ms, seq, ok := strings.Cut(id, "-")
+	if !ok {
+		return "", fmt.Errorf("malformed id %q", id)
+	}
+	n, err := strconv.ParseUint(seq, 10, 64)
+	if err != nil {
+		return "", fmt.Errorf("malformed id %q: %w", id, err)
+	}
+	return ms + "-" + strconv.FormatUint(n+1, 10), nil
+}
+
 func (r *redisLog) GetLogs(
 	ctx context.Context,
 	since time.Time,
 	until time.Time,
 	jobID id.JobID,
 ) ([]*log.Log, error) {
-	// pattern: log:{workflowID}:{jobID}:*
-	pattern := fmt.Sprintf("log:*:%s:*", jobID.String())
-
-	var cursor uint64
-	var result []*log.Log
-
 	sinceUTC := since.UTC()
 	untilUTC := until.UTC()
 
-	for {
-		keys, newCursor, err := r.client.Scan(ctx, cursor, pattern, 100).Result()
+	var result []*log.Log
+	err := r.readJobStream(ctx, fmt.Sprintf("log:%s", jobID.String()), since, func(val string) {
+		var entry LogEntry
+		if err := json.Unmarshal([]byte(val), &entry); err != nil {
+			reearth_log.Warnfc(ctx, "gql: failed to unmarshal log entry: %s", val)
+			return
+		}
+
+		entryTimestampUTC := entry.Timestamp.UTC()
+		if entryTimestampUTC.Before(sinceUTC) || entryTimestampUTC.After(untilUTC) {
+			return
+		}
+
+		domainLog, err := entry.ToDomain()
 		if err != nil {
-			return nil, fmt.Errorf("failed to scan redis keys: %w", err)
+			reearth_log.Warnfc(ctx, "gql: failed to convert log entry to domain: %v", err)
+			return
 		}
-
-		for _, key := range keys {
-			val, err := r.client.Get(ctx, key).Result()
-			if err == redis.Nil {
-				continue
-			} else if err != nil {
-				return nil, fmt.Errorf("failed to get redis value for key=%s: %w", key, err)
-			}
-
-			var entry LogEntry
-			if err := json.Unmarshal([]byte(val), &entry); err != nil {
-				reearth_log.Warnfc(ctx, "gql: failed to unmarshal log entry: %s", val)
-				continue
-			}
-
-			entryTimestampUTC := entry.Timestamp.UTC()
-
-			if entryTimestampUTC.Before(sinceUTC) {
-				continue
-			}
-			if entryTimestampUTC.After(untilUTC) {
-				continue
-			}
-
-			domainLog, err := entry.ToDomain()
-			if err != nil {
-				reearth_log.Warnfc(ctx, "gql: failed to convert log entry to domain: %v", err)
-				continue
-			}
-			result = append(result, domainLog)
-		}
-
-		cursor = newCursor
-		if cursor == 0 {
-			break
-		}
+		result = append(result, domainLog)
+	})
+	if err != nil {
+		return nil, err
 	}
 
 	return result, nil

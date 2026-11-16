@@ -983,21 +983,17 @@
           "title": "提取标签",
           "description": "要展开为独立要素的要素类型名称。接受限定形式（`bldg:Building`）、本地形式（`Building`）或Clark记法（`{http://…}Building`）。留空表示原样输出所有顶级城市对象。"
         },
-        "flattenMeasureTypes": {
-          "title": "展平度量类型",
-          "description": "为true时，具有单个`uom`属性和数值文本内容的元素将被转换为数值，单位以兄弟键`{name}_uom`存储。默认为false。"
+        "hoistAttributes": {
+          "title": "提升属性",
+          "description": "列出要提升的 XML 属性名，按文档中的写法填写（例如 `uom`、`gml:id`），它们会在任意深度作为同级键 `{element}@{attribute}` 提升到父级。未列出的属性将被丢弃，列表为空（默认）时不提升任何属性。"
         },
         "inline": {
           "title": "Inline Content",
           "description": "Expression that returns the file content as text instead of reading from a file path"
         },
-        "keepAttributes": {
-          "title": "保留属性",
-          "description": "为false时，XML属性（如`@gml:id`、`@codeSpace`等`@`前缀条目）将从解析的要素中删除。默认为true。"
-        },
-        "keepCodeSpace": {
-          "title": "保留代码空间",
-          "description": "为true时，根据代码表解析的编码值还会将该代码表的位置解析为URL，保存在兄弟键`{name}_codeSpace`中。默认为false。"
+        "keepAbsoluteCodeSpace": {
+          "title": "Keep Absolute Code Space",
+          "description": "即使 `hoistAttributes` 未列出，也会将每个 `codeSpace` 提升为同级键 `{name}@codeSpace`，其位置以文档为基准解析为 URL。默认为 false。"
         }
       }
     },
@@ -1025,21 +1021,17 @@
           "title": "提取标签",
           "description": "要展开为独立要素的要素类型名称。接受限定形式（`bldg:Building`）、本地形式（`Building`）或Clark记法（`{http://…}Building`）。留空表示原样输出所有顶级城市对象。"
         },
-        "flattenLeafAttributes": {
-          "title": "展平叶属性",
-          "description": "标记可折叠叶节点的属性名（例如`uom`）：只含此列表中一个XML属性、没有子元素且文本内容为数值的元素会被转换为数值，该属性的值存储为兄弟键`{name}_{attribute}`。默认为空，表示禁用此功能。"
+        "hoistAttributes": {
+          "title": "提升属性",
+          "description": "列出要提升的 XML 属性名，按文档中的写法填写（例如 `uom`、`gml:id`），它们会在任意深度作为同级键 `{element}@{attribute}` 提升到父级。未列出的属性将被丢弃，列表为空（默认）时不提升任何属性。"
         },
         "inline": {
           "title": "Inline Content",
           "description": "Expression that returns the file content as text instead of reading from a file path"
         },
-        "keepAttributes": {
-          "title": "保留属性",
-          "description": "为false时，XML属性（如`@gml:id`、`@codeSpace`等`@`前缀条目）将从解析的要素中删除。默认为true。"
-        },
-        "keepCodeSpace": {
-          "title": "保留代码空间",
-          "description": "为true时，根据代码表解析的编码值还会将该代码表的位置解析为URL，保存在兄弟键`{name}_codeSpace`中。默认为false。"
+        "keepAbsoluteCodeSpace": {
+          "title": "Keep Absolute Code Space",
+          "description": "即使 `hoistAttributes` 未列出，也会将每个 `codeSpace` 提升为同级键 `{name}@codeSpace`，其位置以文档为基准解析为 URL。默认为 false。"
         }
       },
       "enumI18n": {
@@ -1079,7 +1071,7 @@
     },
     {
       "name": "CityGML Writer",
-      "description": "将要素写入一个CityGML 2.0文件：以CityGML属性命名的属性（如bldg:measuredHeight）按模式顺序写出，边界面、开口和建筑部件等嵌套城市对象写在其父对象之下。不带前缀的属性不会写出，uro:等ADE的属性仅在ADE Schemas中列出该ADE时写出。",
+      "description": "将要素写入一个或多个CityGML 2.0文件，或写入包含这些文件的zip压缩包：以CityGML属性命名的属性（如bldg:measuredHeight）按模式顺序写出，边界面等嵌套城市对象写在其父对象之下，dem:TINRelief地形在所有面均为三角形时写为gml:TriangulatedSurface。不带前缀的属性不会写出，uro:等ADE的属性仅在ADE Schemas中列出该ADE时写出，无法复制到文件旁边的代码列表保留其原始URL。",
       "parameterI18n": {
         "": {
           "title": "CityGmlWriterParam",
@@ -1103,7 +1095,11 @@
         },
         "output": {
           "title": "Output File",
-          "description": "要创建的CityGML文件的路径，以文本或基于工作流变量的表达式给出，只求值一次，而不是按要素求值。"
+          "description": "要创建的CityGML文件的路径，以文本或基于工作流变量和要素属性的表达式给出，例如每个网格一个文件时使用`\"bldg/\" + attributes[\"_meshcode\"] + \"_bldg_6697_op.gml\"`，每个嵌套对象与其所属的顶层对象写入同一文件。以`.zip`结尾的路径是一个包含CityGML文件及其纹理和代码列表的zip压缩包，由本操作整体写出，因此该压缩包的所有要素都必须传给本操作。"
+        },
+        "pathInArchive": {
+          "title": "压缩包内路径",
+          "description": "仅在Output File以`.zip`结尾时使用：CityGML文件在压缩包内的位置，为从压缩包顶层开始、以`/`分隔文件夹的路径，以文本或基于工作流变量和要素属性的表达式给出，例如每个网格一个文件时使用`\"udx/bldg/\" + attributes[\"_meshcode\"] + \"_bldg_6697_op.gml\"`。默认使用压缩包自身的名称加`.gml`，置于压缩包的顶层。"
         },
         "prettyPrint": {
           "title": "Pretty Print",
@@ -1703,25 +1699,17 @@
           "title": "提取标签",
           "description": "要展开为独立要素的要素类型名称。接受限定形式（`bldg:Building`）、本地形式（`Building`）或Clark记法（`{http://…}Building`）。留空表示原样输出所有顶级城市对象。"
         },
-        "flattenMeasureTypes": {
-          "title": "展平度量类型",
-          "description": "为true时，具有单个`uom`属性和数值文本内容的元素将被转换为数值，单位以兄弟键`{name}_uom`存储。默认为false。"
-        },
-        "flattenSingleChildObjects": {
-          "title": "展平单子对象节点",
-          "description": "为true时，仅包含单个子元素的包装元素将被移除：子元素以其自身标签名为键，始终包裹在数组中并提升至上层。默认为false。"
+        "hoistAttributes": {
+          "title": "提升属性",
+          "description": "列出要提升的 XML 属性名，按文档中的写法填写（例如 `uom`、`gml:id`），它们会在任意深度作为同级键 `{element}@{attribute}` 提升到父级。未列出的属性将被丢弃，列表为空（默认）时不提升任何属性。"
         },
         "inheritInputAttributes": {
           "title": "继承输入属性",
           "description": "为true时，输入要素的属性将合并到从其文件解析出的每个要素中。默认为true。"
         },
-        "keepAttributes": {
-          "title": "保留属性",
-          "description": "为false时，XML属性（如`@gml:id`、`@codeSpace`等`@`前缀条目）将从解析的要素中删除。默认为true。"
-        },
-        "keepCodeSpace": {
-          "title": "保留代码空间",
-          "description": "为true时，根据代码表解析的编码值还会将该代码表的位置解析为URL，保存在兄弟键`{name}_codeSpace`中。默认为false。"
+        "keepAbsoluteCodeSpace": {
+          "title": "Keep Absolute Code Space",
+          "description": "即使 `hoistAttributes` 未列出，也会将每个 `codeSpace` 提升为同级键 `{name}@codeSpace`，其位置以文档为基准解析为 URL。默认为 false。"
         }
       }
     },
@@ -1749,13 +1737,9 @@
           "title": "提取标签",
           "description": "要展开为独立要素的要素类型名称。接受限定形式（`bldg:Building`）、本地形式（`Building`）或Clark记法（`{http://…}Building`）。留空表示原样输出所有顶级城市对象。"
         },
-        "flattenLeafAttributes": {
-          "title": "展平叶属性",
-          "description": "标记可折叠叶节点的属性名（例如`uom`）：只含此列表中一个XML属性、没有子元素且文本内容为数值的元素会被转换为数值，该属性的值存储为兄弟键`{name}_{attribute}`。默认为空，表示禁用此功能。"
-        },
-        "flattenSingleChildObjects": {
-          "title": "展平单子对象节点",
-          "description": "为true时，仅包含单个子元素的包装元素将被移除：子元素以其自身标签名为键，始终包裹在数组中并提升至上层。默认为false。"
+        "hoistAttributes": {
+          "title": "提升属性",
+          "description": "列出要提升的 XML 属性名，按文档中的写法填写（例如 `uom`、`gml:id`），它们会在任意深度作为同级键 `{element}@{attribute}` 提升到父级。未列出的属性将被丢弃，列表为空（默认）时不提升任何属性。"
         },
         "includeRejectedDetails": {
           "title": "Include Rejected Details",
@@ -1765,13 +1749,9 @@
           "title": "继承输入属性",
           "description": "为true时，输入要素的属性将合并到从其文件解析出的每个要素中。默认为true。"
         },
-        "keepAttributes": {
-          "title": "保留属性",
-          "description": "为false时，XML属性（如`@gml:id`、`@codeSpace`等`@`前缀条目）将从解析的要素中删除。默认为true。"
-        },
-        "keepCodeSpace": {
-          "title": "保留代码空间",
-          "description": "为true时，根据代码表解析的编码值还会将该代码表的位置解析为URL，保存在兄弟键`{name}_codeSpace`中。默认为false。"
+        "keepAbsoluteCodeSpace": {
+          "title": "Keep Absolute Code Space",
+          "description": "即使 `hoistAttributes` 未列出，也会将每个 `codeSpace` 提升为同级键 `{name}@codeSpace`，其位置以文档为基准解析为 URL。默认为 false。"
         }
       },
       "enumI18n": {
@@ -2545,9 +2525,13 @@
           "title": "Disabled Optional Checks",
           "description": "Advisory checks to disable. Disabled checks do not run and are treated as passing; core validity checks always run. Empty by default, so every optional check runs."
         },
+        "duplicateCounting": {
+          "title": "Duplicate Counting",
+          "description": "What one problem of the duplicate-points check stands for: `extraPoints` (the default) counts each coordinate close to an earlier one, `closePairs` counts each pair of close coordinates."
+        },
         "duplicateTolerance": {
           "title": "Duplicate Point Tolerance",
-          "description": "Optional distance within which two coordinates count as duplicates for the duplicate-points check. Omitted (the default) means exact-equality detection."
+          "description": "Optional distance below which two coordinates count as duplicates for the duplicate-points check. Omitted (the default) means exact-equality detection."
         },
         "planarityThreshold": {
           "title": "Planarity Threshold",
@@ -2575,6 +2559,16 @@
         }
       },
       "enumI18n": {
+        "DuplicateCounting": {
+          "closePairs": {
+            "title": "Close Pairs",
+            "description": "One problem per pair of close coordinates, located at both coordinates of the pair as a two-point geometry."
+          },
+          "extraPoints": {
+            "title": "Extra Points",
+            "description": "One problem per coordinate close to an earlier one: the points to drop so that no two remain close."
+          }
+        },
         "OptionalCheck": {
           "duplicatePoints": {
             "title": "Duplicate Points",

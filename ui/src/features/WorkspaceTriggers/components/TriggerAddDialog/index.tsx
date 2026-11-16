@@ -127,7 +127,7 @@ const TriggerAddDialog: React.FC<Props> = ({ setShowDialog }) => {
                 />
               </DialogContentSection>
             )}
-            <DialogContentSection className="flex-1">
+            <DialogContentSection>
               <Label htmlFor="event-source-selector">
                 {t("Select Event Source")}
               </Label>
@@ -157,7 +157,7 @@ const TriggerAddDialog: React.FC<Props> = ({ setShowDialog }) => {
               </DialogContentSection>
             )}
             {eventSource === "TIME_DRIVEN" && (
-              <DialogContentSection className="flex-1">
+              <DialogContentSection>
                 <Label htmlFor="time-interval-selector">
                   {t("Select Time Interval")}
                 </Label>

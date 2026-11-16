@@ -206,12 +206,13 @@ func (r *Job) FindRunningByWorkspace(ctx context.Context, ws accountsid.Workspac
 	return c.Result, nil
 }
 
-// runningFilter matches the workspace's pending and running jobs started at or
-// after since. Legacy docs predate the mode field, so a missing mode counts as
-// a run.
+// runningFilter matches the workspace's pending and running debug runs started
+// at or after since. Legacy docs predate the mode field, so a missing mode
+// counts as a run.
 func runningFilter(ws accountsid.WorkspaceID, since time.Time) bson.M {
 	return bson.M{
 		"workspaceid": ws.String(),
+		"debug":       true,
 		"startedat":   bson.M{"$gte": since},
 		"status": bson.M{
 			"$in": []string{string(job.StatusPending), string(job.StatusRunning)},
@@ -262,6 +263,13 @@ const jobAdmissionRetries = 3
 // if a slot is still free, and the rollback withdraws the job. That never
 // admits too many, but it refuses runs that fire together, such as daily
 // triggers at midnight.
+// FindByScheduledRun finds nothing: Mongo does not keep a job's scheduled run,
+// so a retried scheduler call may start a second job. New persistence is
+// Postgres-only.
+func (r *Job) FindByScheduledRun(_ context.Context, _ job.ScheduledRun) (*job.Job, error) {
+	return nil, rerror.ErrNotFound
+}
+
 func (r *Job) SaveIfRunningBelow(ctx context.Context, j *job.Job, limit int, since time.Time) error {
 	ws := j.Workspace().String()
 	inTx := mongo.SessionFromContext(ctx) != nil

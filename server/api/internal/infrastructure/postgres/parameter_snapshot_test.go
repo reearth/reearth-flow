@@ -127,6 +127,39 @@ func TestParametersFromJSON_SnapshotWithoutTimestamps(t *testing.T) {
 	assert.WithinDuration(t, time.Now(), params[0].UpdatedAt(), time.Minute)
 }
 
+func TestParametersFromJSON_WithoutProject(t *testing.T) {
+	t.Run("a parameter with no project round-trips", func(t *testing.T) {
+		// As a debug run's parameters arrive: built without a project.
+		p, err := parameter.New().Name("area").Type(parameter.TypeText).DefaultValue("osaka").Build()
+		require.NoError(t, err)
+
+		b, err := parametersToJSON([]*parameter.Parameter{p})
+		require.NoError(t, err)
+
+		got, err := parametersFromJSON(b)
+		require.NoError(t, err)
+		require.Len(t, got, 1)
+		assert.Equal(t, p.ID(), got[0].ID())
+		assert.Zero(t, got[0].ProjectID())
+		assert.Equal(t, "osaka", got[0].DefaultValue())
+	})
+
+	paramID := id.NewParameterID().String()
+	for name, in := range map[string]string{
+		"stored empty":   `[{"id":"` + paramID + `","project_id":"","name":"area","type":"TEXT"}]`,
+		"stored missing": `[{"id":"` + paramID + `","name":"area","type":"TEXT"}]`,
+	} {
+		t.Run(name+" project id reads back", func(t *testing.T) {
+			got, err := parametersFromJSON([]byte(in))
+			require.NoError(t, err)
+			require.Len(t, got, 1)
+			assert.Equal(t, paramID, got[0].ID().String())
+			assert.Equal(t, "area", got[0].Name())
+			assert.Zero(t, got[0].ProjectID())
+		})
+	}
+}
+
 func TestParametersFromJSON_Empty(t *testing.T) {
 	for _, in := range []string{`[]`, `null`} {
 		params, err := parametersFromJSON([]byte(in))
@@ -153,7 +186,6 @@ func TestParametersFromJSON_Invalid(t *testing.T) {
 		{name: "wrong field type", in: `[{"id":"` + validParam + `","project_id":"` + validProject + `","index":"first"}]`},
 		{name: "missing parameter id", in: `[{"project_id":"` + validProject + `","name":"area"}]`},
 		{name: "invalid parameter id", in: doc("not-an-id", validProject)},
-		{name: "missing project id", in: `[{"id":"` + validParam + `","name":"area"}]`},
 		{name: "invalid project id", in: doc(validParam, "not-an-id")},
 		{name: "invalid timestamp", in: `[{"id":"` + validParam + `","project_id":"` + validProject + `","created_at":"yesterday"}]`},
 		{

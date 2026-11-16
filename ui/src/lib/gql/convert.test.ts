@@ -5,7 +5,12 @@ import type {
   JobFragment,
   ProjectFragment,
 } from "./__gen__/plugins/graphql-request";
-import { toDiagnostic, toJob, toProject } from "./convert";
+import {
+  toDiagnostic,
+  toJob,
+  toProject,
+  toRunParameterInputs,
+} from "./convert";
 
 const diagnosticFragment = (
   overrides: Partial<DiagnosticFragment> = {},
@@ -34,6 +39,9 @@ const jobFragment = (overrides: Partial<JobFragment> = {}): JobFragment => ({
   userFacingLogsURL: null,
   debug: false,
   deployment: null,
+  runById: null,
+  triggerId: null,
+  trigger: null,
   ...overrides,
 });
 
@@ -100,6 +108,28 @@ describe("toJob", () => {
       { key: "count", type: "number", value: 3 },
     ]);
   });
+
+  test("keeps the user and trigger that started the job", () => {
+    const converted = toJob(
+      jobFragment({
+        runById: "user-1",
+        triggerId: "trigger-1",
+        trigger: { id: "trigger-1", description: "Nightly import" },
+      }),
+    );
+
+    expect(converted.runById).toBe("user-1");
+    expect(converted.triggerId).toBe("trigger-1");
+    expect(converted.triggerDescription).toBe("Nightly import");
+  });
+
+  test("leaves the description unset when the trigger was deleted", () => {
+    const converted = toJob(jobFragment({ triggerId: "trigger-1" }));
+
+    expect(converted.runById).toBeUndefined();
+    expect(converted.triggerId).toBe("trigger-1");
+    expect(converted.triggerDescription).toBeUndefined();
+  });
 });
 
 describe("toProject", () => {
@@ -141,5 +171,68 @@ describe("toProject", () => {
 
     expect(converted.createdById).toBeUndefined();
     expect(converted.updatedById).toBeUndefined();
+  });
+});
+
+describe("toRunParameterInputs", () => {
+  const variable = {
+    id: "param-1",
+    name: "city",
+    type: "text" as const,
+    required: true,
+    public: false,
+    defaultValue: "Tokyo",
+  };
+
+  test("sends each variable's value, type and position", () => {
+    expect(
+      toRunParameterInputs([
+        variable,
+        {
+          ...variable,
+          id: "param-2",
+          name: "zoom",
+          type: "number",
+          defaultValue: 0,
+        },
+      ]),
+    ).toEqual([
+      {
+        id: "param-1",
+        name: "city",
+        type: "TEXT",
+        required: true,
+        public: false,
+        value: "Tokyo",
+        config: undefined,
+        index: 0,
+      },
+      {
+        id: "param-2",
+        name: "zoom",
+        type: "NUMBER",
+        required: true,
+        public: false,
+        value: 0,
+        config: undefined,
+        index: 1,
+      },
+    ]);
+  });
+
+  test("leaves out variables with no value, since value is non-null", () => {
+    expect(
+      toRunParameterInputs([
+        { ...variable, defaultValue: null },
+        { ...variable, defaultValue: undefined },
+        { ...variable, defaultValue: "" },
+      ]).map((p) => p.value),
+    ).toEqual([""]);
+  });
+
+  test("sends a type the server has no counterpart for as text", () => {
+    expect(
+      toRunParameterInputs([{ ...variable, type: "password" }])[0].type,
+    ).toBe("TEXT");
   });
 });

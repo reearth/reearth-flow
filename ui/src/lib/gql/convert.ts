@@ -28,6 +28,7 @@ import type {
   IntermediateDataViewShape as GraphqlIntermediateDataViewShape,
   IntermediateDataViewStatus as GraphqlIntermediateDataViewStatus,
   VariableInput,
+  RunParameterInput,
 } from "@flow/lib/gql/__gen__/plugins/graphql-request";
 import type {
   Deployment,
@@ -108,6 +109,7 @@ export const toWorkspace = (workspace: WorkspaceFragment): Workspace => ({
           id: m.user?.id,
           name: m.user?.name,
           email: m.user?.email,
+          photoURL: m.user?.metadata.photoURL ?? undefined,
         }
       : undefined,
   })),
@@ -140,6 +142,13 @@ export const toTrigger = (trigger: TriggerFragment): Trigger => ({
   timeInterval: trigger.timeInterval ?? undefined,
   description: trigger.description ?? undefined,
   variables: toVariables(trigger.variables),
+  lastRefusal: trigger.lastRefusal
+    ? {
+        refusedAt: trigger.lastRefusal.refusedAt,
+        code: trigger.lastRefusal.code,
+        retryUntil: trigger.lastRefusal.retryUntil ?? undefined,
+      }
+    : undefined,
 });
 
 // category/severity/effectiveDisposition stay as the strings the engine sent:
@@ -182,6 +191,9 @@ export const toJob = (
   outputURLs: job.outputURLs ?? undefined,
   userFacingLogsURL: job.userFacingLogsURL ?? undefined,
   variables: job.variables ? toVariables(job.variables) : undefined,
+  runById: job.runById ?? undefined,
+  triggerId: job.triggerId ?? undefined,
+  triggerDescription: job.trigger?.description,
 });
 
 export const toUserFacingLog = (log: UserFacingLogFragment): UserFacingLog => ({
@@ -498,6 +510,30 @@ export const toGqlVariableInput = (variables: Variable[]): VariableInput[] =>
     ...variable,
     type: toGqlParameterType(variable.type) ?? "TEXT",
   }));
+
+// The values a debug run used, sent with the run so the server records them on
+// the job (it reads them back as the job's variables; the run itself takes its
+// values from the workflow file). A variable with no value is left out, since
+// the input's value is non-null and the server skips empty values anyway.
+export const toRunParameterInputs = (
+  variables: AnyWorkflowVariable[],
+): RunParameterInput[] =>
+  variables.flatMap((variable, index) =>
+    variable.defaultValue === null || variable.defaultValue === undefined
+      ? []
+      : [
+          {
+            id: variable.id,
+            name: variable.name,
+            type: toGqlParameterType(variable.type) ?? "TEXT",
+            required: variable.required,
+            public: variable.public,
+            value: variable.defaultValue,
+            config: variable.config,
+            index,
+          },
+        ],
+  );
 
 export const toArchiveExtractionStatus = (
   status: GraphqlArchiveExtractionStatus,

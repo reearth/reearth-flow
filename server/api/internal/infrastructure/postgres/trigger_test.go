@@ -9,6 +9,7 @@ import (
 	accountsid "github.com/reearth/reearth-accounts/server/pkg/id"
 	"github.com/reearth/reearth-flow/api/internal/infrastructure/postgres"
 	"github.com/reearth/reearth-flow/api/internal/infrastructure/postgres/pgtest"
+	"github.com/reearth/reearth-flow/api/internal/testutil/repotest"
 	"github.com/reearth/reearth-flow/api/internal/usecase/interfaces"
 	"github.com/reearth/reearth-flow/api/internal/usecase/repo"
 	"github.com/reearth/reearth-flow/api/pkg/id"
@@ -44,6 +45,58 @@ func TestTrigger_Save_FindByID(t *testing.T) {
 	assert.Equal(t, "desc", got.Description())
 	assert.Equal(t, trigger.EventSourceTypeTimeDriven, got.EventSource())
 	assert.True(t, got.Enabled())
+}
+
+func TestTrigger_LastRefusal(t *testing.T) {
+	pool := pgtest.Connect(t)(t)
+	ctx := context.Background()
+	r := postgres.NewTrigger(pgxx.NewClient(pool))
+	at := time.Date(2026, 11, 6, 0, 3, 0, 0, time.UTC)
+	until := at.Add(2 * time.Hour)
+	tr := trigger.New().NewID().Workspace(accountsid.NewWorkspaceID()).Deployment(id.NewDeploymentID()).
+		Description("nightly").EventSource(trigger.EventSourceTypeTimeDriven).
+		TimeInterval(trigger.TimeIntervalEveryDay).Enabled(true).
+		CreatedAt(time.Now()).UpdatedAt(time.Now()).MustBuild()
+
+	t.Run("a refusal that is retried", func(t *testing.T) {
+		tr.SetLastRefusal(&trigger.Refusal{At: at, Code: trigger.RefusalTimeDrivenTriggerRunsDailyLimit, RetryUntil: &until})
+		require.NoError(t, r.Save(ctx, tr))
+
+		got, err := r.FindByID(ctx, tr.ID())
+		require.NoError(t, err)
+		require.NotNil(t, got.LastRefusal())
+		assert.True(t, at.Equal(got.LastRefusal().At))
+		assert.Equal(t, trigger.RefusalTimeDrivenTriggerRunsDailyLimit, got.LastRefusal().Code)
+		require.NotNil(t, got.LastRefusal().RetryUntil)
+		assert.True(t, until.Equal(*got.LastRefusal().RetryUntil))
+	})
+
+	t.Run("a refusal that is skipped", func(t *testing.T) {
+		tr.SetLastRefusal(&trigger.Refusal{At: at, Code: trigger.RefusalInvalidVariables})
+		require.NoError(t, r.Save(ctx, tr))
+
+		got, err := r.FindByID(ctx, tr.ID())
+		require.NoError(t, err)
+		require.NotNil(t, got.LastRefusal())
+		assert.Equal(t, trigger.RefusalInvalidVariables, got.LastRefusal().Code)
+		assert.Nil(t, got.LastRefusal().RetryUntil)
+	})
+
+	t.Run("cleared", func(t *testing.T) {
+		tr.SetLastRefusal(nil)
+		require.NoError(t, r.Save(ctx, tr))
+
+		got, err := r.FindByID(ctx, tr.ID())
+		require.NoError(t, err)
+		assert.Nil(t, got.LastRefusal())
+	})
+}
+
+func TestTrigger_SaveLastRefusal(t *testing.T) {
+	connect := pgtest.Connect(t)
+	repotest.TriggerSaveLastRefusal(t, func(t *testing.T) repo.Trigger {
+		return postgres.NewTrigger(pgxx.NewClient(connect(t)))
+	})
 }
 
 func TestTrigger_FindByID_NotFound(t *testing.T) {
@@ -133,7 +186,7 @@ func TestTrigger_FindByWorkspace_NoPagination(t *testing.T) {
 	require.NoError(t, r.Save(ctx, newTrig(wid, did, id.NewTriggerID())))
 	require.NoError(t, r.Save(ctx, newTrig(wid, did, id.NewTriggerID())))
 	require.NoError(t, r.Save(ctx, newTrig(wid2, did, id.NewTriggerID())))
-	got, info, err := r.FindByWorkspace(ctx, wid, nil, nil)
+	got, info, err := r.FindByWorkspace(ctx, wid, nil, interfaces.TriggerFilter{})
 	require.NoError(t, err)
 	require.NotNil(t, info)
 	assert.Len(t, got, 2)
@@ -149,7 +202,7 @@ func TestTrigger_FindByWorkspace_Paginated(t *testing.T) {
 		require.NoError(t, r.Save(ctx, newTrig(wid, did, id.NewTriggerID())))
 	}
 	page := &interfaces.PaginationParam{Page: &interfaces.PageBasedPaginationParam{Page: 1, PageSize: 2}}
-	got, info, err := r.FindByWorkspace(ctx, wid, page, nil)
+	got, info, err := r.FindByWorkspace(ctx, wid, page, interfaces.TriggerFilter{})
 	require.NoError(t, err)
 	assert.Len(t, got, 2)
 	assert.Equal(t, int64(5), info.TotalCount)
@@ -169,7 +222,7 @@ func TestTrigger_FindByWorkspace_Keyword(t *testing.T) {
 	require.NoError(t, r.Save(ctx, hay))
 	require.NoError(t, r.Save(ctx, newTrig(wid, did, id.NewTriggerID())))
 	kw := "findme"
-	got, _, err := r.FindByWorkspace(ctx, wid, nil, &kw)
+	got, _, err := r.FindByWorkspace(ctx, wid, nil, interfaces.TriggerFilter{Keyword: &kw})
 	require.NoError(t, err)
 	assert.Len(t, got, 1)
 	assert.Equal(t, "findme please", got[0].Description())
@@ -182,7 +235,7 @@ func TestTrigger_FindByWorkspace_NotReadable(t *testing.T) {
 	r := postgres.NewTrigger(pgxx.NewClient(pool)).Filtered(repo.WorkspaceFilter{
 		Readable: accountsid.WorkspaceIDList{accountsid.NewWorkspaceID()},
 	})
-	got, info, err := r.FindByWorkspace(ctx, wid, nil, nil)
+	got, info, err := r.FindByWorkspace(ctx, wid, nil, interfaces.TriggerFilter{})
 	require.NoError(t, err)
 	assert.Empty(t, got)
 	assert.NotNil(t, info)
@@ -220,4 +273,17 @@ func TestTrigger_Save_CommitsInTransaction(t *testing.T) {
 	got, err := r.FindByID(ctx, tid)
 	require.NoError(t, err)
 	assert.Equal(t, tid, got.ID())
+}
+
+func TestTrigger_CountEnabledByWorkspace(t *testing.T) {
+	t.Parallel()
+	repotest.TriggerCountEnabled(t, postgres.NewTrigger(pgxx.NewClient(pgtest.Connect(t)(t))))
+}
+
+func TestTrigger_FindByEventSource(t *testing.T) {
+	t.Parallel()
+	connect := pgtest.Connect(t)
+	repotest.TriggerFindByEventSource(t, func(t *testing.T) repo.Trigger {
+		return postgres.NewTrigger(pgxx.NewClient(connect(t)))
+	})
 }

@@ -1,0 +1,14 @@
+{
+  "description": "PLATEAU 4 terrain with a hole in its triangulation (the 08-dem Z-04-HOLES quality-check input) read and written back: all nine triangles are written as dem:tin > gml:TriangulatedSurface > gml:trianglePatches > gml:Triangle with the source's posList verbatim and no ids, and dem:lod comes before dem:tin. The writer does not fill or flag the gap, which is the quality-check actions' job. New-world only: the legacy writer has no terrain support.",
+  "skipLegacyGeometry": true,
+  "workflowPath": "citygml_writer/roundtrip.yml",
+  "workflowVariables": [
+    {
+      "name": "cityGmlPath",
+      "value": "../../quality-check/plateau4/08-dem/Z-04-HOLES/udx/dem/input.gml"
+    }
+  ],
+  "expectedOutput": {
+    "expectedFile": "expected_output.gml"
+  }
+}

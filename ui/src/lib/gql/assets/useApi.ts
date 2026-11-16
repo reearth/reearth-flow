@@ -11,6 +11,7 @@ import type {
   DeleteAssetInput,
   CreateAssetUploadInput,
 } from "../__gen__/graphql";
+import { usePlanLimitMessage } from "../policy/usePlanLimitMessage";
 
 import { putFileWithProgress } from "./putFileWithProgress";
 import type { UploadProgress, UploadResult } from "./putFileWithProgress";
@@ -23,6 +24,10 @@ const MAX_STANDARD_UPLOAD_SIZE_MB = 30;
 // making progress, so a slow-but-moving upload is never cut off.
 const UPLOAD_STALL_TIMEOUT_MS = 2 * 60 * 1000;
 
+// GraphQL's Int is 32-bit. A larger file is sent without its size, and the
+// server checks it against the plan once it is in storage instead.
+const MAX_GRAPHQL_INT = 2 ** 31 - 1;
+
 export const useAsset = () => {
   const {
     useGetAssetsQuery,
@@ -33,6 +38,7 @@ export const useAsset = () => {
   } = useQueries();
   const { toast } = useToast();
   const t = useT();
+  const planLimitMessage = usePlanLimitMessage();
 
   const [uploadProgress, setUploadProgress] = useState<
     UploadProgress | undefined
@@ -103,11 +109,12 @@ export const useAsset = () => {
         const assetUpload = await mutateAsync({
           filename: input.filename,
           workspaceId: input.workspaceId,
+          contentLength: input.contentLength,
         });
 
-        return { assetUpload, ...rest };
-      } catch (_err) {
-        return { assetUpload: undefined, ...rest };
+        return { assetUpload, requestError: undefined, ...rest };
+      } catch (requestError) {
+        return { assetUpload: undefined, requestError, ...rest };
       }
     },
     [createAssetDirectUploadMutation],
@@ -129,16 +136,18 @@ export const useAsset = () => {
           description: t("Asset has been successfully created."),
         });
         return { asset, ...rest };
-      } catch (_err) {
+      } catch (err) {
         toast({
           title: t("Asset Could Not Be Created"),
-          description: t("There was an error when creating the asset."),
+          description:
+            planLimitMessage(err) ??
+            t("There was an error when creating the asset."),
           variant: "destructive",
         });
         return { asset: undefined, ...rest };
       }
     },
-    [createAssetWithStandardUploadMutation, toast, t],
+    [createAssetWithStandardUploadMutation, toast, t, planLimitMessage],
   );
 
   // Create asset with direct upload for files > 30MB
@@ -153,11 +162,15 @@ export const useAsset = () => {
       let stage: "sign" | "upload" | "register" = "sign";
       setUploadProgress({ loaded: 0, total: file.size, percent: 0 });
       try {
-        const { assetUpload } = await createAssetUploadUrl({
+        // Sending the size lets the server refuse a file the plan does not
+        // allow before any of it is uploaded.
+        const { assetUpload, requestError } = await createAssetUploadUrl({
           workspaceId,
           filename: file.name,
+          contentLength: file.size <= MAX_GRAPHQL_INT ? file.size : undefined,
         });
 
+        if (requestError) throw requestError;
         if (!assetUpload?.url || !assetUpload?.token) {
           throw new Error("Failed to get upload URL");
         }
@@ -203,6 +216,15 @@ export const useAsset = () => {
 
         return { asset, ...rest };
       } catch (err) {
+        const limitMessage = planLimitMessage(err);
+        if (limitMessage) {
+          toast({
+            title: t("Asset Could Not Be Created"),
+            description: limitMessage,
+            variant: "destructive",
+          });
+          return { asset: undefined, ...rest };
+        }
         const stageLabel = {
           sign: t("Requesting the upload URL"),
           upload: t("Uploading the file to storage"),
@@ -221,7 +243,13 @@ export const useAsset = () => {
         setUploadProgress(undefined);
       }
     },
-    [createAssetUploadUrl, createAssetWithStandardUploadMutation, toast, t],
+    [
+      createAssetUploadUrl,
+      createAssetWithStandardUploadMutation,
+      toast,
+      t,
+      planLimitMessage,
+    ],
   );
 
   // Unified createAsset function

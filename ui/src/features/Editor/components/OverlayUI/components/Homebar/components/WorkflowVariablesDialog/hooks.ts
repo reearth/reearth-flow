@@ -10,9 +10,12 @@ import type { WorkflowVarSession } from "@flow/lib/yjs/workflowVarSession";
 import { computeSessionChanges } from "@flow/lib/yjs/workflowVarSession";
 import type { AwarenessUser, WorkflowVariable, VarType } from "@flow/types";
 import {
+  defaultVariableName,
+  findVariableNameProblems,
   generateUUID,
   getDefaultConfigForWorkflowVar,
   getDefaultValueForWorkflowVar,
+  hasVariableNameProblems,
 } from "@flow/utils";
 
 export default ({
@@ -216,6 +219,16 @@ export default ({
     });
   }, [sessionVars, sessionBase]);
 
+  // Names the engine cannot tell apart, or that break the naming convention.
+  // Any of these blocks saving.
+  const nameProblems = useMemo(
+    () => findVariableNameProblems(sessionVars),
+    [sessionVars],
+  );
+  const canSave = !hasVariableNameProblems(nameProblems);
+  const canSaveRef = useRef(canSave);
+  canSaveRef.current = canSave;
+
   // ── Variable list mutations (all write directly to shared Yjs) ────────────
 
   // Snapshot of session vars at the moment this user joined (or initialised)
@@ -256,7 +269,10 @@ export default ({
       const tempId = `temp_${generateUUID()}`;
       const newVariable: WorkflowVariable = {
         id: tempId,
-        name: t("New Workflow Variable"),
+        name: defaultVariableName(
+          type,
+          sessionVarsRef.current.map((v) => v.name),
+        ),
         defaultValue: getDefaultValueForWorkflowVar(type),
         config: getDefaultConfigForWorkflowVar(type),
         type,
@@ -266,7 +282,7 @@ export default ({
       myAddedTempVarsRef.current.set(tempId, newVariable);
       writeVars([...sessionVarsRef.current, newVariable]);
     },
-    [writeVars, t],
+    [writeVars],
   );
 
   const handleUpdate = useCallback(
@@ -440,6 +456,9 @@ export default ({
   const hasExplicitlyClosedRef = useRef(false);
 
   const handleSubmit = useCallback(async () => {
+    // The Save button is disabled too; this covers a collaborator's edit
+    // landing between render and click.
+    if (!canSaveRef.current) return;
     setIsSubmitting(true);
     try {
       const changes = computeSessionChanges(
@@ -588,6 +607,8 @@ export default ({
   return {
     workflowVariables: sessionVars,
     hasUnsavedChanges,
+    nameProblems,
+    canSave,
     isSubmitting,
     editingVariable,
     myClientId,

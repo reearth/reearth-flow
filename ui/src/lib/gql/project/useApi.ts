@@ -1,6 +1,7 @@
 import { useToast } from "@flow/features/NotificationSystem/useToast";
 import { useT } from "@flow/lib/i18n";
 import type {
+  AnyWorkflowVariable,
   CreateProject,
   DeleteProject,
   EngineReadyWorkflow,
@@ -18,6 +19,7 @@ import type {
   CreateProjectInput,
   UpdateProjectInput,
 } from "../__gen__/graphql";
+import { toRunParameterInputs } from "../convert";
 import { usePlanLimitMessage } from "../policy/usePlanLimitMessage";
 
 import { toProjectErrorKind } from "./errors";
@@ -209,6 +211,7 @@ export const useProject = () => {
     engineReadyWorkflow: EngineReadyWorkflow,
     previousJobId?: string,
     startNodeId?: string,
+    variables?: AnyWorkflowVariable[],
   ): Promise<RunProject> => {
     const { mutateAsync, ...rest } = runProjectMutation;
 
@@ -223,6 +226,7 @@ export const useProject = () => {
         file: formData,
         previousJobId,
         startNodeId,
+        parameters: variables ? toRunParameterInputs(variables) : undefined,
       });
       toast({
         title: t("Debug run started"),

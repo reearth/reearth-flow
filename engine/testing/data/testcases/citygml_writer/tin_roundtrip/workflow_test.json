@@ -1,0 +1,14 @@
+{
+  "description": "PLATEAU 4 terrain (the 08-dem Z-DEM-00 quality-check input) read and written back: a dem:ReliefFeature nesting a dem:TINRelief in its dem:reliefComponent, both source gml:ids and dem:lod 1 kept, and the triangles written as dem:tin > gml:TriangulatedSurface > gml:trianglePatches > gml:Triangle with the source's posList verbatim. Before this step the writer emitted gml:MultiSurface under dem:tin, which xmllint rejects. The source's uro:demDataQualityAttribute is not in the expectation: this workflow lists no ADE schemas, so the writer reports it as citygml.attribute_not_placed. New-world only: the legacy writer has no terrain support.",
+  "skipLegacyGeometry": true,
+  "workflowPath": "citygml_writer/roundtrip.yml",
+  "workflowVariables": [
+    {
+      "name": "cityGmlPath",
+      "value": "../../quality-check/plateau4/08-dem/Z-DEM-00_no-error/udx/dem/input.gml"
+    }
+  ],
+  "expectedOutput": {
+    "expectedFile": "expected_output.gml"
+  }
+}

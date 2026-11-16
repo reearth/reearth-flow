@@ -10,6 +10,7 @@ import (
 	"github.com/reearth/reearth-flow/api/pkg/job"
 	"github.com/reearth/reearth-flow/api/pkg/trigger"
 	"github.com/reearth/reearth-flow/api/pkg/variable"
+	"github.com/reearth/reearthx/rerror"
 )
 
 type CreateTriggerParam struct {
@@ -22,6 +23,12 @@ type CreateTriggerParam struct {
 	Enabled      bool
 }
 
+// TriggerFilter narrows a workspace's triggers. A nil field matches all.
+type TriggerFilter struct {
+	Keyword     *string
+	EventSource *trigger.EventSourceType
+}
+
 type ExecuteAPITriggerParam struct {
 	NotificationURL     *string
 	Variables           map[string]interface{}
@@ -29,8 +36,19 @@ type ExecuteAPITriggerParam struct {
 	TriggerID           id.TriggerID
 }
 
-type ExecuteTimeDrivenTriggerParam struct {
+// ExecuteCMSTriggerParam is a run of a CMS trigger for one CMS item.
+type ExecuteCMSTriggerParam struct {
+	Variables map[string]any
+	Origin    job.Origin
 	TriggerID id.TriggerID
+}
+
+type ExecuteTimeDrivenTriggerParam struct {
+	// ScheduledAt is the scheduled time the scheduler calls for, the same on
+	// every retry of one run. With it, the trigger starts at most one job for
+	// the time; without it, every call starts one.
+	ScheduledAt *time.Time
+	TriggerID   id.TriggerID
 }
 
 type UpdateTriggerParam struct {
@@ -45,6 +63,7 @@ type UpdateTriggerParam struct {
 
 var (
 	ErrTriggerNotFound     error = errors.New("trigger not found")
+	ErrInvalidTriggerToken error = errors.New("invalid auth token")
 	ErrInvalidEventSource  error = errors.New("invalid event source type")
 	ErrInvalidTimeInterval error = errors.New("invalid time interval")
 	ErrInvalidTriggerInput error = errors.New("only a time-driven trigger has a time interval")
@@ -55,7 +74,27 @@ var (
 
 	ErrHourlyScheduleNotAllowed error = errors.New("this workspace's plan does not allow hourly schedules")
 
+	// ErrEnabledTriggerLimit refuses enabling a trigger on a workspace that
+	// already has as many triggers enabled as its plan allows.
+	ErrEnabledTriggerLimit error = errors.New("this workspace already has as many triggers enabled as its plan allows")
+
+	// ErrTriggerDisabled refuses running a trigger that is disabled.
+	ErrTriggerDisabled error = errors.New("trigger is disabled")
+
 	ErrTriggerNotAPIDriven error = errors.New("only an API-driven trigger has an auth token")
+
+	// ErrTriggerScheduleNotUpdated is an edit of a time-driven trigger that
+	// was saved, but whose Cloud Scheduler job could not be made to match it.
+	// Saving the trigger again sends its whole job, so it can be retried.
+	ErrTriggerScheduleNotUpdated error = errors.New("the trigger was saved, but its schedule could not be updated; save it again to retry")
+
+	ErrTriggerNotCMS        error = errors.New("trigger is not a CMS trigger")
+	ErrTriggerNotTimeDriven error = errors.New("trigger is not time-driven")
+
+	// ErrScheduledRunInProgress refuses a second job for a scheduled time a
+	// time-driven trigger already has one for, which has not been submitted
+	// yet. The call can be retried once that job is submitted or fails.
+	ErrScheduledRunInProgress error = errors.New("a job for this scheduled run is already being started")
 )
 
 // ErrAPITriggerDailyLimit refuses an API trigger call on a free workspace that
@@ -75,13 +114,40 @@ func (e *APITriggerLimitError) Unwrap() error { return ErrAPITriggerDailyLimit }
 type Trigger interface {
 	ExecuteAPITrigger(context.Context, ExecuteAPITriggerParam) (*job.Job, error)
 	ExecuteTimeDrivenTrigger(context.Context, ExecuteTimeDrivenTriggerParam) (*job.Job, error)
+	ExecuteCMSTrigger(context.Context, ExecuteCMSTriggerParam) (*job.Job, error)
 	Fetch(context.Context, []id.TriggerID) ([]*trigger.Trigger, error)
 	FindByID(context.Context, id.TriggerID) (*trigger.Trigger, error)
-	FindByWorkspace(context.Context, accountsid.WorkspaceID, *PaginationParam, *string) ([]*trigger.Trigger, *PageBasedInfo, error)
+	FindByWorkspace(context.Context, accountsid.WorkspaceID, *PaginationParam, TriggerFilter) ([]*trigger.Trigger, *PageBasedInfo, error)
 	// Create, Update and RegenerateAuthToken return authToken only when they
 	// issued the trigger a new token. It is never returned again.
 	Create(context.Context, CreateTriggerParam) (_ *trigger.Trigger, authToken string, _ error)
 	Update(context.Context, UpdateTriggerParam) (_ *trigger.Trigger, authToken string, _ error)
 	RegenerateAuthToken(context.Context, id.TriggerID) (_ *trigger.Trigger, authToken string, _ error)
 	Delete(context.Context, id.TriggerID) error
+}
+
+// ScheduledRunRefusal names why err refused a scheduled run, and reports
+// whether a retry from the scheduler can succeed. Only errors known to be
+// permanent are not retried, so an error added later is retried until it is
+// listed here. A plan limit that resets with a period, such as a number of
+// runs per day, belongs here: retries end long before it resets. A limit on
+// runs at the same time does not, as a run ends.
+func ScheduledRunRefusal(err error) (trigger.RefusalCode, bool) {
+	switch {
+	case errors.Is(err, ErrTriggerNotFound), errors.Is(err, rerror.ErrNotFound):
+		return trigger.RefusalNotFound, false
+	case errors.Is(err, ErrTriggerDisabled):
+		return trigger.RefusalTriggerDisabled, false
+	case errors.Is(err, ErrTriggerNotTimeDriven):
+		return trigger.RefusalTriggerNotTimeDriven, false
+	case errors.Is(err, ErrRequiredVariableMissing),
+		errors.Is(err, ErrInvalidVariableValue),
+		errors.Is(err, ErrUnknownVariable):
+		return trigger.RefusalInvalidVariables, false
+	case errors.Is(err, ErrOperationDenied):
+		return trigger.RefusalNotAllowed, false
+	case errors.Is(err, ErrTimeDrivenTriggerRunsPerDayLimit):
+		return trigger.RefusalTimeDrivenTriggerRunsDailyLimit, false
+	}
+	return trigger.RefusalServerError, true
 }

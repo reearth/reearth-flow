@@ -3,11 +3,13 @@ package postgres
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"strings"
 	"time"
 
 	"github.com/jackc/pgx/v5"
+	"github.com/jackc/pgx/v5/pgconn"
 	accountsid "github.com/reearth/reearth-accounts/server/pkg/id"
 	"github.com/reearth/reearth-flow/api/internal/infrastructure/postgres/gen"
 	"github.com/reearth/reearth-flow/api/internal/usecase/interfaces"
@@ -39,6 +41,22 @@ func (r *Job) q(ctx context.Context) *gen.Queries {
 
 func (r *Job) FindByID(ctx context.Context, jid id.JobID) (*job.Job, error) {
 	row, err := r.q(ctx).GetJob(ctx, jid.String())
+	if err != nil {
+		return nil, pgxx.MapError(err)
+	}
+	j, err := jobFromRow(row)
+	if err != nil {
+		return nil, err
+	}
+	if !r.f.CanRead(j.Workspace()) {
+		return nil, rerror.ErrNotFound
+	}
+	return j, nil
+}
+
+func (r *Job) FindByScheduledRun(ctx context.Context, run job.ScheduledRun) (*job.Job, error) {
+	tid := run.Trigger.String()
+	row, err := r.q(ctx).GetJobByScheduledRun(ctx, gen.GetJobByScheduledRunParams{TriggerID: &tid, ScheduledAt: &run.At})
 	if err != nil {
 		return nil, pgxx.MapError(err)
 	}
@@ -207,6 +225,9 @@ func (r *Job) SaveIfRunningBelow(ctx context.Context, j *job.Job, limit int, sin
 			return interfaces.ErrJobAlreadyRunning
 		}
 		if err := q.UpsertJob(ctx, params); err != nil {
+			if isScheduledRunConflict(err) {
+				return interfaces.ErrScheduledRunInProgress
+			}
 			return rerror.ErrInternalByWithContext(ctx, pgxx.WrapError(err))
 		}
 		return nil
@@ -257,9 +278,21 @@ func (r *Job) Save(ctx context.Context, j *job.Job) error {
 		return rerror.ErrInternalByWithContext(ctx, err)
 	}
 	if err := r.q(ctx).UpsertJob(ctx, params); err != nil {
+		if isScheduledRunConflict(err) {
+			return interfaces.ErrScheduledRunInProgress
+		}
 		return rerror.ErrInternalByWithContext(ctx, pgxx.WrapError(err))
 	}
 	return nil
+}
+
+const jobScheduledRunIndex = "jobs_trigger_id_scheduled_at_idx"
+
+// isScheduledRunConflict reports whether err refused a job because another job
+// already has its trigger's scheduled time.
+func isScheduledRunConflict(err error) bool {
+	var pgErr *pgconn.PgError
+	return pgxx.IsUniqueViolation(err) && errors.As(err, &pgErr) && pgErr.ConstraintName == jobScheduledRunIndex
 }
 
 func (r *Job) Remove(ctx context.Context, jid id.JobID) error {
@@ -340,6 +373,22 @@ func jobToParams(j *job.Job) (gen.UpsertJobParams, error) {
 		}
 		p.Parameters = b
 	}
+	if t := j.Trigger(); t != nil {
+		tid := t.String()
+		p.TriggerID = &tid
+	}
+	if run := j.ScheduledRun(); run != nil {
+		tid, at := run.Trigger.String(), run.At
+		p.TriggerID, p.ScheduledAt = &tid, &at
+	}
+	if o := newJobOriginJSON(j.Origin()); o != nil {
+		b, err := json.Marshal(o)
+		if err != nil {
+			return gen.UpsertJobParams{}, err
+		}
+		p.Origin = b
+	}
+	p.RunBy = j.RunBy().StringRef()
 	return p, nil
 }
 
@@ -409,5 +458,76 @@ func jobFromRow(row gen.Job) (*job.Job, error) {
 	if row.Mode != "" {
 		b = b.Mode(job.Mode(row.Mode))
 	}
+	if row.TriggerID != nil {
+		tid, err := id.TriggerIDFrom(*row.TriggerID)
+		if err != nil {
+			return nil, err
+		}
+		b = b.Trigger(&tid)
+		if row.ScheduledAt != nil {
+			b = b.ScheduledRun(&job.ScheduledRun{Trigger: tid, At: *row.ScheduledAt})
+		}
+	}
+	if len(row.Origin) > 0 {
+		var o jobOriginJSON
+		if err := json.Unmarshal(row.Origin, &o); err != nil {
+			return nil, err
+		}
+		b = b.Origin(o.model())
+	}
+	if row.RunBy != nil {
+		uid, err := accountsid.UserIDFrom(*row.RunBy)
+		if err != nil {
+			return nil, err
+		}
+		b = b.RunBy(&uid)
+	}
 	return b.Build()
+}
+
+// jobOriginJSON is a job's origin as stored in the jobs.origin column.
+type jobOriginJSON struct {
+	CMSItem *jobCMSItemOriginJSON `json:"cmsItem,omitempty"`
+}
+
+type jobCMSItemOriginJSON struct {
+	ProjectID    string `json:"projectId"`
+	ModelID      string `json:"modelId"`
+	ItemID       string `json:"itemId"`
+	ConnectionID string `json:"connectionId"`
+	ProjectName  string `json:"projectName"`
+	ModelName    string `json:"modelName"`
+	ItemTitle    string `json:"itemTitle"`
+}
+
+func newJobOriginJSON(o *job.Origin) *jobOriginJSON {
+	if o == nil || o.CMSItem == nil {
+		return nil
+	}
+	c := o.CMSItem
+	return &jobOriginJSON{CMSItem: &jobCMSItemOriginJSON{
+		ProjectID:    c.ProjectID,
+		ModelID:      c.ModelID,
+		ItemID:       c.ItemID,
+		ConnectionID: c.ConnectionID,
+		ProjectName:  c.ProjectName,
+		ModelName:    c.ModelName,
+		ItemTitle:    c.ItemTitle,
+	}}
+}
+
+func (o jobOriginJSON) model() *job.Origin {
+	if o.CMSItem == nil {
+		return nil
+	}
+	c := o.CMSItem
+	return &job.Origin{CMSItem: &job.CMSItemOrigin{
+		ProjectID:    c.ProjectID,
+		ModelID:      c.ModelID,
+		ItemID:       c.ItemID,
+		ConnectionID: c.ConnectionID,
+		ProjectName:  c.ProjectName,
+		ModelName:    c.ModelName,
+		ItemTitle:    c.ItemTitle,
+	}}
 }

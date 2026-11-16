@@ -20,10 +20,12 @@ type parameterJSON struct {
 	ID           string      `json:"id"`
 	Name         string      `json:"name"`
 	Type         string      `json:"type"`
-	ProjectID    string      `json:"project_id"`
-	Index        int         `json:"index"`
-	Required     bool        `json:"required"`
-	Public       bool        `json:"public"`
+	// Empty for run-time parameters recorded without a project: a job's
+	// snapshot does not need one.
+	ProjectID string `json:"project_id"`
+	Index     int    `json:"index"`
+	Required  bool   `json:"required"`
+	Public    bool   `json:"public"`
 }
 
 func parametersToJSON(params []*parameter.Parameter) ([]byte, error) {
@@ -60,13 +62,15 @@ func parametersFromJSON(b []byte) ([]*parameter.Parameter, error) {
 		if err != nil {
 			return nil, err
 		}
-		projID, err := id.ProjectIDFrom(doc.ProjectID)
-		if err != nil {
-			return nil, err
+		b := parameter.New().ID(pid)
+		if doc.ProjectID != "" {
+			projID, err := id.ProjectIDFrom(doc.ProjectID)
+			if err != nil {
+				return nil, err
+			}
+			b = b.ProjectID(projID)
 		}
-		p, err := parameter.New().
-			ID(pid).
-			ProjectID(projID).
+		p, err := b.
 			Name(doc.Name).
 			Type(parameter.Type(doc.Type)).
 			Index(doc.Index).

@@ -56,7 +56,6 @@ type Props = {
   ) => void;
   onWorkflowRename?: (id: string, name: string) => void;
   onParamFieldFocus?: (fieldId: string | null) => void;
-  onValueEditorOpen: (fieldContext: FieldContext) => void;
   onPythonEditorOpen?: (fieldContext: FieldContext) => void;
   onFlowExprEditorOpen?: (fieldContext: FieldContext) => void;
 };
@@ -75,7 +74,6 @@ const ParamEditor: React.FC<Props> = ({
   onMigrate,
   onWorkflowRename,
   onParamFieldFocus,
-  onValueEditorOpen,
   onPythonEditorOpen,
   onFlowExprEditorOpen,
 }) => {
@@ -217,7 +215,6 @@ const ParamEditor: React.FC<Props> = ({
                 onFieldFocus={onParamFieldFocus}
                 onChange={onParamsUpdate}
                 onValidationChange={handleParamsValidationChange}
-                onEditorOpen={onValueEditorOpen}
                 onPythonEditorOpen={onPythonEditorOpen}
                 onFlowExprEditorOpen={onFlowExprEditorOpen}
               />
@@ -329,7 +326,6 @@ const ParamEditor: React.FC<Props> = ({
             fieldFocusMap={fieldFocusMap}
             onParamFieldFocus={onParamFieldFocus}
             onMigrate={handleMigrate}
-            onValueEditorOpen={onValueEditorOpen}
             onPythonEditorOpen={onPythonEditorOpen}
             onFlowExprEditorOpen={onFlowExprEditorOpen}
           />

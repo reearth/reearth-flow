@@ -233,6 +233,7 @@ describe("errorMessage", () => {
       "dataNotFound",
       "permissionDenied",
       "tooManyRenders",
+      "workersBusy",
       "unknown",
     ];
 

@@ -79,6 +79,18 @@ type CMSItem struct {
 	UpdatedAt time.Time `json:"updatedAt"`
 }
 
+// The CMS item a run was started for. Names are a display snapshot.
+type CMSItemJobOrigin struct {
+	ProjectID ID `json:"projectId"`
+	ModelID   ID `json:"modelId"`
+	ItemID    ID `json:"itemId"`
+	// The CMS Flow connection that started the run.
+	ConnectionID ID     `json:"connectionId"`
+	ProjectName  string `json:"projectName"`
+	ModelName    string `json:"modelName"`
+	ItemTitle    string `json:"itemTitle"`
+}
+
 type CMSItemsConnection struct {
 	Items      []*CMSItem `json:"items"`
 	TotalCount int        `json:"totalCount"`
@@ -416,6 +428,13 @@ type Job struct {
 	DroppedEventCount *int          `json:"droppedEventCount,omitempty"`
 	// Diagnostics for one node. Pass an empty nodeId for the job-level bucket.
 	NodeDiagnostics []*Diagnostic `json:"nodeDiagnostics,omitempty"`
+	// The trigger that started the job.
+	TriggerID *ID      `json:"triggerId,omitempty"`
+	Trigger   *Trigger `json:"trigger,omitempty"`
+	// Where outside Flow the job was started from.
+	Origin *JobOrigin `json:"origin,omitempty"`
+	// The user who started the job. Null for runs no user started, such as scheduled and API trigger runs, and for jobs from before it was recorded.
+	RunByID *ID `json:"runById,omitempty"`
 }
 
 func (Job) IsNode()        {}
@@ -425,6 +444,11 @@ type JobConnection struct {
 	Nodes      []*Job    `json:"nodes"`
 	PageInfo   *PageInfo `json:"pageInfo"`
 	TotalCount int       `json:"totalCount"`
+}
+
+// Where outside Flow a job was started from.
+type JobOrigin struct {
+	CmsItem *CMSItemJobOrigin `json:"cmsItem,omitempty"`
 }
 
 type JobPayload struct {
@@ -440,14 +464,15 @@ type Log struct {
 }
 
 type Me struct {
-	Auths         []string     `json:"auths"`
-	Email         string       `json:"email"`
-	ID            ID           `json:"id"`
-	Lang          language.Tag `json:"lang"`
-	MyWorkspace   *Workspace   `json:"myWorkspace,omitempty"`
-	MyWorkspaceID ID           `json:"myWorkspaceId"`
-	Name          string       `json:"name"`
-	Workspaces    []*Workspace `json:"workspaces"`
+	Auths         []string      `json:"auths"`
+	Email         string        `json:"email"`
+	ID            ID            `json:"id"`
+	Lang          language.Tag  `json:"lang"`
+	MyWorkspace   *Workspace    `json:"myWorkspace,omitempty"`
+	MyWorkspaceID ID            `json:"myWorkspaceId"`
+	Name          string        `json:"name"`
+	Metadata      *UserMetadata `json:"metadata"`
+	Workspaces    []*Workspace  `json:"workspaces"`
 }
 
 type Mutation struct {
@@ -733,6 +758,9 @@ type Trigger struct {
 	TimeInterval  *TimeInterval `json:"timeInterval,omitempty"`
 	Enabled       bool          `json:"enabled"`
 	Variables     []*Variable   `json:"variables"`
+	// The latest refusal of a time-driven trigger's scheduled run that no
+	// started run has followed yet. Null once a scheduled run starts.
+	LastRefusal *TriggerRefusal `json:"lastRefusal,omitempty"`
 }
 
 func (Trigger) IsNode()        {}
@@ -749,6 +777,14 @@ type TriggerPayload struct {
 	// The trigger's new auth token, only when this mutation issued one. It is
 	// never returned again.
 	AuthToken *string `json:"authToken,omitempty"`
+}
+
+type TriggerRefusal struct {
+	RefusedAt time.Time          `json:"refusedAt"`
+	Code      TriggerRefusalCode `json:"code"`
+	// When the scheduler stops retrying the run. Null for a run that was
+	// skipped, because no retry could start it.
+	RetryUntil *time.Time `json:"retryUntil,omitempty"`
 }
 
 type UnshareProjectInput struct {
@@ -1324,16 +1360,19 @@ type EventSourceType string
 const (
 	EventSourceTypeTimeDriven EventSourceType = "TIME_DRIVEN"
 	EventSourceTypeAPIDriven  EventSourceType = "API_DRIVEN"
+	// Run by Re:Earth CMS for its items.
+	EventSourceTypeCms EventSourceType = "CMS"
 )
 
 var AllEventSourceType = []EventSourceType{
 	EventSourceTypeTimeDriven,
 	EventSourceTypeAPIDriven,
+	EventSourceTypeCms,
 }
 
 func (e EventSourceType) IsValid() bool {
 	switch e {
-	case EventSourceTypeTimeDriven, EventSourceTypeAPIDriven:
+	case EventSourceTypeTimeDriven, EventSourceTypeAPIDriven, EventSourceTypeCms:
 		return true
 	}
 	return false
@@ -2201,6 +2240,77 @@ func (e *TimeInterval) UnmarshalJSON(b []byte) error {
 }
 
 func (e TimeInterval) MarshalJSON() ([]byte, error) {
+	var buf bytes.Buffer
+	e.MarshalGQL(&buf)
+	return buf.Bytes(), nil
+}
+
+// Why a scheduled run was refused.
+type TriggerRefusalCode string
+
+const (
+	// The trigger's deployment no longer exists.
+	TriggerRefusalCodeDeploymentNotFound TriggerRefusalCode = "DEPLOYMENT_NOT_FOUND"
+	TriggerRefusalCodeTriggerDisabled    TriggerRefusalCode = "TRIGGER_DISABLED"
+	// A required workflow variable has no value, or a value does not fit its variable.
+	TriggerRefusalCodeInvalidVariables TriggerRefusalCode = "INVALID_VARIABLES"
+	TriggerRefusalCodeNotAllowed       TriggerRefusalCode = "NOT_ALLOWED"
+	// The workspace has used all of its plan's time-driven trigger runs for the day.
+	TriggerRefusalCodeTimeDrivenTriggerRunsDailyLimit TriggerRefusalCode = "TIME_DRIVEN_TRIGGER_RUNS_DAILY_LIMIT"
+	// The workspace already ran as many jobs as its plan allowed. No longer recorded; kept for refusals recorded before.
+	TriggerRefusalCodeConcurrentJobLimit TriggerRefusalCode = "CONCURRENT_JOB_LIMIT"
+	// The server could not start the run.
+	TriggerRefusalCodeServerError TriggerRefusalCode = "SERVER_ERROR"
+)
+
+var AllTriggerRefusalCode = []TriggerRefusalCode{
+	TriggerRefusalCodeDeploymentNotFound,
+	TriggerRefusalCodeTriggerDisabled,
+	TriggerRefusalCodeInvalidVariables,
+	TriggerRefusalCodeNotAllowed,
+	TriggerRefusalCodeTimeDrivenTriggerRunsDailyLimit,
+	TriggerRefusalCodeConcurrentJobLimit,
+	TriggerRefusalCodeServerError,
+}
+
+func (e TriggerRefusalCode) IsValid() bool {
+	switch e {
+	case TriggerRefusalCodeDeploymentNotFound, TriggerRefusalCodeTriggerDisabled, TriggerRefusalCodeInvalidVariables, TriggerRefusalCodeNotAllowed, TriggerRefusalCodeTimeDrivenTriggerRunsDailyLimit, TriggerRefusalCodeConcurrentJobLimit, TriggerRefusalCodeServerError:
+		return true
+	}
+	return false
+}
+
+func (e TriggerRefusalCode) String() string {
+	return string(e)
+}
+
+func (e *TriggerRefusalCode) UnmarshalGQL(v any) error {
+	str, ok := v.(string)
+	if !ok {
+		return fmt.Errorf("enums must be strings")
+	}
+
+	*e = TriggerRefusalCode(str)
+	if !e.IsValid() {
+		return fmt.Errorf("%s is not a valid TriggerRefusalCode", str)
+	}
+	return nil
+}
+
+func (e TriggerRefusalCode) MarshalGQL(w io.Writer) {
+	fmt.Fprint(w, strconv.Quote(e.String()))
+}
+
+func (e *TriggerRefusalCode) UnmarshalJSON(b []byte) error {
+	s, err := strconv.Unquote(string(b))
+	if err != nil {
+		return err
+	}
+	return e.UnmarshalGQL(s)
+}
+
+func (e TriggerRefusalCode) MarshalJSON() ([]byte, error) {
 	var buf bytes.Buffer
 	e.MarshalGQL(&buf)
 	return buf.Bytes(), nil

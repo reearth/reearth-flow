@@ -9,10 +9,12 @@ import (
 )
 
 type Querier interface {
+	CountEnabledTriggersByWorkspace(ctx context.Context, workspaceID string) (int64, error)
 	CountProjectsByWorkspace(ctx context.Context, workspaceID string) (int64, error)
 	CountPublicProjectsByWorkspace(ctx context.Context, workspaceID string) (int64, error)
-	// Pending and running jobs started at or after the given time. Preview-schema
-	// probes are not runs; legacy rows predate the mode column and hold an empty mode.
+	// Pending and running debug runs started at or after the given time.
+	// Preview-schema probes are not runs; legacy rows predate the mode column and
+	// hold an empty mode.
 	CountRunningJobsByWorkspace(ctx context.Context, arg CountRunningJobsByWorkspaceParams) (int64, error)
 	DeleteAsset(ctx context.Context, id string) error
 	DeleteDeployment(ctx context.Context, id string) error
@@ -32,6 +34,8 @@ type Querier interface {
 	GetEdgeExecution(ctx context.Context, id string) (EdgeExecution, error)
 	GetEdgeExecutionByJobEdgeID(ctx context.Context, arg GetEdgeExecutionByJobEdgeIDParams) (EdgeExecution, error)
 	GetJob(ctx context.Context, id string) (Job, error)
+	// The job a time-driven trigger started for one scheduled time.
+	GetJobByScheduledRun(ctx context.Context, arg GetJobByScheduledRunParams) (Job, error)
 	GetParameter(ctx context.Context, id string) (Parameter, error)
 	GetProject(ctx context.Context, id string) (Project, error)
 	GetProjectAccessByProjectID(ctx context.Context, projectID string) (ProjectAccess, error)
@@ -53,6 +57,8 @@ type Querier interface {
 	ListTriggersByIDs(ctx context.Context, dollar_1 []string) ([]Trigger, error)
 	ListWorkerConfigs(ctx context.Context) ([]WorkerConfig, error)
 	ListWorkerConfigsByIDs(ctx context.Context, dollar_1 []string) ([]WorkerConfig, error)
+	UpdateTriggerLastRefusal(ctx context.Context, arg UpdateTriggerLastRefusalParams) error
+	UpdateTriggerLastRefusalInWorkspaces(ctx context.Context, arg UpdateTriggerLastRefusalInWorkspacesParams) error
 	UpsertAsset(ctx context.Context, arg UpsertAssetParams) error
 	UpsertAssetUpload(ctx context.Context, arg UpsertAssetUploadParams) error
 	UpsertConfig(ctx context.Context, arg UpsertConfigParams) error

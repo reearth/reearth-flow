@@ -10,6 +10,7 @@ import { useHotkeys } from "react-hotkeys-hook";
 import {
   Avatar,
   AvatarFallback,
+  AvatarImage,
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
@@ -60,6 +61,7 @@ const UserMenu: React.FC<Props> = ({
         <DropdownMenuTrigger>
           <div className={`flex size-8 items-center gap-1 ${className}`}>
             <Avatar className="size-full">
+              {me?.photoURL && <AvatarImage src={me.photoURL} alt={me.name} />}
               <AvatarFallback>
                 {me?.name ? me.name.charAt(0).toUpperCase() : "?"}
               </AvatarFallback>

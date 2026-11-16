@@ -35,6 +35,7 @@ graphs:
         type: action
         action: Feature CityGML 2 Reader
         with:
+          hoistAttributes: [gml:id, xlink:href, xml:lang, name, uom]
           dataset:
             type: flowExpr
             value: attributes["cityGmlPath"]

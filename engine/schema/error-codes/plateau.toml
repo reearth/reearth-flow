@@ -1,0 +1,13 @@
+[[codes]]
+code = "plateau.application_schema_unavailable"
+category = "schema"
+default_disposition = "warn_drop"
+message = "could not read or compile the XSDs the city GML names; checked the objectlist without them"
+help = "Without the XSDs, a nested city object the objectlist does not define is not reported. Check that the xsi:schemaLocation of the city GML points to schemas that can be read, such as the schemas folder of the package."
+
+[[codes]]
+code = "plateau.objectlist_prefix_unknown"
+category = "schema"
+default_disposition = "warn_drop"
+message = "objectlist rows use a prefix with no namespace URI, so no element matches them"
+help = "The prefix is not one of the CityGML or i-UR prefixes of the PLATEAU generation the workflow checks. Check the prefix in the objectlist, or use the workflow for the generation the objectlist is written for."

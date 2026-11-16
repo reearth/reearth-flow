@@ -35,6 +35,13 @@ export type JobState = {
   jobId: string;
   status: JobStatus;
   variables?: AnyWorkflowVariable[];
+  // The project's defaults when the run started, by variable id: what tells a
+  // value the user set from one that was simply the default at the time.
+  variableDefaults?: Record<string, unknown>;
+  // Set when the run was started from a selected action rather than the start.
+  startNodeId?: string;
+  // Set when this is another user's run being viewed, to the name they go by.
+  joinedUserName?: string;
   focusedIntermediateData?: string;
   selectedIntermediateData?: SelectedIntermediateData[]; // undefined = never touched, [] = user has selected/deselected
   availableIntermediateData?: AvailableIntermediateData[];

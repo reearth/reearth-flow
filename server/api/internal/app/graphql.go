@@ -85,14 +85,7 @@ func GraphqlAPI(conf config.GraphQLConfig, dev bool, origins []string) echo.Hand
 		srv.Use(extension.Introspection{})
 	}
 
-	srv.SetErrorPresenter(
-		func(ctx context.Context, e error) *gqlerror.Error {
-			if dev {
-				return gqlerror.ErrorPathf(graphql.GetFieldContext(ctx).Path(), "%s", e.Error())
-			}
-			return graphql.DefaultErrorPresenter(ctx, e)
-		},
-	)
+	srv.SetErrorPresenter(errorPresenter(dev))
 
 	return func(c echo.Context) error {
 		req := c.Request()
@@ -104,6 +97,26 @@ func GraphqlAPI(conf config.GraphQLConfig, dev bool, origins []string) echo.Hand
 
 		srv.ServeHTTP(c.Response(), c.Request())
 		return nil
+	}
+}
+
+// errorPresenter turns a resolver's error into the error the client receives,
+// with `extensions.code` set for the errors clients tell apart by code.
+func errorPresenter(dev bool) graphql.ErrorPresenterFunc {
+	return func(ctx context.Context, e error) *gqlerror.Error {
+		var out *gqlerror.Error
+		if dev {
+			out = gqlerror.ErrorPathf(graphql.GetFieldContext(ctx).Path(), "%s", e.Error())
+		} else {
+			out = graphql.DefaultErrorPresenter(ctx, e)
+		}
+		if code := gql.ErrorCode(e); code != "" {
+			if out.Extensions == nil {
+				out.Extensions = map[string]any{}
+			}
+			out.Extensions["code"] = code
+		}
+		return out
 	}
 }
 

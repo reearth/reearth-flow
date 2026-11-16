@@ -74,8 +74,7 @@ export class ProjectsPage {
     const dialog = this.page
       .getByRole("dialog")
       .filter({ hasText: "Edit Project" });
-    const nameInput = dialog.getByPlaceholder("Your project name goes here...");
-    await nameInput.fill(newName);
+    await dialog.getByLabel("Project Name").fill(newName);
     await dialog.getByRole("button", { name: "Save" }).click();
     await dialog.waitFor({ state: "hidden" });
   }
@@ -108,8 +107,14 @@ export class ProjectsPage {
   }
 
   private async waitForListSettled(name: string) {
+    // Other names can contain this one (e.g. "<name> (duplicate)"), so any
+    // card matching the search means the filtered list has loaded.
     await expect(
-      this.projectCard(name).first().or(this.emptyState),
+      this.page
+        .locator("div.group.cursor-pointer.rounded-xl")
+        .filter({ hasText: name })
+        .first()
+        .or(this.emptyState),
     ).toBeVisible({ timeout: 15_000 });
   }
 

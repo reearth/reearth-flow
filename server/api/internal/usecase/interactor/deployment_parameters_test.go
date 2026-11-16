@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"errors"
+	"fmt"
 	"io"
 	"net/url"
 	"strings"
@@ -60,15 +61,22 @@ func (workflowFile) UploadMetadata(context.Context, string, []string) (*url.URL,
 
 var errSubmitRefused = errors.New("batch: submit refused")
 
-// recordingBatch keeps the variables a run is submitted with and refuses the
-// job, so a run stops right after the point the variables are decided.
+// recordingBatch keeps the variables and run limit a run is submitted with and
+// refuses the job, so a run stops right after the point they are decided.
 type recordingBatch struct {
 	gateway.Batch
+	// err is the refusal; errSubmitRefused when unset.
+	err       error
 	submitted []map[string]string
+	maxRuns   []time.Duration
 }
 
-func (b *recordingBatch) SubmitJob(_ context.Context, _ id.JobID, _ string, _ string, vars map[string]string, _ id.ProjectID, _ accountsid.WorkspaceID, _ *id.JobID, _ *uuid.UUID) (string, error) {
+func (b *recordingBatch) SubmitJob(_ context.Context, _ id.JobID, _ string, _ string, vars map[string]string, _ id.ProjectID, _ accountsid.WorkspaceID, _ *id.JobID, _ *uuid.UUID, maxRun time.Duration) (string, error) {
 	b.submitted = append(b.submitted, vars)
+	b.maxRuns = append(b.maxRuns, maxRun)
+	if b.err != nil {
+		return "", b.err
+	}
 	return "", errSubmitRefused
 }
 
@@ -325,6 +333,50 @@ func (f *removingFile) RemoveWorkflow(_ context.Context, u *url.URL) error {
 	return nil
 }
 
+func TestDeployment_ExecuteSubmitsThePlansRunTime(t *testing.T) {
+	t.Parallel()
+
+	f := newParamFixture(t)
+	d := f.deployment(t)
+	i := NewDeployment(f.repo, f.gw, f.job, f.perm)
+
+	_, err := i.Execute(f.ctx, interfaces.ExecuteDeploymentParam{DeploymentID: d.ID()})
+
+	assert.ErrorIs(t, err, interfaces.ErrJobCreationFailed)
+	assert.Equal(t, []time.Duration{30 * time.Minute}, f.batch.maxRuns, "the default plan stops a job after 30 minutes")
+}
+
+func TestDeployment_ExecuteKeepsTheRunWhenTheSubmitIsAmbiguous(t *testing.T) {
+	t.Parallel()
+
+	execute := func(t *testing.T, submitErr error) int64 {
+		t.Helper()
+		f := newParamFixture(t)
+		f.batch.err = submitErr
+		usage := &usageCounter{}
+		f.gw.UsageCounter = usage
+		d := f.deployment(t)
+
+		_, err := NewDeployment(f.repo, f.gw, f.job, f.perm).Execute(f.ctx, interfaces.ExecuteDeploymentParam{DeploymentID: d.ID()})
+
+		assert.ErrorIs(t, err, interfaces.ErrJobCreationFailed)
+		require.Len(t, usage.keys, 1)
+		return usage.counts[usage.keys[0]]
+	}
+
+	t.Run("a job Batch may have made keeps its run", func(t *testing.T) {
+		t.Parallel()
+
+		assert.Equal(t, int64(1), execute(t, errors.New("batch: deadline exceeded")))
+	})
+
+	t.Run("a job known not to exist gives its run back", func(t *testing.T) {
+		t.Parallel()
+
+		assert.Zero(t, execute(t, fmt.Errorf("%w: refused", gateway.ErrJobNotSubmitted)))
+	})
+}
+
 func TestDeployment_ExecuteRequiresRequiredVariables(t *testing.T) {
 	t.Run("an empty required default refuses the run before the plan is asked", func(t *testing.T) {
 		f := newParamFixture(t)
@@ -491,7 +543,7 @@ func TestTrigger_RequiredVariables(t *testing.T) {
 
 		assert.ErrorIs(t, err, interfaces.ErrJobCreationFailed)
 		require.Len(t, f.batch.submitted, 1)
-		assert.Equal(t, "osaka", f.batch.submitted[0]["area"])
+		assert.Equal(t, `"osaka"`, f.batch.submitted[0]["area"])
 	})
 }
 
@@ -512,7 +564,7 @@ func TestTrigger_RunsUseTheDeployedVariables(t *testing.T) {
 
 		assert.ErrorIs(t, err, interfaces.ErrJobCreationFailed)
 		require.Len(t, f.batch.submitted, 1)
-		assert.Equal(t, "deployed", f.batch.submitted[0]["area"])
+		assert.Equal(t, `"deployed"`, f.batch.submitted[0]["area"])
 	})
 
 	t.Run("the trigger's own value over the deployed default", func(t *testing.T) {
@@ -525,7 +577,7 @@ func TestTrigger_RunsUseTheDeployedVariables(t *testing.T) {
 
 		assert.ErrorIs(t, err, interfaces.ErrJobCreationFailed)
 		require.Len(t, f.batch.submitted, 1)
-		assert.Equal(t, "mine", f.batch.submitted[0]["area"])
+		assert.Equal(t, `"mine"`, f.batch.submitted[0]["area"])
 	})
 }
 
@@ -563,8 +615,8 @@ func TestDeployment_ExecuteWithVariables(t *testing.T) {
 
 		assert.ErrorIs(t, err, interfaces.ErrJobCreationFailed)
 		require.Len(t, f.batch.submitted, 1)
-		assert.Equal(t, "osaka", f.batch.submitted[0]["area"])
-		assert.Equal(t, "ja", f.batch.submitted[0]["lang"], "an untouched variable keeps its default")
+		assert.Equal(t, `"osaka"`, f.batch.submitted[0]["area"])
+		assert.Equal(t, `"ja"`, f.batch.submitted[0]["lang"], "an untouched variable keeps its default")
 	})
 
 	t.Run("the job records the values it ran with", func(t *testing.T) {
@@ -637,7 +689,7 @@ func TestDeployment_ExecuteWithVariables(t *testing.T) {
 
 		assert.ErrorIs(t, err, interfaces.ErrJobCreationFailed)
 		require.Len(t, f.batch.submitted, 1)
-		assert.Equal(t, "osaka", f.batch.submitted[0]["area"])
+		assert.Equal(t, `"osaka"`, f.batch.submitted[0]["area"])
 	})
 
 	t.Run("an override that clears a required variable refuses the run", func(t *testing.T) {
@@ -709,7 +761,9 @@ func TestDeployment_ExecuteWithVariables(t *testing.T) {
 }
 
 func TestTrigger_JobRecordsTheVariables(t *testing.T) {
+	t.Parallel()
 	t.Run("a scheduled run records the trigger's value over the default", func(t *testing.T) {
+		t.Parallel()
 		f := newParamFixture(t)
 		d := f.deployment(t, f.param(t, "area", 0, false, "tokyo"), f.param(t, "lang", 1, false, "ja"))
 		tr := f.trigger(t, d, variable.Variable{Key: "area", Type: parameter.TypeText, Value: "osaka"})
@@ -722,7 +776,8 @@ func TestTrigger_JobRecordsTheVariables(t *testing.T) {
 		assert.Equal(t, map[string]any{"area": "osaka", "lang": "ja"}, recordedValues(got))
 	})
 
-	t.Run("an API call's extra value is recorded after the deployment's", func(t *testing.T) {
+	t.Run("an API call's value for a variable the deployment does not define refuses the run", func(t *testing.T) {
+		t.Parallel()
 		f := newParamFixture(t)
 		d := f.deployment(t, f.param(t, "area", 0, false, "tokyo"))
 		tr := trigger.New().NewID().Workspace(f.ws).Deployment(d.ID()).Description("t").Enabled(true).
@@ -730,13 +785,49 @@ func TestTrigger_JobRecordsTheVariables(t *testing.T) {
 		require.NoError(t, f.repo.Trigger.Save(f.ctx, tr))
 		i := NewTrigger(f.repo, f.gw, f.job, f.perm)
 
-		_, _ = i.ExecuteAPITrigger(f.ctx, interfaces.ExecuteAPITriggerParam{
+		_, err := i.ExecuteAPITrigger(f.ctx, interfaces.ExecuteAPITriggerParam{
 			TriggerID: tr.ID(), AuthenticationToken: "secret",
 			Variables: map[string]interface{}{"area": "osaka", "extra": "x"},
 		})
 
-		got := f.recordedJob(t).Parameters()
-		assert.Equal(t, []string{"area", "extra"}, parameterNames(got))
-		assert.Equal(t, map[string]any{"area": "osaka", "extra": "x"}, recordedValues(got))
+		assert.ErrorIs(t, err, interfaces.ErrUnknownVariable)
+		assert.ErrorContains(t, err, "extra")
+		assert.Empty(t, f.plan.asked)
+		assert.Empty(t, f.batch.submitted)
+		jobs, _, err := f.repo.Job.FindByWorkspace(f.ctx, f.ws, nil, nil)
+		require.NoError(t, err)
+		assert.Empty(t, jobs)
+	})
+
+	t.Run("a trigger's value for a variable since removed is neither sent nor recorded", func(t *testing.T) {
+		t.Parallel()
+		f := newParamFixture(t)
+		d := f.deployment(t, f.param(t, "area", 0, false, "tokyo"))
+		tr := f.trigger(t, d, variable.Variable{Key: "gone", Type: parameter.TypeText, Value: "x"})
+		i := NewTrigger(f.repo, f.gw, f.job, f.perm)
+
+		_, _ = i.ExecuteTimeDrivenTrigger(f.ctx, interfaces.ExecuteTimeDrivenTriggerParam{TriggerID: tr.ID()})
+
+		require.Len(t, f.batch.submitted, 1)
+		assert.NotContains(t, f.batch.submitted[0], "gone")
+		assert.Equal(t, []string{"area"}, parameterNames(f.recordedJob(t).Parameters()))
+	})
+
+	t.Run("an API call can fill a variable with no default", func(t *testing.T) {
+		t.Parallel()
+		f := newParamFixture(t)
+		d := f.deployment(t, f.param(t, "area", 0, false, nil))
+		tr := trigger.New().NewID().Workspace(f.ws).Deployment(d.ID()).Description("t").Enabled(true).
+			EventSource("API_DRIVEN").AuthTokenHash(trigger.HashAuthToken("secret")).CreatedAt(time.Now()).UpdatedAt(time.Now()).MustBuild()
+		require.NoError(t, f.repo.Trigger.Save(f.ctx, tr))
+		i := NewTrigger(f.repo, f.gw, f.job, f.perm)
+
+		_, _ = i.ExecuteAPITrigger(f.ctx, interfaces.ExecuteAPITriggerParam{
+			TriggerID: tr.ID(), AuthenticationToken: "secret",
+			Variables: map[string]interface{}{"area": "osaka"},
+		})
+
+		require.Len(t, f.batch.submitted, 1)
+		assert.Equal(t, `"osaka"`, f.batch.submitted[0]["area"])
 	})
 }

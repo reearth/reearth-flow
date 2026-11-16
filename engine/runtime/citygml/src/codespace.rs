@@ -1,11 +1,11 @@
 use std::collections::HashMap;
-use std::sync::Arc;
 
 use quick_xml::events::Event;
 use quick_xml::Reader;
+use reearth_flow_types::{Attribute, AttributeValue};
 use url::Url;
 
-use super::utils::{local_name, XmlChild, XmlNode, EMPTY_NS_ID};
+use super::utils::{local_name, ElementGroup, XmlChild, XmlNode};
 
 pub struct CodelistResolver {
     /// `None` marks a codelist that failed to load; the cause was already reported.
@@ -19,9 +19,8 @@ impl CodelistResolver {
         }
     }
 
-    /// Returns the label and the URL of the codelist it came from, so a caller
-    /// keeping the codelist gets the one that was actually opened.
-    fn lookup(&mut self, source_url: &Url, code_space: &str, code: &str) -> Option<(String, Url)> {
+    /// Returns the label of `code` in the codelist `code_space` names, resolved against `source_url`.
+    fn lookup(&mut self, source_url: &Url, code_space: &str, code: &str) -> Option<String> {
         // codeSpace is joined without restricting absolute URLs or path traversal.
         // This is intentional: the engine assumes trusted input GML running in a controlled environment,
         // consistent with how xlink resolution and zip extraction are handled elsewhere. See PR #2066.
@@ -49,133 +48,77 @@ impl CodelistResolver {
                 "code not found in codelist"
             );
         }
-        dict.get(code).cloned().map(|label| (label, dict_url))
+        dict.get(code).cloned()
     }
 }
 
-/// Walks the fully xlink-resolved `XmlNode` tree and resolves `codeSpace` attributes.
-/// Because nodes carry their own `source_url`, no external URL tracking is needed.
-/// `keep_code_space` adds a `{name}_codeSpace` sibling carrying the codelist's
-/// resolved URL. The document's own `codeSpace` is relative to that document, and
-/// the feature does not carry the document's URL, so the relative form could not
-/// be resolved by anything downstream.
-pub fn resolve(
-    nodes: Vec<Arc<XmlNode>>,
-    resolver: &mut CodelistResolver,
-    keep_code_space: bool,
-) -> Vec<Arc<XmlNode>> {
-    nodes
-        .into_iter()
-        .map(|node| resolve_node(node, resolver, keep_code_space))
-        .collect()
+/// A coded element found in its codelist.
+pub struct Coded {
+    label: String,
+    code: String,
 }
 
-fn resolve_node(
-    node: Arc<XmlNode>,
-    resolver: &mut CodelistResolver,
-    keep_code_space: bool,
-) -> Arc<XmlNode> {
-    match resolve_children(&node.children, resolver, keep_code_space) {
-        None => node,
-        Some(children) => node.with_children(children),
-    }
-}
-
-/// Returns `None` if no children changed (caller keeps original node unchanged).
-fn resolve_children(
-    children: &[XmlChild],
-    resolver: &mut CodelistResolver,
-    keep_code_space: bool,
-) -> Option<Vec<XmlChild>> {
-    let mut out: Option<Vec<XmlChild>> = None;
-
-    for (i, child) in children.iter().enumerate() {
-        match child {
-            XmlChild::Element(e) => {
-                let code_space = e
-                    .attrs
-                    .iter()
-                    .find(|((q, _), _)| local_name(q) == "codeSpace")
-                    .map(|(_, v)| v.clone());
-
-                if let Some(cs) = code_space {
-                    let text: String = e
-                        .children
-                        .iter()
-                        .filter_map(|c| match c {
-                            XmlChild::Text(t) => Some(t.as_str()),
-                            _ => None,
-                        })
-                        .collect();
-                    let trimmed = text.trim();
-
-                    if !trimmed.is_empty() {
-                        if let Some((label, dict_url)) =
-                            resolver.lookup(&e.source_url, &cs, trimmed)
-                        {
-                            if out.is_none() {
-                                out = Some(children[..i].to_vec());
-                            }
-                            let nc = out.as_mut().unwrap();
-                            nc.push(XmlChild::Element(Arc::new(XmlNode {
-                                name: e.name.clone(),
-                                attrs: e
-                                    .attrs
-                                    .iter()
-                                    .filter(|((q, _), _)| local_name(q) != "codeSpace")
-                                    .cloned()
-                                    .collect(),
-                                children: vec![XmlChild::Text(label)],
-                                source_url: e.source_url.clone(),
-                            })));
-                            nc.push(XmlChild::Element(Arc::new(XmlNode {
-                                name: (format!("{}_code", e.name.0), EMPTY_NS_ID),
-                                attrs: vec![],
-                                children: vec![XmlChild::Text(trimmed.to_string())],
-                                source_url: e.source_url.clone(),
-                            })));
-                            if keep_code_space {
-                                nc.push(XmlChild::Element(Arc::new(XmlNode {
-                                    name: (format!("{}_codeSpace", e.name.0), EMPTY_NS_ID),
-                                    attrs: vec![],
-                                    children: vec![XmlChild::Text(dict_url.to_string())],
-                                    source_url: e.source_url.clone(),
-                                })));
-                            }
-                            continue;
-                        }
-                    }
-                    // lookup failed or empty text — fall through to normal recursion
-                }
-
-                let new_node = resolve_node(Arc::clone(e), resolver, keep_code_space);
-                match out {
-                    None => {
-                        if !Arc::ptr_eq(&new_node, e) {
-                            let mut nc = children[..i].to_vec();
-                            nc.push(XmlChild::Element(new_node));
-                            out = Some(nc);
-                        }
-                    }
-                    Some(ref mut nc) => {
-                        nc.push(XmlChild::Element(new_node));
-                    }
-                }
-            }
-            XmlChild::Text(_) => {
-                if let Some(ref mut nc) = out {
-                    nc.push(child.clone());
-                }
-            }
-            XmlChild::Geometry(..) => {
-                if let Some(ref mut nc) = out {
-                    nc.push(child.clone());
-                }
-            }
+impl CodelistResolver {
+    /// Looks `elem` up in the codelist its `codeSpace` names; `None` if it has no match.
+    pub fn resolve(&mut self, elem: &XmlNode) -> Option<Coded> {
+        let (_, code_space) = elem
+            .attrs
+            .iter()
+            .find(|((q, _), _)| local_name(q) == "codeSpace")?;
+        let text: String = elem
+            .children
+            .iter()
+            .filter_map(|c| match c {
+                XmlChild::Text(t) => Some(t.as_str()),
+                _ => None,
+            })
+            .collect();
+        let code = text.trim();
+        if code.is_empty() {
+            return None;
         }
+        let label = self.lookup(&elem.source_url, code_space, code)?;
+        Some(Coded {
+            label,
+            code: code.to_string(),
+        })
     }
+}
 
-    out
+/// `hoist_attributes` with `codeSpace` in it when `keep_absolute_code_space` is set: keeping it means hoisting it.
+pub(super) fn hoisting_code_space(
+    hoist_attributes: &[String],
+    keep_absolute_code_space: bool,
+) -> Vec<String> {
+    let mut hoist_attributes = hoist_attributes.to_vec();
+    if keep_absolute_code_space && !hoist_attributes.iter().any(|a| a == "codeSpace") {
+        hoist_attributes.push("codeSpace".to_string());
+    }
+    hoist_attributes
+}
+
+impl Coded {
+    /// Adds the element with the label in place of its code, which goes in the `_code` sibling beside `hoisted`.
+    pub(super) fn push_into(
+        self,
+        group: &mut ElementGroup,
+        mut value: AttributeValue,
+        mut hoisted: Vec<(String, String)>,
+    ) {
+        match &mut value {
+            AttributeValue::Map(map) => {
+                map.shift_remove("$");
+                if map.is_empty() {
+                    value = AttributeValue::String(self.label);
+                } else {
+                    map.insert(Attribute::new("$"), AttributeValue::String(self.label));
+                }
+            }
+            _ => value = AttributeValue::String(self.label),
+        }
+        hoisted.push(("_code".to_string(), self.code));
+        group.push(value, hoisted);
+    }
 }
 
 fn load_dictionary(url: &Url) -> Option<HashMap<String, String>> {
@@ -263,10 +206,14 @@ fn load_dictionary(url: &Url) -> Option<HashMap<String, String>> {
 #[cfg(test)]
 mod tests {
     use std::io::Write;
+    use std::sync::Arc;
 
     use tempfile::NamedTempFile;
 
+    use reearth_flow_types::Attributes;
+
     use super::*;
+    use crate::utils::EMPTY_NS_ID;
 
     fn write_dict(entries: &[(&str, &str)]) -> NamedTempFile {
         let defs: String = entries
@@ -312,154 +259,225 @@ mod tests {
         assert!(map.contains_key("ok"));
     }
 
-    fn make_code_element(
-        elem_name: &str,
-        code_space: &str,
-        code: &str,
-        source_url: Arc<Url>,
-    ) -> Arc<XmlNode> {
-        Arc::new(XmlNode {
-            name: (elem_name.to_string(), EMPTY_NS_ID),
-            attrs: vec![(
-                ("codeSpace".to_string(), EMPTY_NS_ID),
-                code_space.to_string(),
-            )],
-            children: vec![XmlChild::Text(code.to_string())],
-            source_url,
-        })
-    }
-
-    // On a successful lookup, the element is replaced by two siblings:
-    //   1. same-named element without codeSpace, text = resolved label
-    //   2. "{name}_code" element, text = original code
-    // A third, "{name}_codeSpace", is added only when `keep_code_space` is set.
-    #[test]
-    fn resolve_replaces_element_with_label_and_code_sibling() {
-        let dict_file = write_dict(&[("201", "Residential")]);
-        let dict_filename = dict_file
-            .path()
-            .file_name()
-            .unwrap()
-            .to_str()
-            .unwrap()
-            .to_string();
-        // source_url sits in the same directory so that joining the filename finds the dict.
-        let parent = dict_file.path().parent().unwrap();
-        let source_url = Arc::new(Url::from_file_path(parent.join("source.gml")).unwrap());
-
-        let code_elem = make_code_element("bldg:usage", &dict_filename, "201", source_url.clone());
-        let root = Arc::new(XmlNode {
+    /// A `bldg:Building` with one `bldg:usage` per entry of `codes`, coded against `code_space`.
+    fn building_with_usages(codes: &[&str], code_space: &str, source_url: &Arc<Url>) -> XmlNode {
+        let children = codes
+            .iter()
+            .map(|code| {
+                XmlChild::Element(Arc::new(XmlNode {
+                    name: ("bldg:usage".to_string(), EMPTY_NS_ID),
+                    attrs: vec![
+                        (
+                            ("codeSpace".to_string(), EMPTY_NS_ID),
+                            code_space.to_string(),
+                        ),
+                        (("xml:lang".to_string(), EMPTY_NS_ID), "ja".to_string()),
+                    ],
+                    children: vec![XmlChild::Text(code.to_string())],
+                    source_url: source_url.clone(),
+                }))
+            })
+            .collect();
+        XmlNode {
             name: ("bldg:Building".to_string(), EMPTY_NS_ID),
             attrs: vec![],
-            children: vec![XmlChild::Element(code_elem)],
+            children,
             source_url: source_url.clone(),
-        });
-
-        let mut resolver = CodelistResolver::new();
-        let result = resolve(vec![root], &mut resolver, false);
-
-        let children = &result[0].children;
-        assert_eq!(children.len(), 2, "expected label node + _code node");
-
-        let XmlChild::Element(label_node) = &children[0] else {
-            panic!("first child must be an element");
-        };
-        assert_eq!(label_node.name.0, "bldg:usage");
-        assert!(
-            label_node.attrs.iter().all(|((k, _), _)| k != "codeSpace"),
-            "codeSpace attr must be stripped from label node"
-        );
-        assert!(
-            matches!(label_node.children.as_slice(), [XmlChild::Text(t)] if t == "Residential")
-        );
-
-        let XmlChild::Element(code_node) = &children[1] else {
-            panic!("second child must be an element");
-        };
-        assert_eq!(code_node.name.0, "bldg:usage_code");
-        assert!(matches!(code_node.children.as_slice(), [XmlChild::Text(t)] if t == "201"));
+        }
     }
 
-    // The codelist path is what a writer needs to re-emit `codeSpace`, and the
-    // label/code pair alone cannot reconstruct it.
-    #[test]
-    fn resolve_keeps_the_resolved_codelist_location_as_a_sibling() {
-        let dict_file = write_dict(&[("201", "Residential")]);
-        let dict_filename = dict_file
-            .path()
-            .file_name()
-            .unwrap()
-            .to_str()
-            .unwrap()
-            .to_string();
+    /// The attributes the parser builds from `node`, hoisting the attributes named in `hoist`.
+    fn build(node: &XmlNode, hoist: &[&str], keep_absolute_code_space: bool) -> Attributes {
+        let hoist: Vec<String> = hoist.iter().map(|a| a.to_string()).collect();
+        let hoist = hoisting_code_space(&hoist, keep_absolute_code_space);
+        let value = crate::parser::node_to_attribute_value(
+            node,
+            &hoist,
+            &mut CodelistResolver::new(),
+            keep_absolute_code_space,
+            #[cfg(feature = "new-geometry")]
+            &mut Vec::new(),
+        );
+        let AttributeValue::Map(map) = value else {
+            panic!("expected a map, got {value:?}");
+        };
+        map
+    }
+
+    fn s(v: &str) -> AttributeValue {
+        AttributeValue::String(v.to_string())
+    }
+
+    /// A codelist (`201`, `202`), a document two levels below it, and the relative `codeSpace`.
+    fn dataset() -> (NamedTempFile, Arc<Url>, String) {
+        let dict_file = write_dict(&[("201", "Residential"), ("202", "Commercial")]);
+        let name = dict_file.path().file_name().unwrap().to_str().unwrap();
         let parent = dict_file.path().parent().unwrap();
-        // Laid out the way a PLATEAU dataset is: the document two levels below
-        // the codelist, which it names relative to itself.
         let source_url = Arc::new(
             Url::from_file_path(parent.join("udx").join("bldg").join("source.gml")).unwrap(),
         );
-        let relative = format!("../../{dict_filename}");
+        let relative = format!("../../{name}");
+        (dict_file, source_url, relative)
+    }
 
-        let code_elem = make_code_element("bldg:usage", &relative, "201", source_url.clone());
-        let root = Arc::new(XmlNode {
-            name: ("bldg:Building".to_string(), EMPTY_NS_ID),
-            attrs: vec![],
-            children: vec![XmlChild::Element(code_elem)],
-            source_url: source_url.clone(),
-        });
+    // Keeping the code space hoists it, once, whether or not it was listed.
+    #[test]
+    fn keeping_the_code_space_adds_it_to_the_hoisted_attributes_once() {
+        let listed = vec!["uom".to_string(), "codeSpace".to_string()];
 
-        let mut resolver = CodelistResolver::new();
-        let result = resolve(vec![root], &mut resolver, true);
+        assert_eq!(hoisting_code_space(&listed, true), listed);
+        assert_eq!(hoisting_code_space(&listed, false), listed);
+        assert_eq!(
+            hoisting_code_space(&["uom".to_string()], true),
+            ["uom", "codeSpace"]
+        );
+        assert_eq!(hoisting_code_space(&["uom".to_string()], false), ["uom"]);
+    }
 
-        let children = &result[0].children;
-        assert_eq!(children.len(), 3, "expected label + _code + _codeSpace");
+    fn keys(map: &Attributes) -> Vec<&str> {
+        map.keys().map(|k| k.as_str()).collect()
+    }
 
-        let XmlChild::Element(code_space_node) = &children[2] else {
-            panic!("third child must be an element");
-        };
-        assert_eq!(code_space_node.name.0, "bldg:usage_codeSpace");
-        // The relative path only means something beside the source document,
-        // and the feature does not carry that document's URL, so what is kept
-        // is the codelist the lookup actually opened.
-        let expected = Url::from_file_path(dict_file.path()).unwrap().to_string();
-        assert!(
-            matches!(code_space_node.children.as_slice(), [XmlChild::Text(t)] if t == &expected),
-            "the codelist location must be resolved against the source document, got: {:?}",
-            code_space_node.children
+    // The label replaces the code, which is kept in `{name}_code` right after it.
+    #[test]
+    fn resolves_label_and_code() {
+        let (_dict, source_url, code_space) = dataset();
+        let node = building_with_usages(&["201"], &code_space, &source_url);
+
+        let map = build(&node, &[], false);
+
+        let entries: Vec<_> = map.iter().map(|(k, v)| (k.as_str(), v.clone())).collect();
+        assert_eq!(
+            entries,
+            vec![
+                ("bldg:usage", s("Residential")),
+                ("bldg:usage_code", s("201")),
+            ]
         );
     }
 
-    // When the code is absent from the dictionary the original element must survive intact.
+    // A listed `codeSpace` is hoisted as written, whether or not its code resolved.
     #[test]
-    fn resolve_preserves_node_on_lookup_miss() {
-        let dict_file = write_dict(&[("201", "Residential")]);
-        let dict_filename = dict_file
-            .path()
-            .file_name()
-            .unwrap()
-            .to_str()
-            .unwrap()
-            .to_string();
-        let parent = dict_file.path().parent().unwrap();
-        let source_url = Arc::new(Url::from_file_path(parent.join("source.gml")).unwrap());
+    fn hoists_the_listed_code_space_as_written_beside_the_code() {
+        let (_dict, source_url, code_space) = dataset();
+        let node = building_with_usages(&["201", "999"], &code_space, &source_url);
 
-        let code_elem = make_code_element("bldg:usage", &dict_filename, "999", source_url.clone());
-        let root = Arc::new(XmlNode {
-            name: ("bldg:Building".to_string(), EMPTY_NS_ID),
-            attrs: vec![],
-            children: vec![XmlChild::Element(Arc::clone(&code_elem))],
-            source_url: source_url.clone(),
-        });
+        let map = build(&node, &["codeSpace"], false);
 
-        let mut resolver = CodelistResolver::new();
-        let result = resolve(vec![root], &mut resolver, false);
+        assert_eq!(
+            keys(&map),
+            vec!["bldg:usage", "bldg:usage@codeSpace", "bldg:usage_code"]
+        );
+        assert_eq!(
+            map["bldg:usage@codeSpace"],
+            AttributeValue::Array(vec![s(&code_space), s(&code_space)])
+        );
+    }
 
-        let children = &result[0].children;
-        assert_eq!(children.len(), 1);
-        let XmlChild::Element(elem) = &children[0] else {
-            panic!("child must be an element");
-        };
-        assert_eq!(elem.name.0, "bldg:usage");
-        assert!(elem.attrs.iter().any(|((k, _), _)| k == "codeSpace"));
+    // Resolving the code does not cost the element the other attributes it was asked to hoist.
+    #[test]
+    fn a_resolved_element_keeps_its_other_hoisted_attributes() {
+        let (_dict, source_url, code_space) = dataset();
+        let node = building_with_usages(&["201"], &code_space, &source_url);
+
+        let map = build(&node, &["xml:lang"], false);
+
+        assert_eq!(
+            keys(&map),
+            vec!["bldg:usage", "bldg:usage@xml:lang", "bldg:usage_code"]
+        );
+        assert_eq!(map["bldg:usage@xml:lang"], s("ja"));
+    }
+
+    // The flag hoists `codeSpace` without it being listed, and as the URL it resolves to.
+    #[test]
+    fn keeping_the_code_space_hoists_it_as_an_absolute_url() {
+        let (dict, source_url, code_space) = dataset();
+        let node = building_with_usages(&["201"], &code_space, &source_url);
+
+        let map = build(&node, &[], true);
+
+        assert_eq!(
+            keys(&map),
+            vec!["bldg:usage", "bldg:usage@codeSpace", "bldg:usage_code"]
+        );
+        assert_eq!(
+            map["bldg:usage@codeSpace"],
+            s(Url::from_file_path(dict.path()).unwrap().as_str())
+        );
+    }
+
+    // Listed and kept: one key, holding the absolute URL rather than the text as written.
+    #[test]
+    fn keeping_a_listed_code_space_replaces_its_value() {
+        let (dict, source_url, code_space) = dataset();
+        let node = building_with_usages(&["201"], &code_space, &source_url);
+
+        let map = build(&node, &["codeSpace"], true);
+
+        assert_eq!(
+            keys(&map),
+            vec!["bldg:usage", "bldg:usage@codeSpace", "bldg:usage_code"]
+        );
+        assert_eq!(
+            map["bldg:usage@codeSpace"],
+            s(Url::from_file_path(dict.path()).unwrap().as_str())
+        );
+    }
+
+    // An unresolved element keeps its value, and a lone one gets no `_code` at all.
+    #[test]
+    fn leaves_a_lone_unresolved_element_untouched() {
+        let (_dict, source_url, code_space) = dataset();
+        let node = building_with_usages(&["999"], &code_space, &source_url);
+
+        let map = build(&node, &[], false);
+
+        assert_eq!(map.len(), 1);
+        assert_eq!(map["bldg:usage"], s("999"));
+    }
+
+    // The codelist does not have to resolve the code for its location to be absolute.
+    #[test]
+    fn keeping_the_code_space_does_not_need_the_code_to_resolve() {
+        let (dict, source_url, code_space) = dataset();
+        let node = building_with_usages(&["999"], &code_space, &source_url);
+
+        let map = build(&node, &[], true);
+
+        assert_eq!(keys(&map), vec!["bldg:usage", "bldg:usage@codeSpace"]);
+        assert_eq!(map["bldg:usage"], s("999"));
+        assert_eq!(
+            map["bldg:usage@codeSpace"],
+            s(Url::from_file_path(dict.path()).unwrap().as_str())
+        );
+    }
+
+    // An unresolved element keeps its value and gets a `Null` in `_code`, so the arrays stay aligned.
+    #[test]
+    fn pads_unresolved_elements_with_null_to_stay_aligned() {
+        let (dict, source_url, code_space) = dataset();
+        let node = building_with_usages(&["999", "201", "999", "202"], &code_space, &source_url);
+
+        let map = build(&node, &[], true);
+
+        assert_eq!(
+            keys(&map),
+            vec!["bldg:usage", "bldg:usage@codeSpace", "bldg:usage_code"]
+        );
+        assert_eq!(
+            map["bldg:usage"],
+            AttributeValue::Array(vec![s("999"), s("Residential"), s("999"), s("Commercial"),])
+        );
+        let null = AttributeValue::Null;
+        assert_eq!(
+            map["bldg:usage_code"],
+            AttributeValue::Array(vec![null.clone(), s("201"), null.clone(), s("202")])
+        );
+        let url = s(Url::from_file_path(dict.path()).unwrap().as_str());
+        assert_eq!(
+            map["bldg:usage@codeSpace"],
+            AttributeValue::Array(vec![url.clone(), url.clone(), url.clone(), url])
+        );
     }
 }

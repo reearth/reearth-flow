@@ -116,6 +116,137 @@ graphs:
     to: 9fccbcdb-ab58-4fda-9a47-05a45c84a7fb
     fromPort: features
     toPort: features
+- id: d9f0c1d7-3bd4-49d8-a8ba-f56994776d22
+  name: AttributeTreeMeasureCaster
+  nodes:
+  - id: 8829e033-7b04-4226-a93a-a77966d30bab
+    name: InputRouter
+    type: action
+    action: Input Router
+    with:
+      routingPort: features
+  - id: 261b0bed-2b1f-47e3-86d2-cc3916c3b3bc
+    name: AttributeManagerCastMeasures
+    type: action
+    action: Attribute Manager
+    with:
+      operations:
+      - attribute: __city_gml_attributes
+        method: convert
+        value:
+          type: flowExpr
+          value: |
+            to_number = fn(v) {
+              if type(v) != str { return v; }
+              s = v.strip();
+              if len(s) > 0 and len(s.split(" ")) == 1 { float(s) } else { v }
+            };
+            tree = attributes.get("__city_gml_attributes");
+            stack = [];
+            if type(tree) == dict or type(tree) == list { stack.append(tree); }
+            while len(stack) > 0 {
+              node = stack.pop();
+              if type(node) == dict {
+                for k in node.keys() {
+                  if k.ends_with("@uom") {
+                    base = k.remove_suffix("@uom");
+                    v = node.get(base);
+                    if type(v) == list { node[base] = itertools.map(v, to_number); } else if v != null { node[base] = to_number(v); }
+                    node[base + "_uom"] = node.pop(k);
+                  }
+                }
+                for v in node.values() {
+                  if type(v) == dict or type(v) == list { stack.append(v); }
+                }
+              } else {
+                for v in node {
+                  if type(v) == dict or type(v) == list { stack.append(v); }
+                }
+              }
+            }
+            tree
+  - id: bee00d91-7195-46e6-8d27-d7942c92a774
+    name: OutputRouter
+    type: action
+    action: Output Router
+    with:
+      routingPort: features
+  edges:
+  - id: 0cd4a8bf-6166-4a3f-885f-a01ee0333a51
+    from: 8829e033-7b04-4226-a93a-a77966d30bab
+    to: 261b0bed-2b1f-47e3-86d2-cc3916c3b3bc
+    fromPort: features
+    toPort: features
+  - id: 7d1ffb53-1e52-4ab8-9985-bbdce4350ca1
+    from: 261b0bed-2b1f-47e3-86d2-cc3916c3b3bc
+    to: bee00d91-7195-46e6-8d27-d7942c92a774
+    fromPort: features
+    toPort: features
+- id: 7c0e4a91-2d6b-4f83-9a15-e8b3d5f10c72
+  name: AttributeTreeUnwrapper
+  nodes:
+  - id: a41d8e07-3b92-4c65-8f1a-06d7e92b4c38
+    name: InputRouter
+    type: action
+    action: Input Router
+    with:
+      routingPort: features
+  - id: 5f2b90c6-e1a4-4d73-b8e5-2c9a07d41f86
+    name: AttributeManagerUnwrapTree
+    type: action
+    action: Attribute Manager
+    with:
+      operations:
+      - attribute: cityGmlAttributes
+        method: convert
+        value:
+          type: flowExpr
+          value: |
+            tree = attributes.get("cityGmlAttributes");
+            stack = [];
+            if type(tree) == dict { stack.append(tree); }
+            while len(stack) > 0 {
+              node = stack.pop();
+              regrouped = {};
+              for key in node.keys() {
+                values = node[key];
+                if type(values) != list { values = [values]; }
+                for value in values {
+                  name = key;
+                  content = value;
+                  if type(value) == dict and len(value) == 1 and type(value.values()[0]) != list {
+                    name = value.keys()[0];
+                    content = value.values()[0];
+                  }
+                  if regrouped.get(name) == null { regrouped[name] = []; }
+                  regrouped[name].append(content);
+                }
+              }
+              for key in node.keys() { node.pop(key); }
+              for name in regrouped.keys() {
+                contents = regrouped[name];
+                if len(contents) == 1 and type(contents[0]) != dict { node[name] = contents[0]; } else { node[name] = contents; }
+                for content in contents { if type(content) == dict { stack.append(content); } }
+              }
+            }
+            tree
+  - id: d93c15b8-6a07-4e2f-91d4-b0e83f5a7c26
+    name: OutputRouter
+    type: action
+    action: Output Router
+    with:
+      routingPort: features
+  edges:
+  - id: e08a6d42-17b5-4c93-a2f6-5d1c9e34b807
+    from: a41d8e07-3b92-4c65-8f1a-06d7e92b4c38
+    to: 5f2b90c6-e1a4-4d73-b8e5-2c9a07d41f86
+    fromPort: features
+    toPort: features
+  - id: 1b7f3c95-8e20-4a64-b5d9-c7a2e60f4d13
+    from: 5f2b90c6-e1a4-4d73-b8e5-2c9a07d41f86
+    to: d93c15b8-6a07-4e2f-91d4-b0e83f5a7c26
+    fromPort: features
+    toPort: features
 - id: 7e98d856-1438-4148-bdcb-91747ef2e405
   name: PLATEAU3.LodSplitterWithDM
   nodes:
@@ -309,10 +440,24 @@ graphs:
       dataset:
         type: flowExpr
         value: attributes["path"]
-      keepAttributes: false
-      flattenSingleChildObjects: true
-      flattenMeasureTypes: true
-      cityGmlAttributesKey: cityGmlAttributes
+      hoistAttributes:
+      - uom
+      cityGmlAttributesKey: __city_gml_attributes
+  - id: 7dbe6b51-4834-44c8-9110-e550fb573843
+    name: AttributeTreeMeasureCaster
+    type: subGraph
+    subGraphId: d9f0c1d7-3bd4-49d8-a8ba-f56994776d22
+  - id: ff201117-88c2-4ab0-baa5-c0ec4394d72a
+    name: AttributeManagerRenameTreeKey
+    type: action
+    action: Attribute Manager
+    with:
+      operations:
+      - attribute: __city_gml_attributes
+        method: rename
+        value:
+          type: string
+          value: cityGmlAttributes
   - id: f6d97a01-5ad8-4f17-a1e9-d6e818b41619
     name: TargetPackagesFilter
     type: action
@@ -323,6 +468,10 @@ graphs:
           type: flowExpr
           value: not variables["targetPackages"] or attributes["package"] in variables["targetPackages"]
         outputPort: features
+  - id: 2a6d9f84-c1e3-4075-8b2a-e9d41f607c53
+    name: AttributeTreeUnwrapper
+    type: subGraph
+    subGraphId: 7c0e4a91-2d6b-4f83-9a15-e8b3d5f10c72
   - id: e2441531-649a-4dcd-916f-ac59f7d56de3
     name: AttributeManagerPreFlattener
     type: action
@@ -463,11 +612,26 @@ graphs:
     toPort: features
   - id: 2fda72bd-a8a2-439e-9220-ed04dfad61c6
     from: e3fb9c45-57d1-4d3d-8723-8fe9932f2a17
+    to: 7dbe6b51-4834-44c8-9110-e550fb573843
+    fromPort: features
+    toPort: features
+  - id: e982c91b-919a-4de5-a3a5-ac0dcecc77ca
+    from: 7dbe6b51-4834-44c8-9110-e550fb573843
+    to: ff201117-88c2-4ab0-baa5-c0ec4394d72a
+    fromPort: features
+    toPort: features
+  - id: 2d9946d4-11d6-489d-a824-d2a2c9c4d074
+    from: ff201117-88c2-4ab0-baa5-c0ec4394d72a
     to: f6d97a01-5ad8-4f17-a1e9-d6e818b41619
     fromPort: features
     toPort: features
   - id: ed3607e7-38c8-4034-82f3-467c3e0487b2
     from: f6d97a01-5ad8-4f17-a1e9-d6e818b41619
+    to: 2a6d9f84-c1e3-4075-8b2a-e9d41f607c53
+    fromPort: features
+    toPort: features
+  - id: 4e70b1c8-9a35-4f62-b0d7-83c5a2e1f69d
+    from: 2a6d9f84-c1e3-4075-8b2a-e9d41f607c53
     to: e2441531-649a-4dcd-916f-ac59f7d56de3
     fromPort: features
     toPort: features

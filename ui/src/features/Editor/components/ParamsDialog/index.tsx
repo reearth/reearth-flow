@@ -10,6 +10,7 @@ import {
   DialogContent,
   DialogHeader,
   DialogTitle,
+  PresenceAvatar,
 } from "@flow/components";
 import type { EditorContext as FieldContext } from "@flow/components/SchemaForm";
 import { useIsReadOnly } from "@flow/features/Editor/editorContext";
@@ -26,7 +27,6 @@ import { normalizeParams } from "@flow/utils";
 
 import {
   ParamEditor,
-  ValueEditorDialog,
   PythonEditorDialog,
   FlowExprEditorDialog,
 } from "./components";
@@ -77,12 +77,8 @@ const ParamsDialog: React.FC<Props> = ({
   const readonly = useIsReadOnly();
   const clientId = String(yDoc?.clientID ?? "local");
 
-  const [openValueEditor, setOpenValueEditor] = useState(false);
   const [openPythonEditor, setOpenPythonEditor] = useState(false);
   const [openFlowExprEditor, setOpenFlowExprEditor] = useState(false);
-  const [valueEditorContext, setValueEditorContext] = useState<
-    FieldContext | undefined
-  >(undefined);
   const [pythonEditorContext, setPythonEditorContext] = useState<
     FieldContext | undefined
   >(undefined);
@@ -329,6 +325,7 @@ const ParamsDialog: React.FC<Props> = ({
           clientId: user.clientId,
           color: user.color,
           userName: user.userName,
+          photoURL: user.photoURL,
         });
       }
     });
@@ -373,10 +370,6 @@ const ParamsDialog: React.FC<Props> = ({
     updateMyFieldPatch(openNode.id, "paramsPatch", fieldContext.key, value);
   };
 
-  const handleValueChange = (value: any) => {
-    if (valueEditorContext) applyFieldPatch(valueEditorContext, value);
-  };
-
   const handleFlowExprValueSubmit = (codeValue: CodeValue) => {
     if (flowExprEditorContext)
       applyFieldPatch(flowExprEditorContext, codeValue);
@@ -404,16 +397,7 @@ const ParamsDialog: React.FC<Props> = ({
                       <>
                         {nodeUsers.slice(0, 2).map((user) => (
                           <div key={user.clientId}>
-                            <div
-                              className="flex size-6 items-center justify-center rounded-full ring-2 ring-secondary/20"
-                              style={{
-                                backgroundColor: user.color || undefined,
-                              }}>
-                              <span className="text-xs font-medium text-white select-none">
-                                {user.userName.charAt(0).toUpperCase()}
-                                {user.userName.charAt(1)}
-                              </span>
-                            </div>
+                            <PresenceAvatar user={user} />
                           </div>
                         ))}
                         {nodeUsers.length > 2 && (
@@ -445,10 +429,6 @@ const ParamsDialog: React.FC<Props> = ({
               onMigrate={handleMigrate}
               onWorkflowRename={onWorkflowRename}
               onParamFieldFocus={onParamFieldFocus}
-              onValueEditorOpen={(fieldContext) => {
-                setValueEditorContext(fieldContext);
-                setOpenValueEditor(true);
-              }}
               onPythonEditorOpen={(fieldContext) => {
                 setPythonEditorContext(fieldContext);
                 setOpenPythonEditor(true);
@@ -461,17 +441,6 @@ const ParamsDialog: React.FC<Props> = ({
           )}
         </DialogContent>
       </Dialog>
-      {valueEditorContext && (
-        <ValueEditorDialog
-          open={openValueEditor}
-          fieldContext={valueEditorContext}
-          onClose={() => {
-            setOpenValueEditor(false);
-            setValueEditorContext(undefined);
-          }}
-          onValueSubmit={handleValueChange}
-        />
-      )}
       {pythonEditorContext && (
         <PythonEditorDialog
           open={openPythonEditor}

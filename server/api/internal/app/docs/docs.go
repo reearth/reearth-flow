@@ -355,6 +355,11 @@ const docTemplate = `{
         },
         "/api/triggers/{triggerId}/execute-scheduled": {
             "post": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
                 "description": "Execute a time-driven trigger (scheduled job)",
                 "produces": [
                     "application/json"
@@ -374,13 +379,25 @@ const docTemplate = `{
                 ],
                 "responses": {
                     "200": {
-                        "description": "Execution response with runID, deploymentID, and status",
+                        "description": "Execution response with runID, deploymentID, and status; or, for a run that can never succeed, status skipped with a code naming why",
                         "schema": {
                             "type": "object"
                         }
                     },
                     "400": {
                         "description": "Invalid trigger ID",
+                        "schema": {
+                            "type": "object"
+                        }
+                    },
+                    "401": {
+                        "description": "Not a run sent by Cloud Scheduler",
+                        "schema": {
+                            "type": "object"
+                        }
+                    },
+                    "409": {
+                        "description": "The job for this scheduled time is still being started (code scheduled_run_in_progress)",
                         "schema": {
                             "type": "object"
                         }

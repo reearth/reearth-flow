@@ -19,7 +19,7 @@ import (
 
 // TestPlanHourlySchedule drives the real HTTP policy checker against a stand-in
 // for the policy-check endpoint, which answers flow_hourly_schedule from the
-// workspace's plan.
+// workspace's plan and allows every other check.
 func TestPlanHourlySchedule(t *testing.T) {
 	ctrl := gomock.NewController(t)
 	operator := factory.NewUser(func(b *accountsuser.Builder) {})
@@ -32,7 +32,7 @@ func TestPlanHourlySchedule(t *testing.T) {
 			CheckType string `json:"check_type"`
 		}
 		_ = json.NewDecoder(r.Body).Decode(&req)
-		allowed := req.CheckType == "flow_hourly_schedule" && hourly.Load()
+		allowed := req.CheckType != "flow_hourly_schedule" || hourly.Load()
 		_ = json.NewEncoder(w).Encode(map[string]any{"allowed": allowed, "check_type": req.CheckType, "value": 1})
 	}))
 	defer policyService.Close()

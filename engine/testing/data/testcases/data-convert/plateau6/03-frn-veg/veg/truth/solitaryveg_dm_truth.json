@@ -9,7 +9,6 @@
       "meshcode": "54401008",
       "feature_type": "veg:SolitaryVegetationObject",
       "gml:id": "veg_37a47d13-36b8-4163-b462-5ba4aeb583f3",
-      "veg:height_uom": "m",
       "core:creationDate": "2024-03-19T00:00:00",
       "core:adeOfAbstractCityObject": [
         {
@@ -71,7 +70,8 @@
       ],
       "veg:class": "高木（樹高3m以上）",
       "veg:class_code": "1",
-      "veg:height": 12.4
+      "veg:height": 12.4,
+      "veg:height_uom": "m"
     },
     "core:creationDate": "2024-03-19T00:00:00",
     "veg:class": "高木（樹高3m以上）",
@@ -98,7 +98,6 @@
       "meshcode": "54401008",
       "feature_type": "veg:SolitaryVegetationObject",
       "gml:id": "veg_99045825-5873-4cc7-acea-91f19dfd874c",
-      "veg:height_uom": "m",
       "core:creationDate": "2024-03-19T00:00:00",
       "core:adeOfAbstractCityObject": [
         {
@@ -160,7 +159,8 @@
       ],
       "veg:class": "高木（樹高3m以上）",
       "veg:class_code": "1",
-      "veg:height": 8.0
+      "veg:height": 8.0,
+      "veg:height_uom": "m"
     },
     "core:creationDate": "2024-03-19T00:00:00",
     "veg:class": "高木（樹高3m以上）",
@@ -187,7 +187,6 @@
       "meshcode": "54401008",
       "feature_type": "veg:SolitaryVegetationObject",
       "gml:id": "veg_d376789c-4eb7-4be5-9d91-719d809f63ee",
-      "veg:height_uom": "m",
       "core:creationDate": "2024-03-19T00:00:00",
       "core:adeOfAbstractCityObject": [
         {
@@ -249,7 +248,8 @@
       ],
       "veg:class": "高木（樹高3m以上）",
       "veg:class_code": "1",
-      "veg:height": 12.4
+      "veg:height": 12.4,
+      "veg:height_uom": "m"
     },
     "core:creationDate": "2024-03-19T00:00:00",
     "veg:class": "高木（樹高3m以上）",

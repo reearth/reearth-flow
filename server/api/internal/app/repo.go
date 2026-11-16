@@ -272,10 +272,15 @@ func initScheduler(ctx context.Context, conf *config.Config) gateway.Scheduler {
 		return nil
 	}
 
+	if conf.Scheduler_SAEmail == "" {
+		log.Warnf("Scheduler: REEARTH_FLOW_SCHEDULER_SA_EMAIL is not set; scheduled runs will be refused")
+	}
+
 	config := gcpscheduler.SchedulerConfig{
-		ProjectID: conf.GCPProject,
-		Location:  conf.GCPRegion,
-		Host:      conf.Host,
+		ProjectID:           conf.GCPProject,
+		Location:            conf.GCPRegion,
+		Host:                conf.Host,
+		ServiceAccountEmail: conf.Scheduler_SAEmail,
 	}
 
 	scheduler, err := gcpscheduler.NewScheduler(ctx, config)

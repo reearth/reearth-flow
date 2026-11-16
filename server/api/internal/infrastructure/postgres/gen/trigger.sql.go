@@ -10,6 +10,17 @@ import (
 	"time"
 )
 
+const countEnabledTriggersByWorkspace = `-- name: CountEnabledTriggersByWorkspace :one
+SELECT count(*) FROM triggers WHERE workspace_id = $1 AND enabled
+`
+
+func (q *Queries) CountEnabledTriggersByWorkspace(ctx context.Context, workspaceID string) (int64, error) {
+	row := q.db.QueryRow(ctx, countEnabledTriggersByWorkspace, workspaceID)
+	var count int64
+	err := row.Scan(&count)
+	return count, err
+}
+
 const deleteTrigger = `-- name: DeleteTrigger :exec
 DELETE FROM triggers WHERE id = $1
 `
@@ -20,7 +31,7 @@ func (q *Queries) DeleteTrigger(ctx context.Context, id string) error {
 }
 
 const getTrigger = `-- name: GetTrigger :one
-SELECT id, workspace_id, deployment_id, description, event_source, time_interval, enabled, last_triggered, variables, created_at, updated_at, auth_token_hash, auth_token_hint FROM triggers WHERE id = $1
+SELECT id, workspace_id, deployment_id, description, event_source, time_interval, enabled, last_triggered, variables, created_at, updated_at, auth_token_hash, auth_token_hint, last_refused_at, last_refusal_code, last_refusal_retry_until FROM triggers WHERE id = $1
 `
 
 func (q *Queries) GetTrigger(ctx context.Context, id string) (Trigger, error) {
@@ -40,12 +51,15 @@ func (q *Queries) GetTrigger(ctx context.Context, id string) (Trigger, error) {
 		&i.UpdatedAt,
 		&i.AuthTokenHash,
 		&i.AuthTokenHint,
+		&i.LastRefusedAt,
+		&i.LastRefusalCode,
+		&i.LastRefusalRetryUntil,
 	)
 	return i, err
 }
 
 const listTriggersByDeployment = `-- name: ListTriggersByDeployment :many
-SELECT id, workspace_id, deployment_id, description, event_source, time_interval, enabled, last_triggered, variables, created_at, updated_at, auth_token_hash, auth_token_hint FROM triggers WHERE deployment_id = $1
+SELECT id, workspace_id, deployment_id, description, event_source, time_interval, enabled, last_triggered, variables, created_at, updated_at, auth_token_hash, auth_token_hint, last_refused_at, last_refusal_code, last_refusal_retry_until FROM triggers WHERE deployment_id = $1
 `
 
 func (q *Queries) ListTriggersByDeployment(ctx context.Context, deploymentID string) ([]Trigger, error) {
@@ -71,6 +85,9 @@ func (q *Queries) ListTriggersByDeployment(ctx context.Context, deploymentID str
 			&i.UpdatedAt,
 			&i.AuthTokenHash,
 			&i.AuthTokenHint,
+			&i.LastRefusedAt,
+			&i.LastRefusalCode,
+			&i.LastRefusalRetryUntil,
 		); err != nil {
 			return nil, err
 		}
@@ -83,7 +100,7 @@ func (q *Queries) ListTriggersByDeployment(ctx context.Context, deploymentID str
 }
 
 const listTriggersByIDs = `-- name: ListTriggersByIDs :many
-SELECT id, workspace_id, deployment_id, description, event_source, time_interval, enabled, last_triggered, variables, created_at, updated_at, auth_token_hash, auth_token_hint FROM triggers WHERE id = ANY($1::text[])
+SELECT id, workspace_id, deployment_id, description, event_source, time_interval, enabled, last_triggered, variables, created_at, updated_at, auth_token_hash, auth_token_hint, last_refused_at, last_refusal_code, last_refusal_retry_until FROM triggers WHERE id = ANY($1::text[])
 `
 
 func (q *Queries) ListTriggersByIDs(ctx context.Context, dollar_1 []string) ([]Trigger, error) {
@@ -109,6 +126,9 @@ func (q *Queries) ListTriggersByIDs(ctx context.Context, dollar_1 []string) ([]T
 			&i.UpdatedAt,
 			&i.AuthTokenHash,
 			&i.AuthTokenHint,
+			&i.LastRefusedAt,
+			&i.LastRefusalCode,
+			&i.LastRefusalRetryUntil,
 		); err != nil {
 			return nil, err
 		}
@@ -120,12 +140,65 @@ func (q *Queries) ListTriggersByIDs(ctx context.Context, dollar_1 []string) ([]T
 	return items, nil
 }
 
+const updateTriggerLastRefusal = `-- name: UpdateTriggerLastRefusal :exec
+UPDATE triggers SET
+  last_refused_at          = $2,
+  last_refusal_code        = $3,
+  last_refusal_retry_until = $4
+WHERE id = $1
+`
+
+type UpdateTriggerLastRefusalParams struct {
+	ID                    string
+	LastRefusedAt         *time.Time
+	LastRefusalCode       *string
+	LastRefusalRetryUntil *time.Time
+}
+
+func (q *Queries) UpdateTriggerLastRefusal(ctx context.Context, arg UpdateTriggerLastRefusalParams) error {
+	_, err := q.db.Exec(ctx, updateTriggerLastRefusal,
+		arg.ID,
+		arg.LastRefusedAt,
+		arg.LastRefusalCode,
+		arg.LastRefusalRetryUntil,
+	)
+	return err
+}
+
+const updateTriggerLastRefusalInWorkspaces = `-- name: UpdateTriggerLastRefusalInWorkspaces :exec
+UPDATE triggers SET
+  last_refused_at          = $1,
+  last_refusal_code        = $2,
+  last_refusal_retry_until = $3
+WHERE id = $4 AND workspace_id = ANY($5::text[])
+`
+
+type UpdateTriggerLastRefusalInWorkspacesParams struct {
+	LastRefusedAt         *time.Time
+	LastRefusalCode       *string
+	LastRefusalRetryUntil *time.Time
+	ID                    string
+	WorkspaceIds          []string
+}
+
+func (q *Queries) UpdateTriggerLastRefusalInWorkspaces(ctx context.Context, arg UpdateTriggerLastRefusalInWorkspacesParams) error {
+	_, err := q.db.Exec(ctx, updateTriggerLastRefusalInWorkspaces,
+		arg.LastRefusedAt,
+		arg.LastRefusalCode,
+		arg.LastRefusalRetryUntil,
+		arg.ID,
+		arg.WorkspaceIds,
+	)
+	return err
+}
+
 const upsertTrigger = `-- name: UpsertTrigger :exec
 INSERT INTO triggers (
   id, workspace_id, deployment_id, description, event_source,
   time_interval, auth_token_hash, auth_token_hint, enabled, last_triggered,
-  variables, created_at, updated_at
-) VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13)
+  variables, created_at, updated_at,
+  last_refused_at, last_refusal_code, last_refusal_retry_until
+) VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16)
 ON CONFLICT (id) DO UPDATE SET
   workspace_id   = EXCLUDED.workspace_id,
   deployment_id  = EXCLUDED.deployment_id,
@@ -138,23 +211,29 @@ ON CONFLICT (id) DO UPDATE SET
   last_triggered = EXCLUDED.last_triggered,
   variables      = EXCLUDED.variables,
   created_at     = EXCLUDED.created_at,
-  updated_at     = EXCLUDED.updated_at
+  updated_at     = EXCLUDED.updated_at,
+  last_refused_at          = EXCLUDED.last_refused_at,
+  last_refusal_code        = EXCLUDED.last_refusal_code,
+  last_refusal_retry_until = EXCLUDED.last_refusal_retry_until
 `
 
 type UpsertTriggerParams struct {
-	ID            string
-	WorkspaceID   string
-	DeploymentID  string
-	Description   string
-	EventSource   string
-	TimeInterval  *string
-	AuthTokenHash *string
-	AuthTokenHint *string
-	Enabled       bool
-	LastTriggered *time.Time
-	Variables     []byte
-	CreatedAt     time.Time
-	UpdatedAt     time.Time
+	ID                    string
+	WorkspaceID           string
+	DeploymentID          string
+	Description           string
+	EventSource           string
+	TimeInterval          *string
+	AuthTokenHash         *string
+	AuthTokenHint         *string
+	Enabled               bool
+	LastTriggered         *time.Time
+	Variables             []byte
+	CreatedAt             time.Time
+	UpdatedAt             time.Time
+	LastRefusedAt         *time.Time
+	LastRefusalCode       *string
+	LastRefusalRetryUntil *time.Time
 }
 
 func (q *Queries) UpsertTrigger(ctx context.Context, arg UpsertTriggerParams) error {
@@ -172,6 +251,9 @@ func (q *Queries) UpsertTrigger(ctx context.Context, arg UpsertTriggerParams) er
 		arg.Variables,
 		arg.CreatedAt,
 		arg.UpdatedAt,
+		arg.LastRefusedAt,
+		arg.LastRefusalCode,
+		arg.LastRefusalRetryUntil,
 	)
 	return err
 }

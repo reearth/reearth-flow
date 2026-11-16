@@ -3,6 +3,7 @@ import {
   BroomIcon,
   CaretDownIcon,
   CircleIcon,
+  CopyIcon,
   PlayIcon,
   StopIcon,
   WarningCircleIcon,
@@ -14,6 +15,7 @@ import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
+  DropdownMenuSeparator,
   DropdownMenuTrigger,
   IconButton,
   Popover,
@@ -21,6 +23,7 @@ import {
   PopoverTrigger,
 } from "@flow/components";
 import { useEditorContext } from "@flow/features/Editor/editorContext";
+import { useToast } from "@flow/features/NotificationSystem/useToast";
 import { useSubscription } from "@flow/lib/gql/subscriptions/useSubscription";
 import { useT } from "@flow/lib/i18n";
 import { useIndexedDB } from "@flow/lib/indexedDB";
@@ -34,6 +37,8 @@ import type {
   JobStatus,
   Node,
 } from "@flow/types";
+import { getJobStatusLabel } from "@flow/utils";
+import { copyToClipboard } from "@flow/utils/copyToClipboard";
 
 import {
   DebugActiveRunsPopover,
@@ -242,7 +247,9 @@ const StartButton: React.FC<{
                 tooltipText={
                   isRunStale
                     ? t("Debug Cache is Stale")
-                    : (jobStatus ?? t("Start debug run of workflow"))
+                    : jobStatus
+                      ? getJobStatusLabel(jobStatus, t)
+                      : t("Start debug run of workflow")
                 }
                 tooltipOffset={tooltipOffset}
                 delayDuration={200}
@@ -389,6 +396,7 @@ const DebugRunDropDownMenu: React.FC<{
   onShowDebugStartPopover,
 }) => {
   const t = useT();
+  const { toast } = useToast();
   const [showDropDownMenu, setShowDropDownMenu] = useState<boolean>(false);
   const { getNodes } = useReactFlow();
   const selectedNode =
@@ -466,6 +474,22 @@ const DebugRunDropDownMenu: React.FC<{
             </span>
             <p>{t("Run From Selected Action")}</p>
           </div>
+        </DropdownMenuItem>
+        <DropdownMenuSeparator />
+        {/* For bug reports and support: not shown anywhere else in the editor. */}
+        <DropdownMenuItem
+          className="flex items-center gap-2"
+          disabled={!debugJob?.jobId}
+          onClick={() => {
+            if (!debugJob?.jobId) return;
+            copyToClipboard(debugJob.jobId);
+            toast({
+              title: t("Copied to clipboard"),
+              description: t("Debug run job ID copied to clipboard"),
+            });
+          }}>
+          <CopyIcon weight="light" />
+          <p>{t("Copy Job ID")}</p>
         </DropdownMenuItem>
       </DropdownMenuContent>
     </DropdownMenu>

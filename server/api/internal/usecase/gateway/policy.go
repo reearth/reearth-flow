@@ -15,12 +15,36 @@ const (
 	PolicyCheckPrivateProjectCreation PolicyCheckType = "general_private_project_creation"
 	// PolicyCheckHourlySchedule asks whether a trigger may run every hour.
 	PolicyCheckHourlySchedule PolicyCheckType = "flow_hourly_schedule"
-	// PolicyCheckConcurrentJobCount asks whether the workspace may have Value
-	// jobs pending or running at once, counting the new one.
-	PolicyCheckConcurrentJobCount PolicyCheckType = "flow_concurrent_job_count"
 	// PolicyCheckAPITriggerCallsPerDay asks whether the workspace's API
 	// triggers may receive Value calls today, counting the new one.
 	PolicyCheckAPITriggerCallsPerDay PolicyCheckType = "flow_api_trigger_calls_per_day"
+	// PolicyCheckAssetSize asks whether the workspace may upload an asset of
+	// Value bytes.
+	PolicyCheckAssetSize PolicyCheckType = "flow_asset_size"
+	// PolicyCheckConcurrentRenderCount asks whether the workspace may have
+	// Value intermediate-data renders in progress at once, counting the new one.
+	PolicyCheckConcurrentRenderCount PolicyCheckType = "flow_concurrent_render_count"
+	// PolicyCheckDebugConcurrentRunCount asks whether the workspace may have
+	// Value debug runs pending or running at once, counting the new one.
+	// Deployment and trigger runs are not counted.
+	PolicyCheckDebugConcurrentRunCount PolicyCheckType = "flow_debug_concurrent_run_count"
+	// PolicyCheckDebugRunsPerHour asks whether the workspace may start Value
+	// debug runs this hour, counting the new one.
+	PolicyCheckDebugRunsPerHour PolicyCheckType = "flow_debug_runs_per_hour"
+	// PolicyCheckDeploymentRunsPerDay asks whether the workspace may run its
+	// deployments by hand Value times today, counting the new run.
+	PolicyCheckDeploymentRunsPerDay PolicyCheckType = "flow_deployment_runs_per_day"
+	// PolicyCheckEnabledTriggerCount asks whether the workspace may have Value
+	// triggers enabled at once, API-driven and time-driven together, counting
+	// the one being enabled.
+	PolicyCheckEnabledTriggerCount PolicyCheckType = "flow_enabled_trigger_count"
+	// PolicyCheckJobRunTimeSeconds asks whether a job may run for Value
+	// seconds. CurrentLimit is the plan's limit in seconds, sent whether or not
+	// Value is allowed.
+	PolicyCheckJobRunTimeSeconds PolicyCheckType = "flow_job_run_time_seconds"
+	// PolicyCheckTimeDrivenTriggerRunsPerDay asks whether the workspace's
+	// time-driven triggers may run Value times today, counting the new run.
+	PolicyCheckTimeDrivenTriggerRunsPerDay PolicyCheckType = "flow_time_driven_trigger_runs_per_day"
 )
 
 // PolicyLimitUnlimited is the CurrentLimit of a check whose plan has no limit.

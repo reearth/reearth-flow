@@ -983,21 +983,17 @@
           "title": "Extraer Etiquetas",
           "description": "Nombres de tipos de entidad a aplanar como entidades individuales. Acepta forma calificada (`bldg:Building`), local (`Building`) o notación Clark (`{http://…}Building`). Vacío significa emitir todos los objetos urbanos de nivel superior sin cambios."
         },
-        "flattenMeasureTypes": {
-          "title": "Aplanar Tipos de Medida",
-          "description": "Cuando es verdadero, los elementos con un único atributo `uom` y contenido de texto numérico se convierten a un valor numérico, con la unidad almacenada como clave hermana `{name}_uom`. Por defecto es false."
+        "hoistAttributes": {
+          "title": "Elevar atributos",
+          "description": "Enumera los nombres de atributos XML, escritos como en el documento (p. ej., `uom`, `gml:id`), que se elevan al elemento padre como claves hermanas `{element}@{attribute}` a cualquier profundidad. Los atributos no listados se descartan, y una lista vacía (el valor por defecto) no eleva nada."
         },
         "inline": {
           "title": "Inline Content",
           "description": "Expression that returns the file content as text instead of reading from a file path"
         },
-        "keepAttributes": {
-          "title": "Conservar Atributos",
-          "description": "Cuando es falso, los atributos XML (entradas con prefijo `@` como `@gml:id`, `@codeSpace`) se eliminan de las entidades analizadas. Por defecto es true."
-        },
-        "keepCodeSpace": {
-          "title": "Conservar Espacio de Códigos",
-          "description": "Cuando es verdadero, un valor codificado resuelto con su lista de códigos también conserva la ubicación de esa lista, resuelta como URL, en una clave hermana `{name}_codeSpace`. Por defecto es false."
+        "keepAbsoluteCodeSpace": {
+          "title": "Keep Absolute Code Space",
+          "description": "Eleva cada `codeSpace` a una clave hermana `{name}@codeSpace`, con su ubicación resuelta a una URL respecto al documento, aunque `hoistAttributes` no lo incluya. Por defecto es false."
         }
       }
     },
@@ -1025,21 +1021,17 @@
           "title": "Extraer Etiquetas",
           "description": "Nombres de tipos de entidad a aplanar como entidades individuales. Acepta forma calificada (`bldg:Building`), local (`Building`) o notación Clark (`{http://…}Building`). Vacío significa emitir todos los objetos urbanos de nivel superior sin cambios."
         },
-        "flattenLeafAttributes": {
-          "title": "Aplanar Atributos Hoja",
-          "description": "Nombres de atributos (p. ej. `uom`) que marcan una hoja para colapsar: un elemento con exactamente uno de estos atributos XML, sin elementos hijos y con contenido de texto numérico se convierte en un valor numérico, y el valor del atributo se almacena como clave hermana `{name}_{attribute}`. Vacío (el valor por defecto) desactiva esto."
+        "hoistAttributes": {
+          "title": "Elevar atributos",
+          "description": "Enumera los nombres de atributos XML, escritos como en el documento (p. ej., `uom`, `gml:id`), que se elevan al elemento padre como claves hermanas `{element}@{attribute}` a cualquier profundidad. Los atributos no listados se descartan, y una lista vacía (el valor por defecto) no eleva nada."
         },
         "inline": {
           "title": "Inline Content",
           "description": "Expression that returns the file content as text instead of reading from a file path"
         },
-        "keepAttributes": {
-          "title": "Conservar Atributos",
-          "description": "Cuando es falso, los atributos XML (entradas con prefijo `@` como `@gml:id`, `@codeSpace`) se eliminan de las entidades analizadas. Por defecto es true."
-        },
-        "keepCodeSpace": {
-          "title": "Conservar Espacio de Códigos",
-          "description": "Cuando es verdadero, un valor codificado resuelto con su lista de códigos también conserva la ubicación de esa lista, resuelta como URL, en una clave hermana `{name}_codeSpace`. Por defecto es false."
+        "keepAbsoluteCodeSpace": {
+          "title": "Keep Absolute Code Space",
+          "description": "Eleva cada `codeSpace` a una clave hermana `{name}@codeSpace`, con su ubicación resuelta a una URL respecto al documento, aunque `hoistAttributes` no lo incluya. Por defecto es false."
         }
       },
       "enumI18n": {
@@ -1079,7 +1071,7 @@
     },
     {
       "name": "CityGML Writer",
-      "description": "Escribe las entidades en un único archivo CityGML 2.0, con los atributos nombrados como propiedades CityGML, como bldg:measuredHeight, en el orden del esquema, y los objetos urbanos anidados, como superficies límite, aberturas y partes de edificio, bajo sus padres. Los atributos sin prefijo no se escriben, y las propiedades de una ADE como uro: solo cuando ADE Schemas la incluye.",
+      "description": "Escribe las entidades en uno o varios archivos CityGML 2.0, o en un archivo zip que los contiene, con los atributos nombrados como propiedades CityGML, como bldg:measuredHeight, en el orden del esquema, los objetos urbanos anidados, como superficies límite, bajo sus padres, y el terreno dem:TINRelief como gml:TriangulatedSurface cuando todas sus caras son triángulos. Los atributos sin prefijo no se escriben, las propiedades de una ADE como uro: solo cuando ADE Schemas la incluye, y una lista de códigos que no se puede copiar junto al archivo conserva su URL original.",
       "parameterI18n": {
         "": {
           "title": "CityGmlWriterParam",
@@ -1103,7 +1095,11 @@
         },
         "output": {
           "title": "Output File",
-          "description": "Ruta del archivo CityGML que se crea, como texto o como una expresión sobre variables del flujo de trabajo, evaluada una sola vez y no por entidad."
+          "description": "Ruta del archivo CityGML que se crea, como texto o como una expresión sobre variables del flujo de trabajo y atributos de la entidad, por ejemplo `\"bldg/\" + attributes[\"_meshcode\"] + \"_bldg_6697_op.gml\"` para un archivo por malla, donde cada objeto anidado va con el objeto de nivel superior al que pertenece. Una ruta que termina en `.zip` es un único archivo zip con los archivos CityGML y sus texturas y listas de códigos, que esta acción escribe completo, así que todas las entidades de ese archivo zip deben llegar a esta acción."
+        },
+        "pathInArchive": {
+          "title": "Ruta en el archivo zip",
+          "description": "Solo se usa cuando Output File termina en `.zip`: dónde se coloca el archivo CityGML dentro del archivo zip, como una ruta desde su raíz con `/` entre carpetas, dada como texto o como una expresión sobre variables del flujo de trabajo y atributos de la entidad, por ejemplo `\"udx/bldg/\" + attributes[\"_meshcode\"] + \"_bldg_6697_op.gml\"` para un archivo por malla. De forma predeterminada, el nombre del propio archivo zip con `.gml`, en la raíz del archivo."
         },
         "prettyPrint": {
           "title": "Pretty Print",
@@ -1703,25 +1699,17 @@
           "title": "Extraer Etiquetas",
           "description": "Nombres de tipos de entidad a aplanar como entidades individuales. Acepta forma calificada (`bldg:Building`), local (`Building`) o notación Clark (`{http://…}Building`). Vacío significa emitir todos los objetos urbanos de nivel superior sin cambios."
         },
-        "flattenMeasureTypes": {
-          "title": "Aplanar Tipos de Medida",
-          "description": "Cuando es verdadero, los elementos con un único atributo `uom` y contenido de texto numérico se convierten a un valor numérico, con la unidad almacenada como clave hermana `{name}_uom`. Por defecto es false."
-        },
-        "flattenSingleChildObjects": {
-          "title": "Aplanar Nodos de Objeto con Hijo Único",
-          "description": "Cuando es verdadero, un elemento envolvente cuyo único contenido es un único elemento hijo se elimina: el hijo se eleva y toma como clave su propio nombre de etiqueta, siempre envuelto en un array. Por defecto es false."
+        "hoistAttributes": {
+          "title": "Elevar atributos",
+          "description": "Enumera los nombres de atributos XML, escritos como en el documento (p. ej., `uom`, `gml:id`), que se elevan al elemento padre como claves hermanas `{element}@{attribute}` a cualquier profundidad. Los atributos no listados se descartan, y una lista vacía (el valor por defecto) no eleva nada."
         },
         "inheritInputAttributes": {
           "title": "Heredar Atributos de Entrada",
           "description": "Cuando es verdadero, los atributos de la entidad de entrada se combinan en cada entidad analizada desde su archivo. Por defecto es true."
         },
-        "keepAttributes": {
-          "title": "Conservar Atributos",
-          "description": "Cuando es falso, los atributos XML (entradas con prefijo `@` como `@gml:id`, `@codeSpace`) se eliminan de las entidades analizadas. Por defecto es true."
-        },
-        "keepCodeSpace": {
-          "title": "Conservar Espacio de Códigos",
-          "description": "Cuando es verdadero, un valor codificado resuelto con su lista de códigos también conserva la ubicación de esa lista, resuelta como URL, en una clave hermana `{name}_codeSpace`. Por defecto es false."
+        "keepAbsoluteCodeSpace": {
+          "title": "Keep Absolute Code Space",
+          "description": "Eleva cada `codeSpace` a una clave hermana `{name}@codeSpace`, con su ubicación resuelta a una URL respecto al documento, aunque `hoistAttributes` no lo incluya. Por defecto es false."
         }
       }
     },
@@ -1749,13 +1737,9 @@
           "title": "Extraer Etiquetas",
           "description": "Nombres de tipos de entidad a aplanar como entidades individuales. Acepta forma calificada (`bldg:Building`), local (`Building`) o notación Clark (`{http://…}Building`). Vacío significa emitir todos los objetos urbanos de nivel superior sin cambios."
         },
-        "flattenLeafAttributes": {
-          "title": "Aplanar Atributos Hoja",
-          "description": "Nombres de atributos (p. ej. `uom`) que marcan una hoja para colapsar: un elemento con exactamente uno de estos atributos XML, sin elementos hijos y con contenido de texto numérico se convierte en un valor numérico, y el valor del atributo se almacena como clave hermana `{name}_{attribute}`. Vacío (el valor por defecto) desactiva esto."
-        },
-        "flattenSingleChildObjects": {
-          "title": "Aplanar Nodos de Objeto con Hijo Único",
-          "description": "Cuando es verdadero, un elemento envolvente cuyo único contenido es un único elemento hijo se elimina: el hijo se eleva y toma como clave su propio nombre de etiqueta, siempre envuelto en un array. Por defecto es false."
+        "hoistAttributes": {
+          "title": "Elevar atributos",
+          "description": "Enumera los nombres de atributos XML, escritos como en el documento (p. ej., `uom`, `gml:id`), que se elevan al elemento padre como claves hermanas `{element}@{attribute}` a cualquier profundidad. Los atributos no listados se descartan, y una lista vacía (el valor por defecto) no eleva nada."
         },
         "includeRejectedDetails": {
           "title": "Include Rejected Details",
@@ -1765,13 +1749,9 @@
           "title": "Heredar Atributos de Entrada",
           "description": "Cuando es verdadero, los atributos de la entidad de entrada se combinan en cada entidad analizada desde su archivo. Por defecto es true."
         },
-        "keepAttributes": {
-          "title": "Conservar Atributos",
-          "description": "Cuando es falso, los atributos XML (entradas con prefijo `@` como `@gml:id`, `@codeSpace`) se eliminan de las entidades analizadas. Por defecto es true."
-        },
-        "keepCodeSpace": {
-          "title": "Conservar Espacio de Códigos",
-          "description": "Cuando es verdadero, un valor codificado resuelto con su lista de códigos también conserva la ubicación de esa lista, resuelta como URL, en una clave hermana `{name}_codeSpace`. Por defecto es false."
+        "keepAbsoluteCodeSpace": {
+          "title": "Keep Absolute Code Space",
+          "description": "Eleva cada `codeSpace` a una clave hermana `{name}@codeSpace`, con su ubicación resuelta a una URL respecto al documento, aunque `hoistAttributes` no lo incluya. Por defecto es false."
         }
       },
       "enumI18n": {
@@ -2545,9 +2525,13 @@
           "title": "Disabled Optional Checks",
           "description": "Advisory checks to disable. Disabled checks do not run and are treated as passing; core validity checks always run. Empty by default, so every optional check runs."
         },
+        "duplicateCounting": {
+          "title": "Duplicate Counting",
+          "description": "What one problem of the duplicate-points check stands for: `extraPoints` (the default) counts each coordinate close to an earlier one, `closePairs` counts each pair of close coordinates."
+        },
         "duplicateTolerance": {
           "title": "Duplicate Point Tolerance",
-          "description": "Optional distance within which two coordinates count as duplicates for the duplicate-points check. Omitted (the default) means exact-equality detection."
+          "description": "Optional distance below which two coordinates count as duplicates for the duplicate-points check. Omitted (the default) means exact-equality detection."
         },
         "planarityThreshold": {
           "title": "Planarity Threshold",
@@ -2575,6 +2559,16 @@
         }
       },
       "enumI18n": {
+        "DuplicateCounting": {
+          "closePairs": {
+            "title": "Close Pairs",
+            "description": "One problem per pair of close coordinates, located at both coordinates of the pair as a two-point geometry."
+          },
+          "extraPoints": {
+            "title": "Extra Points",
+            "description": "One problem per coordinate close to an earlier one: the points to drop so that no two remain close."
+          }
+        },
         "OptionalCheck": {
           "duplicatePoints": {
             "title": "Duplicate Points",

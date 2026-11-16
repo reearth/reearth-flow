@@ -18,6 +18,8 @@ func (t *TimeInterval) String() {
 const (
 	EventSourceTypeTimeDriven EventSourceType = "TIME_DRIVEN"
 	EventSourceTypeAPIDriven  EventSourceType = "API_DRIVEN"
+	// EventSourceTypeCMS is run by Re:Earth CMS for its items; it has no token or schedule.
+	EventSourceTypeCMS EventSourceType = "CMS"
 
 	TimeIntervalEveryDay   TimeInterval = "EVERY_DAY"
 	TimeIntervalEveryHour  TimeInterval = "EVERY_HOUR"
@@ -29,6 +31,7 @@ type Trigger struct {
 	createdAt     time.Time
 	updatedAt     time.Time
 	lastTriggered *time.Time
+	lastRefusal   *Refusal
 	authTokenHash *string
 	authTokenHint *string
 	timeInterval  *TimeInterval
@@ -83,6 +86,18 @@ func (t *Trigger) Enabled() bool {
 
 func (t *Trigger) Variables() []variable.Variable {
 	return t.variables
+}
+
+// LastRefusal is the latest refusal of the trigger's scheduled run that no
+// started run has followed yet.
+func (t *Trigger) LastRefusal() *Refusal {
+	return t.lastRefusal
+}
+
+// SetLastRefusal records a refusal of the trigger's scheduled run; nil clears
+// it once a run starts.
+func (t *Trigger) SetLastRefusal(r *Refusal) {
+	t.lastRefusal = r
 }
 
 func (t *Trigger) SetLastTriggered(lastTriggered time.Time) {

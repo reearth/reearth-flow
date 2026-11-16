@@ -13,12 +13,12 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-// The fixture already has a job running, so a call whose token is accepted is
-// then refused with ErrJobAlreadyRunning.
+// The fixture fails a run's first file step, so a call whose token is accepted
+// then fails with errUploadFailed.
 func assertTokenAccepted(t *testing.T, f *planFixture, i interfaces.Trigger, tid id.TriggerID, token string) {
 	t.Helper()
 	_, err := i.ExecuteAPITrigger(f.ctx, interfaces.ExecuteAPITriggerParam{TriggerID: tid, AuthenticationToken: token})
-	assert.ErrorIs(t, err, interfaces.ErrJobAlreadyRunning)
+	assert.ErrorIs(t, err, errUploadFailed)
 }
 
 func assertTokenRefused(t *testing.T, f *planFixture, i interfaces.Trigger, tid id.TriggerID, token string) {

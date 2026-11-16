@@ -20,6 +20,10 @@
     "count": 2
   },
   {
+    "name": "線のエラー",
+    "count": 0
+  },
+  {
     "name": "不連続なCompositeSurface",
     "count": 0
   }

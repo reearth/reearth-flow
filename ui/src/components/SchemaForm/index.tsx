@@ -38,13 +38,6 @@ type SchemaFormProps = {
   onFieldFocus?: (fieldKey: string | null) => void;
   onChange: (data: unknown, changedFieldKey?: string) => void;
   onValidationChange?: (isValid: boolean) => void;
-  /**
-   * The generic value editor. Currently unreachable: it was only ever offered
-   * on a field typed `$ref: "#/definitions/Expr"`, which the engine no longer
-   * emits — every expression field is now `format: "code"` and opens the
-   * FlowExpr or Python editor instead. Kept plumbed for when a field needs it.
-   */
-  onEditorOpen?: (context: EditorContext) => void;
   onPythonEditorOpen?: (context: EditorContext) => void;
   onFlowExprEditorOpen?: (context: EditorContext) => void;
 };
@@ -66,7 +59,6 @@ const SchemaForm: React.FC<SchemaFormProps> = ({
   onFieldFocus,
   onChange,
   onValidationChange,
-  onEditorOpen,
   onPythonEditorOpen,
   onFlowExprEditorOpen,
 }) => {
@@ -132,7 +124,6 @@ const SchemaForm: React.FC<SchemaFormProps> = ({
       readonly,
       fieldFocusMap,
       onFieldFocus,
-      onEditorOpen,
       onPythonEditorOpen,
       onFlowExprEditorOpen,
     }),
@@ -142,7 +133,6 @@ const SchemaForm: React.FC<SchemaFormProps> = ({
       readonly,
       fieldFocusMap,
       onFieldFocus,
-      onEditorOpen,
       onPythonEditorOpen,
       onFlowExprEditorOpen,
     ],

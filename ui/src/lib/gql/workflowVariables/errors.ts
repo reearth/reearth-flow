@@ -8,6 +8,8 @@ const MISSING_REQUIRED = "required workflow variables have no value";
 const UNKNOWN = "workflow variables not defined by the deployment";
 // A deployment run given a value that does not fit its variable's type.
 const INVALID_VALUE = "workflow variable value does not fit its type";
+// A save that would leave two of a project's variables with one name.
+const DUPLICATE_NAME = "workflow variable names are used more than once";
 
 // The names an API error lists after `text`, or undefined if no error says it.
 // Several refusals can arrive joined in one message, one per line, so the list
@@ -41,3 +43,7 @@ export const toUnknownVariables = (err: unknown): string[] | undefined =>
 // The variables an API error says were given a value of the wrong type.
 export const toInvalidVariableValues = (err: unknown): string[] | undefined =>
   namesAfter(err, INVALID_VALUE);
+
+// The names an API error says more than one variable would share.
+export const toDuplicateVariableNames = (err: unknown): string[] | undefined =>
+  namesAfter(err, DUPLICATE_NAME);

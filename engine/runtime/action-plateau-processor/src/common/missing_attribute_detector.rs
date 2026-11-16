@@ -1,6 +1,7 @@
 use crate::object_list::ObjectListMap;
 
 use super::errors::PlateauProcessorError;
+use super::object_list_extractor::OBJECT_LIST_ATTRIBUTE;
 use super::PlateauProfile;
 use fastxml::transform::Transformer;
 use once_cell::sync::Lazy;
@@ -340,7 +341,7 @@ impl MissingAttributeDetector {
         feature: &Feature,
     ) -> super::errors::Result<(Vec<Feature>, Vec<Feature>, Vec<Feature>)> {
         let object_list: ObjectListMap = feature
-            .get("objectList")
+            .get(OBJECT_LIST_ATTRIBUTE)
             .ok_or(PlateauProcessorError::MissingAttributeDetector(
                 "object list attribute empty".to_string(),
             ))?
@@ -909,15 +910,13 @@ mod tests {
     // Test profile based on CityGML 2.0, so DataQuality labels use the `uro` prefix.
     static TEST_PROFILE: PlateauProfile = PlateauProfile {
         citygml: &crate::citygml::CITYGML2,
-        uro_ns: "https://www.geospatial.jp/iur/uro/3.0",
-        urf_ns: "https://www.geospatial.jp/iur/urf/3.0",
+        iur_namespaces: crate::common::IUR3_NAMESPACES,
         action_prefix: "PLATEAU",
     };
 
     static TEST_PROFILE_CITYGML3: PlateauProfile = PlateauProfile {
         citygml: &crate::citygml::CITYGML3,
-        uro_ns: "https://www.geospatial.jp/iur/uro/4.0",
-        urf_ns: "https://www.geospatial.jp/iur/urf/4.0",
+        iur_namespaces: crate::common::IUR4_NAMESPACES,
         action_prefix: "PLATEAU",
     };
 
@@ -1314,7 +1313,7 @@ mod tests {
             Attributes::from([(Attribute::new(package), AttributeValue::from(object_list))]);
 
         attributes.insert(
-            Attribute::new("objectList"),
+            Attribute::new(OBJECT_LIST_ATTRIBUTE),
             AttributeValue::Map(object_list_map),
         );
 

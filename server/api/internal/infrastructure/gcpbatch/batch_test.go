@@ -3,6 +3,7 @@ package gcpbatch
 import (
 	"context"
 	"testing"
+	"time"
 
 	batch "cloud.google.com/go/batch/apiv1"
 	batchpb "cloud.google.com/go/batch/apiv1/batchpb"
@@ -12,6 +13,8 @@ import (
 	"github.com/reearth/reearth-flow/api/pkg/id"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
+	"google.golang.org/grpc/codes"
+	grpcstatus "google.golang.org/grpc/status"
 )
 
 type mockBatchClient struct {
@@ -80,7 +83,7 @@ func TestBatchRepo_SubmitJob(t *testing.T) {
 
 	mockClient.On("CreateJob", ctx, mock.AnythingOfType("*batchpb.CreateJobRequest")).Return(&batchpb.Job{Name: expectedJobName}, nil)
 
-	jobName, err := batchRepo.SubmitJob(ctx, jobID, workflowURL, metadataURL, variables, projectID, accountsid.WorkspaceID(workspaceID), nil, nil)
+	jobName, err := batchRepo.SubmitJob(ctx, jobID, workflowURL, metadataURL, variables, projectID, accountsid.WorkspaceID(workspaceID), nil, nil, 0)
 
 	assert.NoError(t, err)
 	assert.Equal(t, expectedJobName, jobName)
@@ -100,7 +103,7 @@ func TestBatchRepo_SubmitJob_Labels(t *testing.T) {
 		{
 			name: "run",
 			submit: func(ctx context.Context, b *BatchRepo) error {
-				_, err := b.SubmitJob(ctx, jobID, "gs://b/wf.yaml", "gs://b/md.json", nil, projectID, workspaceID, nil, nil)
+				_, err := b.SubmitJob(ctx, jobID, "gs://b/wf.yaml", "gs://b/md.json", nil, projectID, workspaceID, nil, nil, 0)
 				return err
 			},
 			wantMode: "run",
@@ -169,7 +172,7 @@ func TestBatchRepo_SubmitJob_DiagnosticsEnv(t *testing.T) {
 		Run(func(args mock.Arguments) { captured = args.Get(1).(*batchpb.CreateJobRequest) }).
 		Return(&batchpb.Job{Name: "projects/test-project/locations/us-central1/jobs/test-job-id"}, nil)
 
-	_, err := batchRepo.SubmitJob(ctx, jobID, "gs://b/wf.yaml", "gs://b/md.json", nil, projectID, accountsid.WorkspaceID(workspaceID), nil, nil)
+	_, err := batchRepo.SubmitJob(ctx, jobID, "gs://b/wf.yaml", "gs://b/md.json", nil, projectID, accountsid.WorkspaceID(workspaceID), nil, nil, 0)
 	assert.NoError(t, err)
 
 	vars := captured.Job.TaskGroups[0].TaskSpec.Environment.Variables
@@ -249,7 +252,7 @@ func TestBatchRepo_SubmitJob_SpotVM(t *testing.T) {
 				}).
 				Return(&batchpb.Job{Name: "projects/test-project/locations/us-central1/jobs/test-job-id"}, nil)
 
-			_, err := batchRepo.SubmitJob(ctx, jobID, workflowURL, metadataURL, nil, projectID, workspaceID, nil, nil)
+			_, err := batchRepo.SubmitJob(ctx, jobID, workflowURL, metadataURL, nil, projectID, workspaceID, nil, nil, 0)
 			assert.NoError(t, err)
 
 			job := capturedReq.Job
@@ -338,4 +341,81 @@ func TestConvertGCPStatusToGatewayStatus(t *testing.T) {
 			assert.Equal(t, tc.expectStatus, result)
 		})
 	}
+}
+
+func TestBatchConfig_RunDuration(t *testing.T) {
+	t.Parallel()
+
+	c := BatchConfig{MaxRunDurationSeconds: 3600}
+
+	assert.Equal(t, time.Hour, c.runDuration(0), "no cap leaves the configured limit")
+	assert.Equal(t, 30*time.Minute, c.runDuration(30*time.Minute), "a shorter cap applies")
+	assert.Equal(t, time.Hour, c.runDuration(2*time.Hour), "a cap cannot raise the configured limit")
+	assert.Equal(t, defaultMaxRunDurationSeconds*time.Second, BatchConfig{}.runDuration(0))
+}
+
+func TestBatchRepo_SubmitJob_RunDuration(t *testing.T) {
+	t.Parallel()
+
+	ctx := context.Background()
+	mockClient := new(mockBatchClient)
+	batchRepo := &BatchRepo{client: mockClient, config: BatchConfig{ProjectID: "p", Region: "r", ImageURI: "i"}}
+	var req *batchpb.CreateJobRequest
+	mockClient.On("CreateJob", ctx, mock.AnythingOfType("*batchpb.CreateJobRequest")).
+		Run(func(args mock.Arguments) { req = args.Get(1).(*batchpb.CreateJobRequest) }).
+		Return(&batchpb.Job{Name: "projects/p/locations/r/jobs/j"}, nil)
+
+	_, err := batchRepo.SubmitJob(ctx, id.NewJobID(), "gs://b/wf.yaml", "gs://b/md.json", nil, id.NewProjectID(), accountsid.NewWorkspaceID(), nil, nil, 30*time.Minute)
+
+	assert.NoError(t, err)
+	assert.Equal(t, 30*time.Minute, req.Job.TaskGroups[0].TaskSpec.MaxRunDuration.AsDuration())
+}
+
+func TestBatchRepo_SubmitJob_ReconcilesAFailedCreate(t *testing.T) {
+	t.Parallel()
+
+	submit := func(t *testing.T, createErr, lookupErr error) (string, error) {
+		t.Helper()
+		ctx := context.Background()
+		mockClient := new(mockBatchClient)
+		repo := &BatchRepo{client: mockClient, config: BatchConfig{ProjectID: "p", Region: "r", ImageURI: "i"}}
+		mockClient.On("CreateJob", ctx, mock.AnythingOfType("*batchpb.CreateJobRequest")).Return((*batchpb.Job)(nil), createErr)
+		mockClient.On("GetJob", mock.Anything, mock.AnythingOfType("*batchpb.GetJobRequest")).
+			Return(&batchpb.Job{Name: "projects/p/locations/r/jobs/found"}, lookupErr)
+		return repo.SubmitJob(ctx, id.NewJobID(), "gs://b/wf.yaml", "gs://b/md.json", nil, id.NewProjectID(), accountsid.NewWorkspaceID(), nil, nil, 0)
+	}
+
+	t.Run("a refused create made no job", func(t *testing.T) {
+		t.Parallel()
+
+		_, err := submit(t, grpcstatus.Error(codes.InvalidArgument, "bad"), nil)
+
+		assert.ErrorIs(t, err, gateway.ErrJobNotSubmitted)
+	})
+
+	t.Run("a timed-out create whose job exists was submitted", func(t *testing.T) {
+		t.Parallel()
+
+		name, err := submit(t, grpcstatus.Error(codes.DeadlineExceeded, "slow"), nil)
+
+		assert.NoError(t, err)
+		assert.Equal(t, "projects/p/locations/r/jobs/found", name)
+	})
+
+	t.Run("a timed-out create whose job is not found was not submitted", func(t *testing.T) {
+		t.Parallel()
+
+		_, err := submit(t, grpcstatus.Error(codes.Unavailable, "dropped"), grpcstatus.Error(codes.NotFound, "no job"))
+
+		assert.ErrorIs(t, err, gateway.ErrJobNotSubmitted)
+	})
+
+	t.Run("a create that cannot be settled stays ambiguous", func(t *testing.T) {
+		t.Parallel()
+
+		_, err := submit(t, grpcstatus.Error(codes.Unavailable, "dropped"), grpcstatus.Error(codes.Unavailable, "still down"))
+
+		assert.Error(t, err)
+		assert.NotErrorIs(t, err, gateway.ErrJobNotSubmitted)
+	})
 }

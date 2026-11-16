@@ -2,11 +2,18 @@ package gateway
 
 import (
 	"context"
+	"errors"
+	"time"
 
 	"github.com/google/uuid"
 	"github.com/reearth/reearth-flow/api/pkg/featureview"
 	"github.com/reearth/reearth-flow/api/pkg/id"
 )
+
+// ErrWorkerBusy is a request the worker Service turned away because every
+// instance it may run was busy. The Service takes one request per instance,
+// so this is what a full pool looks like. Nothing ran.
+var ErrWorkerBusy = errors.New("the worker service has no free instance")
 
 // CloudRunWorker runs debug jobs on a min=0 Cloud Run Service.
 // RunJob holds until the run finishes (the HTTP response is the infra status).
@@ -38,6 +45,12 @@ type CloudRunWorker interface {
 	EngineVersion(ctx context.Context) (string, error)
 }
 
+// ErrRunNotStarted wraps a RunJob error after which the worker is known not to
+// have started the run: the request never reached it, or it refused the
+// request before starting anything. Any other error may follow a run that
+// started.
+var ErrRunNotStarted = errors.New("the worker did not start the run")
+
 type RunJobParam struct {
 	Variables     map[string]string
 	PreviousJobID *id.JobID
@@ -45,6 +58,9 @@ type RunJobParam struct {
 	WorkflowURL   string
 	MetadataURL   string
 	JobID         id.JobID
+	// MaxRunDuration is how long the run may take before it is cancelled; 0
+	// leaves the Service's own request timeout.
+	MaxRunDuration time.Duration
 }
 
 // ProbeSchemaParam carries the inputs for the worker's probe-schema route.

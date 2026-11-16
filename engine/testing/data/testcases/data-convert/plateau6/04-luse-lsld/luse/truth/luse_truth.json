@@ -18,10 +18,10 @@
       "luse:class_code": "202",
       "luse:adeOfLandUse": {
         "uro:LandUseDetailAttribute": {
-          "uro:areaInSquareMeter_uom": "m2",
           "uro:orgLandUse": "畑",
           "uro:orgLandUse_code": "202",
           "uro:areaInSquareMeter": 676.278844644353,
+          "uro:areaInSquareMeter_uom": "m2",
           "uro:urbanPlanType": "都市計画区域",
           "uro:urbanPlanType_code": "21",
           "uro:prefecture": "熊本県",
@@ -76,10 +76,10 @@
       "luse:class_code": "202",
       "luse:adeOfLandUse": {
         "uro:LandUseDetailAttribute": {
-          "uro:areaInSquareMeter_uom": "m2",
           "uro:orgLandUse": "畑",
           "uro:orgLandUse_code": "202",
           "uro:areaInSquareMeter": 10526.6463111793,
+          "uro:areaInSquareMeter_uom": "m2",
           "uro:urbanPlanType": "都市計画区域",
           "uro:urbanPlanType_code": "21",
           "uro:prefecture": "熊本県",
@@ -134,10 +134,10 @@
       "luse:class_code": "215",
       "luse:adeOfLandUse": {
         "uro:LandUseDetailAttribute": {
-          "uro:areaInSquareMeter_uom": "m2",
           "uro:orgLandUse": "道路用地",
           "uro:orgLandUse_code": "215",
           "uro:areaInSquareMeter": 2.18866409159563,
+          "uro:areaInSquareMeter_uom": "m2",
           "uro:urbanPlanType": "都市計画区域",
           "uro:urbanPlanType_code": "21",
           "uro:prefecture": "熊本県",
@@ -192,10 +192,10 @@
       "luse:class_code": "202",
       "luse:adeOfLandUse": {
         "uro:LandUseDetailAttribute": {
-          "uro:areaInSquareMeter_uom": "m2",
           "uro:orgLandUse": "畑",
           "uro:orgLandUse_code": "202",
           "uro:areaInSquareMeter": 3319.15970364021,
+          "uro:areaInSquareMeter_uom": "m2",
           "uro:urbanPlanType": "都市計画区域",
           "uro:urbanPlanType_code": "21",
           "uro:prefecture": "熊本県",
@@ -250,10 +250,10 @@
       "luse:class_code": "204",
       "luse:adeOfLandUse": {
         "uro:LandUseDetailAttribute": {
-          "uro:areaInSquareMeter_uom": "m2",
           "uro:orgLandUse": "水面",
           "uro:orgLandUse_code": "204",
           "uro:areaInSquareMeter": 5508.79149318235,
+          "uro:areaInSquareMeter_uom": "m2",
           "uro:urbanPlanType": "都市計画区域",
           "uro:urbanPlanType_code": "21",
           "uro:prefecture": "熊本県",
@@ -308,10 +308,10 @@
       "luse:class_code": "221",
       "luse:adeOfLandUse": {
         "uro:LandUseDetailAttribute": {
-          "uro:areaInSquareMeter_uom": "m2",
           "uro:orgLandUse": "その他の空地②",
           "uro:orgLandUse_code": "221",
           "uro:areaInSquareMeter": 19706.4913906342,
+          "uro:areaInSquareMeter_uom": "m2",
           "uro:urbanPlanType": "都市計画区域",
           "uro:urbanPlanType_code": "21",
           "uro:prefecture": "熊本県",
@@ -366,10 +366,10 @@
       "luse:class_code": "211",
       "luse:adeOfLandUse": {
         "uro:LandUseDetailAttribute": {
-          "uro:areaInSquareMeter_uom": "m2",
           "uro:orgLandUse": "住宅用地",
           "uro:orgLandUse_code": "211",
           "uro:areaInSquareMeter": 1068.53476760849,
+          "uro:areaInSquareMeter_uom": "m2",
           "uro:urbanPlanType": "都市計画区域",
           "uro:urbanPlanType_code": "21",
           "uro:prefecture": "熊本県",
@@ -424,10 +424,10 @@
       "luse:class_code": "211",
       "luse:adeOfLandUse": {
         "uro:LandUseDetailAttribute": {
-          "uro:areaInSquareMeter_uom": "m2",
           "uro:orgLandUse": "住宅用地",
           "uro:orgLandUse_code": "211",
           "uro:areaInSquareMeter": 1075.05490000204,
+          "uro:areaInSquareMeter_uom": "m2",
           "uro:urbanPlanType": "都市計画区域",
           "uro:urbanPlanType_code": "21",
           "uro:prefecture": "熊本県",
@@ -482,10 +482,10 @@
       "luse:class_code": "219",
       "luse:adeOfLandUse": {
         "uro:LandUseDetailAttribute": {
-          "uro:areaInSquareMeter_uom": "m2",
           "uro:orgLandUse": "農林漁業施設用地",
           "uro:orgLandUse_code": "219",
           "uro:areaInSquareMeter": 139.713840345914,
+          "uro:areaInSquareMeter_uom": "m2",
           "uro:urbanPlanType": "都市計画区域",
           "uro:urbanPlanType_code": "21",
           "uro:prefecture": "熊本県",
@@ -540,10 +540,10 @@
       "luse:class_code": "215",
       "luse:adeOfLandUse": {
         "uro:LandUseDetailAttribute": {
-          "uro:areaInSquareMeter_uom": "m2",
           "uro:orgLandUse": "道路用地",
           "uro:orgLandUse_code": "215",
           "uro:areaInSquareMeter": 16.8910754242608,
+          "uro:areaInSquareMeter_uom": "m2",
           "uro:urbanPlanType": "都市計画区域",
           "uro:urbanPlanType_code": "21",
           "uro:prefecture": "熊本県",
@@ -598,10 +598,10 @@
       "luse:class_code": "211",
       "luse:adeOfLandUse": {
         "uro:LandUseDetailAttribute": {
-          "uro:areaInSquareMeter_uom": "m2",
           "uro:orgLandUse": "住宅用地",
           "uro:orgLandUse_code": "211",
           "uro:areaInSquareMeter": 1110.8065126885,
+          "uro:areaInSquareMeter_uom": "m2",
           "uro:urbanPlanType": "都市計画区域",
           "uro:urbanPlanType_code": "21",
           "uro:prefecture": "熊本県",
@@ -656,10 +656,10 @@
       "luse:class_code": "204",
       "luse:adeOfLandUse": {
         "uro:LandUseDetailAttribute": {
-          "uro:areaInSquareMeter_uom": "m2",
           "uro:orgLandUse": "水面",
           "uro:orgLandUse_code": "204",
           "uro:areaInSquareMeter": 26.5755054986271,
+          "uro:areaInSquareMeter_uom": "m2",
           "uro:urbanPlanType": "都市計画区域",
           "uro:urbanPlanType_code": "21",
           "uro:prefecture": "熊本県",
@@ -714,10 +714,10 @@
       "luse:class_code": "215",
       "luse:adeOfLandUse": {
         "uro:LandUseDetailAttribute": {
-          "uro:areaInSquareMeter_uom": "m2",
           "uro:orgLandUse": "道路用地",
           "uro:orgLandUse_code": "215",
           "uro:areaInSquareMeter": 25.7891984940783,
+          "uro:areaInSquareMeter_uom": "m2",
           "uro:urbanPlanType": "都市計画区域",
           "uro:urbanPlanType_code": "21",
           "uro:prefecture": "熊本県",
@@ -772,10 +772,10 @@
       "luse:class_code": "211",
       "luse:adeOfLandUse": {
         "uro:LandUseDetailAttribute": {
-          "uro:areaInSquareMeter_uom": "m2",
           "uro:orgLandUse": "住宅用地",
           "uro:orgLandUse_code": "211",
           "uro:areaInSquareMeter": 356.484644330873,
+          "uro:areaInSquareMeter_uom": "m2",
           "uro:urbanPlanType": "都市計画区域",
           "uro:urbanPlanType_code": "21",
           "uro:prefecture": "熊本県",
@@ -830,10 +830,10 @@
       "luse:class_code": "205",
       "luse:adeOfLandUse": {
         "uro:LandUseDetailAttribute": {
-          "uro:areaInSquareMeter_uom": "m2",
           "uro:orgLandUse": "その他の自然地",
           "uro:orgLandUse_code": "205",
           "uro:areaInSquareMeter": 872.125990485192,
+          "uro:areaInSquareMeter_uom": "m2",
           "uro:urbanPlanType": "都市計画区域",
           "uro:urbanPlanType_code": "21",
           "uro:prefecture": "熊本県",
@@ -888,10 +888,10 @@
       "luse:class_code": "217",
       "luse:adeOfLandUse": {
         "uro:LandUseDetailAttribute": {
-          "uro:areaInSquareMeter_uom": "m2",
           "uro:orgLandUse": "公共空地",
           "uro:orgLandUse_code": "217",
           "uro:areaInSquareMeter": 1518.88969285021,
+          "uro:areaInSquareMeter_uom": "m2",
           "uro:urbanPlanType": "都市計画区域",
           "uro:urbanPlanType_code": "21",
           "uro:prefecture": "熊本県",
@@ -946,10 +946,10 @@
       "luse:class_code": "205",
       "luse:adeOfLandUse": {
         "uro:LandUseDetailAttribute": {
-          "uro:areaInSquareMeter_uom": "m2",
           "uro:orgLandUse": "その他の自然地",
           "uro:orgLandUse_code": "205",
           "uro:areaInSquareMeter": 9004.34384788528,
+          "uro:areaInSquareMeter_uom": "m2",
           "uro:urbanPlanType": "都市計画区域",
           "uro:urbanPlanType_code": "21",
           "uro:prefecture": "熊本県",
@@ -1004,10 +1004,10 @@
       "luse:class_code": "223",
       "luse:adeOfLandUse": {
         "uro:LandUseDetailAttribute": {
-          "uro:areaInSquareMeter_uom": "m2",
           "uro:orgLandUse": "その他の空地④",
           "uro:orgLandUse_code": "223",
           "uro:areaInSquareMeter": 351.56597426861,
+          "uro:areaInSquareMeter_uom": "m2",
           "uro:urbanPlanType": "都市計画区域",
           "uro:urbanPlanType_code": "21",
           "uro:prefecture": "熊本県",
@@ -1062,10 +1062,10 @@
       "luse:class_code": "211",
       "luse:adeOfLandUse": {
         "uro:LandUseDetailAttribute": {
-          "uro:areaInSquareMeter_uom": "m2",
           "uro:orgLandUse": "住宅用地",
           "uro:orgLandUse_code": "211",
           "uro:areaInSquareMeter": 3530.28782795287,
+          "uro:areaInSquareMeter_uom": "m2",
           "uro:urbanPlanType": "都市計画区域",
           "uro:urbanPlanType_code": "21",
           "uro:prefecture": "熊本県",
@@ -1120,10 +1120,10 @@
       "luse:class_code": "223",
       "luse:adeOfLandUse": {
         "uro:LandUseDetailAttribute": {
-          "uro:areaInSquareMeter_uom": "m2",
           "uro:orgLandUse": "その他の空地④",
           "uro:orgLandUse_code": "223",
           "uro:areaInSquareMeter": 454.961995625417,
+          "uro:areaInSquareMeter_uom": "m2",
           "uro:urbanPlanType": "都市計画区域",
           "uro:urbanPlanType_code": "21",
           "uro:prefecture": "熊本県",
@@ -1178,10 +1178,10 @@
       "luse:class_code": "204",
       "luse:adeOfLandUse": {
         "uro:LandUseDetailAttribute": {
-          "uro:areaInSquareMeter_uom": "m2",
           "uro:orgLandUse": "水面",
           "uro:orgLandUse_code": "204",
           "uro:areaInSquareMeter": 414.615803502836,
+          "uro:areaInSquareMeter_uom": "m2",
           "uro:urbanPlanType": "都市計画区域",
           "uro:urbanPlanType_code": "21",
           "uro:prefecture": "熊本県",
@@ -1236,10 +1236,10 @@
       "luse:class_code": "202",
       "luse:adeOfLandUse": {
         "uro:LandUseDetailAttribute": {
-          "uro:areaInSquareMeter_uom": "m2",
           "uro:orgLandUse": "畑",
           "uro:orgLandUse_code": "202",
           "uro:areaInSquareMeter": 4166.86304397627,
+          "uro:areaInSquareMeter_uom": "m2",
           "uro:urbanPlanType": "都市計画区域",
           "uro:urbanPlanType_code": "21",
           "uro:prefecture": "熊本県",
@@ -1294,10 +1294,10 @@
       "luse:class_code": "212",
       "luse:adeOfLandUse": {
         "uro:LandUseDetailAttribute": {
-          "uro:areaInSquareMeter_uom": "m2",
           "uro:orgLandUse": "商業用地",
           "uro:orgLandUse_code": "212",
           "uro:areaInSquareMeter": 2338.76437747881,
+          "uro:areaInSquareMeter_uom": "m2",
           "uro:urbanPlanType": "都市計画区域",
           "uro:urbanPlanType_code": "21",
           "uro:prefecture": "熊本県",
@@ -1352,10 +1352,10 @@
       "luse:class_code": "214",
       "luse:adeOfLandUse": {
         "uro:LandUseDetailAttribute": {
-          "uro:areaInSquareMeter_uom": "m2",
           "uro:orgLandUse": "公共公益施設用地",
           "uro:orgLandUse_code": "214",
           "uro:areaInSquareMeter": 123.687685695044,
+          "uro:areaInSquareMeter_uom": "m2",
           "uro:urbanPlanType": "都市計画区域",
           "uro:urbanPlanType_code": "21",
           "uro:prefecture": "熊本県",
@@ -1410,10 +1410,10 @@
       "luse:class_code": "211",
       "luse:adeOfLandUse": {
         "uro:LandUseDetailAttribute": {
-          "uro:areaInSquareMeter_uom": "m2",
           "uro:orgLandUse": "住宅用地",
           "uro:orgLandUse_code": "211",
           "uro:areaInSquareMeter": 2152.60138902249,
+          "uro:areaInSquareMeter_uom": "m2",
           "uro:urbanPlanType": "都市計画区域",
           "uro:urbanPlanType_code": "21",
           "uro:prefecture": "熊本県",
@@ -1468,10 +1468,10 @@
       "luse:class_code": "211",
       "luse:adeOfLandUse": {
         "uro:LandUseDetailAttribute": {
-          "uro:areaInSquareMeter_uom": "m2",
           "uro:orgLandUse": "住宅用地",
           "uro:orgLandUse_code": "211",
           "uro:areaInSquareMeter": 1185.72546478635,
+          "uro:areaInSquareMeter_uom": "m2",
           "uro:urbanPlanType": "都市計画区域",
           "uro:urbanPlanType_code": "21",
           "uro:prefecture": "熊本県",
@@ -1526,10 +1526,10 @@
       "luse:class_code": "211",
       "luse:adeOfLandUse": {
         "uro:LandUseDetailAttribute": {
-          "uro:areaInSquareMeter_uom": "m2",
           "uro:orgLandUse": "住宅用地",
           "uro:orgLandUse_code": "211",
           "uro:areaInSquareMeter": 368.524086784515,
+          "uro:areaInSquareMeter_uom": "m2",
           "uro:urbanPlanType": "都市計画区域",
           "uro:urbanPlanType_code": "21",
           "uro:prefecture": "熊本県",
@@ -1584,10 +1584,10 @@
       "luse:class_code": "205",
       "luse:adeOfLandUse": {
         "uro:LandUseDetailAttribute": {
-          "uro:areaInSquareMeter_uom": "m2",
           "uro:orgLandUse": "その他の自然地",
           "uro:orgLandUse_code": "205",
           "uro:areaInSquareMeter": 9144.6220795818,
+          "uro:areaInSquareMeter_uom": "m2",
           "uro:urbanPlanType": "都市計画区域",
           "uro:urbanPlanType_code": "21",
           "uro:prefecture": "熊本県",
@@ -1642,10 +1642,10 @@
       "luse:class_code": "202",
       "luse:adeOfLandUse": {
         "uro:LandUseDetailAttribute": {
-          "uro:areaInSquareMeter_uom": "m2",
           "uro:orgLandUse": "畑",
           "uro:orgLandUse_code": "202",
           "uro:areaInSquareMeter": 1923.20984849077,
+          "uro:areaInSquareMeter_uom": "m2",
           "uro:urbanPlanType": "都市計画区域",
           "uro:urbanPlanType_code": "21",
           "uro:prefecture": "熊本県",
@@ -1700,10 +1700,10 @@
       "luse:class_code": "203",
       "luse:adeOfLandUse": {
         "uro:LandUseDetailAttribute": {
-          "uro:areaInSquareMeter_uom": "m2",
           "uro:orgLandUse": "山林",
           "uro:orgLandUse_code": "203",
           "uro:areaInSquareMeter": 1834.28551358202,
+          "uro:areaInSquareMeter_uom": "m2",
           "uro:urbanPlanType": "都市計画区域",
           "uro:urbanPlanType_code": "21",
           "uro:prefecture": "熊本県",
@@ -1758,10 +1758,10 @@
       "luse:class_code": "205",
       "luse:adeOfLandUse": {
         "uro:LandUseDetailAttribute": {
-          "uro:areaInSquareMeter_uom": "m2",
           "uro:orgLandUse": "その他の自然地",
           "uro:orgLandUse_code": "205",
           "uro:areaInSquareMeter": 1903.88651873303,
+          "uro:areaInSquareMeter_uom": "m2",
           "uro:urbanPlanType": "都市計画区域",
           "uro:urbanPlanType_code": "21",
           "uro:prefecture": "熊本県",
@@ -1816,10 +1816,10 @@
       "luse:class_code": "202",
       "luse:adeOfLandUse": {
         "uro:LandUseDetailAttribute": {
-          "uro:areaInSquareMeter_uom": "m2",
           "uro:orgLandUse": "畑",
           "uro:orgLandUse_code": "202",
           "uro:areaInSquareMeter": 518.645713477004,
+          "uro:areaInSquareMeter_uom": "m2",
           "uro:urbanPlanType": "都市計画区域",
           "uro:urbanPlanType_code": "21",
           "uro:prefecture": "熊本県",
@@ -1874,10 +1874,10 @@
       "luse:class_code": "202",
       "luse:adeOfLandUse": {
         "uro:LandUseDetailAttribute": {
-          "uro:areaInSquareMeter_uom": "m2",
           "uro:orgLandUse": "畑",
           "uro:orgLandUse_code": "202",
           "uro:areaInSquareMeter": 179.768621033751,
+          "uro:areaInSquareMeter_uom": "m2",
           "uro:urbanPlanType": "都市計画区域",
           "uro:urbanPlanType_code": "21",
           "uro:prefecture": "熊本県",
@@ -1932,10 +1932,10 @@
       "luse:class_code": "205",
       "luse:adeOfLandUse": {
         "uro:LandUseDetailAttribute": {
-          "uro:areaInSquareMeter_uom": "m2",
           "uro:orgLandUse": "その他の自然地",
           "uro:orgLandUse_code": "205",
           "uro:areaInSquareMeter": 1433.79793227953,
+          "uro:areaInSquareMeter_uom": "m2",
           "uro:urbanPlanType": "都市計画区域",
           "uro:urbanPlanType_code": "21",
           "uro:prefecture": "熊本県",
@@ -1990,10 +1990,10 @@
       "luse:class_code": "205",
       "luse:adeOfLandUse": {
         "uro:LandUseDetailAttribute": {
-          "uro:areaInSquareMeter_uom": "m2",
           "uro:orgLandUse": "その他の自然地",
           "uro:orgLandUse_code": "205",
           "uro:areaInSquareMeter": 369.547576278182,
+          "uro:areaInSquareMeter_uom": "m2",
           "uro:urbanPlanType": "都市計画区域",
           "uro:urbanPlanType_code": "21",
           "uro:prefecture": "熊本県",
@@ -2048,10 +2048,10 @@
       "luse:class_code": "204",
       "luse:adeOfLandUse": {
         "uro:LandUseDetailAttribute": {
-          "uro:areaInSquareMeter_uom": "m2",
           "uro:orgLandUse": "水面",
           "uro:orgLandUse_code": "204",
           "uro:areaInSquareMeter": 57.9229525026333,
+          "uro:areaInSquareMeter_uom": "m2",
           "uro:urbanPlanType": "都市計画区域",
           "uro:urbanPlanType_code": "21",
           "uro:prefecture": "熊本県",
@@ -2106,10 +2106,10 @@
       "luse:class_code": "205",
       "luse:adeOfLandUse": {
         "uro:LandUseDetailAttribute": {
-          "uro:areaInSquareMeter_uom": "m2",
           "uro:orgLandUse": "その他の自然地",
           "uro:orgLandUse_code": "205",
           "uro:areaInSquareMeter": 2947.7677811387,
+          "uro:areaInSquareMeter_uom": "m2",
           "uro:urbanPlanType": "都市計画区域",
           "uro:urbanPlanType_code": "21",
           "uro:prefecture": "熊本県",
@@ -2164,10 +2164,10 @@
       "luse:class_code": "204",
       "luse:adeOfLandUse": {
         "uro:LandUseDetailAttribute": {
-          "uro:areaInSquareMeter_uom": "m2",
           "uro:orgLandUse": "水面",
           "uro:orgLandUse_code": "204",
           "uro:areaInSquareMeter": 296.751141049691,
+          "uro:areaInSquareMeter_uom": "m2",
           "uro:urbanPlanType": "都市計画区域",
           "uro:urbanPlanType_code": "21",
           "uro:prefecture": "熊本県",
@@ -2222,10 +2222,10 @@
       "luse:class_code": "202",
       "luse:adeOfLandUse": {
         "uro:LandUseDetailAttribute": {
-          "uro:areaInSquareMeter_uom": "m2",
           "uro:orgLandUse": "畑",
           "uro:orgLandUse_code": "202",
           "uro:areaInSquareMeter": 1489.0530375408,
+          "uro:areaInSquareMeter_uom": "m2",
           "uro:urbanPlanType": "都市計画区域",
           "uro:urbanPlanType_code": "21",
           "uro:prefecture": "熊本県",
@@ -2280,10 +2280,10 @@
       "luse:class_code": "211",
       "luse:adeOfLandUse": {
         "uro:LandUseDetailAttribute": {
-          "uro:areaInSquareMeter_uom": "m2",
           "uro:orgLandUse": "住宅用地",
           "uro:orgLandUse_code": "211",
           "uro:areaInSquareMeter": 457.944059321854,
+          "uro:areaInSquareMeter_uom": "m2",
           "uro:urbanPlanType": "都市計画区域",
           "uro:urbanPlanType_code": "21",
           "uro:prefecture": "熊本県",
@@ -2338,10 +2338,10 @@
       "luse:class_code": "205",
       "luse:adeOfLandUse": {
         "uro:LandUseDetailAttribute": {
-          "uro:areaInSquareMeter_uom": "m2",
           "uro:orgLandUse": "その他の自然地",
           "uro:orgLandUse_code": "205",
           "uro:areaInSquareMeter": 10223.9993045313,
+          "uro:areaInSquareMeter_uom": "m2",
           "uro:urbanPlanType": "都市計画区域",
           "uro:urbanPlanType_code": "21",
           "uro:prefecture": "熊本県",
@@ -2396,10 +2396,10 @@
       "luse:class_code": "205",
       "luse:adeOfLandUse": {
         "uro:LandUseDetailAttribute": {
-          "uro:areaInSquareMeter_uom": "m2",
           "uro:orgLandUse": "その他の自然地",
           "uro:orgLandUse_code": "205",
           "uro:areaInSquareMeter": 1036.37336001319,
+          "uro:areaInSquareMeter_uom": "m2",
           "uro:urbanPlanType": "都市計画区域",
           "uro:urbanPlanType_code": "21",
           "uro:prefecture": "熊本県",
@@ -2454,10 +2454,10 @@
       "luse:class_code": "201",
       "luse:adeOfLandUse": {
         "uro:LandUseDetailAttribute": {
-          "uro:areaInSquareMeter_uom": "m2",
           "uro:orgLandUse": "田",
           "uro:orgLandUse_code": "201",
           "uro:areaInSquareMeter": 10567.541469255,
+          "uro:areaInSquareMeter_uom": "m2",
           "uro:urbanPlanType": "都市計画区域",
           "uro:urbanPlanType_code": "21",
           "uro:prefecture": "熊本県",
@@ -2512,10 +2512,10 @@
       "luse:class_code": "202",
       "luse:adeOfLandUse": {
         "uro:LandUseDetailAttribute": {
-          "uro:areaInSquareMeter_uom": "m2",
           "uro:orgLandUse": "畑",
           "uro:orgLandUse_code": "202",
           "uro:areaInSquareMeter": 3745.52895436065,
+          "uro:areaInSquareMeter_uom": "m2",
           "uro:urbanPlanType": "都市計画区域",
           "uro:urbanPlanType_code": "21",
           "uro:prefecture": "熊本県",
@@ -2570,10 +2570,10 @@
       "luse:class_code": "202",
       "luse:adeOfLandUse": {
         "uro:LandUseDetailAttribute": {
-          "uro:areaInSquareMeter_uom": "m2",
           "uro:orgLandUse": "畑",
           "uro:orgLandUse_code": "202",
           "uro:areaInSquareMeter": 1215.65467395909,
+          "uro:areaInSquareMeter_uom": "m2",
           "uro:urbanPlanType": "都市計画区域",
           "uro:urbanPlanType_code": "21",
           "uro:prefecture": "熊本県",
@@ -2628,10 +2628,10 @@
       "luse:class_code": "204",
       "luse:adeOfLandUse": {
         "uro:LandUseDetailAttribute": {
-          "uro:areaInSquareMeter_uom": "m2",
           "uro:orgLandUse": "水面",
           "uro:orgLandUse_code": "204",
           "uro:areaInSquareMeter": 1162.77761796991,
+          "uro:areaInSquareMeter_uom": "m2",
           "uro:urbanPlanType": "都市計画区域",
           "uro:urbanPlanType_code": "21",
           "uro:prefecture": "熊本県",
@@ -2686,10 +2686,10 @@
       "luse:class_code": "211",
       "luse:adeOfLandUse": {
         "uro:LandUseDetailAttribute": {
-          "uro:areaInSquareMeter_uom": "m2",
           "uro:orgLandUse": "住宅用地",
           "uro:orgLandUse_code": "211",
           "uro:areaInSquareMeter": 1110.3727640019,
+          "uro:areaInSquareMeter_uom": "m2",
           "uro:urbanPlanType": "都市計画区域",
           "uro:urbanPlanType_code": "21",
           "uro:prefecture": "熊本県",
@@ -2744,10 +2744,10 @@
       "luse:class_code": "202",
       "luse:adeOfLandUse": {
         "uro:LandUseDetailAttribute": {
-          "uro:areaInSquareMeter_uom": "m2",
           "uro:orgLandUse": "畑",
           "uro:orgLandUse_code": "202",
           "uro:areaInSquareMeter": 1203.24684349396,
+          "uro:areaInSquareMeter_uom": "m2",
           "uro:urbanPlanType": "都市計画区域",
           "uro:urbanPlanType_code": "21",
           "uro:prefecture": "熊本県",
@@ -2802,10 +2802,10 @@
       "luse:class_code": "211",
       "luse:adeOfLandUse": {
         "uro:LandUseDetailAttribute": {
-          "uro:areaInSquareMeter_uom": "m2",
           "uro:orgLandUse": "住宅用地",
           "uro:orgLandUse_code": "211",
           "uro:areaInSquareMeter": 4320.87773847933,
+          "uro:areaInSquareMeter_uom": "m2",
           "uro:urbanPlanType": "都市計画区域",
           "uro:urbanPlanType_code": "21",
           "uro:prefecture": "熊本県",
@@ -2860,10 +2860,10 @@
       "luse:class_code": "204",
       "luse:adeOfLandUse": {
         "uro:LandUseDetailAttribute": {
-          "uro:areaInSquareMeter_uom": "m2",
           "uro:orgLandUse": "水面",
           "uro:orgLandUse_code": "204",
           "uro:areaInSquareMeter": 5876.09389429096,
+          "uro:areaInSquareMeter_uom": "m2",
           "uro:urbanPlanType": "都市計画区域",
           "uro:urbanPlanType_code": "21",
           "uro:prefecture": "熊本県",
@@ -2918,10 +2918,10 @@
       "luse:class_code": "204",
       "luse:adeOfLandUse": {
         "uro:LandUseDetailAttribute": {
-          "uro:areaInSquareMeter_uom": "m2",
           "uro:orgLandUse": "水面",
           "uro:orgLandUse_code": "204",
           "uro:areaInSquareMeter": 871.923134735091,
+          "uro:areaInSquareMeter_uom": "m2",
           "uro:urbanPlanType": "都市計画区域",
           "uro:urbanPlanType_code": "21",
           "uro:prefecture": "熊本県",
@@ -2976,10 +2976,10 @@
       "luse:class_code": "223",
       "luse:adeOfLandUse": {
         "uro:LandUseDetailAttribute": {
-          "uro:areaInSquareMeter_uom": "m2",
           "uro:orgLandUse": "その他の空地④",
           "uro:orgLandUse_code": "223",
           "uro:areaInSquareMeter": 745.216760907137,
+          "uro:areaInSquareMeter_uom": "m2",
           "uro:urbanPlanType": "都市計画区域",
           "uro:urbanPlanType_code": "21",
           "uro:prefecture": "熊本県",
@@ -3034,10 +3034,10 @@
       "luse:class_code": "205",
       "luse:adeOfLandUse": {
         "uro:LandUseDetailAttribute": {
-          "uro:areaInSquareMeter_uom": "m2",
           "uro:orgLandUse": "その他の自然地",
           "uro:orgLandUse_code": "205",
           "uro:areaInSquareMeter": 2099.11137614883,
+          "uro:areaInSquareMeter_uom": "m2",
           "uro:urbanPlanType": "都市計画区域",
           "uro:urbanPlanType_code": "21",
           "uro:prefecture": "熊本県",
@@ -3092,10 +3092,10 @@
       "luse:class_code": "205",
       "luse:adeOfLandUse": {
         "uro:LandUseDetailAttribute": {
-          "uro:areaInSquareMeter_uom": "m2",
           "uro:orgLandUse": "その他の自然地",
           "uro:orgLandUse_code": "205",
           "uro:areaInSquareMeter": 50.5867902132492,
+          "uro:areaInSquareMeter_uom": "m2",
           "uro:urbanPlanType": "都市計画区域",
           "uro:urbanPlanType_code": "21",
           "uro:prefecture": "熊本県",
@@ -3150,10 +3150,10 @@
       "luse:class_code": "217",
       "luse:adeOfLandUse": {
         "uro:LandUseDetailAttribute": {
-          "uro:areaInSquareMeter_uom": "m2",
           "uro:orgLandUse": "公共空地",
           "uro:orgLandUse_code": "217",
           "uro:areaInSquareMeter": 330.917347498775,
+          "uro:areaInSquareMeter_uom": "m2",
           "uro:urbanPlanType": "都市計画区域",
           "uro:urbanPlanType_code": "21",
           "uro:prefecture": "熊本県",
@@ -3208,10 +3208,10 @@
       "luse:class_code": "201",
       "luse:adeOfLandUse": {
         "uro:LandUseDetailAttribute": {
-          "uro:areaInSquareMeter_uom": "m2",
           "uro:orgLandUse": "田",
           "uro:orgLandUse_code": "201",
           "uro:areaInSquareMeter": 6907.48008668547,
+          "uro:areaInSquareMeter_uom": "m2",
           "uro:urbanPlanType": "都市計画区域",
           "uro:urbanPlanType_code": "21",
           "uro:prefecture": "熊本県",
@@ -3266,10 +3266,10 @@
       "luse:class_code": "223",
       "luse:adeOfLandUse": {
         "uro:LandUseDetailAttribute": {
-          "uro:areaInSquareMeter_uom": "m2",
           "uro:orgLandUse": "その他の空地④",
           "uro:orgLandUse_code": "223",
           "uro:areaInSquareMeter": 320.768510563027,
+          "uro:areaInSquareMeter_uom": "m2",
           "uro:urbanPlanType": "都市計画区域",
           "uro:urbanPlanType_code": "21",
           "uro:prefecture": "熊本県",
@@ -3324,10 +3324,10 @@
       "luse:class_code": "211",
       "luse:adeOfLandUse": {
         "uro:LandUseDetailAttribute": {
-          "uro:areaInSquareMeter_uom": "m2",
           "uro:orgLandUse": "住宅用地",
           "uro:orgLandUse_code": "211",
           "uro:areaInSquareMeter": 3369.28068449349,
+          "uro:areaInSquareMeter_uom": "m2",
           "uro:urbanPlanType": "都市計画区域",
           "uro:urbanPlanType_code": "21",
           "uro:prefecture": "熊本県",
@@ -3382,10 +3382,10 @@
       "luse:class_code": "211",
       "luse:adeOfLandUse": {
         "uro:LandUseDetailAttribute": {
-          "uro:areaInSquareMeter_uom": "m2",
           "uro:orgLandUse": "住宅用地",
           "uro:orgLandUse_code": "211",
           "uro:areaInSquareMeter": 804.364000003914,
+          "uro:areaInSquareMeter_uom": "m2",
           "uro:urbanPlanType": "都市計画区域",
           "uro:urbanPlanType_code": "21",
           "uro:prefecture": "熊本県",
@@ -3440,10 +3440,10 @@
       "luse:class_code": "212",
       "luse:adeOfLandUse": {
         "uro:LandUseDetailAttribute": {
-          "uro:areaInSquareMeter_uom": "m2",
           "uro:orgLandUse": "商業用地",
           "uro:orgLandUse_code": "212",
           "uro:areaInSquareMeter": 212.691113057415,
+          "uro:areaInSquareMeter_uom": "m2",
           "uro:urbanPlanType": "都市計画区域",
           "uro:urbanPlanType_code": "21",
           "uro:prefecture": "熊本県",
@@ -3498,10 +3498,10 @@
       "luse:class_code": "205",
       "luse:adeOfLandUse": {
         "uro:LandUseDetailAttribute": {
-          "uro:areaInSquareMeter_uom": "m2",
           "uro:orgLandUse": "その他の自然地",
           "uro:orgLandUse_code": "205",
           "uro:areaInSquareMeter": 189.493599983234,
+          "uro:areaInSquareMeter_uom": "m2",
           "uro:urbanPlanType": "都市計画区域",
           "uro:urbanPlanType_code": "21",
           "uro:prefecture": "熊本県",
@@ -3556,10 +3556,10 @@
       "luse:class_code": "205",
       "luse:adeOfLandUse": {
         "uro:LandUseDetailAttribute": {
-          "uro:areaInSquareMeter_uom": "m2",
           "uro:orgLandUse": "その他の自然地",
           "uro:orgLandUse_code": "205",
           "uro:areaInSquareMeter": 107.711819866888,
+          "uro:areaInSquareMeter_uom": "m2",
           "uro:urbanPlanType": "都市計画区域",
           "uro:urbanPlanType_code": "21",
           "uro:prefecture": "熊本県",
@@ -3614,10 +3614,10 @@
       "luse:class_code": "202",
       "luse:adeOfLandUse": {
         "uro:LandUseDetailAttribute": {
-          "uro:areaInSquareMeter_uom": "m2",
           "uro:orgLandUse": "畑",
           "uro:orgLandUse_code": "202",
           "uro:areaInSquareMeter": 2847.41791298736,
+          "uro:areaInSquareMeter_uom": "m2",
           "uro:urbanPlanType": "都市計画区域",
           "uro:urbanPlanType_code": "21",
           "uro:prefecture": "熊本県",
@@ -3672,10 +3672,10 @@
       "luse:class_code": "205",
       "luse:adeOfLandUse": {
         "uro:LandUseDetailAttribute": {
-          "uro:areaInSquareMeter_uom": "m2",
           "uro:orgLandUse": "その他の自然地",
           "uro:orgLandUse_code": "205",
           "uro:areaInSquareMeter": 750.702821876219,
+          "uro:areaInSquareMeter_uom": "m2",
           "uro:urbanPlanType": "都市計画区域",
           "uro:urbanPlanType_code": "21",
           "uro:prefecture": "熊本県",
@@ -3730,10 +3730,10 @@
       "luse:class_code": "202",
       "luse:adeOfLandUse": {
         "uro:LandUseDetailAttribute": {
-          "uro:areaInSquareMeter_uom": "m2",
           "uro:orgLandUse": "畑",
           "uro:orgLandUse_code": "202",
           "uro:areaInSquareMeter": 1862.77487937124,
+          "uro:areaInSquareMeter_uom": "m2",
           "uro:urbanPlanType": "都市計画区域",
           "uro:urbanPlanType_code": "21",
           "uro:prefecture": "熊本県",
@@ -3788,10 +3788,10 @@
       "luse:class_code": "201",
       "luse:adeOfLandUse": {
         "uro:LandUseDetailAttribute": {
-          "uro:areaInSquareMeter_uom": "m2",
           "uro:orgLandUse": "田",
           "uro:orgLandUse_code": "201",
           "uro:areaInSquareMeter": 34653.3793093375,
+          "uro:areaInSquareMeter_uom": "m2",
           "uro:urbanPlanType": "都市計画区域",
           "uro:urbanPlanType_code": "21",
           "uro:prefecture": "熊本県",
@@ -3846,10 +3846,10 @@
       "luse:class_code": "211",
       "luse:adeOfLandUse": {
         "uro:LandUseDetailAttribute": {
-          "uro:areaInSquareMeter_uom": "m2",
           "uro:orgLandUse": "住宅用地",
           "uro:orgLandUse_code": "211",
           "uro:areaInSquareMeter": 744.307499975511,
+          "uro:areaInSquareMeter_uom": "m2",
           "uro:urbanPlanType": "都市計画区域",
           "uro:urbanPlanType_code": "21",
           "uro:prefecture": "熊本県",
@@ -3904,10 +3904,10 @@
       "luse:class_code": "211",
       "luse:adeOfLandUse": {
         "uro:LandUseDetailAttribute": {
-          "uro:areaInSquareMeter_uom": "m2",
           "uro:orgLandUse": "住宅用地",
           "uro:orgLandUse_code": "211",
           "uro:areaInSquareMeter": 1530.73063798697,
+          "uro:areaInSquareMeter_uom": "m2",
           "uro:urbanPlanType": "都市計画区域",
           "uro:urbanPlanType_code": "21",
           "uro:prefecture": "熊本県",
@@ -3962,10 +3962,10 @@
       "luse:class_code": "202",
       "luse:adeOfLandUse": {
         "uro:LandUseDetailAttribute": {
-          "uro:areaInSquareMeter_uom": "m2",
           "uro:orgLandUse": "畑",
           "uro:orgLandUse_code": "202",
           "uro:areaInSquareMeter": 4755.40831763211,
+          "uro:areaInSquareMeter_uom": "m2",
           "uro:urbanPlanType": "都市計画区域",
           "uro:urbanPlanType_code": "21",
           "uro:prefecture": "熊本県",
@@ -4020,10 +4020,10 @@
       "luse:class_code": "223",
       "luse:adeOfLandUse": {
         "uro:LandUseDetailAttribute": {
-          "uro:areaInSquareMeter_uom": "m2",
           "uro:orgLandUse": "その他の空地④",
           "uro:orgLandUse_code": "223",
           "uro:areaInSquareMeter": 1037.34467705834,
+          "uro:areaInSquareMeter_uom": "m2",
           "uro:urbanPlanType": "都市計画区域",
           "uro:urbanPlanType_code": "21",
           "uro:prefecture": "熊本県",
@@ -4078,10 +4078,10 @@
       "luse:class_code": "217",
       "luse:adeOfLandUse": {
         "uro:LandUseDetailAttribute": {
-          "uro:areaInSquareMeter_uom": "m2",
           "uro:orgLandUse": "公共空地",
           "uro:orgLandUse_code": "217",
           "uro:areaInSquareMeter": 1756.16654257507,
+          "uro:areaInSquareMeter_uom": "m2",
           "uro:urbanPlanType": "都市計画区域",
           "uro:urbanPlanType_code": "21",
           "uro:prefecture": "熊本県",
@@ -4136,10 +4136,10 @@
       "luse:class_code": "201",
       "luse:adeOfLandUse": {
         "uro:LandUseDetailAttribute": {
-          "uro:areaInSquareMeter_uom": "m2",
           "uro:orgLandUse": "田",
           "uro:orgLandUse_code": "201",
           "uro:areaInSquareMeter": 16216.8096322776,
+          "uro:areaInSquareMeter_uom": "m2",
           "uro:urbanPlanType": "都市計画区域",
           "uro:urbanPlanType_code": "21",
           "uro:prefecture": "熊本県",
@@ -4194,10 +4194,10 @@
       "luse:class_code": "201",
       "luse:adeOfLandUse": {
         "uro:LandUseDetailAttribute": {
-          "uro:areaInSquareMeter_uom": "m2",
           "uro:orgLandUse": "田",
           "uro:orgLandUse_code": "201",
           "uro:areaInSquareMeter": 30130.5917263443,
+          "uro:areaInSquareMeter_uom": "m2",
           "uro:urbanPlanType": "都市計画区域",
           "uro:urbanPlanType_code": "21",
           "uro:prefecture": "熊本県",
@@ -4252,10 +4252,10 @@
       "luse:class_code": "201",
       "luse:adeOfLandUse": {
         "uro:LandUseDetailAttribute": {
-          "uro:areaInSquareMeter_uom": "m2",
           "uro:orgLandUse": "田",
           "uro:orgLandUse_code": "201",
           "uro:areaInSquareMeter": 39044.677239749,
+          "uro:areaInSquareMeter_uom": "m2",
           "uro:urbanPlanType": "都市計画区域",
           "uro:urbanPlanType_code": "21",
           "uro:prefecture": "熊本県",
@@ -4310,10 +4310,10 @@
       "luse:class_code": "202",
       "luse:adeOfLandUse": {
         "uro:LandUseDetailAttribute": {
-          "uro:areaInSquareMeter_uom": "m2",
           "uro:orgLandUse": "畑",
           "uro:orgLandUse_code": "202",
           "uro:areaInSquareMeter": 5.63185348283087,
+          "uro:areaInSquareMeter_uom": "m2",
           "uro:urbanPlanType": "都市計画区域",
           "uro:urbanPlanType_code": "21",
           "uro:prefecture": "熊本県",
@@ -4368,10 +4368,10 @@
       "luse:class_code": "202",
       "luse:adeOfLandUse": {
         "uro:LandUseDetailAttribute": {
-          "uro:areaInSquareMeter_uom": "m2",
           "uro:orgLandUse": "畑",
           "uro:orgLandUse_code": "202",
           "uro:areaInSquareMeter": 2534.43984091893,
+          "uro:areaInSquareMeter_uom": "m2",
           "uro:urbanPlanType": "都市計画区域",
           "uro:urbanPlanType_code": "21",
           "uro:prefecture": "熊本県",
@@ -4426,10 +4426,10 @@
       "luse:class_code": "211",
       "luse:adeOfLandUse": {
         "uro:LandUseDetailAttribute": {
-          "uro:areaInSquareMeter_uom": "m2",
           "uro:orgLandUse": "住宅用地",
           "uro:orgLandUse_code": "211",
           "uro:areaInSquareMeter": 311.350462986478,
+          "uro:areaInSquareMeter_uom": "m2",
           "uro:urbanPlanType": "都市計画区域",
           "uro:urbanPlanType_code": "21",
           "uro:prefecture": "熊本県",
@@ -4484,10 +4484,10 @@
       "luse:class_code": "205",
       "luse:adeOfLandUse": {
         "uro:LandUseDetailAttribute": {
-          "uro:areaInSquareMeter_uom": "m2",
           "uro:orgLandUse": "その他の自然地",
           "uro:orgLandUse_code": "205",
           "uro:areaInSquareMeter": 4079.61275324605,
+          "uro:areaInSquareMeter_uom": "m2",
           "uro:urbanPlanType": "都市計画区域",
           "uro:urbanPlanType_code": "21",
           "uro:prefecture": "熊本県",
@@ -4542,10 +4542,10 @@
       "luse:class_code": "211",
       "luse:adeOfLandUse": {
         "uro:LandUseDetailAttribute": {
-          "uro:areaInSquareMeter_uom": "m2",
           "uro:orgLandUse": "住宅用地",
           "uro:orgLandUse_code": "211",
           "uro:areaInSquareMeter": 685.947146512447,
+          "uro:areaInSquareMeter_uom": "m2",
           "uro:urbanPlanType": "都市計画区域",
           "uro:urbanPlanType_code": "21",
           "uro:prefecture": "熊本県",
@@ -4600,10 +4600,10 @@
       "luse:class_code": "201",
       "luse:adeOfLandUse": {
         "uro:LandUseDetailAttribute": {
-          "uro:areaInSquareMeter_uom": "m2",
           "uro:orgLandUse": "田",
           "uro:orgLandUse_code": "201",
           "uro:areaInSquareMeter": 22048.6917149029,
+          "uro:areaInSquareMeter_uom": "m2",
           "uro:urbanPlanType": "都市計画区域",
           "uro:urbanPlanType_code": "21",
           "uro:prefecture": "熊本県",
@@ -4658,10 +4658,10 @@
       "luse:class_code": "211",
       "luse:adeOfLandUse": {
         "uro:LandUseDetailAttribute": {
-          "uro:areaInSquareMeter_uom": "m2",
           "uro:orgLandUse": "住宅用地",
           "uro:orgLandUse_code": "211",
           "uro:areaInSquareMeter": 2944.76074049995,
+          "uro:areaInSquareMeter_uom": "m2",
           "uro:urbanPlanType": "都市計画区域",
           "uro:urbanPlanType_code": "21",
           "uro:prefecture": "熊本県",
@@ -4716,10 +4716,10 @@
       "luse:class_code": "204",
       "luse:adeOfLandUse": {
         "uro:LandUseDetailAttribute": {
-          "uro:areaInSquareMeter_uom": "m2",
           "uro:orgLandUse": "水面",
           "uro:orgLandUse_code": "204",
           "uro:areaInSquareMeter": 72.1607044977369,
+          "uro:areaInSquareMeter_uom": "m2",
           "uro:urbanPlanType": "都市計画区域",
           "uro:urbanPlanType_code": "21",
           "uro:prefecture": "熊本県",
@@ -4774,10 +4774,10 @@
       "luse:class_code": "211",
       "luse:adeOfLandUse": {
         "uro:LandUseDetailAttribute": {
-          "uro:areaInSquareMeter_uom": "m2",
           "uro:orgLandUse": "住宅用地",
           "uro:orgLandUse_code": "211",
           "uro:areaInSquareMeter": 1164.18295001429,
+          "uro:areaInSquareMeter_uom": "m2",
           "uro:urbanPlanType": "都市計画区域",
           "uro:urbanPlanType_code": "21",
           "uro:prefecture": "熊本県",
@@ -4832,10 +4832,10 @@
       "luse:class_code": "214",
       "luse:adeOfLandUse": {
         "uro:LandUseDetailAttribute": {
-          "uro:areaInSquareMeter_uom": "m2",
           "uro:orgLandUse": "公共公益施設用地",
           "uro:orgLandUse_code": "214",
           "uro:areaInSquareMeter": 1258.57508856668,
+          "uro:areaInSquareMeter_uom": "m2",
           "uro:urbanPlanType": "都市計画区域",
           "uro:urbanPlanType_code": "21",
           "uro:prefecture": "熊本県",
@@ -4890,10 +4890,10 @@
       "luse:class_code": "211",
       "luse:adeOfLandUse": {
         "uro:LandUseDetailAttribute": {
-          "uro:areaInSquareMeter_uom": "m2",
           "uro:orgLandUse": "住宅用地",
           "uro:orgLandUse_code": "211",
           "uro:areaInSquareMeter": 743.342347505065,
+          "uro:areaInSquareMeter_uom": "m2",
           "uro:urbanPlanType": "都市計画区域",
           "uro:urbanPlanType_code": "21",
           "uro:prefecture": "熊本県",
@@ -4948,10 +4948,10 @@
       "luse:class_code": "214",
       "luse:adeOfLandUse": {
         "uro:LandUseDetailAttribute": {
-          "uro:areaInSquareMeter_uom": "m2",
           "uro:orgLandUse": "公共公益施設用地",
           "uro:orgLandUse_code": "214",
           "uro:areaInSquareMeter": 517.464669478971,
+          "uro:areaInSquareMeter_uom": "m2",
           "uro:urbanPlanType": "都市計画区域",
           "uro:urbanPlanType_code": "21",
           "uro:prefecture": "熊本県",
@@ -5006,10 +5006,10 @@
       "luse:class_code": "204",
       "luse:adeOfLandUse": {
         "uro:LandUseDetailAttribute": {
-          "uro:areaInSquareMeter_uom": "m2",
           "uro:orgLandUse": "水面",
           "uro:orgLandUse_code": "204",
           "uro:areaInSquareMeter": 1063.63532108947,
+          "uro:areaInSquareMeter_uom": "m2",
           "uro:urbanPlanType": "都市計画区域",
           "uro:urbanPlanType_code": "21",
           "uro:prefecture": "熊本県",
@@ -5064,10 +5064,10 @@
       "luse:class_code": "211",
       "luse:adeOfLandUse": {
         "uro:LandUseDetailAttribute": {
-          "uro:areaInSquareMeter_uom": "m2",
           "uro:orgLandUse": "住宅用地",
           "uro:orgLandUse_code": "211",
           "uro:areaInSquareMeter": 777.799503504163,
+          "uro:areaInSquareMeter_uom": "m2",
           "uro:urbanPlanType": "都市計画区域",
           "uro:urbanPlanType_code": "21",
           "uro:prefecture": "熊本県",
@@ -5122,10 +5122,10 @@
       "luse:class_code": "202",
       "luse:adeOfLandUse": {
         "uro:LandUseDetailAttribute": {
-          "uro:areaInSquareMeter_uom": "m2",
           "uro:orgLandUse": "畑",
           "uro:orgLandUse_code": "202",
           "uro:areaInSquareMeter": 3592.85393446616,
+          "uro:areaInSquareMeter_uom": "m2",
           "uro:urbanPlanType": "都市計画区域",
           "uro:urbanPlanType_code": "21",
           "uro:prefecture": "熊本県",
@@ -5180,10 +5180,10 @@
       "luse:class_code": "221",
       "luse:adeOfLandUse": {
         "uro:LandUseDetailAttribute": {
-          "uro:areaInSquareMeter_uom": "m2",
           "uro:orgLandUse": "その他の空地②",
           "uro:orgLandUse_code": "221",
           "uro:areaInSquareMeter": 2447.0056215334,
+          "uro:areaInSquareMeter_uom": "m2",
           "uro:urbanPlanType": "都市計画区域",
           "uro:urbanPlanType_code": "21",
           "uro:prefecture": "熊本県",
@@ -5238,10 +5238,10 @@
       "luse:class_code": "211",
       "luse:adeOfLandUse": {
         "uro:LandUseDetailAttribute": {
-          "uro:areaInSquareMeter_uom": "m2",
           "uro:orgLandUse": "住宅用地",
           "uro:orgLandUse_code": "211",
           "uro:areaInSquareMeter": 3188.64595654639,
+          "uro:areaInSquareMeter_uom": "m2",
           "uro:urbanPlanType": "都市計画区域",
           "uro:urbanPlanType_code": "21",
           "uro:prefecture": "熊本県",
@@ -5296,10 +5296,10 @@
       "luse:class_code": "201",
       "luse:adeOfLandUse": {
         "uro:LandUseDetailAttribute": {
-          "uro:areaInSquareMeter_uom": "m2",
           "uro:orgLandUse": "田",
           "uro:orgLandUse_code": "201",
           "uro:areaInSquareMeter": 43829.2026907688,
+          "uro:areaInSquareMeter_uom": "m2",
           "uro:urbanPlanType": "都市計画区域",
           "uro:urbanPlanType_code": "21",
           "uro:prefecture": "熊本県",
@@ -5354,10 +5354,10 @@
       "luse:class_code": "201",
       "luse:adeOfLandUse": {
         "uro:LandUseDetailAttribute": {
-          "uro:areaInSquareMeter_uom": "m2",
           "uro:orgLandUse": "田",
           "uro:orgLandUse_code": "201",
           "uro:areaInSquareMeter": 24770.5287066397,
+          "uro:areaInSquareMeter_uom": "m2",
           "uro:urbanPlanType": "都市計画区域",
           "uro:urbanPlanType_code": "21",
           "uro:prefecture": "熊本県",
@@ -5412,10 +5412,10 @@
       "luse:class_code": "205",
       "luse:adeOfLandUse": {
         "uro:LandUseDetailAttribute": {
-          "uro:areaInSquareMeter_uom": "m2",
           "uro:orgLandUse": "その他の自然地",
           "uro:orgLandUse_code": "205",
           "uro:areaInSquareMeter": 3276.4096128975,
+          "uro:areaInSquareMeter_uom": "m2",
           "uro:urbanPlanType": "都市計画区域",
           "uro:urbanPlanType_code": "21",
           "uro:prefecture": "熊本県",
@@ -5470,10 +5470,10 @@
       "luse:class_code": "211",
       "luse:adeOfLandUse": {
         "uro:LandUseDetailAttribute": {
-          "uro:areaInSquareMeter_uom": "m2",
           "uro:orgLandUse": "住宅用地",
           "uro:orgLandUse_code": "211",
           "uro:areaInSquareMeter": 289.938257495599,
+          "uro:areaInSquareMeter_uom": "m2",
           "uro:urbanPlanType": "都市計画区域",
           "uro:urbanPlanType_code": "21",
           "uro:prefecture": "熊本県",
@@ -5528,10 +5528,10 @@
       "luse:class_code": "202",
       "luse:adeOfLandUse": {
         "uro:LandUseDetailAttribute": {
-          "uro:areaInSquareMeter_uom": "m2",
           "uro:orgLandUse": "畑",
           "uro:orgLandUse_code": "202",
           "uro:areaInSquareMeter": 1141.35760346873,
+          "uro:areaInSquareMeter_uom": "m2",
           "uro:urbanPlanType": "都市計画区域",
           "uro:urbanPlanType_code": "21",
           "uro:prefecture": "熊本県",
@@ -5586,10 +5586,10 @@
       "luse:class_code": "205",
       "luse:adeOfLandUse": {
         "uro:LandUseDetailAttribute": {
-          "uro:areaInSquareMeter_uom": "m2",
           "uro:orgLandUse": "その他の自然地",
           "uro:orgLandUse_code": "205",
           "uro:areaInSquareMeter": 607.372583995188,
+          "uro:areaInSquareMeter_uom": "m2",
           "uro:urbanPlanType": "都市計画区域",
           "uro:urbanPlanType_code": "21",
           "uro:prefecture": "熊本県",
@@ -5644,10 +5644,10 @@
       "luse:class_code": "202",
       "luse:adeOfLandUse": {
         "uro:LandUseDetailAttribute": {
-          "uro:areaInSquareMeter_uom": "m2",
           "uro:orgLandUse": "畑",
           "uro:orgLandUse_code": "202",
           "uro:areaInSquareMeter": 1319.75086787642,
+          "uro:areaInSquareMeter_uom": "m2",
           "uro:urbanPlanType": "都市計画区域",
           "uro:urbanPlanType_code": "21",
           "uro:prefecture": "熊本県",
@@ -5702,10 +5702,10 @@
       "luse:class_code": "202",
       "luse:adeOfLandUse": {
         "uro:LandUseDetailAttribute": {
-          "uro:areaInSquareMeter_uom": "m2",
           "uro:orgLandUse": "畑",
           "uro:orgLandUse_code": "202",
           "uro:areaInSquareMeter": 329.10029999458,
+          "uro:areaInSquareMeter_uom": "m2",
           "uro:urbanPlanType": "都市計画区域",
           "uro:urbanPlanType_code": "21",
           "uro:prefecture": "熊本県",
@@ -5760,10 +5760,10 @@
       "luse:class_code": "201",
       "luse:adeOfLandUse": {
         "uro:LandUseDetailAttribute": {
-          "uro:areaInSquareMeter_uom": "m2",
           "uro:orgLandUse": "田",
           "uro:orgLandUse_code": "201",
           "uro:areaInSquareMeter": 3858.84965342408,
+          "uro:areaInSquareMeter_uom": "m2",
           "uro:urbanPlanType": "都市計画区域",
           "uro:urbanPlanType_code": "21",
           "uro:prefecture": "熊本県",
@@ -5818,10 +5818,10 @@
       "luse:class_code": "204",
       "luse:adeOfLandUse": {
         "uro:LandUseDetailAttribute": {
-          "uro:areaInSquareMeter_uom": "m2",
           "uro:orgLandUse": "水面",
           "uro:orgLandUse_code": "204",
           "uro:areaInSquareMeter": 134.759750005217,
+          "uro:areaInSquareMeter_uom": "m2",
           "uro:urbanPlanType": "都市計画区域",
           "uro:urbanPlanType_code": "21",
           "uro:prefecture": "熊本県",
@@ -5876,10 +5876,10 @@
       "luse:class_code": "211",
       "luse:adeOfLandUse": {
         "uro:LandUseDetailAttribute": {
-          "uro:areaInSquareMeter_uom": "m2",
           "uro:orgLandUse": "住宅用地",
           "uro:orgLandUse_code": "211",
           "uro:areaInSquareMeter": 3873.4420155311,
+          "uro:areaInSquareMeter_uom": "m2",
           "uro:urbanPlanType": "都市計画区域",
           "uro:urbanPlanType_code": "21",
           "uro:prefecture": "熊本県",
@@ -5934,10 +5934,10 @@
       "luse:class_code": "201",
       "luse:adeOfLandUse": {
         "uro:LandUseDetailAttribute": {
-          "uro:areaInSquareMeter_uom": "m2",
           "uro:orgLandUse": "田",
           "uro:orgLandUse_code": "201",
           "uro:areaInSquareMeter": 51734.0019520287,
+          "uro:areaInSquareMeter_uom": "m2",
           "uro:urbanPlanType": "都市計画区域",
           "uro:urbanPlanType_code": "21",
           "uro:prefecture": "熊本県",
@@ -5992,10 +5992,10 @@
       "luse:class_code": "202",
       "luse:adeOfLandUse": {
         "uro:LandUseDetailAttribute": {
-          "uro:areaInSquareMeter_uom": "m2",
           "uro:orgLandUse": "畑",
           "uro:orgLandUse_code": "202",
           "uro:areaInSquareMeter": 207.043672440383,
+          "uro:areaInSquareMeter_uom": "m2",
           "uro:urbanPlanType": "都市計画区域",
           "uro:urbanPlanType_code": "21",
           "uro:prefecture": "熊本県",
@@ -6050,10 +6050,10 @@
       "luse:class_code": "205",
       "luse:adeOfLandUse": {
         "uro:LandUseDetailAttribute": {
-          "uro:areaInSquareMeter_uom": "m2",
           "uro:orgLandUse": "その他の自然地",
           "uro:orgLandUse_code": "205",
           "uro:areaInSquareMeter": 1578.70603534975,
+          "uro:areaInSquareMeter_uom": "m2",
           "uro:urbanPlanType": "都市計画区域",
           "uro:urbanPlanType_code": "21",
           "uro:prefecture": "熊本県",
@@ -6108,10 +6108,10 @@
       "luse:class_code": "204",
       "luse:adeOfLandUse": {
         "uro:LandUseDetailAttribute": {
-          "uro:areaInSquareMeter_uom": "m2",
           "uro:orgLandUse": "水面",
           "uro:orgLandUse_code": "204",
           "uro:areaInSquareMeter": 1363.61667995788,
+          "uro:areaInSquareMeter_uom": "m2",
           "uro:urbanPlanType": "都市計画区域",
           "uro:urbanPlanType_code": "21",
           "uro:prefecture": "熊本県",
@@ -6166,10 +6166,10 @@
       "luse:class_code": "204",
       "luse:adeOfLandUse": {
         "uro:LandUseDetailAttribute": {
-          "uro:areaInSquareMeter_uom": "m2",
           "uro:orgLandUse": "水面",
           "uro:orgLandUse_code": "204",
           "uro:areaInSquareMeter": 3101.00543412224,
+          "uro:areaInSquareMeter_uom": "m2",
           "uro:urbanPlanType": "都市計画区域",
           "uro:urbanPlanType_code": "21",
           "uro:prefecture": "熊本県",
@@ -6224,10 +6224,10 @@
       "luse:class_code": "205",
       "luse:adeOfLandUse": {
         "uro:LandUseDetailAttribute": {
-          "uro:areaInSquareMeter_uom": "m2",
           "uro:orgLandUse": "その他の自然地",
           "uro:orgLandUse_code": "205",
           "uro:areaInSquareMeter": 1105.60177101176,
+          "uro:areaInSquareMeter_uom": "m2",
           "uro:urbanPlanType": "都市計画区域",
           "uro:urbanPlanType_code": "21",
           "uro:prefecture": "熊本県",
@@ -6282,10 +6282,10 @@
       "luse:class_code": "211",
       "luse:adeOfLandUse": {
         "uro:LandUseDetailAttribute": {
-          "uro:areaInSquareMeter_uom": "m2",
           "uro:orgLandUse": "住宅用地",
           "uro:orgLandUse_code": "211",
           "uro:areaInSquareMeter": 2420.74709355278,
+          "uro:areaInSquareMeter_uom": "m2",
           "uro:urbanPlanType": "都市計画区域",
           "uro:urbanPlanType_code": "21",
           "uro:prefecture": "熊本県",
@@ -6340,10 +6340,10 @@
       "luse:class_code": "211",
       "luse:adeOfLandUse": {
         "uro:LandUseDetailAttribute": {
-          "uro:areaInSquareMeter_uom": "m2",
           "uro:orgLandUse": "住宅用地",
           "uro:orgLandUse_code": "211",
           "uro:areaInSquareMeter": 705.394026009902,
+          "uro:areaInSquareMeter_uom": "m2",
           "uro:urbanPlanType": "都市計画区域",
           "uro:urbanPlanType_code": "21",
           "uro:prefecture": "熊本県",
@@ -6398,10 +6398,10 @@
       "luse:class_code": "205",
       "luse:adeOfLandUse": {
         "uro:LandUseDetailAttribute": {
-          "uro:areaInSquareMeter_uom": "m2",
           "uro:orgLandUse": "その他の自然地",
           "uro:orgLandUse_code": "205",
           "uro:areaInSquareMeter": 2280.69646338855,
+          "uro:areaInSquareMeter_uom": "m2",
           "uro:urbanPlanType": "都市計画区域",
           "uro:urbanPlanType_code": "21",
           "uro:prefecture": "熊本県",
@@ -6456,10 +6456,10 @@
       "luse:class_code": "202",
       "luse:adeOfLandUse": {
         "uro:LandUseDetailAttribute": {
-          "uro:areaInSquareMeter_uom": "m2",
           "uro:orgLandUse": "畑",
           "uro:orgLandUse_code": "202",
           "uro:areaInSquareMeter": 881.838174544479,
+          "uro:areaInSquareMeter_uom": "m2",
           "uro:urbanPlanType": "都市計画区域",
           "uro:urbanPlanType_code": "21",
           "uro:prefecture": "熊本県",
@@ -6514,10 +6514,10 @@
       "luse:class_code": "221",
       "luse:adeOfLandUse": {
         "uro:LandUseDetailAttribute": {
-          "uro:areaInSquareMeter_uom": "m2",
           "uro:orgLandUse": "その他の空地②",
           "uro:orgLandUse_code": "221",
           "uro:areaInSquareMeter": 211.982545995201,
+          "uro:areaInSquareMeter_uom": "m2",
           "uro:urbanPlanType": "都市計画区域",
           "uro:urbanPlanType_code": "21",
           "uro:prefecture": "熊本県",
@@ -6572,10 +6572,10 @@
       "luse:class_code": "201",
       "luse:adeOfLandUse": {
         "uro:LandUseDetailAttribute": {
-          "uro:areaInSquareMeter_uom": "m2",
           "uro:orgLandUse": "田",
           "uro:orgLandUse_code": "201",
           "uro:areaInSquareMeter": 30158.159823017,
+          "uro:areaInSquareMeter_uom": "m2",
           "uro:urbanPlanType": "都市計画区域",
           "uro:urbanPlanType_code": "21",
           "uro:prefecture": "熊本県",
@@ -6630,10 +6630,10 @@
       "luse:class_code": "204",
       "luse:adeOfLandUse": {
         "uro:LandUseDetailAttribute": {
-          "uro:areaInSquareMeter_uom": "m2",
           "uro:orgLandUse": "水面",
           "uro:orgLandUse_code": "204",
           "uro:areaInSquareMeter": 2234.60835203903,
+          "uro:areaInSquareMeter_uom": "m2",
           "uro:urbanPlanType": "都市計画区域",
           "uro:urbanPlanType_code": "21",
           "uro:prefecture": "熊本県",
@@ -6688,10 +6688,10 @@
       "luse:class_code": "201",
       "luse:adeOfLandUse": {
         "uro:LandUseDetailAttribute": {
-          "uro:areaInSquareMeter_uom": "m2",
           "uro:orgLandUse": "田",
           "uro:orgLandUse_code": "201",
           "uro:areaInSquareMeter": 14819.7149526504,
+          "uro:areaInSquareMeter_uom": "m2",
           "uro:urbanPlanType": "都市計画区域",
           "uro:urbanPlanType_code": "21",
           "uro:prefecture": "熊本県",
@@ -6746,10 +6746,10 @@
       "luse:class_code": "201",
       "luse:adeOfLandUse": {
         "uro:LandUseDetailAttribute": {
-          "uro:areaInSquareMeter_uom": "m2",
           "uro:orgLandUse": "田",
           "uro:orgLandUse_code": "201",
           "uro:areaInSquareMeter": 35586.0148376093,
+          "uro:areaInSquareMeter_uom": "m2",
           "uro:urbanPlanType": "都市計画区域",
           "uro:urbanPlanType_code": "21",
           "uro:prefecture": "熊本県",
@@ -6804,10 +6804,10 @@
       "luse:class_code": "204",
       "luse:adeOfLandUse": {
         "uro:LandUseDetailAttribute": {
-          "uro:areaInSquareMeter_uom": "m2",
           "uro:orgLandUse": "水面",
           "uro:orgLandUse_code": "204",
           "uro:areaInSquareMeter": 368.014917858971,
+          "uro:areaInSquareMeter_uom": "m2",
           "uro:urbanPlanType": "都市計画区域",
           "uro:urbanPlanType_code": "21",
           "uro:prefecture": "熊本県",
@@ -6862,10 +6862,10 @@
       "luse:class_code": "204",
       "luse:adeOfLandUse": {
         "uro:LandUseDetailAttribute": {
-          "uro:areaInSquareMeter_uom": "m2",
           "uro:orgLandUse": "水面",
           "uro:orgLandUse_code": "204",
           "uro:areaInSquareMeter": 567.974952412103,
+          "uro:areaInSquareMeter_uom": "m2",
           "uro:urbanPlanType": "都市計画区域",
           "uro:urbanPlanType_code": "21",
           "uro:prefecture": "熊本県",
@@ -6920,10 +6920,10 @@
       "luse:class_code": "201",
       "luse:adeOfLandUse": {
         "uro:LandUseDetailAttribute": {
-          "uro:areaInSquareMeter_uom": "m2",
           "uro:orgLandUse": "田",
           "uro:orgLandUse_code": "201",
           "uro:areaInSquareMeter": 9789.97118838449,
+          "uro:areaInSquareMeter_uom": "m2",
           "uro:urbanPlanType": "都市計画区域",
           "uro:urbanPlanType_code": "21",
           "uro:prefecture": "熊本県",
@@ -6978,10 +6978,10 @@
       "luse:class_code": "201",
       "luse:adeOfLandUse": {
         "uro:LandUseDetailAttribute": {
-          "uro:areaInSquareMeter_uom": "m2",
           "uro:orgLandUse": "田",
           "uro:orgLandUse_code": "201",
           "uro:areaInSquareMeter": 10.5791391609548,
+          "uro:areaInSquareMeter_uom": "m2",
           "uro:urbanPlanType": "都市計画区域",
           "uro:urbanPlanType_code": "21",
           "uro:prefecture": "熊本県",
@@ -7036,10 +7036,10 @@
       "luse:class_code": "201",
       "luse:adeOfLandUse": {
         "uro:LandUseDetailAttribute": {
-          "uro:areaInSquareMeter_uom": "m2",
           "uro:orgLandUse": "田",
           "uro:orgLandUse_code": "201",
           "uro:areaInSquareMeter": 0.810873588303403,
+          "uro:areaInSquareMeter_uom": "m2",
           "uro:urbanPlanType": "都市計画区域",
           "uro:urbanPlanType_code": "21",
           "uro:prefecture": "熊本県",
@@ -7094,10 +7094,10 @@
       "luse:class_code": "211",
       "luse:adeOfLandUse": {
         "uro:LandUseDetailAttribute": {
-          "uro:areaInSquareMeter_uom": "m2",
           "uro:orgLandUse": "住宅用地",
           "uro:orgLandUse_code": "211",
           "uro:areaInSquareMeter": 289.091349997877,
+          "uro:areaInSquareMeter_uom": "m2",
           "uro:urbanPlanType": "都市計画区域",
           "uro:urbanPlanType_code": "21",
           "uro:prefecture": "熊本県",
@@ -7152,10 +7152,10 @@
       "luse:class_code": "211",
       "luse:adeOfLandUse": {
         "uro:LandUseDetailAttribute": {
-          "uro:areaInSquareMeter_uom": "m2",
           "uro:orgLandUse": "住宅用地",
           "uro:orgLandUse_code": "211",
           "uro:areaInSquareMeter": 1665.92434070775,
+          "uro:areaInSquareMeter_uom": "m2",
           "uro:urbanPlanType": "都市計画区域",
           "uro:urbanPlanType_code": "21",
           "uro:prefecture": "熊本県",
@@ -7210,10 +7210,10 @@
       "luse:class_code": "204",
       "luse:adeOfLandUse": {
         "uro:LandUseDetailAttribute": {
-          "uro:areaInSquareMeter_uom": "m2",
           "uro:orgLandUse": "水面",
           "uro:orgLandUse_code": "204",
           "uro:areaInSquareMeter": 821.871038328507,
+          "uro:areaInSquareMeter_uom": "m2",
           "uro:urbanPlanType": "都市計画区域",
           "uro:urbanPlanType_code": "21",
           "uro:prefecture": "熊本県",
@@ -7268,10 +7268,10 @@
       "luse:class_code": "205",
       "luse:adeOfLandUse": {
         "uro:LandUseDetailAttribute": {
-          "uro:areaInSquareMeter_uom": "m2",
           "uro:orgLandUse": "その他の自然地",
           "uro:orgLandUse_code": "205",
           "uro:areaInSquareMeter": 1281.25422690864,
+          "uro:areaInSquareMeter_uom": "m2",
           "uro:urbanPlanType": "都市計画区域",
           "uro:urbanPlanType_code": "21",
           "uro:prefecture": "熊本県",
@@ -7326,10 +7326,10 @@
       "luse:class_code": "211",
       "luse:adeOfLandUse": {
         "uro:LandUseDetailAttribute": {
-          "uro:areaInSquareMeter_uom": "m2",
           "uro:orgLandUse": "住宅用地",
           "uro:orgLandUse_code": "211",
           "uro:areaInSquareMeter": 1176.6201419976,
+          "uro:areaInSquareMeter_uom": "m2",
           "uro:urbanPlanType": "都市計画区域",
           "uro:urbanPlanType_code": "21",
           "uro:prefecture": "熊本県",
@@ -7384,10 +7384,10 @@
       "luse:class_code": "204",
       "luse:adeOfLandUse": {
         "uro:LandUseDetailAttribute": {
-          "uro:areaInSquareMeter_uom": "m2",
           "uro:orgLandUse": "水面",
           "uro:orgLandUse_code": "204",
           "uro:areaInSquareMeter": 187.46611886182,
+          "uro:areaInSquareMeter_uom": "m2",
           "uro:urbanPlanType": "都市計画区域",
           "uro:urbanPlanType_code": "21",
           "uro:prefecture": "熊本県",
@@ -7442,10 +7442,10 @@
       "luse:class_code": "203",
       "luse:adeOfLandUse": {
         "uro:LandUseDetailAttribute": {
-          "uro:areaInSquareMeter_uom": "m2",
           "uro:orgLandUse": "山林",
           "uro:orgLandUse_code": "203",
           "uro:areaInSquareMeter": 1386.64168238385,
+          "uro:areaInSquareMeter_uom": "m2",
           "uro:urbanPlanType": "都市計画区域",
           "uro:urbanPlanType_code": "21",
           "uro:prefecture": "熊本県",
@@ -7500,10 +7500,10 @@
       "luse:class_code": "201",
       "luse:adeOfLandUse": {
         "uro:LandUseDetailAttribute": {
-          "uro:areaInSquareMeter_uom": "m2",
           "uro:orgLandUse": "田",
           "uro:orgLandUse_code": "201",
           "uro:areaInSquareMeter": 15415.0842568748,
+          "uro:areaInSquareMeter_uom": "m2",
           "uro:urbanPlanType": "都市計画区域",
           "uro:urbanPlanType_code": "21",
           "uro:prefecture": "熊本県",
@@ -7558,10 +7558,10 @@
       "luse:class_code": "205",
       "luse:adeOfLandUse": {
         "uro:LandUseDetailAttribute": {
-          "uro:areaInSquareMeter_uom": "m2",
           "uro:orgLandUse": "その他の自然地",
           "uro:orgLandUse_code": "205",
           "uro:areaInSquareMeter": 20517.4453437278,
+          "uro:areaInSquareMeter_uom": "m2",
           "uro:urbanPlanType": "都市計画区域",
           "uro:urbanPlanType_code": "21",
           "uro:prefecture": "熊本県",
@@ -7616,10 +7616,10 @@
       "luse:class_code": "212",
       "luse:adeOfLandUse": {
         "uro:LandUseDetailAttribute": {
-          "uro:areaInSquareMeter_uom": "m2",
           "uro:orgLandUse": "商業用地",
           "uro:orgLandUse_code": "212",
           "uro:areaInSquareMeter": 665.483649996763,
+          "uro:areaInSquareMeter_uom": "m2",
           "uro:urbanPlanType": "都市計画区域",
           "uro:urbanPlanType_code": "21",
           "uro:prefecture": "熊本県",
@@ -7674,10 +7674,10 @@
       "luse:class_code": "202",
       "luse:adeOfLandUse": {
         "uro:LandUseDetailAttribute": {
-          "uro:areaInSquareMeter_uom": "m2",
           "uro:orgLandUse": "畑",
           "uro:orgLandUse_code": "202",
           "uro:areaInSquareMeter": 1445.71214399728,
+          "uro:areaInSquareMeter_uom": "m2",
           "uro:urbanPlanType": "都市計画区域",
           "uro:urbanPlanType_code": "21",
           "uro:prefecture": "熊本県",
@@ -7732,10 +7732,10 @@
       "luse:class_code": "215",
       "luse:adeOfLandUse": {
         "uro:LandUseDetailAttribute": {
-          "uro:areaInSquareMeter_uom": "m2",
           "uro:orgLandUse": "道路用地",
           "uro:orgLandUse_code": "215",
           "uro:areaInSquareMeter": 2.61981153595333,
+          "uro:areaInSquareMeter_uom": "m2",
           "uro:urbanPlanType": "都市計画区域",
           "uro:urbanPlanType_code": "21",
           "uro:prefecture": "熊本県",
@@ -7790,10 +7790,10 @@
       "luse:class_code": "205",
       "luse:adeOfLandUse": {
         "uro:LandUseDetailAttribute": {
-          "uro:areaInSquareMeter_uom": "m2",
           "uro:orgLandUse": "その他の自然地",
           "uro:orgLandUse_code": "205",
           "uro:areaInSquareMeter": 1720.68483619344,
+          "uro:areaInSquareMeter_uom": "m2",
           "uro:urbanPlanType": "都市計画区域",
           "uro:urbanPlanType_code": "21",
           "uro:prefecture": "熊本県",
@@ -7848,10 +7848,10 @@
       "luse:class_code": "205",
       "luse:adeOfLandUse": {
         "uro:LandUseDetailAttribute": {
-          "uro:areaInSquareMeter_uom": "m2",
           "uro:orgLandUse": "その他の自然地",
           "uro:orgLandUse_code": "205",
           "uro:areaInSquareMeter": 843.32795163783,
+          "uro:areaInSquareMeter_uom": "m2",
           "uro:urbanPlanType": "都市計画区域",
           "uro:urbanPlanType_code": "21",
           "uro:prefecture": "熊本県",
@@ -7906,10 +7906,10 @@
       "luse:class_code": "205",
       "luse:adeOfLandUse": {
         "uro:LandUseDetailAttribute": {
-          "uro:areaInSquareMeter_uom": "m2",
           "uro:orgLandUse": "その他の自然地",
           "uro:orgLandUse_code": "205",
           "uro:areaInSquareMeter": 64.418195750468,
+          "uro:areaInSquareMeter_uom": "m2",
           "uro:urbanPlanType": "都市計画区域",
           "uro:urbanPlanType_code": "21",
           "uro:prefecture": "熊本県",
@@ -7964,10 +7964,10 @@
       "luse:class_code": "201",
       "luse:adeOfLandUse": {
         "uro:LandUseDetailAttribute": {
-          "uro:areaInSquareMeter_uom": "m2",
           "uro:orgLandUse": "田",
           "uro:orgLandUse_code": "201",
           "uro:areaInSquareMeter": 2585.60927214234,
+          "uro:areaInSquareMeter_uom": "m2",
           "uro:urbanPlanType": "都市計画区域",
           "uro:urbanPlanType_code": "21",
           "uro:prefecture": "熊本県",
@@ -8022,10 +8022,10 @@
       "luse:class_code": "204",
       "luse:adeOfLandUse": {
         "uro:LandUseDetailAttribute": {
-          "uro:areaInSquareMeter_uom": "m2",
           "uro:orgLandUse": "水面",
           "uro:orgLandUse_code": "204",
           "uro:areaInSquareMeter": 608.743833987383,
+          "uro:areaInSquareMeter_uom": "m2",
           "uro:urbanPlanType": "都市計画区域",
           "uro:urbanPlanType_code": "21",
           "uro:prefecture": "熊本県",
@@ -8080,10 +8080,10 @@
       "luse:class_code": "201",
       "luse:adeOfLandUse": {
         "uro:LandUseDetailAttribute": {
-          "uro:areaInSquareMeter_uom": "m2",
           "uro:orgLandUse": "田",
           "uro:orgLandUse_code": "201",
           "uro:areaInSquareMeter": 4596.22616166072,
+          "uro:areaInSquareMeter_uom": "m2",
           "uro:urbanPlanType": "都市計画区域",
           "uro:urbanPlanType_code": "21",
           "uro:prefecture": "熊本県",
@@ -8138,10 +8138,10 @@
       "luse:class_code": "214",
       "luse:adeOfLandUse": {
         "uro:LandUseDetailAttribute": {
-          "uro:areaInSquareMeter_uom": "m2",
           "uro:orgLandUse": "公共公益施設用地",
           "uro:orgLandUse_code": "214",
           "uro:areaInSquareMeter": 249.614947432184,
+          "uro:areaInSquareMeter_uom": "m2",
           "uro:urbanPlanType": "都市計画区域",
           "uro:urbanPlanType_code": "21",
           "uro:prefecture": "熊本県",
@@ -8196,10 +8196,10 @@
       "luse:class_code": "211",
       "luse:adeOfLandUse": {
         "uro:LandUseDetailAttribute": {
-          "uro:areaInSquareMeter_uom": "m2",
           "uro:orgLandUse": "住宅用地",
           "uro:orgLandUse_code": "211",
           "uro:areaInSquareMeter": 2088.130266468,
+          "uro:areaInSquareMeter_uom": "m2",
           "uro:urbanPlanType": "都市計画区域",
           "uro:urbanPlanType_code": "21",
           "uro:prefecture": "熊本県",
@@ -8254,10 +8254,10 @@
       "luse:class_code": "214",
       "luse:adeOfLandUse": {
         "uro:LandUseDetailAttribute": {
-          "uro:areaInSquareMeter_uom": "m2",
           "uro:orgLandUse": "公共公益施設用地",
           "uro:orgLandUse_code": "214",
           "uro:areaInSquareMeter": 367.708550264798,
+          "uro:areaInSquareMeter_uom": "m2",
           "uro:urbanPlanType": "都市計画区域",
           "uro:urbanPlanType_code": "21",
           "uro:prefecture": "熊本県",
@@ -8312,10 +8312,10 @@
       "luse:class_code": "211",
       "luse:adeOfLandUse": {
         "uro:LandUseDetailAttribute": {
-          "uro:areaInSquareMeter_uom": "m2",
           "uro:orgLandUse": "住宅用地",
           "uro:orgLandUse_code": "211",
           "uro:areaInSquareMeter": 1323.45658739834,
+          "uro:areaInSquareMeter_uom": "m2",
           "uro:urbanPlanType": "都市計画区域",
           "uro:urbanPlanType_code": "21",
           "uro:prefecture": "熊本県",
@@ -8370,10 +8370,10 @@
       "luse:class_code": "201",
       "luse:adeOfLandUse": {
         "uro:LandUseDetailAttribute": {
-          "uro:areaInSquareMeter_uom": "m2",
           "uro:orgLandUse": "田",
           "uro:orgLandUse_code": "201",
           "uro:areaInSquareMeter": 9371.08369636138,
+          "uro:areaInSquareMeter_uom": "m2",
           "uro:urbanPlanType": "都市計画区域",
           "uro:urbanPlanType_code": "21",
           "uro:prefecture": "熊本県",
@@ -8428,10 +8428,10 @@
       "luse:class_code": "213",
       "luse:adeOfLandUse": {
         "uro:LandUseDetailAttribute": {
-          "uro:areaInSquareMeter_uom": "m2",
           "uro:orgLandUse": "工業用地",
           "uro:orgLandUse_code": "213",
           "uro:areaInSquareMeter": 631.889209889298,
+          "uro:areaInSquareMeter_uom": "m2",
           "uro:urbanPlanType": "都市計画区域",
           "uro:urbanPlanType_code": "21",
           "uro:prefecture": "熊本県",
@@ -8486,10 +8486,10 @@
       "luse:class_code": "211",
       "luse:adeOfLandUse": {
         "uro:LandUseDetailAttribute": {
-          "uro:areaInSquareMeter_uom": "m2",
           "uro:orgLandUse": "住宅用地",
           "uro:orgLandUse_code": "211",
           "uro:areaInSquareMeter": 683.581804006471,
+          "uro:areaInSquareMeter_uom": "m2",
           "uro:urbanPlanType": "都市計画区域",
           "uro:urbanPlanType_code": "21",
           "uro:prefecture": "熊本県",
@@ -8544,10 +8544,10 @@
       "luse:class_code": "214",
       "luse:adeOfLandUse": {
         "uro:LandUseDetailAttribute": {
-          "uro:areaInSquareMeter_uom": "m2",
           "uro:orgLandUse": "公共公益施設用地",
           "uro:orgLandUse_code": "214",
           "uro:areaInSquareMeter": 592.042394471471,
+          "uro:areaInSquareMeter_uom": "m2",
           "uro:urbanPlanType": "都市計画区域",
           "uro:urbanPlanType_code": "21",
           "uro:prefecture": "熊本県",
@@ -8602,10 +8602,10 @@
       "luse:class_code": "214",
       "luse:adeOfLandUse": {
         "uro:LandUseDetailAttribute": {
-          "uro:areaInSquareMeter_uom": "m2",
           "uro:orgLandUse": "公共公益施設用地",
           "uro:orgLandUse_code": "214",
           "uro:areaInSquareMeter": 317.389972738798,
+          "uro:areaInSquareMeter_uom": "m2",
           "uro:urbanPlanType": "都市計画区域",
           "uro:urbanPlanType_code": "21",
           "uro:prefecture": "熊本県",
@@ -8660,10 +8660,10 @@
       "luse:class_code": "204",
       "luse:adeOfLandUse": {
         "uro:LandUseDetailAttribute": {
-          "uro:areaInSquareMeter_uom": "m2",
           "uro:orgLandUse": "水面",
           "uro:orgLandUse_code": "204",
           "uro:areaInSquareMeter": 312.015031906443,
+          "uro:areaInSquareMeter_uom": "m2",
           "uro:urbanPlanType": "都市計画区域",
           "uro:urbanPlanType_code": "21",
           "uro:prefecture": "熊本県",
@@ -8718,10 +8718,10 @@
       "luse:class_code": "211",
       "luse:adeOfLandUse": {
         "uro:LandUseDetailAttribute": {
-          "uro:areaInSquareMeter_uom": "m2",
           "uro:orgLandUse": "住宅用地",
           "uro:orgLandUse_code": "211",
           "uro:areaInSquareMeter": 2162.91016855769,
+          "uro:areaInSquareMeter_uom": "m2",
           "uro:urbanPlanType": "都市計画区域",
           "uro:urbanPlanType_code": "21",
           "uro:prefecture": "熊本県",
@@ -8776,10 +8776,10 @@
       "luse:class_code": "202",
       "luse:adeOfLandUse": {
         "uro:LandUseDetailAttribute": {
-          "uro:areaInSquareMeter_uom": "m2",
           "uro:orgLandUse": "畑",
           "uro:orgLandUse_code": "202",
           "uro:areaInSquareMeter": 326.062849503843,
+          "uro:areaInSquareMeter_uom": "m2",
           "uro:urbanPlanType": "都市計画区域",
           "uro:urbanPlanType_code": "21",
           "uro:prefecture": "熊本県",
@@ -8834,10 +8834,10 @@
       "luse:class_code": "205",
       "luse:adeOfLandUse": {
         "uro:LandUseDetailAttribute": {
-          "uro:areaInSquareMeter_uom": "m2",
           "uro:orgLandUse": "その他の自然地",
           "uro:orgLandUse_code": "205",
           "uro:areaInSquareMeter": 4120.02162300991,
+          "uro:areaInSquareMeter_uom": "m2",
           "uro:urbanPlanType": "都市計画区域",
           "uro:urbanPlanType_code": "21",
           "uro:prefecture": "熊本県",
@@ -8892,10 +8892,10 @@
       "luse:class_code": "215",
       "luse:adeOfLandUse": {
         "uro:LandUseDetailAttribute": {
-          "uro:areaInSquareMeter_uom": "m2",
           "uro:orgLandUse": "道路用地",
           "uro:orgLandUse_code": "215",
           "uro:areaInSquareMeter": 8.09080800220408,
+          "uro:areaInSquareMeter_uom": "m2",
           "uro:urbanPlanType": "都市計画区域",
           "uro:urbanPlanType_code": "21",
           "uro:prefecture": "熊本県",
@@ -8950,10 +8950,10 @@
       "luse:class_code": "202",
       "luse:adeOfLandUse": {
         "uro:LandUseDetailAttribute": {
-          "uro:areaInSquareMeter_uom": "m2",
           "uro:orgLandUse": "畑",
           "uro:orgLandUse_code": "202",
           "uro:areaInSquareMeter": 1104.10026551354,
+          "uro:areaInSquareMeter_uom": "m2",
           "uro:urbanPlanType": "都市計画区域",
           "uro:urbanPlanType_code": "21",
           "uro:prefecture": "熊本県",
@@ -9008,10 +9008,10 @@
       "luse:class_code": "201",
       "luse:adeOfLandUse": {
         "uro:LandUseDetailAttribute": {
-          "uro:areaInSquareMeter_uom": "m2",
           "uro:orgLandUse": "田",
           "uro:orgLandUse_code": "201",
           "uro:areaInSquareMeter": 6271.4874721139,
+          "uro:areaInSquareMeter_uom": "m2",
           "uro:urbanPlanType": "都市計画区域",
           "uro:urbanPlanType_code": "21",
           "uro:prefecture": "熊本県",
@@ -9066,10 +9066,10 @@
       "luse:class_code": "211",
       "luse:adeOfLandUse": {
         "uro:LandUseDetailAttribute": {
-          "uro:areaInSquareMeter_uom": "m2",
           "uro:orgLandUse": "住宅用地",
           "uro:orgLandUse_code": "211",
           "uro:areaInSquareMeter": 1446.61590737971,
+          "uro:areaInSquareMeter_uom": "m2",
           "uro:urbanPlanType": "都市計画区域",
           "uro:urbanPlanType_code": "21",
           "uro:prefecture": "熊本県",
@@ -9124,10 +9124,10 @@
       "luse:class_code": "201",
       "luse:adeOfLandUse": {
         "uro:LandUseDetailAttribute": {
-          "uro:areaInSquareMeter_uom": "m2",
           "uro:orgLandUse": "田",
           "uro:orgLandUse_code": "201",
           "uro:areaInSquareMeter": 29116.9263817185,
+          "uro:areaInSquareMeter_uom": "m2",
           "uro:urbanPlanType": "都市計画区域",
           "uro:urbanPlanType_code": "21",
           "uro:prefecture": "熊本県",
@@ -9182,10 +9182,10 @@
       "luse:class_code": "202",
       "luse:adeOfLandUse": {
         "uro:LandUseDetailAttribute": {
-          "uro:areaInSquareMeter_uom": "m2",
           "uro:orgLandUse": "畑",
           "uro:orgLandUse_code": "202",
           "uro:areaInSquareMeter": 82.9628640351547,
+          "uro:areaInSquareMeter_uom": "m2",
           "uro:urbanPlanType": "都市計画区域",
           "uro:urbanPlanType_code": "21",
           "uro:prefecture": "熊本県",
@@ -9240,10 +9240,10 @@
       "luse:class_code": "202",
       "luse:adeOfLandUse": {
         "uro:LandUseDetailAttribute": {
-          "uro:areaInSquareMeter_uom": "m2",
           "uro:orgLandUse": "畑",
           "uro:orgLandUse_code": "202",
           "uro:areaInSquareMeter": 3032.36212741673,
+          "uro:areaInSquareMeter_uom": "m2",
           "uro:urbanPlanType": "都市計画区域",
           "uro:urbanPlanType_code": "21",
           "uro:prefecture": "熊本県",
@@ -9298,10 +9298,10 @@
       "luse:class_code": "211",
       "luse:adeOfLandUse": {
         "uro:LandUseDetailAttribute": {
-          "uro:areaInSquareMeter_uom": "m2",
           "uro:orgLandUse": "住宅用地",
           "uro:orgLandUse_code": "211",
           "uro:areaInSquareMeter": 1272.06869834006,
+          "uro:areaInSquareMeter_uom": "m2",
           "uro:urbanPlanType": "都市計画区域",
           "uro:urbanPlanType_code": "21",
           "uro:prefecture": "熊本県",
@@ -9356,10 +9356,10 @@
       "luse:class_code": "211",
       "luse:adeOfLandUse": {
         "uro:LandUseDetailAttribute": {
-          "uro:areaInSquareMeter_uom": "m2",
           "uro:orgLandUse": "住宅用地",
           "uro:orgLandUse_code": "211",
           "uro:areaInSquareMeter": 847.128737146424,
+          "uro:areaInSquareMeter_uom": "m2",
           "uro:urbanPlanType": "都市計画区域",
           "uro:urbanPlanType_code": "21",
           "uro:prefecture": "熊本県",
@@ -9414,10 +9414,10 @@
       "luse:class_code": "204",
       "luse:adeOfLandUse": {
         "uro:LandUseDetailAttribute": {
-          "uro:areaInSquareMeter_uom": "m2",
           "uro:orgLandUse": "水面",
           "uro:orgLandUse_code": "204",
           "uro:areaInSquareMeter": 4287.09049095803,
+          "uro:areaInSquareMeter_uom": "m2",
           "uro:urbanPlanType": "都市計画区域",
           "uro:urbanPlanType_code": "21",
           "uro:prefecture": "熊本県",
@@ -9472,10 +9472,10 @@
       "luse:class_code": "202",
       "luse:adeOfLandUse": {
         "uro:LandUseDetailAttribute": {
-          "uro:areaInSquareMeter_uom": "m2",
           "uro:orgLandUse": "畑",
           "uro:orgLandUse_code": "202",
           "uro:areaInSquareMeter": 2991.47490362814,
+          "uro:areaInSquareMeter_uom": "m2",
           "uro:urbanPlanType": "都市計画区域",
           "uro:urbanPlanType_code": "21",
           "uro:prefecture": "熊本県",
@@ -9530,10 +9530,10 @@
       "luse:class_code": "211",
       "luse:adeOfLandUse": {
         "uro:LandUseDetailAttribute": {
-          "uro:areaInSquareMeter_uom": "m2",
           "uro:orgLandUse": "住宅用地",
           "uro:orgLandUse_code": "211",
           "uro:areaInSquareMeter": 2629.49631300224,
+          "uro:areaInSquareMeter_uom": "m2",
           "uro:urbanPlanType": "都市計画区域",
           "uro:urbanPlanType_code": "21",
           "uro:prefecture": "熊本県",
@@ -9588,10 +9588,10 @@
       "luse:class_code": "211",
       "luse:adeOfLandUse": {
         "uro:LandUseDetailAttribute": {
-          "uro:areaInSquareMeter_uom": "m2",
           "uro:orgLandUse": "住宅用地",
           "uro:orgLandUse_code": "211",
           "uro:areaInSquareMeter": 1204.10438099762,
+          "uro:areaInSquareMeter_uom": "m2",
           "uro:urbanPlanType": "都市計画区域",
           "uro:urbanPlanType_code": "21",
           "uro:prefecture": "熊本県",
@@ -9646,10 +9646,10 @@
       "luse:class_code": "205",
       "luse:adeOfLandUse": {
         "uro:LandUseDetailAttribute": {
-          "uro:areaInSquareMeter_uom": "m2",
           "uro:orgLandUse": "その他の自然地",
           "uro:orgLandUse_code": "205",
           "uro:areaInSquareMeter": 64.2586118381532,
+          "uro:areaInSquareMeter_uom": "m2",
           "uro:urbanPlanType": "都市計画区域",
           "uro:urbanPlanType_code": "21",
           "uro:prefecture": "熊本県",
@@ -9704,10 +9704,10 @@
       "luse:class_code": "201",
       "luse:adeOfLandUse": {
         "uro:LandUseDetailAttribute": {
-          "uro:areaInSquareMeter_uom": "m2",
           "uro:orgLandUse": "田",
           "uro:orgLandUse_code": "201",
           "uro:areaInSquareMeter": 20128.0002867352,
+          "uro:areaInSquareMeter_uom": "m2",
           "uro:urbanPlanType": "都市計画区域",
           "uro:urbanPlanType_code": "21",
           "uro:prefecture": "熊本県",
@@ -9762,10 +9762,10 @@
       "luse:class_code": "202",
       "luse:adeOfLandUse": {
         "uro:LandUseDetailAttribute": {
-          "uro:areaInSquareMeter_uom": "m2",
           "uro:orgLandUse": "畑",
           "uro:orgLandUse_code": "202",
           "uro:areaInSquareMeter": 877.19848499676,
+          "uro:areaInSquareMeter_uom": "m2",
           "uro:urbanPlanType": "都市計画区域",
           "uro:urbanPlanType_code": "21",
           "uro:prefecture": "熊本県",
@@ -9820,10 +9820,10 @@
       "luse:class_code": "211",
       "luse:adeOfLandUse": {
         "uro:LandUseDetailAttribute": {
-          "uro:areaInSquareMeter_uom": "m2",
           "uro:orgLandUse": "住宅用地",
           "uro:orgLandUse_code": "211",
           "uro:areaInSquareMeter": 2564.66034650535,
+          "uro:areaInSquareMeter_uom": "m2",
           "uro:urbanPlanType": "都市計画区域",
           "uro:urbanPlanType_code": "21",
           "uro:prefecture": "熊本県",
@@ -9878,10 +9878,10 @@
       "luse:class_code": "201",
       "luse:adeOfLandUse": {
         "uro:LandUseDetailAttribute": {
-          "uro:areaInSquareMeter_uom": "m2",
           "uro:orgLandUse": "田",
           "uro:orgLandUse_code": "201",
           "uro:areaInSquareMeter": 76069.9838582052,
+          "uro:areaInSquareMeter_uom": "m2",
           "uro:urbanPlanType": "都市計画区域",
           "uro:urbanPlanType_code": "21",
           "uro:prefecture": "熊本県",
@@ -9936,10 +9936,10 @@
       "luse:class_code": "203",
       "luse:adeOfLandUse": {
         "uro:LandUseDetailAttribute": {
-          "uro:areaInSquareMeter_uom": "m2",
           "uro:orgLandUse": "山林",
           "uro:orgLandUse_code": "203",
           "uro:areaInSquareMeter": 34.9704590673557,
+          "uro:areaInSquareMeter_uom": "m2",
           "uro:urbanPlanType": "都市計画区域",
           "uro:urbanPlanType_code": "21",
           "uro:prefecture": "熊本県",
@@ -9994,10 +9994,10 @@
       "luse:class_code": "202",
       "luse:adeOfLandUse": {
         "uro:LandUseDetailAttribute": {
-          "uro:areaInSquareMeter_uom": "m2",
           "uro:orgLandUse": "畑",
           "uro:orgLandUse_code": "202",
           "uro:areaInSquareMeter": 1610.20539324057,
+          "uro:areaInSquareMeter_uom": "m2",
           "uro:urbanPlanType": "都市計画区域",
           "uro:urbanPlanType_code": "21",
           "uro:prefecture": "熊本県",
@@ -10052,10 +10052,10 @@
       "luse:class_code": "211",
       "luse:adeOfLandUse": {
         "uro:LandUseDetailAttribute": {
-          "uro:areaInSquareMeter_uom": "m2",
           "uro:orgLandUse": "住宅用地",
           "uro:orgLandUse_code": "211",
           "uro:areaInSquareMeter": 590.701316994567,
+          "uro:areaInSquareMeter_uom": "m2",
           "uro:urbanPlanType": "都市計画区域",
           "uro:urbanPlanType_code": "21",
           "uro:prefecture": "熊本県",
@@ -10110,10 +10110,10 @@
       "luse:class_code": "211",
       "luse:adeOfLandUse": {
         "uro:LandUseDetailAttribute": {
-          "uro:areaInSquareMeter_uom": "m2",
           "uro:orgLandUse": "住宅用地",
           "uro:orgLandUse_code": "211",
           "uro:areaInSquareMeter": 836.543615001505,
+          "uro:areaInSquareMeter_uom": "m2",
           "uro:urbanPlanType": "都市計画区域",
           "uro:urbanPlanType_code": "21",
           "uro:prefecture": "熊本県",
@@ -10168,10 +10168,10 @@
       "luse:class_code": "204",
       "luse:adeOfLandUse": {
         "uro:LandUseDetailAttribute": {
-          "uro:areaInSquareMeter_uom": "m2",
           "uro:orgLandUse": "水面",
           "uro:orgLandUse_code": "204",
           "uro:areaInSquareMeter": 769.590539516352,
+          "uro:areaInSquareMeter_uom": "m2",
           "uro:urbanPlanType": "都市計画区域",
           "uro:urbanPlanType_code": "21",
           "uro:prefecture": "熊本県",
@@ -10226,10 +10226,10 @@
       "luse:class_code": "201",
       "luse:adeOfLandUse": {
         "uro:LandUseDetailAttribute": {
-          "uro:areaInSquareMeter_uom": "m2",
           "uro:orgLandUse": "田",
           "uro:orgLandUse_code": "201",
           "uro:areaInSquareMeter": 3047.03419998515,
+          "uro:areaInSquareMeter_uom": "m2",
           "uro:urbanPlanType": "都市計画区域",
           "uro:urbanPlanType_code": "21",
           "uro:prefecture": "熊本県",
@@ -10284,10 +10284,10 @@
       "luse:class_code": "214",
       "luse:adeOfLandUse": {
         "uro:LandUseDetailAttribute": {
-          "uro:areaInSquareMeter_uom": "m2",
           "uro:orgLandUse": "公共公益施設用地",
           "uro:orgLandUse_code": "214",
           "uro:areaInSquareMeter": 231.9839773653,
+          "uro:areaInSquareMeter_uom": "m2",
           "uro:urbanPlanType": "都市計画区域",
           "uro:urbanPlanType_code": "21",
           "uro:prefecture": "熊本県",
@@ -10342,10 +10342,10 @@
       "luse:class_code": "201",
       "luse:adeOfLandUse": {
         "uro:LandUseDetailAttribute": {
-          "uro:areaInSquareMeter_uom": "m2",
           "uro:orgLandUse": "田",
           "uro:orgLandUse_code": "201",
           "uro:areaInSquareMeter": 22704.5623962412,
+          "uro:areaInSquareMeter_uom": "m2",
           "uro:urbanPlanType": "都市計画区域",
           "uro:urbanPlanType_code": "21",
           "uro:prefecture": "熊本県",
@@ -10400,10 +10400,10 @@
       "luse:class_code": "204",
       "luse:adeOfLandUse": {
         "uro:LandUseDetailAttribute": {
-          "uro:areaInSquareMeter_uom": "m2",
           "uro:orgLandUse": "水面",
           "uro:orgLandUse_code": "204",
           "uro:areaInSquareMeter": 1011.99897816592,
+          "uro:areaInSquareMeter_uom": "m2",
           "uro:urbanPlanType": "都市計画区域",
           "uro:urbanPlanType_code": "21",
           "uro:prefecture": "熊本県",
@@ -10458,10 +10458,10 @@
       "luse:class_code": "205",
       "luse:adeOfLandUse": {
         "uro:LandUseDetailAttribute": {
-          "uro:areaInSquareMeter_uom": "m2",
           "uro:orgLandUse": "その他の自然地",
           "uro:orgLandUse_code": "205",
           "uro:areaInSquareMeter": 4434.71350850664,
+          "uro:areaInSquareMeter_uom": "m2",
           "uro:urbanPlanType": "都市計画区域",
           "uro:urbanPlanType_code": "21",
           "uro:prefecture": "熊本県",
@@ -10516,10 +10516,10 @@
       "luse:class_code": "211",
       "luse:adeOfLandUse": {
         "uro:LandUseDetailAttribute": {
-          "uro:areaInSquareMeter_uom": "m2",
           "uro:orgLandUse": "住宅用地",
           "uro:orgLandUse_code": "211",
           "uro:areaInSquareMeter": 2412.11276400944,
+          "uro:areaInSquareMeter_uom": "m2",
           "uro:urbanPlanType": "都市計画区域",
           "uro:urbanPlanType_code": "21",
           "uro:prefecture": "熊本県",
@@ -10574,10 +10574,10 @@
       "luse:class_code": "205",
       "luse:adeOfLandUse": {
         "uro:LandUseDetailAttribute": {
-          "uro:areaInSquareMeter_uom": "m2",
           "uro:orgLandUse": "その他の自然地",
           "uro:orgLandUse_code": "205",
           "uro:areaInSquareMeter": 2106.24206146163,
+          "uro:areaInSquareMeter_uom": "m2",
           "uro:urbanPlanType": "都市計画区域",
           "uro:urbanPlanType_code": "21",
           "uro:prefecture": "熊本県",
@@ -10632,10 +10632,10 @@
       "luse:class_code": "202",
       "luse:adeOfLandUse": {
         "uro:LandUseDetailAttribute": {
-          "uro:areaInSquareMeter_uom": "m2",
           "uro:orgLandUse": "畑",
           "uro:orgLandUse_code": "202",
           "uro:areaInSquareMeter": 372.710777499804,
+          "uro:areaInSquareMeter_uom": "m2",
           "uro:urbanPlanType": "都市計画区域",
           "uro:urbanPlanType_code": "21",
           "uro:prefecture": "熊本県",
@@ -10690,10 +10690,10 @@
       "luse:class_code": "214",
       "luse:adeOfLandUse": {
         "uro:LandUseDetailAttribute": {
-          "uro:areaInSquareMeter_uom": "m2",
           "uro:orgLandUse": "公共公益施設用地",
           "uro:orgLandUse_code": "214",
           "uro:areaInSquareMeter": 125.017645988237,
+          "uro:areaInSquareMeter_uom": "m2",
           "uro:urbanPlanType": "都市計画区域",
           "uro:urbanPlanType_code": "21",
           "uro:prefecture": "熊本県",
@@ -10748,10 +10748,10 @@
       "luse:class_code": "211",
       "luse:adeOfLandUse": {
         "uro:LandUseDetailAttribute": {
-          "uro:areaInSquareMeter_uom": "m2",
           "uro:orgLandUse": "住宅用地",
           "uro:orgLandUse_code": "211",
           "uro:areaInSquareMeter": 2382.88479048916,
+          "uro:areaInSquareMeter_uom": "m2",
           "uro:urbanPlanType": "都市計画区域",
           "uro:urbanPlanType_code": "21",
           "uro:prefecture": "熊本県",
@@ -10806,10 +10806,10 @@
       "luse:class_code": "214",
       "luse:adeOfLandUse": {
         "uro:LandUseDetailAttribute": {
-          "uro:areaInSquareMeter_uom": "m2",
           "uro:orgLandUse": "公共公益施設用地",
           "uro:orgLandUse_code": "214",
           "uro:areaInSquareMeter": 200.104318997612,
+          "uro:areaInSquareMeter_uom": "m2",
           "uro:urbanPlanType": "都市計画区域",
           "uro:urbanPlanType_code": "21",
           "uro:prefecture": "熊本県",
@@ -10864,10 +10864,10 @@
       "luse:class_code": "211",
       "luse:adeOfLandUse": {
         "uro:LandUseDetailAttribute": {
-          "uro:areaInSquareMeter_uom": "m2",
           "uro:orgLandUse": "住宅用地",
           "uro:orgLandUse_code": "211",
           "uro:areaInSquareMeter": 763.443950003032,
+          "uro:areaInSquareMeter_uom": "m2",
           "uro:urbanPlanType": "都市計画区域",
           "uro:urbanPlanType_code": "21",
           "uro:prefecture": "熊本県",
@@ -10922,10 +10922,10 @@
       "luse:class_code": "211",
       "luse:adeOfLandUse": {
         "uro:LandUseDetailAttribute": {
-          "uro:areaInSquareMeter_uom": "m2",
           "uro:orgLandUse": "住宅用地",
           "uro:orgLandUse_code": "211",
           "uro:areaInSquareMeter": 318.495254000222,
+          "uro:areaInSquareMeter_uom": "m2",
           "uro:urbanPlanType": "都市計画区域",
           "uro:urbanPlanType_code": "21",
           "uro:prefecture": "熊本県",
@@ -10980,10 +10980,10 @@
       "luse:class_code": "201",
       "luse:adeOfLandUse": {
         "uro:LandUseDetailAttribute": {
-          "uro:areaInSquareMeter_uom": "m2",
           "uro:orgLandUse": "田",
           "uro:orgLandUse_code": "201",
           "uro:areaInSquareMeter": 31840.0061443237,
+          "uro:areaInSquareMeter_uom": "m2",
           "uro:urbanPlanType": "都市計画区域",
           "uro:urbanPlanType_code": "21",
           "uro:prefecture": "熊本県",
@@ -11038,10 +11038,10 @@
       "luse:class_code": "205",
       "luse:adeOfLandUse": {
         "uro:LandUseDetailAttribute": {
-          "uro:areaInSquareMeter_uom": "m2",
           "uro:orgLandUse": "その他の自然地",
           "uro:orgLandUse_code": "205",
           "uro:areaInSquareMeter": 4191.60705094478,
+          "uro:areaInSquareMeter_uom": "m2",
           "uro:urbanPlanType": "都市計画区域",
           "uro:urbanPlanType_code": "21",
           "uro:prefecture": "熊本県",
@@ -11096,10 +11096,10 @@
       "luse:class_code": "211",
       "luse:adeOfLandUse": {
         "uro:LandUseDetailAttribute": {
-          "uro:areaInSquareMeter_uom": "m2",
           "uro:orgLandUse": "住宅用地",
           "uro:orgLandUse_code": "211",
           "uro:areaInSquareMeter": 574.667835498253,
+          "uro:areaInSquareMeter_uom": "m2",
           "uro:urbanPlanType": "都市計画区域",
           "uro:urbanPlanType_code": "21",
           "uro:prefecture": "熊本県",
@@ -11154,10 +11154,10 @@
       "luse:class_code": "211",
       "luse:adeOfLandUse": {
         "uro:LandUseDetailAttribute": {
-          "uro:areaInSquareMeter_uom": "m2",
           "uro:orgLandUse": "住宅用地",
           "uro:orgLandUse_code": "211",
           "uro:areaInSquareMeter": 805.567295486406,
+          "uro:areaInSquareMeter_uom": "m2",
           "uro:urbanPlanType": "都市計画区域",
           "uro:urbanPlanType_code": "21",
           "uro:prefecture": "熊本県",
@@ -11212,10 +11212,10 @@
       "luse:class_code": "201",
       "luse:adeOfLandUse": {
         "uro:LandUseDetailAttribute": {
-          "uro:areaInSquareMeter_uom": "m2",
           "uro:orgLandUse": "田",
           "uro:orgLandUse_code": "201",
           "uro:areaInSquareMeter": 27128.362773653,
+          "uro:areaInSquareMeter_uom": "m2",
           "uro:urbanPlanType": "都市計画区域",
           "uro:urbanPlanType_code": "21",
           "uro:prefecture": "熊本県",
@@ -11270,10 +11270,10 @@
       "luse:class_code": "201",
       "luse:adeOfLandUse": {
         "uro:LandUseDetailAttribute": {
-          "uro:areaInSquareMeter_uom": "m2",
           "uro:orgLandUse": "田",
           "uro:orgLandUse_code": "201",
           "uro:areaInSquareMeter": 12853.6799562961,
+          "uro:areaInSquareMeter_uom": "m2",
           "uro:urbanPlanType": "都市計画区域",
           "uro:urbanPlanType_code": "21",
           "uro:prefecture": "熊本県",
@@ -11328,10 +11328,10 @@
       "luse:class_code": "205",
       "luse:adeOfLandUse": {
         "uro:LandUseDetailAttribute": {
-          "uro:areaInSquareMeter_uom": "m2",
           "uro:orgLandUse": "その他の自然地",
           "uro:orgLandUse_code": "205",
           "uro:areaInSquareMeter": 11251.2854772088,
+          "uro:areaInSquareMeter_uom": "m2",
           "uro:urbanPlanType": "都市計画区域",
           "uro:urbanPlanType_code": "21",
           "uro:prefecture": "熊本県",
@@ -11386,10 +11386,10 @@
       "luse:class_code": "205",
       "luse:adeOfLandUse": {
         "uro:LandUseDetailAttribute": {
-          "uro:areaInSquareMeter_uom": "m2",
           "uro:orgLandUse": "その他の自然地",
           "uro:orgLandUse_code": "205",
           "uro:areaInSquareMeter": 1916.48385912658,
+          "uro:areaInSquareMeter_uom": "m2",
           "uro:urbanPlanType": "都市計画区域",
           "uro:urbanPlanType_code": "21",
           "uro:prefecture": "熊本県",
@@ -11444,10 +11444,10 @@
       "luse:class_code": "219",
       "luse:adeOfLandUse": {
         "uro:LandUseDetailAttribute": {
-          "uro:areaInSquareMeter_uom": "m2",
           "uro:orgLandUse": "農林漁業施設用地",
           "uro:orgLandUse_code": "219",
           "uro:areaInSquareMeter": 76.1040104441945,
+          "uro:areaInSquareMeter_uom": "m2",
           "uro:urbanPlanType": "都市計画区域",
           "uro:urbanPlanType_code": "21",
           "uro:prefecture": "熊本県",
@@ -11502,10 +11502,10 @@
       "luse:class_code": "202",
       "luse:adeOfLandUse": {
         "uro:LandUseDetailAttribute": {
-          "uro:areaInSquareMeter_uom": "m2",
           "uro:orgLandUse": "畑",
           "uro:orgLandUse_code": "202",
           "uro:areaInSquareMeter": 27.7986327536843,
+          "uro:areaInSquareMeter_uom": "m2",
           "uro:urbanPlanType": "都市計画区域",
           "uro:urbanPlanType_code": "21",
           "uro:prefecture": "熊本県",
@@ -11560,10 +11560,10 @@
       "luse:class_code": "202",
       "luse:adeOfLandUse": {
         "uro:LandUseDetailAttribute": {
-          "uro:areaInSquareMeter_uom": "m2",
           "uro:orgLandUse": "畑",
           "uro:orgLandUse_code": "202",
           "uro:areaInSquareMeter": 493.573366985904,
+          "uro:areaInSquareMeter_uom": "m2",
           "uro:urbanPlanType": "都市計画区域",
           "uro:urbanPlanType_code": "21",
           "uro:prefecture": "熊本県",
@@ -11618,10 +11618,10 @@
       "luse:class_code": "201",
       "luse:adeOfLandUse": {
         "uro:LandUseDetailAttribute": {
-          "uro:areaInSquareMeter_uom": "m2",
           "uro:orgLandUse": "田",
           "uro:orgLandUse_code": "201",
           "uro:areaInSquareMeter": 14561.96564313,
+          "uro:areaInSquareMeter_uom": "m2",
           "uro:urbanPlanType": "都市計画区域",
           "uro:urbanPlanType_code": "21",
           "uro:prefecture": "熊本県",
@@ -11676,10 +11676,10 @@
       "luse:class_code": "213",
       "luse:adeOfLandUse": {
         "uro:LandUseDetailAttribute": {
-          "uro:areaInSquareMeter_uom": "m2",
           "uro:orgLandUse": "工業用地",
           "uro:orgLandUse_code": "213",
           "uro:areaInSquareMeter": 2604.25140197968,
+          "uro:areaInSquareMeter_uom": "m2",
           "uro:urbanPlanType": "都市計画区域",
           "uro:urbanPlanType_code": "21",
           "uro:prefecture": "熊本県",
@@ -11734,10 +11734,10 @@
       "luse:class_code": "202",
       "luse:adeOfLandUse": {
         "uro:LandUseDetailAttribute": {
-          "uro:areaInSquareMeter_uom": "m2",
           "uro:orgLandUse": "畑",
           "uro:orgLandUse_code": "202",
           "uro:areaInSquareMeter": 26689.0778301358,
+          "uro:areaInSquareMeter_uom": "m2",
           "uro:urbanPlanType": "都市計画区域",
           "uro:urbanPlanType_code": "21",
           "uro:prefecture": "熊本県",
@@ -11792,10 +11792,10 @@
       "luse:class_code": "211",
       "luse:adeOfLandUse": {
         "uro:LandUseDetailAttribute": {
-          "uro:areaInSquareMeter_uom": "m2",
           "uro:orgLandUse": "住宅用地",
           "uro:orgLandUse_code": "211",
           "uro:areaInSquareMeter": 4491.74520358368,
+          "uro:areaInSquareMeter_uom": "m2",
           "uro:urbanPlanType": "都市計画区域",
           "uro:urbanPlanType_code": "21",
           "uro:prefecture": "熊本県",
@@ -11850,10 +11850,10 @@
       "luse:class_code": "211",
       "luse:adeOfLandUse": {
         "uro:LandUseDetailAttribute": {
-          "uro:areaInSquareMeter_uom": "m2",
           "uro:orgLandUse": "住宅用地",
           "uro:orgLandUse_code": "211",
           "uro:areaInSquareMeter": 2352.82079785314,
+          "uro:areaInSquareMeter_uom": "m2",
           "uro:urbanPlanType": "都市計画区域",
           "uro:urbanPlanType_code": "21",
           "uro:prefecture": "熊本県",
@@ -11908,10 +11908,10 @@
       "luse:class_code": "201",
       "luse:adeOfLandUse": {
         "uro:LandUseDetailAttribute": {
-          "uro:areaInSquareMeter_uom": "m2",
           "uro:orgLandUse": "田",
           "uro:orgLandUse_code": "201",
           "uro:areaInSquareMeter": 2376.76299801112,
+          "uro:areaInSquareMeter_uom": "m2",
           "uro:urbanPlanType": "都市計画区域",
           "uro:urbanPlanType_code": "21",
           "uro:prefecture": "熊本県",
@@ -11966,10 +11966,10 @@
       "luse:class_code": "204",
       "luse:adeOfLandUse": {
         "uro:LandUseDetailAttribute": {
-          "uro:areaInSquareMeter_uom": "m2",
           "uro:orgLandUse": "水面",
           "uro:orgLandUse_code": "204",
           "uro:areaInSquareMeter": 5566.98691471653,
+          "uro:areaInSquareMeter_uom": "m2",
           "uro:urbanPlanType": "都市計画区域",
           "uro:urbanPlanType_code": "21",
           "uro:prefecture": "熊本県",
@@ -12024,10 +12024,10 @@
       "luse:class_code": "211",
       "luse:adeOfLandUse": {
         "uro:LandUseDetailAttribute": {
-          "uro:areaInSquareMeter_uom": "m2",
           "uro:orgLandUse": "住宅用地",
           "uro:orgLandUse_code": "211",
           "uro:areaInSquareMeter": 298.833382642635,
+          "uro:areaInSquareMeter_uom": "m2",
           "uro:urbanPlanType": "都市計画区域",
           "uro:urbanPlanType_code": "21",
           "uro:prefecture": "熊本県",
@@ -12082,10 +12082,10 @@
       "luse:class_code": "203",
       "luse:adeOfLandUse": {
         "uro:LandUseDetailAttribute": {
-          "uro:areaInSquareMeter_uom": "m2",
           "uro:orgLandUse": "山林",
           "uro:orgLandUse_code": "203",
           "uro:areaInSquareMeter": 15.8648267324868,
+          "uro:areaInSquareMeter_uom": "m2",
           "uro:urbanPlanType": "都市計画区域",
           "uro:urbanPlanType_code": "21",
           "uro:prefecture": "熊本県",
@@ -12140,10 +12140,10 @@
       "luse:class_code": "201",
       "luse:adeOfLandUse": {
         "uro:LandUseDetailAttribute": {
-          "uro:areaInSquareMeter_uom": "m2",
           "uro:orgLandUse": "田",
           "uro:orgLandUse_code": "201",
           "uro:areaInSquareMeter": 9994.06228099062,
+          "uro:areaInSquareMeter_uom": "m2",
           "uro:urbanPlanType": "都市計画区域",
           "uro:urbanPlanType_code": "21",
           "uro:prefecture": "熊本県",
@@ -12198,10 +12198,10 @@
       "luse:class_code": "211",
       "luse:adeOfLandUse": {
         "uro:LandUseDetailAttribute": {
-          "uro:areaInSquareMeter_uom": "m2",
           "uro:orgLandUse": "住宅用地",
           "uro:orgLandUse_code": "211",
           "uro:areaInSquareMeter": 760.655599969351,
+          "uro:areaInSquareMeter_uom": "m2",
           "uro:urbanPlanType": "都市計画区域",
           "uro:urbanPlanType_code": "21",
           "uro:prefecture": "熊本県",
@@ -12256,10 +12256,10 @@
       "luse:class_code": "204",
       "luse:adeOfLandUse": {
         "uro:LandUseDetailAttribute": {
-          "uro:areaInSquareMeter_uom": "m2",
           "uro:orgLandUse": "水面",
           "uro:orgLandUse_code": "204",
           "uro:areaInSquareMeter": 516.578862181225,
+          "uro:areaInSquareMeter_uom": "m2",
           "uro:urbanPlanType": "都市計画区域",
           "uro:urbanPlanType_code": "21",
           "uro:prefecture": "熊本県",
@@ -12314,10 +12314,10 @@
       "luse:class_code": "215",
       "luse:adeOfLandUse": {
         "uro:LandUseDetailAttribute": {
-          "uro:areaInSquareMeter_uom": "m2",
           "uro:orgLandUse": "道路用地",
           "uro:orgLandUse_code": "215",
           "uro:areaInSquareMeter": 3.41470700537225,
+          "uro:areaInSquareMeter_uom": "m2",
           "uro:urbanPlanType": "都市計画区域",
           "uro:urbanPlanType_code": "21",
           "uro:prefecture": "熊本県",
@@ -12372,10 +12372,10 @@
       "luse:class_code": "211",
       "luse:adeOfLandUse": {
         "uro:LandUseDetailAttribute": {
-          "uro:areaInSquareMeter_uom": "m2",
           "uro:orgLandUse": "住宅用地",
           "uro:orgLandUse_code": "211",
           "uro:areaInSquareMeter": 1143.34700901755,
+          "uro:areaInSquareMeter_uom": "m2",
           "uro:urbanPlanType": "都市計画区域",
           "uro:urbanPlanType_code": "21",
           "uro:prefecture": "熊本県",
@@ -12430,10 +12430,10 @@
       "luse:class_code": "203",
       "luse:adeOfLandUse": {
         "uro:LandUseDetailAttribute": {
-          "uro:areaInSquareMeter_uom": "m2",
           "uro:orgLandUse": "山林",
           "uro:orgLandUse_code": "203",
           "uro:areaInSquareMeter": 1.70704191677588,
+          "uro:areaInSquareMeter_uom": "m2",
           "uro:urbanPlanType": "都市計画区域",
           "uro:urbanPlanType_code": "21",
           "uro:prefecture": "熊本県",
@@ -12488,10 +12488,10 @@
       "luse:class_code": "211",
       "luse:adeOfLandUse": {
         "uro:LandUseDetailAttribute": {
-          "uro:areaInSquareMeter_uom": "m2",
           "uro:orgLandUse": "住宅用地",
           "uro:orgLandUse_code": "211",
           "uro:areaInSquareMeter": 1029.3834581219,
+          "uro:areaInSquareMeter_uom": "m2",
           "uro:urbanPlanType": "都市計画区域",
           "uro:urbanPlanType_code": "21",
           "uro:prefecture": "熊本県",
@@ -12546,10 +12546,10 @@
       "luse:class_code": "205",
       "luse:adeOfLandUse": {
         "uro:LandUseDetailAttribute": {
-          "uro:areaInSquareMeter_uom": "m2",
           "uro:orgLandUse": "その他の自然地",
           "uro:orgLandUse_code": "205",
           "uro:areaInSquareMeter": 749.448090509056,
+          "uro:areaInSquareMeter_uom": "m2",
           "uro:urbanPlanType": "都市計画区域",
           "uro:urbanPlanType_code": "21",
           "uro:prefecture": "熊本県",
@@ -12604,10 +12604,10 @@
       "luse:class_code": "204",
       "luse:adeOfLandUse": {
         "uro:LandUseDetailAttribute": {
-          "uro:areaInSquareMeter_uom": "m2",
           "uro:orgLandUse": "水面",
           "uro:orgLandUse_code": "204",
           "uro:areaInSquareMeter": 977.702994599068,
+          "uro:areaInSquareMeter_uom": "m2",
           "uro:urbanPlanType": "都市計画区域",
           "uro:urbanPlanType_code": "21",
           "uro:prefecture": "熊本県",
@@ -12662,10 +12662,10 @@
       "luse:class_code": "211",
       "luse:adeOfLandUse": {
         "uro:LandUseDetailAttribute": {
-          "uro:areaInSquareMeter_uom": "m2",
           "uro:orgLandUse": "住宅用地",
           "uro:orgLandUse_code": "211",
           "uro:areaInSquareMeter": 1785.3529679381,
+          "uro:areaInSquareMeter_uom": "m2",
           "uro:urbanPlanType": "都市計画区域",
           "uro:urbanPlanType_code": "21",
           "uro:prefecture": "熊本県",
@@ -12720,10 +12720,10 @@
       "luse:class_code": "205",
       "luse:adeOfLandUse": {
         "uro:LandUseDetailAttribute": {
-          "uro:areaInSquareMeter_uom": "m2",
           "uro:orgLandUse": "その他の自然地",
           "uro:orgLandUse_code": "205",
           "uro:areaInSquareMeter": 5336.32523100014,
+          "uro:areaInSquareMeter_uom": "m2",
           "uro:urbanPlanType": "都市計画区域",
           "uro:urbanPlanType_code": "21",
           "uro:prefecture": "熊本県",
@@ -12778,10 +12778,10 @@
       "luse:class_code": "202",
       "luse:adeOfLandUse": {
         "uro:LandUseDetailAttribute": {
-          "uro:areaInSquareMeter_uom": "m2",
           "uro:orgLandUse": "畑",
           "uro:orgLandUse_code": "202",
           "uro:areaInSquareMeter": 363.818912006418,
+          "uro:areaInSquareMeter_uom": "m2",
           "uro:urbanPlanType": "都市計画区域",
           "uro:urbanPlanType_code": "21",
           "uro:prefecture": "熊本県",
@@ -12836,10 +12836,10 @@
       "luse:class_code": "205",
       "luse:adeOfLandUse": {
         "uro:LandUseDetailAttribute": {
-          "uro:areaInSquareMeter_uom": "m2",
           "uro:orgLandUse": "その他の自然地",
           "uro:orgLandUse_code": "205",
           "uro:areaInSquareMeter": 104.655992318181,
+          "uro:areaInSquareMeter_uom": "m2",
           "uro:urbanPlanType": "都市計画区域",
           "uro:urbanPlanType_code": "21",
           "uro:prefecture": "熊本県",
@@ -12894,10 +12894,10 @@
       "luse:class_code": "212",
       "luse:adeOfLandUse": {
         "uro:LandUseDetailAttribute": {
-          "uro:areaInSquareMeter_uom": "m2",
           "uro:orgLandUse": "商業用地",
           "uro:orgLandUse_code": "212",
           "uro:areaInSquareMeter": 420.612978790044,
+          "uro:areaInSquareMeter_uom": "m2",
           "uro:urbanPlanType": "都市計画区域",
           "uro:urbanPlanType_code": "21",
           "uro:prefecture": "熊本県",
@@ -12952,10 +12952,10 @@
       "luse:class_code": "214",
       "luse:adeOfLandUse": {
         "uro:LandUseDetailAttribute": {
-          "uro:areaInSquareMeter_uom": "m2",
           "uro:orgLandUse": "公共公益施設用地",
           "uro:orgLandUse_code": "214",
           "uro:areaInSquareMeter": 127.00532651701,
+          "uro:areaInSquareMeter_uom": "m2",
           "uro:urbanPlanType": "都市計画区域",
           "uro:urbanPlanType_code": "21",
           "uro:prefecture": "熊本県",
@@ -13010,10 +13010,10 @@
       "luse:class_code": "211",
       "luse:adeOfLandUse": {
         "uro:LandUseDetailAttribute": {
-          "uro:areaInSquareMeter_uom": "m2",
           "uro:orgLandUse": "住宅用地",
           "uro:orgLandUse_code": "211",
           "uro:areaInSquareMeter": 2720.08124480736,
+          "uro:areaInSquareMeter_uom": "m2",
           "uro:urbanPlanType": "都市計画区域",
           "uro:urbanPlanType_code": "21",
           "uro:prefecture": "熊本県",
@@ -13068,10 +13068,10 @@
       "luse:class_code": "204",
       "luse:adeOfLandUse": {
         "uro:LandUseDetailAttribute": {
-          "uro:areaInSquareMeter_uom": "m2",
           "uro:orgLandUse": "水面",
           "uro:orgLandUse_code": "204",
           "uro:areaInSquareMeter": 848.64715936085,
+          "uro:areaInSquareMeter_uom": "m2",
           "uro:urbanPlanType": "都市計画区域",
           "uro:urbanPlanType_code": "21",
           "uro:prefecture": "熊本県",
@@ -13126,10 +13126,10 @@
       "luse:class_code": "216",
       "luse:adeOfLandUse": {
         "uro:LandUseDetailAttribute": {
-          "uro:areaInSquareMeter_uom": "m2",
           "uro:orgLandUse": "交通施設用地",
           "uro:orgLandUse_code": "216",
           "uro:areaInSquareMeter": 369.02275221849,
+          "uro:areaInSquareMeter_uom": "m2",
           "uro:urbanPlanType": "都市計画区域",
           "uro:urbanPlanType_code": "21",
           "uro:prefecture": "熊本県",
@@ -13184,10 +13184,10 @@
       "luse:class_code": "211",
       "luse:adeOfLandUse": {
         "uro:LandUseDetailAttribute": {
-          "uro:areaInSquareMeter_uom": "m2",
           "uro:orgLandUse": "住宅用地",
           "uro:orgLandUse_code": "211",
           "uro:areaInSquareMeter": 282.779800127276,
+          "uro:areaInSquareMeter_uom": "m2",
           "uro:urbanPlanType": "都市計画区域",
           "uro:urbanPlanType_code": "21",
           "uro:prefecture": "熊本県",
@@ -13242,10 +13242,10 @@
       "luse:class_code": "217",
       "luse:adeOfLandUse": {
         "uro:LandUseDetailAttribute": {
-          "uro:areaInSquareMeter_uom": "m2",
           "uro:orgLandUse": "公共空地",
           "uro:orgLandUse_code": "217",
           "uro:areaInSquareMeter": 2080.30152643435,
+          "uro:areaInSquareMeter_uom": "m2",
           "uro:urbanPlanType": "都市計画区域",
           "uro:urbanPlanType_code": "21",
           "uro:prefecture": "熊本県",
@@ -13300,10 +13300,10 @@
       "luse:class_code": "204",
       "luse:adeOfLandUse": {
         "uro:LandUseDetailAttribute": {
-          "uro:areaInSquareMeter_uom": "m2",
           "uro:orgLandUse": "水面",
           "uro:orgLandUse_code": "204",
           "uro:areaInSquareMeter": 937.192672009838,
+          "uro:areaInSquareMeter_uom": "m2",
           "uro:urbanPlanType": "都市計画区域",
           "uro:urbanPlanType_code": "21",
           "uro:prefecture": "熊本県",
@@ -13358,10 +13358,10 @@
       "luse:class_code": "202",
       "luse:adeOfLandUse": {
         "uro:LandUseDetailAttribute": {
-          "uro:areaInSquareMeter_uom": "m2",
           "uro:orgLandUse": "畑",
           "uro:orgLandUse_code": "202",
           "uro:areaInSquareMeter": 502.118614544613,
+          "uro:areaInSquareMeter_uom": "m2",
           "uro:urbanPlanType": "都市計画区域",
           "uro:urbanPlanType_code": "21",
           "uro:prefecture": "熊本県",
@@ -13416,10 +13416,10 @@
       "luse:class_code": "211",
       "luse:adeOfLandUse": {
         "uro:LandUseDetailAttribute": {
-          "uro:areaInSquareMeter_uom": "m2",
           "uro:orgLandUse": "住宅用地",
           "uro:orgLandUse_code": "211",
           "uro:areaInSquareMeter": 808.119654866803,
+          "uro:areaInSquareMeter_uom": "m2",
           "uro:urbanPlanType": "都市計画区域",
           "uro:urbanPlanType_code": "21",
           "uro:prefecture": "熊本県",
@@ -13474,10 +13474,10 @@
       "luse:class_code": "201",
       "luse:adeOfLandUse": {
         "uro:LandUseDetailAttribute": {
-          "uro:areaInSquareMeter_uom": "m2",
           "uro:orgLandUse": "田",
           "uro:orgLandUse_code": "201",
           "uro:areaInSquareMeter": 0.879930999449227,
+          "uro:areaInSquareMeter_uom": "m2",
           "uro:urbanPlanType": "都市計画区域",
           "uro:urbanPlanType_code": "21",
           "uro:prefecture": "熊本県",
@@ -13532,10 +13532,10 @@
       "luse:class_code": "202",
       "luse:adeOfLandUse": {
         "uro:LandUseDetailAttribute": {
-          "uro:areaInSquareMeter_uom": "m2",
           "uro:orgLandUse": "畑",
           "uro:orgLandUse_code": "202",
           "uro:areaInSquareMeter": 1701.84835002115,
+          "uro:areaInSquareMeter_uom": "m2",
           "uro:urbanPlanType": "都市計画区域",
           "uro:urbanPlanType_code": "21",
           "uro:prefecture": "熊本県",
@@ -13590,10 +13590,10 @@
       "luse:class_code": "203",
       "luse:adeOfLandUse": {
         "uro:LandUseDetailAttribute": {
-          "uro:areaInSquareMeter_uom": "m2",
           "uro:orgLandUse": "山林",
           "uro:orgLandUse_code": "203",
           "uro:areaInSquareMeter": 4888.78600647779,
+          "uro:areaInSquareMeter_uom": "m2",
           "uro:urbanPlanType": "都市計画区域",
           "uro:urbanPlanType_code": "21",
           "uro:prefecture": "熊本県",
@@ -13648,10 +13648,10 @@
       "luse:class_code": "201",
       "luse:adeOfLandUse": {
         "uro:LandUseDetailAttribute": {
-          "uro:areaInSquareMeter_uom": "m2",
           "uro:orgLandUse": "田",
           "uro:orgLandUse_code": "201",
           "uro:areaInSquareMeter": 22665.22974807,
+          "uro:areaInSquareMeter_uom": "m2",
           "uro:urbanPlanType": "都市計画区域",
           "uro:urbanPlanType_code": "21",
           "uro:prefecture": "熊本県",
@@ -13706,10 +13706,10 @@
       "luse:class_code": "211",
       "luse:adeOfLandUse": {
         "uro:LandUseDetailAttribute": {
-          "uro:areaInSquareMeter_uom": "m2",
           "uro:orgLandUse": "住宅用地",
           "uro:orgLandUse_code": "211",
           "uro:areaInSquareMeter": 2190.1119556737,
+          "uro:areaInSquareMeter_uom": "m2",
           "uro:urbanPlanType": "都市計画区域",
           "uro:urbanPlanType_code": "21",
           "uro:prefecture": "熊本県",
@@ -13764,10 +13764,10 @@
       "luse:class_code": "201",
       "luse:adeOfLandUse": {
         "uro:LandUseDetailAttribute": {
-          "uro:areaInSquareMeter_uom": "m2",
           "uro:orgLandUse": "田",
           "uro:orgLandUse_code": "201",
           "uro:areaInSquareMeter": 49.9407542146844,
+          "uro:areaInSquareMeter_uom": "m2",
           "uro:urbanPlanType": "都市計画区域",
           "uro:urbanPlanType_code": "21",
           "uro:prefecture": "熊本県",
@@ -13822,10 +13822,10 @@
       "luse:class_code": "211",
       "luse:adeOfLandUse": {
         "uro:LandUseDetailAttribute": {
-          "uro:areaInSquareMeter_uom": "m2",
           "uro:orgLandUse": "住宅用地",
           "uro:orgLandUse_code": "211",
           "uro:areaInSquareMeter": 944.384261656272,
+          "uro:areaInSquareMeter_uom": "m2",
           "uro:urbanPlanType": "都市計画区域",
           "uro:urbanPlanType_code": "21",
           "uro:prefecture": "熊本県",
@@ -13880,10 +13880,10 @@
       "luse:class_code": "217",
       "luse:adeOfLandUse": {
         "uro:LandUseDetailAttribute": {
-          "uro:areaInSquareMeter_uom": "m2",
           "uro:orgLandUse": "公共空地",
           "uro:orgLandUse_code": "217",
           "uro:areaInSquareMeter": 1650.22048853606,
+          "uro:areaInSquareMeter_uom": "m2",
           "uro:urbanPlanType": "都市計画区域",
           "uro:urbanPlanType_code": "21",
           "uro:prefecture": "熊本県",
@@ -13938,10 +13938,10 @@
       "luse:class_code": "205",
       "luse:adeOfLandUse": {
         "uro:LandUseDetailAttribute": {
-          "uro:areaInSquareMeter_uom": "m2",
           "uro:orgLandUse": "その他の自然地",
           "uro:orgLandUse_code": "205",
           "uro:areaInSquareMeter": 2883.40774226346,
+          "uro:areaInSquareMeter_uom": "m2",
           "uro:urbanPlanType": "都市計画区域",
           "uro:urbanPlanType_code": "21",
           "uro:prefecture": "熊本県",
@@ -13996,10 +13996,10 @@
       "luse:class_code": "223",
       "luse:adeOfLandUse": {
         "uro:LandUseDetailAttribute": {
-          "uro:areaInSquareMeter_uom": "m2",
           "uro:orgLandUse": "その他の空地④",
           "uro:orgLandUse_code": "223",
           "uro:areaInSquareMeter": 275.178990123321,
+          "uro:areaInSquareMeter_uom": "m2",
           "uro:urbanPlanType": "都市計画区域",
           "uro:urbanPlanType_code": "21",
           "uro:prefecture": "熊本県",
@@ -14054,10 +14054,10 @@
       "luse:class_code": "211",
       "luse:adeOfLandUse": {
         "uro:LandUseDetailAttribute": {
-          "uro:areaInSquareMeter_uom": "m2",
           "uro:orgLandUse": "住宅用地",
           "uro:orgLandUse_code": "211",
           "uro:areaInSquareMeter": 364.994362567918,
+          "uro:areaInSquareMeter_uom": "m2",
           "uro:urbanPlanType": "都市計画区域",
           "uro:urbanPlanType_code": "21",
           "uro:prefecture": "熊本県",
@@ -14112,10 +14112,10 @@
       "luse:class_code": "222",
       "luse:adeOfLandUse": {
         "uro:LandUseDetailAttribute": {
-          "uro:areaInSquareMeter_uom": "m2",
           "uro:orgLandUse": "その他の空地③",
           "uro:orgLandUse_code": "222",
           "uro:areaInSquareMeter": 70.0467163056619,
+          "uro:areaInSquareMeter_uom": "m2",
           "uro:urbanPlanType": "都市計画区域",
           "uro:urbanPlanType_code": "21",
           "uro:prefecture": "熊本県",
@@ -14170,10 +14170,10 @@
       "luse:class_code": "204",
       "luse:adeOfLandUse": {
         "uro:LandUseDetailAttribute": {
-          "uro:areaInSquareMeter_uom": "m2",
           "uro:orgLandUse": "水面",
           "uro:orgLandUse_code": "204",
           "uro:areaInSquareMeter": 949.341448404417,
+          "uro:areaInSquareMeter_uom": "m2",
           "uro:urbanPlanType": "都市計画区域",
           "uro:urbanPlanType_code": "21",
           "uro:prefecture": "熊本県",
@@ -14228,10 +14228,10 @@
       "luse:class_code": "211",
       "luse:adeOfLandUse": {
         "uro:LandUseDetailAttribute": {
-          "uro:areaInSquareMeter_uom": "m2",
           "uro:orgLandUse": "住宅用地",
           "uro:orgLandUse_code": "211",
           "uro:areaInSquareMeter": 748.517464013362,
+          "uro:areaInSquareMeter_uom": "m2",
           "uro:urbanPlanType": "都市計画区域",
           "uro:urbanPlanType_code": "21",
           "uro:prefecture": "熊本県",
@@ -14286,10 +14286,10 @@
       "luse:class_code": "205",
       "luse:adeOfLandUse": {
         "uro:LandUseDetailAttribute": {
-          "uro:areaInSquareMeter_uom": "m2",
           "uro:orgLandUse": "その他の自然地",
           "uro:orgLandUse_code": "205",
           "uro:areaInSquareMeter": 683.110281858705,
+          "uro:areaInSquareMeter_uom": "m2",
           "uro:urbanPlanType": "都市計画区域",
           "uro:urbanPlanType_code": "21",
           "uro:prefecture": "熊本県",
@@ -14344,10 +14344,10 @@
       "luse:class_code": "211",
       "luse:adeOfLandUse": {
         "uro:LandUseDetailAttribute": {
-          "uro:areaInSquareMeter_uom": "m2",
           "uro:orgLandUse": "住宅用地",
           "uro:orgLandUse_code": "211",
           "uro:areaInSquareMeter": 2980.93505115047,
+          "uro:areaInSquareMeter_uom": "m2",
           "uro:urbanPlanType": "都市計画区域",
           "uro:urbanPlanType_code": "21",
           "uro:prefecture": "熊本県",
@@ -14402,10 +14402,10 @@
       "luse:class_code": "201",
       "luse:adeOfLandUse": {
         "uro:LandUseDetailAttribute": {
-          "uro:areaInSquareMeter_uom": "m2",
           "uro:orgLandUse": "田",
           "uro:orgLandUse_code": "201",
           "uro:areaInSquareMeter": 6539.05074705543,
+          "uro:areaInSquareMeter_uom": "m2",
           "uro:urbanPlanType": "都市計画区域",
           "uro:urbanPlanType_code": "21",
           "uro:prefecture": "熊本県",
@@ -14460,10 +14460,10 @@
       "luse:class_code": "204",
       "luse:adeOfLandUse": {
         "uro:LandUseDetailAttribute": {
-          "uro:areaInSquareMeter_uom": "m2",
           "uro:orgLandUse": "水面",
           "uro:orgLandUse_code": "204",
           "uro:areaInSquareMeter": 1965.15184813295,
+          "uro:areaInSquareMeter_uom": "m2",
           "uro:urbanPlanType": "都市計画区域",
           "uro:urbanPlanType_code": "21",
           "uro:prefecture": "熊本県",
@@ -14518,10 +14518,10 @@
       "luse:class_code": "201",
       "luse:adeOfLandUse": {
         "uro:LandUseDetailAttribute": {
-          "uro:areaInSquareMeter_uom": "m2",
           "uro:orgLandUse": "田",
           "uro:orgLandUse_code": "201",
           "uro:areaInSquareMeter": 3397.68110000116,
+          "uro:areaInSquareMeter_uom": "m2",
           "uro:urbanPlanType": "都市計画区域",
           "uro:urbanPlanType_code": "21",
           "uro:prefecture": "熊本県",
@@ -14576,10 +14576,10 @@
       "luse:class_code": "211",
       "luse:adeOfLandUse": {
         "uro:LandUseDetailAttribute": {
-          "uro:areaInSquareMeter_uom": "m2",
           "uro:orgLandUse": "住宅用地",
           "uro:orgLandUse_code": "211",
           "uro:areaInSquareMeter": 955.734200014811,
+          "uro:areaInSquareMeter_uom": "m2",
           "uro:urbanPlanType": "都市計画区域",
           "uro:urbanPlanType_code": "21",
           "uro:prefecture": "熊本県",
@@ -14634,10 +14634,10 @@
       "luse:class_code": "201",
       "luse:adeOfLandUse": {
         "uro:LandUseDetailAttribute": {
-          "uro:areaInSquareMeter_uom": "m2",
           "uro:orgLandUse": "田",
           "uro:orgLandUse_code": "201",
           "uro:areaInSquareMeter": 10448.8567705278,
+          "uro:areaInSquareMeter_uom": "m2",
           "uro:urbanPlanType": "都市計画区域",
           "uro:urbanPlanType_code": "21",
           "uro:prefecture": "熊本県",
@@ -14692,10 +14692,10 @@
       "luse:class_code": "211",
       "luse:adeOfLandUse": {
         "uro:LandUseDetailAttribute": {
-          "uro:areaInSquareMeter_uom": "m2",
           "uro:orgLandUse": "住宅用地",
           "uro:orgLandUse_code": "211",
           "uro:areaInSquareMeter": 415.664690374537,
+          "uro:areaInSquareMeter_uom": "m2",
           "uro:urbanPlanType": "都市計画区域",
           "uro:urbanPlanType_code": "21",
           "uro:prefecture": "熊本県",
@@ -14750,10 +14750,10 @@
       "luse:class_code": "201",
       "luse:adeOfLandUse": {
         "uro:LandUseDetailAttribute": {
-          "uro:areaInSquareMeter_uom": "m2",
           "uro:orgLandUse": "田",
           "uro:orgLandUse_code": "201",
           "uro:areaInSquareMeter": 23.2030051008262,
+          "uro:areaInSquareMeter_uom": "m2",
           "uro:urbanPlanType": "都市計画区域",
           "uro:urbanPlanType_code": "21",
           "uro:prefecture": "熊本県",
@@ -14808,10 +14808,10 @@
       "luse:class_code": "216",
       "luse:adeOfLandUse": {
         "uro:LandUseDetailAttribute": {
-          "uro:areaInSquareMeter_uom": "m2",
           "uro:orgLandUse": "交通施設用地",
           "uro:orgLandUse_code": "216",
           "uro:areaInSquareMeter": 153.112849883084,
+          "uro:areaInSquareMeter_uom": "m2",
           "uro:urbanPlanType": "都市計画区域",
           "uro:urbanPlanType_code": "21",
           "uro:prefecture": "熊本県",
@@ -14866,10 +14866,10 @@
       "luse:class_code": "211",
       "luse:adeOfLandUse": {
         "uro:LandUseDetailAttribute": {
-          "uro:areaInSquareMeter_uom": "m2",
           "uro:orgLandUse": "住宅用地",
           "uro:orgLandUse_code": "211",
           "uro:areaInSquareMeter": 3768.78640320801,
+          "uro:areaInSquareMeter_uom": "m2",
           "uro:urbanPlanType": "都市計画区域",
           "uro:urbanPlanType_code": "21",
           "uro:prefecture": "熊本県",
@@ -14924,10 +14924,10 @@
       "luse:class_code": "205",
       "luse:adeOfLandUse": {
         "uro:LandUseDetailAttribute": {
-          "uro:areaInSquareMeter_uom": "m2",
           "uro:orgLandUse": "その他の自然地",
           "uro:orgLandUse_code": "205",
           "uro:areaInSquareMeter": 910.771462392891,
+          "uro:areaInSquareMeter_uom": "m2",
           "uro:urbanPlanType": "都市計画区域",
           "uro:urbanPlanType_code": "21",
           "uro:prefecture": "熊本県",
@@ -14982,10 +14982,10 @@
       "luse:class_code": "211",
       "luse:adeOfLandUse": {
         "uro:LandUseDetailAttribute": {
-          "uro:areaInSquareMeter_uom": "m2",
           "uro:orgLandUse": "住宅用地",
           "uro:orgLandUse_code": "211",
           "uro:areaInSquareMeter": 399.211904488385,
+          "uro:areaInSquareMeter_uom": "m2",
           "uro:urbanPlanType": "都市計画区域",
           "uro:urbanPlanType_code": "21",
           "uro:prefecture": "熊本県",
@@ -15040,10 +15040,10 @@
       "luse:class_code": "205",
       "luse:adeOfLandUse": {
         "uro:LandUseDetailAttribute": {
-          "uro:areaInSquareMeter_uom": "m2",
           "uro:orgLandUse": "その他の自然地",
           "uro:orgLandUse_code": "205",
           "uro:areaInSquareMeter": 943.698407225921,
+          "uro:areaInSquareMeter_uom": "m2",
           "uro:urbanPlanType": "都市計画区域",
           "uro:urbanPlanType_code": "21",
           "uro:prefecture": "熊本県",
@@ -15098,10 +15098,10 @@
       "luse:class_code": "215",
       "luse:adeOfLandUse": {
         "uro:LandUseDetailAttribute": {
-          "uro:areaInSquareMeter_uom": "m2",
           "uro:orgLandUse": "道路用地",
           "uro:orgLandUse_code": "215",
           "uro:areaInSquareMeter": 4.13954461238858,
+          "uro:areaInSquareMeter_uom": "m2",
           "uro:urbanPlanType": "都市計画区域",
           "uro:urbanPlanType_code": "21",
           "uro:prefecture": "熊本県",
@@ -15156,10 +15156,10 @@
       "luse:class_code": "204",
       "luse:adeOfLandUse": {
         "uro:LandUseDetailAttribute": {
-          "uro:areaInSquareMeter_uom": "m2",
           "uro:orgLandUse": "水面",
           "uro:orgLandUse_code": "204",
           "uro:areaInSquareMeter": 323.760667186519,
+          "uro:areaInSquareMeter_uom": "m2",
           "uro:urbanPlanType": "都市計画区域",
           "uro:urbanPlanType_code": "21",
           "uro:prefecture": "熊本県",
@@ -15214,10 +15214,10 @@
       "luse:class_code": "204",
       "luse:adeOfLandUse": {
         "uro:LandUseDetailAttribute": {
-          "uro:areaInSquareMeter_uom": "m2",
           "uro:orgLandUse": "水面",
           "uro:orgLandUse_code": "204",
           "uro:areaInSquareMeter": 122.322044717532,
+          "uro:areaInSquareMeter_uom": "m2",
           "uro:urbanPlanType": "都市計画区域",
           "uro:urbanPlanType_code": "21",
           "uro:prefecture": "熊本県",
@@ -15272,10 +15272,10 @@
       "luse:class_code": "204",
       "luse:adeOfLandUse": {
         "uro:LandUseDetailAttribute": {
-          "uro:areaInSquareMeter_uom": "m2",
           "uro:orgLandUse": "水面",
           "uro:orgLandUse_code": "204",
           "uro:areaInSquareMeter": 2829.15637906405,
+          "uro:areaInSquareMeter_uom": "m2",
           "uro:urbanPlanType": "都市計画区域",
           "uro:urbanPlanType_code": "21",
           "uro:prefecture": "熊本県",
@@ -15330,10 +15330,10 @@
       "luse:class_code": "211",
       "luse:adeOfLandUse": {
         "uro:LandUseDetailAttribute": {
-          "uro:areaInSquareMeter_uom": "m2",
           "uro:orgLandUse": "住宅用地",
           "uro:orgLandUse_code": "211",
           "uro:areaInSquareMeter": 1947.17320460989,
+          "uro:areaInSquareMeter_uom": "m2",
           "uro:urbanPlanType": "都市計画区域",
           "uro:urbanPlanType_code": "21",
           "uro:prefecture": "熊本県",
@@ -15388,10 +15388,10 @@
       "luse:class_code": "211",
       "luse:adeOfLandUse": {
         "uro:LandUseDetailAttribute": {
-          "uro:areaInSquareMeter_uom": "m2",
           "uro:orgLandUse": "住宅用地",
           "uro:orgLandUse_code": "211",
           "uro:areaInSquareMeter": 242.849549994926,
+          "uro:areaInSquareMeter_uom": "m2",
           "uro:urbanPlanType": "都市計画区域",
           "uro:urbanPlanType_code": "21",
           "uro:prefecture": "熊本県",
@@ -15446,10 +15446,10 @@
       "luse:class_code": "205",
       "luse:adeOfLandUse": {
         "uro:LandUseDetailAttribute": {
-          "uro:areaInSquareMeter_uom": "m2",
           "uro:orgLandUse": "その他の自然地",
           "uro:orgLandUse_code": "205",
           "uro:areaInSquareMeter": 1342.07898934898,
+          "uro:areaInSquareMeter_uom": "m2",
           "uro:urbanPlanType": "都市計画区域",
           "uro:urbanPlanType_code": "21",
           "uro:prefecture": "熊本県",
@@ -15504,10 +15504,10 @@
       "luse:class_code": "205",
       "luse:adeOfLandUse": {
         "uro:LandUseDetailAttribute": {
-          "uro:areaInSquareMeter_uom": "m2",
           "uro:orgLandUse": "その他の自然地",
           "uro:orgLandUse_code": "205",
           "uro:areaInSquareMeter": 445.07229800496,
+          "uro:areaInSquareMeter_uom": "m2",
           "uro:urbanPlanType": "都市計画区域",
           "uro:urbanPlanType_code": "21",
           "uro:prefecture": "熊本県",
@@ -15562,10 +15562,10 @@
       "luse:class_code": "204",
       "luse:adeOfLandUse": {
         "uro:LandUseDetailAttribute": {
-          "uro:areaInSquareMeter_uom": "m2",
           "uro:orgLandUse": "水面",
           "uro:orgLandUse_code": "204",
           "uro:areaInSquareMeter": 121.643853452706,
+          "uro:areaInSquareMeter_uom": "m2",
           "uro:urbanPlanType": "都市計画区域",
           "uro:urbanPlanType_code": "21",
           "uro:prefecture": "熊本県",
@@ -15620,10 +15620,10 @@
       "luse:class_code": "201",
       "luse:adeOfLandUse": {
         "uro:LandUseDetailAttribute": {
-          "uro:areaInSquareMeter_uom": "m2",
           "uro:orgLandUse": "田",
           "uro:orgLandUse_code": "201",
           "uro:areaInSquareMeter": 15266.5448994339,
+          "uro:areaInSquareMeter_uom": "m2",
           "uro:urbanPlanType": "都市計画区域",
           "uro:urbanPlanType_code": "21",
           "uro:prefecture": "熊本県",
@@ -15678,10 +15678,10 @@
       "luse:class_code": "216",
       "luse:adeOfLandUse": {
         "uro:LandUseDetailAttribute": {
-          "uro:areaInSquareMeter_uom": "m2",
           "uro:orgLandUse": "交通施設用地",
           "uro:orgLandUse_code": "216",
           "uro:areaInSquareMeter": 1007.81249322966,
+          "uro:areaInSquareMeter_uom": "m2",
           "uro:urbanPlanType": "都市計画区域",
           "uro:urbanPlanType_code": "21",
           "uro:prefecture": "熊本県",
@@ -15736,10 +15736,10 @@
       "luse:class_code": "205",
       "luse:adeOfLandUse": {
         "uro:LandUseDetailAttribute": {
-          "uro:areaInSquareMeter_uom": "m2",
           "uro:orgLandUse": "その他の自然地",
           "uro:orgLandUse_code": "205",
           "uro:areaInSquareMeter": 526.585745792866,
+          "uro:areaInSquareMeter_uom": "m2",
           "uro:urbanPlanType": "都市計画区域",
           "uro:urbanPlanType_code": "21",
           "uro:prefecture": "熊本県",
@@ -15794,10 +15794,10 @@
       "luse:class_code": "204",
       "luse:adeOfLandUse": {
         "uro:LandUseDetailAttribute": {
-          "uro:areaInSquareMeter_uom": "m2",
           "uro:orgLandUse": "水面",
           "uro:orgLandUse_code": "204",
           "uro:areaInSquareMeter": 162.578250005228,
+          "uro:areaInSquareMeter_uom": "m2",
           "uro:urbanPlanType": "都市計画区域",
           "uro:urbanPlanType_code": "21",
           "uro:prefecture": "熊本県",
@@ -15852,10 +15852,10 @@
       "luse:class_code": "205",
       "luse:adeOfLandUse": {
         "uro:LandUseDetailAttribute": {
-          "uro:areaInSquareMeter_uom": "m2",
           "uro:orgLandUse": "その他の自然地",
           "uro:orgLandUse_code": "205",
           "uro:areaInSquareMeter": 1109.4427376258,
+          "uro:areaInSquareMeter_uom": "m2",
           "uro:urbanPlanType": "都市計画区域",
           "uro:urbanPlanType_code": "21",
           "uro:prefecture": "熊本県",
@@ -15910,10 +15910,10 @@
       "luse:class_code": "202",
       "luse:adeOfLandUse": {
         "uro:LandUseDetailAttribute": {
-          "uro:areaInSquareMeter_uom": "m2",
           "uro:orgLandUse": "畑",
           "uro:orgLandUse_code": "202",
           "uro:areaInSquareMeter": 1600.96820001806,
+          "uro:areaInSquareMeter_uom": "m2",
           "uro:urbanPlanType": "都市計画区域",
           "uro:urbanPlanType_code": "21",
           "uro:prefecture": "熊本県",
@@ -15968,10 +15968,10 @@
       "luse:class_code": "201",
       "luse:adeOfLandUse": {
         "uro:LandUseDetailAttribute": {
-          "uro:areaInSquareMeter_uom": "m2",
           "uro:orgLandUse": "田",
           "uro:orgLandUse_code": "201",
           "uro:areaInSquareMeter": 6322.94620923667,
+          "uro:areaInSquareMeter_uom": "m2",
           "uro:urbanPlanType": "都市計画区域",
           "uro:urbanPlanType_code": "21",
           "uro:prefecture": "熊本県",
@@ -16026,10 +16026,10 @@
       "luse:class_code": "211",
       "luse:adeOfLandUse": {
         "uro:LandUseDetailAttribute": {
-          "uro:areaInSquareMeter_uom": "m2",
           "uro:orgLandUse": "住宅用地",
           "uro:orgLandUse_code": "211",
           "uro:areaInSquareMeter": 1344.49420309097,
+          "uro:areaInSquareMeter_uom": "m2",
           "uro:urbanPlanType": "都市計画区域",
           "uro:urbanPlanType_code": "21",
           "uro:prefecture": "熊本県",
@@ -16084,10 +16084,10 @@
       "luse:class_code": "202",
       "luse:adeOfLandUse": {
         "uro:LandUseDetailAttribute": {
-          "uro:areaInSquareMeter_uom": "m2",
           "uro:orgLandUse": "畑",
           "uro:orgLandUse_code": "202",
           "uro:areaInSquareMeter": 464.904302468912,
+          "uro:areaInSquareMeter_uom": "m2",
           "uro:urbanPlanType": "都市計画区域",
           "uro:urbanPlanType_code": "21",
           "uro:prefecture": "熊本県",
@@ -16142,10 +16142,10 @@
       "luse:class_code": "204",
       "luse:adeOfLandUse": {
         "uro:LandUseDetailAttribute": {
-          "uro:areaInSquareMeter_uom": "m2",
           "uro:orgLandUse": "水面",
           "uro:orgLandUse_code": "204",
           "uro:areaInSquareMeter": 875.552655753085,
+          "uro:areaInSquareMeter_uom": "m2",
           "uro:urbanPlanType": "都市計画区域",
           "uro:urbanPlanType_code": "21",
           "uro:prefecture": "熊本県",
@@ -16200,10 +16200,10 @@
       "luse:class_code": "211",
       "luse:adeOfLandUse": {
         "uro:LandUseDetailAttribute": {
-          "uro:areaInSquareMeter_uom": "m2",
           "uro:orgLandUse": "住宅用地",
           "uro:orgLandUse_code": "211",
           "uro:areaInSquareMeter": 3503.02585439364,
+          "uro:areaInSquareMeter_uom": "m2",
           "uro:urbanPlanType": "都市計画区域",
           "uro:urbanPlanType_code": "21",
           "uro:prefecture": "熊本県",
@@ -16258,10 +16258,10 @@
       "luse:class_code": "201",
       "luse:adeOfLandUse": {
         "uro:LandUseDetailAttribute": {
-          "uro:areaInSquareMeter_uom": "m2",
           "uro:orgLandUse": "田",
           "uro:orgLandUse_code": "201",
           "uro:areaInSquareMeter": 21603.0556154023,
+          "uro:areaInSquareMeter_uom": "m2",
           "uro:urbanPlanType": "都市計画区域",
           "uro:urbanPlanType_code": "21",
           "uro:prefecture": "熊本県",
@@ -16316,10 +16316,10 @@
       "luse:class_code": "204",
       "luse:adeOfLandUse": {
         "uro:LandUseDetailAttribute": {
-          "uro:areaInSquareMeter_uom": "m2",
           "uro:orgLandUse": "水面",
           "uro:orgLandUse_code": "204",
           "uro:areaInSquareMeter": 14356.6067655852,
+          "uro:areaInSquareMeter_uom": "m2",
           "uro:urbanPlanType": "都市計画区域",
           "uro:urbanPlanType_code": "21",
           "uro:prefecture": "熊本県",
@@ -16374,10 +16374,10 @@
       "luse:class_code": "219",
       "luse:adeOfLandUse": {
         "uro:LandUseDetailAttribute": {
-          "uro:areaInSquareMeter_uom": "m2",
           "uro:orgLandUse": "農林漁業施設用地",
           "uro:orgLandUse_code": "219",
           "uro:areaInSquareMeter": 97.6548582422942,
+          "uro:areaInSquareMeter_uom": "m2",
           "uro:urbanPlanType": "都市計画区域",
           "uro:urbanPlanType_code": "21",
           "uro:prefecture": "熊本県",
@@ -16432,10 +16432,10 @@
       "luse:class_code": "212",
       "luse:adeOfLandUse": {
         "uro:LandUseDetailAttribute": {
-          "uro:areaInSquareMeter_uom": "m2",
           "uro:orgLandUse": "商業用地",
           "uro:orgLandUse_code": "212",
           "uro:areaInSquareMeter": 195.113487823555,
+          "uro:areaInSquareMeter_uom": "m2",
           "uro:urbanPlanType": "都市計画区域",
           "uro:urbanPlanType_code": "21",
           "uro:prefecture": "熊本県",
@@ -16490,10 +16490,10 @@
       "luse:class_code": "201",
       "luse:adeOfLandUse": {
         "uro:LandUseDetailAttribute": {
-          "uro:areaInSquareMeter_uom": "m2",
           "uro:orgLandUse": "田",
           "uro:orgLandUse_code": "201",
           "uro:areaInSquareMeter": 40777.5551510736,
+          "uro:areaInSquareMeter_uom": "m2",
           "uro:urbanPlanType": "都市計画区域",
           "uro:urbanPlanType_code": "21",
           "uro:prefecture": "熊本県",
@@ -16548,10 +16548,10 @@
       "luse:class_code": "205",
       "luse:adeOfLandUse": {
         "uro:LandUseDetailAttribute": {
-          "uro:areaInSquareMeter_uom": "m2",
           "uro:orgLandUse": "その他の自然地",
           "uro:orgLandUse_code": "205",
           "uro:areaInSquareMeter": 415.328224644328,
+          "uro:areaInSquareMeter_uom": "m2",
           "uro:urbanPlanType": "都市計画区域",
           "uro:urbanPlanType_code": "21",
           "uro:prefecture": "熊本県",
@@ -16606,10 +16606,10 @@
       "luse:class_code": "211",
       "luse:adeOfLandUse": {
         "uro:LandUseDetailAttribute": {
-          "uro:areaInSquareMeter_uom": "m2",
           "uro:orgLandUse": "住宅用地",
           "uro:orgLandUse_code": "211",
           "uro:areaInSquareMeter": 321.62867106278,
+          "uro:areaInSquareMeter_uom": "m2",
           "uro:urbanPlanType": "都市計画区域",
           "uro:urbanPlanType_code": "21",
           "uro:prefecture": "熊本県",
@@ -16664,10 +16664,10 @@
       "luse:class_code": "204",
       "luse:adeOfLandUse": {
         "uro:LandUseDetailAttribute": {
-          "uro:areaInSquareMeter_uom": "m2",
           "uro:orgLandUse": "水面",
           "uro:orgLandUse_code": "204",
           "uro:areaInSquareMeter": 670.904093456722,
+          "uro:areaInSquareMeter_uom": "m2",
           "uro:urbanPlanType": "都市計画区域",
           "uro:urbanPlanType_code": "21",
           "uro:prefecture": "熊本県",
@@ -16722,10 +16722,10 @@
       "luse:class_code": "202",
       "luse:adeOfLandUse": {
         "uro:LandUseDetailAttribute": {
-          "uro:areaInSquareMeter_uom": "m2",
           "uro:orgLandUse": "畑",
           "uro:orgLandUse_code": "202",
           "uro:areaInSquareMeter": 4.70484332163728,
+          "uro:areaInSquareMeter_uom": "m2",
           "uro:urbanPlanType": "都市計画区域",
           "uro:urbanPlanType_code": "21",
           "uro:prefecture": "熊本県",
@@ -16780,10 +16780,10 @@
       "luse:class_code": "204",
       "luse:adeOfLandUse": {
         "uro:LandUseDetailAttribute": {
-          "uro:areaInSquareMeter_uom": "m2",
           "uro:orgLandUse": "水面",
           "uro:orgLandUse_code": "204",
           "uro:areaInSquareMeter": 41.3707839949036,
+          "uro:areaInSquareMeter_uom": "m2",
           "uro:urbanPlanType": "都市計画区域",
           "uro:urbanPlanType_code": "21",
           "uro:prefecture": "熊本県",
@@ -16838,10 +16838,10 @@
       "luse:class_code": "205",
       "luse:adeOfLandUse": {
         "uro:LandUseDetailAttribute": {
-          "uro:areaInSquareMeter_uom": "m2",
           "uro:orgLandUse": "その他の自然地",
           "uro:orgLandUse_code": "205",
           "uro:areaInSquareMeter": 809.824523041649,
+          "uro:areaInSquareMeter_uom": "m2",
           "uro:urbanPlanType": "都市計画区域",
           "uro:urbanPlanType_code": "21",
           "uro:prefecture": "熊本県",
@@ -16896,10 +16896,10 @@
       "luse:class_code": "204",
       "luse:adeOfLandUse": {
         "uro:LandUseDetailAttribute": {
-          "uro:areaInSquareMeter_uom": "m2",
           "uro:orgLandUse": "水面",
           "uro:orgLandUse_code": "204",
           "uro:areaInSquareMeter": 283.169300013601,
+          "uro:areaInSquareMeter_uom": "m2",
           "uro:urbanPlanType": "都市計画区域",
           "uro:urbanPlanType_code": "21",
           "uro:prefecture": "熊本県",
@@ -16954,10 +16954,10 @@
       "luse:class_code": "203",
       "luse:adeOfLandUse": {
         "uro:LandUseDetailAttribute": {
-          "uro:areaInSquareMeter_uom": "m2",
           "uro:orgLandUse": "山林",
           "uro:orgLandUse_code": "203",
           "uro:areaInSquareMeter": 5633.28027197504,
+          "uro:areaInSquareMeter_uom": "m2",
           "uro:urbanPlanType": "都市計画区域",
           "uro:urbanPlanType_code": "21",
           "uro:prefecture": "熊本県",
@@ -17012,10 +17012,10 @@
       "luse:class_code": "212",
       "luse:adeOfLandUse": {
         "uro:LandUseDetailAttribute": {
-          "uro:areaInSquareMeter_uom": "m2",
           "uro:orgLandUse": "商業用地",
           "uro:orgLandUse_code": "212",
           "uro:areaInSquareMeter": 225.09332937925,
+          "uro:areaInSquareMeter_uom": "m2",
           "uro:urbanPlanType": "都市計画区域",
           "uro:urbanPlanType_code": "21",
           "uro:prefecture": "熊本県",
@@ -17070,10 +17070,10 @@
       "luse:class_code": "211",
       "luse:adeOfLandUse": {
         "uro:LandUseDetailAttribute": {
-          "uro:areaInSquareMeter_uom": "m2",
           "uro:orgLandUse": "住宅用地",
           "uro:orgLandUse_code": "211",
           "uro:areaInSquareMeter": 302.43447099454,
+          "uro:areaInSquareMeter_uom": "m2",
           "uro:urbanPlanType": "都市計画区域",
           "uro:urbanPlanType_code": "21",
           "uro:prefecture": "熊本県",
@@ -17128,10 +17128,10 @@
       "luse:class_code": "211",
       "luse:adeOfLandUse": {
         "uro:LandUseDetailAttribute": {
-          "uro:areaInSquareMeter_uom": "m2",
           "uro:orgLandUse": "住宅用地",
           "uro:orgLandUse_code": "211",
           "uro:areaInSquareMeter": 4022.97221203145,
+          "uro:areaInSquareMeter_uom": "m2",
           "uro:urbanPlanType": "都市計画区域",
           "uro:urbanPlanType_code": "21",
           "uro:prefecture": "熊本県",
@@ -17186,10 +17186,10 @@
       "luse:class_code": "204",
       "luse:adeOfLandUse": {
         "uro:LandUseDetailAttribute": {
-          "uro:areaInSquareMeter_uom": "m2",
           "uro:orgLandUse": "水面",
           "uro:orgLandUse_code": "204",
           "uro:areaInSquareMeter": 210.981801997506,
+          "uro:areaInSquareMeter_uom": "m2",
           "uro:urbanPlanType": "都市計画区域",
           "uro:urbanPlanType_code": "21",
           "uro:prefecture": "熊本県",
@@ -17244,10 +17244,10 @@
       "luse:class_code": "202",
       "luse:adeOfLandUse": {
         "uro:LandUseDetailAttribute": {
-          "uro:areaInSquareMeter_uom": "m2",
           "uro:orgLandUse": "畑",
           "uro:orgLandUse_code": "202",
           "uro:areaInSquareMeter": 5968.20053099934,
+          "uro:areaInSquareMeter_uom": "m2",
           "uro:urbanPlanType": "都市計画区域",
           "uro:urbanPlanType_code": "21",
           "uro:prefecture": "熊本県",
@@ -17302,10 +17302,10 @@
       "luse:class_code": "204",
       "luse:adeOfLandUse": {
         "uro:LandUseDetailAttribute": {
-          "uro:areaInSquareMeter_uom": "m2",
           "uro:orgLandUse": "水面",
           "uro:orgLandUse_code": "204",
           "uro:areaInSquareMeter": 1285.23692234027,
+          "uro:areaInSquareMeter_uom": "m2",
           "uro:urbanPlanType": "都市計画区域",
           "uro:urbanPlanType_code": "21",
           "uro:prefecture": "熊本県",
@@ -17360,10 +17360,10 @@
       "luse:class_code": "205",
       "luse:adeOfLandUse": {
         "uro:LandUseDetailAttribute": {
-          "uro:areaInSquareMeter_uom": "m2",
           "uro:orgLandUse": "その他の自然地",
           "uro:orgLandUse_code": "205",
           "uro:areaInSquareMeter": 29.8080206939627,
+          "uro:areaInSquareMeter_uom": "m2",
           "uro:urbanPlanType": "都市計画区域",
           "uro:urbanPlanType_code": "21",
           "uro:prefecture": "熊本県",
@@ -17418,10 +17418,10 @@
       "luse:class_code": "211",
       "luse:adeOfLandUse": {
         "uro:LandUseDetailAttribute": {
-          "uro:areaInSquareMeter_uom": "m2",
           "uro:orgLandUse": "住宅用地",
           "uro:orgLandUse_code": "211",
           "uro:areaInSquareMeter": 685.022286004629,
+          "uro:areaInSquareMeter_uom": "m2",
           "uro:urbanPlanType": "都市計画区域",
           "uro:urbanPlanType_code": "21",
           "uro:prefecture": "熊本県",
@@ -17476,10 +17476,10 @@
       "luse:class_code": "204",
       "luse:adeOfLandUse": {
         "uro:LandUseDetailAttribute": {
-          "uro:areaInSquareMeter_uom": "m2",
           "uro:orgLandUse": "水面",
           "uro:orgLandUse_code": "204",
           "uro:areaInSquareMeter": 366.153712869619,
+          "uro:areaInSquareMeter_uom": "m2",
           "uro:urbanPlanType": "都市計画区域",
           "uro:urbanPlanType_code": "21",
           "uro:prefecture": "熊本県",
@@ -17534,10 +17534,10 @@
       "luse:class_code": "205",
       "luse:adeOfLandUse": {
         "uro:LandUseDetailAttribute": {
-          "uro:areaInSquareMeter_uom": "m2",
           "uro:orgLandUse": "その他の自然地",
           "uro:orgLandUse_code": "205",
           "uro:areaInSquareMeter": 868.94377462121,
+          "uro:areaInSquareMeter_uom": "m2",
           "uro:urbanPlanType": "都市計画区域",
           "uro:urbanPlanType_code": "21",
           "uro:prefecture": "熊本県",
@@ -17592,10 +17592,10 @@
       "luse:class_code": "201",
       "luse:adeOfLandUse": {
         "uro:LandUseDetailAttribute": {
-          "uro:areaInSquareMeter_uom": "m2",
           "uro:orgLandUse": "田",
           "uro:orgLandUse_code": "201",
           "uro:areaInSquareMeter": 1.63172934179723,
+          "uro:areaInSquareMeter_uom": "m2",
           "uro:urbanPlanType": "都市計画区域",
           "uro:urbanPlanType_code": "21",
           "uro:prefecture": "熊本県",
@@ -17650,10 +17650,10 @@
       "luse:class_code": "211",
       "luse:adeOfLandUse": {
         "uro:LandUseDetailAttribute": {
-          "uro:areaInSquareMeter_uom": "m2",
           "uro:orgLandUse": "住宅用地",
           "uro:orgLandUse_code": "211",
           "uro:areaInSquareMeter": 2713.74335755563,
+          "uro:areaInSquareMeter_uom": "m2",
           "uro:urbanPlanType": "都市計画区域",
           "uro:urbanPlanType_code": "21",
           "uro:prefecture": "熊本県",
@@ -17708,10 +17708,10 @@
       "luse:class_code": "215",
       "luse:adeOfLandUse": {
         "uro:LandUseDetailAttribute": {
-          "uro:areaInSquareMeter_uom": "m2",
           "uro:orgLandUse": "道路用地",
           "uro:orgLandUse_code": "215",
           "uro:areaInSquareMeter": 4.51598326891075,
+          "uro:areaInSquareMeter_uom": "m2",
           "uro:urbanPlanType": "都市計画区域",
           "uro:urbanPlanType_code": "21",
           "uro:prefecture": "熊本県",
@@ -17766,10 +17766,10 @@
       "luse:class_code": "201",
       "luse:adeOfLandUse": {
         "uro:LandUseDetailAttribute": {
-          "uro:areaInSquareMeter_uom": "m2",
           "uro:orgLandUse": "田",
           "uro:orgLandUse_code": "201",
           "uro:areaInSquareMeter": 41350.7301187514,
+          "uro:areaInSquareMeter_uom": "m2",
           "uro:urbanPlanType": "都市計画区域",
           "uro:urbanPlanType_code": "21",
           "uro:prefecture": "熊本県",
@@ -17824,10 +17824,10 @@
       "luse:class_code": "204",
       "luse:adeOfLandUse": {
         "uro:LandUseDetailAttribute": {
-          "uro:areaInSquareMeter_uom": "m2",
           "uro:orgLandUse": "水面",
           "uro:orgLandUse_code": "204",
           "uro:areaInSquareMeter": 165.055127004179,
+          "uro:areaInSquareMeter_uom": "m2",
           "uro:urbanPlanType": "都市計画区域",
           "uro:urbanPlanType_code": "21",
           "uro:prefecture": "熊本県",
@@ -17882,10 +17882,10 @@
       "luse:class_code": "201",
       "luse:adeOfLandUse": {
         "uro:LandUseDetailAttribute": {
-          "uro:areaInSquareMeter_uom": "m2",
           "uro:orgLandUse": "田",
           "uro:orgLandUse_code": "201",
           "uro:areaInSquareMeter": 11190.4640014631,
+          "uro:areaInSquareMeter_uom": "m2",
           "uro:urbanPlanType": "都市計画区域",
           "uro:urbanPlanType_code": "21",
           "uro:prefecture": "熊本県",
@@ -17940,10 +17940,10 @@
       "luse:class_code": "211",
       "luse:adeOfLandUse": {
         "uro:LandUseDetailAttribute": {
-          "uro:areaInSquareMeter_uom": "m2",
           "uro:orgLandUse": "住宅用地",
           "uro:orgLandUse_code": "211",
           "uro:areaInSquareMeter": 3897.62812749639,
+          "uro:areaInSquareMeter_uom": "m2",
           "uro:urbanPlanType": "都市計画区域",
           "uro:urbanPlanType_code": "21",
           "uro:prefecture": "熊本県",
@@ -17998,10 +17998,10 @@
       "luse:class_code": "205",
       "luse:adeOfLandUse": {
         "uro:LandUseDetailAttribute": {
-          "uro:areaInSquareMeter_uom": "m2",
           "uro:orgLandUse": "その他の自然地",
           "uro:orgLandUse_code": "205",
           "uro:areaInSquareMeter": 2282.27422306267,
+          "uro:areaInSquareMeter_uom": "m2",
           "uro:urbanPlanType": "都市計画区域",
           "uro:urbanPlanType_code": "21",
           "uro:prefecture": "熊本県",
@@ -18056,10 +18056,10 @@
       "luse:class_code": "214",
       "luse:adeOfLandUse": {
         "uro:LandUseDetailAttribute": {
-          "uro:areaInSquareMeter_uom": "m2",
           "uro:orgLandUse": "公共公益施設用地",
           "uro:orgLandUse_code": "214",
           "uro:areaInSquareMeter": 1632.11200301032,
+          "uro:areaInSquareMeter_uom": "m2",
           "uro:urbanPlanType": "都市計画区域",
           "uro:urbanPlanType_code": "21",
           "uro:prefecture": "熊本県",
@@ -18114,10 +18114,10 @@
       "luse:class_code": "205",
       "luse:adeOfLandUse": {
         "uro:LandUseDetailAttribute": {
-          "uro:areaInSquareMeter_uom": "m2",
           "uro:orgLandUse": "その他の自然地",
           "uro:orgLandUse_code": "205",
           "uro:areaInSquareMeter": 5810.24622652867,
+          "uro:areaInSquareMeter_uom": "m2",
           "uro:urbanPlanType": "都市計画区域",
           "uro:urbanPlanType_code": "21",
           "uro:prefecture": "熊本県",
@@ -18172,10 +18172,10 @@
       "luse:class_code": "211",
       "luse:adeOfLandUse": {
         "uro:LandUseDetailAttribute": {
-          "uro:areaInSquareMeter_uom": "m2",
           "uro:orgLandUse": "住宅用地",
           "uro:orgLandUse_code": "211",
           "uro:areaInSquareMeter": 402.190640612203,
+          "uro:areaInSquareMeter_uom": "m2",
           "uro:urbanPlanType": "都市計画区域",
           "uro:urbanPlanType_code": "21",
           "uro:prefecture": "熊本県",
@@ -18230,10 +18230,10 @@
       "luse:class_code": "204",
       "luse:adeOfLandUse": {
         "uro:LandUseDetailAttribute": {
-          "uro:areaInSquareMeter_uom": "m2",
           "uro:orgLandUse": "水面",
           "uro:orgLandUse_code": "204",
           "uro:areaInSquareMeter": 408.266043017452,
+          "uro:areaInSquareMeter_uom": "m2",
           "uro:urbanPlanType": "都市計画区域",
           "uro:urbanPlanType_code": "21",
           "uro:prefecture": "熊本県",
@@ -18288,10 +18288,10 @@
       "luse:class_code": "205",
       "luse:adeOfLandUse": {
         "uro:LandUseDetailAttribute": {
-          "uro:areaInSquareMeter_uom": "m2",
           "uro:orgLandUse": "その他の自然地",
           "uro:orgLandUse_code": "205",
           "uro:areaInSquareMeter": 208.590338838862,
+          "uro:areaInSquareMeter_uom": "m2",
           "uro:urbanPlanType": "都市計画区域",
           "uro:urbanPlanType_code": "21",
           "uro:prefecture": "熊本県",
@@ -18346,10 +18346,10 @@
       "luse:class_code": "201",
       "luse:adeOfLandUse": {
         "uro:LandUseDetailAttribute": {
-          "uro:areaInSquareMeter_uom": "m2",
           "uro:orgLandUse": "田",
           "uro:orgLandUse_code": "201",
           "uro:areaInSquareMeter": 5.61970890198616,
+          "uro:areaInSquareMeter_uom": "m2",
           "uro:urbanPlanType": "都市計画区域",
           "uro:urbanPlanType_code": "21",
           "uro:prefecture": "熊本県",
@@ -18404,10 +18404,10 @@
       "luse:class_code": "204",
       "luse:adeOfLandUse": {
         "uro:LandUseDetailAttribute": {
-          "uro:areaInSquareMeter_uom": "m2",
           "uro:orgLandUse": "水面",
           "uro:orgLandUse_code": "204",
           "uro:areaInSquareMeter": 123.595817999953,
+          "uro:areaInSquareMeter_uom": "m2",
           "uro:urbanPlanType": "都市計画区域",
           "uro:urbanPlanType_code": "21",
           "uro:prefecture": "熊本県",
@@ -18462,10 +18462,10 @@
       "luse:class_code": "204",
       "luse:adeOfLandUse": {
         "uro:LandUseDetailAttribute": {
-          "uro:areaInSquareMeter_uom": "m2",
           "uro:orgLandUse": "水面",
           "uro:orgLandUse_code": "204",
           "uro:areaInSquareMeter": 1257.34438050077,
+          "uro:areaInSquareMeter_uom": "m2",
           "uro:urbanPlanType": "都市計画区域",
           "uro:urbanPlanType_code": "21",
           "uro:prefecture": "熊本県",
@@ -18520,10 +18520,10 @@
       "luse:class_code": "202",
       "luse:adeOfLandUse": {
         "uro:LandUseDetailAttribute": {
-          "uro:areaInSquareMeter_uom": "m2",
           "uro:orgLandUse": "畑",
           "uro:orgLandUse_code": "202",
           "uro:areaInSquareMeter": 472.386278489882,
+          "uro:areaInSquareMeter_uom": "m2",
           "uro:urbanPlanType": "都市計画区域",
           "uro:urbanPlanType_code": "21",
           "uro:prefecture": "熊本県",
@@ -18578,10 +18578,10 @@
       "luse:class_code": "203",
       "luse:adeOfLandUse": {
         "uro:LandUseDetailAttribute": {
-          "uro:areaInSquareMeter_uom": "m2",
           "uro:orgLandUse": "山林",
           "uro:orgLandUse_code": "203",
           "uro:areaInSquareMeter": 4.61316579834501,
+          "uro:areaInSquareMeter_uom": "m2",
           "uro:urbanPlanType": "都市計画区域",
           "uro:urbanPlanType_code": "21",
           "uro:prefecture": "熊本県",
@@ -18636,10 +18636,10 @@
       "luse:class_code": "201",
       "luse:adeOfLandUse": {
         "uro:LandUseDetailAttribute": {
-          "uro:areaInSquareMeter_uom": "m2",
           "uro:orgLandUse": "田",
           "uro:orgLandUse_code": "201",
           "uro:areaInSquareMeter": 1499.41443923032,
+          "uro:areaInSquareMeter_uom": "m2",
           "uro:urbanPlanType": "都市計画区域",
           "uro:urbanPlanType_code": "21",
           "uro:prefecture": "熊本県",
@@ -18694,10 +18694,10 @@
       "luse:class_code": "215",
       "luse:adeOfLandUse": {
         "uro:LandUseDetailAttribute": {
-          "uro:areaInSquareMeter_uom": "m2",
           "uro:orgLandUse": "道路用地",
           "uro:orgLandUse_code": "215",
           "uro:areaInSquareMeter": 231.50968229662,
+          "uro:areaInSquareMeter_uom": "m2",
           "uro:urbanPlanType": "都市計画区域",
           "uro:urbanPlanType_code": "21",
           "uro:prefecture": "熊本県",
@@ -18752,10 +18752,10 @@
       "luse:class_code": "211",
       "luse:adeOfLandUse": {
         "uro:LandUseDetailAttribute": {
-          "uro:areaInSquareMeter_uom": "m2",
           "uro:orgLandUse": "住宅用地",
           "uro:orgLandUse_code": "211",
           "uro:areaInSquareMeter": 2262.24312547937,
+          "uro:areaInSquareMeter_uom": "m2",
           "uro:urbanPlanType": "都市計画区域",
           "uro:urbanPlanType_code": "21",
           "uro:prefecture": "熊本県",
@@ -18810,10 +18810,10 @@
       "luse:class_code": "204",
       "luse:adeOfLandUse": {
         "uro:LandUseDetailAttribute": {
-          "uro:areaInSquareMeter_uom": "m2",
           "uro:orgLandUse": "水面",
           "uro:orgLandUse_code": "204",
           "uro:areaInSquareMeter": 297.176640987071,
+          "uro:areaInSquareMeter_uom": "m2",
           "uro:urbanPlanType": "都市計画区域",
           "uro:urbanPlanType_code": "21",
           "uro:prefecture": "熊本県",
@@ -18868,10 +18868,10 @@
       "luse:class_code": "205",
       "luse:adeOfLandUse": {
         "uro:LandUseDetailAttribute": {
-          "uro:areaInSquareMeter_uom": "m2",
           "uro:orgLandUse": "その他の自然地",
           "uro:orgLandUse_code": "205",
           "uro:areaInSquareMeter": 1.04498184933039,
+          "uro:areaInSquareMeter_uom": "m2",
           "uro:urbanPlanType": "都市計画区域",
           "uro:urbanPlanType_code": "21",
           "uro:prefecture": "熊本県",
@@ -18926,10 +18926,10 @@
       "luse:class_code": "211",
       "luse:adeOfLandUse": {
         "uro:LandUseDetailAttribute": {
-          "uro:areaInSquareMeter_uom": "m2",
           "uro:orgLandUse": "住宅用地",
           "uro:orgLandUse_code": "211",
           "uro:areaInSquareMeter": 4306.53386436779,
+          "uro:areaInSquareMeter_uom": "m2",
           "uro:urbanPlanType": "都市計画区域",
           "uro:urbanPlanType_code": "21",
           "uro:prefecture": "熊本県",
@@ -18984,10 +18984,10 @@
       "luse:class_code": "201",
       "luse:adeOfLandUse": {
         "uro:LandUseDetailAttribute": {
-          "uro:areaInSquareMeter_uom": "m2",
           "uro:orgLandUse": "田",
           "uro:orgLandUse_code": "201",
           "uro:areaInSquareMeter": 7082.16263857364,
+          "uro:areaInSquareMeter_uom": "m2",
           "uro:urbanPlanType": "都市計画区域",
           "uro:urbanPlanType_code": "21",
           "uro:prefecture": "熊本県",
@@ -19042,10 +19042,10 @@
       "luse:class_code": "203",
       "luse:adeOfLandUse": {
         "uro:LandUseDetailAttribute": {
-          "uro:areaInSquareMeter_uom": "m2",
           "uro:orgLandUse": "山林",
           "uro:orgLandUse_code": "203",
           "uro:areaInSquareMeter": 3271.68936013222,
+          "uro:areaInSquareMeter_uom": "m2",
           "uro:urbanPlanType": "都市計画区域",
           "uro:urbanPlanType_code": "21",
           "uro:prefecture": "熊本県",
@@ -19100,10 +19100,10 @@
       "luse:class_code": "211",
       "luse:adeOfLandUse": {
         "uro:LandUseDetailAttribute": {
-          "uro:areaInSquareMeter_uom": "m2",
           "uro:orgLandUse": "住宅用地",
           "uro:orgLandUse_code": "211",
           "uro:areaInSquareMeter": 3941.24922550885,
+          "uro:areaInSquareMeter_uom": "m2",
           "uro:urbanPlanType": "都市計画区域",
           "uro:urbanPlanType_code": "21",
           "uro:prefecture": "熊本県",
@@ -19158,10 +19158,10 @@
       "luse:class_code": "211",
       "luse:adeOfLandUse": {
         "uro:LandUseDetailAttribute": {
-          "uro:areaInSquareMeter_uom": "m2",
           "uro:orgLandUse": "住宅用地",
           "uro:orgLandUse_code": "211",
           "uro:areaInSquareMeter": 1497.06379532841,
+          "uro:areaInSquareMeter_uom": "m2",
           "uro:urbanPlanType": "都市計画区域",
           "uro:urbanPlanType_code": "21",
           "uro:prefecture": "熊本県",
@@ -19216,10 +19216,10 @@
       "luse:class_code": "202",
       "luse:adeOfLandUse": {
         "uro:LandUseDetailAttribute": {
-          "uro:areaInSquareMeter_uom": "m2",
           "uro:orgLandUse": "畑",
           "uro:orgLandUse_code": "202",
           "uro:areaInSquareMeter": 972.531916495751,
+          "uro:areaInSquareMeter_uom": "m2",
           "uro:urbanPlanType": "都市計画区域",
           "uro:urbanPlanType_code": "21",
           "uro:prefecture": "熊本県",
@@ -19274,10 +19274,10 @@
       "luse:class_code": "216",
       "luse:adeOfLandUse": {
         "uro:LandUseDetailAttribute": {
-          "uro:areaInSquareMeter_uom": "m2",
           "uro:orgLandUse": "交通施設用地",
           "uro:orgLandUse_code": "216",
           "uro:areaInSquareMeter": 2968.26463448515,
+          "uro:areaInSquareMeter_uom": "m2",
           "uro:urbanPlanType": "都市計画区域",
           "uro:urbanPlanType_code": "21",
           "uro:prefecture": "熊本県",
@@ -19332,10 +19332,10 @@
       "luse:class_code": "201",
       "luse:adeOfLandUse": {
         "uro:LandUseDetailAttribute": {
-          "uro:areaInSquareMeter_uom": "m2",
           "uro:orgLandUse": "田",
           "uro:orgLandUse_code": "201",
           "uro:areaInSquareMeter": 21441.2749179959,
+          "uro:areaInSquareMeter_uom": "m2",
           "uro:urbanPlanType": "都市計画区域",
           "uro:urbanPlanType_code": "21",
           "uro:prefecture": "熊本県",
@@ -19390,10 +19390,10 @@
       "luse:class_code": "202",
       "luse:adeOfLandUse": {
         "uro:LandUseDetailAttribute": {
-          "uro:areaInSquareMeter_uom": "m2",
           "uro:orgLandUse": "畑",
           "uro:orgLandUse_code": "202",
           "uro:areaInSquareMeter": 2175.79566800812,
+          "uro:areaInSquareMeter_uom": "m2",
           "uro:urbanPlanType": "都市計画区域",
           "uro:urbanPlanType_code": "21",
           "uro:prefecture": "熊本県",
@@ -19448,10 +19448,10 @@
       "luse:class_code": "201",
       "luse:adeOfLandUse": {
         "uro:LandUseDetailAttribute": {
-          "uro:areaInSquareMeter_uom": "m2",
           "uro:orgLandUse": "田",
           "uro:orgLandUse_code": "201",
           "uro:areaInSquareMeter": 1257.52502359742,
+          "uro:areaInSquareMeter_uom": "m2",
           "uro:urbanPlanType": "都市計画区域",
           "uro:urbanPlanType_code": "21",
           "uro:prefecture": "熊本県",
@@ -19506,10 +19506,10 @@
       "luse:class_code": "205",
       "luse:adeOfLandUse": {
         "uro:LandUseDetailAttribute": {
-          "uro:areaInSquareMeter_uom": "m2",
           "uro:orgLandUse": "その他の自然地",
           "uro:orgLandUse_code": "205",
           "uro:areaInSquareMeter": 3488.00360697733,
+          "uro:areaInSquareMeter_uom": "m2",
           "uro:urbanPlanType": "都市計画区域",
           "uro:urbanPlanType_code": "21",
           "uro:prefecture": "熊本県",
@@ -19564,10 +19564,10 @@
       "luse:class_code": "211",
       "luse:adeOfLandUse": {
         "uro:LandUseDetailAttribute": {
-          "uro:areaInSquareMeter_uom": "m2",
           "uro:orgLandUse": "住宅用地",
           "uro:orgLandUse_code": "211",
           "uro:areaInSquareMeter": 3397.86339197463,
+          "uro:areaInSquareMeter_uom": "m2",
           "uro:urbanPlanType": "都市計画区域",
           "uro:urbanPlanType_code": "21",
           "uro:prefecture": "熊本県",
@@ -19622,10 +19622,10 @@
       "luse:class_code": "203",
       "luse:adeOfLandUse": {
         "uro:LandUseDetailAttribute": {
-          "uro:areaInSquareMeter_uom": "m2",
           "uro:orgLandUse": "山林",
           "uro:orgLandUse_code": "203",
           "uro:areaInSquareMeter": 801.104380424999,
+          "uro:areaInSquareMeter_uom": "m2",
           "uro:urbanPlanType": "都市計画区域",
           "uro:urbanPlanType_code": "21",
           "uro:prefecture": "熊本県",
@@ -19680,10 +19680,10 @@
       "luse:class_code": "202",
       "luse:adeOfLandUse": {
         "uro:LandUseDetailAttribute": {
-          "uro:areaInSquareMeter_uom": "m2",
           "uro:orgLandUse": "畑",
           "uro:orgLandUse_code": "202",
           "uro:areaInSquareMeter": 303.576553478969,
+          "uro:areaInSquareMeter_uom": "m2",
           "uro:urbanPlanType": "都市計画区域",
           "uro:urbanPlanType_code": "21",
           "uro:prefecture": "熊本県",
@@ -19738,10 +19738,10 @@
       "luse:class_code": "203",
       "luse:adeOfLandUse": {
         "uro:LandUseDetailAttribute": {
-          "uro:areaInSquareMeter_uom": "m2",
           "uro:orgLandUse": "山林",
           "uro:orgLandUse_code": "203",
           "uro:areaInSquareMeter": 6589.05300003115,
+          "uro:areaInSquareMeter_uom": "m2",
           "uro:urbanPlanType": "都市計画区域",
           "uro:urbanPlanType_code": "21",
           "uro:prefecture": "熊本県",
@@ -19796,10 +19796,10 @@
       "luse:class_code": "204",
       "luse:adeOfLandUse": {
         "uro:LandUseDetailAttribute": {
-          "uro:areaInSquareMeter_uom": "m2",
           "uro:orgLandUse": "水面",
           "uro:orgLandUse_code": "204",
           "uro:areaInSquareMeter": 360.152512533333,
+          "uro:areaInSquareMeter_uom": "m2",
           "uro:urbanPlanType": "都市計画区域",
           "uro:urbanPlanType_code": "21",
           "uro:prefecture": "熊本県",
@@ -19854,10 +19854,10 @@
       "luse:class_code": "204",
       "luse:adeOfLandUse": {
         "uro:LandUseDetailAttribute": {
-          "uro:areaInSquareMeter_uom": "m2",
           "uro:orgLandUse": "水面",
           "uro:orgLandUse_code": "204",
           "uro:areaInSquareMeter": 1304.67759962803,
+          "uro:areaInSquareMeter_uom": "m2",
           "uro:urbanPlanType": "都市計画区域",
           "uro:urbanPlanType_code": "21",
           "uro:prefecture": "熊本県",
@@ -19912,10 +19912,10 @@
       "luse:class_code": "201",
       "luse:adeOfLandUse": {
         "uro:LandUseDetailAttribute": {
-          "uro:areaInSquareMeter_uom": "m2",
           "uro:orgLandUse": "田",
           "uro:orgLandUse_code": "201",
           "uro:areaInSquareMeter": 22958.0089363177,
+          "uro:areaInSquareMeter_uom": "m2",
           "uro:urbanPlanType": "都市計画区域",
           "uro:urbanPlanType_code": "21",
           "uro:prefecture": "熊本県",
@@ -19970,10 +19970,10 @@
       "luse:class_code": "201",
       "luse:adeOfLandUse": {
         "uro:LandUseDetailAttribute": {
-          "uro:areaInSquareMeter_uom": "m2",
           "uro:orgLandUse": "田",
           "uro:orgLandUse_code": "201",
           "uro:areaInSquareMeter": 8058.98018271715,
+          "uro:areaInSquareMeter_uom": "m2",
           "uro:urbanPlanType": "都市計画区域",
           "uro:urbanPlanType_code": "21",
           "uro:prefecture": "熊本県",
@@ -20028,10 +20028,10 @@
       "luse:class_code": "202",
       "luse:adeOfLandUse": {
         "uro:LandUseDetailAttribute": {
-          "uro:areaInSquareMeter_uom": "m2",
           "uro:orgLandUse": "畑",
           "uro:orgLandUse_code": "202",
           "uro:areaInSquareMeter": 2528.92347205644,
+          "uro:areaInSquareMeter_uom": "m2",
           "uro:urbanPlanType": "都市計画区域",
           "uro:urbanPlanType_code": "21",
           "uro:prefecture": "熊本県",
@@ -20086,10 +20086,10 @@
       "luse:class_code": "211",
       "luse:adeOfLandUse": {
         "uro:LandUseDetailAttribute": {
-          "uro:areaInSquareMeter_uom": "m2",
           "uro:orgLandUse": "住宅用地",
           "uro:orgLandUse_code": "211",
           "uro:areaInSquareMeter": 2796.82019351284,
+          "uro:areaInSquareMeter_uom": "m2",
           "uro:urbanPlanType": "都市計画区域",
           "uro:urbanPlanType_code": "21",
           "uro:prefecture": "熊本県",
@@ -20144,10 +20144,10 @@
       "luse:class_code": "211",
       "luse:adeOfLandUse": {
         "uro:LandUseDetailAttribute": {
-          "uro:areaInSquareMeter_uom": "m2",
           "uro:orgLandUse": "住宅用地",
           "uro:orgLandUse_code": "211",
           "uro:areaInSquareMeter": 863.550978350354,
+          "uro:areaInSquareMeter_uom": "m2",
           "uro:urbanPlanType": "都市計画区域",
           "uro:urbanPlanType_code": "21",
           "uro:prefecture": "熊本県",
@@ -20202,10 +20202,10 @@
       "luse:class_code": "204",
       "luse:adeOfLandUse": {
         "uro:LandUseDetailAttribute": {
-          "uro:areaInSquareMeter_uom": "m2",
           "uro:orgLandUse": "水面",
           "uro:orgLandUse_code": "204",
           "uro:areaInSquareMeter": 1851.48111476427,
+          "uro:areaInSquareMeter_uom": "m2",
           "uro:urbanPlanType": "都市計画区域",
           "uro:urbanPlanType_code": "21",
           "uro:prefecture": "熊本県",
@@ -20260,10 +20260,10 @@
       "luse:class_code": "216",
       "luse:adeOfLandUse": {
         "uro:LandUseDetailAttribute": {
-          "uro:areaInSquareMeter_uom": "m2",
           "uro:orgLandUse": "交通施設用地",
           "uro:orgLandUse_code": "216",
           "uro:areaInSquareMeter": 8289.98036243437,
+          "uro:areaInSquareMeter_uom": "m2",
           "uro:urbanPlanType": "都市計画区域",
           "uro:urbanPlanType_code": "21",
           "uro:prefecture": "熊本県",
@@ -20318,10 +20318,10 @@
       "luse:class_code": "201",
       "luse:adeOfLandUse": {
         "uro:LandUseDetailAttribute": {
-          "uro:areaInSquareMeter_uom": "m2",
           "uro:orgLandUse": "田",
           "uro:orgLandUse_code": "201",
           "uro:areaInSquareMeter": 23205.577462273,
+          "uro:areaInSquareMeter_uom": "m2",
           "uro:urbanPlanType": "都市計画区域",
           "uro:urbanPlanType_code": "21",
           "uro:prefecture": "熊本県",
@@ -20376,10 +20376,10 @@
       "luse:class_code": "205",
       "luse:adeOfLandUse": {
         "uro:LandUseDetailAttribute": {
-          "uro:areaInSquareMeter_uom": "m2",
           "uro:orgLandUse": "その他の自然地",
           "uro:orgLandUse_code": "205",
           "uro:areaInSquareMeter": 519.118941325421,
+          "uro:areaInSquareMeter_uom": "m2",
           "uro:urbanPlanType": "都市計画区域",
           "uro:urbanPlanType_code": "21",
           "uro:prefecture": "熊本県",
@@ -20434,10 +20434,10 @@
       "luse:class_code": "204",
       "luse:adeOfLandUse": {
         "uro:LandUseDetailAttribute": {
-          "uro:areaInSquareMeter_uom": "m2",
           "uro:orgLandUse": "水面",
           "uro:orgLandUse_code": "204",
           "uro:areaInSquareMeter": 540.44399649906,
+          "uro:areaInSquareMeter_uom": "m2",
           "uro:urbanPlanType": "都市計画区域",
           "uro:urbanPlanType_code": "21",
           "uro:prefecture": "熊本県",
@@ -20492,10 +20492,10 @@
       "luse:class_code": "201",
       "luse:adeOfLandUse": {
         "uro:LandUseDetailAttribute": {
-          "uro:areaInSquareMeter_uom": "m2",
           "uro:orgLandUse": "田",
           "uro:orgLandUse_code": "201",
           "uro:areaInSquareMeter": 3336.42370400295,
+          "uro:areaInSquareMeter_uom": "m2",
           "uro:urbanPlanType": "都市計画区域",
           "uro:urbanPlanType_code": "21",
           "uro:prefecture": "熊本県",
@@ -20550,10 +20550,10 @@
       "luse:class_code": "223",
       "luse:adeOfLandUse": {
         "uro:LandUseDetailAttribute": {
-          "uro:areaInSquareMeter_uom": "m2",
           "uro:orgLandUse": "その他の空地④",
           "uro:orgLandUse_code": "223",
           "uro:areaInSquareMeter": 230.897134596059,
+          "uro:areaInSquareMeter_uom": "m2",
           "uro:urbanPlanType": "都市計画区域",
           "uro:urbanPlanType_code": "21",
           "uro:prefecture": "熊本県",
@@ -20608,10 +20608,10 @@
       "luse:class_code": "211",
       "luse:adeOfLandUse": {
         "uro:LandUseDetailAttribute": {
-          "uro:areaInSquareMeter_uom": "m2",
           "uro:orgLandUse": "住宅用地",
           "uro:orgLandUse_code": "211",
           "uro:areaInSquareMeter": 2643.16023099649,
+          "uro:areaInSquareMeter_uom": "m2",
           "uro:urbanPlanType": "都市計画区域",
           "uro:urbanPlanType_code": "21",
           "uro:prefecture": "熊本県",
@@ -20666,10 +20666,10 @@
       "luse:class_code": "211",
       "luse:adeOfLandUse": {
         "uro:LandUseDetailAttribute": {
-          "uro:areaInSquareMeter_uom": "m2",
           "uro:orgLandUse": "住宅用地",
           "uro:orgLandUse_code": "211",
           "uro:areaInSquareMeter": 11101.4596905066,
+          "uro:areaInSquareMeter_uom": "m2",
           "uro:urbanPlanType": "都市計画区域",
           "uro:urbanPlanType_code": "21",
           "uro:prefecture": "熊本県",
@@ -20724,10 +20724,10 @@
       "luse:class_code": "205",
       "luse:adeOfLandUse": {
         "uro:LandUseDetailAttribute": {
-          "uro:areaInSquareMeter_uom": "m2",
           "uro:orgLandUse": "その他の自然地",
           "uro:orgLandUse_code": "205",
           "uro:areaInSquareMeter": 219.643350015928,
+          "uro:areaInSquareMeter_uom": "m2",
           "uro:urbanPlanType": "都市計画区域",
           "uro:urbanPlanType_code": "21",
           "uro:prefecture": "熊本県",
@@ -20782,10 +20782,10 @@
       "luse:class_code": "201",
       "luse:adeOfLandUse": {
         "uro:LandUseDetailAttribute": {
-          "uro:areaInSquareMeter_uom": "m2",
           "uro:orgLandUse": "田",
           "uro:orgLandUse_code": "201",
           "uro:areaInSquareMeter": 12356.6292419347,
+          "uro:areaInSquareMeter_uom": "m2",
           "uro:urbanPlanType": "都市計画区域",
           "uro:urbanPlanType_code": "21",
           "uro:prefecture": "熊本県",
@@ -20840,10 +20840,10 @@
       "luse:class_code": "202",
       "luse:adeOfLandUse": {
         "uro:LandUseDetailAttribute": {
-          "uro:areaInSquareMeter_uom": "m2",
           "uro:orgLandUse": "畑",
           "uro:orgLandUse_code": "202",
           "uro:areaInSquareMeter": 1235.81600003108,
+          "uro:areaInSquareMeter_uom": "m2",
           "uro:urbanPlanType": "都市計画区域",
           "uro:urbanPlanType_code": "21",
           "uro:prefecture": "熊本県",
@@ -20898,10 +20898,10 @@
       "luse:class_code": "211",
       "luse:adeOfLandUse": {
         "uro:LandUseDetailAttribute": {
-          "uro:areaInSquareMeter_uom": "m2",
           "uro:orgLandUse": "住宅用地",
           "uro:orgLandUse_code": "211",
           "uro:areaInSquareMeter": 1181.96180450093,
+          "uro:areaInSquareMeter_uom": "m2",
           "uro:urbanPlanType": "都市計画区域",
           "uro:urbanPlanType_code": "21",
           "uro:prefecture": "熊本県",
@@ -20956,10 +20956,10 @@
       "luse:class_code": "205",
       "luse:adeOfLandUse": {
         "uro:LandUseDetailAttribute": {
-          "uro:areaInSquareMeter_uom": "m2",
           "uro:orgLandUse": "その他の自然地",
           "uro:orgLandUse_code": "205",
           "uro:areaInSquareMeter": 3762.26196620245,
+          "uro:areaInSquareMeter_uom": "m2",
           "uro:urbanPlanType": "都市計画区域",
           "uro:urbanPlanType_code": "21",
           "uro:prefecture": "熊本県",
@@ -21014,10 +21014,10 @@
       "luse:class_code": "205",
       "luse:adeOfLandUse": {
         "uro:LandUseDetailAttribute": {
-          "uro:areaInSquareMeter_uom": "m2",
           "uro:orgLandUse": "その他の自然地",
           "uro:orgLandUse_code": "205",
           "uro:areaInSquareMeter": 10057.8051425515,
+          "uro:areaInSquareMeter_uom": "m2",
           "uro:urbanPlanType": "都市計画区域",
           "uro:urbanPlanType_code": "21",
           "uro:prefecture": "熊本県",

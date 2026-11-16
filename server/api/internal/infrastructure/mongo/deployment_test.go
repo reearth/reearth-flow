@@ -13,6 +13,7 @@ import (
 	"github.com/reearth/reearthx/mongox"
 	"github.com/reearth/reearthx/mongox/mongotest"
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 	"go.mongodb.org/mongo-driver/bson"
 )
 
@@ -134,6 +135,40 @@ func TestDeployment_FindByWorkspace(t *testing.T) {
 	assert.Equal(t, int64(0), pageInfo.TotalCount)
 	assert.Equal(t, 1, pageInfo.CurrentPage)
 	assert.Equal(t, 1, pageInfo.TotalPages)
+}
+
+func TestDeployment_FindByWorkspace_SortsVersionsAsNumbers(t *testing.T) {
+	c := mongotest.Connect(t)(t)
+	ctx := context.Background()
+
+	wid := accountsid.NewWorkspaceID()
+	now := time.Now()
+	d2, d9, d10 := id.NewDeploymentID().String(), id.NewDeploymentID().String(), id.NewDeploymentID().String()
+	_, err := c.Collection("deployment").InsertMany(ctx, []any{
+		bson.M{"id": d9, "workspaceid": wid.String(), "version": "v9", "updatedat": now},
+		bson.M{"id": d10, "workspaceid": wid.String(), "version": "v10", "updatedat": now},
+		bson.M{"id": d2, "workspaceid": wid.String(), "version": "v2", "updatedat": now},
+	})
+	require.NoError(t, err)
+
+	r := NewDeployment(mongox.NewClientWithDatabase(c))
+
+	ids := func(orderDir string) []string {
+		t.Helper()
+		orderBy := "version"
+		got, _, err := r.FindByWorkspace(ctx, wid, &interfaces.PaginationParam{
+			Page: &interfaces.PageBasedPaginationParam{Page: 1, PageSize: 10, OrderBy: &orderBy, OrderDir: &orderDir},
+		}, nil)
+		require.NoError(t, err)
+		out := make([]string, 0, len(got))
+		for _, d := range got {
+			out = append(out, d.ID().String())
+		}
+		return out
+	}
+
+	assert.Equal(t, []string{d10, d9, d2}, ids("DESC"))
+	assert.Equal(t, []string{d2, d9, d10}, ids("ASC"))
 }
 
 func TestDeployment_FindByVersion(t *testing.T) {

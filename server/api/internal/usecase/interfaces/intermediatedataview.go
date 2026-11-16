@@ -24,10 +24,18 @@ var (
 	// the request gives up, the worker stops the render too, so nothing is left
 	// running, and asking again renders again.
 	ErrRenderTimedOut = errors.New("the view did not finish rendering in time")
+	// ErrViewWorkersBusy is a render turned away because every worker that
+	// renders views was busy. Those workers also run the editor's debug runs and
+	// schema previews, so a full pool is not a fault. Nothing was rendered, and
+	// asking again once one is free renders the view.
+	ErrViewWorkersBusy = errors.New("no worker is free to render the view")
 	// ErrIntermediateDataNotFound is a view asked of an output port that left
 	// no intermediate data — a node that never ran, or a run with the feature
 	// writer disabled.
 	ErrIntermediateDataNotFound = errors.New("intermediate data not found")
+	// ErrConcurrentRenderLimit is a render refused because the workspace
+	// already has as many renders in progress as its plan allows.
+	ErrConcurrentRenderLimit = errors.New("this workspace already has as many views rendering as its plan allows")
 )
 
 // RenderIntermediateDataViewParam identifies the intermediate data to render

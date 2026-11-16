@@ -99,6 +99,10 @@ type Job struct {
 	Debug             *bool
 	Parameters        []byte
 	Mode              string
+	TriggerID         *string
+	ScheduledAt       *time.Time
+	Origin            []byte
+	RunBy             *string
 }
 
 type NodeExecution struct {
@@ -155,19 +159,22 @@ type ProjectAccess struct {
 }
 
 type Trigger struct {
-	ID            string
-	WorkspaceID   string
-	DeploymentID  string
-	Description   string
-	EventSource   string
-	TimeInterval  *string
-	Enabled       bool
-	LastTriggered *time.Time
-	Variables     []byte
-	CreatedAt     time.Time
-	UpdatedAt     time.Time
-	AuthTokenHash *string
-	AuthTokenHint *string
+	ID                    string
+	WorkspaceID           string
+	DeploymentID          string
+	Description           string
+	EventSource           string
+	TimeInterval          *string
+	Enabled               bool
+	LastTriggered         *time.Time
+	Variables             []byte
+	CreatedAt             time.Time
+	UpdatedAt             time.Time
+	AuthTokenHash         *string
+	AuthTokenHint         *string
+	LastRefusedAt         *time.Time
+	LastRefusalCode       *string
+	LastRefusalRetryUntil *time.Time
 }
 
 type WorkerConfig struct {

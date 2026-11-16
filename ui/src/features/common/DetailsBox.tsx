@@ -6,21 +6,26 @@ import {
 } from "@phosphor-icons/react";
 import { useId, useState } from "react";
 
-import { Button, Switch } from "@flow/components";
+import { Button, Switch, UserAvatar } from "@flow/components";
 import { useT } from "@flow/lib/i18n";
+import type { JobStatus } from "@flow/types";
 import { openLinkInNewTab } from "@flow/utils";
 
 export type DetailsBoxContent = {
   id: string;
   name: string;
   value: string | string[];
-  type?: "link" | "download" | "status" | "collapsible";
+  // A "user" value is a user's name, shown with their avatar.
+  type?: "link" | "download" | "status" | "collapsible" | "user";
+  // The photo of a "user" value's user, if they have one.
+  photoURL?: string;
   items?: DetailsBoxContent[];
 };
 
 type Props = {
   title: string;
   content?: DetailsBoxContent[];
+  status?: JobStatus;
   collapsible?: boolean;
   toggle?: boolean;
   toggleValue?: boolean;
@@ -31,6 +36,7 @@ type Props = {
 const DetailsBox: React.FC<Props> = ({
   title,
   content,
+  status,
   collapsible,
   toggle,
   toggleValue,
@@ -46,8 +52,6 @@ const DetailsBox: React.FC<Props> = ({
   const downloadContent = content?.filter(
     (detail) => detail.type === "download",
   );
-
-  const status = content?.find((detail) => detail.id === "status")?.value;
 
   // This function is necessary because without it the file will sometimes open in the browser instead of downloading
   const handleDownload =
@@ -165,7 +169,8 @@ const DetailsBox: React.FC<Props> = ({
 const DetailValue: React.FC<{
   value: string | string[];
   type?: DetailsBoxContent["type"];
-}> = ({ value, type }) =>
+  photoURL?: string;
+}> = ({ value, type, photoURL }) =>
   Array.isArray(value) ? (
     <div className="flex flex-col gap-1">
       {value.map((v, idx) => (
@@ -179,6 +184,11 @@ const DetailValue: React.FC<{
         </div>
       ))}
     </div>
+  ) : type === "user" ? (
+    <span className="flex min-w-0 items-center gap-2 font-light">
+      <UserAvatar user={{ name: value, photoURL }} className="size-5" />
+      <span className="truncate">{value}</span>
+    </span>
   ) : (
     <p
       className={`${type === "link" ? "cursor-pointer font-light text-blue-400 hover:text-blue-300" : "font-light"}`}
@@ -197,7 +207,11 @@ const DetailRow: React.FC<{ detail: DetailsBoxContent }> = ({ detail }) => {
     return (
       <div className="flex items-center">
         <p className="w-[150px] shrink-0">{detail.name}</p>
-        <DetailValue value={detail.value} type={detail.type} />
+        <DetailValue
+          value={detail.value}
+          type={detail.type}
+          photoURL={detail.photoURL}
+        />
       </div>
     );
   }

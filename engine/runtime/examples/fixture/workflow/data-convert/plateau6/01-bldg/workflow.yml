@@ -13,6 +13,7 @@ with:
     - core:boundary
 graphs:
   - !include ../../../../graphs/plateau6/folder_and_file_path_reader.yml
+  - !include ../../../../graphs/plateau6/attribute_tree_measure_caster.yml
   - !include ../../../../graphs/plateau6/attribute_tree_pruner.yml
   - !include ../../../../graphs/plateau6/city_code_boundary_filter.yml
   - id: 8f3a94c6-bb3e-4561-a405-09b65353986c
@@ -62,11 +63,15 @@ graphs:
           dataset:
             type: flowExpr
             value: attributes["path"]
-          keepAttributes: false
           inheritInputAttributes: true
           cityGmlAttributesKey: __city_gml_attributes
-          flattenLeafAttributes:
+          hoistAttributes:
             - uom
+
+      - id: 325ca2d3-a868-401f-9e37-d34e51ef7f47
+        name: AttributeTreeMeasureCaster
+        type: subGraph
+        subGraphId: d9f0c1d7-3bd4-49d8-a8ba-f56994776d22
 
       # boundary surfaces holding only geometry are left behind as ""
       - id: 2dc6d39e-9c24-4c6f-94f2-889bb9b6e110
@@ -589,6 +594,11 @@ graphs:
         toPort: features
       - id: c9e94d98-20a9-4405-9873-63531c9b25e5
         from: 25d2c806-4c6f-47dc-bfe9-e99c2f951f0a
+        to: 325ca2d3-a868-401f-9e37-d34e51ef7f47
+        fromPort: features
+        toPort: features
+      - id: 81d457f4-e73b-4e23-b7a3-60883e567a29
+        from: 325ca2d3-a868-401f-9e37-d34e51ef7f47
         to: 2dc6d39e-9c24-4c6f-94f2-889bb9b6e110
         fromPort: features
         toPort: features

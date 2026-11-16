@@ -75,12 +75,12 @@ func TestLogJobRejected(t *testing.T) {
 	ctx, buf := captureLog(t)
 	wid := accountsid.NewWorkspaceID()
 
-	logJobRejected(ctx, wid, jobRejectedConcurrentJobs, "running", 2, "limit", "2")
+	logJobRejected(ctx, wid, jobRejectedDebugConcurrentRuns, "running", 2, "limit", "2")
 
 	out := buf.String()
 	assert.Contains(t, out, jobEventRejected)
 	assert.Contains(t, out, wid.String())
-	assert.Contains(t, out, `"reason": "concurrent_jobs"`)
+	assert.Contains(t, out, `"reason": "debug_concurrent_runs"`)
 	assert.Contains(t, out, `"running": 2`)
 }
 
@@ -100,14 +100,12 @@ func TestJobAdmissionSaveLogsRefusal(t *testing.T) {
 	ws := accountsid.NewWorkspaceID()
 	l := planLimits{policyChecker: &planChecker{}, jobRepo: memory.NewJob(), now: time.Now}
 
-	a, err := l.ensureCanRun(ctx, ws)
+	a, err := l.ensureCanRunDebug(ctx, ws)
 	require.NoError(t, err)
-	b, err := l.ensureCanRun(ctx, ws)
+	b, err := l.ensureCanRunDebug(ctx, ws)
 	require.NoError(t, err)
 
-	newJob := func() *job.Job {
-		return job.New().NewID().Workspace(ws).Status(job.StatusPending).StartedAt(time.Now()).MustBuild()
-	}
+	newJob := func() *job.Job { return debugRun(ws, job.StatusPending, time.Now()) }
 	require.NoError(t, a.save(ctx, newJob()))
 	assert.NotContains(t, buf.String(), jobEventRejected)
 
@@ -115,5 +113,5 @@ func TestJobAdmissionSaveLogsRefusal(t *testing.T) {
 	out := buf.String()
 	assert.Contains(t, out, jobEventRejected)
 	assert.Contains(t, out, ws.String())
-	assert.Contains(t, out, `"reason": "concurrent_jobs"`)
+	assert.Contains(t, out, `"reason": "debug_concurrent_runs"`)
 }

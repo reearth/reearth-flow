@@ -21,6 +21,8 @@ import (
 	"github.com/reearth/reearth-flow/api/pkg/job"
 	"github.com/reearth/reearthx/log"
 	"google.golang.org/api/iterator"
+	"google.golang.org/grpc/codes"
+	grpcstatus "google.golang.org/grpc/status"
 	"google.golang.org/protobuf/types/known/durationpb"
 )
 
@@ -63,6 +65,15 @@ func (c BatchConfig) maxRunDuration() time.Duration {
 		return defaultMaxRunDurationSeconds * time.Second
 	}
 	return time.Duration(c.MaxRunDurationSeconds) * time.Second
+}
+
+// runDuration is how long one job may run: capped, when capped is positive and
+// shorter than the configured limit.
+func (c BatchConfig) runDuration(capped time.Duration) time.Duration {
+	if limit := c.maxRunDuration(); capped <= 0 || capped > limit {
+		return limit
+	}
+	return capped
 }
 
 // maxRetryCount is how often a task is retried. Retries are only set up on spot
@@ -131,6 +142,7 @@ func (b *BatchRepo) SubmitJob(
 	workspaceID accountsid.WorkspaceID,
 	previousJobID *id.JobID,
 	startNodeID *uuid.UUID,
+	maxRunDuration time.Duration,
 ) (string, error) {
 	binaryPath := b.binaryPath()
 
@@ -153,7 +165,7 @@ func (b *BatchRepo) SubmitJob(
 		varString,
 	)
 
-	return b.submitCommand(ctx, jobID, projectID, workspaceID, job.ModeRun, workflowCommand, "Run reearth-flow workflow with metadata")
+	return b.submitCommand(ctx, jobID, projectID, workspaceID, job.ModeRun, workflowCommand, "Run reearth-flow workflow with metadata", maxRunDuration)
 }
 
 // SubmitProbeJob dispatches a Batch job invoking the `probe-schema` subcommand.
@@ -191,7 +203,7 @@ func (b *BatchRepo) SubmitProbeJob(
 		varString,
 	)
 
-	return b.submitCommand(ctx, jobID, projectID, workspaceID, job.ModePreviewSchema, workflowCommand, "Probe reearth-flow workflow schema")
+	return b.submitCommand(ctx, jobID, projectID, workspaceID, job.ModePreviewSchema, workflowCommand, "Probe reearth-flow workflow schema", 0)
 }
 
 func (b *BatchRepo) binaryPath() string {
@@ -233,7 +245,8 @@ func shellQuote(s string) string {
 
 // submitCommand builds and creates a Batch job running workflowCommand. It holds
 // the shared allocation/compute/logging assembly used by both run and probe jobs.
-// mode is recorded as the job_mode label.
+// mode is recorded as the job_mode label, and maxRunDuration caps the run as in
+// SubmitJob.
 func (b *BatchRepo) submitCommand(
 	ctx context.Context,
 	jobID id.JobID,
@@ -242,6 +255,7 @@ func (b *BatchRepo) submitCommand(
 	mode job.Mode,
 	workflowCommand string,
 	displayName string,
+	maxRunDuration time.Duration,
 ) (string, error) {
 	formattedJobID := formatJobID(jobID.String())
 
@@ -298,7 +312,7 @@ func (b *BatchRepo) submitCommand(
 		ComputeResource:   computeResource,
 		MaxRetryCount:     maxRetryCount,
 		LifecyclePolicies: lifecyclePolicies,
-		MaxRunDuration:    durationpb.New(b.config.maxRunDuration()),
+		MaxRunDuration:    durationpb.New(b.config.runDuration(maxRunDuration)),
 		Runnables: []*batchpb.Runnable{
 			runnable,
 		},
@@ -417,7 +431,7 @@ func (b *BatchRepo) submitCommand(
 	resp, err := b.client.CreateJob(ctx, req)
 	if err != nil {
 		log.Debugfc(ctx, "[Batch] Error creating job: %v", err)
-		return "", fmt.Errorf("failed to create job: %v", err)
+		return b.reconcileCreate(ctx, jobName, err)
 	}
 
 	log.Debugfc(ctx, "[Batch] Job created successfully: name=%s, uid=%s", resp.Name, resp.Uid)
@@ -430,6 +444,45 @@ func (b *BatchRepo) submitCommand(
 	}
 
 	return resp.Name, nil
+}
+
+// reconcileLookupTimeout bounds the lookup that settles a failed create.
+const reconcileLookupTimeout = 10 * time.Second
+
+// reconcileCreate settles whether a create that returned createErr made the
+// job anyway: a deadline or a dropped connection can come after Batch accepted
+// it. The job's name is fixed by its ID, so a lookup answers. It returns the
+// job's name when the job exists, an error wrapping gateway.ErrJobNotSubmitted
+// when it does not, and a plain error when that cannot be told.
+func (b *BatchRepo) reconcileCreate(ctx context.Context, jobName string, createErr error) (string, error) {
+	notSubmitted := fmt.Errorf("%w: failed to create job: %v", gateway.ErrJobNotSubmitted, createErr)
+	switch grpcstatus.Code(createErr) {
+	case codes.AlreadyExists:
+		// The job's ID is the run's own, so the job is this run's.
+		log.Warnfc(ctx, "[Batch] job %s already exists, taking it as submitted: %v", jobName, createErr)
+		return jobName, nil
+	case codes.InvalidArgument, codes.PermissionDenied, codes.Unauthenticated, codes.FailedPrecondition,
+		codes.NotFound, codes.OutOfRange, codes.Unimplemented, codes.ResourceExhausted:
+		// Refused outright: Batch made no job.
+		return "", notSubmitted
+	}
+
+	lookupCtx, cancel := context.WithTimeout(context.WithoutCancel(ctx), reconcileLookupTimeout)
+	defer cancel()
+	j, err := b.client.GetJob(lookupCtx, &batchpb.GetJobRequest{Name: jobName})
+	switch {
+	case err == nil:
+		log.Warnfc(ctx, "[Batch] creating job %s returned an error but the job exists, taking it as submitted: %v", jobName, createErr)
+		if j != nil && j.Name != "" {
+			return j.Name, nil
+		}
+		return jobName, nil
+	case grpcstatus.Code(err) == codes.NotFound:
+		return "", notSubmitted
+	default:
+		log.Errorfc(ctx, "[Batch] could not tell whether job %s was created: create: %v, lookup: %v", jobName, createErr, err)
+		return "", fmt.Errorf("failed to create job, and could not tell whether it was: %v", createErr)
+	}
 }
 
 func (b *BatchRepo) GetJobStatus(ctx context.Context, jobName string) (gateway.JobStatus, error) {

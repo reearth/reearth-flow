@@ -1,8 +1,4 @@
-import {
-  ArrowUDownLeftIcon,
-  PencilLineIcon,
-  CodeBlockIcon,
-} from "@phosphor-icons/react";
+import { ArrowUDownLeftIcon, CodeBlockIcon } from "@phosphor-icons/react";
 import type { RefObject } from "react";
 import { useCallback } from "react";
 
@@ -13,7 +9,6 @@ type Props = {
   value?: any;
   defaultValue?: RefObject<any>;
   readonly?: boolean;
-  onEditorOpen?: () => void;
   onPythonEditorOpen?: () => void;
   onReset?: () => void;
 };
@@ -22,19 +17,10 @@ const ActionArea: React.FC<Props> = ({
   value,
   defaultValue,
   readonly,
-  onEditorOpen,
   onPythonEditorOpen,
   onReset,
 }) => {
   const t = useT();
-
-  const handleEditorOpen = useCallback(
-    (e: React.MouseEvent<HTMLButtonElement>) => {
-      e.preventDefault();
-      onEditorOpen?.();
-    },
-    [onEditorOpen],
-  );
 
   const handlePythonEditorOpen = useCallback(
     (e: React.MouseEvent<HTMLButtonElement>) => {
@@ -46,14 +32,6 @@ const ActionArea: React.FC<Props> = ({
 
   return (
     <div className="flex items-center justify-end">
-      {onEditorOpen && (
-        <IconButton
-          icon={<PencilLineIcon />}
-          tooltipText={t("Open Expression Editor")}
-          onClick={handleEditorOpen}
-          disabled={!onEditorOpen || readonly}
-        />
-      )}
       {onPythonEditorOpen && (
         <IconButton
           icon={<CodeBlockIcon />}

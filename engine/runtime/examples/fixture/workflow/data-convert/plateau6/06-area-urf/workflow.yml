@@ -20,6 +20,7 @@ with:
     - urf:specialDistrict
 graphs:
   - !include ../../../../graphs/plateau6/folder_and_file_path_reader.yml
+  - !include ../../../../graphs/plateau6/attribute_tree_measure_caster.yml
   - !include ../../../../graphs/plateau6/attribute_tree_pruner.yml
   - !include ../../../../graphs/plateau6/city_code_boundary_filter.yml
   - !include ../../../../graphs/plateau6/lod_splitter_with_dm.yml
@@ -55,10 +56,9 @@ graphs:
           dataset:
             type: flowExpr
             value: attributes["path"]
-          keepAttributes: false
           inheritInputAttributes: true
           cityGmlAttributesKey: __city_gml_attributes
-          flattenLeafAttributes:
+          hoistAttributes:
             - uom
           # the types that can own geometry (core:AbstractThematicSurface in i-UR 4.0.2); the
           # five *DistrictPlan types cannot, and only hold the nested urf:DistrictDevelopmentPlan
@@ -152,6 +152,11 @@ graphs:
             - urf:Waterway
             - urf:ZonalDisasterPreventionFacility
             - urf:ZoneForPreservationOfHistoricalLandscape
+
+      - id: 423b789b-c73c-46be-8b90-a9a06467510c
+        name: AttributeTreeMeasureCaster
+        type: subGraph
+        subGraphId: d9f0c1d7-3bd4-49d8-a8ba-f56994776d22
 
       - id: 2f5ad51d-9395-48c3-8b24-c587aadc240a
         name: TargetPackageFilter
@@ -388,6 +393,11 @@ graphs:
         toPort: features
       - id: 117ef4b8-dfd4-4d61-83e9-90ce705d81cf
         from: 34b09bf1-5daa-43ef-a3cf-f4a7c3f1bc83
+        to: 423b789b-c73c-46be-8b90-a9a06467510c
+        fromPort: features
+        toPort: features
+      - id: d52f458e-afde-4ba2-b1de-6321277e8c92
+        from: 423b789b-c73c-46be-8b90-a9a06467510c
         to: 2f5ad51d-9395-48c3-8b24-c587aadc240a
         fromPort: features
         toPort: features

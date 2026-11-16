@@ -16,7 +16,7 @@
     },
     {
       "name": "objectListsPath",
-      "value": "../../../../../fixtures/plateau6-citymodel/z16211_imizu-shi_city_2024_citygml_1_op/16211_city_2024_objectlist_op.xlsx"
+      "value": "../../../../../fixtures/plateau6-citymodel/z16211_imizu-shi_city_2024_citygml_1_op/16211_city_2024_objectlist_op__L03test.xlsx"
     }
   ],
   "zipBeforeTest": [

@@ -17,6 +17,10 @@ graphs:
           dataset:
             type: flowExpr
             value: variables["cityGmlPath"]
+          hoistAttributes:
+            - uom
+            - gml:id
+            - name
 
       - id: fa0ef01a-3177-4924-92bb-fba4eb81c021
         name: FeatureWriter

@@ -1,13 +1,17 @@
 use std::cell::RefCell;
-use std::collections::{HashMap, HashSet};
+use std::collections::{BTreeMap, BTreeSet, HashMap, HashSet};
+use std::io::Cursor;
 use std::path::Path;
 use std::str::FromStr;
 use std::sync::Arc;
 use std::time::Instant;
 
+use fastxml::parser;
+use fastxml::schema::types::CompiledSchema;
 use fastxml::transform::{EditableNode, Transformer};
 use once_cell::sync::Lazy;
 use reearth_flow_common::uri::Uri;
+use reearth_flow_diagnostics::{DiagnosticDraft, ErrorCode};
 use reearth_flow_runtime::{
     errors::BoxedError,
     event::EventHub,
@@ -24,9 +28,14 @@ use reearth_flow_types::{Attribute, AttributeValue, Attributes, Code, CompiledCo
 use schemars::JsonSchema;
 use serde_json::{Number, Value};
 
+use super::application_schema_conformance::{
+    element_name, CityObjectTypes, ConformanceRules, ElementName, PackageRules, Reason, Violation,
+};
 use super::errors::PlateauProcessorError;
+use super::object_list_extractor::OBJECT_LIST_DEFINITIONS_ATTRIBUTE;
 use super::PlateauProfile;
 use crate::citygml::GML_DICTIONARY_NS;
+use crate::object_list::ObjectListDefinitions;
 
 static VALID_SRS_NAME_6697: &str = "http://www.opengis.net/def/crs/EPSG/0/6697";
 static VALID_SRS_NAME_6668: &str = "http://www.opengis.net/def/crs/EPSG/0/6668";
@@ -56,135 +65,156 @@ static VALID_SRS_NAME_FOR_UNF: Lazy<Vec<&'static str>> = Lazy::new(|| {
 static DUPLICATE_GML_ID_STATS_PORT: Lazy<Port> = Lazy::new(|| Port::new("duplicateGmlIdStats"));
 
 // L03
-// Effective geo-feature types of the package.
-fn valid_feature_types(profile: &PlateauProfile, package: &str) -> &'static [&'static str] {
+// Effective geo-feature types of the package, as `prefix:local` with the
+// standard prefix.
+fn valid_feature_types(profile: &PlateauProfile, package: &str) -> Vec<String> {
+    let qualified = |prefix: &str, local_names: &[&str]| -> Vec<String> {
+        local_names
+            .iter()
+            .map(|local| format!("{prefix}:{local}"))
+            .collect()
+    };
+    let with_group = |mut types: Vec<String>| {
+        types.push("grp:CityObjectGroup".to_string());
+        types
+    };
+    let citygml3 = profile.is_citygml3();
     match package {
-        "app" => &["http://www.opengis.net/citygml/appearance/2.0"],
-        "area" => &["Zone", "UnclassifiedBlankArea", "UnclassifiedUseDistrict"],
-        "bldg" => &["Building", "CityObjectGroup"],
-        "brid" => &["Bridge"],
-        "cons" => &["OtherConstruction"],
-        "dem" => &["ReliefFeature"],
-        "fld" => &["WaterBody"],
-        "frn" => &["CityFurniture"],
-        "gen" => profile.generic_city_object_types(),
-        "htd" => &["WaterBody"],
-        "ifld" => &["WaterBody"],
-        "lsld" => &["SedimentDisasterProneArea"],
-        "luse" => &["LandUse"],
-        "rwy" => &["Railway"],
-        "squr" => &["Square"],
-        "tnm" => &["WaterBody"],
-        "tran" => &["Road"],
-        "trk" => &["Track"],
-        "tun" => &["Tunnel"],
-        "ubld" => &["UndergroundBuilding", "CityObjectGroup"],
-        "unf" => &[
-            "WaterPipe",
-            "SewerPipe",
-            "ThermalPipe",
-            "OilGasChemicalsPipe",
-            "Pipe",
-            "TelecommunicationsCable",
-            "ElectricityCable",
-            "Cable",
-            "Duct",
-            "Appurtenance",
-            "Manhole",
-            "Handhole",
-        ],
-        "urf" => &[
-            "UrbanPlanningArea",
-            "QuasiUrbanPlanningArea",
-            "AreaClassification",
-            "DistrictsAndZones",
-            "UseDistrict",
-            "SpecialUseDistrict",
-            "SpecialUseRestrictionDistrict",
-            "ExceptionalFloorAreaRateDistrict",
-            "HighRiseResidentialAttractionDistrict",
-            "HeightControlDistrict",
-            "HighLevelUseDistrict",
-            "SpecifiedBlock",
-            "SpecialUrbanRenaissanceDistrict",
-            "HousingControlArea",
-            "ResidentialEnvironmentImprovementDistrict",
-            "SpecialUseAttractionDistrict",
-            "FirePreventionDistrict",
-            "SpecifiedDisasterPreventionBlockImprovementZone",
-            "LandscapeZone",
-            "ScenicDistrict",
-            "ParkingPlaceDevelopmentZone",
-            "PortZone",
-            "SpecialZoneForPreservationOfHistoricalLandscape",
-            "ZoneForPreservationOfHistoricalLandscape",
-            "GreenSpaceConservationDistrict",
-            "SpecialGreenSpaceConservationDistrict",
-            "TreePlantingDistrict",
-            "DistributionBusinessZone",
-            "ProductiveGreenZone",
-            "ConservationZoneForClustersOfTraditionalStructures",
-            "AircraftNoiseControlZone",
-            "ProjectPromotionArea",
-            "UrbanRedevelopmentPromotionArea",
-            "LandReadjustmentPromotionArea",
-            "ResidentialBlockConstructionPromotionArea",
-            "LandReadjustmentPromotionAreasForCoreBusinessUrbanDevelopment",
-            "UnusedLandUsePromotionArea",
-            "UrbanDisasterRecoveryPromotionArea",
-            "UrbanFacility",
-            "TrafficFacility",
-            "OpenSpaceForPublicUse",
-            "SupplyFacility",
-            "TreatmentFacility",
-            "Waterway",
-            "EducationalAndCulturalFacility",
-            "MedicalFacility",
-            "SocialWelfareFacility",
-            "MarketsSlaughterhousesCrematoria",
-            "CollectiveHousingFacilities",
-            "CollectiveGovernmentAndPublicOfficeFacilities",
-            "DistributionBusinessPark",
-            "CollectiveFacilitiesForTsunamiDisasterPrevention",
-            "CollectiveFacilitiesForReconstructionAndRevitalization",
-            "CollectiveFacilitiesForReconstruction",
-            "CollectiveUrbanDisasterPreventionFacilities",
-            "UrbanFacilityStipulatedByCabinetOrder",
-            "TelecommunicationFacility",
-            "WindProtectionFacility",
-            "FireProtectionFacility",
-            "TideFacility",
-            "FloodPreventionFacility",
-            "SnowProtectionFacility",
-            "SandControlFacility",
-            "UrbanDevelopmentProject",
-            "LandReadjustmentProject",
-            "NewHousingAndUrbanDevelopmentProject",
-            "IndustrialParkDevelopmentProject",
-            "UrbanRedevelopmentProject",
-            "NewUrbanInfrastructureProject",
-            "ResidentialBlockConstructionProject",
-            "DisasterPreventionBlockImprovementProject",
-            "UrbanRenewalProject",
-            "ScheduledAreaForUrbanDevelopmentProject",
-            "ScheduledAreaForNewHousingAndUrbanDevelopmentProjects",
-            "ScheduledAreaForIndustrialParkDevelopmentProjects",
-            "ScheduledAreaForNewUrbanInfrastructureProjects",
-            "ScheduledAreaForCollectiveHousingFacilities",
-            "ScheduledAreaForCollectiveGovernmentAndPublicOfficeFacilities",
-            "ScheduledAreaForDistributionBusinessPark",
-            "DistrictPlan",
-            "RoadsideDistrictPlan",
-            "RuralDistrictPlan",
-            "HistoricSceneryMaintenanceAndImprovementDistrictPlan",
-            "DisasterPreventionBlockImprovementZonePlan",
-            "ResidenceAttractionArea",
-            "UrbanFunctionAttractionArea",
-        ],
-        "veg" => &["SolitaryVegetationObject", "PlantCover"],
-        "wtr" => &["WaterBody"],
-        "wwy" => &["Waterway"],
-        _ => &[],
+        "app" => vec!["http://www.opengis.net/citygml/appearance/2.0".to_string()],
+        "area" => qualified(
+            "urf",
+            &["Zone", "UnclassifiedBlankArea", "UnclassifiedUseDistrict"],
+        ),
+        "bldg" => with_group(qualified("bldg", &["Building"])),
+        "brid" => qualified("brid", &["Bridge"]),
+        // CityGML 3.0 adds `OtherConstruction`, which i-UR 3.x defined.
+        "cons" if citygml3 => qualified("con", &["OtherConstruction"]),
+        "cons" => qualified("uro", &["OtherConstruction"]),
+        "dem" => qualified("dem", &["ReliefFeature"]),
+        "fld" | "htd" | "ifld" | "rfld" | "tnm" | "wtr" => qualified("wtr", &["WaterBody"]),
+        "frn" => qualified("frn", &["CityFurniture"]),
+        "gen" => qualified("gen", profile.generic_city_object_types()),
+        "lsld" => qualified("urf", &["SedimentDisasterProneArea"]),
+        "luse" => qualified("luse", &["LandUse"]),
+        "rwy" => qualified("tran", &["Railway"]),
+        "squr" => qualified("tran", &["Square"]),
+        "tran" => qualified("tran", &["Road"]),
+        "trk" => qualified("tran", &["Track"]),
+        "tun" => qualified("tun", &["Tunnel"]),
+        "ubld" => with_group(qualified("uro", &["UndergroundBuilding"])),
+        "veg" => qualified("veg", &["SolitaryVegetationObject", "PlantCover"]),
+        // CityGML 3.0 adds `Waterway`, which i-UR 3.x defined.
+        "wwy" if citygml3 => qualified("tran", &["Waterway"]),
+        "wwy" => qualified("uro", &["Waterway"]),
+        "unf" => qualified(
+            "uro",
+            &[
+                "WaterPipe",
+                "SewerPipe",
+                "ThermalPipe",
+                "OilGasChemicalsPipe",
+                "Pipe",
+                "TelecommunicationsCable",
+                "ElectricityCable",
+                "Cable",
+                "Duct",
+                "Appurtenance",
+                "Manhole",
+                "Handhole",
+            ],
+        ),
+        "urf" => qualified(
+            "urf",
+            &[
+                "UrbanPlanningArea",
+                "QuasiUrbanPlanningArea",
+                "AreaClassification",
+                "DistrictsAndZones",
+                "UseDistrict",
+                "SpecialUseDistrict",
+                "SpecialUseRestrictionDistrict",
+                "ExceptionalFloorAreaRateDistrict",
+                "HighRiseResidentialAttractionDistrict",
+                "HeightControlDistrict",
+                "HighLevelUseDistrict",
+                "SpecifiedBlock",
+                "SpecialUrbanRenaissanceDistrict",
+                "HousingControlArea",
+                "ResidentialEnvironmentImprovementDistrict",
+                "SpecialUseAttractionDistrict",
+                "FirePreventionDistrict",
+                "SpecifiedDisasterPreventionBlockImprovementZone",
+                "LandscapeZone",
+                "ScenicDistrict",
+                "ParkingPlaceDevelopmentZone",
+                "PortZone",
+                "SpecialZoneForPreservationOfHistoricalLandscape",
+                "ZoneForPreservationOfHistoricalLandscape",
+                "GreenSpaceConservationDistrict",
+                "SpecialGreenSpaceConservationDistrict",
+                "TreePlantingDistrict",
+                "DistributionBusinessZone",
+                "ProductiveGreenZone",
+                "ConservationZoneForClustersOfTraditionalStructures",
+                "AircraftNoiseControlZone",
+                "ProjectPromotionArea",
+                "UrbanRedevelopmentPromotionArea",
+                "LandReadjustmentPromotionArea",
+                "ResidentialBlockConstructionPromotionArea",
+                "LandReadjustmentPromotionAreasForCoreBusinessUrbanDevelopment",
+                "UnusedLandUsePromotionArea",
+                "UrbanDisasterRecoveryPromotionArea",
+                "UrbanFacility",
+                "TrafficFacility",
+                "OpenSpaceForPublicUse",
+                "SupplyFacility",
+                "TreatmentFacility",
+                "Waterway",
+                "EducationalAndCulturalFacility",
+                "MedicalFacility",
+                "SocialWelfareFacility",
+                "MarketsSlaughterhousesCrematoria",
+                "CollectiveHousingFacilities",
+                "CollectiveGovernmentAndPublicOfficeFacilities",
+                "DistributionBusinessPark",
+                "CollectiveFacilitiesForTsunamiDisasterPrevention",
+                "CollectiveFacilitiesForReconstructionAndRevitalization",
+                "CollectiveFacilitiesForReconstruction",
+                "CollectiveUrbanDisasterPreventionFacilities",
+                "UrbanFacilityStipulatedByCabinetOrder",
+                "TelecommunicationFacility",
+                "WindProtectionFacility",
+                "FireProtectionFacility",
+                "TideFacility",
+                "FloodPreventionFacility",
+                "SnowProtectionFacility",
+                "SandControlFacility",
+                "UrbanDevelopmentProject",
+                "LandReadjustmentProject",
+                "NewHousingAndUrbanDevelopmentProject",
+                "IndustrialParkDevelopmentProject",
+                "UrbanRedevelopmentProject",
+                "NewUrbanInfrastructureProject",
+                "ResidentialBlockConstructionProject",
+                "DisasterPreventionBlockImprovementProject",
+                "UrbanRenewalProject",
+                "ScheduledAreaForUrbanDevelopmentProject",
+                "ScheduledAreaForNewHousingAndUrbanDevelopmentProjects",
+                "ScheduledAreaForIndustrialParkDevelopmentProjects",
+                "ScheduledAreaForNewUrbanInfrastructureProjects",
+                "ScheduledAreaForCollectiveHousingFacilities",
+                "ScheduledAreaForCollectiveGovernmentAndPublicOfficeFacilities",
+                "ScheduledAreaForDistributionBusinessPark",
+                "DistrictPlan",
+                "RoadsideDistrictPlan",
+                "RuralDistrictPlan",
+                "HistoricSceneryMaintenanceAndImprovementDistrictPlan",
+                "DisasterPreventionBlockImprovementZonePlan",
+                "ResidenceAttractionArea",
+                "UrbanFunctionAttractionArea",
+            ],
+        ),
+        _ => Vec::new(),
     }
 }
 
@@ -216,33 +246,164 @@ struct ValidateResponse {
     correct_code_values: u32,
     code_value_errors: u32,
     code_space_errors: u32,
-    // L06
+    // L05, L06
+    bounded_by: BoundedBy,
     correct_extents: u32,
     incorrect_extents: u32,
-    // L03({ feature type name : number })
-    invalid_feature_types: HashMap<String, u32>,
+    /// Reported in the summary as a note.
+    coordinate_errors: BTreeSet<CoordinateError>,
+    // L03 ({ feature type outside the package : number }, filled only without
+    // L03 objectlist conformance), ordered for a stable output.
+    invalid_feature_types: BTreeMap<String, u32>,
     invalid_feature_types_num: u32,
     // error counter
     gml_id_not_well_formed_num: u32,
     xlink_has_no_reference_num: u32,
     xlink_invalid_object_type_num: u32,
     invalid_lod_x_geometry_num: u32,
-    // envelope
-    envelope: Envelope,
     // xlink
     external_file_to_gml_ids: HashMap<String, Vec<String>>,
 }
 
+/// An invalid coordinate value found in the file.
+#[derive(
+    thiserror::Error, Serialize, Deserialize, Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord,
+)]
+enum CoordinateError {
+    #[error("The gml:Envelope has a NaN or infinite coordinate.")]
+    NonFiniteEnvelope,
+    #[error("A geometry has a NaN or infinite coordinate.")]
+    NonFiniteGeometry,
+    #[error("A geometry has no coordinate on some axis.")]
+    MissingAxis,
+}
+
+/// The messages of `errors` without repeats, as a note; `None` when there are
+/// no errors.
+fn note(errors: impl IntoIterator<Item = CoordinateError>) -> Option<AttributeValue> {
+    let errors = errors.into_iter().collect::<BTreeSet<_>>();
+    (!errors.is_empty())
+        .then(|| AttributeValue::String(errors.iter().map(ToString::to_string).collect()))
+}
+
+/// The `gml:Envelope` in `gml:boundedBy` of the city model.
 #[derive(Serialize, Deserialize, Debug, Default)]
 #[serde(rename_all = "camelCase")]
-struct Envelope {
+struct BoundedBy {
     srs_name: String,
-    lower_x: f64,
-    lower_y: f64,
-    lower_z: f64,
-    upper_x: f64,
-    upper_y: f64,
-    upper_z: f64,
+    /// `None` when the corners are not all finite, in which case L06 checks no
+    /// geometry.
+    envelope: Option<Envelope>,
+}
+
+/// The `gml:Envelope` of the city model, finite on every axis.
+#[derive(Serialize, Deserialize, Debug, Clone, Copy, PartialEq)]
+struct Envelope(Bounds);
+
+impl Envelope {
+    /// `None` when a coordinate is NaN or infinite.
+    fn new(lower: [f64; 3], upper: [f64; 3]) -> Option<Self> {
+        let finite = lower.iter().chain(&upper).all(|v| v.is_finite());
+        finite.then(|| {
+            Self(Bounds([0, 1, 2].map(|i| {
+                Ok(AxisRange {
+                    min: lower[i],
+                    max: upper[i],
+                })
+            })))
+        })
+    }
+
+    /// Whether `extent` lies within this envelope, boundaries included. An
+    /// extent with an axis of unknown range does not.
+    fn contains(&self, extent: &Extent) -> bool {
+        self.0
+            .axes()
+            .iter()
+            .zip(extent.0.axes())
+            .all(|(envelope, extent)| {
+                matches!(
+                    (envelope, extent),
+                    (Ok(envelope), Ok(extent))
+                        if envelope.min <= extent.min && extent.max <= envelope.max
+                )
+            })
+    }
+}
+
+/// The minimum and maximum coordinates of a feature, per axis.
+#[derive(Debug, Clone, Copy, PartialEq)]
+struct Extent(Bounds);
+
+impl Extent {
+    /// The extent of the positions given as a flat list of (x, y, z).
+    fn from_positions(positions: &[f64]) -> Self {
+        Self(Bounds([0, 1, 2].map(|i| {
+            positions
+                .iter()
+                .skip(i)
+                .step_by(3)
+                .try_fold(None, |range: Option<AxisRange>, &v| {
+                    if !v.is_finite() {
+                        return Err(CoordinateError::NonFiniteGeometry);
+                    }
+                    Ok(Some(match range {
+                        None => AxisRange { min: v, max: v },
+                        Some(r) => AxisRange {
+                            min: r.min.min(v),
+                            max: r.max.max(v),
+                        },
+                    }))
+                })?
+                .ok_or(CoordinateError::MissingAxis)
+        })))
+    }
+
+    /// The reasons of the axes whose range is unknown.
+    fn errors(&self) -> impl Iterator<Item = CoordinateError> + '_ {
+        self.0.axes().iter().filter_map(|axis| axis.err())
+    }
+}
+
+/// The finite minimum and maximum of one axis.
+#[derive(Serialize, Deserialize, Debug, Clone, Copy, PartialEq)]
+struct AxisRange {
+    min: f64,
+    max: f64,
+}
+
+/// The ranges of (latitude, longitude, elevation), the common form of an
+/// [`Envelope`] and an [`Extent`]. An axis whose range is unknown holds the
+/// reason.
+#[derive(Serialize, Deserialize, Debug, Clone, Copy, PartialEq)]
+struct Bounds([Result<AxisRange, CoordinateError>; 3]);
+
+impl Bounds {
+    /// The ranges of (latitude, longitude, elevation).
+    fn axes(&self) -> &[Result<AxisRange, CoordinateError>; 3] {
+        &self.0
+    }
+
+    /// Inserts the axes as `{prefix}Latitude` / `Longitude` / `Elevation`, with
+    /// nulls for an axis of unknown range or when there are no bounds.
+    fn insert_into(
+        bounds: Option<&Self>,
+        feature: &mut Feature,
+        lower_prefix: &str,
+        upper_prefix: &str,
+    ) {
+        let mut insert = |prefix: &str, end: fn(&AxisRange) -> f64| {
+            for (i, axis) in ["Latitude", "Longitude", "Elevation"].iter().enumerate() {
+                let value = bounds
+                    .and_then(|b| b.axes()[i].as_ref().ok())
+                    .and_then(|range| Number::from_f64(end(range)))
+                    .map_or(AttributeValue::Null, AttributeValue::Number);
+                feature.insert(format!("{prefix}{axis}"), value);
+            }
+        };
+        insert(lower_prefix, |range| range.min);
+        insert(upper_prefix, |range| range.max);
+    }
 }
 
 /// # DomainOfDefinitionValidator Parameters
@@ -341,6 +502,7 @@ impl ProcessorFactory for DomainOfDefinitionValidatorFactory {
             codelists: None,
             filenames: HashSet::new(),
             codelists_path_expr,
+            conformance_rules: None,
         };
         Ok(Box::new(process))
     }
@@ -355,6 +517,9 @@ pub struct DomainOfDefinitionValidator {
     codelists: Option<HashMap<String, HashMap<String, String>>>,
     filenames: HashSet<String>,
     codelists_path_expr: Option<CompiledCode>,
+    /// L03 objectlist conformance rules, read from the first feature. `Some(None)` when it
+    /// has no objectlist definitions and L03 checks feature types only.
+    conformance_rules: Option<Option<ConformanceRules>>,
 }
 
 impl Processor for DomainOfDefinitionValidator {
@@ -402,12 +567,39 @@ impl Processor for DomainOfDefinitionValidator {
             .map_err(|e| PlateauProcessorError::DomainOfDefinitionValidator(format!("{e:?}")))?;
             self.codelists = Some(codelists);
         }
+        if self.conformance_rules.is_none() {
+            let rules = feature
+                .get(OBJECT_LIST_DEFINITIONS_ATTRIBUTE)
+                .map(|value| {
+                    ObjectListDefinitions::try_from(value.clone()).map_err(|e| {
+                        PlateauProcessorError::DomainOfDefinitionValidator(format!(
+                            "Invalid {OBJECT_LIST_DEFINITIONS_ATTRIBUTE}: {e}"
+                        ))
+                    })
+                })
+                .transpose()?
+                .map(|definitions| ConformanceRules::new(definitions, self.profile));
+            if let Some(unknown) = rules
+                .as_ref()
+                .map(ConformanceRules::unknown_prefixes)
+                .filter(|unknown| !unknown.is_empty())
+            {
+                ctx.warn(
+                    DiagnosticDraft::new(ErrorCode::PlateauObjectlistPrefixUnknown).with_message(
+                        format!("objectlist prefixes without a namespace URI: {unknown:?}"),
+                    ),
+                );
+            }
+            self.conformance_rules = Some(rules);
+        }
         let codelists = self.codelists.as_ref().unwrap();
+        let conformance_rules = self.conformance_rules.as_ref().and_then(Option::as_ref);
         let feature_results = process_feature(
             self.profile,
             &ctx,
             fw,
             codelists,
+            conformance_rules,
             feature,
             fallback_codelists_path.as_ref(),
         )?;
@@ -511,6 +703,11 @@ struct DomainOfDefinitionContext<'a> {
     fallback_codelists_path: Option<&'a Uri>,
     valid_feature_types: &'a [String],
     gml_id_pattern: &'a Regex,
+    /// L03 objectlist conformance rules of the package; `None` when not checked.
+    package_rules: Option<PackageRules<'a>>,
+    /// Whether L03 objectlist conformance runs, in which case each L03 error is
+    /// also sent as its own feature.
+    sends_violations: bool,
 }
 
 /// Mutable state accumulated while running the per-`cityObjectMember`
@@ -524,12 +721,41 @@ struct DomainOfDefinitionAccumulator {
     member_count: usize,
 }
 
+/// The schemas the city GML names in `xsi:schemaLocation`, or `None` when they
+/// cannot be compiled.
+fn application_schema(
+    ctx: &ExecutorContext,
+    xml: &[u8],
+    city_gml_path: &Path,
+) -> Option<Arc<CompiledSchema>> {
+    let warn = |message: String| {
+        ctx.warn(
+            DiagnosticDraft::new(ErrorCode::PlateauApplicationSchemaUnavailable)
+                .with_message(message),
+        );
+    };
+    let locations = match parser::parse_schema_locations_from_reader(Cursor::new(xml)) {
+        Ok(locations) if !locations.is_empty() => locations,
+        Ok(_) => return None,
+        Err(e) => {
+            warn(format!("failed to read schema locations: {e:?}"));
+            return None;
+        }
+    };
+    let base_dir = city_gml_path.parent().filter(|dir| dir.exists());
+    reearth_flow_http::compiled_schema(&locations, base_dir)
+        .map(|compilation| Arc::clone(&compilation.schema))
+        .inspect_err(|e| warn(format!("failed to compile schemas: {e}")))
+        .ok()
+}
+
 #[allow(clippy::type_complexity)]
 fn process_feature(
     profile: &PlateauProfile,
     ctx: &ExecutorContext,
     fw: &ProcessorChannelForwarder,
     codelists: &HashMap<String, HashMap<String, String>>,
+    conformance_rules: Option<&ConformanceRules>,
     feature: &Feature,
     fallback_codelists_path: Option<&Uri>,
 ) -> super::errors::Result<(Vec<Feature>, HashMap<String, Vec<HashMap<String, String>>>)> {
@@ -546,10 +772,7 @@ fn process_feature(
     pattern.push_str(package);
     pattern.push_str(r"_[\da-f]{8}(-[\da-f]{4}){3}-[\da-f]{12}$");
     let gml_id_pattern = Regex::new(pattern.as_str()).unwrap();
-    let valid_feature_types = valid_feature_types(profile, package)
-        .iter()
-        .map(|s| s.to_string())
-        .collect::<Vec<_>>();
+    let valid_feature_types = valid_feature_types(profile, package);
 
     let city_gml_path = feature.attributes.get(&Attribute::new("path")).ok_or(
         PlateauProcessorError::DomainOfDefinitionValidator("path key empty".to_string()),
@@ -565,6 +788,13 @@ fn process_feature(
         .map_err(|e| PlateauProcessorError::DomainOfDefinitionValidator(format!("{e:?}")))?;
     let xml_str = String::from_utf8(xml_content.to_vec())
         .map_err(|e| PlateauProcessorError::DomainOfDefinitionValidator(format!("{e:?}")))?;
+
+    let schema = conformance_rules
+        .filter(|rules| rules.package(package, None).is_some())
+        .and_then(|_| application_schema(ctx, &xml_content, &city_gml_uri.path()));
+    let city_objects = schema
+        .as_deref()
+        .map(|schema| CityObjectTypes::new(schema, profile.citygml.core_ns));
 
     let t_total = Instant::now();
 
@@ -585,6 +815,8 @@ fn process_feature(
         fallback_codelists_path,
         valid_feature_types: &valid_feature_types,
         gml_id_pattern: &gml_id_pattern,
+        package_rules: conformance_rules.and_then(|rules| rules.package(package, city_objects)),
+        sends_violations: conformance_rules.is_some(),
     };
     let mut accumulator = DomainOfDefinitionAccumulator::default();
     let parse_outcome = run_domain_of_definition_checks(&context, &xml_str, &mut accumulator);
@@ -607,9 +839,9 @@ fn process_feature(
     );
     let mut result_feature = create_lightweight_feature(feature, &["index"]);
     let response = &accumulator.response;
-    let envelope = &response.envelope;
+    let srs_name = response.bounded_by.srs_name.as_str();
     result_feature.insert("flag", AttributeValue::String("Summary".to_string()));
-    result_feature.insert("srsName", AttributeValue::String(envelope.srs_name.clone()));
+    result_feature.insert("srsName", AttributeValue::String(srs_name.to_string()));
     result_feature.insert(
         "invalidFeatureTypesNum",
         AttributeValue::Number(Number::from(response.invalid_feature_types_num)),
@@ -648,10 +880,9 @@ fn process_feature(
             // error), the CRS could not be read; do not raise a false L05 CRS
             // error for it — the only finding is the upstream L01.
             parse_failed
-                || envelope.srs_name == VALID_SRS_NAME_6697
-                || envelope.srs_name == VALID_SRS_NAME_6668
-                || (package == "unf"
-                    && VALID_SRS_NAME_FOR_UNF.contains(&envelope.srs_name.as_str())),
+                || srs_name == VALID_SRS_NAME_6697
+                || srs_name == VALID_SRS_NAME_6668
+                || (package == "unf" && VALID_SRS_NAME_FOR_UNF.contains(&srs_name)),
         ),
     );
     result_feature.insert(
@@ -662,30 +893,15 @@ fn process_feature(
         "incorrectExtents",
         AttributeValue::Number(Number::from(response.incorrect_extents)),
     );
-    result_feature.insert(
-        "lowerLatitude",
-        AttributeValue::Number(Number::from_f64(envelope.lower_x).unwrap()),
+    Bounds::insert_into(
+        response.bounded_by.envelope.as_ref().map(|e| &e.0),
+        &mut result_feature,
+        "lower",
+        "upper",
     );
-    result_feature.insert(
-        "lowerLongitude",
-        AttributeValue::Number(Number::from_f64(envelope.lower_y).unwrap()),
-    );
-    result_feature.insert(
-        "lowerElevation",
-        AttributeValue::Number(Number::from_f64(envelope.lower_z).unwrap()),
-    );
-    result_feature.insert(
-        "upperLatitude",
-        AttributeValue::Number(Number::from_f64(envelope.upper_x).unwrap()),
-    );
-    result_feature.insert(
-        "upperLongitude",
-        AttributeValue::Number(Number::from_f64(envelope.upper_y).unwrap()),
-    );
-    result_feature.insert(
-        "upperElevation",
-        AttributeValue::Number(Number::from_f64(envelope.upper_z).unwrap()),
-    );
+    if let Some(note) = note(response.coordinate_errors.iter().copied()) {
+        result_feature.insert("miscellaneous", note);
+    }
     result_feature.insert(
         "gmlIdNotWellformed",
         AttributeValue::Number(Number::from(response.gml_id_not_well_formed_num)),
@@ -727,8 +943,24 @@ fn run_domain_of_definition_checks(
         context.profile.citygml.core_ns
     );
 
+    let appearance_members_xpath = format!(
+        "//*[namespace-uri()='{}'][local-name()='appearanceMember']",
+        context.profile.citygml.core_ns
+    );
+    let gml_ns = context.profile.citygml.gml_ns;
+
     let mut stream_error: Option<PlateauProcessorError> = None;
-    accumulator.response.envelope = stream_extract_envelope(xml_str, &envelope_xpath)?;
+    // L03 violations of the city object and appearance members.
+    let violations = RefCell::new(Vec::<Violation>::new());
+    accumulator.response.bounded_by = stream_extract_envelope(xml_str, &envelope_xpath)?;
+    if accumulator.response.bounded_by.envelope.is_none() {
+        // L06 counts the file as one error, as no geometry can be checked.
+        accumulator.response.incorrect_extents += 1;
+        accumulator
+            .response
+            .coordinate_errors
+            .insert(CoordinateError::NonFiniteEnvelope);
+    }
 
     let transformer = Transformer::from(xml_str)
         .with_root_namespaces()
@@ -753,9 +985,8 @@ fn run_domain_of_definition_checks(
                 return;
             };
 
-            let is_city_object_group = member_ref.name() == "CityObjectGroup"
-                && member_ref.namespace_uri().as_deref()
-                    == context.profile.citygml.namespace("grp");
+            let member_name = element_name(context.profile, member_ref);
+            let is_city_object_group = member_name.key == "grp:CityObjectGroup";
             if is_city_object_group {
                 let gml_ns = context.profile.citygml.gml_ns;
                 let gml_id = member_ref
@@ -768,7 +999,39 @@ fn run_domain_of_definition_checks(
                 });
             }
 
-            match process_member_node(context, member_ref, accumulator, is_city_object_group) {
+            // L03. Counted before any error of `process_member_node`. A feature
+            // type outside the package is not checked further, and a city
+            // object group belongs to no package of the objectlist.
+            let out_of_package = !context.valid_feature_types.contains(&member_name.key);
+            if !context.sends_violations {
+                if out_of_package {
+                    let response = &mut accumulator.response;
+                    response.invalid_feature_types_num += 1;
+                    *response
+                        .invalid_feature_types
+                        .entry(member_ref.name())
+                        .or_insert(0) += 1;
+                }
+            } else if out_of_package {
+                violations.borrow_mut().push(Violation {
+                    feature_type: member_name.shown.clone(),
+                    gml_id: member_ref
+                        .get_attribute_ns(gml_ns, "id")
+                        .unwrap_or_default(),
+                    path: String::new(),
+                    reason: Reason::Undefined,
+                });
+            } else if let (Some(rules), false) = (context.package_rules, is_city_object_group) {
+                rules.check_feature(member_ref, gml_ns, &mut violations.borrow_mut());
+            }
+
+            match process_member_node(
+                context,
+                member_ref,
+                &member_name,
+                accumulator,
+                is_city_object_group,
+            ) {
                 Ok((process_result, group_xlinks)) => {
                     accumulator.result.extend(process_result);
                     if is_city_object_group {
@@ -782,8 +1045,19 @@ fn run_domain_of_definition_checks(
                 }
             }
         })
+        .on(appearance_members_xpath.as_str(), |node| {
+            if let Some(rules) = context.package_rules {
+                for appearance in node.children() {
+                    rules.check_feature(&appearance, gml_ns, &mut violations.borrow_mut());
+                }
+            }
+        })
         .for_each()
         .map_err(|e| PlateauProcessorError::DomainOfDefinitionValidator(format!("{e:?}")))?;
+
+    for violation in violations.into_inner() {
+        report_application_schema_violation(context, accumulator, violation);
+    }
 
     if let Some(err) = stream_error {
         return Err(err);
@@ -826,6 +1100,36 @@ fn run_domain_of_definition_checks(
     Ok(())
 }
 
+/// Counts an L03 violation and sends it as its own feature.
+fn report_application_schema_violation(
+    context: &DomainOfDefinitionContext,
+    accumulator: &mut DomainOfDefinitionAccumulator,
+    violation: Violation,
+) {
+    accumulator.response.invalid_feature_types_num += 1;
+
+    let mut feature = create_lightweight_feature(context.feature, &["index", "udxDirs", "name"]);
+    feature.insert(
+        "flag",
+        AttributeValue::String("ApplicationSchemaViolation".to_string()),
+    );
+    feature.insert(
+        "featureType",
+        AttributeValue::String(violation.feature_type),
+    );
+    feature.insert("gmlId", AttributeValue::String(violation.gml_id));
+    feature.insert("path", AttributeValue::String(violation.path));
+    feature.insert(
+        "reason",
+        AttributeValue::String(violation.reason.as_str().to_string()),
+    );
+    context.fw.send(
+        context
+            .ctx
+            .new_with_feature_and_port(feature, FEATURES_PORT.clone()),
+    );
+}
+
 /// Create a lightweight Feature by copying only the specified keys from the
 /// parent, instead of cloning the full (potentially large) parent Feature.
 fn create_lightweight_feature(parent: &Feature, keys: &[&str]) -> Feature {
@@ -838,11 +1142,19 @@ fn create_lightweight_feature(parent: &Feature, keys: &[&str]) -> Feature {
     Feature::new_with_attributes(attrs)
 }
 
-fn parse_envelope_from_node(node: &EditableNode) -> super::errors::Result<Envelope> {
-    let mut response = Envelope {
-        srs_name: node.get_attribute("srsName").unwrap_or_default(),
-        ..Default::default()
-    };
+/// Parses a whitespace-separated list of numbers such as `gml:posList`.
+fn parse_coordinates(content: &str) -> super::errors::Result<Vec<f64>> {
+    content
+        .split_whitespace()
+        .map(|v| {
+            v.parse()
+                .map_err(|e| PlateauProcessorError::DomainOfDefinitionValidator(format!("{e:?}")))
+        })
+        .collect()
+}
+
+fn parse_envelope_from_node(node: &EditableNode) -> super::errors::Result<BoundedBy> {
+    let srs_name = node.get_attribute("srsName").unwrap_or_default();
 
     let mut lower_corner_value = None;
     let mut upper_corner_value = None;
@@ -854,49 +1166,26 @@ fn parse_envelope_from_node(node: &EditableNode) -> super::errors::Result<Envelo
         }
     }
 
-    let Some(lower_corner_value) = lower_corner_value else {
-        return Err(PlateauProcessorError::DomainOfDefinitionValidator(
-            "Failed to get lower corner node".to_string(),
-        ));
+    let parse_corner = |value: Option<String>, name: &str| {
+        let value = value.ok_or_else(|| {
+            PlateauProcessorError::DomainOfDefinitionValidator(format!(
+                "Failed to get {name} corner node"
+            ))
+        })?;
+        match parse_coordinates(&value)?[..] {
+            [x, y, z, ..] => Ok([x, y, z]),
+            _ => Err(PlateauProcessorError::DomainOfDefinitionValidator(format!(
+                "Failed to parse {name} corner"
+            ))),
+        }
     };
-    let lower_corder_value = lower_corner_value.split_whitespace().collect::<Vec<_>>();
-    if lower_corder_value.len() < 3 {
-        return Err(PlateauProcessorError::DomainOfDefinitionValidator(
-            "Failed to parse lower corner".to_string(),
-        ));
-    }
-    response.lower_x = lower_corder_value[0]
-        .parse()
-        .map_err(|e| PlateauProcessorError::DomainOfDefinitionValidator(format!("{e:?}")))?;
-    response.lower_y = lower_corder_value[1]
-        .parse()
-        .map_err(|e| PlateauProcessorError::DomainOfDefinitionValidator(format!("{e:?}")))?;
-    response.lower_z = lower_corder_value[2]
-        .parse()
-        .map_err(|e| PlateauProcessorError::DomainOfDefinitionValidator(format!("{e:?}")))?;
+    let lower = parse_corner(lower_corner_value, "lower")?;
+    let upper = parse_corner(upper_corner_value, "upper")?;
 
-    let Some(upper_corner_value) = upper_corner_value else {
-        return Err(PlateauProcessorError::DomainOfDefinitionValidator(
-            "Failed to get upper corner node".to_string(),
-        ));
-    };
-    let upper_corder_value = upper_corner_value.split_whitespace().collect::<Vec<_>>();
-    if upper_corder_value.len() < 3 {
-        return Err(PlateauProcessorError::DomainOfDefinitionValidator(
-            "Failed to parse upper corner".to_string(),
-        ));
-    }
-    response.upper_x = upper_corder_value[0]
-        .parse()
-        .map_err(|e| PlateauProcessorError::DomainOfDefinitionValidator(format!("{e:?}")))?;
-    response.upper_y = upper_corder_value[1]
-        .parse()
-        .map_err(|e| PlateauProcessorError::DomainOfDefinitionValidator(format!("{e:?}")))?;
-    response.upper_z = upper_corder_value[2]
-        .parse()
-        .map_err(|e| PlateauProcessorError::DomainOfDefinitionValidator(format!("{e:?}")))?;
-
-    Ok(response)
+    Ok(BoundedBy {
+        srs_name,
+        envelope: Envelope::new(lower, upper),
+    })
 }
 
 #[derive(Clone, Debug)]
@@ -913,7 +1202,7 @@ struct XlinkInfo {
     xpath: String,
 }
 
-fn stream_extract_envelope(raw_xml: &str, xpath: &str) -> super::errors::Result<Envelope> {
+fn stream_extract_envelope(raw_xml: &str, xpath: &str) -> super::errors::Result<BoundedBy> {
     let envelope = RefCell::new(None);
     let error = RefCell::new(None);
 
@@ -956,6 +1245,7 @@ fn stream_extract_envelope(raw_xml: &str, xpath: &str) -> super::errors::Result<
 fn process_member_node(
     context: &DomainOfDefinitionContext,
     member: &fastxml::transform::EditableNodeRef,
+    member_name: &ElementName,
     accumulator: &mut DomainOfDefinitionAccumulator,
     is_city_object_group: bool,
 ) -> super::errors::Result<(Vec<Feature>, Vec<XlinkInfo>)> {
@@ -981,32 +1271,8 @@ fn process_member_node(
         AttributeValue::String(gml_id.clone()),
     );
     let mut base_feature = Feature::new_with_attributes(base_attrs);
-    let feature_type = if member
-        .prefix()
-        .map(|p| context.profile.is_known_namespace_prefix(p.as_str()))
-        .unwrap_or(false)
-    {
-        let name = member.name();
-        if !context.valid_feature_types.contains(&name) {
-            accumulator.response.invalid_feature_types_num += 1;
-            if accumulator
-                .response
-                .invalid_feature_types
-                .contains_key(name.as_str())
-            {
-                *accumulator
-                    .response
-                    .invalid_feature_types
-                    .get_mut(name.as_str())
-                    .unwrap() += 1;
-            } else {
-                accumulator
-                    .response
-                    .invalid_feature_types
-                    .insert(name.clone(), 1);
-            }
-        }
-        name
+    let feature_type = if member_name.is_standard {
+        member.name()
     } else {
         "".to_string()
     };
@@ -1016,7 +1282,7 @@ fn process_member_node(
     // Verification of the format of gml:id of a geographical object instance
     // grp:CityObjectGroup pattern should be {any prefix}_{UUID}.
     if !(context.gml_id_pattern.is_match(gml_id.as_str())
-        || (tag == "grp:CityObjectGroup" && GML_ID_GROUP_PATTERN.is_match(gml_id.as_str())))
+        || (is_city_object_group && GML_ID_GROUP_PATTERN.is_match(gml_id.as_str())))
     {
         let mut result_feature = base_feature.clone();
         result_feature.insert(
@@ -1248,126 +1514,35 @@ fn process_member_node(
     }
 
     // L06: Geographical coverage verification
-    let mut positions = Vec::<f64>::new();
-    for content in &collected.pos_contents {
-        let values = content.split_whitespace().collect::<Vec<_>>();
-        positions.extend(
-            values
-                .iter()
-                .map(|v| {
-                    v.parse().map_err(|e| {
-                        PlateauProcessorError::DomainOfDefinitionValidator(format!("{e:?}"))
-                    })
-                })
-                .collect::<super::errors::Result<Vec<f64>>>()?,
-        );
-    }
-    if !positions.is_empty() {
-        let envelope = &accumulator.response.envelope;
-        let min_x = *positions
-            .iter()
-            .step_by(3)
-            .min_by(|a, b| a.partial_cmp(b).unwrap())
-            .unwrap();
-        let max_x = *positions
-            .iter()
-            .step_by(3)
-            .max_by(|a, b| a.partial_cmp(b).unwrap())
-            .unwrap();
-        let min_y = *positions
-            .iter()
-            .skip(1)
-            .step_by(3)
-            .min_by(|a, b| a.partial_cmp(b).unwrap())
-            .unwrap();
-        let max_y = *positions
-            .iter()
-            .skip(1)
-            .step_by(3)
-            .max_by(|a, b| a.partial_cmp(b).unwrap())
-            .unwrap();
-        let min_z = *positions
-            .iter()
-            .skip(2)
-            .step_by(3)
-            .min_by(|a, b| a.partial_cmp(b).unwrap())
-            .unwrap();
-        let max_z = *positions
-            .iter()
-            .skip(2)
-            .step_by(3)
-            .max_by(|a, b| a.partial_cmp(b).unwrap())
-            .unwrap();
-        if envelope.lower_x <= min_x
-            && max_x <= envelope.upper_x
-            && envelope.lower_y <= min_y
-            && max_y <= envelope.upper_y
-            && envelope.lower_z <= min_z
-            && max_z <= envelope.upper_z
-        {
-            accumulator.response.correct_extents += 1;
-        } else {
-            accumulator.response.incorrect_extents += 1;
-            let mut result_feature = base_feature.clone();
-            result_feature.insert(
-                "flag",
-                AttributeValue::String("ExtentsValidation".to_string()),
-            );
-            result_feature.insert("isExtentsCorrect", AttributeValue::Bool(false));
-            result_feature.insert(
-                "lowerLatitude",
-                AttributeValue::Number(Number::from_f64(envelope.lower_x).unwrap()),
-            );
-            result_feature.insert(
-                "lowerLongitude",
-                AttributeValue::Number(Number::from_f64(envelope.lower_y).unwrap()),
-            );
-            result_feature.insert(
-                "lowerElevation",
-                AttributeValue::Number(Number::from_f64(envelope.lower_z).unwrap()),
-            );
-            result_feature.insert(
-                "upperLatitude",
-                AttributeValue::Number(Number::from_f64(envelope.upper_x).unwrap()),
-            );
-            result_feature.insert(
-                "upperLongitude",
-                AttributeValue::Number(Number::from_f64(envelope.upper_y).unwrap()),
-            );
-            result_feature.insert(
-                "upperElevation",
-                AttributeValue::Number(Number::from_f64(envelope.upper_z).unwrap()),
-            );
-            result_feature.insert(
-                "minLatitude",
-                AttributeValue::Number(Number::from_f64(min_x).unwrap()),
-            );
-            result_feature.insert(
-                "minLongitude",
-                AttributeValue::Number(Number::from_f64(min_y).unwrap()),
-            );
-            result_feature.insert(
-                "minElevation",
-                AttributeValue::Number(Number::from_f64(min_z).unwrap()),
-            );
-            result_feature.insert(
-                "maxLatitude",
-                AttributeValue::Number(Number::from_f64(max_x).unwrap()),
-            );
-            result_feature.insert(
-                "maxLongitude",
-                AttributeValue::Number(Number::from_f64(max_y).unwrap()),
-            );
-            result_feature.insert(
-                "maxElevation",
-                AttributeValue::Number(Number::from_f64(max_z).unwrap()),
-            );
-            result.push(result_feature.clone());
-            context.fw.send(
-                context
-                    .ctx
-                    .new_with_feature_and_port(result_feature, FEATURES_PORT.clone()),
-            );
+    if let Some(envelope) = accumulator.response.bounded_by.envelope {
+        let mut positions = Vec::<f64>::new();
+        for content in &collected.pos_contents {
+            positions.extend(parse_coordinates(content)?);
+        }
+        if !positions.is_empty() {
+            let extent = Extent::from_positions(&positions);
+            if envelope.contains(&extent) {
+                accumulator.response.correct_extents += 1;
+            } else {
+                accumulator.response.incorrect_extents += 1;
+                let mut result_feature = base_feature.clone();
+                result_feature.insert(
+                    "flag",
+                    AttributeValue::String("ExtentsValidation".to_string()),
+                );
+                result_feature.insert("isExtentsCorrect", AttributeValue::Bool(false));
+                Bounds::insert_into(Some(&envelope.0), &mut result_feature, "lower", "upper");
+                Bounds::insert_into(Some(&extent.0), &mut result_feature, "min", "max");
+                if let Some(note) = note(extent.errors()) {
+                    result_feature.insert("miscellaneous", note);
+                }
+                result.push(result_feature.clone());
+                context.fw.send(
+                    context
+                        .ctx
+                        .new_with_feature_and_port(result_feature, FEATURES_PORT.clone()),
+                );
+            }
         }
     }
 
@@ -1907,7 +2082,10 @@ fn handle_code_validation_failure(
 
 #[cfg(test)]
 mod tests {
+    use pretty_assertions::assert_eq;
+
     use super::*;
+    use crate::object_list::FeatureTypeDefinition;
     use crate::tests::utils::{create_default_execute_context, create_default_node_context};
     use indexmap::IndexMap;
     use reearth_flow_runtime::{
@@ -2109,6 +2287,264 @@ mod tests {
         assert_eq!(file_stats_outputs.get("file1.gml"), Some(&0));
         assert_eq!(file_stats_outputs.get("file2.gml"), Some(&0));
         assert_eq!(file_stats_outputs.get("file3.gml"), Some(&0));
+        Ok(())
+    }
+
+    #[test]
+    // An out-of-package member without gml:id is counted as well as reported.
+    fn test_out_of_package_member_without_gml_id_is_counted() -> Result<(), BoxedError> {
+        let temp_dir = TempDir::with_prefix("domain_of_definition_validator_test_")?;
+        let codelists_dir = temp_dir.path().join("codelists");
+        fs::create_dir_all(&codelists_dir)?;
+        let file_path = temp_dir.path().join("file1.gml");
+        fs::write(
+            &file_path,
+            r#"<?xml version="1.0" encoding="UTF-8"?>
+<core:CityModel xmlns:core="http://www.opengis.net/citygml/2.0" xmlns:gml="http://www.opengis.net/gml" xmlns:veg="http://www.opengis.net/citygml/vegetation/2.0">
+    <gml:boundedBy>
+        <gml:Envelope srsName="http://www.opengis.net/def/crs/EPSG/0/6697" srsDimension="3">
+            <gml:lowerCorner>36.6 137.0 0</gml:lowerCorner>
+            <gml:upperCorner>36.7 137.1 10</gml:upperCorner>
+        </gml:Envelope>
+    </gml:boundedBy>
+    <core:cityObjectMember>
+        <veg:PlantCover/>
+    </core:cityObjectMember>
+</core:CityModel>"#,
+        )?;
+        let mut feature = create_test_feature(
+            "file1.gml",
+            &format!("file://{}", file_path.display()),
+            &codelists_dir,
+        );
+        let building = FeatureTypeDefinition {
+            usable: true,
+            paths: HashMap::new(),
+        };
+        let definitions = ObjectListDefinitions::new(HashMap::from([(
+            "bldg".to_string(),
+            HashMap::from([("bldg:Building".to_string(), building)]),
+        )]));
+        feature.insert(OBJECT_LIST_DEFINITIONS_ATTRIBUTE, definitions.into());
+
+        let factory = DomainOfDefinitionValidatorFactory::new(&crate::plateau4::PLATEAU4);
+        let mut processor: Box<dyn Processor> = factory.build(
+            create_default_node_context(),
+            EventHub::new(1024),
+            "test".to_string(),
+            None,
+        )?;
+        let fw = ProcessorChannelForwarder::Noop(NoopChannelForwarder::default());
+        processor.process(create_default_execute_context(feature), &fw)?;
+
+        let ProcessorChannelForwarder::Noop(noop_fw) = &fw else {
+            unreachable!();
+        };
+        let features = noop_fw.send_features.lock().unwrap();
+        let flagged = |flag: &str| {
+            features
+                .iter()
+                .filter(|feature| {
+                    feature.get("flag") == Some(&AttributeValue::String(flag.to_string()))
+                })
+                .collect::<Vec<_>>()
+        };
+        let summary = flagged("Summary");
+        assert_eq!(
+            summary[0].get("invalidFeatureTypesNum"),
+            Some(&AttributeValue::Number(Number::from(1)))
+        );
+        assert_eq!(flagged("ApplicationSchemaViolation").len(), 1);
+        Ok(())
+    }
+
+    #[test]
+    fn test_bounds_reject_non_finite_coordinates() {
+        for v in [f64::NAN, f64::INFINITY, f64::NEG_INFINITY] {
+            assert!(
+                Envelope::new([v, 0.0, 0.0], [1.0, 1.0, 1.0]).is_none(),
+                "lower corner with {v}"
+            );
+            assert!(
+                Envelope::new([0.0, 0.0, 0.0], [1.0, 1.0, v]).is_none(),
+                "upper corner with {v}"
+            );
+            // Only the elevation, which has the value, is unknown.
+            assert_eq!(
+                Extent::from_positions(&[0.0, 0.0, 0.0, 1.0, 1.0, v]),
+                Extent(Bounds([
+                    range(0.0, 1.0),
+                    range(0.0, 1.0),
+                    Err(CoordinateError::NonFiniteGeometry)
+                ])),
+                "position with {v}"
+            );
+        }
+        assert_eq!(
+            Extent::from_positions(&[0.0, 0.0]),
+            Extent(Bounds([
+                range(0.0, 0.0),
+                range(0.0, 0.0),
+                Err(CoordinateError::MissingAxis)
+            ]))
+        );
+    }
+
+    #[test]
+    fn test_extent_from_positions_and_envelope_contains() {
+        let extent = Extent::from_positions(&[1.0, 5.0, 3.0, 4.0, 2.0, 6.0]);
+        assert_eq!(
+            extent,
+            Extent(Bounds([range(1.0, 4.0), range(2.0, 5.0), range(3.0, 6.0)]))
+        );
+
+        let envelope = Envelope::new([1.0, 2.0, 3.0], [4.0, 5.0, 6.0]).unwrap();
+        assert!(envelope.contains(&extent));
+        let outside = Extent::from_positions(&[1.0, 2.0, 3.0, 4.0, 5.0, 6.5]);
+        assert!(!envelope.contains(&outside));
+        let unknown = Extent::from_positions(&[1.0, 2.0, 3.0, 4.0, 5.0, f64::NAN]);
+        assert!(!envelope.contains(&unknown));
+    }
+
+    fn range(min: f64, max: f64) -> Result<AxisRange, CoordinateError> {
+        Ok(AxisRange { min, max })
+    }
+
+    /// Processes one building file and returns every feature sent.
+    fn process_building(
+        lower_corner: &str,
+        gml_id: &str,
+        pos_list: &str,
+    ) -> Result<Vec<Feature>, BoxedError> {
+        let temp_dir = TempDir::with_prefix("domain_of_definition_validator_test_")?;
+        let codelists_dir = temp_dir.path().join("codelists");
+        fs::create_dir_all(&codelists_dir)?;
+        let file_path = temp_dir.path().join("file1.gml");
+        fs::write(
+            &file_path,
+            format!(
+                r#"<?xml version="1.0" encoding="UTF-8"?>
+<core:CityModel xmlns:core="http://www.opengis.net/citygml/2.0" xmlns:gml="http://www.opengis.net/gml" xmlns:bldg="http://www.opengis.net/citygml/building/2.0">
+    <gml:boundedBy>
+        <gml:Envelope srsName="http://www.opengis.net/def/crs/EPSG/0/6697" srsDimension="3">
+            <gml:lowerCorner>{lower_corner}</gml:lowerCorner>
+            <gml:upperCorner>36.7 137.1 10</gml:upperCorner>
+        </gml:Envelope>
+    </gml:boundedBy>
+    <core:cityObjectMember>
+        <bldg:Building gml:id="{gml_id}">
+            <bldg:lod0RoofEdge>
+                <gml:MultiSurface>
+                    <gml:surfaceMember>
+                        <gml:Polygon>
+                            <gml:exterior>
+                                <gml:LinearRing>
+                                    <gml:posList>{pos_list}</gml:posList>
+                                </gml:LinearRing>
+                            </gml:exterior>
+                        </gml:Polygon>
+                    </gml:surfaceMember>
+                </gml:MultiSurface>
+            </bldg:lod0RoofEdge>
+        </bldg:Building>
+    </core:cityObjectMember>
+</core:CityModel>"#
+            ),
+        )?;
+        let feature = create_test_feature(
+            "file1.gml",
+            &format!("file://{}", file_path.display()),
+            &codelists_dir,
+        );
+
+        let factory = DomainOfDefinitionValidatorFactory::new(&crate::plateau4::PLATEAU4);
+        let mut processor: Box<dyn Processor> = factory.build(
+            create_default_node_context(),
+            EventHub::new(1024),
+            "test".to_string(),
+            None,
+        )?;
+        let fw = ProcessorChannelForwarder::Noop(NoopChannelForwarder::default());
+        processor.process(create_default_execute_context(feature), &fw)?;
+
+        let ProcessorChannelForwarder::Noop(noop_fw) = &fw else {
+            unreachable!();
+        };
+        let features = noop_fw.send_features.lock().unwrap().clone();
+        Ok(features)
+    }
+
+    fn flagged<'a>(features: &'a [Feature], flag: &str) -> Vec<&'a Feature> {
+        features
+            .iter()
+            .filter(|feature| {
+                feature.get("flag") == Some(&AttributeValue::String(flag.to_string()))
+            })
+            .collect()
+    }
+
+    const VALID_POS_LIST: &str = "36.61 137.01 1 36.62 137.01 1 36.62 137.02 1 36.61 137.01 1";
+
+    #[test]
+    // A NaN envelope is one L06 error of the file with no geometry checked, and
+    // the other checks still run.
+    fn test_nan_envelope_fails_extents_check() -> Result<(), BoxedError> {
+        let features = process_building("36.6 137.0 NaN", "bad_id", VALID_POS_LIST)?;
+
+        assert!(flagged(&features, "ExtentsValidation").is_empty());
+
+        let summary = flagged(&features, "Summary");
+        assert_eq!(
+            summary[0].get("incorrectExtents"),
+            Some(&AttributeValue::Number(Number::from(1)))
+        );
+        assert_eq!(
+            summary[0].get("gmlIdNotWellformed"),
+            Some(&AttributeValue::Number(Number::from(1)))
+        );
+        assert_eq!(
+            summary[0].get("srsName"),
+            Some(&AttributeValue::String(VALID_SRS_NAME_6697.to_string()))
+        );
+        assert_eq!(
+            summary[0].get("miscellaneous"),
+            Some(&AttributeValue::String(
+                CoordinateError::NonFiniteEnvelope.to_string()
+            ))
+        );
+        Ok(())
+    }
+
+    #[test]
+    // A geometry with a NaN coordinate fails L06.
+    fn test_nan_coordinate_fails_extents_check() -> Result<(), BoxedError> {
+        let features = process_building(
+            "36.6 137.0 0",
+            "bldg_bfbd43ad-101f-4b27-8978-3af8c136c24a",
+            "36.61 137.01 1 36.62 137.01 NaN 36.62 137.02 1 36.61 137.01 1",
+        )?;
+
+        let errors = flagged(&features, "ExtentsValidation");
+        assert_eq!(errors.len(), 1);
+        assert_eq!(errors[0].get("minElevation"), Some(&AttributeValue::Null));
+        assert_eq!(
+            errors[0].get("minLatitude"),
+            Some(&AttributeValue::Number(Number::from_f64(36.61).unwrap()))
+        );
+
+        assert_eq!(
+            errors[0].get("miscellaneous"),
+            Some(&AttributeValue::String(
+                CoordinateError::NonFiniteGeometry.to_string()
+            ))
+        );
+
+        let summary = flagged(&features, "Summary");
+        assert_eq!(
+            summary[0].get("incorrectExtents"),
+            Some(&AttributeValue::Number(Number::from(1)))
+        );
+        assert_eq!(summary[0].get("miscellaneous"), None);
         Ok(())
     }
 }

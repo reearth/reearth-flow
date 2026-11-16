@@ -5,6 +5,7 @@ import (
 	"io"
 	"net/url"
 	"testing"
+	"time"
 
 	"github.com/google/uuid"
 	accountsid "github.com/reearth/reearth-accounts/server/pkg/id"
@@ -157,7 +158,7 @@ type previewFakeJob struct {
 func (j *previewFakeJob) PreviewSchemaCloudRunWorker(_ *job.Job, p gateway.ProbeSchemaParam) {
 	j.previewCalls = append(j.previewCalls, p)
 }
-func (j *previewFakeJob) RunCloudRunWorker(_ *job.Job, p gateway.RunJobParam) {
+func (j *previewFakeJob) RunCloudRunWorker(_ *job.Job, p gateway.RunJobParam, _ func()) {
 	j.runCalls = append(j.runCalls, p)
 }
 func (j *previewFakeJob) StartMonitoring(context.Context, *job.Job, *string) error {
@@ -193,7 +194,7 @@ func (b *previewFakeBatch) SubmitProbeJob(context.Context, id.JobID, string, map
 	b.probeCalls++
 	return "projects/p/locations/l/jobs/probe", nil
 }
-func (b *previewFakeBatch) SubmitJob(context.Context, id.JobID, string, string, map[string]string, id.ProjectID, accountsid.WorkspaceID, *id.JobID, *uuid.UUID) (string, error) {
+func (b *previewFakeBatch) SubmitJob(context.Context, id.JobID, string, string, map[string]string, id.ProjectID, accountsid.WorkspaceID, *id.JobID, *uuid.UUID, time.Duration) (string, error) {
 	b.runCalls++
 	return "", nil
 }
