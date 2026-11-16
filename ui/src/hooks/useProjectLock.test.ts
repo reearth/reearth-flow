@@ -96,7 +96,31 @@ describe("useProjectLock", () => {
     expect(result.current.isLocked).toBe(false);
   });
 
-  test("follows a newer lock change from the server and refetches the project", async () => {
+  test("stops editing while it fetches the project after the entry claims a lock", async () => {
+    const yDoc = new Y.Doc();
+    let fetched: () => void = () => {};
+    refetchProject.mockImplementationOnce(
+      () => new Promise<void>((resolve) => (fetched = resolve)),
+    );
+    const { result, rerender } = renderHook(
+      ({ project }) => useProjectLock({ currentProject: project, yDoc }),
+      { initialProps: { project: makeProject(false) } },
+    );
+
+    act(() => {
+      yDoc
+        .getMap<YDocMetadataValue>("metadata")
+        .set("projectLock", { locked: true, at, sig: "s" });
+    });
+    expect(refetchProject).toHaveBeenCalledWith("project-1");
+    expect(result.current.isLocked).toBe(true);
+
+    rerender({ project: makeProject(true) });
+    await act(async () => fetched());
+    expect(result.current.isLocked).toBe(true);
+  });
+
+  test("goes back to the project's lock when the claim was false", async () => {
     const yDoc = new Y.Doc();
     const { result } = renderHook(() =>
       useProjectLock({ currentProject: makeProject(false), yDoc }),
@@ -105,26 +129,28 @@ describe("useProjectLock", () => {
     act(() => {
       yDoc
         .getMap<YDocMetadataValue>("metadata")
-        .set("projectLock", { locked: true, at: at + 1000 });
+        .set("projectLock", { locked: true, at, sig: "forged" });
     });
 
-    expect(result.current.isLocked).toBe(true);
+    await waitFor(() => expect(result.current.isLocked).toBe(false));
+    expect(refetchProject).toHaveBeenCalledWith("project-1");
+  });
+
+  test("an entry claiming an unlock does not make a locked project editable", async () => {
+    const yDoc = new Y.Doc();
+    const { result } = renderHook(() =>
+      useProjectLock({ currentProject: makeProject(true), yDoc }),
+    );
+
+    act(() => {
+      yDoc
+        .getMap<YDocMetadataValue>("metadata")
+        .set("projectLock", { locked: false, at, sig: "forged" });
+    });
+
     await waitFor(() =>
       expect(refetchProject).toHaveBeenCalledWith("project-1"),
     );
-  });
-
-  test("ignores a lock entry older than the project", () => {
-    const yDoc = new Y.Doc();
-    yDoc
-      .getMap<YDocMetadataValue>("metadata")
-      .set("projectLock", { locked: true, at: at - 1000 });
-
-    const { result } = renderHook(() =>
-      useProjectLock({ currentProject: makeProject(false), yDoc }),
-    );
-
-    expect(result.current.isLocked).toBe(false);
-    expect(refetchProject).not.toHaveBeenCalled();
+    expect(result.current.isLocked).toBe(true);
   });
 });

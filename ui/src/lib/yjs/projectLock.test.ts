@@ -3,72 +3,40 @@ import * as Y from "yjs";
 import type { YDocMetadataMap, YDocMetadataValue } from "@flow/types";
 
 import {
+  claimsLock,
   PROJECT_LOCK_KEY,
-  readProjectLock,
   reconnectOnProjectLockChange,
-  resolveProjectLock,
 } from "./projectLock";
 
 const at = Date.parse("2026-11-16T00:00:00.000Z");
-const project = (
-  isLocked: boolean,
-  updatedAt = new Date(at).toISOString(),
-) => ({
-  isLocked,
-  updatedAt,
-});
 
-describe("readProjectLock", () => {
-  test("reads the entry the server writes", () => {
-    expect(readProjectLock({ locked: true, at })).toEqual({ locked: true, at });
+describe("claimsLock", () => {
+  test("reads a lock claim from the entry", () => {
+    expect(claimsLock({ locked: true, at, sig: "s" })).toBe(true);
+    expect(claimsLock({ locked: false, at, sig: "s" })).toBe(false);
   });
 
-  test("ignores anything else", () => {
-    expect(readProjectLock(undefined)).toBeUndefined();
-    expect(readProjectLock(true)).toBeUndefined();
-    expect(readProjectLock({ locked: "yes", at })).toBeUndefined();
-    expect(readProjectLock({ locked: true })).toBeUndefined();
-  });
-});
-
-describe("resolveProjectLock", () => {
-  test("follows the project without a signal", () => {
-    expect(resolveProjectLock(project(true), undefined)).toBe(true);
-    expect(resolveProjectLock(project(false), undefined)).toBe(false);
-    expect(resolveProjectLock(undefined, undefined)).toBe(false);
-  });
-
-  test("follows a signal newer than the fetched project", () => {
-    expect(
-      resolveProjectLock(project(false), { locked: true, at: at + 1 }),
-    ).toBe(true);
-    expect(
-      resolveProjectLock(project(true), { locked: false, at: at + 1 }),
-    ).toBe(false);
-  });
-
-  test("ignores a signal the project already has or has moved past", () => {
-    expect(resolveProjectLock(project(true), { locked: true, at })).toBe(true);
-    expect(
-      resolveProjectLock(project(false), { locked: true, at: at - 1 }),
-    ).toBe(false);
+  test("reads anything else as no claim", () => {
+    expect(claimsLock(undefined)).toBe(false);
+    expect(claimsLock(true)).toBe(false);
+    expect(claimsLock({ locked: "yes" })).toBe(false);
   });
 });
 
 describe("reconnectOnProjectLockChange", () => {
-  const setup = (initial?: { locked: boolean; at: number }) => {
+  const setup = (initial?: { locked: boolean; at: number; sig: string }) => {
     const doc = new Y.Doc();
     const metadata: YDocMetadataMap = doc.getMap<YDocMetadataValue>("metadata");
     if (initial) metadata.set(PROJECT_LOCK_KEY, initial);
     const provider = { synced: true, connect: vi.fn(), disconnect: vi.fn() };
     const stop = reconnectOnProjectLockChange(metadata, provider);
     const signal = (locked: boolean, when: number) =>
-      metadata.set(PROJECT_LOCK_KEY, { locked, at: when });
+      metadata.set(PROJECT_LOCK_KEY, { locked, at: when, sig: "s" });
     return { metadata, provider, stop, signal };
   };
 
   test("reconnects when the lock changes while connected", () => {
-    const { provider, signal } = setup({ locked: false, at });
+    const { provider, signal } = setup({ locked: false, at, sig: "s" });
 
     signal(true, at + 1);
     expect(provider.disconnect).toHaveBeenCalledTimes(1);
@@ -79,7 +47,7 @@ describe("reconnectOnProjectLockChange", () => {
   });
 
   test("does not reconnect when the server writes the same lock again", () => {
-    const { provider, signal } = setup({ locked: true, at });
+    const { provider, signal } = setup({ locked: true, at, sig: "s" });
 
     signal(true, at);
     expect(provider.connect).not.toHaveBeenCalled();
@@ -100,14 +68,14 @@ describe("reconnectOnProjectLockChange", () => {
   });
 
   test("ignores other metadata", () => {
-    const { metadata, provider } = setup({ locked: false, at });
+    const { metadata, provider } = setup({ locked: false, at, sig: "s" });
 
     metadata.set("layoutDirection", "Horizontal");
     expect(provider.connect).not.toHaveBeenCalled();
   });
 
   test("stops when cleaned up", () => {
-    const { provider, stop, signal } = setup({ locked: false, at });
+    const { provider, stop, signal } = setup({ locked: false, at, sig: "s" });
 
     stop();
     signal(true, at + 1);

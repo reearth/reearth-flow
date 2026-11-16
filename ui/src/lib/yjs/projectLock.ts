@@ -1,44 +1,24 @@
 import type * as Y from "yjs";
 
-import type {
-  ProjectLockSignal,
-  YDocMetadataMap,
-  YDocMetadataValue,
-} from "@flow/types";
+import type { YDocMetadataMap, YDocMetadataValue } from "@flow/types";
 
 // The metadata entry the websocket server writes when the project is locked or
-// unlocked. Clients never write it: a locked project's connections are
-// read-only, so a client could not unlock it through the document anyway.
+// unlocked. Any client with write access could write it too, and only the
+// server can check its signature, so the UI never takes the lock from it: a
+// change is a cue to fetch the Project, which holds the lock.
 export const PROJECT_LOCK_KEY = "projectLock";
 
-export const readProjectLock = (
-  value: unknown,
-): ProjectLockSignal | undefined => {
-  if (!value || typeof value !== "object") return undefined;
-  const { locked, at } = value as Record<string, unknown>;
-  if (typeof locked !== "boolean" || typeof at !== "number") return undefined;
-  return { locked, at };
-};
+// A comparable form of the entry, so a change can be told from the same entry
+// written again.
+export const projectLockEntryKey = (value: unknown): string | undefined =>
+  value === undefined ? undefined : JSON.stringify(value);
 
-// The signal is the lock change the server wrote at `at` (the project's
-// updatedAt then, in ms). It is newer than the project only until the project
-// is fetched again.
-export const isNewerThanProject = (
-  signal: ProjectLockSignal | undefined,
-  project: { updatedAt?: string } | undefined,
-): signal is ProjectLockSignal => {
-  if (!signal) return false;
-  const updatedAt = project?.updatedAt ? Date.parse(project.updatedAt) : NaN;
-  return Number.isNaN(updatedAt) || signal.at > updatedAt;
-};
-
-// The project's lock: the Project, unless the server has signalled a newer
-// change that the fetched Project does not have yet.
-export const resolveProjectLock = (
-  project: { isLocked?: boolean; updatedAt?: string } | undefined,
-  signal: ProjectLockSignal | undefined,
-): boolean =>
-  isNewerThanProject(signal, project) ? signal.locked : !!project?.isLocked;
+// Whether the entry claims a lock. Read only to stop editing until the
+// Project is fetched again; a false claim costs a moment of read-only.
+export const claimsLock = (value: unknown): boolean =>
+  !!value &&
+  typeof value === "object" &&
+  (value as { locked?: unknown }).locked === true;
 
 type Reconnectable = {
   synced: boolean;
@@ -54,17 +34,17 @@ export const reconnectOnProjectLockChange = (
   metadata: YDocMetadataMap,
   provider: Reconnectable,
 ): (() => void) => {
-  let lastLocked = readProjectLock(metadata.get(PROJECT_LOCK_KEY))?.locked;
+  let last = projectLockEntryKey(metadata.get(PROJECT_LOCK_KEY));
 
   const handler = (event: Y.YMapEvent<YDocMetadataValue>) => {
     if (!event.changes.keys.has(PROJECT_LOCK_KEY)) return;
-    const locked = readProjectLock(metadata.get(PROJECT_LOCK_KEY))?.locked;
+    const current = projectLockEntryKey(metadata.get(PROJECT_LOCK_KEY));
     // While syncing, the entry is the state the connection was opened with.
-    if (!provider.synced || locked === lastLocked) {
-      lastLocked = locked;
+    if (!provider.synced || current === last) {
+      last = current;
       return;
     }
-    lastLocked = locked;
+    last = current;
     provider.disconnect();
     provider.connect();
   };

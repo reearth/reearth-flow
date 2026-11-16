@@ -1,13 +1,13 @@
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useY } from "react-yjs";
 import type { Doc } from "yjs";
 import { Map as YMap } from "yjs";
 
 import { useProject } from "@flow/lib/gql";
 import {
-  isNewerThanProject,
-  readProjectLock,
-  resolveProjectLock,
+  claimsLock,
+  PROJECT_LOCK_KEY,
+  projectLockEntryKey,
 } from "@flow/lib/yjs/projectLock";
 import type { Project, YDocMetadataValue } from "@flow/types";
 
@@ -27,26 +27,38 @@ export default ({
     [yDoc],
   );
   const metadata = useY(yMetadata ?? emptyMetadata);
-  const signal = readProjectLock(metadata?.projectLock);
+  const entry = metadata?.[PROJECT_LOCK_KEY];
+  const entryKey = projectLockEntryKey(entry);
 
   // The lock this user asked for, shown until the project reflects it.
   const [requested, setRequested] = useState<boolean>();
+  // Set while the project is fetched again after the entry claimed a lock.
+  const [claimedLock, setClaimedLock] = useState(false);
 
-  const resolved = resolveProjectLock(currentProject, signal);
-  const isLocked = requested ?? resolved;
+  const projectLocked = !!currentProject?.isLocked;
+  const isLocked = requested ?? (claimedLock || projectLocked);
 
   useEffect(() => {
-    if (requested !== undefined && resolved === requested) {
+    if (requested !== undefined && projectLocked === requested) {
       setRequested(undefined);
     }
-  }, [requested, resolved]);
+  }, [requested, projectLocked]);
 
-  // Another user changed the lock: fetch the project so it catches up.
+  // The server changed the entry: fetch the project, which holds the lock.
+  // Until it arrives, a claimed lock stops editing, since the server would
+  // refuse the edits anyway.
   const projectId = currentProject?.id;
-  const signalIsNewer = isNewerThanProject(signal, currentProject);
+  const lastEntryKey = useRef(entryKey);
+  const fetches = useRef(0);
   useEffect(() => {
-    if (signalIsNewer && projectId) refetchProject(projectId);
-  }, [signalIsNewer, projectId, refetchProject]);
+    if (entryKey === lastEntryKey.current || !projectId) return;
+    lastEntryKey.current = entryKey;
+    const fetch = ++fetches.current;
+    setClaimedLock(claimsLock(entry));
+    Promise.resolve(refetchProject(projectId)).finally(() => {
+      if (fetch === fetches.current) setClaimedLock(false);
+    });
+  }, [entry, entryKey, projectId, refetchProject]);
 
   const handleLockChange = useCallback(
     async (lock: boolean) => {
