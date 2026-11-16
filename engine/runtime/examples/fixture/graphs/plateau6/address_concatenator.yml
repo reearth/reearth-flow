@@ -24,7 +24,11 @@ nodes:
                 ad = tree["bldg:address"]["core:Address"]["core:xalAddress"]["xAL:Address"];
                 parts = [];
                 area = ad.get("xAL:AdministrativeArea");
-                if area != null { parts.append(area); }
+                if area != null {
+                  parts.append(area);
+                  subarea = area.get("xAL:SubAdministrativeArea");
+                  if subarea != null { parts.append(subarea); }
+                }
                 loc = ad.get("xAL:Locality");
                 if loc != null {
                   parts.append(loc);
