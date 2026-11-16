@@ -1,0 +1,22 @@
+﻿<?xml version="1.0" encoding="UTF-8"?>
+<gml:Dictionary xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xmlns:gml="http://www.opengis.net/gml" xsi:schemaLocation="http://www.opengis.net/gml http://schemas.opengis.net/gml/3.1.1/profiles/SimpleDictionary/1.0.0/gmlSimpleDictionaryProfile.xsd" gml:id="cl_32bcbfd8-2bbd-4c79-8890-97b08a5562bc">
+<gml:name>IndoorSpaceAttribute_tollType</gml:name>
+<gml:dictionaryEntry>
+<gml:Definition gml:id="IndoorSpaceAttribute_tollType_1">
+<gml:description>不明</gml:description>
+<gml:name>1</gml:name>
+</gml:Definition>
+</gml:dictionaryEntry>
+<gml:dictionaryEntry>
+<gml:Definition gml:id="IndoorSpaceAttribute_tollType_2">
+<gml:description>有料</gml:description>
+<gml:name>2</gml:name>
+</gml:Definition>
+</gml:dictionaryEntry>
+<gml:dictionaryEntry>
+<gml:Definition gml:id="IndoorSpaceAttribute_tollType_3">
+<gml:description>無料</gml:description>
+<gml:name>3</gml:name>
+</gml:Definition>
+</gml:dictionaryEntry>
+</gml:Dictionary>

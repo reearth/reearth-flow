@@ -1,0 +1,150 @@
+{
+  "bldg_e7c356e3-2f9b-4517-993d-b64aff7d7162": {
+    "meshcode": "56405303",
+    "feature_type": "bldg:Building",
+    "city_code": "07201",
+    "city_name": "福島県福島市",
+    "gml_id": "bldg_e7c356e3-2f9b-4517-993d-b64aff7d7162",
+    "attributes": {
+      "meshcode": "56405303",
+      "feature_type": "bldg:Building",
+      "gml:id": "bldg_e7c356e3-2f9b-4517-993d-b64aff7d7162",
+      "core:creationDate": "2025-03-21",
+      "bldg:class": "普通建物",
+      "bldg:class_code": "3001",
+      "bldg:usage": "住宅",
+      "bldg:usage_code": "411",
+      "bldg:yearOfConstruction": 1,
+      "bldg:measuredHeight": 6.4,
+      "bldg:measuredHeight_uom": "m",
+      "bldg:storeysAboveGround": 2,
+      "bldg:storeysBelowGround": 9999,
+      "bldg:address": "福島県福島市下野寺字薬師堂",
+      "uro:DataQualityAttribute": [
+        {
+          "uro:geometrySrcDescLod0": "公共測量成果又は基本測量成果",
+          "uro:geometrySrcDescLod0_code": "000",
+          "uro:geometrySrcDescLod1": "公共測量成果又は基本測量成果",
+          "uro:geometrySrcDescLod1_code": "000",
+          "uro:geometrySrcDescLod2": "未作成",
+          "uro:geometrySrcDescLod2_code": "999",
+          "uro:thematicSrcDesc": [
+            "公共測量成果又は基本測量成果",
+            "都市計画基礎調査",
+            "都市計画図書",
+            "その他のGISデータ",
+            "数値地形図データ"
+          ],
+          "uro:thematicSrcDesc_code": [
+            "000",
+            "201",
+            "202",
+            "400",
+            "023"
+          ],
+          "uro:appearanceSrcDescLod2": "未作成",
+          "uro:appearanceSrcDescLod2_code": "99",
+          "uro:lod1HeightType": "点群から取得_中央値",
+          "uro:lod1HeightType_code": "2",
+          "uro:PublicSurveyDataQualityAttribute": [
+            {
+              "uro:srcScaleLod0": "地図情報レベル2500",
+              "uro:srcScaleLod0_code": "1",
+              "uro:srcScaleLod1": "地図情報レベル2500",
+              "uro:srcScaleLod1_code": "1",
+              "uro:publicSurveySrcDescLod0": "数値地形図データ",
+              "uro:publicSurveySrcDescLod0_code": "023",
+              "uro:publicSurveySrcDescLod1": [
+                "空中写真測量の測量成果",
+                "基盤地図情報",
+                "数値地形図データ"
+              ],
+              "uro:publicSurveySrcDescLod1_code": [
+                "003",
+                "022",
+                "023"
+              ]
+            }
+          ]
+        }
+      ],
+      "uro:KeyValuePairAttribute": [
+        {
+          "uro:key": "耐火構造種別詳細",
+          "uro:key_code": "100",
+          "uro:codeValue": "不明【～H27.10.1】",
+          "uro:codeValue_code": "1031"
+        }
+      ],
+      "uro:BuildingDetailAttribute": [
+        {
+          "uro:totalFloorArea": 242.5,
+          "uro:totalFloorArea_uom": "m2",
+          "uro:buildingFootprintArea": 121.25,
+          "uro:buildingFootprintArea_uom": "m2",
+          "uro:buildingStructureType": "木造・土蔵造",
+          "uro:buildingStructureType_code": "601",
+          "uro:buildingStructureOrgType": "木造・土蔵造",
+          "uro:buildingStructureOrgType_code": "601",
+          "uro:fireproofStructureType": "不明",
+          "uro:fireproofStructureType_code": "1011",
+          "uro:urbanPlanType": "都市計画区域",
+          "uro:urbanPlanType_code": "21",
+          "uro:areaClassificationType": "市街化調整区域",
+          "uro:areaClassificationType_code": "23",
+          "uro:districtsAndZonesType": "用途地域の指定をしない区域",
+          "uro:districtsAndZonesType_code": "0",
+          "uro:orgUsage": "住宅",
+          "uro:orgUsage_code": "411",
+          "uro:detailedUsage": "専用住宅（住宅に付随する物置、車庫を含む）",
+          "uro:detailedUsage_code": "4111",
+          "uro:vacancy": "空き家以外",
+          "uro:vacancy_code": "0",
+          "uro:buildingHeight": 9.08,
+          "uro:buildingHeight_uom": "m",
+          "uro:surveyYear": 2023
+        }
+      ],
+      "uro:BuildingIDAttribute": [
+        {
+          "uro:buildingID": "07201-bldg-11673",
+          "uro:prefecture": "福島県",
+          "uro:prefecture_code": "07",
+          "uro:city": "福島県福島市",
+          "uro:city_code": "07201"
+        }
+      ]
+    },
+    "core:creationDate": "2025-03-21",
+    "bldg:class": "普通建物",
+    "bldg:usage": "住宅",
+    "bldg:yearOfConstruction": 1,
+    "bldg:measuredHeight": 6.4,
+    "bldg:storeysAboveGround": 2,
+    "bldg:address": "福島県福島市下野寺字薬師堂",
+    "uro:BuildingIDAttribute_uro:buildingID": "07201-bldg-11673",
+    "uro:BuildingIDAttribute_uro:prefecture": "福島県",
+    "uro:BuildingIDAttribute_uro:city": "福島県福島市",
+    "uro:BuildingDetailAttribute_uro:totalFloorArea": 242.5,
+    "uro:BuildingDetailAttribute_uro:buildingFootprintArea": 121.25,
+    "uro:BuildingDetailAttribute_uro:buildingStructureType": "木造・土蔵造",
+    "uro:BuildingDetailAttribute_uro:fireproofStructureType": "不明",
+    "uro:BuildingDetailAttribute_uro:urbanPlanType": "都市計画区域",
+    "uro:BuildingDetailAttribute_uro:areaClassificationType": "市街化調整区域",
+    "uro:BuildingDetailAttribute_uro:districtsAndZonesType": "用途地域の指定をしない区域",
+    "uro:BuildingDetailAttribute_uro:vacancy": "空き家以外",
+    "uro:BuildingDetailAttribute_uro:buildingHeight": 9.08,
+    "uro:BuildingDetailAttribute_uro:surveyYear": 2023,
+    "uro:geometrySrcDescLod1": "公共測量成果又は基本測量成果",
+    "uro:lod1HeightType": "点群から取得_中央値",
+    "_lod": 1,
+    "_x": 140.42428171425544,
+    "_y": 37.75683285191444,
+    "_xmin": 140.42422890659745,
+    "_xmax": 140.42433452191344,
+    "_ymin": 37.7567525654829,
+    "_ymax": 37.756913138345986,
+    "_zmin": 88.76,
+    "_zmax": 92.64500000000001
+  }
+}
