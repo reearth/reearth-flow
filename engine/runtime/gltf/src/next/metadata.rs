@@ -4,7 +4,6 @@
 //! `EXT_structural_metadata`/`EXT_mesh_features` JSON shapes, via [`encode`],
 //! which attaches them to a `glb::Builder` directly.
 
-use std::collections::BTreeMap;
 
 use indexmap::{IndexMap, IndexSet};
 use reearth_flow_types::{AttributeValue, Feature};
@@ -84,7 +83,7 @@ pub struct PropertyTable {
 }
 
 pub fn build_table(features: &[&Feature], options: MetadataOptions) -> PropertyTable {
-    let flattened: Vec<BTreeMap<String, AttributeValue>> = features
+    let flattened: Vec<IndexMap<String, AttributeValue>> = features
         .iter()
         .map(|feature| flatten_attributes(feature, options))
         .collect();
@@ -137,7 +136,7 @@ fn value_kind(value: &AttributeValue) -> Option<ColumnKind> {
 
 /// Flattened features -> column name to column kind. A column holding only
 /// `Null` is kept, as a string column of no-data.
-fn column_kinds(flattened: &[BTreeMap<String, AttributeValue>]) -> IndexMap<String, ColumnKind> {
+fn column_kinds(flattened: &[IndexMap<String, AttributeValue>]) -> IndexMap<String, ColumnKind> {
     let mut kinds: IndexMap<String, Option<ColumnKind>> = IndexMap::new();
     for flattened in flattened {
         for (path, value) in flattened {
@@ -529,11 +528,14 @@ struct MetadataPropertyTableProperty {
     string_offsets: Option<usize>,
 }
 
+/// Flattens a feature's attributes in attribute order. That order becomes the
+/// column order of the property table and the tileset `properties`, so it must
+/// not be sorted.
 pub fn flatten_attributes(
     feature: &Feature,
     options: MetadataOptions,
-) -> BTreeMap<String, AttributeValue> {
-    let mut out = BTreeMap::new();
+) -> IndexMap<String, AttributeValue> {
+    let mut out = IndexMap::new();
     for (key, value) in feature.attributes.iter() {
         let key = key.inner();
         if is_excluded(&key, options) {
@@ -555,7 +557,7 @@ fn flatten(
     path: String,
     value: &AttributeValue,
     sep: &str,
-    out: &mut BTreeMap<String, AttributeValue>,
+    out: &mut IndexMap<String, AttributeValue>,
 ) {
     match value {
         AttributeValue::Map(map) => {
@@ -572,7 +574,7 @@ fn flatten(
     }
 }
 
-fn insert_leaf(path: String, leaf: &AttributeValue, out: &mut BTreeMap<String, AttributeValue>) {
+fn insert_leaf(path: String, leaf: &AttributeValue, out: &mut IndexMap<String, AttributeValue>) {
     if out.insert(path.clone(), leaf.clone()).is_some() {
         tracing::warn!("Cesium3DTilesWriter: attribute path {path:?} collided; overwriting");
     }
@@ -642,7 +644,22 @@ mod tests {
         };
         let table = build_table(&[&feature], options);
 
-        assert_eq!(raw_paths(&table), vec!["addr.city", "heights.0", "name"]);
+        assert_eq!(raw_paths(&table), vec!["name", "addr.city", "heights.0"]);
+    }
+
+    #[test]
+    fn columns_keep_first_seen_order_across_features() {
+        let feature = |keys: &[&str]| {
+            let attrs: IndexMap<String, AttributeValue> = keys
+                .iter()
+                .map(|k| (k.to_string(), AttributeValue::String("v".to_string())))
+                .collect();
+            Feature::from(attrs)
+        };
+        let (f1, f2) = (feature(&["z", "a"]), feature(&["a", "m"]));
+        let table = build_table(&[&f1, &f2], MetadataOptions::default());
+
+        assert_eq!(raw_paths(&table), vec!["z", "a", "m"]);
     }
 
     fn number(n: f64) -> AttributeValue {
@@ -655,28 +672,28 @@ mod tests {
 
     #[test]
     fn column_kind_picks_narrowest_matching_type() {
-        let all_nonneg_ints = [BTreeMap::from([("k".to_string(), int_number(3))])];
+        let all_nonneg_ints = [IndexMap::from([("k".to_string(), int_number(3))])];
         assert_eq!(column_kinds(&all_nonneg_ints)["k"], ColumnKind::Int);
 
-        let has_negative = [BTreeMap::from([("k".to_string(), int_number(-3))])];
+        let has_negative = [IndexMap::from([("k".to_string(), int_number(-3))])];
         assert_eq!(column_kinds(&has_negative)["k"], ColumnKind::Int);
 
-        let is_f64_typed_even_though_whole = [BTreeMap::from([("k".to_string(), number(3.0))])];
+        let is_f64_typed_even_though_whole = [IndexMap::from([("k".to_string(), number(3.0))])];
         assert_eq!(
             column_kinds(&is_f64_typed_even_though_whole)["k"],
             ColumnKind::Float64
         );
 
-        let has_fraction = [BTreeMap::from([("k".to_string(), number(1.5))])];
+        let has_fraction = [IndexMap::from([("k".to_string(), number(1.5))])];
         assert_eq!(column_kinds(&has_fraction)["k"], ColumnKind::Float64);
 
-        let bool_only = [BTreeMap::from([(
+        let bool_only = [IndexMap::from([(
             "k".to_string(),
             AttributeValue::Bool(true),
         )])];
         assert_eq!(column_kinds(&bool_only)["k"], ColumnKind::Int);
 
-        let has_string = [BTreeMap::from([
+        let has_string = [IndexMap::from([
             ("k".to_string(), int_number(1)),
             ("k2".to_string(), AttributeValue::String("s".to_string())),
         ])];
@@ -686,12 +703,12 @@ mod tests {
     #[test]
     fn null_leaves_the_column_kind_to_the_other_values() {
         let int_and_null = [
-            BTreeMap::from([("k".to_string(), int_number(1))]),
-            BTreeMap::from([("k".to_string(), AttributeValue::Null)]),
+            IndexMap::from([("k".to_string(), int_number(1))]),
+            IndexMap::from([("k".to_string(), AttributeValue::Null)]),
         ];
         assert_eq!(column_kinds(&int_and_null)["k"], ColumnKind::Int);
 
-        let null_only = [BTreeMap::from([("k".to_string(), AttributeValue::Null)])];
+        let null_only = [IndexMap::from([("k".to_string(), AttributeValue::Null)])];
         assert_eq!(column_kinds(&null_only)["k"], ColumnKind::String);
     }
 

@@ -1,4 +1,4 @@
-use crate::compare_attributes::analyze_attributes;
+use crate::compare_attributes::analyze_attributes_ordered;
 use serde::Deserialize;
 use serde_json::Value;
 use std::collections::HashMap;
@@ -32,7 +32,8 @@ pub fn test_json_attributes_v2(
 
         tracing::debug!("Comparing JSON (v2): {} path={}", name, cfg.path);
 
-        analyze_attributes(
+        // Truth is generated from flow output, so key order is part of the contract.
+        analyze_attributes_ordered(
             name,
             &truth_data,
             &flow_data,
