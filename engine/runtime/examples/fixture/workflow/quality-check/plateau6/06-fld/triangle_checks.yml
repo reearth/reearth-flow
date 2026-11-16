@@ -6,8 +6,8 @@ name: PLATEAU6.FloodingAreaTriangleChecks
 # A well-formed triangle is written as four coordinates (three corners plus the
 # repeated first one), winds counter-clockwise on the ground, and encloses a real
 # area. Each of those is reported on its own port, and a triangle can fail
-# several at once: the checks are independent, and the result sheet counts a
-# triangle once per column it offends.
+# several at once: the result sheet counts a triangle once per column it
+# offends.
 #
 # `triangles` carries every face that reached the checks, whether or not it
 # failed any, because matching edges between triangles is scoped differently per
@@ -17,8 +17,8 @@ name: PLATEAU6.FloodingAreaTriangleChecks
 # A triangle is linear or point-like when two of its corners lie within 0.01 of
 # each other, or one corner lies within 0.01 of the opposite edge, or when it has
 # no area on the ground. That distance is in the coordinate unit, so the incoming
-# geometry must already be in a projected frame. A triangle found linear both
-# ways is reported once.
+# geometry must already be in a projected frame. A linear or point-like triangle
+# has no winding, so it is not judged for orientation.
 nodes:
   - id: d8100000-0000-4000-8000-000000000001
     name: InputRouter
@@ -53,16 +53,6 @@ nodes:
     action: Output Router
     with:
       routingPort: triangles
-
-  # Both the collapse check and the winding check can find a triangle linear, so
-  # each triangle is numbered to report it once.
-  - id: d8100000-0000-4000-8000-000000000015
-    name: FeatureCounterTriangleId
-    type: action
-    action: Feature Counter
-    with:
-      countStart: 1
-      outputAttribute: _triangle_id
 
   # --- Closure and vertex count ---
   - id: d8100000-0000-4000-8000-000000000006
@@ -121,8 +111,9 @@ nodes:
       routingPort: incorrectVertexCount
 
   # --- Winding ---
-  # Keep the 3D face aside before it is flattened: the port is contracted to emit
-  # the triangle as modelled, not the outline the check reads.
+  # Only a triangle the collapse check did not find linear reaches here. Keep the
+  # 3D face aside before it is flattened: the port is contracted to emit the
+  # triangle as modelled, not the outline the check reads.
   - id: d8100000-0000-4000-8000-00000000000e
     name: GeometryExtractorFace
     type: action
@@ -184,14 +175,6 @@ nodes:
     with:
       sourceAttribute: _originalTriangle
 
-  - id: d8100000-0000-4000-8000-000000000017
-    name: AttributeDuplicateFilterDegenerate
-    type: action
-    action: Attribute Duplicate Filter
-    with:
-      filterBy:
-        - _triangle_id
-
   # Geometry no step could handle is reported rather than dropped. The workflow
   # reading this graph decides what to call it; what matters here is that it
   # leaves by a port.
@@ -243,16 +226,10 @@ edges:
     fromPort: incorrectVertexCount
     toPort: features
 
-  - id: d8100000-0000-4000-8000-000000000117
-    from: d8100000-0000-4000-8000-000000000004
-    to: d8100000-0000-4000-8000-000000000015
-    fromPort: features
-    toPort: features
-
   ## Collapse
   # `rejected` is not wired: the ring checks reject the same face and report it.
   - id: d8100000-0000-4000-8000-000000000106
-    from: d8100000-0000-4000-8000-000000000015
+    from: d8100000-0000-4000-8000-000000000004
     to: d8100000-0000-4000-8000-000000000007
     fromPort: features
     toPort: features
@@ -263,15 +240,20 @@ edges:
     toPort: features
   - id: d8100000-0000-4000-8000-000000000109
     from: d8100000-0000-4000-8000-000000000008
-    to: d8100000-0000-4000-8000-000000000017
+    to: d8100000-0000-4000-8000-00000000000a
     fromPort: degenerate
     toPort: features
 
-  ## Winding
+  ## Winding, of the triangles the collapse check did not find linear
   - id: d8100000-0000-4000-8000-00000000010d
-    from: d8100000-0000-4000-8000-000000000015
+    from: d8100000-0000-4000-8000-000000000007
     to: d8100000-0000-4000-8000-00000000000e
-    fromPort: features
+    fromPort: success
+    toPort: features
+  - id: d8100000-0000-4000-8000-000000000117
+    from: d8100000-0000-4000-8000-000000000008
+    to: d8100000-0000-4000-8000-00000000000e
+    fromPort: unfiltered
     toPort: features
   - id: d8100000-0000-4000-8000-00000000010e
     from: d8100000-0000-4000-8000-00000000000e
@@ -306,7 +288,7 @@ edges:
     fromPort: rejected
     toPort: features
 
-  ## Linear or point-like on the ground, reported once with the collapse findings
+  ## Linear or point-like on the ground
   - id: d8100000-0000-4000-8000-000000000118
     from: d8100000-0000-4000-8000-000000000011
     to: d8100000-0000-4000-8000-000000000016
@@ -314,18 +296,13 @@ edges:
     toPort: features
   - id: d8100000-0000-4000-8000-000000000119
     from: d8100000-0000-4000-8000-000000000016
-    to: d8100000-0000-4000-8000-000000000017
+    to: d8100000-0000-4000-8000-00000000000a
     fromPort: features
     toPort: features
   - id: d8100000-0000-4000-8000-00000000011a
     from: d8100000-0000-4000-8000-000000000016
-    to: d8100000-0000-4000-8000-000000000017
-    fromPort: rejected
-    toPort: features
-  - id: d8100000-0000-4000-8000-00000000011b
-    from: d8100000-0000-4000-8000-000000000017
     to: d8100000-0000-4000-8000-00000000000a
-    fromPort: features
+    fromPort: rejected
     toPort: features
 
   ## Geometry no step could handle

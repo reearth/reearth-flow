@@ -13,17 +13,19 @@
     4. Two corners at the same ground position with heights 15.9 and 16.9.
     5. A ring of five positions A B C B A, which goes out and back and
        encloses no area.
+    6. Triangle 1 with its corners in reverse order. Projected, it winds
+       clockwise by a tiny area.
 
   Expected:
-    - Linear or point-like: 1, 4 and 5. Triangle 4 stands upright, so it
+    - Linear or point-like: 1, 4, 5 and 6. Triangle 4 stands upright, so it
       encloses no area on the ground.
     - Incorrectly oriented: 2. Triangles 4 and 5 enclose no area on the
-      ground, so they have no orientation.
+      ground, and 1 and 6 are linear, so they have no orientation.
     - Incorrect vertex count: 5.
     - Unshared edges: the three edges of 4.
 
-  The original implementation does not report 1 as linear or point-like, and
-  reports its three edges as unshared instead.
+  The original implementation does not report 1 or 6 as linear or point-like,
+  and reports their edges as unshared instead.
 -->
 
 <core:CityModel xmlns:core="http://www.opengis.net/citygml/3.0"
@@ -104,6 +106,15 @@ https://www.geospatial.jp/iur/urc/4.0 ../../../../schemas/iur/urc/4.0/urbanCore.
 									<gml:exterior>
 										<gml:LinearRing>
 											<gml:posList>36.645 137.052 15.9 36.645 137.0525 15.9 36.6452 137.05225 15.9 36.645 137.0525 15.9 36.645 137.052 15.9</gml:posList>
+										</gml:LinearRing>
+									</gml:exterior>
+								</gml:Polygon>
+							</gml:surfaceMember>
+							<gml:surfaceMember>
+								<gml:Polygon gml:id="poly_557b4064-b71c-4819-84b6-43a2d9f7169c">
+									<gml:exterior>
+										<gml:LinearRing>
+											<gml:posList>36.64718 137.0528 15.9 36.64716 137.05277 15.9 36.64714 137.05274 15.9 36.64718 137.0528 15.9</gml:posList>
 										</gml:LinearRing>
 									</gml:exterior>
 								</gml:Polygon>
