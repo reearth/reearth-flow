@@ -18,8 +18,10 @@ name: PLATEAU6.SurfaceChecks2D
 # L10 (per-boundary orientation): `incorrectOrientationUpward` carries one
 # feature per boundary of a face wound against the face seen from above
 # (exterior counter-clockwise, interiors clockwise), as a line string with
-# `issue` naming the exterior or an interior boundary. A degenerate boundary has
-# no orientation and is left to the other checks.
+# `issue` naming the exterior or an interior boundary. A face with a degenerate
+# boundary gets no orientation result at all, for its other boundaries too. The
+# degeneracy is reported first and the orientation is judged once the face is
+# fixed, as a self-intersection holds back the hole checks (L13).
 nodes:
   - id: c4100000-0000-4000-8000-000000000001
     name: InputRouter
@@ -619,8 +621,9 @@ nodes:
       sourceAttribute: original_face_geometry
 
   # L10 (per-boundary orientation), judged from above: the absolute winding of a
-  # boundary is a 2D property, so the whole face is flattened first. A face
-  # standing upright flattens to nothing and is degenerate, so it is not judged.
+  # boundary is a 2D property, so the whole face is flattened first. A face with
+  # any boundary degenerate on the ground, such as a face standing upright, is
+  # not judged, so none of its boundaries is reported.
   - id: c4100000-0000-4000-8000-000000000031
     name: TwoDimensionForcerOrientation
     type: action
