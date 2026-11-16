@@ -1,0 +1,162 @@
+{
+  "bldg_e7c356e3-2f9b-4517-993d-b64aff7d7162": {
+    "_lod": 1,
+    "_x": 140.42428171425544,
+    "_xmax": 140.42433452191344,
+    "_xmin": 140.42422890659745,
+    "_y": 37.75683285191444,
+    "_ymax": 37.756913138345986,
+    "_ymin": 37.7567525654829,
+    "_zmax": 92.64500000000001,
+    "_zmin": 88.76,
+    "attributes": {
+      "meshcode": "56405303",
+      "feature_type": "bldg:Building",
+      "gml:id": "bldg_e7c356e3-2f9b-4517-993d-b64aff7d7162",
+      "core:creationDate": "2025-03-21T00:00:00",
+      "core:adeOfAbstractCityObject": [
+        {
+          "urc:ExteriorDataQualityAttribute": {
+            "urc:geometrySrcDescLod0": "公共測量成果又は基本測量成果",
+            "urc:geometrySrcDescLod0_code": "000",
+            "urc:geometrySrcDescLod1": "公共測量成果又は基本測量成果",
+            "urc:geometrySrcDescLod1_code": "000",
+            "urc:geometrySrcDescLod2": "未作成",
+            "urc:geometrySrcDescLod2_code": "999",
+            "urc:thematicSrcDesc": [
+              "公共測量成果又は基本測量成果",
+              "都市計画基礎調査",
+              "都市計画図書",
+              "その他のGISデータ",
+              "数値地形図データ"
+            ],
+            "urc:thematicSrcDesc_code": [
+              "000",
+              "201",
+              "202",
+              "400",
+              "023"
+            ],
+            "urc:appearanceSrcDescLod2": "未作成",
+            "urc:appearanceSrcDescLod2_code": "99",
+            "urc:lod1HeightType": "点群から取得_中央値",
+            "urc:lod1HeightType_code": "2",
+            "urc:publicSurveyDataQualityAttribute": {
+              "urc:PublicSurveyDataQualityAttribute": {
+                "urc:srcScaleLod0": "地図情報レベル2500",
+                "urc:srcScaleLod0_code": "1",
+                "urc:srcScaleLod1": "地図情報レベル2500",
+                "urc:srcScaleLod1_code": "1",
+                "urc:publicSurveySrcDescLod0": "数値地形図データ",
+                "urc:publicSurveySrcDescLod0_code": "023",
+                "urc:publicSurveySrcDescLod1": [
+                  "空中写真測量の測量成果",
+                  "基盤地図情報",
+                  "数値地形図データ"
+                ],
+                "urc:publicSurveySrcDescLod1_code": [
+                  "003",
+                  "022",
+                  "023"
+                ]
+              }
+            }
+          }
+        },
+        {
+          "urc:KeyValuePairAttribute": {
+            "urc:key": "耐火構造種別詳細",
+            "urc:key_code": "100",
+            "urc:codeValue": "不明【～H27.10.1】",
+            "urc:codeValue_code": "1031"
+          }
+        }
+      ],
+      "con:dateOfConstruction": "0001-01-01",
+      "con:height": {
+        "con:Height": {
+          "con:highReference": "highestRoofEdge",
+          "con:lowReference": "lowestGroundPoint",
+          "con:status": "measured",
+          "con:value": 6.4,
+          "con:value_uom": "m"
+        }
+      },
+      "bldg:class": "普通建物",
+      "bldg:class_code": "3001",
+      "bldg:usage": "住宅",
+      "bldg:usage_code": "411",
+      "bldg:storeysAboveGround": "2",
+      "bldg:storeysBelowGround": "9999",
+      "bldg:address": "福島県福島市下野寺字薬師堂",
+      "bldg:adeOfAbstractBuilding": [
+        {
+          "uro:BuildingDetailAttribute": {
+            "uro:totalFloorArea": 242.5,
+            "uro:buildingFootprintArea": 121.25,
+            "uro:buildingStructureType": "木造・土蔵造",
+            "uro:buildingStructureType_code": "601",
+            "uro:buildingStructureOrgType": "木造・土蔵造",
+            "uro:buildingStructureOrgType_code": "601",
+            "uro:fireproofStructureType": "不明",
+            "uro:fireproofStructureType_code": "1011",
+            "uro:urbanPlanType": "都市計画区域",
+            "uro:urbanPlanType_code": "21",
+            "uro:areaClassificationType": "市街化調整区域",
+            "uro:areaClassificationType_code": "23",
+            "uro:districtsAndZonesType": "用途地域の指定をしない区域",
+            "uro:districtsAndZonesType_code": "0",
+            "uro:orgUsage": "住宅",
+            "uro:orgUsage_code": "411",
+            "uro:detailedUsage": "専用住宅（住宅に付随する物置、車庫を含む）",
+            "uro:detailedUsage_code": "4111",
+            "uro:vacancy": "空き家以外",
+            "uro:vacancy_code": "0",
+            "uro:buildingHeight": 9.08,
+            "uro:surveyYear": "2023-01-01",
+            "uro:totalFloorArea_uom": "m2",
+            "uro:buildingFootprintArea_uom": "m2",
+            "uro:buildingHeight_uom": "m"
+          }
+        },
+        {
+          "uro:BuildingIDAttribute": {
+            "uro:buildingID": "07201-bldg-11673",
+            "uro:prefecture": "福島県",
+            "uro:prefecture_code": "07",
+            "uro:city": "福島県福島市",
+            "uro:city_code": "07201"
+          }
+        }
+      ]
+    },
+    "bldg:address": "福島県福島市下野寺字薬師堂",
+    "bldg:class": "普通建物",
+    "bldg:measuredHeight": 6.4,
+    "bldg:storeysAboveGround": 2,
+    "bldg:storeysBelowGround": 9999,
+    "bldg:usage": "住宅",
+    "bldg:yearOfConstruction": "0001-01-01",
+    "city_code": "07201",
+    "city_name": "福島県福島市",
+    "core:creationDate": "2025-03-21T00:00:00",
+    "feature_type": "bldg:Building",
+    "gml_id": "bldg_e7c356e3-2f9b-4517-993d-b64aff7d7162",
+    "meshcode": "56405303",
+    "urc:geometrySrcDescLod1": "公共測量成果又は基本測量成果",
+    "urc:lod1HeightType": "点群から取得_中央値",
+    "uro:BuildingDetailAttribute_uro:areaClassificationType": "市街化調整区域",
+    "uro:BuildingDetailAttribute_uro:buildingFootprintArea": 121.25,
+    "uro:BuildingDetailAttribute_uro:buildingHeight": 9.08,
+    "uro:BuildingDetailAttribute_uro:buildingStructureType": "木造・土蔵造",
+    "uro:BuildingDetailAttribute_uro:districtsAndZonesType": "用途地域の指定をしない区域",
+    "uro:BuildingDetailAttribute_uro:fireproofStructureType": "不明",
+    "uro:BuildingDetailAttribute_uro:surveyYear": "2023-01-01",
+    "uro:BuildingDetailAttribute_uro:totalFloorArea": 242.5,
+    "uro:BuildingDetailAttribute_uro:urbanPlanType": "都市計画区域",
+    "uro:BuildingDetailAttribute_uro:vacancy": "空き家以外",
+    "uro:BuildingIDAttribute_uro:buildingID": "07201-bldg-11673",
+    "uro:BuildingIDAttribute_uro:city": "福島県福島市",
+    "uro:BuildingIDAttribute_uro:prefecture": "福島県"
+  }
+}
