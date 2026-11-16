@@ -32,7 +32,7 @@ type TokenVerifyResponse struct {
 // ProjectAccessChecker decides access to a project's live document.
 type ProjectAccessChecker interface {
 	// UserAccess reports whether the user whose JWT is in ctx may read and edit
-	// the project's document.
+	// the project's document. edit is false while the project is locked.
 	UserAccess(ctx context.Context, projectID string) (read, edit bool, err error)
 	// SharedAccess reports whether shareToken is the project's live public
 	// share token.
