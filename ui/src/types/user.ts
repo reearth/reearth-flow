@@ -23,6 +23,7 @@ export type User = {
   id: string;
   name: string;
   email: string;
+  photoURL?: string;
 };
 
 export type SearchUser = {
@@ -62,6 +63,7 @@ export type AwarenessUser = {
   editingVariableId?: string | null;
   color: string;
   userName: string;
+  photoURL?: string;
   currentWorkflowId?: string;
   openWorkflowIds?: string[];
   debugRun?: UserDebugRun;

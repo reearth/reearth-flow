@@ -7,12 +7,13 @@ import {
   DialogFooter,
   DialogHeader,
   DialogTitle,
+  PresenceAvatar,
 } from "@flow/components";
 import { Button } from "@flow/components/buttons/BaseButton";
 import AssetsDialog from "@flow/features/AssetsDialog";
 import CmsIntegrationDialog from "@flow/features/CmsIntegrationDialog";
 import { useT } from "@flow/lib/i18n";
-import type { AwarenessUser, WorkflowVariable, VarType } from "@flow/types";
+import type { AwarenessUser, WorkflowVariable } from "@flow/types";
 
 import { ArrayEditor } from "./components/ArrayEditor";
 // import { AttributeNameEditor } from "./components/AttributeNameEditor";
@@ -78,33 +79,8 @@ const VariableEditDialog: React.FC<Props> = ({
 
   if (!localVariable) return null;
 
-  const getOriginalType = (type: VarType): VarType => {
-    const typeMapping: Record<string, VarType> = {
-      [t("Array")]: "array",
-      [t("Attribute Name")]: "attribute_name",
-      [t("Choice")]: "choice",
-      [t("Color")]: "color",
-      [t("Coordinate System")]: "coordinate_system",
-      [t("Database Connection")]: "database_connection",
-      [t("Date and Time")]: "datetime",
-      [t("Geometry")]: "geometry",
-      [t("Message")]: "message",
-      [t("Number")]: "number",
-      [t("Password")]: "password",
-      [t("Reprojection File")]: "reprojection_file",
-      [t("Text")]: "text",
-      [t("Web Connection")]: "web_connection",
-      [t("Yes/No")]: "yes_no",
-      [t("Unsupported")]: "unsupported",
-    };
-
-    return typeMapping[type] || type;
-  };
-
-  const originalType = getOriginalType(localVariable.type);
-
   const renderEditor = () => {
-    switch (originalType) {
+    switch (localVariable.type) {
       case "array":
         return (
           <ArrayEditor
@@ -197,16 +173,7 @@ const VariableEditDialog: React.FC<Props> = ({
                     <>
                       {editingUsers.slice(0, 2).map((user) => (
                         <div key={user.clientId}>
-                          <div
-                            className="flex size-6 items-center justify-center rounded-full ring-2 ring-secondary/20"
-                            style={{
-                              backgroundColor: user.color || undefined,
-                            }}>
-                            <span className="text-xs font-medium text-white select-none">
-                              {user.userName.charAt(0).toUpperCase()}
-                              {user.userName.charAt(1)}
-                            </span>
-                          </div>
+                          <PresenceAvatar user={user} />
                         </div>
                       ))}
                       {editingUsers.length > 2 && (

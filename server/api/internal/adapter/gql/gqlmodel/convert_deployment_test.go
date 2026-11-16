@@ -4,6 +4,7 @@ import (
 	"testing"
 	"time"
 
+	accountsid "github.com/reearth/reearth-accounts/server/pkg/id"
 	accountsworkspace "github.com/reearth/reearth-accounts/server/pkg/workspace"
 	"github.com/reearth/reearth-flow/api/pkg/deployment"
 	"github.com/reearth/reearth-flow/api/pkg/id"
@@ -184,4 +185,18 @@ func TestToJob_Variables(t *testing.T) {
 		{Key: "area", Type: ParameterTypeText, Value: "osaka"},
 		{Key: "count", Type: ParameterTypeNumber, Value: 3.0},
 	}, got.Variables)
+}
+
+func TestToJob_RunBy(t *testing.T) {
+	t.Parallel()
+	uid := accountsid.NewUserID()
+	ran := job.New().NewID().Workspace(accountsworkspace.NewID()).Status(job.StatusPending).
+		StartedAt(time.Now()).RunBy(&uid).MustBuild()
+	scheduled := job.New().NewID().Workspace(accountsworkspace.NewID()).Status(job.StatusPending).
+		StartedAt(time.Now()).MustBuild()
+
+	got := ToJob(ran)
+	require.NotNil(t, got.RunByID)
+	assert.Equal(t, ID(uid.String()), *got.RunByID)
+	assert.Nil(t, ToJob(scheduled).RunByID, "no user started it")
 }

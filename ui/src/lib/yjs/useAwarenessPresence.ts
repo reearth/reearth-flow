@@ -30,6 +30,7 @@ export default function useAwarenessPresence({
   const self: AwarenessUser = {
     clientId: rawSelf?.clientID,
     userName: rawSelf?.userName || "Unknown user",
+    photoURL: rawSelf?.photoURL,
     color: rawSelf?.color || "#ffffff",
     cursor: rawSelf?.cursor || { x: 0, y: 0 },
     viewport: rawSelf?.viewport,

@@ -78,3 +78,4 @@ uuid.workspace = true
 bytes.workspace = true
 pretty_assertions.workspace = true
 reearth-flow-action-processor.workspace = true
+zip.workspace = true

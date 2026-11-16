@@ -35,6 +35,7 @@ func ToMe(u *accountsuser.User) *Me {
 		Name:          u.Name(),
 		Email:         u.Email(),
 		Lang:          u.Metadata().Lang(),
+		Metadata:      ToUserMetadata(u.Metadata()),
 		MyWorkspaceID: IDFrom(u.Workspace()),
 		Auths:         authStrs,
 	}

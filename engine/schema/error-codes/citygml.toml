@@ -154,3 +154,10 @@ category = "geometry"
 default_disposition = "warn_drop"
 message = "wrote terrain without its appearance"
 help = "This writer does not texture terrain: the triangles are written and their materials and textures are left out."
+
+[[codes]]
+code = "citygml.invalid_output_path"
+category = "config"
+default_disposition = "fatal"
+message = "the output paths evaluated for this feature cannot be written"
+help = "Set Output File to a relative path inside the job's output folder; to write inside a zip archive, end Output File in `.zip` and give the path inside it as Path in Archive. Path in Archive needs an Output File ending in `.zip`, and must be a path from the top of the archive with `/` between folders, without `..`, `\\`, `:` or empty folders."

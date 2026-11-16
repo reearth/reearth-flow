@@ -32,6 +32,9 @@ fragment Workspace on Workspace {
       id
       email
       name
+      metadata {
+        photoURL
+      }
     }
   }
 }
@@ -122,6 +125,12 @@ fragment Job on Job {
   userFacingLogsURL
   debug
   deployment {
+    id
+    description
+  }
+  runById
+  triggerId
+  trigger {
     id
     description
   }
