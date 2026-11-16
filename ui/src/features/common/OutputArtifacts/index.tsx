@@ -4,7 +4,7 @@ import {
   FolderIcon,
   WarningIcon,
 } from "@phosphor-icons/react";
-import { useMemo } from "react";
+import { useMemo, useState } from "react";
 
 import { Button } from "@flow/components";
 import { useArtifactZipDownload } from "@flow/hooks";
@@ -12,9 +12,14 @@ import { useT } from "@flow/lib/i18n";
 import { folderArchiveName, groupArtifactsByFolder } from "@flow/utils";
 import type { ArtifactFile } from "@flow/utils";
 
+import { ArchiveNameDialog } from "./ArchiveNameDialog";
+
 type Props = {
   files: ArtifactFile[];
-  /** Base name of the archive "Download all" produces, without the extension. */
+  /**
+   * Name "Download all" suggests for the archive, without the extension. The
+   * user can change it before the archive is built.
+   */
   archiveName: string;
 };
 
@@ -30,6 +35,18 @@ const OutputArtifacts: React.FC<Props> = ({ files, archiveName }) => {
     useArtifactZipDownload();
 
   const folders = useMemo(() => groupArtifactsByFolder(files), [files]);
+
+  const [archiveRequest, setArchiveRequest] = useState<{
+    isOpen: boolean;
+    files: ArtifactFile[];
+    defaultName: string;
+  }>({ isOpen: false, files: [], defaultName: "" });
+
+  const requestArchive = (files: ArtifactFile[], defaultName: string) =>
+    setArchiveRequest({ isOpen: true, files, defaultName });
+
+  const closeArchiveRequest = () =>
+    setArchiveRequest((prev) => ({ ...prev, isOpen: false }));
 
   if (!files.length) return null;
 
@@ -55,7 +72,7 @@ const OutputArtifacts: React.FC<Props> = ({ files, archiveName }) => {
             variant="outline"
             size="sm"
             disabled={isDownloading}
-            onClick={() => downloadAsZip(files, `${archiveName}.zip`)}>
+            onClick={() => requestArchive(files, archiveName)}>
             <DownloadIcon />
             {t("Download all as ZIP")}
           </Button>
@@ -92,10 +109,7 @@ const OutputArtifacts: React.FC<Props> = ({ files, archiveName }) => {
                   size="sm"
                   disabled={isDownloading}
                   onClick={() =>
-                    downloadAsZip(
-                      folder.files,
-                      folderArchiveName(archiveName, folder.path),
-                    )
+                    requestArchive(folder.files, folderArchiveName(folder.path))
                   }>
                   <DownloadIcon />
                   ZIP
@@ -132,6 +146,17 @@ const OutputArtifacts: React.FC<Props> = ({ files, archiveName }) => {
           </div>
         ))}
       </div>
+
+      <ArchiveNameDialog
+        isOpen={archiveRequest.isOpen}
+        defaultName={archiveRequest.defaultName}
+        fileCount={archiveRequest.files.length}
+        onConfirm={(fileName) => {
+          closeArchiveRequest();
+          downloadAsZip(archiveRequest.files, fileName);
+        }}
+        onCancel={closeArchiveRequest}
+      />
     </div>
   );
 };

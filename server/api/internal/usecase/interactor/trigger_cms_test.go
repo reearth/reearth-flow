@@ -50,8 +50,8 @@ func TestTrigger_ExecuteCMSTrigger(t *testing.T) {
 		// The fixture's batch refuses every job once its variables are decided.
 		assert.ErrorIs(t, err, interfaces.ErrJobCreationFailed)
 		require.Len(t, f.batch.submitted, 1)
-		assert.Equal(t, "https://assets.example.com/bldg.gml", f.batch.submitted[0]["cityGmlPath"])
-		assert.Equal(t, "ja", f.batch.submitted[0]["lang"], "a variable CMS leaves out takes its default")
+		assert.Equal(t, `"https://assets.example.com/bldg.gml"`, f.batch.submitted[0]["cityGmlPath"])
+		assert.Equal(t, `"ja"`, f.batch.submitted[0]["lang"], "a variable CMS leaves out takes its default")
 
 		j := f.recordedJob(t)
 		require.NotNil(t, j.Trigger())
