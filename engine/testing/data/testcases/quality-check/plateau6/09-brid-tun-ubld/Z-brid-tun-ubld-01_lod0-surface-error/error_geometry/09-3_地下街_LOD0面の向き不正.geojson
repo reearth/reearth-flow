@@ -4,15 +4,13 @@
     {
       "type": "Feature",
       "geometry": {
-        "type": "Polygon",
+        "type": "LineString",
         "coordinates": [
-          [
-            [-12148.798989, -34273.71606, 20.0],
-            [-12148.791407, -34268.168946, 20.0],
-            [-12144.266153, -34268.17513, 20.0],
-            [-12144.273732, -34273.722244, 20.0],
-            [-12148.798989, -34273.71606, 20.0]
-          ]
+          [-12148.798989, -34273.71606, 20.0],
+          [-12148.791407, -34268.168946, 20.0],
+          [-12144.266153, -34268.17513, 20.0],
+          [-12144.273732, -34273.722244, 20.0],
+          [-12148.798989, -34273.71606, 20.0]
         ]
       },
       "properties": {
@@ -22,9 +20,8 @@
         "featureType": "UndergroundBuilding",
         "gmlId": "ubld_f5e8c2f0-eb17-4362-9760-f807cdefe839",
         "lod": 0,
-        "issue": "Incorrect Orientation",
-        "issueCount": 1,
-        "orientation": "right_hand_rule"
+        "issue": "IncorrectExteriorOrientation",
+        "issueCount": 1
       }
     }
   ],

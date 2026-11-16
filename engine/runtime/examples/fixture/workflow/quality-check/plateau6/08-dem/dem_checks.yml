@@ -722,7 +722,69 @@ nodes:
     with:
       routingPort: summaryOutput
 
+  # L10 (per-boundary orientation): one row per misoriented triangle. A triangle
+  # is a single exterior boundary.
+  - id: d9000000-0000-4000-8000-00000000003b
+    name: TriangleOrientationAttributeMapper
+    type: action
+    action: Attribute Mapper
+    with:
+      mappers:
+        - attribute: Index
+          valueAttribute: fileIndex
+        - attribute: Folder
+          expr:
+            type: flowExpr
+            value: '"dem"'
+        - attribute: Filename
+          valueAttribute: name
+        - attribute: FeatureType
+          expr:
+            type: flowExpr
+            value: (attributes.get("__citygml_geometry_feature_type") or attributes.get("__citygml_feature_type", "")).split(":")[-1]
+        - attribute: GmlId
+          expr:
+            type: flowExpr
+            value: attributes.get("__citygml_geometry_gml_id") or attributes.get("__citygml_gml_id", "")
+        - attribute: "エラー数"
+          expr:
+            type: flowExpr
+            value: "1"
+        - attribute: "エラー内容"
+          expr:
+            type: string
+            value: IncorrectExteriorOrientation
+
+  - id: d9000000-0000-4000-8000-00000000003c
+    name: TriangleOrientationCsvWriter
+    type: action
+    action: Feature Writer
+    with:
+      format:
+        type: csv
+      output:
+        type: flowExpr
+        value: |
+          variables["packagePrefixes"]["dem"] + "_向きが不正な三角形.csv"
+
 edges:
+  # L10 (per-boundary orientation): misoriented triangles as a CSV
+  - id: d9000000-0000-4000-8000-00010000004d
+    from: d9000000-0000-4000-8000-00000000000c
+    to: d9000000-0000-4000-8000-00000000003b
+    fromPort: incorrectOrientation
+    toPort: features
+  - id: d9000000-0000-4000-8000-00010000004e
+    from: d9000000-0000-4000-8000-00000000003b
+    to: d9000000-0000-4000-8000-00000000003c
+    fromPort: features
+    toPort: features
+  - id: d9000000-0000-4000-8000-00010000004f
+    from: d9000000-0000-4000-8000-00000000003c
+    to: d9000000-0000-4000-8000-000000000035
+    fromPort: features
+    toPort: features
+
   # File enumeration
   - id: d9000000-0000-4000-8000-000100000001
     from: d9000000-0000-4000-8000-000000000001

@@ -4,15 +4,13 @@
     {
       "type": "Feature",
       "geometry": {
-        "type": "Polygon",
+        "type": "LineString",
         "coordinates": [
-          [
-            [-10181.080598, 71815.414058, 0.0],
-            [-10181.076649, 71818.742858, 0.0],
-            [-10178.39428, 71818.739677, 0.0],
-            [-10178.398228, 71815.410876, 0.0],
-            [-10181.080598, 71815.414058, 0.0]
-          ]
+          [-10181.080598, 71815.414058, 0.0],
+          [-10181.076649, 71818.742858, 0.0],
+          [-10178.39428, 71818.739677, 0.0],
+          [-10178.398228, 71815.410876, 0.0],
+          [-10181.080598, 71815.414058, 0.0]
         ]
       },
       "properties": {
@@ -21,9 +19,8 @@
         "filename": "54377074_luse_6697_op.gml",
         "featureType": "LandUse",
         "gmlId": "luse_0a024e99-52af-4476-afdb-ae6ab52711f5",
-        "issue": "Incorrect Orientation",
-        "issueCount": 1,
-        "orientation": "right_hand_rule"
+        "issue": "IncorrectExteriorOrientation",
+        "issueCount": 1
       }
     }
   ],

@@ -20,7 +20,7 @@ urn:oasis:names:tc:ciq:xal:3 ../../schemas/citygml/xAL/3.0/xAL.xsd">
 	</gml:boundedBy>
 
 	<!-- Error building: LOD0 footprint exterior ring is CLOCKWISE (not
-	     counter-clockwise), so it is reported under 'LOD0 面の向きエラー'. -->
+	     counter-clockwise), so it is reported under 'LOD0 面の向き不正'. -->
 	<core:cityObjectMember>
 		<bldg:Building gml:id="bldg_a1b2c3d4-0001-11f0-a3af-18ece7a5508c">
 			<gml:name>16211-bldg-cw</gml:name>
