@@ -2,7 +2,11 @@ package server
 
 import (
 	"context"
+	"crypto/hmac"
+	"crypto/sha256"
+	"encoding/hex"
 	"errors"
+	"strconv"
 	"sync"
 	"time"
 
@@ -11,9 +15,11 @@ import (
 )
 
 // projectLockKey is the metadata entry the server writes when a project is
-// locked or unlocked: {"locked": bool, "at": unix ms of the change}. Only the
-// server writes it. UI clients watch it to learn of a lock change live; the
-// lock itself comes from the Project.
+// locked or unlocked: {"locked": bool, "at": unix ms of the change, "sig":
+// signature}. Any peer with write access can write a document entry, so the
+// server acts only on entries it signed (see lockSignature). UI clients treat
+// a change of the entry as a cue to fetch the Project again, which holds the
+// lock; they never read the lock from it.
 const projectLockKey = "projectLock"
 
 // CloseProjectLocked is the close code sent to a peer that writes to a locked
@@ -22,10 +28,35 @@ const projectLockKey = "projectLock"
 const CloseProjectLocked = 4423
 
 // projectLock is one lock change. At orders changes: a newer change wins
-// whatever order the instances apply them in.
+// whatever order the instances apply them in. The API keeps At increasing for
+// each project, so it orders changes made through different API replicas too.
 type projectLock struct {
 	Locked bool
 	At     int64
+}
+
+// lockSignature signs a lock change for one room with the secret the API calls
+// this server with, which every instance shares. A peer cannot produce it, so
+// a peer cannot lock a room, keep it locked, or move another project's entry
+// into it through a document copy.
+func (s *Server) lockSignature(room string, l projectLock) string {
+	mac := hmac.New(sha256.New, []byte(s.cfg.APISecret))
+	mac.Write([]byte(room))
+	mac.Write([]byte{0})
+	mac.Write([]byte(strconv.FormatBool(l.Locked)))
+	mac.Write([]byte{0})
+	mac.Write([]byte(strconv.FormatInt(l.At, 10)))
+	return hex.EncodeToString(mac.Sum(nil))
+}
+
+// signedLock reads a lock entry the server signed for room. Anything else,
+// including an entry a peer wrote, reads as no entry.
+func (s *Server) signedLock(room string, v any) (projectLock, bool) {
+	l, sig, ok := decodeProjectLock(v)
+	if !ok || !hmac.Equal([]byte(sig), []byte(s.lockSignature(room, l))) {
+		return projectLock{}, false
+	}
+	return l, true
 }
 
 // Presence reports how many instances hold a room. Backends without a shared
@@ -34,12 +65,14 @@ type Presence func(ctx context.Context, room string) (int, error)
 
 // roomLock is the lock state of one loaded copy of a room's document.
 type roomLock struct {
-	doc    *crdt.Doc
+	doc *crdt.Doc
+	// latest is the newest signed change seen, starting from the one the
+	// document was loaded with, so a peer writing back an older signed entry
+	// cannot undo a newer change.
 	latest projectLock
 	// enforced is set once a lock change arrives while the document is loaded.
 	// The value a document is loaded with is not enforced: a connection opened
-	// after the change was already checked by /auth/verify, and a stale value
-	// left in storage must not refuse anyone's writes.
+	// after the change was already checked by /auth/verify.
 	enforced bool
 }
 
@@ -94,7 +127,8 @@ func (l *projectLocks) observe(rl *roomLock, cur projectLock) (newest projectLoc
 	defer l.mu.Unlock()
 	if cur.At < rl.latest.At {
 		// Two instances set the entry concurrently and the document kept the
-		// older change. Writing the newer one again puts it after both.
+		// older change, or a peer wrote back an older entry. Writing the newer
+		// one again puts it after both.
 		return rl.latest, true
 	}
 	rl.latest = cur
@@ -118,7 +152,7 @@ func (s *Server) watchProjectLock(_ context.Context, room string, doc *crdt.Doc)
 	m := doc.GetMap(metadataMapName)
 	rl := &roomLock{doc: doc}
 	if v, ok := m.Get(projectLockKey); ok {
-		rl.latest, _ = decodeProjectLock(v)
+		rl.latest, _ = s.signedLock(room, v)
 	}
 	s.locks.add(room, rl)
 	m.Observe(func(ev crdt.YMapEvent) {
@@ -129,13 +163,17 @@ func (s *Server) watchProjectLock(_ context.Context, room string, doc *crdt.Doc)
 		if !ok {
 			return
 		}
-		cur, ok := decodeProjectLock(v)
+		cur, ok := s.signedLock(room, v)
 		if !ok {
+			s.log.Warn("ignored a project lock entry the server did not sign", "room", room)
 			return
 		}
 		if newest, reassert := s.locks.observe(rl, cur); reassert {
 			// Observers run inside the transaction's caller; write from outside it.
 			go func() {
+				if s.ws.GetDoc(room) == nil {
+					return // unloaded since: nobody to hold to the newer change
+				}
 				if err := s.applyProjectLock(context.Background(), room, newest); err != nil {
 					s.log.Warn("project lock reassert failed", "room", room, "err", err)
 				}
@@ -175,29 +213,50 @@ func (s *Server) SignalLock(ctx context.Context, room string, locked bool, at ti
 	return s.applyProjectLock(ctx, room, projectLock{Locked: locked, At: at.UnixMilli()})
 }
 
+// applyProjectLock writes l into the room's document. A room this instance did
+// not hold is loaded only to send the change to the instances that do, and is
+// closed again: it has no peers, and left open it would count this instance as
+// a holder of the room for as long as the process runs.
 func (s *Server) applyProjectLock(ctx context.Context, room string, l projectLock) error {
+	loaded := s.ws.GetDoc(room) != nil
+	sig := s.lockSignature(room, l)
 	err := s.ws.Apply(ctx, room, func(doc *crdt.Doc, transact func(func(*crdt.Transaction))) {
 		// GetMap must be called outside transact, which already holds the doc lock.
 		m := doc.GetMap(metadataMapName)
+		if v, ok := m.Get(projectLockKey); ok {
+			if cur, ok := s.signedLock(room, v); ok && cur == l {
+				return // a retried call: the document already holds this change
+			}
+		}
 		transact(func(txn *crdt.Transaction) {
 			// at is stored as a float64 so a JS client reads it as a number.
-			m.Set(txn, projectLockKey, map[string]any{"locked": l.Locked, "at": float64(l.At)})
+			m.Set(txn, projectLockKey, map[string]any{"locked": l.Locked, "at": float64(l.At), "sig": sig})
 		})
 	})
 	if errors.Is(err, ygws.ErrNoChanges) {
-		return nil
+		err = nil
+	}
+	if !loaded {
+		if cerr := s.ws.CloseRoom(room, false); cerr != nil &&
+			!errors.Is(cerr, ygws.ErrRoomHasPeers) && !errors.Is(cerr, ygws.ErrRoomNotFound) {
+			s.log.Warn("closing a room loaded for a project lock change failed", "room", room, "err", cerr)
+		}
 	}
 	return err
 }
 
-func decodeProjectLock(v any) (projectLock, bool) {
+func decodeProjectLock(v any) (l projectLock, sig string, ok bool) {
 	m, ok := v.(map[string]any)
 	if !ok {
-		return projectLock{}, false
+		return projectLock{}, "", false
 	}
 	locked, ok := m["locked"].(bool)
 	if !ok {
-		return projectLock{}, false
+		return projectLock{}, "", false
+	}
+	sig, ok = m["sig"].(string)
+	if !ok {
+		return projectLock{}, "", false
 	}
 	var at int64
 	switch n := m["at"].(type) {
@@ -212,7 +271,7 @@ func decodeProjectLock(v any) (projectLock, bool) {
 	case int:
 		at = int64(n)
 	default:
-		return projectLock{}, false
+		return projectLock{}, "", false
 	}
-	return projectLock{Locked: locked, At: at}, true
+	return projectLock{Locked: locked, At: at}, sig, true
 }
