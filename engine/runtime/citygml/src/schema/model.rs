@@ -21,7 +21,9 @@ type Reader<'a> = &'a dyn Fn(&str) -> Result<Vec<u8>, String>;
 pub struct AdeSource {
     /// The target namespace the document must declare.
     pub namespace: String,
-    /// An absolute URL the reader understands, such as `gs://` or `file://`.
+    /// An absolute URL the reader understands, such as `https://`, `gs://` or
+    /// `file://`. Relative imports and includes are read only from the same
+    /// scheme, host and port.
     pub location: String,
 }
 
@@ -36,14 +38,6 @@ enum Location {
 }
 
 impl Location {
-    /// Where an ADE source at `location` is read from: the bundle when it
-    /// holds a copy of that URL, otherwise the caller's reader.
-    fn entry(location: &str) -> Self {
-        bundle::key_for_url(location)
-            .filter(|key| bundle::get(key).is_some())
-            .map_or_else(|| Self::Remote(location.to_owned()), Self::Embedded)
-    }
-
     fn describe(&self) -> String {
         match self {
             Self::Embedded(key) => key.clone(),
@@ -119,12 +113,27 @@ impl Location {
                 // authority; it is not "beside" this document, so it is not read.
                 (joined.scheme() == base.scheme()
                     && joined.host_str() == base.host_str()
-                    && joined.port() == base.port()
-                    && !matches!(joined.scheme(), "http" | "https"))
+                    && joined.port() == base.port())
                 .then(|| Location::Remote(joined.into()))
             }
         }
     }
+}
+
+/// How much one schema set may read through its reader: the bundled
+/// CityGML 2.0 set does not count, and a real ADE needs a handful of
+/// documents of a few hundred KB each (i-UR: two, about 400 KB).
+#[derive(Debug, Clone, Copy)]
+struct RemoteBudget {
+    documents: usize,
+    bytes: usize,
+}
+
+impl RemoteBudget {
+    const DEFAULT: Self = Self {
+        documents: 256,
+        bytes: 64 * 1024 * 1024,
+    };
 }
 
 /// Resolve `.` and `..` without touching the file system. A `..` that runs
@@ -181,9 +190,8 @@ impl SchemaSet {
         Self::load(entries, None)
     }
 
-    /// The embedded CityGML 2.0 set plus ADE schema documents. A source whose
-    /// location is the published URL of a bundled schema is read from the
-    /// bundle; `read` is given every other source's location and the locations
+    /// The embedded CityGML 2.0 set plus ADE schema documents fetched by
+    /// `read`, which is given each source's location and the locations
     /// relative to it. An absolute import resolves as in [`Self::with_ade`],
     /// from the bundle or a loaded schema of its namespace, and is never read.
     pub fn with_ade_from(
@@ -194,11 +202,11 @@ impl SchemaSet {
         entries.extend(
             sources
                 .iter()
-                .map(|source| Location::entry(&source.location)),
+                .map(|source| Location::Remote(source.location.clone())),
         );
-        let documents = Self::parse(entries, Some(read))?;
+        let documents = Self::parse(entries, Some(read), RemoteBudget::DEFAULT)?;
         for source in sources {
-            let location = Location::entry(&source.location);
+            let location = Location::Remote(source.location.clone());
             let declared = documents
                 .iter()
                 .find(|(loaded, _)| loaded == &location)
@@ -289,16 +297,21 @@ impl SchemaSet {
     }
 
     fn load(entries: Vec<Location>, read: Option<Reader>) -> Result<SchemaSet, SchemaError> {
-        let documents = Self::parse(entries, read)?;
+        let documents = Self::parse(entries, read, RemoteBudget::DEFAULT)?;
         Self::compile(documents.into_iter().map(|(_, ast)| ast).collect())
     }
 
     /// Parse `entries` and every document they import, include or redefine,
-    /// each paired with where it was read from.
+    /// each paired with where it was read from. Documents read through `read`
+    /// count against `budget`, so a server that answers every new URL with
+    /// another import cannot keep the traversal going.
     fn parse(
         entries: Vec<Location>,
         read: Option<Reader>,
+        budget: RemoteBudget,
     ) -> Result<Vec<(Location, XsdSchema)>, SchemaError> {
+        let mut remote_documents = 0usize;
+        let mut remote_bytes = 0usize;
         let mut seen = HashSet::new();
         let mut queue: VecDeque<Location> = entries.into();
         let mut schemas = Vec::new();
@@ -309,7 +322,31 @@ impl SchemaSet {
             if !seen.insert(location.clone()) {
                 continue;
             }
-            let ast = parse_xsd_ast(&location.read(read)?).map_err(|e| SchemaError::Parse {
+            let remote = matches!(location, Location::Remote(_));
+            if remote && remote_documents == budget.documents {
+                return Err(SchemaError::Read {
+                    file: location.describe(),
+                    message: format!(
+                        "the ADE schemas import more than {} documents",
+                        budget.documents
+                    ),
+                });
+            }
+            let bytes = location.read(read)?;
+            if remote {
+                remote_documents += 1;
+                remote_bytes += bytes.len();
+                if remote_bytes > budget.bytes {
+                    return Err(SchemaError::Read {
+                        file: location.describe(),
+                        message: format!(
+                            "the ADE schemas import more than {} bytes in all",
+                            budget.bytes
+                        ),
+                    });
+                }
+            }
+            let ast = parse_xsd_ast(&bytes).map_err(|e| SchemaError::Parse {
                 file: location.describe(),
                 message: e.to_string(),
             })?;
@@ -1001,6 +1038,106 @@ mod tests {
     }
 
     #[test]
+    fn an_https_ade_reads_its_relative_includes_through_the_reader() {
+        let read = reader(&[
+            ("https://example.test/ade/ade.xsd", ADE),
+            ("https://example.test/ade/part.xsd", PART),
+        ]);
+        let set = SchemaSet::with_ade_from(
+            &[AdeSource {
+                namespace: "urn:ade".into(),
+                location: "https://example.test/ade/ade.xsd".into(),
+            }],
+            &read,
+        )
+        .unwrap();
+        assert!(set
+            .global_elements()
+            .any(|q| q == &QName::new("urn:ade", "note")));
+    }
+
+    /// Answers every `n<i>.xsd` with a schema that includes `n<i+1>.xsd`, so
+    /// the chain never ends on its own.
+    fn endless_chain(url: &str) -> Result<Vec<u8>, String> {
+        let n: u64 = url
+            .rsplit('/')
+            .next()
+            .and_then(|file| file.strip_prefix('n')?.strip_suffix(".xsd"))
+            .and_then(|n| n.parse().ok())
+            .ok_or_else(|| format!("unexpected read of {url}"))?;
+        Ok(format!(
+            r#"<xs:schema xmlns:xs="http://www.w3.org/2001/XMLSchema" targetNamespace="urn:ade">
+              <xs:include schemaLocation="n{}.xsd"/>
+            </xs:schema>"#,
+            n + 1
+        )
+        .into_bytes())
+    }
+
+    #[test]
+    fn an_endless_include_chain_stops_at_the_document_budget() {
+        let err = SchemaSet::with_ade_from(
+            &[AdeSource {
+                namespace: "urn:ade".into(),
+                location: "https://example.test/n0.xsd".into(),
+            }],
+            &endless_chain,
+        )
+        .unwrap_err();
+        assert!(err.to_string().contains("more than 256 documents"), "{err}");
+        // The document over the budget is refused before it is read.
+        assert!(err.to_string().contains("n256.xsd"), "{err}");
+    }
+
+    #[test]
+    fn the_byte_budget_covers_the_whole_traversal() {
+        let budget = RemoteBudget {
+            documents: 100,
+            bytes: 1000,
+        };
+        let err = SchemaSet::parse(
+            vec![Location::Remote("https://example.test/n0.xsd".into())],
+            Some(&endless_chain),
+            budget,
+        )
+        .unwrap_err();
+        assert!(err.to_string().contains("more than 1000 bytes"), "{err}");
+    }
+
+    #[test]
+    fn bundled_documents_do_not_count_against_the_budget() {
+        let none = RemoteBudget {
+            documents: 0,
+            bytes: 0,
+        };
+        SchemaSet::parse(core_entry_points(), None, none).unwrap();
+    }
+
+    #[test]
+    fn an_https_network_path_import_is_not_read_from_another_host() {
+        let ade = ADE.replace(
+            r#"<xs:include schemaLocation="part.xsd"/>"#,
+            r#"<xs:import namespace="urn:elsewhere" schemaLocation="//other.test/x.xsd"/>"#,
+        );
+        let ade: &'static str = Box::leak(ade.into_boxed_str());
+        let other = PART.replace("urn:ade", "urn:elsewhere");
+        let other: &'static str = Box::leak(other.into_boxed_str());
+        let read = reader(&[
+            ("https://example.test/ade/ade.xsd", ade),
+            ("https://other.test/x.xsd", other),
+        ]);
+        let err = SchemaSet::with_ade_from(
+            &[AdeSource {
+                namespace: "urn:ade".into(),
+                location: "https://example.test/ade/ade.xsd".into(),
+            }],
+            &read,
+        )
+        .unwrap_err();
+        assert!(matches!(err, SchemaError::MissingImport { .. }), "{err}");
+    }
+
+    #[test]
     fn an_absolute_import_nothing_supplies_is_missing() {
         let ade = ADE.replace(
             r#"<xs:include schemaLocation="part.xsd"/>"#,
@@ -1076,49 +1213,5 @@ mod tests {
         )
         .unwrap_err();
         assert!(err.to_string().contains("urn:wrong"), "{err}");
-    }
-
-    /// The published i-UR `uro` and `urf` schemas of `version`.
-    fn iur_sources(version: &str) -> Vec<AdeSource> {
-        [("uro", "urbanObject"), ("urf", "urbanFunction")]
-            .map(|(prefix, file)| AdeSource {
-                namespace: format!("https://www.geospatial.jp/iur/{prefix}/{version}"),
-                location: format!(
-                    "https://www.geospatial.jp/iur/schemas/{prefix}/{version}/{file}.xsd"
-                ),
-            })
-            .into()
-    }
-
-    #[test]
-    fn a_bundled_ade_is_read_from_the_bundle_and_never_from_the_reader() {
-        let never = |url: &str| -> Result<Vec<u8>, String> { Err(format!("read {url}")) };
-        for version in ["3.0", "3.1", "3.2"] {
-            let set = SchemaSet::with_ade_from(&iur_sources(version), &never)
-                .unwrap_or_else(|e| panic!("i-UR {version}: {e}"));
-            let uro = format!("https://www.geospatial.jp/iur/uro/{version}");
-            let urf = format!("https://www.geospatial.jp/iur/urf/{version}");
-            assert!(
-                set.class_for_element(&QName::new(&uro, "BuildingIDAttribute"))
-                    .is_some(),
-                "i-UR {version}"
-            );
-            // urbanFunction.xsd imports urbanObject.xsd by a relative path,
-            // which resolves inside the bundle too.
-            assert!(
-                set.class_for_element(&QName::new(&urf, "DistrictPlan"))
-                    .is_some(),
-                "i-UR {version}"
-            );
-        }
-    }
-
-    #[test]
-    fn a_bundled_ade_still_checks_its_namespace() {
-        let never = |url: &str| -> Result<Vec<u8>, String> { Err(format!("read {url}")) };
-        let mut sources = iur_sources("3.2");
-        sources[0].namespace = "https://www.geospatial.jp/iur/uro/3.1".into();
-        let err = SchemaSet::with_ade_from(&sources, &never).unwrap_err();
-        assert!(err.to_string().contains("uro/3.1"), "{err}");
     }
 }
