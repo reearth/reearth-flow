@@ -8,6 +8,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/reearth/reearth-flow/api/internal/usecase/interfaces"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
@@ -44,5 +45,22 @@ func TestClient_SetProjectLock_ReportsAServerError(t *testing.T) {
 	c, err := NewClient(Config{ServerURL: server.URL})
 	require.NoError(t, err)
 
-	assert.Error(t, c.SetProjectLock(context.Background(), "proj1", false, time.UnixMilli(1)))
+	err = c.SetProjectLock(context.Background(), "proj1", false, time.UnixMilli(1))
+	require.Error(t, err)
+	assert.NotErrorIs(t, err, interfaces.ErrWebsocketRequestRejected, "a server error may pass")
+}
+
+func TestClient_SetProjectLock_MarksARefusal(t *testing.T) {
+	t.Parallel()
+
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
+		w.WriteHeader(http.StatusUnauthorized)
+	}))
+	defer server.Close()
+
+	c, err := NewClient(Config{ServerURL: server.URL})
+	require.NoError(t, err)
+
+	err = c.SetProjectLock(context.Background(), "proj1", true, time.UnixMilli(1))
+	assert.ErrorIs(t, err, interfaces.ErrWebsocketRequestRejected)
 }

@@ -3,6 +3,7 @@ package interactor
 import (
 	"context"
 	"errors"
+	"fmt"
 	"testing"
 
 	"github.com/reearth/reearth-flow/api/internal/usecase/interfaces"
@@ -69,6 +70,33 @@ func TestProject_Update_RetriesALockSignal(t *testing.T) {
 	_, err := uc.Update(ctx, param)
 	require.NoError(t, err)
 	assert.Len(t, client.lockCalls, 2, "a failed signal is tried again")
+}
+
+func TestProject_Update_BoundsEachLockSignalAttempt(t *testing.T) {
+	t.Parallel()
+
+	uc, client, ctx, param := setupProjectLock(t)
+	client.lockErrs = []error{errors.New("timed out")}
+
+	param.IsLocked = lo.ToPtr(true)
+	_, err := uc.Update(ctx, param)
+	require.NoError(t, err)
+	require.Len(t, client.lockBudgets, 2, "every attempt has a deadline")
+	for _, budget := range client.lockBudgets {
+		assert.LessOrEqual(t, budget, lockSignalAttemptTimeout)
+	}
+}
+
+func TestProject_Update_DoesNotRetryARefusedLockSignal(t *testing.T) {
+	t.Parallel()
+
+	uc, client, ctx, param := setupProjectLock(t)
+	client.lockErrs = []error{fmt.Errorf("%w: 401", interfaces.ErrWebsocketRequestRejected)}
+
+	param.IsLocked = lo.ToPtr(true)
+	_, err := uc.Update(ctx, param)
+	require.NoError(t, err)
+	assert.Len(t, client.lockCalls, 1, "a refusal cannot succeed on a second try")
 }
 
 func TestProject_Update_SavesTheLockWhenTheSignalFails(t *testing.T) {

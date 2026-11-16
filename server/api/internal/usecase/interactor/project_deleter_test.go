@@ -48,6 +48,8 @@ type mockWebsocketClient struct {
 	// lockCalls records SetProjectLock; lockErrs are returned in turn.
 	lockCalls []lockSignal
 	lockErrs  []error
+	// lockBudgets records how long each SetProjectLock call had left.
+	lockBudgets []time.Duration
 }
 
 type lockSignal struct {
@@ -56,8 +58,11 @@ type lockSignal struct {
 	locked    bool
 }
 
-func (m *mockWebsocketClient) SetProjectLock(_ context.Context, docID string, locked bool, changedAt time.Time) error {
+func (m *mockWebsocketClient) SetProjectLock(ctx context.Context, docID string, locked bool, changedAt time.Time) error {
 	m.lockCalls = append(m.lockCalls, lockSignal{docID: docID, locked: locked, changedAt: changedAt})
+	if deadline, ok := ctx.Deadline(); ok {
+		m.lockBudgets = append(m.lockBudgets, time.Until(deadline))
+	}
 	if len(m.lockErrs) == 0 {
 		return nil
 	}

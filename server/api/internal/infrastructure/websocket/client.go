@@ -374,6 +374,9 @@ func (c *Client) SetProjectLock(ctx context.Context, docID string, locked bool, 
 
 	if resp.StatusCode != http.StatusOK {
 		body, _ := io.ReadAll(resp.Body)
+		if resp.StatusCode >= 400 && resp.StatusCode < 500 {
+			return fmt.Errorf("%w: %d %s", interfaces.ErrWebsocketRequestRejected, resp.StatusCode, body)
+		}
 		return fmt.Errorf("server returned non-200 status: %d %s", resp.StatusCode, body)
 	}
 	return nil

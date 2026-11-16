@@ -322,8 +322,12 @@ func (i *Project) Update(ctx context.Context, p interfaces.UpdateProjectParam) (
 }
 
 // lockSignalAttempts bounds how often signalProjectLock tries to reach the
-// websocket server.
-const lockSignalAttempts = 3
+// websocket server, and lockSignalAttemptTimeout how long each try may take,
+// so a websocket server that hangs delays the mutation by seconds at most.
+const (
+	lockSignalAttempts       = 3
+	lockSignalAttemptTimeout = 2 * time.Second
+)
 
 // signalProjectLock tells the websocket server about a committed lock change,
 // so peers already editing the project lose (or regain) write access. New
@@ -333,24 +337,25 @@ func (i *Project) signalProjectLock(ctx context.Context, prj *project.Project) {
 	if i.websocket == nil {
 		return
 	}
-	// The change is committed, so finish signalling it even if the caller leaves.
-	ctx, cancel := context.WithTimeout(context.WithoutCancel(ctx), 30*time.Second)
-	defer cancel()
+	// The change is committed, so a client hanging up does not stop the signal.
+	ctx = context.WithoutCancel(ctx)
+	fail := func(err error) {
+		log.Errorfc(ctx, "project: lock change of %s (locked=%t) did not reach the websocket server, so editors already connected keep their access: %v",
+			prj.ID(), prj.IsLocked(), err)
+	}
 	for attempt := 1; ; attempt++ {
-		err := i.websocket.SetProjectLock(ctx, prj.ID().String(), prj.IsLocked(), prj.UpdatedAt())
+		attemptCtx, cancel := context.WithTimeout(ctx, lockSignalAttemptTimeout)
+		err := i.websocket.SetProjectLock(attemptCtx, prj.ID().String(), prj.IsLocked(), prj.UpdatedAt())
+		cancel()
 		if err == nil {
 			return
 		}
-		if attempt == lockSignalAttempts {
-			log.Errorfc(ctx, "project: could not signal lock change of %s to the websocket server: %v", prj.ID(), err)
+		// A refusal is a configuration problem, such as a wrong API secret.
+		if errors.Is(err, interfaces.ErrWebsocketRequestRejected) || attempt == lockSignalAttempts {
+			fail(err)
 			return
 		}
-		select {
-		case <-ctx.Done():
-			log.Errorfc(ctx, "project: could not signal lock change of %s to the websocket server: %v", prj.ID(), err)
-			return
-		case <-time.After(i.lockSignalBackoff * time.Duration(attempt)):
-		}
+		time.Sleep(i.lockSignalBackoff * time.Duration(attempt))
 	}
 }
 
