@@ -120,6 +120,22 @@ impl Location {
     }
 }
 
+/// How much one schema set may read through its reader: the bundled
+/// CityGML 2.0 set does not count, and a real ADE needs a handful of
+/// documents of a few hundred KB each (i-UR: two, about 400 KB).
+#[derive(Debug, Clone, Copy)]
+struct RemoteBudget {
+    documents: usize,
+    bytes: usize,
+}
+
+impl RemoteBudget {
+    const DEFAULT: Self = Self {
+        documents: 256,
+        bytes: 64 * 1024 * 1024,
+    };
+}
+
 /// Resolve `.` and `..` without touching the file system. A `..` that runs
 /// past the start of a relative path is kept; past the root it stays at the root.
 fn normalize(path: &Path) -> PathBuf {
@@ -188,7 +204,7 @@ impl SchemaSet {
                 .iter()
                 .map(|source| Location::Remote(source.location.clone())),
         );
-        let documents = Self::parse(entries, Some(read))?;
+        let documents = Self::parse(entries, Some(read), RemoteBudget::DEFAULT)?;
         for source in sources {
             let location = Location::Remote(source.location.clone());
             let declared = documents
@@ -281,16 +297,21 @@ impl SchemaSet {
     }
 
     fn load(entries: Vec<Location>, read: Option<Reader>) -> Result<SchemaSet, SchemaError> {
-        let documents = Self::parse(entries, read)?;
+        let documents = Self::parse(entries, read, RemoteBudget::DEFAULT)?;
         Self::compile(documents.into_iter().map(|(_, ast)| ast).collect())
     }
 
     /// Parse `entries` and every document they import, include or redefine,
-    /// each paired with where it was read from.
+    /// each paired with where it was read from. Documents read through `read`
+    /// count against `budget`, so a server that answers every new URL with
+    /// another import cannot keep the traversal going.
     fn parse(
         entries: Vec<Location>,
         read: Option<Reader>,
+        budget: RemoteBudget,
     ) -> Result<Vec<(Location, XsdSchema)>, SchemaError> {
+        let mut remote_documents = 0usize;
+        let mut remote_bytes = 0usize;
         let mut seen = HashSet::new();
         let mut queue: VecDeque<Location> = entries.into();
         let mut schemas = Vec::new();
@@ -301,7 +322,31 @@ impl SchemaSet {
             if !seen.insert(location.clone()) {
                 continue;
             }
-            let ast = parse_xsd_ast(&location.read(read)?).map_err(|e| SchemaError::Parse {
+            let remote = matches!(location, Location::Remote(_));
+            if remote && remote_documents == budget.documents {
+                return Err(SchemaError::Read {
+                    file: location.describe(),
+                    message: format!(
+                        "the ADE schemas import more than {} documents",
+                        budget.documents
+                    ),
+                });
+            }
+            let bytes = location.read(read)?;
+            if remote {
+                remote_documents += 1;
+                remote_bytes += bytes.len();
+                if remote_bytes > budget.bytes {
+                    return Err(SchemaError::Read {
+                        file: location.describe(),
+                        message: format!(
+                            "the ADE schemas import more than {} bytes in all",
+                            budget.bytes
+                        ),
+                    });
+                }
+            }
+            let ast = parse_xsd_ast(&bytes).map_err(|e| SchemaError::Parse {
                 file: location.describe(),
                 message: e.to_string(),
             })?;
@@ -1009,6 +1054,63 @@ mod tests {
         assert!(set
             .global_elements()
             .any(|q| q == &QName::new("urn:ade", "note")));
+    }
+
+    /// Answers every `n<i>.xsd` with a schema that includes `n<i+1>.xsd`, so
+    /// the chain never ends on its own.
+    fn endless_chain(url: &str) -> Result<Vec<u8>, String> {
+        let n: u64 = url
+            .rsplit('/')
+            .next()
+            .and_then(|file| file.strip_prefix('n')?.strip_suffix(".xsd"))
+            .and_then(|n| n.parse().ok())
+            .ok_or_else(|| format!("unexpected read of {url}"))?;
+        Ok(format!(
+            r#"<xs:schema xmlns:xs="http://www.w3.org/2001/XMLSchema" targetNamespace="urn:ade">
+              <xs:include schemaLocation="n{}.xsd"/>
+            </xs:schema>"#,
+            n + 1
+        )
+        .into_bytes())
+    }
+
+    #[test]
+    fn an_endless_include_chain_stops_at_the_document_budget() {
+        let err = SchemaSet::with_ade_from(
+            &[AdeSource {
+                namespace: "urn:ade".into(),
+                location: "https://example.test/n0.xsd".into(),
+            }],
+            &endless_chain,
+        )
+        .unwrap_err();
+        assert!(err.to_string().contains("more than 256 documents"), "{err}");
+        // The document over the budget is refused before it is read.
+        assert!(err.to_string().contains("n256.xsd"), "{err}");
+    }
+
+    #[test]
+    fn the_byte_budget_covers_the_whole_traversal() {
+        let budget = RemoteBudget {
+            documents: 100,
+            bytes: 1000,
+        };
+        let err = SchemaSet::parse(
+            vec![Location::Remote("https://example.test/n0.xsd".into())],
+            Some(&endless_chain),
+            budget,
+        )
+        .unwrap_err();
+        assert!(err.to_string().contains("more than 1000 bytes"), "{err}");
+    }
+
+    #[test]
+    fn bundled_documents_do_not_count_against_the_budget() {
+        let none = RemoteBudget {
+            documents: 0,
+            bytes: 0,
+        };
+        SchemaSet::parse(core_entry_points(), None, none).unwrap();
     }
 
     #[test]
