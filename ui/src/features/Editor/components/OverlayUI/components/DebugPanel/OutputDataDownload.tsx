@@ -13,6 +13,7 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from "@flow/components";
+import { ArchiveNameDialog } from "@flow/features/common";
 import { useArtifactZipDownload } from "@flow/hooks";
 import { useT } from "@flow/lib/i18n";
 import { folderArchiveName, groupArtifactsByFolder } from "@flow/utils";
@@ -22,6 +23,7 @@ import DownloadConfirmDialog from "./DownloadConfirmDialog";
 
 type Props = {
   outputData?: ArtifactFile[];
+  /** Name "Download all" suggests for the archive, without the extension. */
   archiveName: string;
 };
 
@@ -63,23 +65,31 @@ const OutputDataDownload: React.FC<Props> = ({ outputData, archiveName }) => {
     [downloadOne],
   );
 
+  // A ZIP asks for its name instead of confirming a size: a batch has no
+  // single URL to size up front.
+  const [archiveRequest, setArchiveRequest] = useState<{
+    isOpen: boolean;
+    files: ArtifactFile[];
+    defaultName: string;
+  }>({ isOpen: false, files: [], defaultName: "" });
+
   const handleDownloadZip = useCallback(
-    (files: ArtifactFile[], name: string) => {
-      setConfirmDialog({
-        isOpen: true,
-        fileName: t("{{total}} files → {{name}}", {
-          total: files.length,
-          name,
-        }),
-        // A batch has no single URL to size up front.
-        fileUrl: "",
-        onConfirm: () => {
-          downloadAsZip(files, name);
-          setConfirmDialog((prev) => ({ ...prev, isOpen: false }));
-        },
-      });
+    (files: ArtifactFile[], defaultName: string) =>
+      setArchiveRequest({ isOpen: true, files, defaultName }),
+    [],
+  );
+
+  const handleCloseArchiveRequest = useCallback(
+    () => setArchiveRequest((prev) => ({ ...prev, isOpen: false })),
+    [],
+  );
+
+  const handleConfirmArchive = useCallback(
+    (fileName: string) => {
+      handleCloseArchiveRequest();
+      downloadAsZip(archiveRequest.files, fileName);
     },
-    [downloadAsZip, t],
+    [archiveRequest.files, downloadAsZip, handleCloseArchiveRequest],
   );
 
   const handleCancelDownload = useCallback(() => {
@@ -117,7 +127,7 @@ const OutputDataDownload: React.FC<Props> = ({ outputData, archiveName }) => {
               <DropdownMenuItem
                 disabled={isDownloading}
                 onClick={() =>
-                  handleDownloadZip(outputData ?? [], `${archiveName}.zip`)
+                  handleDownloadZip(outputData ?? [], archiveName)
                 }>
                 <FileZipIcon size={16} />
                 {t("Download all as ZIP")}
@@ -133,7 +143,7 @@ const OutputDataDownload: React.FC<Props> = ({ outputData, archiveName }) => {
                   onClick={() =>
                     handleDownloadZip(
                       folder.files,
-                      folderArchiveName(archiveName, folder.path),
+                      folderArchiveName(folder.path),
                     )
                   }>
                   <FileZipIcon size={16} />
@@ -163,6 +173,14 @@ const OutputDataDownload: React.FC<Props> = ({ outputData, archiveName }) => {
         fileUrl={confirmDialog.fileUrl}
         onConfirm={confirmDialog.onConfirm}
         onCancel={handleCancelDownload}
+      />
+
+      <ArchiveNameDialog
+        isOpen={archiveRequest.isOpen}
+        defaultName={archiveRequest.defaultName}
+        fileCount={archiveRequest.files.length}
+        onConfirm={handleConfirmArchive}
+        onCancel={handleCloseArchiveRequest}
       />
     </>
   );
