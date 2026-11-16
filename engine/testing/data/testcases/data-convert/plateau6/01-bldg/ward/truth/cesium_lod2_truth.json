@@ -155,20 +155,7 @@
       "bldg:usage_code": "422",
       "bldg:storeysAboveGround": "3",
       "bldg:storeysBelowGround": "0",
-      "bldg:address": {
-        "core:Address": {
-          "core:xalAddress": {
-            "xAL:Address": {
-              "xAL:Country": {
-                "xAL:NameElement": "日本"
-              },
-              "xAL:Locality": {
-                "xAL:NameElement": "東京都新宿区霞ヶ丘町"
-              }
-            }
-          }
-        }
-      },
+      "bldg:address": "東京都新宿区霞ヶ丘町",
       "bldg:adeOfAbstractBuilding": [
         {
           "uro:BuildingIDAttribute": {
@@ -182,7 +169,6 @@
         {
           "uro:BuildingDetailAttribute": {
             "uro:buildingRoofEdgeArea": 2513.85514,
-            "uro:buildingRoofEdgeArea_uom": "m2",
             "uro:fireproofStructureType": "耐火",
             "uro:fireproofStructureType_code": "1001",
             "uro:urbanPlanType": "都市計画区域",
@@ -197,7 +183,8 @@
             "uro:detailedUsage_code": "1122",
             "uro:specifiedBuildingCoverageRate": "60",
             "uro:specifiedFloorAreaRate": "200",
-            "uro:surveyYear": "2021-01-01"
+            "uro:surveyYear": "2021-01-01",
+            "uro:buildingRoofEdgeArea_uom": "m2"
           }
         }
       ]
