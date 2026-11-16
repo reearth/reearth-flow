@@ -675,7 +675,7 @@ nodes:
           valueAttribute: name
 
   # --- LOD1 face checks ---
-  # The original checks LOD1 planarity against a tighter thickness than the
+  # L11 (planarity): the original checks LOD1 against a tighter thickness than the
   # higher LODs.
   - id: da000000-0000-4000-8000-00000000002b
     name: SurfaceChecksLod1

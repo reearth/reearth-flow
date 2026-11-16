@@ -1,0 +1,37 @@
+{
+  "type": "FeatureCollection",
+  "crs": {
+    "type": "name",
+    "properties": {
+      "name": "urn:ogc:def:crs:EPSG::6677"
+    }
+  },
+  "features": [
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Polygon",
+        "coordinates": [
+          [
+            [-7534.457, -37452.07, 8.404],
+            [-7533.773, -37450.159, 8.4],
+            [-7536.904, -37449.038, 8.4],
+            [-7537.589, -37450.949, 8.4],
+            [-7534.457, -37452.07, 8.404]
+          ]
+        ]
+      },
+      "properties": {
+        "check": "LOD1境界面のエラー",
+        "issue": "NonPlanarSurface",
+        "issueCount": 1,
+        "filename": "53393690_bldg_6697_op.gml",
+        "featureType": "bldg:Building",
+        "gmlId": "bldg_aabdf030-7e6e-401b-b12d-ac52821c1e83",
+        "parentGmlId": null,
+        "rootGmlId": "bldg_aabdf030-7e6e-401b-b12d-ac52821c1e83",
+        "lod": 1
+      }
+    }
+  ]
+}

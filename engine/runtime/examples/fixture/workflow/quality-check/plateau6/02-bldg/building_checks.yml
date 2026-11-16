@@ -634,13 +634,15 @@ nodes:
   # CityGML 3.0 buildings carry their LOD1 geometry as a `lod1Solid`; the
   # LodSplitter routes the per-LOD geometry to the `lod1` port. SurfaceChecks
   # decomposes it and validates each face, emitting the broken ones on `invalidSurface`.
+  # L11 (planarity): LOD1 faces are checked against a tighter thickness than the
+  # higher LODs.
   - id: 3ace9872-a832-406a-8fdb-af97610dd86d
     name: SurfaceChecksLod1
     type: subGraph
     subGraphId: c4000000-0000-4000-8000-000000000000
     with:
       planarityThreshold:
-        maxHeight: 0.03
+        maxHeight: 0.001
 
   # L07 (ClosePairs mode): an L07 row stands for its `issueCount` close pairs; every
   # other row is one error.
