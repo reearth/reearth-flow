@@ -23,11 +23,20 @@ export default ({
   );
   const metadata = useY(yMetadata ?? emptyMetadata);
 
-  // Keep ydoc in sync with server
+  // undefined until the project has loaded, null when it isn't shared.
+  const serverSharingToken = currentProject
+    ? (currentProject.sharedToken ?? null)
+    : undefined;
+
+  // Keep ydoc in sync with server. Every set is a document update, so write
+  // only when the doc disagrees; an unconditional write would change the
+  // document each time the project is opened. A missing key falls back to the
+  // server value below, so it counts as agreeing with an unshared project.
   useEffect(() => {
-    if (!yMetadata) return;
-    yMetadata.set("sharingToken", currentProject?.sharedToken ?? null);
-  }, [yMetadata, currentProject?.sharedToken]);
+    if (!yMetadata || serverSharingToken === undefined) return;
+    if ((yMetadata.get("sharingToken") ?? null) === serverSharingToken) return;
+    yMetadata.set("sharingToken", serverSharingToken);
+  }, [yMetadata, serverSharingToken]);
 
   const sharingToken: string | undefined =
     "sharingToken" in (metadata ?? {})
