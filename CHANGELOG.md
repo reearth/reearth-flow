@@ -2,6 +2,79 @@
 
 All notable changes to this project will be documented in this file.
 
+## 0.1.0-alpha.37 - 2026-11-16
+
+### Server
+
+#### 🚀 Features
+
+- Record who ran a job and expose project authorship to the internal API ([#2691](https://github.com/reearth/reearth-flow/pull/2691)) [`79ec99`](https://github.com/reearth/reearth-flow/commit/79ec99)
+- Add CMS triggers run over the internal API ([#2679](https://github.com/reearth/reearth-flow/pull/2679)) [`09c0a9`](https://github.com/reearth/reearth-flow/commit/09c0a9)
+- Enforce the new Flow plan limits ([#2660](https://github.com/reearth/reearth-flow/pull/2660)) [`51d24e`](https://github.com/reearth/reearth-flow/commit/51d24e)
+
+#### 🔧 Bug Fixes
+
+- Read job logs from per-job redis streams instead of SCAN ([#2634](https://github.com/reearth/reearth-flow/pull/2634)) [`aafa4e`](https://github.com/reearth/reearth-flow/commit/aafa4e)
+- Read back jobs whose run parameters have no project ([#2672](https://github.com/reearth/reearth-flow/pull/2672)) [`845397`](https://github.com/reearth/reearth-flow/commit/845397)
+- Authenticate scheduled trigger runs with Cloud Scheduler OIDC ([#2668](https://github.com/reearth/reearth-flow/pull/2668)) [`347725`](https://github.com/reearth/reearth-flow/commit/347725)
+- Retry refused scheduled trigger runs and show why a run did not start ([#2662](https://github.com/reearth/reearth-flow/pull/2662)) [`5c7681`](https://github.com/reearth/reearth-flow/commit/5c7681)
+
+### api, ui
+
+#### 🚀 Features
+
+- Send error codes for view errors and say when no worker is free ([#2670](https://github.com/reearth/reearth-flow/pull/2670)) [`6ee3f4`](https://github.com/reearth/reearth-flow/commit/6ee3f4)
+
+### engine
+
+#### 🚀 Features
+
+- CityGML Writer zip output and per-feature output paths ([#2684](https://github.com/reearth/reearth-flow/pull/2684)) [`ec6624`](https://github.com/reearth/reearth-flow/commit/ec6624)
+- Align plateau6 L07–L09 and L13 with the new quality spec ([#2680](https://github.com/reearth/reearth-flow/pull/2680)) [`f4f03d`](https://github.com/reearth/reearth-flow/commit/f4f03d)
+- Unify CityGML XML attribute representation ([#2671](https://github.com/reearth/reearth-flow/pull/2671)) [`85cade`](https://github.com/reearth/reearth-flow/commit/85cade)
+- CityGML leaf attributes fix ([#2661](https://github.com/reearth/reearth-flow/pull/2661)) [`7633fa`](https://github.com/reearth/reearth-flow/commit/7633fa)
+- Implement the plateau6 L07 spec change ([#2677](https://github.com/reearth/reearth-flow/pull/2677)) [`ae8179`](https://github.com/reearth/reearth-flow/commit/ae8179)
+- Write CityGML terrain as a valid dem:TINRelief ([#2628](https://github.com/reearth/reearth-flow/pull/2628)) [`38b7eb`](https://github.com/reearth/reearth-flow/commit/38b7eb)
+- Check plateau6 L03 attributes and association roles against the objectlist ([#2669](https://github.com/reearth/reearth-flow/pull/2669)) [`545c5b`](https://github.com/reearth/reearth-flow/commit/545c5b)
+
+#### 🔧 Bug Fixes
+
+- Handle NaN coordinates in the L06 extents check ([#2689](https://github.com/reearth/reearth-flow/pull/2689)) [`5a3104`](https://github.com/reearth/reearth-flow/commit/5a3104)
+- Write relative codeSpace as-is and any valid hoisted attribute in the CityGML Writer ([#2685](https://github.com/reearth/reearth-flow/pull/2685)) [`d0e136`](https://github.com/reearth/reearth-flow/commit/d0e136)
+
+#### 🧪 Testing
+
+- Keep workflow-tests outputs in data&#x2F;results&#x2F;quality-check ([#2673](https://github.com/reearth/reearth-flow/pull/2673)) [`26322f`](https://github.com/reearth/reearth-flow/commit/26322f)
+
+### ui
+
+#### 🚀 Features
+
+- Show who ran a job in the jobs list and job details ([#2692](https://github.com/reearth/reearth-flow/pull/2692)) [`ebf484`](https://github.com/reearth/reearth-flow/commit/ebf484)
+- Add new restriction policies ([#2674](https://github.com/reearth/reearth-flow/pull/2674)) [`09081a`](https://github.com/reearth/reearth-flow/commit/09081a)
+- Show a debug run summary and require unique workflow variable names ([#2675](https://github.com/reearth/reearth-flow/pull/2675)) [`53d163`](https://github.com/reearth/reearth-flow/commit/53d163)
+
+#### 🔧 Bug Fixes
+
+- Stop the project lifecycle e2e from leaking projects ([#2681](https://github.com/reearth/reearth-flow/pull/2681)) [`c850c3`](https://github.com/reearth/reearth-flow/commit/c850c3)
+- Remove dead Value Editor and fix FlowExpr editor insertions ([#2688](https://github.com/reearth/reearth-flow/pull/2688)) [`0d3b9a`](https://github.com/reearth/reearth-flow/commit/0d3b9a)
+- Debug run staleness, finished-run logs, and status tooltip ([#2682](https://github.com/reearth/reearth-flow/pull/2682)) [`1e88ba`](https://github.com/reearth/reearth-flow/commit/1e88ba)
+
+#### Miscellaneous Tasks
+
+- Vite package update ([#2678](https://github.com/reearth/reearth-flow/pull/2678)) [`9100e8`](https://github.com/reearth/reearth-flow/commit/9100e8)
+
+### ui, server
+
+#### 🚀 Features
+
+- Show user profile pictures ([#2695](https://github.com/reearth/reearth-flow/pull/2695)) [`3142f6`](https://github.com/reearth/reearth-flow/commit/3142f6)
+
+#### 🔧 Bug Fixes
+
+- Keep workflow variable values and names intact from save to run ([#2690](https://github.com/reearth/reearth-flow/pull/2690)) [`c855bc`](https://github.com/reearth/reearth-flow/commit/c855bc)
+- Deployment, job and trigger error handling and display ([#2683](https://github.com/reearth/reearth-flow/pull/2683)) [`bbfca6`](https://github.com/reearth/reearth-flow/commit/bbfca6)
+
 ## 0.1.0-alpha.36 - 2026-11-09
 
 ### Server
