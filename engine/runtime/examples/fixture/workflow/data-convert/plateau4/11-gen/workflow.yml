@@ -291,7 +291,7 @@ graphs:
             if city_gml.ends_with(suffix) {
               city_gml = city_gml.sub_string(0, city_gml.len() - suffix.len());
             }
-            file::join_path(artifact, city_gml + "_gen_" + gml_name_code + "_3dtiles_lod" + lod + ".zip")
+            file::join_path(artifact, city_gml + "_gen_" + gml_name_code + "_3dtiles_lod" + lod + "_jgd2024.zip")
 
     edges:
       # FeatureCreator -> FolderAndFilePathReader

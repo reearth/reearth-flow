@@ -669,9 +669,9 @@ graphs:
             }
 
             if env.get("__value").baseCityCode == city_code {
-              file::join_path(artifact, city_gml + "_bldg_3dtiles_lod1.zip")
+              file::join_path(artifact, city_gml + "_bldg_3dtiles_lod1_jgd2024.zip")
             } else {
-              file::join_path(artifact, city_gml + "_bldg_3dtiles_" + city_code + "_" + env.get("__value").cityNameEn + "_lod1.zip")
+              file::join_path(artifact, city_gml + "_bldg_3dtiles_" + city_code + "_" + env.get("__value").cityNameEn + "_lod1_jgd2024.zip")
             }
 
       # LOD1 and LOD2 go full only when they are the highest LOD in the city_code group; LOD3 is always full
@@ -725,9 +725,9 @@ graphs:
             }
 
             if env.get("__value").baseCityCode == city_code {
-              file::join_path(artifact, city_gml + "_bldg_3dtiles_lod1_full.zip")
+              file::join_path(artifact, city_gml + "_bldg_3dtiles_lod1_jgd2024_full.zip")
             } else {
-              file::join_path(artifact, city_gml + "_bldg_3dtiles_" + city_code + "_" + env.get("__value").cityNameEn + "_lod1_full.zip")
+              file::join_path(artifact, city_gml + "_bldg_3dtiles_" + city_code + "_" + env.get("__value").cityNameEn + "_lod1_jgd2024_full.zip")
             }
 
       - id: a61799d5-176e-4fb9-aa64-5d350adf0bb8
@@ -757,9 +757,9 @@ graphs:
             }
 
             if env.get("__value").baseCityCode == city_code {
-              file::join_path(artifact, city_gml + "_bldg_3dtiles_lod2.zip")
+              file::join_path(artifact, city_gml + "_bldg_3dtiles_lod2_jgd2024.zip")
             } else {
-              file::join_path(artifact, city_gml + "_bldg_3dtiles_" + city_code + "_" + env.get("__value").cityNameEn + "_lod2.zip")
+              file::join_path(artifact, city_gml + "_bldg_3dtiles_" + city_code + "_" + env.get("__value").cityNameEn + "_lod2_jgd2024.zip")
             }
 
       - id: a3b277b6-033d-4045-9ecd-1a1cb1556934
@@ -789,9 +789,9 @@ graphs:
             }
 
             if env.get("__value").baseCityCode == city_code {
-              file::join_path(artifact, city_gml + "_bldg_3dtiles_lod2_full.zip")
+              file::join_path(artifact, city_gml + "_bldg_3dtiles_lod2_jgd2024_full.zip")
             } else {
-              file::join_path(artifact, city_gml + "_bldg_3dtiles_" + city_code + "_" + env.get("__value").cityNameEn + "_lod2_full.zip")
+              file::join_path(artifact, city_gml + "_bldg_3dtiles_" + city_code + "_" + env.get("__value").cityNameEn + "_lod2_jgd2024_full.zip")
             }
 
       - id: fc4c3817-6efe-4d6e-8e82-ebd84d5e6e19
@@ -821,9 +821,9 @@ graphs:
             }
 
             if env.get("__value").baseCityCode == city_code {
-              file::join_path(artifact, city_gml + "_bldg_3dtiles_lod2_no_texture.zip")
+              file::join_path(artifact, city_gml + "_bldg_3dtiles_lod2_no_texture_jgd2024.zip")
             } else {
-              file::join_path(artifact, city_gml + "_bldg_3dtiles_" + city_code + "_" + env.get("__value").cityNameEn + "_lod2_no_texture.zip")
+              file::join_path(artifact, city_gml + "_bldg_3dtiles_" + city_code + "_" + env.get("__value").cityNameEn + "_lod2_no_texture_jgd2024.zip")
             }
 
       - id: be688cbc-7c6a-4807-bc92-ef9ad287356a
@@ -853,9 +853,9 @@ graphs:
             }
 
             if env.get("__value").baseCityCode == city_code {
-              file::join_path(artifact, city_gml + "_bldg_3dtiles_lod3_full.zip")
+              file::join_path(artifact, city_gml + "_bldg_3dtiles_lod3_jgd2024_full.zip")
             } else {
-              file::join_path(artifact, city_gml + "_bldg_3dtiles_" + city_code + "_" + env.get("__value").cityNameEn + "_lod3_full.zip")
+              file::join_path(artifact, city_gml + "_bldg_3dtiles_" + city_code + "_" + env.get("__value").cityNameEn + "_lod3_jgd2024_full.zip")
             }
 
       - id: 990ff798-168a-496e-a20a-b428de6a9ec0
@@ -885,9 +885,9 @@ graphs:
             }
 
             if env.get("__value").baseCityCode == city_code {
-              file::join_path(artifact, city_gml + "_bldg_3dtiles_lod3_no_texture.zip")
+              file::join_path(artifact, city_gml + "_bldg_3dtiles_lod3_no_texture_jgd2024.zip")
             } else {
-              file::join_path(artifact, city_gml + "_bldg_3dtiles_" + city_code + "_" + env.get("__value").cityNameEn + "_lod3_no_texture.zip")
+              file::join_path(artifact, city_gml + "_bldg_3dtiles_" + city_code + "_" + env.get("__value").cityNameEn + "_lod3_no_texture_jgd2024.zip")
             }
 
       - id: 3c3da34a-2284-44eb-ab37-23b507a65ece
@@ -917,9 +917,9 @@ graphs:
             }
 
             if env.get("__value").baseCityCode == city_code {
-              file::join_path(artifact, city_gml + "_bldg_3dtiles_lod4_full.zip")
+              file::join_path(artifact, city_gml + "_bldg_3dtiles_lod4_jgd2024_full.zip")
             } else {
-              file::join_path(artifact, city_gml + "_bldg_3dtiles_" + city_code + "_" + env.get("__value").cityNameEn + "_lod4_full.zip")
+              file::join_path(artifact, city_gml + "_bldg_3dtiles_" + city_code + "_" + env.get("__value").cityNameEn + "_lod4_jgd2024_full.zip")
             }
 
       - id: 3dfe09e6-0de5-4ba6-ac84-8dd4d2e94638
@@ -949,9 +949,9 @@ graphs:
             }
 
             if env.get("__value").baseCityCode == city_code {
-              file::join_path(artifact, city_gml + "_bldg_3dtiles_lod4_no_texture.zip")
+              file::join_path(artifact, city_gml + "_bldg_3dtiles_lod4_no_texture_jgd2024.zip")
             } else {
-              file::join_path(artifact, city_gml + "_bldg_3dtiles_" + city_code + "_" + env.get("__value").cityNameEn + "_lod4_no_texture.zip")
+              file::join_path(artifact, city_gml + "_bldg_3dtiles_" + city_code + "_" + env.get("__value").cityNameEn + "_lod4_no_texture_jgd2024.zip")
             }
 
     edges:

@@ -1134,9 +1134,9 @@ graphs:
         }
 
         if env.get("__value").baseCityCode == city_code {
-          file::join_path(artifact, city_gml + "_bldg_3dtiles_lod1.zip")
+          file::join_path(artifact, city_gml + "_bldg_3dtiles_lod1_jgd2024.zip")
         } else {
-          file::join_path(artifact, city_gml + "_bldg_3dtiles_" + city_code + "_" + env.get("__value").cityNameEn + "_lod1.zip")
+          file::join_path(artifact, city_gml + "_bldg_3dtiles_" + city_code + "_" + env.get("__value").cityNameEn + "_lod1_jgd2024.zip")
         }
   - id: 039eef98-c560-4235-bd97-c28537a15494
     name: HighestLodRouterByLod1
@@ -1186,9 +1186,9 @@ graphs:
         }
 
         if env.get("__value").baseCityCode == city_code {
-          file::join_path(artifact, city_gml + "_bldg_3dtiles_lod1_full.zip")
+          file::join_path(artifact, city_gml + "_bldg_3dtiles_lod1_jgd2024_full.zip")
         } else {
-          file::join_path(artifact, city_gml + "_bldg_3dtiles_" + city_code + "_" + env.get("__value").cityNameEn + "_lod1_full.zip")
+          file::join_path(artifact, city_gml + "_bldg_3dtiles_" + city_code + "_" + env.get("__value").cityNameEn + "_lod1_jgd2024_full.zip")
         }
   - id: a61799d5-176e-4fb9-aa64-5d350adf0bb8
     name: cesium3DTilesWriterByLod2
@@ -1217,9 +1217,9 @@ graphs:
         }
 
         if env.get("__value").baseCityCode == city_code {
-          file::join_path(artifact, city_gml + "_bldg_3dtiles_lod2.zip")
+          file::join_path(artifact, city_gml + "_bldg_3dtiles_lod2_jgd2024.zip")
         } else {
-          file::join_path(artifact, city_gml + "_bldg_3dtiles_" + city_code + "_" + env.get("__value").cityNameEn + "_lod2.zip")
+          file::join_path(artifact, city_gml + "_bldg_3dtiles_" + city_code + "_" + env.get("__value").cityNameEn + "_lod2_jgd2024.zip")
         }
   - id: a3b277b6-033d-4045-9ecd-1a1cb1556934
     name: cesium3DTilesWriterByLod2Full
@@ -1248,9 +1248,9 @@ graphs:
         }
 
         if env.get("__value").baseCityCode == city_code {
-          file::join_path(artifact, city_gml + "_bldg_3dtiles_lod2_full.zip")
+          file::join_path(artifact, city_gml + "_bldg_3dtiles_lod2_jgd2024_full.zip")
         } else {
-          file::join_path(artifact, city_gml + "_bldg_3dtiles_" + city_code + "_" + env.get("__value").cityNameEn + "_lod2_full.zip")
+          file::join_path(artifact, city_gml + "_bldg_3dtiles_" + city_code + "_" + env.get("__value").cityNameEn + "_lod2_jgd2024_full.zip")
         }
   - id: fc4c3817-6efe-4d6e-8e82-ebd84d5e6e19
     name: cesium3DTilesWriterByLod2NoTexture
@@ -1279,9 +1279,9 @@ graphs:
         }
 
         if env.get("__value").baseCityCode == city_code {
-          file::join_path(artifact, city_gml + "_bldg_3dtiles_lod2_no_texture.zip")
+          file::join_path(artifact, city_gml + "_bldg_3dtiles_lod2_no_texture_jgd2024.zip")
         } else {
-          file::join_path(artifact, city_gml + "_bldg_3dtiles_" + city_code + "_" + env.get("__value").cityNameEn + "_lod2_no_texture.zip")
+          file::join_path(artifact, city_gml + "_bldg_3dtiles_" + city_code + "_" + env.get("__value").cityNameEn + "_lod2_no_texture_jgd2024.zip")
         }
   - id: be688cbc-7c6a-4807-bc92-ef9ad287356a
     name: cesium3DTilesWriterByLod3Full
@@ -1310,9 +1310,9 @@ graphs:
         }
 
         if env.get("__value").baseCityCode == city_code {
-          file::join_path(artifact, city_gml + "_bldg_3dtiles_lod3_full.zip")
+          file::join_path(artifact, city_gml + "_bldg_3dtiles_lod3_jgd2024_full.zip")
         } else {
-          file::join_path(artifact, city_gml + "_bldg_3dtiles_" + city_code + "_" + env.get("__value").cityNameEn + "_lod3_full.zip")
+          file::join_path(artifact, city_gml + "_bldg_3dtiles_" + city_code + "_" + env.get("__value").cityNameEn + "_lod3_jgd2024_full.zip")
         }
   - id: 990ff798-168a-496e-a20a-b428de6a9ec0
     name: cesium3DTilesWriterByLod3NoTexture
@@ -1341,9 +1341,9 @@ graphs:
         }
 
         if env.get("__value").baseCityCode == city_code {
-          file::join_path(artifact, city_gml + "_bldg_3dtiles_lod3_no_texture.zip")
+          file::join_path(artifact, city_gml + "_bldg_3dtiles_lod3_no_texture_jgd2024.zip")
         } else {
-          file::join_path(artifact, city_gml + "_bldg_3dtiles_" + city_code + "_" + env.get("__value").cityNameEn + "_lod3_no_texture.zip")
+          file::join_path(artifact, city_gml + "_bldg_3dtiles_" + city_code + "_" + env.get("__value").cityNameEn + "_lod3_no_texture_jgd2024.zip")
         }
   - id: 3c3da34a-2284-44eb-ab37-23b507a65ece
     name: cesium3DTilesWriterByLod4Full
@@ -1372,9 +1372,9 @@ graphs:
         }
 
         if env.get("__value").baseCityCode == city_code {
-          file::join_path(artifact, city_gml + "_bldg_3dtiles_lod4_full.zip")
+          file::join_path(artifact, city_gml + "_bldg_3dtiles_lod4_jgd2024_full.zip")
         } else {
-          file::join_path(artifact, city_gml + "_bldg_3dtiles_" + city_code + "_" + env.get("__value").cityNameEn + "_lod4_full.zip")
+          file::join_path(artifact, city_gml + "_bldg_3dtiles_" + city_code + "_" + env.get("__value").cityNameEn + "_lod4_jgd2024_full.zip")
         }
   - id: 3dfe09e6-0de5-4ba6-ac84-8dd4d2e94638
     name: cesium3DTilesWriterByLod4NoTexture
@@ -1403,9 +1403,9 @@ graphs:
         }
 
         if env.get("__value").baseCityCode == city_code {
-          file::join_path(artifact, city_gml + "_bldg_3dtiles_lod4_no_texture.zip")
+          file::join_path(artifact, city_gml + "_bldg_3dtiles_lod4_no_texture_jgd2024.zip")
         } else {
-          file::join_path(artifact, city_gml + "_bldg_3dtiles_" + city_code + "_" + env.get("__value").cityNameEn + "_lod4_no_texture.zip")
+          file::join_path(artifact, city_gml + "_bldg_3dtiles_" + city_code + "_" + env.get("__value").cityNameEn + "_lod4_no_texture_jgd2024.zip")
         }
   edges:
   - id: 5ebf24ab-1d98-49d5-8f58-eb7c18d27244

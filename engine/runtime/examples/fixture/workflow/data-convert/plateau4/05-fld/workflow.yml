@@ -301,7 +301,7 @@ graphs:
             udx_dirs.replace("/", "_");
             file::join_path(env.get("workerArtifactPath"), udx_dirs + "_no_texture")
           # example udxDirs: "fld/pref/oyabegawa_gandogawa"
-          # example output: "${workerArtifactPath}/16202_takaoka-shi_city_2024_citygml_1_op_fld_pref_oyabegawa_gandogawa_3dtiles_l2_no_texture.zip"
+          # example output: "${workerArtifactPath}/16202_takaoka-shi_city_2024_citygml_1_op_fld_pref_oyabegawa_gandogawa_3dtiles_l2_no_texture_jgd2024.zip"
           compressOutput: |
             let artifact = env.get("workerArtifactPath");
             let citygml = file::extract_filename_without_ext(env.get("cityGmlPath"));
@@ -314,7 +314,7 @@ graphs:
             if scale != "" {
               scale = "_" + scale;
             }
-            file::join_path(artifact, citygml + "_op_" + udx_dirs + "_3dtiles" + scale + "_no_texture.zip")
+            file::join_path(artifact, citygml + "_op_" + udx_dirs + "_3dtiles" + scale + "_no_texture_jgd2024.zip")
 
       # Dictionary.json output branch
       - id: 739c7093-63e5-43b8-a1b1-1eeae82f3de1

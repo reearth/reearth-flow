@@ -261,7 +261,7 @@ graphs:
             if city_gml.ends_with(suffix) {
               city_gml = city_gml.sub_string(0, city_gml.len() - suffix.len());
             }
-            file::join_path(artifact, city_gml + "_frn_3dtiles_lod" + lod + ".zip")
+            file::join_path(artifact, city_gml + "_frn_3dtiles_lod" + lod + "_jgd2024.zip")
 
       - id: 1137c768-ea24-4cf2-bd16-b8f82d9a67d0
         name: AttributeManagerByDmGeometricAttributeFrn
@@ -506,7 +506,7 @@ graphs:
             if city_gml.ends_with(suffix) {
               city_gml = city_gml.sub_string(0, city_gml.len() - suffix.len());
             }
-            file::join_path(artifact, city_gml + "_veg_SolitaryVegetationObject_3dtiles_lod" + lod + ".zip")
+            file::join_path(artifact, city_gml + "_veg_SolitaryVegetationObject_3dtiles_lod" + lod + "_jgd2024.zip")
 
       - id: 591050d4-8284-4708-a3e3-0bcb99bbd83c
         name: AttributeManagerByDmGeometricAttributeVeg1
@@ -742,7 +742,7 @@ graphs:
             if city_gml.ends_with(suffix) {
               city_gml = city_gml.sub_string(0, city_gml.len() - suffix.len());
             }
-            file::join_path(artifact, city_gml + "_veg_PlantCover_3dtiles_lod" + lod + ".zip")
+            file::join_path(artifact, city_gml + "_veg_PlantCover_3dtiles_lod" + lod + "_jgd2024.zip")
 
       - id: aa9b681b-0cc1-4445-bff6-be41bb9c764f
         name: AttributeManagerByDmGeometricAttributeVeg2

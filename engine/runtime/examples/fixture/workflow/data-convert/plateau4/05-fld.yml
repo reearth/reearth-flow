@@ -384,7 +384,7 @@ graphs:
         if scale != "" {
           scale = "_" + scale;
         }
-        file::join_path(artifact, citygml + "_op_" + udx_dirs + "_3dtiles" + scale + "_no_texture.zip")
+        file::join_path(artifact, citygml + "_op_" + udx_dirs + "_3dtiles" + scale + "_no_texture_jgd2024.zip")
   - id: 739c7093-63e5-43b8-a1b1-1eeae82f3de1
     name: CreateDictionaryNameDict
     type: action
