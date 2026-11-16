@@ -13,7 +13,7 @@ generate_truth = false
 ".attributes" = "json"
 
 [convs.cesium_attributes.lod2]
-path = "22213_kakegawa-shi_city_2023_citygml_3_op_bldg_3dtiles_lod2_full_attributes"
+path = "22213_kakegawa-shi_city_2023_citygml_3_op_bldg_3dtiles_lod2_full"
 truth_path = "cesium_lod2_truth.json"
 generate_truth = false
 

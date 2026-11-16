@@ -3383,6 +3383,17 @@ Filters features by Level of Detail (LOD), routing them to appropriate output po
           "$ref": "#/definitions/Attribute"
         }
       ]
+    },
+    "maxLodAttribute": {
+      "description": "Attribute that receives the highest LOD in the feature's group",
+      "anyOf": [
+        {
+          "$ref": "#/definitions/Attribute"
+        },
+        {
+          "type": "null"
+        }
+      ]
     }
   },
   "definitions": {

@@ -177,7 +177,10 @@ where
     );
 }
 
-/// Drops each flow output `X` whose truth exists only as `X_full_attributes`,
+/// Suffixes of full-attribute outputs: `_full` for bldg, `_full_attributes` for luse/lsld.
+const FULL_OUTPUT_SUFFIXES: &[&str] = &["_full", "_full_attributes"];
+
+/// Drops each flow output `X` whose truth exists only as a full-attribute variant of `X`,
 /// so flat outputs without their own truth are not compared.
 fn remove_flat_outputs_without_truth(truth_extracted_dir: &Path, flow_extracted_dir: &Path) {
     let Ok(entries) = fs::read_dir(flow_extracted_dir) else {
@@ -186,9 +189,9 @@ fn remove_flat_outputs_without_truth(truth_extracted_dir: &Path, flow_extracted_
     for entry in entries.filter_map(|e| e.ok()) {
         let name = entry.file_name().to_string_lossy().to_string();
         if !truth_extracted_dir.join(&name).exists()
-            && truth_extracted_dir
-                .join(format!("{name}_full_attributes"))
-                .exists()
+            && FULL_OUTPUT_SUFFIXES
+                .iter()
+                .any(|suffix| truth_extracted_dir.join(format!("{name}{suffix}")).exists())
         {
             let _ = fs::remove_dir_all(entry.path());
         }
