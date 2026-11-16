@@ -343,6 +343,42 @@ func (c *Client) FlushToGCS(ctx context.Context, id string) error {
 	return nil
 }
 
+type setProjectLockRequest struct {
+	Locked    bool  `json:"locked"`
+	ChangedAt int64 `json:"changedAt"`
+}
+
+func (c *Client) SetProjectLock(ctx context.Context, docID string, locked bool, changedAt time.Time) error {
+	url := fmt.Sprintf("%s/api/document/%s/lock", c.config.ServerURL, docID)
+
+	body, err := json.Marshal(setProjectLockRequest{Locked: locked, ChangedAt: changedAt.UnixMilli()})
+	if err != nil {
+		return fmt.Errorf("failed to marshal request: %w", err)
+	}
+	req, err := http.NewRequestWithContext(ctx, http.MethodPost, url, bytes.NewReader(body))
+	if err != nil {
+		return fmt.Errorf("failed to create request: %w", err)
+	}
+	req.Header.Set("Content-Type", "application/json")
+	c.setCommonHeaders(req)
+
+	resp, err := c.client.Do(req)
+	if err != nil {
+		return fmt.Errorf("failed to set project lock: %w", err)
+	}
+	defer func(Body io.ReadCloser) {
+		if err := Body.Close(); err != nil {
+			log.Warnf("failed to close response body: %v", err)
+		}
+	}(resp.Body)
+
+	if resp.StatusCode != http.StatusOK {
+		body, _ := io.ReadAll(resp.Body)
+		return fmt.Errorf("server returned non-200 status: %d %s", resp.StatusCode, body)
+	}
+	return nil
+}
+
 func (c *Client) CreateSnapshot(ctx context.Context, docID string, version int, name string) (*websocket.Document, error) {
 	url := fmt.Sprintf("%s/api/document/snapshot", c.config.ServerURL)
 

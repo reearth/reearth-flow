@@ -2,6 +2,7 @@ package interfaces
 
 import (
 	"context"
+	"time"
 
 	"github.com/reearth/reearth-flow/api/pkg/websocket"
 )
@@ -20,6 +21,10 @@ type WebsocketClient interface {
 	CopyDocument(ctx context.Context, docID string, source string) error
 	ImportDocument(ctx context.Context, docID string, data []byte) error
 	DeleteDocument(ctx context.Context, docID string) error
+	// SetProjectLock tells the websocket server the project was locked or
+	// unlocked at changedAt, so peers already editing it lose or regain write
+	// access.
+	SetProjectLock(ctx context.Context, docID string, locked bool, changedAt time.Time) error
 
 	Close() error
 }

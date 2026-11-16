@@ -40,6 +40,8 @@ type Project struct {
 	permissionChecker gateway.PermissionChecker
 	policyChecker     gateway.PolicyChecker
 	planLimits        planLimits
+	// lockSignalBackoff spaces the retries of signalProjectLock.
+	lockSignalBackoff time.Duration
 }
 
 func NewProject(r *repo.Container, gr *gateway.Container, jobUsecase interfaces.Job, permissionChecker gateway.PermissionChecker, workspaceRepo gqlworkspace.WorkspaceRepo, websocket interfaces.WebsocketClient) interfaces.Project {
@@ -59,6 +61,7 @@ func NewProject(r *repo.Container, gr *gateway.Container, jobUsecase interfaces.
 		permissionChecker: permissionChecker,
 		policyChecker:     gr.PolicyChecker,
 		planLimits:        newPlanLimits(r, gr, jobUsecase),
+		lockSignalBackoff: 200 * time.Millisecond,
 	}
 }
 
@@ -246,6 +249,7 @@ func (i *Project) Update(ctx context.Context, p interfaces.UpdateProjectParam) (
 	}
 
 	var prj *project.Project
+	var lockChanged bool
 	if err := i.transaction.WithinTransaction(ctx, func(ctx context.Context) error {
 		var err error
 		prj, err = i.projectRepo.FindByID(ctx, p.ID)
@@ -278,6 +282,7 @@ func (i *Project) Update(ctx context.Context, p interfaces.UpdateProjectParam) (
 			prj.SetIsBasicAuthActive(*p.IsBasicAuthActive)
 		}
 		if p.IsLocked != nil {
+			lockChanged = prj.IsLocked() != *p.IsLocked
 			prj.SetIsLocked(*p.IsLocked)
 		}
 		if p.BasicAuthUsername != nil {
@@ -310,7 +315,43 @@ func (i *Project) Update(ctx context.Context, p interfaces.UpdateProjectParam) (
 	}); err != nil {
 		return nil, err
 	}
+	if lockChanged {
+		i.signalProjectLock(ctx, prj)
+	}
 	return prj, nil
+}
+
+// lockSignalAttempts bounds how often signalProjectLock tries to reach the
+// websocket server.
+const lockSignalAttempts = 3
+
+// signalProjectLock tells the websocket server about a committed lock change,
+// so peers already editing the project lose (or regain) write access. New
+// connections are checked against the saved project anyway, so a failure is
+// logged rather than returned: the lock itself is saved.
+func (i *Project) signalProjectLock(ctx context.Context, prj *project.Project) {
+	if i.websocket == nil {
+		return
+	}
+	// The change is committed, so finish signalling it even if the caller leaves.
+	ctx, cancel := context.WithTimeout(context.WithoutCancel(ctx), 30*time.Second)
+	defer cancel()
+	for attempt := 1; ; attempt++ {
+		err := i.websocket.SetProjectLock(ctx, prj.ID().String(), prj.IsLocked(), prj.UpdatedAt())
+		if err == nil {
+			return
+		}
+		if attempt == lockSignalAttempts {
+			log.Errorfc(ctx, "project: could not signal lock change of %s to the websocket server: %v", prj.ID(), err)
+			return
+		}
+		select {
+		case <-ctx.Done():
+			log.Errorfc(ctx, "project: could not signal lock change of %s to the websocket server: %v", prj.ID(), err)
+			return
+		case <-time.After(i.lockSignalBackoff * time.Duration(attempt)):
+		}
+	}
 }
 
 // callerID is the signed-in user's ID, or nil when the call has no user.
