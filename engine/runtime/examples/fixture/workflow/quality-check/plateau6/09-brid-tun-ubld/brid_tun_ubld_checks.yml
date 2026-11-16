@@ -1,8 +1,8 @@
 # PLATEAU6 (CityGML 3.0 + i-UR 4.0) quality-check 09-brid-tun-ubld sub-graph.
 # Runs the bridge / tunnel / underground building checks over every GML in the
 # archive: the LOD0 face checks (validity, orientation, overlaps between faces),
-# the per-face validity and orientation checks of LOD1 and of LOD2 and above,
-# and the shell-level solid checks, plus the per feature-type instance count the result
+# the per-face validity checks of LOD1 and of LOD2 and above, and the
+# shell-level solid checks, plus the per feature-type instance count the result
 # sheet reports alongside them.
 #
 # Every count takes part in totalErrorCount, so any finding suppresses qc_result_ok.
@@ -292,7 +292,7 @@ nodes:
       writeCrs: true
 
   - id: da000000-0000-4000-8000-000000000013
-    name: OrientationAttributeMapper
+    name: Lod0OrientationAttributeMapper
     type: action
     action: Attribute Mapper
     with:
@@ -320,7 +320,7 @@ nodes:
           valueAttribute: issue
 
   - id: da000000-0000-4000-8000-000000000014
-    name: OrientationCsvWriter
+    name: Lod0OrientationCsvWriter
     type: action
     action: Feature Writer
     with:
@@ -329,14 +329,10 @@ nodes:
       output:
         type: flowExpr
         value: |
-          lod = str(attributes["LOD"]);
-          name = "_LOD2以上境界面の向き不正.csv";
-          if lod == "0" { name = "_LOD0面の向き不正.csv"; }
-          if lod == "1" { name = "_LOD1境界面の向き不正.csv"; }
-          variables["packagePrefixes"][attributes["Folder"]] + name
+          variables["packagePrefixes"][attributes["Folder"]] + "_LOD0面の向き不正.csv"
 
   - id: da000000-0000-4000-8000-000000000015
-    name: OrientationAttributeMapperGeoJson
+    name: Lod0OrientationAttributeMapperGeoJson
     type: action
     action: Attribute Mapper
     with:
@@ -363,18 +359,14 @@ nodes:
           valueAttribute: issueCount
 
   - id: da000000-0000-4000-8000-000000000016
-    name: OrientationGeoJsonWriter
+    name: Lod0OrientationGeoJsonWriter
     type: action
     action: Feature GeoJSON Writer
     with:
       output:
         type: flowExpr
         value: |
-          lod = str(attributes["lod"]);
-          name = "_LOD2以上境界面の向き不正.geojson";
-          if lod == "0" { name = "_LOD0面の向き不正.geojson"; }
-          if lod == "1" { name = "_LOD1境界面の向き不正.geojson"; }
-          "error_geometry/" + variables["packagePrefixes"][attributes["folder"]] + name
+          "error_geometry/" + variables["packagePrefixes"][attributes["folder"]] + "_LOD0面の向き不正.geojson"
       writeCrs: true
 
   # --- LOD0 face overlaps ---
@@ -1371,7 +1363,7 @@ nodes:
             value: attributes["エラー数"]
 
   - id: da000000-0000-4000-8000-000000000054
-    name: OrientationErrorCounter
+    name: Lod0OrientationErrorCounter
     type: action
     action: Statistics Calculator
     with:
@@ -1382,31 +1374,7 @@ nodes:
         - newAttribute: _num_lod0_orientation
           expr:
             type: flowExpr
-            value: |
-              n = 0;
-              if str(attributes["LOD"]) == "0" { n = 1; }
-              n
-        - newAttribute: _num_lod1_orientation
-          expr:
-            type: flowExpr
-            value: |
-              n = 0;
-              if str(attributes["LOD"]) == "1" { n = 1; }
-              n
-        - newAttribute: _num_lod2_orientation
-          expr:
-            type: flowExpr
-            value: |
-              n = 0;
-              if str(attributes["LOD"]) == "2" { n = 1; }
-              n
-        - newAttribute: _num_lod3_orientation
-          expr:
-            type: flowExpr
-            value: |
-              n = 0;
-              if str(attributes["LOD"]) == "3" { n = 1; }
-              n
+            value: "1"
 
   - id: da000000-0000-4000-8000-000000000055
     name: Lod0IntersectionErrorCounter
@@ -1564,10 +1532,6 @@ nodes:
           expr:
             type: flowExpr
             value: attributes.get("_num_lod1_surface", 0)
-        - attribute: "LOD1 境界面の向き不正"
-          expr:
-            type: flowExpr
-            value: attributes.get("_num_lod1_orientation", 0)
         - attribute: "LOD1 非水密立体"
           expr:
             type: flowExpr
@@ -1580,10 +1544,6 @@ nodes:
           expr:
             type: flowExpr
             value: attributes.get("_num_lod2_surface", 0)
-        - attribute: "LOD2 境界面の向き不正"
-          expr:
-            type: flowExpr
-            value: attributes.get("_num_lod2_orientation", 0)
         - attribute: "LOD2 非水密立体"
           expr:
             type: flowExpr
@@ -1596,10 +1556,6 @@ nodes:
           expr:
             type: flowExpr
             value: attributes.get("_num_lod3_surface", 0)
-        - attribute: "LOD3 境界面の向き不正"
-          expr:
-            type: flowExpr
-            value: attributes.get("_num_lod3_orientation", 0)
         - attribute: "LOD3 非水密立体"
           expr:
             type: flowExpr
@@ -1646,10 +1602,6 @@ nodes:
           expr:
             type: flowExpr
             value: attributes.get("LOD1 境界面のエラー", 0)
-        - newAttribute: "LOD1 境界面の向き不正"
-          expr:
-            type: flowExpr
-            value: attributes.get("LOD1 境界面の向き不正", 0)
         - newAttribute: "LOD1 非水密立体"
           expr:
             type: flowExpr
@@ -1662,10 +1614,6 @@ nodes:
           expr:
             type: flowExpr
             value: attributes.get("LOD2 境界面のエラー", 0)
-        - newAttribute: "LOD2 境界面の向き不正"
-          expr:
-            type: flowExpr
-            value: attributes.get("LOD2 境界面の向き不正", 0)
         - newAttribute: "LOD2 非水密立体"
           expr:
             type: flowExpr
@@ -1678,10 +1626,6 @@ nodes:
           expr:
             type: flowExpr
             value: attributes.get("LOD3 境界面のエラー", 0)
-        - newAttribute: "LOD3 境界面の向き不正"
-          expr:
-            type: flowExpr
-            value: attributes.get("LOD3 境界面の向き不正", 0)
         - newAttribute: "LOD3 非水密立体"
           expr:
             type: flowExpr
@@ -1700,15 +1644,12 @@ nodes:
                 attributes.get("LOD0 面の向き不正", 0),
                 attributes.get("LOD0 面の交差", 0),
                 attributes.get("LOD1 境界面のエラー", 0),
-                attributes.get("LOD1 境界面の向き不正", 0),
                 attributes.get("LOD1 非水密立体", 0),
                 attributes.get("LOD1 立体のエラー", 0),
                 attributes.get("LOD2 境界面のエラー", 0),
-                attributes.get("LOD2 境界面の向き不正", 0),
                 attributes.get("LOD2 非水密立体", 0),
                 attributes.get("LOD2 立体のエラー", 0),
                 attributes.get("LOD3 境界面のエラー", 0),
-                attributes.get("LOD3 境界面の向き不正", 0),
                 attributes.get("LOD3 非水密立体", 0),
                 attributes.get("LOD3 立体のエラー", 0),
               ])
@@ -2016,17 +1957,6 @@ edges:
     to: da000000-0000-4000-8000-000000000031
     fromPort: features
     toPort: features
-  # L10 (per-boundary orientation), judged against each face's own normal.
-  - id: da000000-0000-4000-8000-000100000032
-    from: da000000-0000-4000-8000-00000000002b
-    to: da000000-0000-4000-8000-000000000013
-    fromPort: incorrectOrientationFaceNormal
-    toPort: features
-  - id: da000000-0000-4000-8000-000100000086
-    from: da000000-0000-4000-8000-00000000002b
-    to: da000000-0000-4000-8000-000000000015
-    fromPort: incorrectOrientationFaceNormal
-    toPort: features
 
   # LOD2 and LOD3 face checks. CityGML 3.0 has no LOD4.
   - id: da000000-0000-4000-8000-000100000033
@@ -2073,17 +2003,6 @@ edges:
     from: da000000-0000-4000-8000-000000000038
     to: da000000-0000-4000-8000-000000000039
     fromPort: features
-    toPort: features
-  # L10 (per-boundary orientation), judged against each face's own normal.
-  - id: da000000-0000-4000-8000-00010000003c
-    from: da000000-0000-4000-8000-000000000033
-    to: da000000-0000-4000-8000-000000000013
-    fromPort: incorrectOrientationFaceNormal
-    toPort: features
-  - id: da000000-0000-4000-8000-000100000087
-    from: da000000-0000-4000-8000-000000000033
-    to: da000000-0000-4000-8000-000000000015
-    fromPort: incorrectOrientationFaceNormal
     toPort: features
 
   # Solid checks

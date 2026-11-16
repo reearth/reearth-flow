@@ -1,7 +1,7 @@
 # PLATEAU6 (CityGML 3.0 + i-UR 4.0) quality-check 04-frn-veg sub-graph.
 # Runs the city furniture / vegetation checks over every GML in the archive:
-# the per-face geometric validity and orientation checks, the LOD0 line checks,
-# and the shell-level solid checks (L14),
+# the per-face geometric validity checks, the LOD0 line checks, and the
+# shell-level solid checks (L14),
 # plus the per feature-type instance count the result sheet reports alongside them.
 #
 # Every count takes part in totalErrorCount, so any finding suppresses qc_result_ok.
@@ -385,98 +385,6 @@ nodes:
         value: |
           "error_geometry/" + variables["packagePrefixes"][attributes["folder"]] + "_面のエラー位置.geojson"
       writeCrs: true
-
-  - id: d6000000-0000-4000-8000-00000000003f
-    name: OrientationAttributeMapper
-    type: action
-    action: Attribute Mapper
-    with:
-      mappers:
-        - attribute: Index
-          valueAttribute: fileIndex
-        - attribute: Folder
-          valueAttribute: package
-        - attribute: Filename
-          valueAttribute: name
-        - attribute: FeatureType
-          expr:
-            type: flowExpr
-            value: (attributes.get("__citygml_geometry_feature_type") or attributes.get("__citygml_feature_type", "")).split(":")[-1]
-        - attribute: LOD
-          valueAttribute: lod
-        - attribute: GmlId
-          expr:
-            type: flowExpr
-            value: attributes.get("__citygml_geometry_gml_id") or attributes.get("__citygml_gml_id", "")
-        # L10 (per-boundary orientation): one row per misoriented boundary.
-        - attribute: "エラー数"
-          valueAttribute: issueCount
-        - attribute: "エラー内容"
-          valueAttribute: issue
-
-  - id: d6000000-0000-4000-8000-000000000040
-    name: OrientationCsvWriter
-    type: action
-    action: Feature Writer
-    with:
-      format:
-        type: csv
-      output:
-        type: flowExpr
-        value: |
-          variables["packagePrefixes"][attributes["Folder"]] + "_面の向き不正.csv"
-
-  - id: d6000000-0000-4000-8000-000000000041
-    name: OrientationAttributeMapperGeoJson
-    type: action
-    action: Attribute Mapper
-    with:
-      mappers:
-        - attribute: index
-          valueAttribute: fileIndex
-        - attribute: folder
-          valueAttribute: package
-        - attribute: filename
-          valueAttribute: name
-        - attribute: featureType
-          expr:
-            type: flowExpr
-            value: (attributes.get("__citygml_geometry_feature_type") or attributes.get("__citygml_feature_type", "")).split(":")[-1]
-        - attribute: gmlId
-          expr:
-            type: flowExpr
-            value: attributes.get("__citygml_geometry_gml_id") or attributes.get("__citygml_gml_id", "")
-        - attribute: lod
-          valueAttribute: lod
-        - attribute: issue
-          valueAttribute: issue
-        - attribute: issueCount
-          valueAttribute: issueCount
-
-  - id: d6000000-0000-4000-8000-000000000042
-    name: OrientationGeoJsonWriter
-    type: action
-    action: Feature GeoJSON Writer
-    with:
-      output:
-        type: flowExpr
-        value: |
-          "error_geometry/" + variables["packagePrefixes"][attributes["folder"]] + "_面の向き不正.geojson"
-      writeCrs: true
-
-  - id: d6000000-0000-4000-8000-000000000043
-    name: OrientationErrorCounter
-    type: action
-    action: Statistics Calculator
-    with:
-      groupBy:
-        - Folder
-        - Filename
-      calculations:
-        - newAttribute: _num_orientation
-          expr:
-            type: flowExpr
-            value: "1"
 
   # --- L14: solid boundary checks ---
   - id: d6000000-0000-4000-8000-000000000013
@@ -988,10 +896,6 @@ nodes:
           expr:
             type: flowExpr
             value: attributes.get("_num_surface_issues", 0)
-        - attribute: "面の向き不正"
-          expr:
-            type: flowExpr
-            value: attributes.get("_num_orientation", 0)
         - attribute: "線のエラー"
           expr:
             type: flowExpr
@@ -1030,10 +934,6 @@ nodes:
           expr:
             type: flowExpr
             value: attributes.get("面のエラー", 0)
-        - newAttribute: "面の向き不正"
-          expr:
-            type: flowExpr
-            value: attributes.get("面の向き不正", 0)
         - newAttribute: "線のエラー"
           expr:
             type: flowExpr
@@ -1053,7 +953,6 @@ nodes:
             value: |
               itertools.sum([
                 attributes.get("面のエラー", 0),
-                attributes.get("面の向き不正", 0),
                 attributes.get("線のエラー", 0),
                 attributes.get("非水密立体", 0),
                 attributes.get("立体のエラー", 0),
@@ -1276,47 +1175,6 @@ edges:
     to: d6000000-0000-4000-8000-000000000011
     fromPort: features
     toPort: features
-  # L10 (per-boundary orientation), judged against each face's own normal.
-  - id: d6000000-0000-4000-8000-00000000005b
-    from: d6000000-0000-4000-8000-00000000000a
-    to: d6000000-0000-4000-8000-00000000003f
-    fromPort: incorrectOrientationFaceNormal
-    toPort: features
-  - id: d6000000-0000-4000-8000-00000000005c
-    from: d6000000-0000-4000-8000-00000000000a
-    to: d6000000-0000-4000-8000-000000000041
-    fromPort: incorrectOrientationFaceNormal
-    toPort: features
-  - id: d6000000-0000-4000-8000-00000000005d
-    from: d6000000-0000-4000-8000-00000000003f
-    to: d6000000-0000-4000-8000-000000000040
-    fromPort: features
-    toPort: features
-  - id: d6000000-0000-4000-8000-00000000005e
-    from: d6000000-0000-4000-8000-000000000040
-    to: d6000000-0000-4000-8000-000000000034
-    fromPort: features
-    toPort: features
-  - id: d6000000-0000-4000-8000-00000000005f
-    from: d6000000-0000-4000-8000-000000000041
-    to: d6000000-0000-4000-8000-000000000042
-    fromPort: features
-    toPort: features
-  - id: d6000000-0000-4000-8000-000000000060
-    from: d6000000-0000-4000-8000-000000000042
-    to: d6000000-0000-4000-8000-000000000034
-    fromPort: features
-    toPort: features
-  - id: d6000000-0000-4000-8000-000000000061
-    from: d6000000-0000-4000-8000-00000000003f
-    to: d6000000-0000-4000-8000-000000000043
-    fromPort: features
-    toPort: features
-  - id: d6000000-0000-4000-8000-000000000062
-    from: d6000000-0000-4000-8000-000000000043
-    to: d6000000-0000-4000-8000-00000000002f
-    fromPort: features
-    toPort: supplier
 
   # LOD splitter -> solid checks
   - id: d6000000-0000-4000-8000-000100000015

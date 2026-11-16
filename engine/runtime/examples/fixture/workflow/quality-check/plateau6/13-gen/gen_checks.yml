@@ -1,7 +1,7 @@
 # PLATEAU6 (CityGML 3.0 + i-UR 4.0) quality-check 13-gen sub-graph.
 # Runs the generic city object checks over every GML in the archive: the LOD0
-# face checks (validity and orientation), the per-face validity and orientation
-# checks of the LOD1 to LOD3 surfaces, the shell-level checks of the LOD1 to LOD3 solids and
+# face checks (validity and orientation), the per-face validity checks of the
+# LOD1 to LOD3 surfaces, the shell-level checks of the LOD1 to LOD3 solids and
 # whether each object names itself with a code. Curves take the line checks;
 # points are counted but not checked. The result sheet has one row per file, feature type and LOD,
 # carrying the instance count alongside every geometry error count; the uncoded
@@ -1618,18 +1618,6 @@ edges:
     from: de000000-0000-4000-8000-000000000019
     to: de000000-0000-4000-8000-00000000001a
     fromPort: features
-    toPort: features
-  # L10 (per-boundary orientation): LOD1 and higher are judged against each
-  # face's own normal and share the LOD0 outputs.
-  - id: de000000-0000-4000-8000-000100000022
-    from: de000000-0000-4000-8000-000000000010
-    to: de000000-0000-4000-8000-000000000017
-    fromPort: incorrectOrientationFaceNormal
-    toPort: features
-  - id: de000000-0000-4000-8000-000100000080
-    from: de000000-0000-4000-8000-000000000010
-    to: de000000-0000-4000-8000-000000000019
-    fromPort: incorrectOrientationFaceNormal
     toPort: features
 
   # Solid checks

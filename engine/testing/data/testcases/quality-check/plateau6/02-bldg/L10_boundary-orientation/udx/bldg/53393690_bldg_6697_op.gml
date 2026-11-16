@@ -4,7 +4,7 @@
      Each building has a hole in two faces:
        - LOD0 face: judged from above.
        - LOD2 GroundSurface: judged against the face's own normal, so its
-         exterior is not judged.
+         exterior is not judged. Its errors are boundary surface errors.
 
      Buildings:
        - bldg_997bb0a6-aa5a-4852-ba11-8b9c6b5f2d0f: every boundary wound correctly.
