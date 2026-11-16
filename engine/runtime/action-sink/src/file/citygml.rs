@@ -1032,6 +1032,16 @@ impl SinkFactory for CityGmlWriterFactory {
             })?;
         check_fixed_paths(&output, path_in_archive.as_ref(), &ctx)
             .map_err(SinkError::CityGmlWriterFactory)?;
+        // Read here, not when the writer finishes, so a schema that cannot be
+        // read fails the job before it processes anything.
+        let schema = if ade.is_empty() {
+            None
+        } else {
+            Some(Arc::new(
+                load_ade_schemas_off_runtime(&ade, &ctx.storage_resolver)
+                    .map_err(SinkError::CityGmlWriterFactory)?,
+            ))
+        };
         Ok(Box::new(CityGmlWriterSink {
             params: CityGmlWriterCompiledParam {
                 output,
@@ -1040,6 +1050,7 @@ impl SinkFactory for CityGmlWriterFactory {
                 pretty_print: params.pretty_print,
                 ade,
             },
+            schema,
             lod_mask,
             keys,
             buffer: Vec::new(),
@@ -1551,11 +1562,26 @@ fn storage_uri(location: &str) -> Result<Uri, String> {
     .map_err(|e| e.to_string())
 }
 
-/// The core CityGML 2.0 schemas plus each ADE's, read through Flow storage.
+/// [`load_ade_schemas`] on a thread of its own: the writer is built inside the
+/// async runtime, and the blocking reads must not run on one of its workers.
+fn load_ade_schemas_off_runtime(
+    ade: &[AdeBinding],
+    storage_resolver: &Arc<StorageResolver>,
+) -> Result<SchemaSet, String> {
+    std::thread::scope(|scope| {
+        scope
+            .spawn(|| load_ade_schemas(ade, storage_resolver))
+            .join()
+            .unwrap_or_else(|_| Err("adeSchemas: reading the schemas panicked".to_string()))
+    })
+}
+
+/// The core CityGML 2.0 schemas plus each ADE's, read through Flow storage,
+/// or over the network for an http or https location.
 fn load_ade_schemas(
     ade: &[AdeBinding],
     storage_resolver: &Arc<StorageResolver>,
-) -> Result<SchemaSet, SinkError> {
+) -> Result<SchemaSet, String> {
     let sources: Vec<AdeSource> = ade
         .iter()
         .map(|binding| AdeSource {
@@ -1587,8 +1613,7 @@ fn load_ade_schemas(
             .map(|bytes| bytes.to_vec())
             .map_err(|e| e.to_string())
     };
-    SchemaSet::with_ade_from(&sources, &read)
-        .map_err(|e| SinkError::CityGmlWriter(format!("adeSchemas: {e}")))
+    SchemaSet::with_ade_from(&sources, &read).map_err(|e| format!("adeSchemas: {e}"))
 }
 
 #[derive(Debug, Clone)]
@@ -1611,6 +1636,8 @@ struct DocumentKey {
 #[derive(Debug, Clone)]
 struct CityGmlWriterSink {
     params: CityGmlWriterCompiledParam,
+    /// The core set plus the ADEs, or `None` for the core set alone.
+    schema: Option<Arc<SchemaSet>>,
     lod_mask: LodMask,
     keys: ResolvedKeys,
     buffer: Vec<Feature>,
@@ -1727,13 +1754,11 @@ impl Sink for CityGmlWriterSink {
             }
         }
 
-        // The core set is loaded once per process; a set with ADEs, once per finish.
-        let loaded;
-        let schema: &SchemaSet = if self.params.ade.is_empty() {
-            core_schema()?
-        } else {
-            loaded = load_ade_schemas(&self.params.ade, &ctx.storage_resolver)?;
-            &loaded
+        // The core set is loaded once per process; a set with ADEs, when the
+        // writer was built.
+        let schema: &SchemaSet = match &self.schema {
+            Some(schema) => schema,
+            None => core_schema()?,
         };
         let bindings: Vec<(String, String)> = self
             .params
@@ -3480,7 +3505,7 @@ mod ade_schemas_tests {
 
     #[test]
     fn the_writer_builds_with_an_ade_schema() {
-        let result = build(json!([entry("uro", URO, "file:///schemas/uro.xsd")]));
+        let result = build(json!([entry("uro", URO, &iur_location())]));
         assert!(result.is_ok(), "{result:?}");
     }
 
@@ -3534,33 +3559,24 @@ mod ade_schemas_tests {
 
     #[test]
     fn an_entry_saved_with_the_former_file_type_still_builds() {
-        let mut saved = entry("uro", URO, "file:///schemas/uro.xsd");
+        let mut saved = entry("uro", URO, &iur_location());
         saved["type"] = json!("file");
         build(json!([saved])).unwrap();
     }
 
+    /// Checked without building the writer, which would fetch the schema.
     #[test]
-    fn an_https_schema_location_builds() {
-        build(json!([entry(
-            "uro",
-            URO,
-            "https://www.geospatial.jp/iur/schemas/uro/3.1/urbanObject.xsd"
-        )]))
-        .unwrap();
+    fn an_https_schema_location_is_accepted() {
+        let location = "https://www.geospatial.jp/iur/schemas/uro/3.1/urbanObject.xsd";
+        let entry: super::AdeSchema = serde_json::from_value(entry("uro", URO, location)).unwrap();
+        super::validate_ade_schemas(&[entry], &[location.to_string()]).unwrap();
     }
 
     /// The fetch goes through the egress guard, which refuses a loopback
     /// address before connecting, so no server is needed.
     #[test]
-    fn an_http_schema_location_on_an_internal_address_fails_at_finish() {
-        let tmp = tempdir().unwrap();
-        let ctx = context(tmp.path(), None);
-        let message = run(
-            &ctx,
-            Some(json!([entry("uro", URO, "http://127.0.0.1:9/uro.xsd")])),
-            vec![typed("uro:UndergroundBuilding")],
-        )
-        .unwrap_err();
+    fn an_http_schema_location_on_an_internal_address_fails_the_build() {
+        let message = build(json!([entry("uro", URO, "http://127.0.0.1:9/uro.xsd")])).unwrap_err();
         assert!(message.contains("adeSchemas"), "{message}");
         assert!(message.contains("blocked"), "{message}");
     }
@@ -3789,18 +3805,14 @@ mod ade_schemas_tests {
         assert_eq!(unknown, 1);
     }
 
+    /// Before any feature arrives, so a bad location does not wait for the
+    /// rest of the workflow.
     #[test]
-    fn an_unreadable_ade_schema_fails_the_write() {
+    fn an_unreadable_ade_schema_fails_the_build() {
         let tmp = tempdir().unwrap();
-        let ctx = context(tmp.path(), None);
         let missing = format!("file://{}/absent.xsd", tmp.path().display());
 
-        let message = run(
-            &ctx,
-            Some(json!([entry("uro", URO, &missing)])),
-            vec![typed("bldg:Building")],
-        )
-        .unwrap_err();
+        let message = build(json!([entry("uro", URO, &missing)])).unwrap_err();
 
         assert!(message.contains("adeSchemas"), "{message}");
         assert!(message.contains("absent.xsd"), "{message}");

@@ -314,6 +314,15 @@ pub enum SchemaCompileError {
     Compile(String),
 }
 
+/// Why [`fetch_remote_schema`] could not read a schema.
+#[derive(Debug, thiserror::Error)]
+pub enum SchemaFetchError {
+    #[error("Failed to build schema HTTP client: {0}")]
+    Client(String),
+    #[error("Failed to fetch schema {location}: {message}")]
+    Fetch { location: String, message: String },
+}
+
 static SCHEMA_DISK_CACHE: Lazy<SchemaDiskCache> = Lazy::new(SchemaDiskCache::from_env);
 
 /// Never dropped, so it is safe to build it on any thread.
@@ -375,10 +384,10 @@ pub fn compiled_schema(
 /// Fetches one remote XSD over http or https, for a caller that resolves its
 /// imports itself, through the same egress-guarded client and on-disk cache as
 /// [`compiled_schema`].
-pub fn fetch_remote_schema(url: &str) -> Result<Vec<u8>, SchemaCompileError> {
+pub fn fetch_remote_schema(url: &str) -> Result<Vec<u8>, SchemaFetchError> {
     let client = SCHEMA_HTTP_CLIENT
         .as_ref()
-        .map_err(|e| SchemaCompileError::Client(e.clone()))?;
+        .map_err(|e| SchemaFetchError::Client(e.clone()))?;
     fetch_remote_schema_with(&SCHEMA_DISK_CACHE, client, url)
 }
 
@@ -386,8 +395,8 @@ fn fetch_remote_schema_with(
     cache: &SchemaDiskCache,
     client: &BlockingHttpClient,
     url: &str,
-) -> Result<Vec<u8>, SchemaCompileError> {
-    let failed = |message: String| SchemaCompileError::Fetch {
+) -> Result<Vec<u8>, SchemaFetchError> {
+    let failed = |message: String| SchemaFetchError::Fetch {
         location: url.to_string(),
         message,
     };
