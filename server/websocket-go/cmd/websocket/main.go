@@ -118,6 +118,10 @@ func run() error {
 	if err := srv.AttachRedisRelay(ctx, relay); err != nil {
 		return fmt.Errorf("attach cluster relay: %w", err)
 	}
+	// A project lock change must reach a room open only on another instance.
+	if p := coord.Presence(relay); p != nil {
+		srv.SetPresence(p)
+	}
 
 	go srv.StartPeriodicSync(ctx, 0) // 0 => default 30s
 

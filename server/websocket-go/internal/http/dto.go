@@ -63,6 +63,14 @@ type RollbackRequest struct {
 	Version uint64 `json:"version"`
 }
 
+// LockRequest is the POST /api/document/{id}/lock body: the project's lock
+// state and when it changed, in Unix milliseconds. A later change wins over an
+// earlier one whatever order they arrive in.
+type LockRequest struct {
+	Locked    bool  `json:"locked"`
+	ChangedAt int64 `json:"changedAt"`
+}
+
 // CreateSnapshotRequest is the POST /api/document/snapshot body (doc_id in body only).
 type CreateSnapshotRequest struct {
 	DocID   string `json:"doc_id"`

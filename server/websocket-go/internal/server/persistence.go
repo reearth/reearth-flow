@@ -37,5 +37,6 @@ func NewWithPersistence(ctx context.Context, cfg *config.Config, p persistence.V
 	// per room, and only when the room changed. Requires the store to implement
 	// persistence.SnapshotStore, which the GCS adapter does.
 	s.ws.AutoVersionEvery = cfg.AutoVersionEvery
+	s.enableProjectLock()
 	return s
 }
