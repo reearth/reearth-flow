@@ -143,6 +143,7 @@ const releaseLockSQL = `DELETE FROM ws_lock WHERE key = $1 AND owner = $2`
 const (
 	reapStreamSQL    = `DELETE FROM ws_stream WHERE created_at < now() - make_interval(secs => $1)`
 	reapInstancesSQL = `DELETE FROM ws_instance WHERE seen_at < now() - make_interval(secs => $1)`
+	reapChangesSQL   = `DELETE FROM ws_version_change WHERE last_at < now() - make_interval(secs => $1)`
 	reapLocksSQL     = `DELETE FROM ws_lock WHERE expires_at < now() - make_interval(secs => $1)`
 )
 

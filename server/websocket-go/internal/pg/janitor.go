@@ -25,6 +25,9 @@ const (
 	// correctness predicate is a timestamp comparison, never row presence — so this
 	// is chosen to keep the table small, not to meet a deadline.
 	janitorEvery = 1 * time.Minute
+	// changeRetention matches the Redis change record's 30-day TTL. Every trigger
+	// takes a room's record, so one this old belongs to a room nobody opened since.
+	changeRetention = 30 * 24 * time.Hour
 )
 
 // Janitor deletes rows the Redis backend would have expired via TTL.
@@ -62,7 +65,7 @@ func (j *Janitor) Run(ctx context.Context) {
 	}
 }
 
-// sweepOnce runs all three deletes. A failed sweep is a growing table, not a
+// sweepOnce runs every delete. A failed sweep is a growing table, not a
 // correctness problem, so it logs and the next tick retries.
 func (j *Janitor) sweepOnce(ctx context.Context) {
 	for _, s := range []struct {
@@ -73,6 +76,7 @@ func (j *Janitor) sweepOnce(ctx context.Context) {
 		{"ws_stream", reapStreamSQL, streamRetention},
 		{"ws_instance", reapInstancesSQL, instanceRetention},
 		{"ws_lock", reapLocksSQL, lockGrace},
+		{"ws_version_change", reapChangesSQL, changeRetention},
 	} {
 		tag, err := j.q.Exec(ctx, s.sql, secs(s.age))
 		if err != nil {

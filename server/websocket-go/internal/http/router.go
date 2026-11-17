@@ -9,10 +9,12 @@ import (
 	"net/http"
 	"strconv"
 	"time"
+	"unicode/utf8"
 
 	"github.com/reearth/ygo/persistence"
 
 	"github.com/reearth/reearth-flow/websocket-go/internal/docid"
+	"github.com/reearth/reearth-flow/websocket-go/internal/versions"
 )
 
 // keepUpdates is the update-object retention count for the cleanup routes.
@@ -77,23 +79,30 @@ type Signaler interface {
 	SignalLock(ctx context.Context, room string, locked bool, at time.Time) error
 }
 
+// Versioner saves a room's document as a version when users changed it.
+type Versioner interface {
+	SaveVersion(ctx context.Context, room, label string) (versions.Result, error)
+}
+
 // Deps are the router's collaborators.
 type Deps struct {
-	Store    DocStore
-	Signaler Signaler // optional
-	Logger   *slog.Logger
+	Store     DocStore
+	Signaler  Signaler  // optional
+	Versioner Versioner // optional: without it, POST .../versions answers 501
+	Logger    *slog.Logger
 }
 
 type router struct {
-	store    DocStore
-	signaler Signaler
-	log      *slog.Logger
+	store     DocStore
+	signaler  Signaler
+	versioner Versioner
+	log       *slog.Logger
 }
 
 // NewRouter builds the HTTP document API. It does NOT apply the X-API-Secret
 // middleware — wrap the returned handler with RequireAPISecret at the edge.
 func NewRouter(d Deps) http.Handler {
-	r := &router{store: d.Store, signaler: d.Signaler, log: d.Logger}
+	r := &router{store: d.Store, signaler: d.Signaler, versioner: d.Versioner, log: d.Logger}
 	if r.log == nil {
 		r.log = slog.Default()
 	}
@@ -111,6 +120,7 @@ func NewRouter(d Deps) http.Handler {
 	mux.HandleFunc("POST /api/document/{id}/cleanup", r.cleanupUpdates)
 	mux.HandleFunc("GET /api/document/{id}/snapshots", r.getSnapshots)
 	mux.HandleFunc("POST /api/document/{id}/snapshots", r.postSnapshot)
+	mux.HandleFunc("POST /api/document/{id}/versions", r.postVersion)
 	mux.HandleFunc("GET /api/document/{id}/snapshots/{sid}", r.getSnapshotState)
 	mux.HandleFunc("DELETE /api/document/{id}", r.deleteDocument)
 	mux.HandleFunc("POST /api/admin/cleanup", r.adminCleanup)
@@ -423,7 +433,45 @@ func (r *router) postSnapshot(w http.ResponseWriter, req *http.Request) {
 		writeErr(w, http.StatusConflict, "nothing to snapshot: document is empty")
 		return
 	}
-	writeJSON(w, http.StatusOK, SnapshotItem{ID: sid, Label: body.Label})
+	writeJSON(w, http.StatusOK, SnapshotItem{ID: sid, Label: body.Label, Contributors: []string{}})
+}
+
+// postVersion saves the room as a version if users changed it since its last
+// one. Unlike POST .../snapshots, an unchanged room saves nothing: the answer
+// is {"saved":false}.
+func (r *router) postVersion(w http.ResponseWriter, req *http.Request) {
+	room := docid.Normalize(req.PathValue("id"))
+	if room == "" {
+		writeErr(w, http.StatusBadRequest, "doc id required")
+		return
+	}
+	var body SaveVersionRequest
+	if err := json.NewDecoder(req.Body).Decode(&body); err != nil {
+		writeErr(w, http.StatusBadRequest, "invalid body")
+		return
+	}
+	if body.Label == "" {
+		writeErr(w, http.StatusBadRequest, "label required")
+		return
+	}
+	if len(body.Label) > maxSnapshotLabel || !utf8.ValidString(body.Label) {
+		writeErr(w, http.StatusBadRequest, "invalid label")
+		return
+	}
+	if r.versioner == nil {
+		writeErr(w, http.StatusNotImplemented, "versions not supported by this server")
+		return
+	}
+	res, err := r.versioner.SaveVersion(req.Context(), room, body.Label)
+	if err != nil && !res.Saved {
+		r.fail(w, "save version failed", err, "doc", room)
+		return
+	}
+	if err != nil {
+		// The version stands; only refreshing the checkpoint after it failed.
+		r.log.Warn("version saved but checkpoint refresh failed", "doc", room, "err", err)
+	}
+	writeJSON(w, http.StatusOK, SaveVersionResponse{Saved: res.Saved, SnapshotID: res.SnapshotID})
 }
 
 // getSnapshotState returns one snapshot's V1 state for preview or restore.

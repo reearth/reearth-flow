@@ -11,6 +11,9 @@ import (
 	"github.com/reearth/reearth-flow/websocket-go/internal/config"
 	"github.com/reearth/reearth-flow/websocket-go/internal/gcs"
 	"github.com/reearth/reearth-flow/websocket-go/internal/health"
+	"github.com/reearth/reearth-flow/websocket-go/internal/pg"
+	redisrelay "github.com/reearth/reearth-flow/websocket-go/internal/redis"
+	"github.com/reearth/reearth-flow/websocket-go/internal/versions"
 )
 
 // Flusher is the last-instance persistence seam.
@@ -45,6 +48,7 @@ func NewLocker(cfg *config.Config, owner string) (*Locks, error) {
 			return &Locks{
 				Locker: gcs.NewRedisLocker(client, owner),
 				Close:  client.Close,
+				handle: client,
 			}, nil
 		}
 		return &Locks{
@@ -54,6 +58,7 @@ func NewLocker(cfg *config.Config, owner string) (*Locks, error) {
 				_ = pinger.Close()
 				return client.Close()
 			},
+			handle: client,
 		}, nil
 
 	case config.BackendMemory:
@@ -102,6 +107,45 @@ func Presence(r cluster.Relay) func(ctx context.Context, room string) (int, erro
 		return nil
 	}
 	return p.ActiveInstances
+}
+
+// NewChangeStore returns the store for versioning's change records, on the same
+// backend and connection as the lock store, so every instance shares it.
+func NewChangeStore(cfg *config.Config, locks *Locks) (versions.Store, error) {
+	switch cfg.CoordBackend {
+	case config.BackendRedis:
+		client, _ := locks.handle.(*goredis.Client)
+		if client == nil {
+			return nil, fmt.Errorf("coord: redis change store needs the client from NewLocker; got none")
+		}
+		return redisrelay.NewChangeStore(client), nil
+
+	case config.BackendMemory:
+		return versions.NewMemoryStore(), nil
+
+	case config.BackendPostgres:
+		pool := poolFrom(locks)
+		if pool == nil {
+			return nil, fmt.Errorf("coord: postgres change store needs the pool from NewLocker; got none")
+		}
+		return pg.NewChangeStore(pool), nil
+
+	default:
+		return nil, fmt.Errorf("coord: unhandled backend %q", cfg.CoordBackend)
+	}
+}
+
+// CatchUp returns how to wait until a room loaded on this instance has
+// replayed what other instances published, for a relay backed by a shared
+// store; nil for the in-memory relay, whose only instance is the local one.
+func CatchUp(r cluster.Relay) func(ctx context.Context, room string) error {
+	c, ok := r.(interface {
+		WaitCaughtUp(ctx context.Context, room string) error
+	})
+	if !ok {
+		return nil
+	}
+	return c.WaitCaughtUp
 }
 
 // Describe summarises the active backend for the startup log and /health

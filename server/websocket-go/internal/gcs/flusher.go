@@ -63,6 +63,15 @@ func (f *Flusher) FlushRoom(ctx context.Context, room string) error {
 	})
 }
 
+// FlushState writes state as the room's full-state checkpoint while holding
+// read:lock:{room}, as FlushRoom does with the state it reads itself. A version
+// save uses it so the checkpoint holds exactly the state the version does.
+func (f *Flusher) FlushState(ctx context.Context, room string, state []byte) error {
+	return f.withReadLock(ctx, room, func(ctx context.Context) error {
+		return f.adapter.FlushSnapshot(ctx, room, state)
+	})
+}
+
 // stateFor returns the room's current state, tolerating a nil provider.
 func (f *Flusher) stateFor(room string) []byte {
 	if f.stateOf == nil {

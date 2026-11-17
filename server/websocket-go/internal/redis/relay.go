@@ -109,6 +109,10 @@ type roomState struct {
 
 	// lastID is the per-reader stream cursor, advanced past self-filtered entries.
 	lastID string
+
+	// caughtUp is closed once the reader has replayed the stream as it stood
+	// when the room was activated.
+	caughtUp chan struct{}
 }
 
 var _ interface {
@@ -211,6 +215,28 @@ func (r *Relay) Publish(_ context.Context, out cluster.Outbound) error {
 // write queue.
 func (r *Relay) DroppedWrites() uint64 { return r.droppedWrites.Load() }
 
+// ErrRoomNotActive is what WaitCaughtUp returns for a room this instance does
+// not hold.
+var ErrRoomNotActive = errors.New("websocket-go/redis: room not active on this instance")
+
+// WaitCaughtUp waits until this instance has replayed the room's stream as it
+// stood when the room was activated here, so the room's document holds every
+// update other instances had published by then.
+func (r *Relay) WaitCaughtUp(ctx context.Context, room string) error {
+	r.mu.Lock()
+	rs, ok := r.rooms[room]
+	r.mu.Unlock()
+	if !ok || rs.evicting {
+		return ErrRoomNotActive
+	}
+	select {
+	case <-rs.caughtUp:
+		return nil
+	case <-ctx.Done():
+		return ctx.Err()
+	}
+}
+
 // ActiveInstances counts the instances holding room, by their heartbeats.
 func (r *Relay) ActiveInstances(ctx context.Context, room string) (int, error) {
 	n, err := getActiveInstances(ctx, r.client, room, activeTimeoutSecs)
@@ -236,9 +262,10 @@ func (r *Relay) RoomActivated(room string) {
 	}
 	ctx, cancel := context.WithCancel(r.ctx)
 	rs := &roomState{
-		cancel:  cancel,
-		lastID:  "0",
-		writeCh: make(chan writeItem, writeQueueCap),
+		cancel:   cancel,
+		lastID:   "0",
+		writeCh:  make(chan writeItem, writeQueueCap),
+		caughtUp: make(chan struct{}),
 	}
 	r.rooms[room] = rs
 	sink := r.sink
@@ -412,6 +439,7 @@ func (r *Relay) readLoop(ctx context.Context, room string, rs *roomState, sink c
 	r.mu.Lock()
 	rs.lastID = lastID
 	r.mu.Unlock()
+	close(rs.caughtUp)
 
 	for {
 		if ctx.Err() != nil {
@@ -660,7 +688,7 @@ func (r *Relay) evict(room string) {
 		return
 	}
 	// Last instance: flush GCS first, then safe-delete the stream.
-	if err := r.flusher.FlushRoom(ctx, room); err != nil {
+	if err := flushLastInstance(ctx, r.flusher, room); err != nil {
 		r.log.Debug("relay GCS flush failed", "room", room, "err", err)
 		// Do NOT delete the stream on flush failure — un-persisted updates would be
 		// lost; a reconnect re-replays.

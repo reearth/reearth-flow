@@ -60,11 +60,13 @@ type Config struct {
 	// queue overflow instead of disconnecting. Default ON; env REEARTH_FLOW_SLOW_PEER_RESYNC.
 	SlowPeerResync bool
 
-	// AutoVersionEvery caps how often ygo snapshots a changed room. 0 disables.
+	// AutoVersionEvery is how long a room's first unsaved user edit waits before
+	// the room is saved as a version, unless a save, a run, a deployment or the
+	// last person leaving saved it sooner. 0 disables this trigger only.
 	AutoVersionEvery time.Duration
 
-	// KeepSnapshots bounds retained snapshots per room. Applies on the auto path
-	// only and ignores labels, so named snapshots are also evicted: reearth/ygo#212.
+	// KeepSnapshots bounds retained versions per label and room: an automatic
+	// version never evicts one saved under another label.
 	KeepSnapshots int
 
 	// OTLP tracing config.

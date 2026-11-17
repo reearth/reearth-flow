@@ -7,6 +7,8 @@ import (
 	"time"
 
 	"github.com/reearth/ygo/persistence"
+
+	"github.com/reearth/reearth-flow/websocket-go/internal/gcs"
 )
 
 // memSnapshotStore is an in-memory persistence.SnapshotStore mirroring the real
@@ -216,5 +218,49 @@ func TestStoreAdapterSnapshots_UnsupportedStoreFallsBackGracefully(t *testing.T)
 
 	if _, err := st.SaveSnapshot(ctx, "room1", "x"); !errors.Is(err, persistence.ErrSnapshotsUnsupported) {
 		t.Fatalf("SaveSnapshot err = %v, want ErrSnapshotsUnsupported", err)
+	}
+}
+
+// detailedSnapshotStore adds attribution to memSnapshotStore, as the GCS
+// adapter does.
+type detailedSnapshotStore struct {
+	*memSnapshotStore
+	details []gcs.SnapshotDetail
+}
+
+func (d *detailedSnapshotStore) ListSnapshotDetails(context.Context, string) ([]gcs.SnapshotDetail, error) {
+	return d.details, nil
+}
+
+func TestStoreAdapterListSnapshots_CarriesAttribution(t *testing.T) {
+	t.Parallel()
+
+	created := time.Date(2026, 11, 17, 0, 0, 0, 0, time.UTC)
+	p := &detailedSnapshotStore{
+		memSnapshotStore: newMemSnapshotStore(),
+		details: []gcs.SnapshotDetail{
+			{
+				SnapshotInfo:     persistence.SnapshotInfo{ID: 2, Label: "auto", CreatedAt: created, Size: 9},
+				Contributors:     []string{"bob", "alice"},
+				ContributorCount: 3,
+				LastEditor:       "bob",
+			},
+			{SnapshotInfo: persistence.SnapshotInfo{ID: 1, Label: "Before restore", CreatedAt: created}},
+		},
+	}
+	items, err := NewStoreAdapter(StoreAdapterDeps{P: p}).ListSnapshots(context.Background(), "room1")
+	if err != nil {
+		t.Fatalf("ListSnapshots: %v", err)
+	}
+	if len(items) != 2 {
+		t.Fatalf("items = %+v", items)
+	}
+	a := items[0]
+	if a.ID != 2 || a.Label != "auto" || a.Size != 9 || a.LastEditor != "bob" || a.ContributorCount != 3 ||
+		len(a.Contributors) != 2 || a.Timestamp != created.Format(time.RFC3339) {
+		t.Fatalf("attributed item = %+v", a)
+	}
+	if b := items[1]; b.Contributors == nil || len(b.Contributors) != 0 || b.LastEditor != "" {
+		t.Fatalf("unattributed item = %+v; contributors must be an empty list, never null", b)
 	}
 }

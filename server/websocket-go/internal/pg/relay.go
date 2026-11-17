@@ -79,6 +79,23 @@ type Flusher interface {
 	FlushRoom(ctx context.Context, room string) error
 }
 
+// LastInstanceFlusher is a Flusher with more to do when the last instance lets
+// a room go than when the relay only needs a durable checkpoint of a live room:
+// the relay calls FlushLastInstance instead of FlushRoom on that path. The same
+// CONTRACT applies.
+type LastInstanceFlusher interface {
+	Flusher
+	FlushLastInstance(ctx context.Context, room string) error
+}
+
+// flushLastInstance persists a room the last instance is letting go.
+func flushLastInstance(ctx context.Context, f Flusher, room string) error {
+	if lf, ok := f.(LastInstanceFlusher); ok {
+		return lf.FlushLastInstance(ctx, room)
+	}
+	return f.FlushRoom(ctx, room)
+}
+
 type noopFlusher struct{}
 
 func (noopFlusher) FlushRoom(context.Context, string) error { return nil }
@@ -151,6 +168,10 @@ type roomState struct {
 	// wake nudges the reader out of its wait when a notification arrives. Capacity
 	// 1 and sent non-blockingly, so wakeups coalesce rather than queue.
 	wake chan struct{}
+
+	// caughtUp is closed once the reader has replayed the rows the room had
+	// when it was activated.
+	caughtUp chan struct{}
 }
 
 type writeItem struct {
@@ -289,6 +310,28 @@ func (r *Relay) Publish(_ context.Context, out cluster.Outbound) error {
 // DroppedWrites returns the cumulative count of updates dropped on a full queue.
 func (r *Relay) DroppedWrites() uint64 { return r.droppedWrites.Load() }
 
+// ErrRoomNotActive is what WaitCaughtUp returns for a room this instance does
+// not hold.
+var ErrRoomNotActive = errors.New("pg: room not active on this instance")
+
+// WaitCaughtUp waits until this instance has replayed the rows the room had
+// when it was activated here, so the room's document holds every update other
+// instances had written by then.
+func (r *Relay) WaitCaughtUp(ctx context.Context, room string) error {
+	r.mu.Lock()
+	rs, ok := r.rooms[room]
+	r.mu.Unlock()
+	if !ok || rs.evicting {
+		return ErrRoomNotActive
+	}
+	select {
+	case <-rs.caughtUp:
+		return nil
+	case <-ctx.Done():
+		return ctx.Err()
+	}
+}
+
 // ActiveInstances counts the instances holding room, by their heartbeats.
 func (r *Relay) ActiveInstances(ctx context.Context, room string) (int, error) {
 	return r.activeInstances(ctx, room)
@@ -314,9 +357,10 @@ func (r *Relay) RoomActivated(room string) {
 	}
 	ctx, cancel := context.WithCancel(r.ctx)
 	rs := &roomState{
-		cancel:  cancel,
-		writeCh: make(chan writeItem, writeQueueCap),
-		wake:    make(chan struct{}, 1),
+		cancel:   cancel,
+		writeCh:  make(chan writeItem, writeQueueCap),
+		wake:     make(chan struct{}, 1),
+		caughtUp: make(chan struct{}),
 	}
 	r.rooms[room] = rs
 	sink := r.sink
@@ -469,7 +513,7 @@ func (r *Relay) evict(room string) {
 	}
 
 	// Last instance: flush to GCS first, then safe-delete.
-	if err := r.flusher.FlushRoom(ctx, room); err != nil {
+	if err := flushLastInstance(ctx, r.flusher, room); err != nil {
 		r.log.Debug("relay GCS flush failed", "room", room, "err", err)
 		// Do NOT delete the rows on flush failure — un-persisted updates would be
 		// lost; a reconnect re-replays them.
@@ -578,6 +622,9 @@ func (r *Relay) readLoop(ctx context.Context, room string, rs *roomState, sink c
 			case <-time.After(200 * time.Millisecond):
 			}
 			continue
+		}
+		if !live {
+			close(rs.caughtUp)
 		}
 		live = true
 		select {

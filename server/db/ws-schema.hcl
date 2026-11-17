@@ -95,3 +95,46 @@ table "ws_lock" {
     columns = [column.expires_at]
   }
 }
+
+// ws_version_change is each room's change record: the user edits made since its
+// last version, merged across instances. Saving a version deletes the row it
+// reads (DELETE ... RETURNING), so one instance saves each change. Losing the
+// table in a crash loses no document data, only the record that the room still
+// needs a version: the edits stay in GCS and the room's next edit records it again.
+table "ws_version_change" {
+  schema   = schema.public
+  unlogged = true
+
+  column "doc_id" {
+    type = text
+  }
+  column "contributors" {
+    type    = sql("text[]")
+    default = sql("'{}'::text[]")
+    comment = "users who edited, sorted"
+  }
+  column "last_editor" {
+    type    = text
+    default = ""
+    comment = "user who sent the latest edit that named its sender"
+  }
+  column "editor_at" {
+    type = timestamptz
+    null = true
+  }
+  column "first_at" {
+    type = timestamptz
+  }
+  column "last_at" {
+    type = timestamptz
+  }
+
+  primary_key {
+    columns = [column.doc_id]
+  }
+
+  // The janitor's sweep of records nobody took.
+  index "ws_version_change_last_at_idx" {
+    columns = [column.last_at]
+  }
+}
