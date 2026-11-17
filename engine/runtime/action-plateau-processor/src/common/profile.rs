@@ -40,7 +40,7 @@ pub(crate) struct PlateauProfile {
 
 impl PlateauProfile {
     /// Each standard prefix and its namespace URI, the i-UR ones included.
-    fn namespaces(&self) -> impl Iterator<Item = (&'static str, &'static str)> {
+    fn namespaces(&self) -> impl Iterator<Item = (&'static str, &'static str)> + use<> {
         self.citygml
             .namespaces
             .iter()

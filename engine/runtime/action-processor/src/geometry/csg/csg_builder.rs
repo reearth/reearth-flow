@@ -178,22 +178,22 @@ impl Processor for CSGBuilder {
         // Check which port the feature came from and process accordingly
         if port == *LEFT_PORT {
             // Check if we already have a matching right feature
-            if let Some(right_feature) = self.right_buffer.remove(&pair_id) {
+            match self.right_buffer.remove(&pair_id) { Some(right_feature) => {
                 // We have a pair! Create CSG objects for all three operations
                 self.create_and_send_csg(feature, right_feature, fw, &ctx)?;
-            } else {
+            } _ => {
                 // Store in left buffer waiting for its pair
                 self.left_buffer.insert(pair_id, feature);
-            }
+            }}
         } else if port == *RIGHT_PORT {
             // Check if we already have a matching left feature
-            if let Some(left_feature) = self.left_buffer.remove(&pair_id) {
+            match self.left_buffer.remove(&pair_id) { Some(left_feature) => {
                 // We have a pair! Create CSG objects for all three operations
                 self.create_and_send_csg(left_feature, feature, fw, &ctx)?;
-            } else {
+            } _ => {
                 // Store in right buffer waiting for its pair
                 self.right_buffer.insert(pair_id, feature);
-            }
+            }}
         } else {
             // Unknown port, send to rejected
             fw.send(ctx.new_with_feature_and_port(feature, REJECTED_PORT.clone()));

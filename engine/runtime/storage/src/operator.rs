@@ -44,7 +44,7 @@ pub(crate) fn build_operator<B: Builder>(builder: B) -> Result<Operator> {
 }
 
 /// init_fs_operator will init a opendal fs operator.
-fn init_fs_operator(uri: &Uri) -> impl Builder {
+fn init_fs_operator(uri: &Uri) -> impl Builder + use<> {
     let builder = services::Fs::default();
     let root = match uri.root() {
         "" => "/",
@@ -54,7 +54,7 @@ fn init_fs_operator(uri: &Uri) -> impl Builder {
 }
 
 /// init_gcs_operator will init a opendal gcs operator.
-fn init_gcs_operator(uri: &Uri) -> impl Builder {
+fn init_gcs_operator(uri: &Uri) -> impl Builder + use<> {
     if let Ok(host) = env::var("STORAGE_EMULATOR_HOST") {
         let builder = services::Gcs::default().endpoint(host.as_str());
         let builder = builder.disable_vm_metadata();
@@ -76,7 +76,7 @@ fn init_memory_operator() -> impl Builder {
     services::Memory::default()
 }
 
-fn init_https_operator(uri: &Uri) -> impl Builder {
+fn init_https_operator(uri: &Uri) -> impl Builder + use<> {
     let builder = services::Http::default();
     debug!("init_https_operator: {}", uri.root());
     builder
@@ -84,7 +84,7 @@ fn init_https_operator(uri: &Uri) -> impl Builder {
         .root("/")
 }
 
-fn init_http_operator(uri: &Uri) -> impl Builder {
+fn init_http_operator(uri: &Uri) -> impl Builder + use<> {
     let builder = services::Http::default();
     debug!("init_http_operator: {}", uri.root());
     builder

@@ -109,7 +109,7 @@ impl schemars::JsonSchema for MaterialIndex {
         "MaterialIndex".to_string()
     }
 
-    fn json_schema(generator: &mut schemars::gen::SchemaGenerator) -> schemars::schema::Schema {
+    fn json_schema(generator: &mut schemars::r#gen::SchemaGenerator) -> schemars::schema::Schema {
         let mut schema = <u32 as schemars::JsonSchema>::json_schema(generator).into_object();
         schema.metadata().title = Some("Material index".to_string());
         schema.metadata().description = Some(

@@ -31,7 +31,7 @@ impl Default for HttpClientBuilder {
 
 /// Applies the guard and the shared settings to either reqwest builder type.
 macro_rules! configure {
-    ($builder:expr, $config:expr) => {{
+    ($builder:expr_2021, $config:expr_2021) => {{
         let config = $config;
         let mut builder = $builder
             .dns_resolver(Arc::new(GuardedResolver {

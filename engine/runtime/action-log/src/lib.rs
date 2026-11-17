@@ -15,7 +15,7 @@ pub use slog::{o, Discard, Drain, Logger as ActionLogger};
 
 #[macro_export]
 macro_rules! action_log {
-    (parent: $parent:expr, $logger:expr, $($args:tt)*) => {{
+    (parent: $parent:expr_2021, $logger:expr_2021, $($args:tt)*) => {{
         $crate::slog_info!($logger, $($args)*);
         let parent_clone = $parent.clone();
         $crate::tracing_info!(parent: parent_clone, $($args)*); // Use the cloned parent context
@@ -24,7 +24,7 @@ macro_rules! action_log {
 
 #[macro_export]
 macro_rules! action_error_log {
-    (parent: $parent:expr, $logger:expr, $($args:tt)*) => {{
+    (parent: $parent:expr_2021, $logger:expr_2021, $($args:tt)*) => {{
         $crate::slog_error!($logger, $($args)*);
         let parent_clone = $parent.clone();
         $crate::tracing_error!(parent: parent_clone, $($args)*); // Use the cloned parent context
@@ -33,7 +33,7 @@ macro_rules! action_error_log {
 
 #[macro_export]
 macro_rules! action_warn_log {
-    (parent: $parent:expr, $logger:expr, $($args:tt)*) => {{
+    (parent: $parent:expr_2021, $logger:expr_2021, $($args:tt)*) => {{
         $crate::slog_warn!($logger, $($args)*);
         let parent_clone = $parent.clone();
         $crate::tracing_warn!(parent: parent_clone, $($args)*);
@@ -42,7 +42,7 @@ macro_rules! action_warn_log {
 
 #[macro_export]
 macro_rules! action_critical_log {
-    (parent: $parent:expr, $logger:expr, $($args:tt)*) => {{
+    (parent: $parent:expr_2021, $logger:expr_2021, $($args:tt)*) => {{
         $crate::slog_crit!($logger, $($args)*);
         // tracing has no Critical level; ERROR is the closest fan-out.
         let parent_clone = $parent.clone();
@@ -52,7 +52,7 @@ macro_rules! action_critical_log {
 
 #[macro_export]
 macro_rules! slow_action_log {
-    (parent: $parent:expr, $logger:expr, $($args:tt)*) => {{
+    (parent: $parent:expr_2021, $logger:expr_2021, $($args:tt)*) => {{
         $crate::slog_info!($logger, $($args)*);
         let parent_clone = $parent.clone();
         $crate::tracing_info!(parent: parent_clone, $($args)*); // Use the cloned parent context

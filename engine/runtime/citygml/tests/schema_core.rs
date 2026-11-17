@@ -181,7 +181,7 @@ fn a_generic_attribute_is_placed_at_the_city_object_hook() {
             "Building",
         ))
         .unwrap();
-    let gen = QName::new(
+    let r#gen = QName::new(
         "http://www.opengis.net/citygml/generics/2.0",
         "stringAttribute",
     );
@@ -194,7 +194,7 @@ fn a_generic_attribute_is_placed_at_the_city_object_hook() {
         .iter()
         .position(|s| s.declared.as_ref() == Some(&hook))
         .unwrap();
-    assert_eq!(building.slot_index(&gen), Some(hook_slot));
+    assert_eq!(building.slot_index(&r#gen), Some(hook_slot));
 }
 
 fn uro(dataset: &str, version: &str) -> (SchemaSet, String) {

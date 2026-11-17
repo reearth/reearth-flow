@@ -36,12 +36,13 @@ fn main() -> Result<()> {
         .version(env!("CARGO_PKG_VERSION"));
     let matches = app.get_matches();
     let command = CliCommand::parse_cli_args(matches)?;
-    env::set_var(
+    // FIXME: Audit that the environment access only happens in single-threaded code.
+    unsafe { env::set_var(
         "RAYON_NUM_THREADS",
         std::cmp::min((num_cpus::get() as f64 * 1.2_f64).floor() as u64, 64)
             .to_string()
             .as_str(),
-    );
+    ) };
     let otel_guard = logger::setup_logging_and_tracing()?;
     let return_code: i32 = if let Err(err) = command.execute() {
         eprintln!("{} Command failed: {:?}\n", "✘".color(RED_COLOR), err);

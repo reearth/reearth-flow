@@ -208,9 +208,8 @@ impl Processor for AttributeConversionTable {
     ) -> Result<(), BoxedError> {
         let mut feature = ctx.feature.clone();
         for rule in &self.rules {
-            let value = if let Some(AttributeValue::Array(value)) =
-                feature.get_by_keys(&rule.feature_froms)
-            {
+            let value = match feature.get_by_keys(&rule.feature_froms)
+            { Some(AttributeValue::Array(value)) => {
                 if let Some(id) = self
                     .conversion_table_indexes
                     .get(&generate_index_key(&rule.conversion_table_keys))
@@ -226,9 +225,9 @@ impl Processor for AttributeConversionTable {
                 } else {
                     AttributeValue::Null
                 }
-            } else {
+            } _ => {
                 AttributeValue::Null
-            };
+            }};
             feature.insert(&rule.feature_to, value);
         }
         fw.send(ctx.new_with_feature_and_port(feature, FEATURES_PORT.clone()));

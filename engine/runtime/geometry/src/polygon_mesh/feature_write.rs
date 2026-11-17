@@ -390,7 +390,7 @@ impl schemars::JsonSchema for super::PolygonMesh2D {
     fn schema_name() -> String {
         "PolygonMesh2D".to_string()
     }
-    fn json_schema(generator: &mut schemars::gen::SchemaGenerator) -> schemars::schema::Schema {
+    fn json_schema(generator: &mut schemars::r#gen::SchemaGenerator) -> schemars::schema::Schema {
         <PolygonMesh2D as schemars::JsonSchema>::json_schema(generator)
     }
 }
@@ -400,7 +400,7 @@ impl schemars::JsonSchema for super::PolygonMesh3DData {
     fn schema_name() -> String {
         "PolygonMesh3DData".to_string()
     }
-    fn json_schema(generator: &mut schemars::gen::SchemaGenerator) -> schemars::schema::Schema {
+    fn json_schema(generator: &mut schemars::r#gen::SchemaGenerator) -> schemars::schema::Schema {
         <PolygonMesh3DData as schemars::JsonSchema>::json_schema(generator)
     }
 }
@@ -410,7 +410,7 @@ impl schemars::JsonSchema for super::PolygonMesh3D {
     fn schema_name() -> String {
         "PolygonMesh3D".to_string()
     }
-    fn json_schema(generator: &mut schemars::gen::SchemaGenerator) -> schemars::schema::Schema {
+    fn json_schema(generator: &mut schemars::r#gen::SchemaGenerator) -> schemars::schema::Schema {
         <PolygonMesh3D as schemars::JsonSchema>::json_schema(generator)
     }
 }

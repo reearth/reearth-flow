@@ -224,7 +224,7 @@ impl schemars::JsonSchema for super::TriangularMesh2D {
     fn schema_name() -> String {
         "TriangularMesh2D".to_string()
     }
-    fn json_schema(generator: &mut schemars::gen::SchemaGenerator) -> schemars::schema::Schema {
+    fn json_schema(generator: &mut schemars::r#gen::SchemaGenerator) -> schemars::schema::Schema {
         <TriangularMesh2D as schemars::JsonSchema>::json_schema(generator)
     }
 }
@@ -234,7 +234,7 @@ impl schemars::JsonSchema for super::TriangularMesh3DData {
     fn schema_name() -> String {
         "TriangularMesh3DData".to_string()
     }
-    fn json_schema(generator: &mut schemars::gen::SchemaGenerator) -> schemars::schema::Schema {
+    fn json_schema(generator: &mut schemars::r#gen::SchemaGenerator) -> schemars::schema::Schema {
         <TriangularMesh3DData as schemars::JsonSchema>::json_schema(generator)
     }
 }
@@ -244,7 +244,7 @@ impl schemars::JsonSchema for super::TriangularMesh3D {
     fn schema_name() -> String {
         "TriangularMesh3D".to_string()
     }
-    fn json_schema(generator: &mut schemars::gen::SchemaGenerator) -> schemars::schema::Schema {
+    fn json_schema(generator: &mut schemars::r#gen::SchemaGenerator) -> schemars::schema::Schema {
         <TriangularMesh3D as schemars::JsonSchema>::json_schema(generator)
     }
 }

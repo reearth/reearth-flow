@@ -2976,10 +2976,10 @@ mod tests {
             ],
         );
         let xml = write_with_properties(shell_entries(1), placed);
-        let gen = xml.find("<gen:stringAttribute").unwrap();
+        let r#gen = xml.find("<gen:stringAttribute").unwrap();
         let height = xml.find("<bldg:measuredHeight").unwrap();
         let solid = xml.find("<bldg:lod1Solid").unwrap();
-        assert!(gen < height && height < solid, "{xml}");
+        assert!(r#gen < height && height < solid, "{xml}");
     }
 
     #[test]

@@ -487,7 +487,8 @@ fn main() {
 
     // Set to 0ms for local test runs - we don't need event propagation delay
     // since we're not sending events to external systems (GCP Pub/Sub, etc.)
-    env::set_var("FLOW_RUNTIME_NODE_STATUS_PROPAGATION_DELAY_MS", "0");
+    // FIXME: Audit that the environment access only happens in single-threaded code.
+    unsafe { env::set_var("FLOW_RUNTIME_NODE_STATUS_PROPAGATION_DELAY_MS", "0") };
 
     let testcases_dir = PathBuf::from(env!("CARGO_MANIFEST_DIR"))
         .parent()

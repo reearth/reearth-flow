@@ -266,11 +266,11 @@ impl Processor for FloodingAreaSurfaceGenerator {
             return Ok(());
         }
 
-        let buffer = if let Ok(buffer) = self.buffer.lock() {
+        let buffer = match self.buffer.lock() { Ok(buffer) => {
             buffer.clone()
-        } else {
+        } _ => {
             return Ok(());
-        };
+        }};
 
         let epsg = self.epsg.lock().ok().and_then(|g| *g);
 

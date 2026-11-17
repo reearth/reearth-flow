@@ -73,7 +73,7 @@ impl TriangularMesh3DData {
         vertices: Vec<[f64; 3]>,
         triangle_count: usize,
         indices: impl IntoIterator<Item = u32>,
-    ) -> Self {
+    ) -> Self { unsafe {
         let width = index_width_for(vertices.len());
         Self {
             indices: IndexBuffer::from_exact_unchecked(
@@ -84,7 +84,7 @@ impl TriangularMesh3DData {
             vertices,
             appearance: None,
         }
-    }
+    }}
 
     /// Install an already-built `appearance` (with its per-theme UV) directly,
     /// **unvalidated** (the caller owns the invariants). Used by tessellation, whose
@@ -175,12 +175,12 @@ impl TriangularMesh3D {
         vertices: Vec<[f64; 3]>,
         triangle_count: usize,
         indices: impl IntoIterator<Item = u32>,
-    ) -> Self {
+    ) -> Self { unsafe {
         Self::new(
             frame,
             TriangularMesh3DData::from_parts_unchecked(vertices, triangle_count, indices),
         )
-    }
+    }}
 
     /// Build from a triangle soup; see [`TriangularMesh3DData::from_soup`].
     pub fn from_soup(frame: CoordinateFrame, iter: impl IntoIterator<Item = [f64; 3]>) -> Self {
@@ -266,7 +266,7 @@ impl TriangularMesh2D {
         triangle_count: usize,
         indices: impl IntoIterator<Item = u32>,
         elevation: f64,
-    ) -> Self {
+    ) -> Self { unsafe {
         let width = index_width_for(vertices.len());
         Self {
             frame,
@@ -279,7 +279,7 @@ impl TriangularMesh2D {
             z: Some(elevation),
             appearance: None,
         }
-    }
+    }}
 
     /// Build a pure-2D mesh without validating indices.
     ///
@@ -290,7 +290,7 @@ impl TriangularMesh2D {
         vertices: Vec<[f64; 2]>,
         triangle_count: usize,
         indices: impl IntoIterator<Item = u32>,
-    ) -> Self {
+    ) -> Self { unsafe {
         let width = index_width_for(vertices.len());
         Self {
             frame,
@@ -303,7 +303,7 @@ impl TriangularMesh2D {
             z: None,
             appearance: None,
         }
-    }
+    }}
 
     /// Install a raw `appearance`; see
     /// [`TriangularMesh3DData::set_raw_appearance`].

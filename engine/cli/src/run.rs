@@ -192,10 +192,11 @@ impl RunCliCommand {
             .to_str()
             .ok_or_else(|| crate::errors::Error::init("Invalid temp-artifacts dir path"))?
             .to_string();
-        std::env::set_var(
+        // FIXME: Audit that the environment access only happens in single-threaded code.
+        unsafe { std::env::set_var(
             "FLOW_RUNTIME_JOB_TEMP_ARTIFACT_DIRECTORY",
             temp_artifact_root,
-        );
+        ) };
 
         let mut global = HashMap::new();
         let external = self

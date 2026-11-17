@@ -393,7 +393,7 @@ impl Processor for CityGmlAttributeInserter {
                 self.insert_attributes(&input_bytes, collect_rings)?;
 
             // If we have roof rings and texture info, append appearance block
-            let final_output = if let (false, Some(epsg), Some(ref tex_fname)) =
+            let final_output = if let (false, Some(epsg), Some(tex_fname)) =
                 (roof_rings.is_empty(), source_epsg, &texture_filename)
             {
                 let appearance_xml = CityGmlAttributeInserter::build_appearance_xml(

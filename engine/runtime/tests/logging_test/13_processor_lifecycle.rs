@@ -29,7 +29,8 @@ use serde_json::Value;
 static INIT: Once = Once::new();
 fn init_test_env() {
     INIT.call_once(|| {
-        std::env::set_var("FLOW_RUNTIME_ACTION_LOG_DISABLE", "true");
+        // FIXME: Audit that the environment access only happens in single-threaded code.
+        unsafe { std::env::set_var("FLOW_RUNTIME_ACTION_LOG_DISABLE", "true") };
     });
 }
 

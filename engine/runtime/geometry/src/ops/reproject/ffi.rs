@@ -186,31 +186,31 @@ impl Entry {
 /// Whether PROJ can relate `src` and `dst` once ballpark operations are allowed,
 /// which tells a missing grid apart from a datum pair with no accurate path.
 // SAFETY: `ctx`, `src` and `dst` must be valid, non-null PROJ objects.
-unsafe fn ballpark_path_exists(ctx: *mut PJ_CONTEXT, src: *const PJ, dst: *const PJ) -> bool {
+unsafe fn ballpark_path_exists(ctx: *mut PJ_CONTEXT, src: *const PJ, dst: *const PJ) -> bool { unsafe {
     let pj = proj_create_crs_to_crs_from_pj(ctx, src, dst, ptr::null_mut(), ptr::null());
     if pj.is_null() {
         return false;
     }
     proj_destroy(pj);
     true
-}
+}}
 
 /// Format a PROJ `errno` into its message string.
 // SAFETY: `ctx` must be a valid, non-null PROJ context.
-unsafe fn errno_string(ctx: *mut PJ_CONTEXT, errno: c_int) -> String {
+unsafe fn errno_string(ctx: *mut PJ_CONTEXT, errno: c_int) -> String { unsafe {
     let s = proj_context_errno_string(ctx, errno);
     if s.is_null() {
         format!("proj errno {errno}")
     } else {
         CStr::from_ptr(s).to_string_lossy().into_owned()
     }
-}
+}}
 
 /// Read and format the current error of `ctx`.
 // SAFETY: `ctx` must be a valid, non-null PROJ context.
-unsafe fn ctx_errno_string(ctx: *mut PJ_CONTEXT) -> String {
+unsafe fn ctx_errno_string(ctx: *mut PJ_CONTEXT) -> String { unsafe {
     errno_string(ctx, proj_context_errno(ctx))
-}
+}}
 
 /// Process-wide memoization of computed orientation signs, keyed by EPSG code.
 /// The sign is a fixed property of a CRS, so a value cached once stays valid for
@@ -321,7 +321,7 @@ unsafe fn axes_for_crs(
     ctx: *mut PJ_CONTEXT,
     crs: *const PJ,
     epsg: EpsgCode,
-) -> Result<Vec<[f64; 3]>> {
+) -> Result<Vec<[f64; 3]>> { unsafe {
     let cs = proj_crs_get_coordinate_system(ctx, crs);
     if !cs.is_null() {
         let result = axes_from_cs(ctx, cs, epsg);
@@ -349,7 +349,7 @@ unsafe fn axes_for_crs(
     };
     proj_destroy(horizontal);
     result
-}
+}}
 
 /// The canonical axis columns of a coordinate system, from its axis
 /// directions: each axis contributes a signed unit column in the
@@ -359,7 +359,7 @@ unsafe fn axes_from_cs(
     ctx: *mut PJ_CONTEXT,
     cs: *const PJ,
     epsg: EpsgCode,
-) -> Result<Vec<[f64; 3]>> {
+) -> Result<Vec<[f64; 3]>> { unsafe {
     let n = proj_cs_get_axis_count(ctx, cs);
     if !(2..=3).contains(&n) {
         return Err(Error::projection(format!(
@@ -399,7 +399,7 @@ unsafe fn axes_from_cs(
         axes.push(axis);
     }
     Ok(axes)
-}
+}}
 
 /// A process-wide, per-EPSG cache of a yes/no CRS property. Like the
 /// orientation sign, such a property is fixed for the process.
@@ -502,7 +502,7 @@ unsafe fn projected_in_metres(
     ctx: *mut PJ_CONTEXT,
     crs: *const PJ,
     epsg: EpsgCode,
-) -> Result<bool> {
+) -> Result<bool> { unsafe {
     if proj_get_type(crs) != PJ_TYPE_PJ_TYPE_PROJECTED_CRS {
         return Ok(false);
     }
@@ -542,7 +542,7 @@ unsafe fn projected_in_metres(
     }
     proj_destroy(cs);
     result
-}
+}}
 
 /// Whether a CRS's (horizontal) axes use a linear unit, descending into a
 /// compound CRS's horizontal sub-CRS when needed.
@@ -551,7 +551,7 @@ unsafe fn axis_unit_linear_for_crs(
     ctx: *mut PJ_CONTEXT,
     crs: *const PJ,
     epsg: EpsgCode,
-) -> Result<bool> {
+) -> Result<bool> { unsafe {
     let cs = proj_crs_get_coordinate_system(ctx, crs);
     if !cs.is_null() {
         let result = cs_type_is_linear(ctx, cs, epsg);
@@ -578,7 +578,7 @@ unsafe fn axis_unit_linear_for_crs(
     };
     proj_destroy(horizontal);
     result
-}
+}}
 
 /// Whether a coordinate system uses linear (length) axes, from its PROJ
 /// coordinate-system type: a Cartesian CS (projected / geocentric) is linear, an
@@ -589,7 +589,7 @@ unsafe fn axis_unit_linear_for_crs(
 /// as angular. Any other or unknown type errors, so the caller surfaces it
 /// rather than trusting an unsuitable frame.
 // SAFETY: `ctx` and `cs` must be valid, non-null PROJ objects.
-unsafe fn cs_type_is_linear(ctx: *mut PJ_CONTEXT, cs: *const PJ, epsg: EpsgCode) -> Result<bool> {
+unsafe fn cs_type_is_linear(ctx: *mut PJ_CONTEXT, cs: *const PJ, epsg: EpsgCode) -> Result<bool> { unsafe {
     #[allow(non_upper_case_globals)]
     match proj_cs_get_type(ctx, cs) {
         PJ_COORDINATE_SYSTEM_TYPE_PJ_CS_TYPE_CARTESIAN => Ok(true),
@@ -599,7 +599,7 @@ unsafe fn cs_type_is_linear(ctx: *mut PJ_CONTEXT, cs: *const PJ, epsg: EpsgCode)
             "EPSG:{epsg} has an unclassifiable coordinate-system type ({other})"
         ))),
     }
-}
+}}
 
 /// PROJ's determinate answer to "what is this CRS's 2D counterpart?".
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
@@ -671,7 +671,7 @@ fn lookup_demotion(epsg: EpsgCode) -> Result<CachedDemotion, String> {
 
 /// Demote `crs` to 2D and classify what came back.
 // SAFETY: `ctx` and `crs` must be valid, non-null PROJ objects.
-unsafe fn demote_and_classify(ctx: *mut PJ_CONTEXT, crs: *const PJ) -> CachedDemotion {
+unsafe fn demote_and_classify(ctx: *mut PJ_CONTEXT, crs: *const PJ) -> CachedDemotion { unsafe {
     // A null name asks PROJ to derive the 2D CRS's name from the input's.
     let demoted = proj_crs_demote_to_2D(ctx, ptr::null(), crs);
     if demoted.is_null() {
@@ -683,7 +683,7 @@ unsafe fn demote_and_classify(ctx: *mut PJ_CONTEXT, crs: *const PJ) -> CachedDem
     let result = classify_demoted(ctx, demoted);
     proj_destroy(demoted);
     Ok(result)
-}
+}}
 
 /// Classify a demoted CRS: a two-axis CRS carrying an EPSG identifier is a usable
 /// 2D frame, anything else is not.
@@ -691,7 +691,7 @@ unsafe fn demote_and_classify(ctx: *mut PJ_CONTEXT, crs: *const PJ) -> CachedDem
 /// The geocentric case is matched first only for its specific message; PROJ
 /// demotes such a CRS to itself, so the axis count would reject it anyway.
 // SAFETY: `ctx` and `crs` must be valid, non-null PROJ objects.
-unsafe fn classify_demoted(ctx: *mut PJ_CONTEXT, crs: *const PJ) -> TwoDimensionalCrs {
+unsafe fn classify_demoted(ctx: *mut PJ_CONTEXT, crs: *const PJ) -> TwoDimensionalCrs { unsafe {
     if proj_get_type(crs) == PJ_TYPE_PJ_TYPE_GEOCENTRIC_CRS {
         return TwoDimensionalCrs::None(MissingTwoDimensionalForm::Geocentric);
     }
@@ -708,13 +708,13 @@ unsafe fn classify_demoted(ctx: *mut PJ_CONTEXT, crs: *const PJ) -> TwoDimension
         Some(code) => TwoDimensionalCrs::Code(code),
         None => TwoDimensionalCrs::None(MissingTwoDimensionalForm::Unidentified),
     }
-}
+}}
 
 /// The EPSG code `crs` declares as its first identifier, or `None` when it has
 /// none, the authority is not EPSG, or the code does not fit an [`EpsgCode`].
 // SAFETY: `crs` must be a valid, non-null PROJ object; the returned strings are
 // owned by it and are read while it is alive.
-unsafe fn epsg_identifier(crs: *const PJ) -> Option<EpsgCode> {
+unsafe fn epsg_identifier(crs: *const PJ) -> Option<EpsgCode> { unsafe {
     let authority = proj_get_id_auth_name(crs, 0);
     let code = proj_get_id_code(crs, 0);
     if authority.is_null() || code.is_null() {
@@ -728,7 +728,7 @@ unsafe fn epsg_identifier(crs: *const PJ) -> Option<EpsgCode> {
         .parse::<u16>()
         .ok()
         .map(EpsgCode::new)
-}
+}}
 
 /// Map a PROJ axis direction to its `(row, sign)` in the canonical
 /// `(East, North, Up)` basis, or `None` if it is not aligned to an axis.
@@ -805,7 +805,7 @@ unsafe fn exact_match(
     ctx: *mut PJ_CONTEXT,
     candidates: *mut PJ_OBJ_LIST,
     confidences: *mut c_int,
-) -> Option<EpsgCode> {
+) -> Option<EpsgCode> { unsafe {
     if candidates.is_null() || confidences.is_null() {
         return None;
     }
@@ -824,7 +824,7 @@ unsafe fn exact_match(
         }
     }
     None
-}
+}}
 
 /// The ESRI WKT1 form of `epsg`, as PROJ's database defines it.
 pub fn esri_wkt1(epsg: EpsgCode) -> Result<String> {
