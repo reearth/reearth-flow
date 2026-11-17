@@ -30,7 +30,7 @@ use flate2::write::GzEncoder;
 use indexmap::IndexMap;
 use rayon::prelude::*;
 
-use reearth_flow_atlas::{TextureCache, TextureInput, build_atlas_multipage};
+use reearth_flow_atlas::{TextureInput, build_atlas_multipage};
 use reearth_flow_common::image::MimeType;
 use reearth_flow_geometry::appearance::RasterData;
 use reearth_flow_gltf::DracoCompression;
@@ -272,14 +272,12 @@ pub fn build(
         by_cell.entry(cell).or_default().push(i);
     }
 
-    // Callers own the caches, so a cell's candidate builds decode its sources
-    // once between them. PLATEAU textures are per-surface, so a source image is
-    // referenced by only one cell; a tileset-wide cache would grow without
-    // bound for no reuse gain.
-    let build_chunk = |chunk: &[usize], textures: &TextureCache, embedded: &EmbeddedTextures| {
+    // Callers own the embedded-texture dir, so a cell's candidate builds write
+    // each embedded texture once between them.
+    let build_chunk = |chunk: &[usize], embedded: &EmbeddedTextures| {
         let members: Vec<&(&Feature, mesh::ExtractedMesh)> =
             chunk.iter().map(|&i| &extracted[i]).collect();
-        let (glb, stats) = build_cell_glb(&members, options, render, textures, embedded)?;
+        let (glb, stats) = build_cell_glb(&members, options, render, embedded)?;
         merge_stats(&mut property_stats.lock().unwrap(), stats);
         Ok(glb)
     };
@@ -288,9 +286,8 @@ pub fn build(
         .into_par_iter()
         .map(
             |(cell, features)| -> crate::errors::Result<(Cell, Vec<Unit>)> {
-                let textures = TextureCache::default();
                 let embedded = EmbeddedTextures::new()?;
-                let bytes = transfer_bytes(&build_chunk(&features, &textures, &embedded)?);
+                let bytes = transfer_bytes(&build_chunk(&features, &embedded)?);
                 Ok((cell, vec![Unit { features, bytes }]))
             },
         )
@@ -433,10 +430,8 @@ struct CellContents {
 fn split_by_size(
     units: Vec<Unit>,
     target_tile_size: u64,
-    build_chunk: impl Fn(&[usize], &TextureCache, &EmbeddedTextures) -> crate::errors::Result<Vec<u8>>
-    + Sync,
+    build_chunk: impl Fn(&[usize], &EmbeddedTextures) -> crate::errors::Result<Vec<u8>> + Sync,
 ) -> crate::errors::Result<CellContents> {
-    let textures = TextureCache::default();
     let embedded = EmbeddedTextures::new()?;
     let expected = group_bytes(&units);
     let parts = if target_tile_size == 0 {
@@ -460,7 +455,7 @@ fn split_by_size(
                     .iter()
                     .flat_map(|u| u.features.iter().copied())
                     .collect();
-                build_chunk(&features, &textures, &embedded).map(|glb| (chunk, glb))
+                build_chunk(&features, &embedded).map(|glb| (chunk, glb))
             })
             .collect::<crate::errors::Result<_>>()?;
         let total = built.len();
@@ -593,16 +588,8 @@ pub fn build_glb(
         return Ok(None);
     };
 
-    let textures = TextureCache::default();
     let embedded = EmbeddedTextures::new()?;
-    build_cell_glb(
-        &[&(feature, extracted)],
-        options,
-        render,
-        &textures,
-        &embedded,
-    )
-    .map(|(glb, _)| Some(glb))
+    build_cell_glb(&[&(feature, extracted)], options, render, &embedded).map(|(glb, _)| Some(glb))
 }
 
 fn empty_tileset(
@@ -745,7 +732,6 @@ fn build_cell_glb(
     cell_members: &[&(&Feature, mesh::ExtractedMesh)],
     options: MetadataOptions,
     render: RenderOptions,
-    textures: &TextureCache,
     embedded: &EmbeddedTextures,
 ) -> crate::errors::Result<(Vec<u8>, IndexMap<String, ColumnStats>)> {
     let cells = primitive::collect(cell_members);
@@ -769,10 +755,10 @@ fn build_cell_glb(
         // geometry in the neutral fallback colour.
         let pages = match render.texture_codec {
             TextureCodec::Untextured => None,
-            _ => build_textured_pages(&mut builder, &textured, render, textures, embedded)?,
+            _ => build_textured_pages(&mut builder, &textured, render, embedded)?,
         };
         match pages {
-            Some(pages) => {
+            Some(TexturedSplit { pages, untextured }) => {
                 texture_size = pages.iter().map(|page| page.extent).max();
                 for page in pages {
                     let material = glb::MaterialDesc {
@@ -785,6 +771,17 @@ fn build_cell_glb(
                         origin,
                         material,
                         Some(page.corner_uv),
+                        render.compute_flat_normal,
+                    );
+                    primitives.push(handle);
+                }
+                if !untextured.indices.is_empty() {
+                    let handle = push_geom(
+                        &mut builder,
+                        &untextured,
+                        origin,
+                        color_material(DEFAULT_MATERIAL),
+                        None,
                         render.compute_flat_normal,
                     );
                     primitives.push(handle);
@@ -874,6 +871,13 @@ fn color_material(factors: primitive::MaterialFactors) -> glb::MaterialDesc {
 /// One atlas page realized as a glTF primitive: its embedded texture, the
 /// subset of textured geometry whose UVs landed on that page, and those faces'
 /// atlas-space per-corner UVs (parallel to the sub-geometry's corners).
+/// A cell's textured faces after atlas packing.
+struct TexturedSplit {
+    pages: Vec<TexturedPage>,
+    /// Faces whose texture failed to load, rendered colour-only.
+    untextured: Geom,
+}
+
 struct TexturedPage {
     texture: glb::TextureRef,
     /// Larger page dimension in pixels.
@@ -885,15 +889,15 @@ struct TexturedPage {
 /// Pack the cell's textured faces into one or more atlas pages, embed each page
 /// with the configured [`TextureCodec`], and split the textured geometry so each
 /// returned page carries only the faces whose UVs live on it (glTF binds one
-/// texture per primitive). `Ok(None)` when packing produced no image, so the
-/// caller falls back to colour-only.
+/// texture per primitive). Faces whose texture failed to load are returned
+/// untextured. `Ok(None)` when packing produced no image, so the caller falls
+/// back to colour-only.
 fn build_textured_pages(
     builder: &mut glb::Builder,
     textured: &TexturedPrimitive,
     render: RenderOptions,
-    textures: &TextureCache,
     embedded: &EmbeddedTextures,
-) -> crate::errors::Result<Option<Vec<TexturedPage>>> {
+) -> crate::errors::Result<Option<TexturedSplit>> {
     // Resolve each polygon's texture to a local file path: on-disk sources pass
     // through; embedded (in-memory) sources are materialized to a temp file (once
     // per distinct content) so the path-based atlas packer can read them.
@@ -944,26 +948,30 @@ fn build_textured_pages(
         render.atlas_extrusion,
         codec.block_align(),
         render.wrap_tolerance,
-        textures,
     )
     .map_err(SinkError::cesium3dtiles_writer)?
     {
         Some(built) => built,
         None => return Ok(None),
     };
+    let reearth_flow_atlas::MultiPageAtlas {
+        pages,
+        wrap,
+        remapped,
+    } = built;
 
-    let mut page_textures = Vec::with_capacity(built.pages.len());
-    for (page, wrap) in built.pages.iter().zip(&built.wrap) {
+    let mut page_textures = Vec::with_capacity(pages.len());
+    for (page, wrap) in pages.into_iter().zip(&wrap) {
         let texture = builder
-            .push_atlas_texture(page, codec.as_ref(), page_sampler(*wrap))
+            .push_atlas_texture(&page, codec.as_ref(), page_sampler(*wrap))
             .map_err(SinkError::cesium3dtiles_writer)?;
         page_textures.push((texture, page.width().max(page.height())));
     }
 
     Ok(Some(split_textured_by_page(
         textured,
-        &built.remapped,
-        &built.wrap,
+        &remapped,
+        &wrap,
         &slots,
         page_textures,
     )))
@@ -1074,19 +1082,22 @@ fn polygon_metres_per_pixel(
 /// Split the single textured [`Geom`] into one [`Geom`] per atlas page, each
 /// holding only the polygons whose UVs landed on that page and carrying those
 /// polygons' atlas-space per-corner UVs. Vertices are re-welded per page (each
-/// page's vertex buffer is compacted independently).
+/// page's vertex buffer is compacted independently). Polygons whose texture
+/// failed to load land in `untextured`.
 fn split_textured_by_page(
     textured: &TexturedPrimitive,
-    remapped: &[Vec<reearth_flow_atlas::PolygonPlacement>],
+    remapped: &[Option<Vec<reearth_flow_atlas::PolygonPlacement>>],
     wrap: &[reearth_flow_atlas::PageWrap],
     slots: &[(usize, usize)],
     textures: Vec<(glb::TextureRef, u32)>,
-) -> Vec<TexturedPage> {
+) -> TexturedSplit {
     let pages = textures.len();
     let mut geoms: Vec<Geom> = (0..pages).map(|_| Geom::default()).collect();
     let mut corner_uvs: Vec<Vec<[f32; 2]>> = vec![Vec::new(); pages];
     // Per page, weld source vertex index -> that page's local vertex index.
     let mut remap: Vec<HashMap<u32, u32>> = vec![HashMap::new(); pages];
+    let mut untextured = Geom::default();
+    let mut untextured_remap: HashMap<u32, u32> = HashMap::new();
 
     let geom = &textured.geom;
     let mut tri_off = 0usize;
@@ -1096,39 +1107,41 @@ fn split_textured_by_page(
         tri_off += tris;
 
         let (pi, poly) = slots[polygon];
-        let placement = &remapped[pi][poly];
+        let Some(placements) = &remapped[pi] else {
+            copy_polygon(
+                &mut untextured,
+                &mut untextured_remap,
+                geom,
+                polygon,
+                range,
+                None,
+            );
+            continue;
+        };
+        let placement = &placements[poly];
         let page = placement.page;
-        let out = &mut geoms[page];
-        let page_remap = &mut remap[page];
-        let [du, dv] = match wrap[page] {
+        let offset = match wrap[page] {
             reearth_flow_atlas::PageWrap::Repeat => repeat_offset(&placement.uvs),
             reearth_flow_atlas::PageWrap::Clamp => [0.0, 0.0],
         };
 
         // `placement.uvs` is parallel to this polygon's source corners, in the
-        // same triangle-corner order we emit below.
-        let mut local_corner = 0usize;
-        for tri in range {
-            let mut out_tri = [0u32; 3];
-            for (c, &orig) in geom.indices[tri].iter().enumerate() {
-                let local = *page_remap.entry(orig).or_insert_with(|| {
-                    let idx = out.positions.len() as u32;
-                    out.positions.push(geom.positions[orig as usize]);
-                    out.feature_ids.push(geom.feature_ids[orig as usize]);
-                    idx
-                });
-                out_tri[c] = local;
-                let [u, v] = placement.uvs[local_corner];
-                corner_uvs[page].push([(u - du) as f32, (v - dv) as f32]);
-                local_corner += 1;
-            }
-            out.indices.push(out_tri);
-        }
-        out.polygon_normals.push(geom.polygon_normals[polygon]);
-        out.polygon_tris.push(tris as u32);
+        // same triangle-corner order `copy_polygon` emits.
+        copy_polygon(
+            &mut geoms[page],
+            &mut remap[page],
+            geom,
+            polygon,
+            range,
+            Some(CornerUvs {
+                src: &placement.uvs,
+                offset,
+                dst: &mut corner_uvs[page],
+            }),
+        );
     }
 
-    textures
+    let pages = textures
         .into_iter()
         .zip(geoms)
         .zip(corner_uvs)
@@ -1138,7 +1151,49 @@ fn split_textured_by_page(
             geom,
             corner_uv,
         })
-        .collect()
+        .collect();
+    TexturedSplit { pages, untextured }
+}
+
+/// A polygon's source per-corner UVs, shifted by `offset` into `dst`.
+struct CornerUvs<'a> {
+    src: &'a [[f64; 2]],
+    offset: [f64; 2],
+    dst: &'a mut Vec<[f32; 2]>,
+}
+
+/// Append one source polygon (triangles `tris` of `geom`) to `out`, reusing
+/// vertices already copied per `remap`, and its UVs when `uvs` is given.
+fn copy_polygon(
+    out: &mut Geom,
+    remap: &mut HashMap<u32, u32>,
+    geom: &Geom,
+    polygon: usize,
+    tris: std::ops::Range<usize>,
+    mut uvs: Option<CornerUvs<'_>>,
+) {
+    let mut local_corner = 0usize;
+    for tri in tris.clone() {
+        let mut out_tri = [0u32; 3];
+        for (c, &orig) in geom.indices[tri].iter().enumerate() {
+            let local = *remap.entry(orig).or_insert_with(|| {
+                let idx = out.positions.len() as u32;
+                out.positions.push(geom.positions[orig as usize]);
+                out.feature_ids.push(geom.feature_ids[orig as usize]);
+                idx
+            });
+            out_tri[c] = local;
+            if let Some(uvs) = uvs.as_mut() {
+                let [u, v] = uvs.src[local_corner];
+                let [du, dv] = uvs.offset;
+                uvs.dst.push([(u - du) as f32, (v - dv) as f32]);
+            }
+            local_corner += 1;
+        }
+        out.indices.push(out_tri);
+    }
+    out.polygon_normals.push(geom.polygon_normals[polygon]);
+    out.polygon_tris.push(tris.len() as u32);
 }
 
 /// The whole-repeat offset of a polygon's UVs on a repeating page: the floor of
@@ -1331,12 +1386,12 @@ mod tests {
         };
 
         let mut builder = glb::Builder::new();
-        let cache = TextureCache::default();
         let embedded = EmbeddedTextures::new().expect("temp dir");
 
-        let pages = build_textured_pages(&mut builder, &textured, render, &cache, &embedded)
+        let pages = build_textured_pages(&mut builder, &textured, render, &embedded)
             .expect("build textured pages")
-            .expect("an in-memory texture must produce an atlas page, not colour-only");
+            .expect("an in-memory texture must produce an atlas page, not colour-only")
+            .pages;
 
         assert_eq!(pages.len(), 1, "one atlas page for the single texture");
         assert_eq!(
@@ -1346,6 +1401,49 @@ mod tests {
         );
         // The embedded bytes were written to a temp file and cached by content hash.
         assert_eq!(embedded.lock().len(), 1);
+    }
+
+    // A texture that fails to load costs only its own faces their texture: the
+    // loadable one still gets an atlas page, the other renders colour-only.
+    #[test]
+    fn unloadable_texture_leaves_its_faces_untextured() {
+        let tmp = tempfile::TempDir::new().unwrap();
+        let good = tmp.path().join("good.png");
+        image::RgbaImage::from_pixel(8, 8, image::Rgba([200, 100, 50, 255]))
+            .save(&good)
+            .unwrap();
+        let missing = tmp.path().join("missing.jpg");
+
+        let triangle_uv = [[0.0, 0.0], [1.0, 0.0], [0.0, 1.0]];
+        let textured = TexturedPrimitive {
+            geom: Geom {
+                positions: vec![
+                    [0.0, 0.0, 0.0],
+                    [1.0, 0.0, 0.0],
+                    [0.0, 1.0, 0.0],
+                    [0.0, 0.0, 1.0],
+                ],
+                indices: vec![[0, 1, 2], [0, 1, 3]],
+                polygon_normals: vec![[0.0, 0.0, 1.0], [0.0, -1.0, 0.0]],
+                polygon_tris: vec![1, 1],
+                corner_uv: [triangle_uv, triangle_uv].concat(),
+                feature_ids: vec![0; 4],
+            },
+            polygon_texture: vec![TextureSource::File(good), TextureSource::File(missing)],
+        };
+
+        let mut builder = glb::Builder::new();
+        let embedded = EmbeddedTextures::new().expect("temp dir");
+        let split =
+            build_textured_pages(&mut builder, &textured, plain_render_options(), &embedded)
+                .unwrap()
+                .expect("the loadable texture is packed");
+
+        assert_eq!(split.pages.len(), 1);
+        assert_eq!(split.pages[0].geom.indices, vec![[0, 1, 2]]);
+        assert_eq!(split.untextured.indices, vec![[0, 1, 2]]);
+        assert_eq!(split.untextured.positions[2], [0.0, 0.0, 1.0]);
+        assert_eq!(split.untextured.polygon_normals, vec![[0.0, -1.0, 0.0]]);
     }
 
     // End to end through the public `build`: a CRS-framed TriangularMesh carrying an
