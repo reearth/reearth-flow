@@ -1,5 +1,5 @@
 {
-  "description": "Test that a LOD0 face failing both checks is reported twice on plateau6: a clockwise exterior ring with a repeated vertex is counted under both 'LOD0 面のエラー' and 'LOD0 面の向きエラー'.",
+  "description": "Test that a LOD0 face failing both checks is reported twice on plateau6: a clockwise exterior ring with a repeated vertex is counted under both 'LOD0 面のエラー' and 'LOD0 面の向き不正'.",
   "workflowPath": "quality-check/plateau6/02-bldg/workflow.yml",
   "workflowVariables": [
     {
@@ -40,7 +40,7 @@
   "expectedOutput": {
     "expectedFile": [
       "02_建築物_LOD0面のエラー.csv",
-      "02_建築物_LOD0面の向きエラー.csv"
+      "02_建築物_LOD0面の向き不正.csv"
     ]
   },
   "summaryOutput": {

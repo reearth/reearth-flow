@@ -1,21 +1,24 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <!--
-  Error fixture for plateau6 03-tran surface orientation, CityGML 3.0 + i-UR 4.0.
-  The orientation check reports every face whose exterior ring is wound against the
-  coordinate frame once the face is flattened to 2D.
+  L10: misoriented faces, judged from above at every LOD.
 
-  Placed under udx/trk so the result files carry the 03-3_徒歩道 prefix; otherwise identical to the
-  tran:Road fixture next to it.
+  Placed under udx/trk so the result files carry the 03-3_徒歩道 prefix;
+  otherwise identical to the tran:Road fixture next to it.
 
-  A single tran:Track within saitama-shi mesh 53395499 (EPSG:6697) carrying two boundaries,
-  each holding a pair of polygons that are identical except for their winding:
-    - tran:TrafficArea, LOD1: poly_0f3c... is wound correctly, poly_1a4d... is reversed.
-    - tran:AuxiliaryTrafficArea, LOD3: poly_2b5e... is wound correctly, poly_3c6f... is reversed.
-  So exactly one face per LOD is expected to be reported.
+  A single tran:Track in mesh 53395499 (EPSG:6697) with two boundaries, each
+  holding a pair of polygons that differ only in their winding:
+    - tran:TrafficArea, LOD1: poly_0f3c... is wound correctly, poly_1a4d... is
+      reversed.
+    - tran:AuxiliaryTrafficArea, LOD3: poly_2b5e... is wound correctly,
+      poly_3c6f... is reversed.
 
-  The objectlist referenced by the test is a provisional plateau4-derived Excel; a CityGML 3.0 /
-  i-UR 4.0 objectlist is not yet standardized.
+  Expected:
+    - poly_1a4d...: exterior error.
+    - poly_3c6f...: exterior error, listed but not counted in the total.
+
+  The objectlist used by the test is a provisional plateau4-derived Excel.
 -->
+
 <core:CityModel xmlns:core="http://www.opengis.net/citygml/3.0"
 	xmlns:tran="http://www.opengis.net/citygml/transportation/3.0"
 	xmlns:gml="http://www.opengis.net/gml/3.2"

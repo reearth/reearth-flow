@@ -15,6 +15,7 @@ graphs:
   - !include ../../../../graphs/plateau6/folder_and_file_path_reader.yml
   - !include ../../../../graphs/plateau6/attribute_tree_measure_caster.yml
   - !include ../../../../graphs/plateau6/attribute_tree_pruner.yml
+  - !include ../../../../graphs/plateau6/address_concatenator.yml
   - !include ../../../../graphs/plateau6/city_code_boundary_filter.yml
   - id: 8f3a94c6-bb3e-4561-a405-09b65353986c
     name: entry_point
@@ -78,6 +79,12 @@ graphs:
         name: AttributeTreePruner
         type: subGraph
         subGraphId: 833b0700-a741-4411-bfae-c310f7e3dc0c
+
+      # joins bldg:address into its text before the attributes are flattened
+      - id: 87098b92-1162-4341-949e-25f85af9704c
+        name: AddressConcatenator
+        type: subGraph
+        subGraphId: d96b6af6-73e2-42ce-a5af-3eff30977392
 
       - id: 6a1b3c5d-7e9f-4a1b-8c3d-5e7f9a1b3c5d
         name: AttributeTableExtractor
@@ -602,8 +609,13 @@ graphs:
         to: 2dc6d39e-9c24-4c6f-94f2-889bb9b6e110
         fromPort: features
         toPort: features
-      - id: a2631c5e-f7e9-40c1-bec2-ddddee56257c
+      - id: 42d56365-e3bb-4ae3-ac51-711fb90cdb2f
         from: 2dc6d39e-9c24-4c6f-94f2-889bb9b6e110
+        to: 87098b92-1162-4341-949e-25f85af9704c
+        fromPort: features
+        toPort: features
+      - id: a2631c5e-f7e9-40c1-bec2-ddddee56257c
+        from: 87098b92-1162-4341-949e-25f85af9704c
         to: 6a1b3c5d-7e9f-4a1b-8c3d-5e7f9a1b3c5d
         fromPort: features
         toPort: features
@@ -613,7 +625,7 @@ graphs:
         fromPort: features
         toPort: requestor
       - id: 9a2ad9f3-c71a-44ac-ab5f-a519ef8a14f9
-        from: 2dc6d39e-9c24-4c6f-94f2-889bb9b6e110
+        from: 87098b92-1162-4341-949e-25f85af9704c
         to: 32eed03e-18e6-497b-b588-1afb84492ee1
         fromPort: features
         toPort: features

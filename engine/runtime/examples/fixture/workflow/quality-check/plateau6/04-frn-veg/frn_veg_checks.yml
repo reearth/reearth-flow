@@ -386,13 +386,6 @@ nodes:
           "error_geometry/" + variables["packagePrefixes"][attributes["folder"]] + "_面のエラー位置.geojson"
       writeCrs: true
 
-  # The original workspace has no orientation check for frn / veg, so the port
-  # is consumed rather than left dangling.
-  - id: d6000000-0000-4000-8000-000000000012
-    name: IncorrectOrientationSink
-    type: action
-    action: Noop Sink
-
   # --- L14: solid boundary checks ---
   - id: d6000000-0000-4000-8000-000000000013
     name: GeometryFilterSolid
@@ -1181,11 +1174,6 @@ edges:
     from: d6000000-0000-4000-8000-000000000010
     to: d6000000-0000-4000-8000-000000000011
     fromPort: features
-    toPort: features
-  - id: d6000000-0000-4000-8000-000100000014
-    from: d6000000-0000-4000-8000-00000000000a
-    to: d6000000-0000-4000-8000-000000000012
-    fromPort: incorrectOrientation
     toPort: features
 
   # LOD splitter -> solid checks

@@ -29,10 +29,14 @@ export default ({
       ? !!metadata.isLocked
       : !!currentProject?.isLocked;
 
-  // Keep ydoc in sync with server state
+  // Keep ydoc in sync with server state. Every set is a document update, so
+  // write only when the doc disagrees; an unconditional write would change the
+  // document each time the project is opened. A missing key reads as unlocked.
   useEffect(() => {
     if (!yMetadata || currentProject?.isLocked === undefined) return;
-    yMetadata.set("isLocked", !!currentProject.isLocked);
+    const serverLocked = !!currentProject.isLocked;
+    if (!!yMetadata.get("isLocked") === serverLocked) return;
+    yMetadata.set("isLocked", serverLocked);
   }, [yMetadata, currentProject?.isLocked]);
 
   const debouncedUpdateProject = useDebouncedCallback(async (lock: boolean) => {
