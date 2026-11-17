@@ -17,6 +17,7 @@
 //!   normal form the binary predicates dispatch over.
 
 use super::kernel::{self, Orientation};
+use crate::Euclidean2DGeometry;
 use crate::coordinate::CoordinateFrame;
 use crate::line_string::LineString2D;
 #[cfg(feature = "new-geometry")]
@@ -26,7 +27,6 @@ use crate::point::Point2D;
 use crate::polygon::{Polygon2D, Polygon3D};
 use crate::polygon_mesh::PolygonMesh2D;
 use crate::triangular_mesh::TriangularMesh2D;
-use crate::Euclidean2DGeometry;
 
 /// The rings of a 2D polygon, exterior first then each interior (hole), as
 /// borrowed slices over the polygon's own buffer.
@@ -512,7 +512,7 @@ mod tests {
     use crate::collection::Collection2D;
     use crate::coordinate::CoordinateFrame;
     use crate::predicates::kernel::{
-        coord_pos_relative_to_edges, coord_pos_relative_to_ring, CoordPos,
+        CoordPos, coord_pos_relative_to_edges, coord_pos_relative_to_ring,
     };
 
     fn square_poly(e: CoordinateFrame) -> Polygon2D {

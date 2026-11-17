@@ -68,15 +68,23 @@ const TriggerDetails: React.FC<Props> = ({
   }, [selectedTrigger, regenerateTriggerToken]);
   const updateTrigger = useUpdateTrigger;
 
-  const [updatedIsTriggerEnabled, setUpdatedIsTriggerEnabled] = useState(
-    selectedTrigger?.enabled,
-  );
+  const [enabledOverride, setEnabledOverride] = useState<{
+    triggerId: string;
+    enabled?: boolean;
+  }>();
+
+  const isTriggerEnabled =
+    enabledOverride && enabledOverride.triggerId === selectedTrigger?.id
+      ? (enabledOverride.enabled ?? selectedTrigger?.enabled)
+      : selectedTrigger?.enabled;
 
   const handleTriggerEnableChange = useCallback(
     async (checked: boolean) => {
       if (!selectedTrigger) return;
-      setUpdatedIsTriggerEnabled(checked);
-      await updateTrigger(selectedTrigger.id, checked);
+      const triggerId = selectedTrigger.id;
+      setEnabledOverride({ triggerId, enabled: checked });
+      const { trigger } = await updateTrigger(triggerId, checked);
+      setEnabledOverride({ triggerId, enabled: trigger?.enabled });
     },
     [selectedTrigger, updateTrigger],
   );
@@ -265,7 +273,7 @@ const TriggerDetails: React.FC<Props> = ({
             title={t("Trigger Details")}
             content={details}
             toggle
-            toggleValue={updatedIsTriggerEnabled}
+            toggleValue={isTriggerEnabled}
             disableToggle={readonly}
             onToggleChange={handleTriggerEnableChange}
           />

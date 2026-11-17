@@ -170,13 +170,15 @@ nodes:
       filterType: detailedGeometryType
 
   # --- Face checks ---
+  # L11 (planarity): LOD1 faces are checked against a tighter thickness than the
+  # higher LODs.
   - id: dc000000-0000-4000-8000-00000000000e
     name: SurfaceChecksLod1
     type: subGraph
     subGraphId: c4000000-0000-4000-8000-000000000000
     with:
       planarityThreshold:
-        maxHeight: 0.03
+        maxHeight: 0.001
 
   # The faces of a solid also take the face checks, as the original does.
   - id: dc000000-0000-4000-8000-00000000000f

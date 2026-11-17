@@ -2,7 +2,7 @@ use super::{LineString2D, LineString3D};
 use crate::coordinate::{CoordinateFrame, EpsgCode};
 use crate::ops::reproject::{transform_coords_2d, transform_coords_3d};
 use crate::ops::{
-    lift_coords, Aabb, BoundingBox, Reproject, ReprojectionCache, UnsupportedOperation,
+    Aabb, BoundingBox, Reproject, ReprojectionCache, UnsupportedOperation, lift_coords,
 };
 use crate::{Euclidean2DGeometry, Euclidean3DGeometry, Geometry};
 
@@ -92,7 +92,7 @@ impl Reproject for LineString3D {
     }
 }
 
-use crate::ops::{plan_frame_step, translate_2d, translate_3d, ConvertFrame, FrameStep, Translate};
+use crate::ops::{ConvertFrame, FrameStep, Translate, plan_frame_step, translate_2d, translate_3d};
 
 impl Translate for LineString2D {
     fn translate(&mut self, delta: [f64; 3]) -> crate::error::Result<()> {
@@ -276,7 +276,7 @@ crate::unsupported!(LineString2D: DivideByGrid);
 crate::unsupported!(LineString3D: DivideByGrid);
 
 use crate::collection::{Collection2D, Collection3D};
-use crate::ops::boundary::{endpoints, Boundary, ExtractBoundary};
+use crate::ops::boundary::{Boundary, ExtractBoundary, endpoints};
 use crate::point::{Point2D, Point3D};
 
 // A chain is bounded by its two ends. One that closes on itself has no ends, so

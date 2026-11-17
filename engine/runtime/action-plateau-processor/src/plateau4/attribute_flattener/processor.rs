@@ -7,7 +7,7 @@ use reearth_flow_runtime::{
     event::EventHub,
     executor_operation::{ExecutorContext, NodeContext},
     forwarder::ProcessorChannelForwarder,
-    node::{Port, Processor, ProcessorFactory, FEATURES_PORT},
+    node::{FEATURES_PORT, Port, Processor, ProcessorFactory},
 };
 use reearth_flow_types::{Attribute, AttributeValue, Attributes, CitygmlFeatureExt, Feature};
 use schemars::JsonSchema;
@@ -277,11 +277,11 @@ impl AttributeFlattener {
     }
 
     fn get_parent_attr(&self, citygml_attributes: &Attributes) -> Attributes {
-        if let Some(AttributeValue::String(parent_id)) = citygml_attributes.get("parentId") {
-            if let Some(parent_attr) = self.gmlid_to_citygml_attributes.get(parent_id) {
-                // use parent attributes as inner attributes for DmGeometricAttribute
-                return parent_attr.clone();
-            }
+        if let Some(AttributeValue::String(parent_id)) = citygml_attributes.get("parentId")
+            && let Some(parent_attr) = self.gmlid_to_citygml_attributes.get(parent_id)
+        {
+            // use parent attributes as inner attributes for DmGeometricAttribute
+            return parent_attr.clone();
         }
         // should be unreachable since parentId lookup and error handling is handled in process()
         tracing::error!("Unreachable code: parent ID not found for DmGeometricAttribute");
@@ -314,12 +314,11 @@ impl AttributeFlattener {
         // Track LOD4 -> ancestor type mapping for schema generation
         if let Some(AttributeValue::String(ancestor_feature_type)) =
             toplevel_ancestor.get("feature_type")
+            && let Some(package) = feature.get("package").and_then(|v| v.as_string())
         {
-            if let Some(package) = feature.get("package").and_then(|v| v.as_string()) {
-                let ancestor_lookup_key = format!("{}/{}", package, ancestor_feature_type);
-                self.lod4_to_ancestor_type
-                    .insert(lookup_key.to_string(), ancestor_lookup_key);
-            }
+            let ancestor_lookup_key = format!("{}/{}", package, ancestor_feature_type);
+            self.lod4_to_ancestor_type
+                .insert(lookup_key.to_string(), ancestor_lookup_key);
         }
 
         // Inherit attributes that the subfeature doesn't have
@@ -396,16 +395,14 @@ impl AttributeFlattener {
         }
 
         // Track LOD4 -> ancestor type mapping for schema generation
-        if let Some(toplevel_citygml) = self.gmlid_to_citygml_attributes.get(&toplevel_id) {
-            if let Some(AttributeValue::String(ancestor_feature_type)) =
+        if let Some(toplevel_citygml) = self.gmlid_to_citygml_attributes.get(&toplevel_id)
+            && let Some(AttributeValue::String(ancestor_feature_type)) =
                 toplevel_citygml.get("feature_type")
-            {
-                if let Some(package) = feature.get("package").and_then(|v| v.as_string()) {
-                    let ancestor_lookup_key = format!("{}/{}", package, ancestor_feature_type);
-                    self.lod4_to_ancestor_type
-                        .insert(lookup_key.to_string(), ancestor_lookup_key);
-                }
-            }
+            && let Some(package) = feature.get("package").and_then(|v| v.as_string())
+        {
+            let ancestor_lookup_key = format!("{}/{}", package, ancestor_feature_type);
+            self.lod4_to_ancestor_type
+                .insert(lookup_key.to_string(), ancestor_lookup_key);
         }
 
         // Inherit toplevel's extracted feature-level attributes, excluding risk attributes
@@ -444,15 +441,14 @@ impl AttributeFlattener {
             }
 
             // meshcode: extract from path attribute (e.g., "55371111_bldg_6697_op.gml" -> 55371111)
-            if let Some(AttributeValue::String(path)) = feature.get("path") {
-                if let Some(filename) = path.rsplit('/').next() {
-                    if let Some(meshcode_str) = filename.split('_').next() {
-                        citygml_attributes.insert(
-                            Attribute::new("meshcode"),
-                            AttributeValue::String(meshcode_str.to_string()),
-                        );
-                    }
-                }
+            if let Some(AttributeValue::String(path)) = feature.get("path")
+                && let Some(filename) = path.rsplit('/').next()
+                && let Some(meshcode_str) = filename.split('_').next()
+            {
+                citygml_attributes.insert(
+                    Attribute::new("meshcode"),
+                    AttributeValue::String(meshcode_str.to_string()),
+                );
             }
         }
 
@@ -601,12 +597,12 @@ impl AttributeFlattener {
         // Cache attributes only for top-level + LOD4 features (for LOD4 subfeature inheritance)
         let is_toplevel = !citygml_attributes.contains_key("parentId");
         let is_lod4 = matches!(feature.get("lod"), Some(AttributeValue::String(lod)) if lod == "4");
-        if let Some(feature_id) = feature.feature_id() {
-            if is_toplevel || is_lod4 {
-                let flattened_attrs = (*feature.attributes).clone();
-                self.gmlid_to_subfeature_inherited
-                    .insert(feature_id, flattened_attrs);
-            }
+        if let Some(feature_id) = feature.feature_id()
+            && (is_toplevel || is_lod4)
+        {
+            let flattened_attrs = (*feature.attributes).clone();
+            self.gmlid_to_subfeature_inherited
+                .insert(feature_id, flattened_attrs);
         }
 
         // save the whole `citygml_attributes` values as `attributes`
@@ -768,11 +764,10 @@ impl AttributeFlattener {
 
         // Extract bldg:address from core:Address nested structure and remove core:Address
         // This mirrors FME's behavior where bldg:address is extracted but core:Address is not included
-        if !citygml_attributes.contains_key("bldg:address") {
-            if let Some(address) = super::flattener::Flattener::extract_address(&citygml_attributes)
-            {
-                citygml_attributes.insert(Attribute::new("bldg:address"), address);
-            }
+        if !citygml_attributes.contains_key("bldg:address")
+            && let Some(address) = super::flattener::Flattener::extract_address(&citygml_attributes)
+        {
+            citygml_attributes.insert(Attribute::new("bldg:address"), address);
         }
         citygml_attributes.shift_remove("core:Address");
 
@@ -1530,18 +1525,26 @@ mod tests {
         let bldg_schema = flattener.generate_schema_feature("bldg/bldg:Building");
         let road_schema = flattener.generate_schema_feature("tran/tran:Road");
 
-        assert!(bldg_schema
-            .attributes
-            .contains_key(&Attribute::new("bldg:measuredHeight".to_string())));
-        assert!(!road_schema
-            .attributes
-            .contains_key(&Attribute::new("bldg:measuredHeight".to_string())));
-        assert!(road_schema
-            .attributes
-            .contains_key(&Attribute::new("tran:function".to_string())));
-        assert!(!bldg_schema
-            .attributes
-            .contains_key(&Attribute::new("tran:function".to_string())));
+        assert!(
+            bldg_schema
+                .attributes
+                .contains_key(&Attribute::new("bldg:measuredHeight".to_string()))
+        );
+        assert!(
+            !road_schema
+                .attributes
+                .contains_key(&Attribute::new("bldg:measuredHeight".to_string()))
+        );
+        assert!(
+            road_schema
+                .attributes
+                .contains_key(&Attribute::new("tran:function".to_string()))
+        );
+        assert!(
+            !bldg_schema
+                .attributes
+                .contains_key(&Attribute::new("tran:function".to_string()))
+        );
     }
 
     /// Test all attributes on processed feature are tracked
@@ -1557,11 +1560,15 @@ mod tests {
         let _ = flattener.flatten_feature(feature).unwrap();
         let schema = flattener.generate_schema_feature("bldg/bldg:Building");
 
-        assert!(schema
-            .attributes
-            .contains_key(&Attribute::new("bldg:class".to_string())));
-        assert!(schema
-            .attributes
-            .contains_key(&Attribute::new("bldg:usage".to_string())));
+        assert!(
+            schema
+                .attributes
+                .contains_key(&Attribute::new("bldg:class".to_string()))
+        );
+        assert!(
+            schema
+                .attributes
+                .contains_key(&Attribute::new("bldg:usage".to_string()))
+        );
     }
 }

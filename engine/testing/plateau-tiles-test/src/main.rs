@@ -23,8 +23,8 @@ use std::fs;
 use std::path::{Path, PathBuf};
 use std::sync::Once;
 use tracing::info;
-use tracing_subscriber::prelude::*;
 use tracing_subscriber::EnvFilter;
+use tracing_subscriber::prelude::*;
 
 static INIT: Once = Once::new();
 
@@ -487,7 +487,8 @@ fn main() {
 
     // Set to 0ms for local test runs - we don't need event propagation delay
     // since we're not sending events to external systems (GCP Pub/Sub, etc.)
-    env::set_var("FLOW_RUNTIME_NODE_STATUS_PROPAGATION_DELAY_MS", "0");
+    // FIXME: Audit that the environment access only happens in single-threaded code.
+    unsafe { env::set_var("FLOW_RUNTIME_NODE_STATUS_PROPAGATION_DELAY_MS", "0") };
 
     let testcases_dir = PathBuf::from(env!("CARGO_MANIFEST_DIR"))
         .parent()

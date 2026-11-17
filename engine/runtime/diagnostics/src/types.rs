@@ -289,10 +289,12 @@ mod run_summary_capped_tests {
         };
         let capped = summary.capped(2);
         assert_eq!(capped.aggregated_diagnostics.len(), 2);
-        assert!(capped
-            .aggregated_diagnostics
-            .iter()
-            .all(|d| d.code != ErrorCode::InternalDiagnosticsOverflow));
+        assert!(
+            capped
+                .aggregated_diagnostics
+                .iter()
+                .all(|d| d.code != ErrorCode::InternalDiagnosticsOverflow)
+        );
     }
 
     #[test]
@@ -311,12 +313,14 @@ mod run_summary_capped_tests {
         let overflow = capped.aggregated_diagnostics.last().unwrap();
         assert_eq!(overflow.code, ErrorCode::InternalDiagnosticsOverflow);
         assert_eq!(overflow.aggregated.as_ref().unwrap().count, 2);
-        assert!(overflow
-            .aggregated
-            .as_ref()
-            .unwrap()
-            .sample_feature_ids
-            .is_empty());
+        assert!(
+            overflow
+                .aggregated
+                .as_ref()
+                .unwrap()
+                .sample_feature_ids
+                .is_empty()
+        );
         assert_eq!(overflow.effective_disposition, Some(Disposition::WarnDrop));
     }
 

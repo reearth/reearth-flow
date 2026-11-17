@@ -178,8 +178,29 @@ nodes:
     with:
       filterType: geometryType
 
+  # L11 (planarity): LOD1 faces are checked against a tighter thickness than the
+  # higher LODs.
+  - id: de000000-0000-4000-8000-000000000055
+    name: FeatureFilterLod1
+    type: action
+    action: Feature Filter
+    with:
+      conditions:
+        - expr:
+            type: flowExpr
+            value: attributes.get("lod") == 1
+          outputPort: lod1
+
+  - id: de000000-0000-4000-8000-000000000056
+    name: SurfaceChecksLod1
+    type: subGraph
+    subGraphId: c4000000-0000-4000-8000-000000000000
+    with:
+      planarityThreshold:
+        maxHeight: 0.001
+
   - id: de000000-0000-4000-8000-000000000010
-    name: SurfaceChecksLod1To3
+    name: SurfaceChecksLod2To3
     type: subGraph
     subGraphId: c4000000-0000-4000-8000-000000000000
     with:
@@ -1547,8 +1568,35 @@ edges:
     toPort: features
   - id: de000000-0000-4000-8000-000100000014
     from: de000000-0000-4000-8000-00000000000f
-    to: de000000-0000-4000-8000-000000000010
+    to: de000000-0000-4000-8000-000000000055
     fromPort: surface
+    toPort: features
+  - id: de000000-0000-4000-8000-000100000080
+    from: de000000-0000-4000-8000-000000000055
+    to: de000000-0000-4000-8000-000000000056
+    fromPort: lod1
+    toPort: features
+  - id: de000000-0000-4000-8000-000100000081
+    from: de000000-0000-4000-8000-000000000055
+    to: de000000-0000-4000-8000-000000000010
+    fromPort: unfiltered
+    toPort: features
+
+  # LOD1 surface checks share every output of the LOD2-3 ones
+  - id: de000000-0000-4000-8000-000100000082
+    from: de000000-0000-4000-8000-000000000056
+    to: de000000-0000-4000-8000-000000000011
+    fromPort: invalidSurface
+    toPort: features
+  - id: de000000-0000-4000-8000-000100000083
+    from: de000000-0000-4000-8000-000000000056
+    to: de000000-0000-4000-8000-000000000013
+    fromPort: invalidSurface
+    toPort: features
+  - id: de000000-0000-4000-8000-000100000084
+    from: de000000-0000-4000-8000-000000000056
+    to: de000000-0000-4000-8000-000000000015
+    fromPort: issueLocation
     toPort: features
 
   # Face errors

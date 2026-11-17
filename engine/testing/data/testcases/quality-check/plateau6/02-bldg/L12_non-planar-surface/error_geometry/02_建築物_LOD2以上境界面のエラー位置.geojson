@@ -1,0 +1,28 @@
+{
+  "type": "FeatureCollection",
+  "crs": {
+    "type": "name",
+    "properties": {
+      "name": "urn:ogc:def:crs:EPSG::6677"
+    }
+  },
+  "features": [
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [-6729.021, -36992.064, 8.308]
+      },
+      "properties": {
+        "check": "LOD2以上境界面のエラー位置",
+        "issue": "NonPlanarSurface",
+        "filename": "53393690_bldg_6697_op.gml",
+        "featureType": "con:RoofSurface",
+        "gmlId": "surface-543b6ab5-c1b9-4829-a6df-32d9df07d689",
+        "parentGmlId": "bldg_79cb8bc6-73e6-43e7-9ba0-a8ada41e94e4",
+        "rootGmlId": "bldg_79cb8bc6-73e6-43e7-9ba0-a8ada41e94e4",
+        "lod": 2
+      }
+    }
+  ]
+}

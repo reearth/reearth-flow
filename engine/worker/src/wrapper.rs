@@ -6,7 +6,7 @@ use axum::http::StatusCode;
 use reearth_flow_common::uri::Uri;
 use reearth_flow_storage::resolve::StorageResolver;
 use serde::Deserialize;
-use serde_json::{json, Value};
+use serde_json::{Value, json};
 
 #[derive(Debug, Deserialize, Clone)]
 pub struct RunRequest {
@@ -203,10 +203,10 @@ pub fn validate_job_id(job_id: &str) -> Result<(), String> {
 
 /// Remove the work root; never panics. Logs on failure.
 pub fn cleanup_work_root(root: &Path) {
-    if root.exists() {
-        if let Err(e) = std::fs::remove_dir_all(root) {
-            eprintln!("[wrapper] failed to cleanup {root:?}: {e}");
-        }
+    if root.exists()
+        && let Err(e) = std::fs::remove_dir_all(root)
+    {
+        eprintln!("[wrapper] failed to cleanup {root:?}: {e}");
     }
 }
 
@@ -584,12 +584,14 @@ mod tests {
         let args = build_probe_args(&req);
         // Subcommand first, required flags present including --report-url.
         assert_eq!(args.first().map(String::as_str), Some("probe-schema"));
-        assert!(args
-            .windows(2)
-            .any(|w| w == ["--workflow", "gs://b/wf.yml"]));
-        assert!(args
-            .windows(2)
-            .any(|w| w == ["--report-url", "gs://b/reports/j1.json"]));
+        assert!(
+            args.windows(2)
+                .any(|w| w == ["--workflow", "gs://b/wf.yml"])
+        );
+        assert!(
+            args.windows(2)
+                .any(|w| w == ["--report-url", "gs://b/reports/j1.json"])
+        );
         // Optional --sample-size mapped.
         assert!(args.windows(2).any(|w| w == ["--sample-size", "25"]));
         // Each variable becomes a repeated --var k=v pair.
@@ -676,10 +678,10 @@ mod bounded_tests {
 
     async fn read_pid(pid_file: &Path) -> String {
         for _ in 0..100 {
-            if let Ok(pid) = std::fs::read_to_string(pid_file) {
-                if !pid.trim().is_empty() {
-                    return pid.trim().to_string();
-                }
+            if let Ok(pid) = std::fs::read_to_string(pid_file)
+                && !pid.trim().is_empty()
+            {
+                return pid.trim().to_string();
             }
             tokio::time::sleep(Duration::from_millis(20)).await;
         }
@@ -1184,10 +1186,12 @@ mod serve_render_view_tests {
             started.elapsed()
         );
         assert_eq!(status, StatusCode::INTERNAL_SERVER_ERROR);
-        assert!(body["error"]
-            .as_str()
-            .unwrap()
-            .contains("did not finish within"));
+        assert!(
+            body["error"]
+                .as_str()
+                .unwrap()
+                .contains("did not finish within")
+        );
     }
 
     #[tokio::test]

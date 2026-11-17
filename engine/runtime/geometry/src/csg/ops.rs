@@ -1,6 +1,6 @@
 use super::{Csg, ThreeDimensional};
 use crate::ops::{
-    union_results, Aabb, BoundingBox, RemoveAppearance, Translate, UnsupportedOperation,
+    Aabb, BoundingBox, RemoveAppearance, Translate, UnsupportedOperation, union_results,
 };
 
 impl BoundingBox for Csg {

@@ -7,7 +7,7 @@ use reearth_flow_runtime::{
     event::EventHub,
     executor_operation::{ExecutorContext, NodeContext},
     forwarder::ProcessorChannelForwarder,
-    node::{Port, Processor, ProcessorFactory, FEATURES_PORT},
+    node::{FEATURES_PORT, Port, Processor, ProcessorFactory},
 };
 use reearth_flow_types::{Attribute, AttributeValue, Code};
 use schemars::JsonSchema;
@@ -208,26 +208,27 @@ impl Processor for AttributeConversionTable {
     ) -> Result<(), BoxedError> {
         let mut feature = ctx.feature.clone();
         for rule in &self.rules {
-            let value = if let Some(AttributeValue::Array(value)) =
-                feature.get_by_keys(&rule.feature_froms)
-            {
-                if let Some(id) = self
-                    .conversion_table_indexes
-                    .get(&generate_index_key(&rule.conversion_table_keys))
-                    .and_then(|index| index.get(&generate_index_value_by_attribute_value(&value)))
-                {
-                    if let Some(row) = self.conversion_table.get(id) {
-                        row.get(&rule.conversion_table_to)
-                            .cloned()
-                            .unwrap_or(AttributeValue::Null)
+            let value = match feature.get_by_keys(&rule.feature_froms) {
+                Some(AttributeValue::Array(value)) => {
+                    if let Some(id) = self
+                        .conversion_table_indexes
+                        .get(&generate_index_key(&rule.conversion_table_keys))
+                        .and_then(|index| {
+                            index.get(&generate_index_value_by_attribute_value(&value))
+                        })
+                    {
+                        if let Some(row) = self.conversion_table.get(id) {
+                            row.get(&rule.conversion_table_to)
+                                .cloned()
+                                .unwrap_or(AttributeValue::Null)
+                        } else {
+                            AttributeValue::Null
+                        }
                     } else {
                         AttributeValue::Null
                     }
-                } else {
-                    AttributeValue::Null
                 }
-            } else {
-                AttributeValue::Null
+                _ => AttributeValue::Null,
             };
             feature.insert(&rule.feature_to, value);
         }

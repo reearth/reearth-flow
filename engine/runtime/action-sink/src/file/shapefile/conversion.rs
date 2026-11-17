@@ -7,8 +7,8 @@ use reearth_flow_geometry::types::{
 };
 use reearth_flow_types::{Attribute, AttributeValue, Feature, GeometryType, GeometryValue};
 use shapefile::{
-    dbase::{FieldName, FieldValue, Record, TableWriterBuilder},
     NO_DATA,
+    dbase::{FieldName, FieldValue, Record, TableWriterBuilder},
 };
 
 #[cfg(not(feature = "new-geometry"))]

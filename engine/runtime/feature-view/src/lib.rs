@@ -14,12 +14,12 @@ use std::io::{BufRead, BufReader};
 use std::sync::{Arc, Mutex, PoisonError};
 
 use bytes::Bytes;
+use reearth_flow_action_sink::SinkOutput;
 use reearth_flow_action_sink::errors::SinkError;
 use reearth_flow_action_sink::file::cesium3dtiles::next::{
-    build, build_glb, MetadataOptions, RenderOptions,
+    MetadataOptions, RenderOptions, build, build_glb,
 };
-use reearth_flow_action_sink::file::mvt::next::{build as build_tiles, TileFeature, TileOptions};
-use reearth_flow_action_sink::SinkOutput;
+use reearth_flow_action_sink::file::mvt::next::{TileFeature, TileOptions, build as build_tiles};
 use reearth_flow_common::uri::Uri;
 use reearth_flow_geometry::{Geometry, GeometryCollection};
 use reearth_flow_gltf::DracoCompression;
@@ -375,10 +375,10 @@ fn read_candidates(input: &Uri) -> Vec<Uri> {
     };
     let stem = strip_feature_extension(&name);
     for ext in FEATURE_EXTENSIONS {
-        if let Ok(candidate) = dir.join(format!("{stem}{ext}")) {
-            if candidate.as_str() != input.as_str() {
-                candidates.push(candidate);
-            }
+        if let Ok(candidate) = dir.join(format!("{stem}{ext}"))
+            && candidate.as_str() != input.as_str()
+        {
+            candidates.push(candidate);
         }
     }
     candidates
@@ -1137,10 +1137,12 @@ mod tests {
                 tiles: 0
             })
         );
-        assert!(view.layers[0]
-            .entry_point
-            .as_str()
-            .ends_with("/out/tilejson.json"));
+        assert!(
+            view.layers[0]
+                .entry_point
+                .as_str()
+                .ends_with("/out/tilejson.json")
+        );
         assert!(dir.path().join("out/tilejson.json").exists());
         assert!(!dir.path().join("out/tileset.json").exists());
 
@@ -1234,14 +1236,18 @@ mod tests {
 
         let formats: Vec<Format> = view.layers.iter().map(|l| l.format).collect();
         assert_eq!(formats, vec![Format::Tiles3d, Format::VectorTiles]);
-        assert!(view.layers[0]
-            .entry_point
-            .as_str()
-            .ends_with("/out/tileset.json"));
-        assert!(view.layers[1]
-            .entry_point
-            .as_str()
-            .ends_with("/out/tilejson.json"));
+        assert!(
+            view.layers[0]
+                .entry_point
+                .as_str()
+                .ends_with("/out/tileset.json")
+        );
+        assert!(
+            view.layers[1]
+                .entry_point
+                .as_str()
+                .ends_with("/out/tilejson.json")
+        );
         for layer in &view.layers {
             assert_eq!(
                 (layer.selected_features, layer.rendered_features),
@@ -1692,10 +1698,11 @@ mod tests {
             view.layers[0].size_limited, None,
             "3D Tiles have no size cap"
         );
-        assert!(view
-            .written
-            .iter()
-            .any(|uri| uri.as_str().contains("/out/content/")));
+        assert!(
+            view.written
+                .iter()
+                .any(|uri| uri.as_str().contains("/out/content/"))
+        );
     }
 
     /// A row with nothing to draw is an error naming the row, and no glb is

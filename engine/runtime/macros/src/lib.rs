@@ -24,7 +24,7 @@ fn debug_print_generated(ast: &DeriveInput, toks: &TokenStream) {
 pub fn property_schema(input: proc_macro::TokenStream) -> proc_macro::TokenStream {
     let ast = syn::parse_macro_input!(input as DeriveInput);
     let name = &ast.ident;
-    let gen = quote! {
+    let r#gen = quote! {
         impl TryFrom<reearth_flow_workflow::graph::NodeProperty> for #name {
             type Error = anyhow::Error;
 
@@ -38,6 +38,6 @@ pub fn property_schema(input: proc_macro::TokenStream) -> proc_macro::TokenStrea
             }
         }
     };
-    debug_print_generated(&ast, &gen);
-    gen.into()
+    debug_print_generated(&ast, &r#gen);
+    r#gen.into()
 }

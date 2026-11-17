@@ -1,7 +1,7 @@
 use crate::align_cesium::collect_geometries_by_ident;
 use crate::geom_stats::{compute_area_weighted_winding, compute_bbox, compute_centroid};
 use indexmap::IndexMap;
-use serde_json::{json, Value};
+use serde_json::{Value, json};
 use std::collections::HashMap;
 use std::fs;
 use std::path::Path;

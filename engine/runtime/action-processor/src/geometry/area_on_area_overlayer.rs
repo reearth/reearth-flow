@@ -15,10 +15,10 @@ use reearth_flow_runtime::{
     event::EventHub,
     executor_operation::{ExecutorContext, NodeContext},
     forwarder::ProcessorChannelForwarder,
-    node::{Port, Processor, ProcessorFactory, FEATURES_PORT, REJECTED_PORT},
+    node::{FEATURES_PORT, Port, Processor, ProcessorFactory, REJECTED_PORT},
 };
 use reearth_flow_types::{Attribute, AttributeValue, Feature};
-use rstar::{RTree, AABB};
+use rstar::{AABB, RTree};
 use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
@@ -35,13 +35,13 @@ use reearth_flow_types::{Geometry, GeometryValue};
 
 #[cfg(feature = "new-geometry")]
 use reearth_flow_geometry::{
+    Euclidean2DGeometry, Geometry,
     collection::Collection2D,
     coordinate::CoordinateFrame,
-    ops::{rings_as_faces_2d, Aabb, BoundingBox, Elevation},
-    overlay::{overlay_2d, snap_areal_operands_2d, OverlayOp},
+    ops::{Aabb, BoundingBox, Elevation, rings_as_faces_2d},
+    overlay::{OverlayOp, overlay_2d, snap_areal_operands_2d},
     polygon::Polygon2D,
-    predicates::view::{flatten_2d, Leaf2D},
-    Euclidean2DGeometry, Geometry,
+    predicates::view::{Leaf2D, flatten_2d},
 };
 
 use super::errors::GeometryProcessorError;
@@ -984,10 +984,10 @@ fn overlay_2d_disk(
             // cut off the target area by upper areas
             let mut target = area_i.clone();
             for &j in &overlapping {
-                if i < j {
-                    if let Some(area_j) = &areas[j] {
-                        target = area_difference(&target, area_j)?;
-                    }
+                if i < j
+                    && let Some(area_j) = &areas[j]
+                {
+                    target = area_difference(&target, area_j)?;
                 }
             }
 

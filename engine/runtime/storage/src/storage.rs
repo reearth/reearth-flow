@@ -6,10 +6,10 @@ use std::task::Context;
 use std::task::Poll;
 
 use bytes::Bytes;
-use futures::stream::BoxStream;
 use futures::Stream;
 use futures::StreamExt;
 use futures::TryStreamExt;
+use futures::stream::BoxStream;
 use object_store::GetResult;
 use object_store::GetResultPayload;
 use object_store::ObjectMeta;

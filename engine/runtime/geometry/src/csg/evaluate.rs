@@ -15,16 +15,16 @@
 
 use std::collections::{HashMap, HashSet};
 
-use rstar::{RTree, AABB};
+use rstar::{AABB, RTree};
 
 use crate::coordinate::{CoordinateFrame, UnitKind};
 use crate::error::Error;
 use crate::ops::triangulation::Cache;
+use crate::predicates::CoordPos;
 use crate::predicates::kernel::{cross3, dot3, sub3};
 use crate::predicates::kernel3d::point_in_triangle_3d;
 use crate::predicates::position3d::{pool_bounds, shell_position_bounded};
 use crate::predicates::view3d::{TriBox, TriangleSet};
-use crate::predicates::CoordPos;
 use crate::solid::{Shell, Solid};
 use crate::triangular_mesh::TriangularMesh3DData;
 
@@ -173,13 +173,12 @@ impl Arena {
         let (edge, _, _) = self.carrier(u, v);
         let (a, b) = (self.position(edge.0), self.position(edge.1));
         let t = (plane.w - dot3(plane.normal, a)) / dot3(plane.normal, sub3(b, a));
-        if let Some(recorded) = self.splits.get(&edge) {
-            if let Some(&(_, id)) = recorded
+        if let Some(recorded) = self.splits.get(&edge)
+            && let Some(&(_, id)) = recorded
                 .iter()
                 .find(|(seen, _)| seen.to_bits() == t.to_bits())
-            {
-                return id;
-            }
+        {
+            return id;
         }
         let id = self.push(lerp(a, b, t));
         self.on_edge.insert(id, (edge, t));

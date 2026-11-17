@@ -25,20 +25,20 @@ use std::path::PathBuf;
 use std::sync::atomic::{AtomicU64, Ordering};
 use std::sync::{Arc, Mutex};
 
-use flate2::write::GzEncoder;
 use flate2::Compression;
+use flate2::write::GzEncoder;
 use indexmap::IndexMap;
 use rayon::prelude::*;
 
-use reearth_flow_atlas::{build_atlas_multipage, TextureCache, TextureInput};
+use reearth_flow_atlas::{TextureCache, TextureInput, build_atlas_multipage};
 use reearth_flow_common::image::MimeType;
 use reearth_flow_geometry::appearance::RasterData;
+use reearth_flow_gltf::DracoCompression;
 use reearth_flow_gltf::next::glb::{self, Granularity};
 use reearth_flow_gltf::next::metadata::{self, ColumnStats};
-use reearth_flow_gltf::DracoCompression;
 
 use appearance::TextureSource;
-use primitive::{Geom, TexturedPrimitive, DEFAULT_MATERIAL};
+use primitive::{DEFAULT_MATERIAL, Geom, TexturedPrimitive};
 use reearth_flow_runtime::executor_operation::{ExecutorContext, NodeContext};
 use reearth_flow_runtime::node::FEATURES_PORT;
 use reearth_flow_types::Feature;
@@ -434,7 +434,7 @@ fn split_by_size(
     units: Vec<Unit>,
     target_tile_size: u64,
     build_chunk: impl Fn(&[usize], &TextureCache, &EmbeddedTextures) -> crate::errors::Result<Vec<u8>>
-        + Sync,
+    + Sync,
 ) -> crate::errors::Result<CellContents> {
     let textures = TextureCache::default();
     let embedded = EmbeddedTextures::new()?;

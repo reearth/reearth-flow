@@ -5,18 +5,18 @@ use std::collections::HashMap;
 use indexmap::{IndexMap, IndexSet};
 use nusamai_citygml::schema::{Attribute, FeatureTypeDef, Schema, TypeDef};
 use nusamai_gltf::nusamai_gltf_json::{
+    BufferView,
     extensions::gltf::ext_structural_metadata::{
         self, ClassPropertyComponentType, ClassPropertyType, Enum, EnumValue, EnumValueType,
         ExtStructuralMetadata, PropertyTable, PropertyTableProperty,
     },
-    BufferView,
 };
 use reearth_flow_types::AttributeValue;
 use tracing::warn;
 
 use super::{
-    int_type_selector::{SignedIntCollector, UnsignedIntCollector},
     ENUM_NO_DATA, ENUM_NO_DATA_NAME, FLOAT_NO_DATA, STRING_NO_DATA,
+    int_type_selector::{SignedIntCollector, UnsignedIntCollector},
 };
 
 pub struct MetadataEncoder<'a> {
@@ -183,7 +183,10 @@ impl Class {
                     PropertyType::String => {
                         let len = prop.string_offsets.len();
                         if len == 0 {
-                            warn!("Skipping default array offset for property '{}': string_offsets is unexpectedly empty", key);
+                            warn!(
+                                "Skipping default array offset for property '{}': string_offsets is unexpectedly empty",
+                                key
+                            );
                             continue;
                         }
                         let Some(offset) = u32::try_from(len - 1).ok() else {
@@ -215,7 +218,8 @@ impl Class {
                         let Some(offset) = u32::try_from(prop.value_buffer.len()).ok() else {
                             warn!(
                                 "Skipping default string offset for property '{}': value_buffer length {} exceeds u32::MAX",
-                                key, prop.value_buffer.len()
+                                key,
+                                prop.value_buffer.len()
                             );
                             continue;
                         };

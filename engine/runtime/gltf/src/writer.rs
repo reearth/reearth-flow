@@ -6,7 +6,7 @@ use indexmap::IndexSet;
 use nusamai_gltf::nusamai_gltf_json::extensions::mesh::ext_mesh_features;
 use reearth_flow_types::material;
 
-use crate::draco::{draco_config, DracoCompression};
+use crate::draco::{DracoCompression, draco_config};
 use crate::metadata::MetadataEncoder;
 
 #[derive(Default)]

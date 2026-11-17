@@ -1,7 +1,7 @@
+use crate::Result;
 use crate::core::eval::{default_env, env_bind, eval, eval_eq};
 use crate::core::parser::parse;
 use crate::core::value::Value;
-use crate::Result;
 
 pub(crate) fn values_equal(a: &Value, b: &Value) -> Result<bool> {
     eval_eq(a.clone(), b.clone())
