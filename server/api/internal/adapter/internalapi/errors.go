@@ -43,7 +43,8 @@ func toStatus(ctx context.Context, err error) error {
 	case errors.Is(err, interfaces.ErrPrivateProjectNotAllowed),
 		errors.Is(err, interfaces.ErrTriggerNotCMS),
 		errors.Is(err, interfaces.ErrTriggerDisabled),
-		errors.Is(err, interfaces.ErrJobNotCancellable):
+		errors.Is(err, interfaces.ErrJobNotCancellable),
+		errors.Is(err, interfaces.ErrProjectLocked):
 		return status.Error(codes.FailedPrecondition, err.Error())
 	case errors.Is(err, interfaces.ErrJobAlreadyRunning), errors.As(err, new(*interfaces.UsageLimitError)):
 		return status.Error(codes.ResourceExhausted, err.Error())

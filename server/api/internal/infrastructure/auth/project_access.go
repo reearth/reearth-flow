@@ -23,7 +23,8 @@ type UserFinder interface {
 // It uses the project resource, as the document API does (interactor.Websocket):
 // Cerbos denies resources absent from its policy store, and projectDocument is
 // not published there. project:read admits readers; project:any (writer and
-// above) grants editing, since project:edit is maintainer-only.
+// above) grants editing, since project:edit is maintainer-only. A locked
+// project's document is read-only for everyone.
 type ProjectDocumentAccess struct {
 	Projects repo.Project
 	Access   repo.ProjectAccess
@@ -58,12 +59,15 @@ func (a *ProjectDocumentAccess) UserAccess(ctx context.Context, rawProjectID str
 		return false, false, err
 	}
 	if a.SkipPermissionCheck {
-		return true, true, nil
+		return true, !p.IsLocked(), nil
 	}
 
 	read, err := a.Checker.CheckPermission(ctx, rbac.ResourceProject, rbac.ActionRead, p.Workspace())
 	if err != nil || !read {
 		return false, false, err
+	}
+	if p.IsLocked() {
+		return true, false, nil
 	}
 	edit, err := a.Checker.CheckPermission(ctx, rbac.ResourceProject, rbac.ActionAny, p.Workspace())
 	if err != nil {

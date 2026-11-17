@@ -25,6 +25,7 @@ func TestToStatus(t *testing.T) {
 		{interfaces.ErrOperationDenied, "denied", codes.PermissionDenied},
 		{interfaces.ErrProjectAliasAlreadyUsed, "alias taken", codes.AlreadyExists},
 		{interfaces.ErrPrivateProjectNotAllowed, "private not allowed", codes.FailedPrecondition},
+		{interfaces.ErrProjectLocked, "project locked", codes.FailedPrecondition},
 		{project.ErrInvalidAlias, "invalid alias", codes.InvalidArgument},
 		{project.ErrReservedAlias, "reserved alias", codes.InvalidArgument},
 		{project.ErrInvalidVisibility, "invalid visibility", codes.InvalidArgument},

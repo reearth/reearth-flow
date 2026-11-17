@@ -295,3 +295,82 @@ func TestWebsocket_CloseNeedsNoPermission(t *testing.T) {
 	require.NoError(t, i.Close())
 	assert.Equal(t, 1, client.calls)
 }
+
+// lockedWSFixture is wsFixture over a locked project, with every permission
+// granted, so a refusal can only come from the lock.
+func lockedWSFixture(t *testing.T) (*Websocket, *countingWSClient, string) {
+	t.Helper()
+	ctx := context.Background()
+	projectRepo := memory.NewProject()
+	prj := project.New().NewID().Workspace(project.NewWorkspaceID()).IsLocked(true).MustBuild()
+	require.NoError(t, projectRepo.Save(ctx, prj))
+	client := &countingWSClient{}
+	return NewWebsocket(client, projectRepo, &recordingChecker{allow: true}), client, prj.ID().String()
+}
+
+func TestWebsocket_LockedProjectRefusesWorkflowChanges(t *testing.T) {
+	t.Parallel()
+
+	t.Run("Rollback", func(t *testing.T) {
+		t.Parallel()
+
+		i, client, docID := lockedWSFixture(t)
+		assert.ErrorIs(t, rollback(context.Background(), i, docID), interfaces.ErrProjectLocked)
+		assert.Zero(t, client.calls)
+	})
+
+	t.Run("ImportDocument", func(t *testing.T) {
+		t.Parallel()
+
+		i, client, docID := lockedWSFixture(t)
+		assert.ErrorIs(t, importDocument(context.Background(), i, docID), interfaces.ErrProjectLocked)
+		assert.Zero(t, client.calls)
+	})
+
+	t.Run("CopyDocument into the locked project", func(t *testing.T) {
+		t.Parallel()
+
+		i, client, docID := lockedWSFixture(t)
+		src := project.New().NewID().Workspace(project.NewWorkspaceID()).MustBuild()
+		require.NoError(t, i.projectRepo.Save(context.Background(), src))
+
+		assert.ErrorIs(t, i.CopyDocument(context.Background(), docID, src.ID().String()), interfaces.ErrProjectLocked)
+		assert.Zero(t, client.calls)
+	})
+}
+
+func TestWebsocket_LockedProjectKeepsReadsAndSaves(t *testing.T) {
+	t.Parallel()
+
+	i, client, docID := lockedWSFixture(t)
+	ctx := context.Background()
+	require.NoError(t, getLatest(ctx, i, docID))
+	require.NoError(t, flushToGCS(ctx, i, docID))
+	require.NoError(t, saveNamedSnapshot(ctx, i, docID))
+	assert.Equal(t, 3, client.calls)
+}
+
+func TestWebsocket_LockedProjectCanBeCopiedFrom(t *testing.T) {
+	t.Parallel()
+
+	i, client, src := lockedWSFixture(t)
+	dst := project.New().NewID().Workspace(project.NewWorkspaceID()).MustBuild()
+	require.NoError(t, i.projectRepo.Save(context.Background(), dst))
+
+	require.NoError(t, i.CopyDocument(context.Background(), dst.ID().String(), src))
+	assert.Equal(t, 1, client.calls)
+}
+
+func TestWebsocket_LockIsNotRevealedWithoutPermission(t *testing.T) {
+	t.Parallel()
+
+	ctx := context.Background()
+	projectRepo := memory.NewProject()
+	prj := project.New().NewID().Workspace(project.NewWorkspaceID()).IsLocked(true).MustBuild()
+	require.NoError(t, projectRepo.Save(ctx, prj))
+	i := NewWebsocket(&countingWSClient{}, projectRepo, &recordingChecker{allow: false})
+
+	err := rollback(ctx, i, prj.ID().String())
+	assert.ErrorIs(t, err, interfaces.ErrOperationDenied)
+	assert.NotErrorIs(t, err, interfaces.ErrProjectLocked)
+}
