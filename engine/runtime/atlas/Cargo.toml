@@ -18,6 +18,7 @@ new-geometry = []
 
 [dependencies]
 image.workspace = true
+reearth-flow-common.workspace = true
 rstar.workspace = true
 thiserror.workspace = true
 tracing.workspace = true
