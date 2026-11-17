@@ -30,7 +30,7 @@ use flate2::write::GzEncoder;
 use indexmap::IndexMap;
 use rayon::prelude::*;
 
-use reearth_flow_atlas::{TextureCache, TextureInput, build_atlas_multipage};
+use reearth_flow_atlas::{TextureInput, build_atlas_multipage};
 use reearth_flow_common::image::MimeType;
 use reearth_flow_geometry::appearance::RasterData;
 use reearth_flow_gltf::DracoCompression;
@@ -272,14 +272,12 @@ pub fn build(
         by_cell.entry(cell).or_default().push(i);
     }
 
-    // Callers own the caches, so a cell's candidate builds decode its sources
-    // once between them. PLATEAU textures are per-surface, so a source image is
-    // referenced by only one cell; a tileset-wide cache would grow without
-    // bound for no reuse gain.
-    let build_chunk = |chunk: &[usize], textures: &TextureCache, embedded: &EmbeddedTextures| {
+    // Callers own the embedded-texture dir, so a cell's candidate builds write
+    // each embedded texture once between them.
+    let build_chunk = |chunk: &[usize], embedded: &EmbeddedTextures| {
         let members: Vec<&(&Feature, mesh::ExtractedMesh)> =
             chunk.iter().map(|&i| &extracted[i]).collect();
-        let (glb, stats) = build_cell_glb(&members, options, render, textures, embedded)?;
+        let (glb, stats) = build_cell_glb(&members, options, render, embedded)?;
         merge_stats(&mut property_stats.lock().unwrap(), stats);
         Ok(glb)
     };
@@ -288,9 +286,8 @@ pub fn build(
         .into_par_iter()
         .map(
             |(cell, features)| -> crate::errors::Result<(Cell, Vec<Unit>)> {
-                let textures = TextureCache::default();
                 let embedded = EmbeddedTextures::new()?;
-                let bytes = transfer_bytes(&build_chunk(&features, &textures, &embedded)?);
+                let bytes = transfer_bytes(&build_chunk(&features, &embedded)?);
                 Ok((cell, vec![Unit { features, bytes }]))
             },
         )
@@ -433,10 +430,8 @@ struct CellContents {
 fn split_by_size(
     units: Vec<Unit>,
     target_tile_size: u64,
-    build_chunk: impl Fn(&[usize], &TextureCache, &EmbeddedTextures) -> crate::errors::Result<Vec<u8>>
-    + Sync,
+    build_chunk: impl Fn(&[usize], &EmbeddedTextures) -> crate::errors::Result<Vec<u8>> + Sync,
 ) -> crate::errors::Result<CellContents> {
-    let textures = TextureCache::default();
     let embedded = EmbeddedTextures::new()?;
     let expected = group_bytes(&units);
     let parts = if target_tile_size == 0 {
@@ -460,7 +455,7 @@ fn split_by_size(
                     .iter()
                     .flat_map(|u| u.features.iter().copied())
                     .collect();
-                build_chunk(&features, &textures, &embedded).map(|glb| (chunk, glb))
+                build_chunk(&features, &embedded).map(|glb| (chunk, glb))
             })
             .collect::<crate::errors::Result<_>>()?;
         let total = built.len();
@@ -593,16 +588,8 @@ pub fn build_glb(
         return Ok(None);
     };
 
-    let textures = TextureCache::default();
     let embedded = EmbeddedTextures::new()?;
-    build_cell_glb(
-        &[&(feature, extracted)],
-        options,
-        render,
-        &textures,
-        &embedded,
-    )
-    .map(|(glb, _)| Some(glb))
+    build_cell_glb(&[&(feature, extracted)], options, render, &embedded).map(|(glb, _)| Some(glb))
 }
 
 fn empty_tileset(
@@ -745,7 +732,6 @@ fn build_cell_glb(
     cell_members: &[&(&Feature, mesh::ExtractedMesh)],
     options: MetadataOptions,
     render: RenderOptions,
-    textures: &TextureCache,
     embedded: &EmbeddedTextures,
 ) -> crate::errors::Result<(Vec<u8>, IndexMap<String, ColumnStats>)> {
     let cells = primitive::collect(cell_members);
@@ -769,7 +755,7 @@ fn build_cell_glb(
         // geometry in the neutral fallback colour.
         let pages = match render.texture_codec {
             TextureCodec::Untextured => None,
-            _ => build_textured_pages(&mut builder, &textured, render, textures, embedded)?,
+            _ => build_textured_pages(&mut builder, &textured, render, embedded)?,
         };
         match pages {
             Some(pages) => {
@@ -891,7 +877,6 @@ fn build_textured_pages(
     builder: &mut glb::Builder,
     textured: &TexturedPrimitive,
     render: RenderOptions,
-    textures: &TextureCache,
     embedded: &EmbeddedTextures,
 ) -> crate::errors::Result<Option<Vec<TexturedPage>>> {
     // Resolve each polygon's texture to a local file path: on-disk sources pass
@@ -944,26 +929,30 @@ fn build_textured_pages(
         render.atlas_extrusion,
         codec.block_align(),
         render.wrap_tolerance,
-        textures,
     )
     .map_err(SinkError::cesium3dtiles_writer)?
     {
         Some(built) => built,
         None => return Ok(None),
     };
+    let reearth_flow_atlas::MultiPageAtlas {
+        pages,
+        wrap,
+        remapped,
+    } = built;
 
-    let mut page_textures = Vec::with_capacity(built.pages.len());
-    for (page, wrap) in built.pages.iter().zip(&built.wrap) {
+    let mut page_textures = Vec::with_capacity(pages.len());
+    for (page, wrap) in pages.into_iter().zip(&wrap) {
         let texture = builder
-            .push_atlas_texture(page, codec.as_ref(), page_sampler(*wrap))
+            .push_atlas_texture(&page, codec.as_ref(), page_sampler(*wrap))
             .map_err(SinkError::cesium3dtiles_writer)?;
         page_textures.push((texture, page.width().max(page.height())));
     }
 
     Ok(Some(split_textured_by_page(
         textured,
-        &built.remapped,
-        &built.wrap,
+        &remapped,
+        &wrap,
         &slots,
         page_textures,
     )))
@@ -1331,10 +1320,9 @@ mod tests {
         };
 
         let mut builder = glb::Builder::new();
-        let cache = TextureCache::default();
         let embedded = EmbeddedTextures::new().expect("temp dir");
 
-        let pages = build_textured_pages(&mut builder, &textured, render, &cache, &embedded)
+        let pages = build_textured_pages(&mut builder, &textured, render, &embedded)
             .expect("build textured pages")
             .expect("an in-memory texture must produce an atlas page, not colour-only");
 
