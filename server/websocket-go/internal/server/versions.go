@@ -30,8 +30,10 @@ type VersionsConfig struct {
 	Store versions.Store
 	// Snapshots stores the versions.
 	Snapshots versions.Snapshots
+	// Lock, when set, runs fn while no other instance saves room.
+	Lock func(ctx context.Context, room string, fn func(context.Context) error) error
 	// Checkpoint rewrites a room's persisted full state after a version.
-	Checkpoint func(ctx context.Context, room string, state []byte) error
+	Checkpoint func(ctx context.Context, room string) error
 	// Stored returns a room's persisted full state, for a room no instance
 	// holds.
 	Stored func(ctx context.Context, room string) ([]byte, error)
@@ -45,8 +47,8 @@ type VersionsConfig struct {
 	MarkEvery time.Duration
 }
 
-// CatchUp waits until a room loaded on this instance has replayed what the
-// other instances holding it have published.
+// CatchUp waits until this instance's copy of a room holds everything the
+// other instances holding it had published when it was called.
 type CatchUp func(ctx context.Context, room string) error
 
 // EnableVersions makes the Server record user edits and save versions. Call it
@@ -60,6 +62,7 @@ func (s *Server) EnableVersions(cfg VersionsConfig) {
 		Tracker:    s.tracker,
 		Store:      cfg.Store,
 		Snapshots:  cfg.Snapshots,
+		Lock:       cfg.Lock,
 		Checkpoint: cfg.Checkpoint,
 		Notify:     cfg.Notify,
 		Log:        s.log,
@@ -67,13 +70,55 @@ func (s *Server) EnableVersions(cfg VersionsConfig) {
 	s.ws.OnLastPeer = s.lastPeerLeft
 }
 
+// WaitVersions waits until the versions lastPeerLeft has started saving have
+// finished, or until ctx ends. ygo runs OnLastPeer after its Shutdown stops
+// waiting, so a hook that has not fired yet is not covered; that path serves
+// only deployments without a shared store, whose change records live in this
+// process anyway.
+func (s *Server) WaitVersions(ctx context.Context) error {
+	for {
+		s.leaveMu.Lock()
+		if s.leaveSaves == 0 {
+			s.leaveMu.Unlock()
+			return nil
+		}
+		if s.leaveIdle == nil {
+			s.leaveIdle = make(chan struct{})
+		}
+		idle := s.leaveIdle
+		s.leaveMu.Unlock()
+		select {
+		case <-idle:
+		case <-ctx.Done():
+			return ctx.Err()
+		}
+	}
+}
+
+func (s *Server) leaveSaveStarted() {
+	s.leaveMu.Lock()
+	s.leaveSaves++
+	s.leaveMu.Unlock()
+}
+
+func (s *Server) leaveSaveDone() {
+	s.leaveMu.Lock()
+	defer s.leaveMu.Unlock()
+	s.leaveSaves--
+	if s.leaveSaves == 0 && s.leaveIdle != nil {
+		close(s.leaveIdle)
+		s.leaveIdle = nil
+	}
+}
+
 // SetCatchUp lets SaveVersion read a room another instance holds from the
 // cluster relay.
 func (s *Server) SetCatchUp(c CatchUp) { s.catchUp = c }
 
-// applyAndRecord applies a peer's update and notes it as a user edit when the
-// room did not already hold everything in it: a reconnecting client re-sends
-// what it holds, and that is no edit.
+// applyAndRecord applies a peer's update and records it as a user edit when
+// the room did not already hold everything in it: a reconnecting client
+// re-sends what it holds, and that is no edit. The record names the items the
+// update touched, so a version can tell whether it holds the edit.
 func (s *Server) applyAndRecord(info ygws.PeerUpdateInfo, apply func() error) error {
 	if s.tracker == nil {
 		return apply()
@@ -82,9 +127,18 @@ func (s *Server) applyAndRecord(info ygws.PeerUpdateInfo, apply func() error) er
 	if aerr := apply(); aerr != nil {
 		return aerr
 	}
-	if err == nil && !held {
-		s.tracker.Edit(info.Room, auth.UserIDOf(info.Identity))
+	if err != nil {
+		// apply decoded it, so this should not happen; count it rather than
+		// lose an edit.
+		s.log.Warn("could not compare a peer update with the room; recording it as an edit", "room", info.Room, "err", err)
+	} else if held {
+		return nil
 	}
+	ids, err := crdt.ContentIDsFromUpdateV1(info.Update)
+	if err != nil {
+		s.log.Warn("could not read the items a peer update touched; recording the edit without them", "room", info.Room, "err", err)
+	}
+	s.tracker.Edit(info.Room, auth.UserIDOf(info.Identity), ids)
 	return nil
 }
 
@@ -110,9 +164,9 @@ func (s *Server) SaveVersion(ctx context.Context, room, label string) (versions.
 	return s.saveFromHolders(ctx, room, label)
 }
 
-// saveFromHolders loads room here, waits until the relay has replayed what the
-// instances holding it published, and saves from that copy. The room is
-// closed again afterwards unless a peer joined it meanwhile.
+// saveFromHolders loads room here and saves from that copy once the relay has
+// replayed what the instances holding it published. The room is closed again
+// afterwards unless a peer joined it meanwhile.
 func (s *Server) saveFromHolders(ctx context.Context, room, label string) (versions.Result, error) {
 	loaded := s.ws.GetDoc(room) != nil
 	var (
@@ -122,17 +176,7 @@ func (s *Server) saveFromHolders(ctx context.Context, room, label string) (versi
 	// Apply loads the room and keeps it loaded until fn returns. fn changes
 	// nothing, so Apply returns ErrNoChanges.
 	err := s.ws.Apply(ctx, room, func(doc *crdt.Doc, _ func(func(*crdt.Transaction))) {
-		if s.catchUp != nil {
-			cctx, cancel := context.WithTimeout(ctx, catchUpTimeout)
-			defer cancel()
-			if err := s.catchUp(cctx, room); err != nil {
-				serr = fmt.Errorf("server: replay room before version: %w", err)
-				return
-			}
-		}
-		res, serr = s.versions.Save(ctx, room, label, func(context.Context) ([]byte, error) {
-			return encodeFullState(doc), nil
-		})
+		res, serr = s.versions.Save(ctx, room, label, s.caughtUpState(room, doc))
 	})
 	if !loaded {
 		s.closeLoadedRoom(room, "a version")
@@ -143,12 +187,30 @@ func (s *Server) saveFromHolders(ctx context.Context, room, label string) (versi
 	return res, serr
 }
 
-// currentState reads room's full state from this instance's copy, or from
-// persistence when this instance does not hold it.
+// caughtUpState reads doc, this instance's copy of room, once the relay has
+// replayed what the other instances holding the room had published. The saver
+// calls it after taking the change record, so the wait covers the edits the
+// record names.
+func (s *Server) caughtUpState(room string, doc *crdt.Doc) func(context.Context) ([]byte, error) {
+	return func(ctx context.Context) ([]byte, error) {
+		if s.catchUp != nil {
+			cctx, cancel := context.WithTimeout(ctx, catchUpTimeout)
+			defer cancel()
+			if err := s.catchUp(cctx, room); err != nil {
+				return nil, fmt.Errorf("server: replay room before version: %w", err)
+			}
+		}
+		return encodeFullState(doc), nil
+	}
+}
+
+// currentState reads room's full state from this instance's copy, caught up
+// with the other instances, or from persistence when this instance does not
+// hold the room.
 func (s *Server) currentState(room string) func(context.Context) ([]byte, error) {
 	return func(ctx context.Context) ([]byte, error) {
 		if doc := s.ws.GetDoc(room); doc != nil {
-			return encodeFullState(doc), nil
+			return s.caughtUpState(room, doc)(ctx)
 		}
 		if s.stored == nil {
 			return nil, nil
@@ -183,17 +245,34 @@ func (s *Server) StartPeriodicVersions(ctx context.Context) {
 func (s *Server) saveDueVersions(ctx context.Context) {
 	now := time.Now()
 	for _, room := range s.ws.Rooms() {
-		rec, ok, err := s.changes.Peek(ctx, room)
+		first, ok, err := s.changes.FirstEdit(ctx, room)
 		if err != nil {
 			s.log.Warn("reading a change record failed", "room", room, "err", err)
 			continue
 		}
-		if !ok || now.Sub(rec.FirstEditAt) < s.versionEvery {
+		// A record without a time (none should exist) counts from now, so it
+		// does not look infinitely old.
+		if !ok || first.IsZero() || now.Sub(first) < s.versionEvery {
 			continue
 		}
-		if _, err := s.versions.Save(ctx, room, versions.AutoLabel, s.currentState(room)); err != nil {
-			s.log.Warn("periodic version failed", "room", room, "err", err)
-		}
+		s.logVersion("periodic", room, s.saveAuto(ctx, room))
+	}
+}
+
+func (s *Server) saveAuto(ctx context.Context, room string) error {
+	_, err := s.versions.Save(ctx, room, versions.AutoLabel, s.currentState(room))
+	return err
+}
+
+// logVersion logs a failed automatic version; a version saved whose
+// checkpoint then failed is logged as such.
+func (s *Server) logVersion(trigger, room string, err error) {
+	switch {
+	case err == nil:
+	case errors.Is(err, versions.ErrCheckpoint):
+		s.log.Warn("version saved but checkpoint refresh failed", "trigger", trigger, "room", room, "err", err)
+	default:
+		s.log.Warn("version failed", "trigger", trigger, "room", room, "err", err)
 	}
 }
 
@@ -205,10 +284,10 @@ func (s *Server) lastPeerLeft(_ context.Context, room string) {
 	if s.presence != nil {
 		return
 	}
+	s.leaveSaveStarted()
 	go func() {
-		if _, err := s.versions.Save(context.Background(), room, versions.AutoLabel, s.currentState(room)); err != nil {
-			s.log.Warn("version on leave failed", "room", room, "err", err)
-		}
+		defer s.leaveSaveDone()
+		s.logVersion("last peer left", room, s.saveAuto(context.Background(), room))
 	}()
 }
 

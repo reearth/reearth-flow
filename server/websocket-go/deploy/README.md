@@ -49,3 +49,34 @@ adapter dual-reads new-prefix → legacy-root and lazily backfills the legacy ba
 on first write. Backfill wiring at startup and activation is a follow-up before
 relying on it broadly. Phase-2 changes the keyspace, so it was gated on no Rust
 server reading or writing the same bucket.
+
+## Workflow versions
+
+The server saves a room's document as a version (an entry in the editor's
+Version panel) only when users changed it, once per change across instances,
+and records who did. See `internal/versions`.
+
+| Env var | Meaning |
+|---|---|
+| `REEARTH_FLOW_AUTO_VERSION_EVERY` | How long a room's first unsaved edit waits before the room is saved as an `auto` version, measured across instances (default `15m`; `0` turns this trigger off). Before Flow saved versions itself, it meant "at most once per interval per instance". |
+| `REEARTH_FLOW_KEEP_SNAPSHOTS` | Versions kept per room in each of two classes: `auto`, and every other label together (default `50`, at least `1`). Before, it bounded `auto` versions only. |
+
+Versions are also saved when the last instance lets a room go, and on request:
+
+- `POST /api/document/{id}/versions` with `{"label": "…"}` (behind
+  `X-API-Secret`, label required, at most 256 bytes) answers
+  `{"saved": true, "snapshotId": n}`, or `{"saved": false}` when no user edit
+  is waiting. The API calls it on Ctrl+S, debug runs and deployments, with a
+  fixed label for each.
+
+After every version the server tells the API at
+`POST {REEARTH_FLOW_THRIFT_AUTH_URL}/auth/versions` with `X-API-Secret` set to
+`REEARTH_FLOW_API_SECRET`. The body and the rules the API must follow are on
+`versions.CallbackPath`. In short: require the secret; notices are unordered,
+retried and can repeat a version with grown attribution, so apply one only when
+its `lastEditedAt` is later than what the project holds.
+
+Change records live in the coordination store: a Redis hash per room
+(`flow:version:changes:{room}`, 30-day TTL) or `ws_version_change` rows in
+Postgres (swept after 30 days).
+

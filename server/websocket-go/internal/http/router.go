@@ -9,7 +9,6 @@ import (
 	"net/http"
 	"strconv"
 	"time"
-	"unicode/utf8"
 
 	"github.com/reearth/ygo/persistence"
 
@@ -440,6 +439,10 @@ func (r *router) postSnapshot(w http.ResponseWriter, req *http.Request) {
 // one. Unlike POST .../snapshots, an unchanged room saves nothing: the answer
 // is {"saved":false}.
 func (r *router) postVersion(w http.ResponseWriter, req *http.Request) {
+	if r.versioner == nil {
+		writeErr(w, http.StatusNotImplemented, "versions not supported by this server")
+		return
+	}
 	room := docid.Normalize(req.PathValue("id"))
 	if room == "" {
 		writeErr(w, http.StatusBadRequest, "doc id required")
@@ -454,15 +457,16 @@ func (r *router) postVersion(w http.ResponseWriter, req *http.Request) {
 		writeErr(w, http.StatusBadRequest, "label required")
 		return
 	}
-	if len(body.Label) > maxSnapshotLabel || !utf8.ValidString(body.Label) {
-		writeErr(w, http.StatusBadRequest, "invalid label")
-		return
-	}
-	if r.versioner == nil {
-		writeErr(w, http.StatusNotImplemented, "versions not supported by this server")
+	if len(body.Label) > maxSnapshotLabel {
+		writeErr(w, http.StatusBadRequest, "label too long")
 		return
 	}
 	res, err := r.versioner.SaveVersion(req.Context(), room, body.Label)
+	if errors.Is(err, persistence.ErrSnapshotsUnsupported) {
+		// As for POST .../snapshots: a deployment fact, not a server fault.
+		writeErr(w, http.StatusNotImplemented, "snapshots not supported by this backend")
+		return
+	}
 	if err != nil && !res.Saved {
 		r.fail(w, "save version failed", err, "doc", room)
 		return

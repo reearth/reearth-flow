@@ -96,45 +96,41 @@ table "ws_lock" {
   }
 }
 
-// ws_version_change is each room's change record: the user edits made since its
-// last version, merged across instances. Saving a version deletes the row it
-// reads (DELETE ... RETURNING), so one instance saves each change. Losing the
-// table in a crash loses no document data, only the record that the room still
-// needs a version: the edits stay in GCS and the room's next edit records it again.
+// ws_version_change holds each room's change record: the user edits made since
+// its last version, one row per batch an instance wrote. Batches are sets of
+// item IDs, merged when a version takes them. Saving a version deletes the rows
+// it reads (DELETE ... RETURNING), so each batch goes to one instance. Losing
+// the table in a crash loses no document data, only the record that the room
+// still needs a version: the edits stay in GCS and the room's next edit records
+// it again.
 table "ws_version_change" {
   schema   = schema.public
   unlogged = true
 
+  column "id" {
+    type = bigserial
+  }
   column "doc_id" {
     type = text
   }
-  column "contributors" {
-    type    = sql("text[]")
-    default = sql("'{}'::text[]")
-    comment = "users who edited, sorted"
-  }
-  column "last_editor" {
-    type    = text
-    default = ""
-    comment = "user who sent the latest edit that named its sender"
-  }
-  column "editor_at" {
-    type = timestamptz
-    null = true
-  }
   column "first_at" {
-    type = timestamptz
+    type    = timestamptz
+    comment = "the batch's oldest edit"
   }
-  column "last_at" {
-    type = timestamptz
+  column "batch" {
+    type    = bytea
+    comment = "the batch's edits by user (versions.EncodeRecord)"
   }
 
   primary_key {
-    columns = [column.doc_id]
+    columns = [column.id]
   }
 
+  index "ws_version_change_doc_id_idx" {
+    columns = [column.doc_id]
+  }
   // The janitor's sweep of records nobody took.
-  index "ws_version_change_last_at_idx" {
-    columns = [column.last_at]
+  index "ws_version_change_first_at_idx" {
+    columns = [column.first_at]
   }
 }

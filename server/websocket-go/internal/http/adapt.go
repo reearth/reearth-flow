@@ -9,7 +9,7 @@ import (
 
 	"github.com/reearth/ygo/persistence"
 
-	"github.com/reearth/reearth-flow/websocket-go/internal/gcs"
+	"github.com/reearth/reearth-flow/websocket-go/internal/versions"
 )
 
 // Persistence is the subset of the GCS adapter's VersionedPersistence surface
@@ -195,25 +195,25 @@ func (s *StoreAdapter) cleanupRooms(ctx context.Context) ([]string, error) {
 // SnapshotDetailer lists snapshots with their attribution. The GCS adapter
 // satisfies it.
 type SnapshotDetailer interface {
-	ListSnapshotDetails(ctx context.Context, room string) ([]gcs.SnapshotDetail, error)
+	ListSnapshotDetails(ctx context.Context, room string) ([]versions.ListedVersion, error)
 }
 
 // ListSnapshots maps ygo SnapshotInfo onto the wire DTO; an unsupported store
 // yields an empty list so callers render an empty history rather than failing.
 func (s *StoreAdapter) ListSnapshots(ctx context.Context, room string) ([]SnapshotItem, error) {
 	if sd, ok := s.p.(SnapshotDetailer); ok {
-		details, err := sd.ListSnapshotDetails(ctx, room)
+		listed, err := sd.ListSnapshotDetails(ctx, room)
 		if err != nil {
 			return nil, err
 		}
-		out := make([]SnapshotItem, 0, len(details))
-		for _, d := range details {
-			item := snapshotItem(d.SnapshotInfo)
-			if d.Contributors != nil {
-				item.Contributors = d.Contributors
+		out := make([]SnapshotItem, 0, len(listed))
+		for _, l := range listed {
+			item := snapshotItem(l.SnapshotInfo)
+			if l.Contributors != nil {
+				item.Contributors = l.Contributors
 			}
-			item.ContributorCount = d.ContributorCount
-			item.LastEditor = d.LastEditor
+			item.ContributorCount = l.ContributorCount
+			item.LastEditor = l.LastEditor
 			out = append(out, item)
 		}
 		return out, nil

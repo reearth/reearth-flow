@@ -5,10 +5,16 @@ import (
 	"log/slog"
 	"sync"
 	"time"
+
+	"github.com/reearth/ygo/crdt"
 )
 
 // DefaultMarkEvery is how often a busy room's edits reach the Store.
 const DefaultMarkEvery = time.Second
+
+// maxMarkBackoff bounds how long a room waits between writes while the Store
+// keeps failing.
+const maxMarkBackoff = 30 * time.Second
 
 // markTimeout bounds one write to the Store.
 const markTimeout = 5 * time.Second
@@ -29,9 +35,7 @@ type Tracker struct {
 
 // roomEdits are one room's edits not yet in the Store.
 type roomEdits struct {
-	batch   Mark
-	editors map[string]struct{}
-	pending bool
+	batch Record
 	// writing is closed when the write in progress ends; nil when none is.
 	writing chan struct{}
 	// timer, while set, holds the room's next write back until the interval
@@ -39,6 +43,8 @@ type roomEdits struct {
 	// still the current one.
 	timer *time.Timer
 	seq   uint64
+	// failures counts consecutive failed writes, which lengthen the wait.
+	failures int
 }
 
 // NewTracker returns a Tracker writing to store at most once per every per
@@ -53,23 +59,37 @@ func NewTracker(store Store, every time.Duration, log *slog.Logger) *Tracker {
 	return &Tracker{store: store, every: every, log: log, now: time.Now, rooms: map[string]*roomEdits{}}
 }
 
-// Edit records that user changed room's document. user is empty when the
-// connection carries no identity. It does not wait for the Store.
-func (t *Tracker) Edit(room, user string) {
-	now := t.now()
+// Edit records that user's update, which touched ids, changed room's
+// document. user is empty when the connection carries no identity. It does
+// not wait for the Store.
+func (t *Tracker) Edit(room, user string, ids crdt.ContentIDs) {
 	t.mu.Lock()
 	defer t.mu.Unlock()
+	// Read the clock under the lock, so edits enter a batch in time order.
+	now := t.now()
 	re := t.rooms[room]
 	if re == nil {
-		re = &roomEdits{editors: map[string]struct{}{}}
+		re = &roomEdits{batch: Record{}}
 		t.rooms[room] = re
 	}
-	re.add(user, now)
-	if re.writing == nil && re.timer == nil {
-		batch := re.take()
-		re.writing = make(chan struct{})
-		go func() { _ = t.write(room, re, batch) }()
+	e, ok := re.batch[user]
+	if !ok {
+		e = NewEdits()
 	}
+	e.add(ids, now)
+	re.batch[user] = e
+	if re.writing == nil && re.timer == nil {
+		t.startWrite(room, re)
+	}
+}
+
+// startWrite sends the room's batch to the Store on its own goroutine. The
+// caller holds t.mu.
+func (t *Tracker) startWrite(room string, re *roomEdits) {
+	batch := re.batch
+	re.batch = Record{}
+	re.writing = make(chan struct{})
+	go func() { _ = t.write(room, re, batch) }()
 }
 
 // Flush writes room's gathered edits now and waits for them, and for a write
@@ -91,7 +111,7 @@ func (t *Tracker) Flush(ctx context.Context, room string) error {
 				return ctx.Err()
 			}
 		}
-		if !re.pending {
+		if len(re.batch) == 0 {
 			t.mu.Unlock()
 			return nil
 		}
@@ -99,7 +119,8 @@ func (t *Tracker) Flush(ctx context.Context, room string) error {
 			re.timer.Stop()
 			re.timer = nil
 		}
-		batch := re.take()
+		batch := re.batch
+		re.batch = Record{}
 		re.writing = make(chan struct{})
 		t.mu.Unlock()
 		return t.write(room, re, batch)
@@ -107,24 +128,47 @@ func (t *Tracker) Flush(ctx context.Context, room string) error {
 }
 
 // write sends batch to the Store. On failure the batch rejoins the room's
-// edits for the next write. Either way the next write waits out the interval.
-func (t *Tracker) write(room string, re *roomEdits, batch Mark) error {
+// edits for the next write, which waits longer after each consecutive failure.
+func (t *Tracker) write(room string, re *roomEdits, batch Record) error {
 	ctx, cancel := context.WithTimeout(context.Background(), markTimeout)
 	err := t.store.Mark(ctx, room, batch)
 	cancel()
 
 	t.mu.Lock()
 	defer t.mu.Unlock()
+	wait := t.every
 	if err != nil {
-		t.log.Warn("recording a document change failed; retrying", "room", room, "err", err)
-		re.restore(batch)
+		re.failures++
+		if re.failures == 1 {
+			t.log.Warn("recording a document change failed; retrying", "room", room, "err", err)
+		} else {
+			t.log.Debug("recording a document change failed again", "room", room, "failures", re.failures, "err", err)
+		}
+		batch.Merge(re.batch)
+		re.batch = batch
+		wait = t.backoff(re.failures)
+	} else {
+		re.failures = 0
 	}
 	close(re.writing)
 	re.writing = nil
 	re.seq++
 	seq := re.seq
-	re.timer = time.AfterFunc(t.every, func() { t.tick(room, re, seq) })
+	re.timer = time.AfterFunc(wait, func() { t.tick(room, re, seq) })
 	return err
+}
+
+// backoff doubles the interval for each consecutive failure, up to
+// maxMarkBackoff.
+func (t *Tracker) backoff(failures int) time.Duration {
+	d := t.every
+	for i := 1; i < failures && d < maxMarkBackoff; i++ {
+		d *= 2
+	}
+	if d > maxMarkBackoff {
+		d = maxMarkBackoff
+	}
+	return d
 }
 
 // tick ends a room's interval: it writes the edits gathered during it, or
@@ -139,56 +183,9 @@ func (t *Tracker) tick(room string, re *roomEdits, seq uint64) {
 	if re.writing != nil {
 		return // the write in progress sets the next timer
 	}
-	if !re.pending {
+	if len(re.batch) == 0 {
 		delete(t.rooms, room)
 		return
 	}
-	batch := re.take()
-	re.writing = make(chan struct{})
-	go func() { _ = t.write(room, re, batch) }()
-}
-
-func (re *roomEdits) add(user string, at time.Time) {
-	if !re.pending {
-		re.batch.FirstAt = at
-	}
-	re.pending = true
-	re.batch.LastAt = at
-	if user != "" {
-		re.editors[user] = struct{}{}
-		re.batch.LastEditor = user
-		re.batch.LastEditorAt = at
-	}
-}
-
-// take returns the gathered edits and starts a new batch.
-func (re *roomEdits) take() Mark {
-	b := re.batch
-	b.Editors = make([]string, 0, len(re.editors))
-	for u := range re.editors {
-		b.Editors = append(b.Editors, u)
-	}
-	re.batch = Mark{}
-	re.editors = map[string]struct{}{}
-	re.pending = false
-	return b
-}
-
-// restore puts back a batch whose write failed, merged with edits gathered
-// since.
-func (re *roomEdits) restore(b Mark) {
-	for _, u := range b.Editors {
-		re.editors[u] = struct{}{}
-	}
-	if !re.pending || b.FirstAt.Before(re.batch.FirstAt) {
-		re.batch.FirstAt = b.FirstAt
-	}
-	if b.LastAt.After(re.batch.LastAt) {
-		re.batch.LastAt = b.LastAt
-	}
-	if b.LastEditor != "" && (re.batch.LastEditor == "" || b.LastEditorAt.After(re.batch.LastEditorAt)) {
-		re.batch.LastEditor = b.LastEditor
-		re.batch.LastEditorAt = b.LastEditorAt
-	}
-	re.pending = true
+	t.startWrite(room, re)
 }

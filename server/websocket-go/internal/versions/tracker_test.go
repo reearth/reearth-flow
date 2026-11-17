@@ -7,6 +7,8 @@ import (
 	"sync"
 	"testing"
 	"time"
+
+	"github.com/reearth/ygo/crdt"
 )
 
 // countingStore is a MemoryStore that counts Mark calls and can fail them.
@@ -19,7 +21,7 @@ type countingStore struct {
 
 func newCountingStore() *countingStore { return &countingStore{MemoryStore: NewMemoryStore()} }
 
-func (s *countingStore) Mark(ctx context.Context, room string, m Mark) error {
+func (s *countingStore) Mark(ctx context.Context, room string, b Record) error {
 	s.mu.Lock()
 	s.marks++
 	if s.fail > 0 {
@@ -28,13 +30,25 @@ func (s *countingStore) Mark(ctx context.Context, room string, m Mark) error {
 		return errors.New("store down")
 	}
 	s.mu.Unlock()
-	return s.MemoryStore.Mark(ctx, room, m)
+	return s.MemoryStore.Mark(ctx, room, b)
 }
 
 func (s *countingStore) markCount() int {
 	s.mu.Lock()
 	defer s.mu.Unlock()
 	return s.marks
+}
+
+// contributors returns room's recorded contributors, without taking them.
+func (s *countingStore) contributors(room string) []string {
+	s.MemoryStore.mu.Lock()
+	defer s.MemoryStore.mu.Unlock()
+	return s.records[room].Contributors()
+}
+
+func (s *countingStore) has(room string) bool {
+	_, ok, _ := s.FirstEdit(context.Background(), room)
+	return ok
 }
 
 func waitUntil(t *testing.T, what string, cond func() bool) {
@@ -48,16 +62,15 @@ func waitUntil(t *testing.T, what string, cond func() bool) {
 	}
 }
 
+func noIDs() crdt.ContentIDs { return crdt.ContentIDs{} }
+
 func TestTracker_FirstEditReachesTheStoreAtOnce(t *testing.T) {
 	t.Parallel()
 
 	store := newCountingStore()
 	tr := NewTracker(store, time.Hour, nil)
-	tr.Edit("room", "u1")
-	waitUntil(t, "the first edit to be written", func() bool {
-		_, ok, _ := store.Peek(context.Background(), "room")
-		return ok
-	})
+	tr.Edit("room", "u1", noIDs())
+	waitUntil(t, "the first edit to be written", func() bool { return store.has("room") })
 }
 
 func TestTracker_GathersEditsWithinTheInterval(t *testing.T) {
@@ -65,20 +78,33 @@ func TestTracker_GathersEditsWithinTheInterval(t *testing.T) {
 
 	store := newCountingStore()
 	tr := NewTracker(store, 50*time.Millisecond, nil)
-	tr.Edit("room", "u1")
-	waitUntil(t, "the first write", func() bool { return store.markCount() == 1 })
+	tr.Edit("room", "u1", noIDs())
+	waitUntil(t, "the first write", func() bool { return store.has("room") })
 	for range 100 {
-		tr.Edit("room", "u2")
+		tr.Edit("room", "u2", noIDs())
 	}
-	tr.Edit("room", "u3")
-	waitUntil(t, "the gathered write", func() bool { return store.markCount() == 2 })
+	tr.Edit("room", "u3", noIDs())
+	waitUntil(t, "the gathered write", func() bool { return len(store.contributors("room")) == 3 })
 	time.Sleep(120 * time.Millisecond)
 	if n := store.markCount(); n != 2 {
 		t.Fatalf("marks = %d, want 2: 101 edits within one interval are one write", n)
 	}
-	r, _, _ := store.Peek(context.Background(), "room")
-	if !slices.Equal(r.Contributors, []string{"u1", "u2", "u3"}) || r.LastEditor != "u3" {
-		t.Fatalf("record = %+v", r)
+}
+
+func TestTracker_RecordsTheItemsAnEditTouched(t *testing.T) {
+	t.Parallel()
+
+	ctx := context.Background()
+	store := newCountingStore()
+	tr := NewTracker(store, time.Hour, nil)
+	d := newTestDoc(7)
+	tr.Edit("room", "u1", idsOf(t, d.write("hi")))
+	if err := tr.Flush(ctx, "room"); err != nil {
+		t.Fatal(err)
+	}
+	r, _, _ := store.Take(ctx, "room")
+	if got := r["u1"].Inserts.Ranges(7); len(got) != 1 || got[0].Len != 2 {
+		t.Fatalf("inserts = %v, want the two inserted characters", got)
 	}
 }
 
@@ -87,14 +113,13 @@ func TestTracker_FlushWritesGatheredEditsNow(t *testing.T) {
 
 	store := newCountingStore()
 	tr := NewTracker(store, time.Hour, nil)
-	tr.Edit("room", "u1")
-	tr.Edit("room", "u2") // held back for an hour
+	tr.Edit("room", "u1", noIDs())
+	tr.Edit("room", "u2", noIDs()) // held back for an hour
 	if err := tr.Flush(context.Background(), "room"); err != nil {
 		t.Fatalf("Flush: %v", err)
 	}
-	r, _, _ := store.Peek(context.Background(), "room")
-	if !slices.Contains(r.Contributors, "u2") {
-		t.Fatalf("contributors = %v, want u2 written by Flush", r.Contributors)
+	if got := store.contributors("room"); !slices.Contains(got, "u2") {
+		t.Fatalf("contributors = %v, want u2 written by Flush", got)
 	}
 }
 
@@ -104,11 +129,23 @@ func TestTracker_FailedWriteIsRetried(t *testing.T) {
 	store := newCountingStore()
 	store.fail = 1
 	tr := NewTracker(store, 20*time.Millisecond, nil)
-	tr.Edit("room", "u1")
-	waitUntil(t, "the retried write", func() bool {
-		r, ok, _ := store.Peek(context.Background(), "room")
-		return ok && slices.Equal(r.Contributors, []string{"u1"})
-	})
+	tr.Edit("room", "u1", noIDs())
+	waitUntil(t, "the retried write", func() bool { return slices.Equal(store.contributors("room"), []string{"u1"}) })
+}
+
+func TestTracker_BacksOffWhileTheStoreFails(t *testing.T) {
+	t.Parallel()
+
+	tr := NewTracker(newCountingStore(), time.Second, nil)
+	if d := tr.backoff(1); d != time.Second {
+		t.Fatalf("first retry after %v", d)
+	}
+	if d := tr.backoff(3); d != 4*time.Second {
+		t.Fatalf("third retry after %v, want 4s", d)
+	}
+	if d := tr.backoff(50); d != maxMarkBackoff {
+		t.Fatalf("retry after %v, want the cap", d)
+	}
 }
 
 func TestTracker_EditAfterTakeIsRecordedAgain(t *testing.T) {
@@ -119,27 +156,57 @@ func TestTracker_EditAfterTakeIsRecordedAgain(t *testing.T) {
 	ctx := context.Background()
 	store := newCountingStore()
 	tr := NewTracker(store, 20*time.Millisecond, nil)
-	tr.Edit("room", "u1")
-	waitUntil(t, "the first write", func() bool { return store.markCount() == 1 })
+	tr.Edit("room", "u1", noIDs())
+	waitUntil(t, "the first write to land", func() bool { return store.has("room") })
 	if _, ok, _ := store.Take(ctx, "room"); !ok {
 		t.Fatal("no record to take")
 	}
-	tr.Edit("room", "u1")
-	waitUntil(t, "the edit after the take", func() bool {
-		_, ok, _ := store.Peek(ctx, "room")
-		return ok
-	})
+	tr.Edit("room", "u1", noIDs())
+	waitUntil(t, "the edit after the take", func() bool { return store.has("room") })
 }
 
 func TestTracker_ForgetsAQuietRoom(t *testing.T) {
 	t.Parallel()
 
-	store := newCountingStore()
-	tr := NewTracker(store, 10*time.Millisecond, nil)
-	tr.Edit("room", "u1")
+	tr := NewTracker(newCountingStore(), 10*time.Millisecond, nil)
+	tr.Edit("room", "u1", noIDs())
 	waitUntil(t, "the room to be forgotten", func() bool {
 		tr.mu.Lock()
 		defer tr.mu.Unlock()
 		return len(tr.rooms) == 0
 	})
+}
+
+func TestTracker_ConcurrentEditsAndFlushesLoseNothing(t *testing.T) {
+	t.Parallel()
+
+	ctx := context.Background()
+	store := newCountingStore()
+	tr := NewTracker(store, time.Millisecond, nil)
+	users := []string{"a", "b", "c", "d"}
+	var wg sync.WaitGroup
+	for _, u := range users {
+		wg.Add(2)
+		go func() {
+			defer wg.Done()
+			for range 200 {
+				tr.Edit("room", u, noIDs())
+			}
+		}()
+		go func() {
+			defer wg.Done()
+			for range 50 {
+				if err := tr.Flush(ctx, "room"); err != nil {
+					t.Errorf("Flush: %v", err)
+				}
+			}
+		}()
+	}
+	wg.Wait()
+	if err := tr.Flush(ctx, "room"); err != nil {
+		t.Fatal(err)
+	}
+	if got := store.contributors("room"); !slices.Equal(got, users) {
+		t.Fatalf("contributors = %v, want every user", got)
+	}
 }

@@ -111,8 +111,9 @@ type roomState struct {
 	lastID string
 
 	// caughtUp is closed once the reader has replayed the stream as it stood
-	// when the room was activated.
+	// when the room was activated; done when the reader stops.
 	caughtUp chan struct{}
+	done     chan struct{}
 }
 
 var _ interface {
@@ -216,24 +217,52 @@ func (r *Relay) Publish(_ context.Context, out cluster.Outbound) error {
 func (r *Relay) DroppedWrites() uint64 { return r.droppedWrites.Load() }
 
 // ErrRoomNotActive is what WaitCaughtUp returns for a room this instance does
-// not hold.
+// not hold, or stops holding while waiting.
 var ErrRoomNotActive = errors.New("websocket-go/redis: room not active on this instance")
 
-// WaitCaughtUp waits until this instance has replayed the room's stream as it
-// stood when the room was activated here, so the room's document holds every
+// caughtUpPoll is how often WaitCaughtUp checks the reader's cursor.
+const caughtUpPoll = 5 * time.Millisecond
+
+// WaitCaughtUp waits until this instance's reader has applied every entry the
+// room's stream held when it was called, so the room's document holds every
 // update other instances had published by then.
 func (r *Relay) WaitCaughtUp(ctx context.Context, room string) error {
 	r.mu.Lock()
 	rs, ok := r.rooms[room]
+	active := ok && !rs.evicting
 	r.mu.Unlock()
-	if !ok || rs.evicting {
+	if !active {
 		return ErrRoomNotActive
+	}
+	head, err := r.client.XRevRangeN(ctx, streamKey(room), "+", "-", 1).Result()
+	if err != nil {
+		return err
 	}
 	select {
 	case <-rs.caughtUp:
-		return nil
+	case <-rs.done:
+		return ErrRoomNotActive
 	case <-ctx.Done():
 		return ctx.Err()
+	}
+	if len(head) == 0 {
+		return nil
+	}
+	target := head[0].ID
+	for {
+		r.mu.Lock()
+		cur := rs.lastID
+		r.mu.Unlock()
+		if !streamIDBefore(cur, target) {
+			return nil
+		}
+		select {
+		case <-rs.done:
+			return ErrRoomNotActive
+		case <-ctx.Done():
+			return ctx.Err()
+		case <-time.After(caughtUpPoll):
+		}
 	}
 }
 
@@ -266,6 +295,7 @@ func (r *Relay) RoomActivated(room string) {
 		lastID:   "0",
 		writeCh:  make(chan writeItem, writeQueueCap),
 		caughtUp: make(chan struct{}),
+		done:     make(chan struct{}),
 	}
 	r.rooms[room] = rs
 	sink := r.sink
@@ -419,6 +449,7 @@ func (r *Relay) hasEntriesBelow(ctx context.Context, key string, minMs int64) (b
 // route sync/awareness to the sink, and advance last-id past filtered entries too.
 func (r *Relay) readLoop(ctx context.Context, room string, rs *roomState, sink cluster.Sink) {
 	defer rs.wg.Done()
+	defer close(rs.done)
 
 	var lastID string
 	for {

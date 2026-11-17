@@ -9,25 +9,22 @@ import (
 // VersionStore stores versions as attributed snapshots.
 type VersionStore struct {
 	a *Adapter
-	// keep bounds retained snapshots per label; <= 0 keeps everything.
+	// keep bounds retained snapshots per class (see TrimSnapshots).
 	keep int
 }
 
 // Versions returns the adapter as a versions.Snapshots, keeping at most keep
-// snapshots per label.
+// automatic versions and keep others (see TrimSnapshots).
 func (a *Adapter) Versions(keep int) *VersionStore {
 	return &VersionStore{a: a, keep: keep}
 }
 
 var _ versions.Snapshots = (*VersionStore)(nil)
 
-// Save stores v and then trims the snapshots sharing its label. A failed trim
+// Save stores v and then trims the snapshots of its label's class. A failed trim
 // is logged: the version is stored, and the next save trims again.
 func (s *VersionStore) Save(ctx context.Context, room string, v versions.Version) (int64, error) {
-	id, err := s.a.SaveAttributedSnapshot(ctx, room, v.Label, v.State, Authors{
-		Contributors: v.Contributors,
-		LastEditor:   v.LastEditor,
-	})
+	id, err := s.a.SaveAttributedSnapshot(ctx, room, v.Label, v.State, v.Attribution)
 	if err != nil {
 		return 0, err
 	}
@@ -37,7 +34,12 @@ func (s *VersionStore) Save(ctx context.Context, room string, v versions.Version
 	return id, nil
 }
 
-// Latest returns the state of room's newest snapshot, or nil when it has none.
-func (s *VersionStore) Latest(ctx context.Context, room string) ([]byte, error) {
-	return s.a.LatestSnapshotState(ctx, room)
+// Latest returns room's newest snapshot; ok is false when it has none.
+func (s *VersionStore) Latest(ctx context.Context, room string) (versions.StoredVersion, bool, error) {
+	return s.a.LatestSnapshot(ctx, room)
+}
+
+// Attribute replaces the attribution of room's snapshot id.
+func (s *VersionStore) Attribute(ctx context.Context, room string, id int64, a versions.Attribution) error {
+	return s.a.AttributeSnapshot(ctx, room, id, a)
 }

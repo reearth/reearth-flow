@@ -6,6 +6,7 @@ import (
 	"context"
 	"log/slog"
 	"net/http"
+	"sync"
 	"time"
 
 	"github.com/reearth/ygo/crdt"
@@ -39,6 +40,10 @@ type Server struct {
 	stored       func(ctx context.Context, room string) ([]byte, error)
 	catchUp      CatchUp
 	versionEvery time.Duration
+	// leaveSaves counts the versions lastPeerLeft is saving; see WaitVersions.
+	leaveMu    sync.Mutex
+	leaveSaves int
+	leaveIdle  chan struct{}
 
 	health healthDeps
 }

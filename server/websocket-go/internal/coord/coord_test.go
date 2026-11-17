@@ -252,7 +252,9 @@ func TestRedisChangeStoreSharesTheLockStore(t *testing.T) {
 	}
 
 	ctx := context.Background()
-	if err := a.Mark(ctx, "p1", versions.Mark{Editors: []string{"u"}, FirstAt: time.Now(), LastAt: time.Now()}); err != nil {
+	e := versions.NewEdits()
+	e.FirstAt, e.LastAt = time.Now(), time.Now()
+	if err := a.Mark(ctx, "p1", versions.Record{"u": e}); err != nil {
 		t.Fatal(err)
 	}
 	if _, ok, err := b.Take(ctx, "p1"); !ok || err != nil {

@@ -2,10 +2,14 @@ package gcs
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"slices"
 	"strings"
 	"testing"
+	"time"
+
+	"github.com/reearth/ygo/persistence"
 
 	"github.com/reearth/reearth-flow/websocket-go/internal/versions"
 )
@@ -20,30 +24,32 @@ func newVersionAdapter(t *testing.T) *Adapter {
 	return a
 }
 
+var editedAt = time.UnixMilli(1_700_000_000_123)
+
 func TestVersionStore_SavesAndListsAttribution(t *testing.T) {
 	t.Parallel()
 
 	ctx := context.Background()
 	a := newVersionAdapter(t)
-	vs := a.Versions(0)
-	id, err := vs.Save(ctx, "room", versions.Version{
+	id, err := a.Versions(0).Save(ctx, "room", versions.Version{
 		Label: "Saved", State: []byte("state"),
-		Contributors: []string{"carol", "alice", "bob"}, LastEditor: "bob",
+		Attribution: versions.Attribution{
+			Contributors: []string{"carol", "alice", "bob"}, LastEditor: "bob", LastEditedAt: editedAt,
+		},
 	})
 	if err != nil {
 		t.Fatalf("Save: %v", err)
 	}
-	details, err := a.ListSnapshotDetails(ctx, "room")
-	if err != nil || len(details) != 1 {
-		t.Fatalf("ListSnapshotDetails = %v, %v", details, err)
+	listed, err := a.ListSnapshotDetails(ctx, "room")
+	if err != nil || len(listed) != 1 {
+		t.Fatalf("ListSnapshotDetails = %v, %v", listed, err)
 	}
-	d := details[0]
-	if d.ID != id || d.Label != "Saved" || d.LastEditor != "bob" || d.ContributorCount != 3 {
-		t.Fatalf("detail = %+v", d)
+	l := listed[0]
+	if l.ID != id || l.Label != "Saved" || l.LastEditor != "bob" || l.ContributorCount != 3 || !l.LastEditedAt.Equal(editedAt) {
+		t.Fatalf("listed = %+v", l)
 	}
-	// The last editor first, the rest sorted.
-	if want := []string{"bob", "alice", "carol"}; !slices.Equal(d.Contributors, want) {
-		t.Fatalf("contributors = %v, want %v", d.Contributors, want)
+	if want := []string{"alice", "bob", "carol"}; !slices.Equal(l.Contributors, want) {
+		t.Fatalf("contributors = %v, want %v", l.Contributors, want)
 	}
 }
 
@@ -55,13 +61,46 @@ func TestVersionStore_UnattributedSnapshotHasNoContributors(t *testing.T) {
 	if _, err := a.SaveSnapshot(ctx, "room", "Before restore", []byte("state")); err != nil {
 		t.Fatal(err)
 	}
-	details, _ := a.ListSnapshotDetails(ctx, "room")
-	if len(details) != 1 || details[0].Contributors != nil || details[0].ContributorCount != 0 || details[0].LastEditor != "" {
-		t.Fatalf("details = %+v", details)
+	listed, _ := a.ListSnapshotDetails(ctx, "room")
+	if len(listed) != 1 || listed[0].Contributors != nil || listed[0].ContributorCount != 0 || listed[0].LastEditor != "" {
+		t.Fatalf("listed = %+v", listed)
 	}
 }
 
-func TestAuthorsMeta_CutsTheListToFitKeepingTheLastEditor(t *testing.T) {
+func TestVersionStore_AttributeRewritesOnlyTheAttribution(t *testing.T) {
+	t.Parallel()
+
+	ctx := context.Background()
+	a := newVersionAdapter(t)
+	vs := a.Versions(0)
+	id, _ := vs.Save(ctx, "room", versions.Version{
+		Label: "Saved", State: []byte("state"),
+		Attribution: versions.Attribution{Contributors: []string{"alice"}, LastEditor: "alice", LastEditedAt: editedAt},
+	})
+	later := editedAt.Add(time.Second)
+	if err := vs.Attribute(ctx, "room", id, versions.Attribution{
+		Contributors: []string{"alice", "bob"}, LastEditor: "bob", LastEditedAt: later,
+	}); err != nil {
+		t.Fatalf("Attribute: %v", err)
+	}
+	latest, ok, err := vs.Latest(ctx, "room")
+	if err != nil || !ok {
+		t.Fatalf("Latest = %v, %v", ok, err)
+	}
+	if latest.ID != id || latest.Label != "Saved" || string(latest.State) != "state" ||
+		!slices.Equal(latest.Contributors, []string{"alice", "bob"}) || latest.LastEditor != "bob" || !latest.LastEditedAt.Equal(later) {
+		t.Fatalf("latest = %+v", latest)
+	}
+	listed, _ := a.ListSnapshots(ctx, "room")
+	if listed[0].Size != int64(len("state")) {
+		t.Fatalf("size = %d; the rest of the metadata must survive", listed[0].Size)
+	}
+	if err := vs.Attribute(ctx, "room", id+5, versions.Attribution{}); !errors.Is(err, persistence.ErrSnapshotNotFound) {
+		t.Fatalf("Attribute(unknown) = %v", err)
+	}
+}
+
+func TestAttributionMeta_CutsTheListToFitKeepingTheLastEditor(t *testing.T) {
 	t.Parallel()
 
 	var ids []string
@@ -69,13 +108,12 @@ func TestAuthorsMeta_CutsTheListToFitKeepingTheLastEditor(t *testing.T) {
 		ids = append(ids, fmt.Sprintf("01J%023d", i)) // 26 bytes, as user ids are
 	}
 	last := "zz-last-editor"
-	meta := authorsMeta(Authors{Contributors: append(ids, last), LastEditor: last})
+	meta := attributionMeta(versions.Attribution{Contributors: append(ids, last), LastEditor: last, LastEditedAt: editedAt})
 
 	if len(meta[snapMetaContributors]) > maxContributorBytes {
 		t.Fatalf("list is %d bytes, want at most %d", len(meta[snapMetaContributors]), maxContributorBytes)
 	}
-	listed := strings.Split(meta[snapMetaContributors], ",")
-	if listed[0] != last {
+	if listed := strings.Split(meta[snapMetaContributors], ","); listed[0] != last {
 		t.Fatalf("first listed = %q, want the last editor", listed[0])
 	}
 	if meta[snapMetaContributorCount] != "401" {
@@ -90,10 +128,10 @@ func TestAuthorsMeta_CutsTheListToFitKeepingTheLastEditor(t *testing.T) {
 	}
 }
 
-func TestAuthorsMeta_SkipsUnlistableIDs(t *testing.T) {
+func TestAttributionMeta_SkipsUnlistableIDs(t *testing.T) {
 	t.Parallel()
 
-	meta := authorsMeta(Authors{Contributors: []string{"a,b", "", "c", "c"}})
+	meta := attributionMeta(versions.Attribution{Contributors: []string{"a,b", "", "c", "c"}})
 	if meta[snapMetaContributors] != "c" || meta[snapMetaContributorCount] != "1" {
 		t.Fatalf("meta = %v", meta)
 	}
@@ -102,14 +140,27 @@ func TestAuthorsMeta_SkipsUnlistableIDs(t *testing.T) {
 	}
 }
 
-func TestTrimSnapshots_IsPerLabel(t *testing.T) {
+// labelCounts counts room's snapshots by label.
+func labelCounts(t *testing.T, a *Adapter) map[string]int {
+	t.Helper()
+	snaps, err := a.ListSnapshots(context.Background(), "room")
+	if err != nil {
+		t.Fatal(err)
+	}
+	n := map[string]int{}
+	for _, sn := range snaps {
+		n[sn.Label]++
+	}
+	return n
+}
+
+func TestTrimSnapshots_AutomaticVersionsNeverEvictOthers(t *testing.T) {
 	t.Parallel()
 
 	ctx := context.Background()
 	a := newVersionAdapter(t)
 	vs := a.Versions(2)
-	named, err := a.SaveSnapshot(ctx, "room", "Before restore", []byte("s"))
-	if err != nil {
+	if _, err := a.SaveSnapshot(ctx, "room", "Before restore", []byte("s")); err != nil {
 		t.Fatal(err)
 	}
 	for range 4 {
@@ -117,34 +168,49 @@ func TestTrimSnapshots_IsPerLabel(t *testing.T) {
 			t.Fatal(err)
 		}
 	}
-	snaps, _ := a.ListSnapshots(ctx, "room")
-	var auto int
-	var keptNamed bool
-	for _, sn := range snaps {
-		switch sn.Label {
-		case versions.AutoLabel:
-			auto++
-		default:
-			keptNamed = keptNamed || sn.ID == named
-		}
-	}
-	if auto != 2 || !keptNamed {
-		t.Fatalf("auto = %d, named kept = %v; want 2 automatic versions and the named one", auto, keptNamed)
+	if n := labelCounts(t, a); n[versions.AutoLabel] != 2 || n["Before restore"] != 1 {
+		t.Fatalf("counts = %v; want 2 automatic and the other kept", n)
 	}
 }
 
-func TestLatestSnapshotState(t *testing.T) {
+func TestTrimSnapshots_DistinctLabelsShareOneBound(t *testing.T) {
 	t.Parallel()
 
 	ctx := context.Background()
 	a := newVersionAdapter(t)
-	if st, err := a.LatestSnapshotState(ctx, "room"); st != nil || err != nil {
-		t.Fatalf("empty room = %v, %v", st, err)
+	vs := a.Versions(2)
+	if _, err := vs.Save(ctx, "room", versions.Version{Label: versions.AutoLabel, State: []byte("s")}); err != nil {
+		t.Fatal(err)
+	}
+	for i := range 5 {
+		if _, err := vs.Save(ctx, "room", versions.Version{Label: fmt.Sprintf("Deployment %d", i), State: []byte("s")}); err != nil {
+			t.Fatal(err)
+		}
+	}
+	n := labelCounts(t, a)
+	others := 0
+	for label, c := range n {
+		if label != versions.AutoLabel {
+			others += c
+		}
+	}
+	if others != 2 || n[versions.AutoLabel] != 1 || n["Deployment 4"] != 1 || n["Deployment 3"] != 1 {
+		t.Fatalf("counts = %v; a label per save must still be bounded, newest kept", n)
+	}
+}
+
+func TestLatestSnapshot(t *testing.T) {
+	t.Parallel()
+
+	ctx := context.Background()
+	a := newVersionAdapter(t)
+	if _, ok, err := a.LatestSnapshot(ctx, "room"); ok || err != nil {
+		t.Fatalf("empty room = %v, %v", ok, err)
 	}
 	_, _ = a.SaveSnapshot(ctx, "room", "a", []byte("first"))
 	_, _ = a.SaveSnapshot(ctx, "room", "b", []byte("second"))
-	st, err := a.LatestSnapshotState(ctx, "room")
-	if err != nil || string(st) != "second" {
-		t.Fatalf("latest = %q, %v", st, err)
+	v, ok, err := a.LatestSnapshot(ctx, "room")
+	if err != nil || !ok || string(v.State) != "second" || v.Label != "b" {
+		t.Fatalf("latest = %+v, %v, %v", v, ok, err)
 	}
 }

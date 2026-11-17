@@ -2,8 +2,8 @@ package redis
 
 import (
 	"context"
-	"fmt"
-	"sort"
+	"crypto/rand"
+	"encoding/hex"
 	"strconv"
 	"strings"
 	"time"
@@ -14,43 +14,28 @@ import (
 )
 
 // changesKey is a room's change record: the user edits since its last version.
-// A hash: "first"/"last" are the first and latest edit (Unix ms), "editor" and
-// "editorAt" the latest edit that named its sender, and one "u:{userId}" field
-// per contributor. Go-only; the Rust server never had one.
+// A hash: "first" is the oldest edit's time (Unix ms), and each "b:{id}" field
+// holds one batch an instance wrote (versions.EncodeRecord). Batches are kept
+// apart because they merge as sets of item IDs, which Lua cannot do; Take
+// merges them. Go-only; the Rust server never had one.
 func changesKey(docID string) string { return "flow:version:changes:" + docID }
 
 // changesTTLSeconds expires a record nobody took. Every trigger takes the
 // record, so one this old belongs to a room nobody has opened since.
 const changesTTLSeconds = 30 * 24 * 60 * 60
 
-// markChangesScript merges one batch into a record. ARGV: first, last (ms),
-// editor, editorAt (ms), ttl, then the contributors. Times are compared as
-// numbers but stored as the strings given, so no float formatting touches them.
+const batchFieldPrefix = "b:"
+
+// markChangesScript adds one batch. ARGV: the batch's first edit (ms, kept as
+// given so no float formatting touches it), its field, its value, the ttl.
 const markChangesScript = `
 local key = KEYS[1]
-local first = tonumber(ARGV[1])
-local last = tonumber(ARGV[2])
-local editor = ARGV[3]
-local editorAt = tonumber(ARGV[4])
-
 local cur = tonumber(redis.call('HGET', key, 'first'))
-if (not cur) or first < cur then
+if (not cur) or tonumber(ARGV[1]) < cur then
     redis.call('HSET', key, 'first', ARGV[1])
 end
-cur = tonumber(redis.call('HGET', key, 'last'))
-if (not cur) or last > cur then
-    redis.call('HSET', key, 'last', ARGV[2])
-end
-if editor ~= '' then
-    cur = tonumber(redis.call('HGET', key, 'editorAt'))
-    if (not cur) or editorAt >= cur then
-        redis.call('HSET', key, 'editor', editor, 'editorAt', ARGV[4])
-    end
-end
-for i = 6, #ARGV do
-    redis.call('HSET', key, 'u:' .. ARGV[i], 1)
-end
-redis.call('EXPIRE', key, ARGV[5])
+redis.call('HSET', key, ARGV[2], ARGV[3])
+redis.call('EXPIRE', key, ARGV[4])
 return 1
 `
 
@@ -78,72 +63,52 @@ func NewChangeStore(client goredis.UniversalClient) *ChangeStore {
 
 var _ versions.Store = (*ChangeStore)(nil)
 
-func (s *ChangeStore) Mark(ctx context.Context, room string, m versions.Mark) error {
-	args := []any{
-		m.FirstAt.UnixMilli(), m.LastAt.UnixMilli(),
-		m.LastEditor, m.LastEditorAt.UnixMilli(),
-		changesTTLSeconds,
+func (s *ChangeStore) Mark(ctx context.Context, room string, batch versions.Record) error {
+	value, err := versions.EncodeRecord(batch)
+	if err != nil {
+		return err
 	}
-	for _, u := range m.Editors {
-		if u != "" {
-			args = append(args, u)
-		}
+	var id [8]byte
+	if _, err := rand.Read(id[:]); err != nil {
+		return err
 	}
-	return markChanges.Run(ctx, s.client, []string{changesKey(room)}, args...).Err()
+	return markChanges.Run(ctx, s.client, []string{changesKey(room)},
+		batch.FirstEditAt().UnixMilli(), batchFieldPrefix+hex.EncodeToString(id[:]), value, changesTTLSeconds,
+	).Err()
 }
 
 func (s *ChangeStore) Take(ctx context.Context, room string) (versions.Record, bool, error) {
-	v, err := takeChanges.Run(ctx, s.client, []string{changesKey(room)}).StringSlice()
+	kv, err := takeChanges.Run(ctx, s.client, []string{changesKey(room)}).StringSlice()
 	if err != nil {
-		return versions.Record{}, false, err
+		return nil, false, err
 	}
-	return parseChanges(v)
-}
-
-func (s *ChangeStore) Peek(ctx context.Context, room string) (versions.Record, bool, error) {
-	m, err := s.client.HGetAll(ctx, changesKey(room)).Result()
-	if err != nil {
-		return versions.Record{}, false, err
-	}
-	flat := make([]string, 0, 2*len(m))
-	for k, v := range m {
-		flat = append(flat, k, v)
-	}
-	return parseChanges(flat)
-}
-
-// parseChanges reads a record from HGETALL's field/value pairs.
-func parseChanges(kv []string) (versions.Record, bool, error) {
 	if len(kv) == 0 {
-		return versions.Record{}, false, nil
+		return nil, false, nil
 	}
-	if len(kv)%2 != 0 {
-		return versions.Record{}, false, fmt.Errorf("redis: change record has %d fields and values", len(kv))
-	}
-	var r versions.Record
-	for i := 0; i < len(kv); i += 2 {
-		k, v := kv[i], kv[i+1]
-		switch {
-		case k == "first":
-			r.FirstEditAt = parseMillis(v)
-		case k == "last":
-			r.LastEditAt = parseMillis(v)
-		case k == "editor":
-			r.LastEditor = v
-		case k == "editorAt":
-			r.LastEditorAt = parseMillis(v)
-		case strings.HasPrefix(k, "u:"):
-			r.Contributors = append(r.Contributors, strings.TrimPrefix(k, "u:"))
+	var batches [][]byte
+	for i := 0; i+1 < len(kv); i += 2 {
+		if strings.HasPrefix(kv[i], batchFieldPrefix) {
+			batches = append(batches, []byte(kv[i+1]))
 		}
 	}
-	sort.Strings(r.Contributors)
-	return r, true, nil
+	rec, err := versions.DecodeRecords(batches)
+	if err != nil {
+		return nil, false, err
+	}
+	return rec, true, nil
 }
 
-func parseMillis(v string) time.Time {
+func (s *ChangeStore) FirstEdit(ctx context.Context, room string) (time.Time, bool, error) {
+	v, err := s.client.HGet(ctx, changesKey(room), "first").Result()
+	if err == goredis.Nil {
+		return time.Time{}, false, nil
+	}
+	if err != nil {
+		return time.Time{}, false, err
+	}
 	ms, err := strconv.ParseInt(v, 10, 64)
 	if err != nil {
-		return time.Time{}
+		return time.Time{}, false, err
 	}
-	return time.UnixMilli(ms)
+	return time.UnixMilli(ms), true, nil
 }

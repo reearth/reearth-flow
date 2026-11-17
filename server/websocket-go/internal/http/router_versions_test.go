@@ -9,6 +9,8 @@ import (
 	"strings"
 	"testing"
 
+	"github.com/reearth/ygo/persistence"
+
 	"github.com/reearth/reearth-flow/websocket-go/internal/versions"
 )
 
@@ -118,7 +120,21 @@ func TestPostVersion_CheckpointFailureStillReportsTheVersion(t *testing.T) {
 func TestPostVersion_WithoutVersionerIs501(t *testing.T) {
 	t.Parallel()
 
-	rec := do(t, newTestRouter(&fakeStore{}), "POST", "/api/document/proj1/versions", `{"label":"Saved"}`)
+	// Answered before the body is read, so a rollout without versions says so
+	// whatever the caller sent.
+	for _, body := range []string{`{"label":"Saved"}`, `{}`} {
+		rec := do(t, newTestRouter(&fakeStore{}), "POST", "/api/document/proj1/versions", body)
+		if rec.Code != http.StatusNotImplemented {
+			t.Fatalf("body %s: status = %d, want 501", body, rec.Code)
+		}
+	}
+}
+
+func TestPostVersion_UnsupportedBackendIs501(t *testing.T) {
+	t.Parallel()
+
+	v := &fakeVersioner{err: fmt.Errorf("wrapped: %w", persistence.ErrSnapshotsUnsupported)}
+	rec := do(t, versionRouter(v), "POST", "/api/document/proj1/versions", `{"label":"Saved"}`)
 	if rec.Code != http.StatusNotImplemented {
 		t.Fatalf("status = %d, want 501", rec.Code)
 	}

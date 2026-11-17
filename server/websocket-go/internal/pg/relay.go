@@ -170,8 +170,9 @@ type roomState struct {
 	wake chan struct{}
 
 	// caughtUp is closed once the reader has replayed the rows the room had
-	// when it was activated.
+	// when it was activated; done when the reader stops.
 	caughtUp chan struct{}
+	done     chan struct{}
 }
 
 type writeItem struct {
@@ -311,24 +312,50 @@ func (r *Relay) Publish(_ context.Context, out cluster.Outbound) error {
 func (r *Relay) DroppedWrites() uint64 { return r.droppedWrites.Load() }
 
 // ErrRoomNotActive is what WaitCaughtUp returns for a room this instance does
-// not hold.
+// not hold, or stops holding while waiting.
 var ErrRoomNotActive = errors.New("pg: room not active on this instance")
 
-// WaitCaughtUp waits until this instance has replayed the rows the room had
-// when it was activated here, so the room's document holds every update other
-// instances had written by then.
+// caughtUpPoll is how often WaitCaughtUp checks the reader's cursor.
+const caughtUpPoll = 5 * time.Millisecond
+
+// WaitCaughtUp waits until this instance's reader has applied every row the
+// room had when it was called, so the room's document holds every update
+// other instances had written by then.
 func (r *Relay) WaitCaughtUp(ctx context.Context, room string) error {
 	r.mu.Lock()
 	rs, ok := r.rooms[room]
+	active := ok && !rs.evicting
 	r.mu.Unlock()
-	if !ok || rs.evicting {
+	if !active {
 		return ErrRoomNotActive
+	}
+	var target int64
+	if err := r.q.QueryRow(ctx, headSQL, room).Scan(&target); err != nil {
+		return err
 	}
 	select {
 	case <-rs.caughtUp:
-		return nil
+	case <-rs.done:
+		return ErrRoomNotActive
 	case <-ctx.Done():
 		return ctx.Err()
+	}
+	// Read now rather than at the next poll.
+	r.wakeRoom(room)
+	for {
+		r.mu.Lock()
+		cur := rs.cursor
+		r.mu.Unlock()
+		if cur >= target {
+			return nil
+		}
+		select {
+		case <-rs.done:
+			return ErrRoomNotActive
+		case <-ctx.Done():
+			return ctx.Err()
+		case <-time.After(caughtUpPoll):
+		}
 	}
 }
 
@@ -361,6 +388,7 @@ func (r *Relay) RoomActivated(room string) {
 		writeCh:  make(chan writeItem, writeQueueCap),
 		wake:     make(chan struct{}, 1),
 		caughtUp: make(chan struct{}),
+		done:     make(chan struct{}),
 	}
 	r.rooms[room] = rs
 	sink := r.sink
@@ -593,6 +621,7 @@ func (r *Relay) heartbeatLoop(ctx context.Context, room string, rs *roomState) {
 // activation callback re-entrancy-free.
 func (r *Relay) readLoop(ctx context.Context, room string, rs *roomState, sink cluster.Sink) {
 	defer rs.wg.Done()
+	defer close(rs.done)
 
 	// A nil channel blocks forever in a select, which is exactly the behaviour the
 	// notify-only fan-out wants: no ticker at all, wake only on notification.

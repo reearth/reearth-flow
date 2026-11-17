@@ -5,15 +5,15 @@ import (
 	"errors"
 	"slices"
 	"sync"
+	"sync/atomic"
 	"testing"
-
-	"github.com/reearth/ygo/crdt"
+	"time"
 )
 
 // memSnapshots is an in-memory Snapshots.
 type memSnapshots struct {
 	mu    sync.Mutex
-	saved []Version
+	saved []StoredVersion
 	fail  error
 }
 
@@ -23,31 +23,31 @@ func (m *memSnapshots) Save(_ context.Context, _ string, v Version) (int64, erro
 	if m.fail != nil {
 		return 0, m.fail
 	}
-	m.saved = append(m.saved, v)
-	return int64(len(m.saved)), nil
+	id := int64(len(m.saved) + 1)
+	m.saved = append(m.saved, StoredVersion{ID: id, Label: v.Label, CreatedAt: at(1000 * int(id)), State: v.State, Attribution: v.Attribution})
+	return id, nil
 }
 
-func (m *memSnapshots) Latest(context.Context, string) ([]byte, error) {
+func (m *memSnapshots) Latest(context.Context, string) (StoredVersion, bool, error) {
 	m.mu.Lock()
 	defer m.mu.Unlock()
 	if len(m.saved) == 0 {
-		return nil, nil
+		return StoredVersion{}, false, nil
 	}
-	return m.saved[len(m.saved)-1].State, nil
+	return m.saved[len(m.saved)-1], true, nil
 }
 
-// testDoc is a document whose state the tests change.
-type testDoc struct{ doc *crdt.Doc }
-
-func newTestDoc() *testDoc { return &testDoc{doc: crdt.New(crdt.WithClientID(1))} }
-
-func (d *testDoc) write(s string) {
-	txt := d.doc.GetText("t")
-	d.doc.Transact(func(txn *crdt.Transaction) { txt.Insert(txn, txt.Len(), s, nil) })
+func (m *memSnapshots) Attribute(_ context.Context, _ string, id int64, a Attribution) error {
+	m.mu.Lock()
+	defer m.mu.Unlock()
+	m.saved[id-1].Attribution = a
+	return nil
 }
 
-func (d *testDoc) state(context.Context) ([]byte, error) {
-	return crdt.EncodeStateAsUpdateV1(d.doc, nil), nil
+func (m *memSnapshots) all() []StoredVersion {
+	m.mu.Lock()
+	defer m.mu.Unlock()
+	return slices.Clone(m.saved)
 }
 
 type savedLog struct {
@@ -57,18 +57,23 @@ type savedLog struct {
 
 func (l *savedLog) notify(s Saved) { l.mu.Lock(); l.all = append(l.all, s); l.mu.Unlock() }
 
+func (l *savedLog) list() []Saved {
+	l.mu.Lock()
+	defer l.mu.Unlock()
+	return slices.Clone(l.all)
+}
+
 func newSaver() (*Saver, *MemoryStore, *memSnapshots, *savedLog) {
 	store := NewMemoryStore()
 	snaps := &memSnapshots{}
 	notes := &savedLog{}
-	return &Saver{Store: store, Snapshots: snaps, Notify: notes.notify}, store, snaps, notes
+	return &Saver{Store: store, Snapshots: snaps, Notify: notes.notify, Now: func() time.Time { return at(99_000) }}, store, snaps, notes
 }
 
-func markEdit(t *testing.T, store Store, room, user string, ms int) {
+// mark records user's update, as the Tracker would.
+func mark(t *testing.T, store Store, room, user string, update []byte, ms int) {
 	t.Helper()
-	if err := store.Mark(context.Background(), room, Mark{
-		Editors: []string{user}, LastEditor: user, LastEditorAt: at(ms), FirstAt: at(ms), LastAt: at(ms),
-	}); err != nil {
+	if err := store.Mark(context.Background(), room, batch(t, user, update, ms)); err != nil {
 		t.Fatal(err)
 	}
 }
@@ -77,14 +82,11 @@ func TestSave_NothingChangedSavesNothing(t *testing.T) {
 	t.Parallel()
 
 	s, _, snaps, notes := newSaver()
-	doc := newTestDoc()
+	doc := newTestDoc(1)
 	doc.write("x")
 	res, err := s.Save(context.Background(), "p1", "Saved", doc.state)
-	if err != nil || res.Saved {
+	if err != nil || res.Saved || len(snaps.all()) != 0 || len(notes.list()) != 0 {
 		t.Fatalf("Save = %+v, %v; want nothing saved without a change record", res, err)
-	}
-	if len(snaps.saved) != 0 || len(notes.all) != 0 {
-		t.Fatal("a version was stored or announced without a change")
 	}
 }
 
@@ -93,146 +95,146 @@ func TestSave_SavesTheChangeOnceWithItsContributors(t *testing.T) {
 
 	ctx := context.Background()
 	s, store, snaps, notes := newSaver()
-	var checkpointed []byte
-	s.Checkpoint = func(_ context.Context, _ string, st []byte) error { checkpointed = st; return nil }
-	doc := newTestDoc()
-	doc.write("x")
-	markEdit(t, store, "p1:main", "alice", 1)
-	markEdit(t, store, "p1:main", "bob", 2)
+	checkpoints := 0
+	s.Checkpoint = func(context.Context, string) error { checkpoints++; return nil }
+	doc := newTestDoc(1)
+	mark(t, store, "p1:main", "alice", doc.write("a"), 1)
+	mark(t, store, "p1:main", "bob", doc.write("b"), 2)
 
 	res, err := s.Save(ctx, "p1:main", "Saved", doc.state)
 	if err != nil || !res.Saved || res.SnapshotID != 1 {
 		t.Fatalf("Save = %+v, %v", res, err)
 	}
-	v := snaps.saved[0]
-	if v.Label != "Saved" || !slices.Equal(v.Contributors, []string{"alice", "bob"}) || v.LastEditor != "bob" {
+	v := snaps.all()[0]
+	if v.Label != "Saved" || !slices.Equal(v.Contributors, []string{"alice", "bob"}) || v.LastEditor != "bob" || !v.LastEditedAt.Equal(at(2)) {
 		t.Fatalf("version = %+v", v)
 	}
-	if !slices.Equal(checkpointed, v.State) {
-		t.Fatal("the checkpoint must hold the state the version holds")
+	if checkpoints != 1 {
+		t.Fatalf("checkpoints = %d", checkpoints)
 	}
-	if len(notes.all) != 1 {
-		t.Fatalf("notices = %d, want 1", len(notes.all))
-	}
-	n := notes.all[0]
-	if n.ProjectID != "p1" || n.VersionID != 1 || n.LastEditorID != "bob" ||
-		!slices.Equal(n.ContributorIDs, []string{"alice", "bob"}) || !n.LastEditedAt.Equal(at(2)) || n.SavedAt.IsZero() {
-		t.Fatalf("notice = %+v", n)
+	n := notes.list()
+	if len(n) != 1 || n[0].ProjectID != "p1" || n[0].VersionID != 1 || n[0].LastEditorID != "bob" ||
+		!slices.Equal(n[0].ContributorIDs, []string{"alice", "bob"}) || !n[0].LastEditedAt.Equal(at(2)) || !n[0].SavedAt.Equal(at(99_000)) {
+		t.Fatalf("notices = %+v", n)
 	}
 
-	res, err = s.Save(ctx, "p1:main", "Saved", doc.state)
-	if err != nil || res.Saved {
+	if res, err := s.Save(ctx, "p1:main", "Saved", doc.state); err != nil || res.Saved {
 		t.Fatalf("second Save = %+v, %v; want nothing: the record was taken", res, err)
 	}
 }
 
-func TestSave_FailedSnapshotPutsTheRecordBack(t *testing.T) {
+// TestSave_EditNotYetInTheStateWaitsForTheNextVersion is the case where
+// another instance recorded an edit that has not reached the copy saved from.
+func TestSave_EditNotYetInTheStateWaitsForTheNextVersion(t *testing.T) {
+	t.Parallel()
+
+	ctx := context.Background()
+	s, store, snaps, _ := newSaver()
+	alice, bob, server := newTestDoc(1), newTestDoc(2), newTestDoc(3)
+	ua := alice.write("a")
+	ub := bob.write("b")
+	server.apply(t, ua)
+	mark(t, store, "p1", "alice", ua, 1)
+	mark(t, store, "p1", "bob", ub, 2) // recorded, not yet on this copy
+
+	if res, err := s.Save(ctx, "p1", "Saved", server.state); err != nil || !res.Saved {
+		t.Fatalf("Save = %+v, %v", res, err)
+	}
+	if v := snaps.all()[0]; !slices.Equal(v.Contributors, []string{"alice"}) || v.LastEditor != "alice" {
+		t.Fatalf("version = %+v, want alice only: bob's edit is not in it", v.Attribution)
+	}
+	r, ok, _ := store.Take(ctx, "p1")
+	if !ok || !slices.Equal(r.Contributors(), []string{"bob"}) {
+		t.Fatalf("record = %v, %v; want bob's edit put back", r, ok)
+	}
+	if err := store.Mark(ctx, "p1", r); err != nil {
+		t.Fatal(err)
+	}
+
+	server.apply(t, ub)
+	if res, err := s.Save(ctx, "p1", "Saved", server.state); err != nil || !res.Saved {
+		t.Fatalf("next Save = %+v, %v", res, err)
+	}
+	if v := snaps.all()[1]; !slices.Equal(v.Contributors, []string{"bob"}) {
+		t.Fatalf("next version = %+v, want bob", v.Attribution)
+	}
+}
+
+func TestSave_NoHeldEditSavesNothing(t *testing.T) {
+	t.Parallel()
+
+	ctx := context.Background()
+	s, store, snaps, _ := newSaver()
+	bob, server := newTestDoc(2), newTestDoc(3)
+	server.write("server write")
+	mark(t, store, "p1", "bob", bob.write("b"), 1)
+
+	if res, err := s.Save(ctx, "p1", "Saved", server.state); err != nil || res.Saved {
+		t.Fatalf("Save = %+v, %v; want nothing: the state holds no recorded edit", res, err)
+	}
+	if len(snaps.all()) != 0 {
+		t.Fatal("a version was saved")
+	}
+	if _, ok, _ := store.FirstEdit(ctx, "p1"); !ok {
+		t.Fatal("bob's edit was dropped")
+	}
+}
+
+// TestSave_EditDuringSaveIsCreditedToTheVersionHoldingIt: bob's edit lands
+// after the record was taken but before the state is read, so the version
+// holds it without naming him; the next save credits him to that version.
+func TestSave_EditDuringSaveIsCreditedToTheVersionHoldingIt(t *testing.T) {
 	t.Parallel()
 
 	ctx := context.Background()
 	s, store, snaps, notes := newSaver()
-	snaps.fail = errors.New("gcs down")
-	doc := newTestDoc()
-	doc.write("x")
-	markEdit(t, store, "p1", "alice", 1)
+	doc := newTestDoc(1)
+	mark(t, store, "p1", "alice", doc.write("a"), 1)
 
-	if _, err := s.Save(ctx, "p1", "Saved", doc.state); err == nil {
-		t.Fatal("Save succeeded with a failing store")
-	}
-	r, ok, _ := store.Peek(ctx, "p1")
-	if !ok || !slices.Equal(r.Contributors, []string{"alice"}) {
-		t.Fatalf("record after failure = %+v, %v; want it back", r, ok)
-	}
-	if len(notes.all) != 0 {
-		t.Fatal("a failed version was announced")
-	}
-}
-
-func TestSave_FailedStateReadPutsTheRecordBack(t *testing.T) {
-	t.Parallel()
-
-	ctx := context.Background()
-	s, store, _, _ := newSaver()
-	markEdit(t, store, "p1", "alice", 1)
-	_, err := s.Save(ctx, "p1", "Saved", func(context.Context) ([]byte, error) { return nil, errors.New("load failed") })
-	if err == nil {
-		t.Fatal("Save succeeded without a state")
-	}
-	if _, ok, _ := store.Peek(ctx, "p1"); !ok {
-		t.Fatal("the record was lost")
-	}
-}
-
-func TestSave_MissingStateKeepsTheRecord(t *testing.T) {
-	t.Parallel()
-
-	ctx := context.Background()
-	s, store, snaps, _ := newSaver()
-	markEdit(t, store, "p1", "alice", 1)
-	res, err := s.Save(ctx, "p1", "Saved", func(context.Context) ([]byte, error) { return nil, nil })
-	if err != nil || res.Saved || len(snaps.saved) != 0 {
-		t.Fatalf("Save = %+v, %v", res, err)
-	}
-	if _, ok, _ := store.Peek(ctx, "p1"); !ok {
-		t.Fatal("the change record was dropped though nothing was saved")
-	}
-}
-
-func TestSave_EditDuringSaveIsKeptForTheNextVersion(t *testing.T) {
-	t.Parallel()
-
-	ctx := context.Background()
-	s, store, snaps, _ := newSaver()
-	doc := newTestDoc()
-	doc.write("x")
-	markEdit(t, store, "p1", "alice", 1)
-
-	// bob's edit lands after the record was taken, before the state is read.
 	state := func(ctx context.Context) ([]byte, error) {
-		doc.write("y")
-		markEdit(t, store, "p1", "bob", 2)
+		mark(t, store, "p1", "bob", doc.write("b"), 5)
 		return doc.state(ctx)
 	}
 	if res, err := s.Save(ctx, "p1", "Saved", state); err != nil || !res.Saved {
 		t.Fatalf("Save = %+v, %v", res, err)
 	}
-	r, ok, _ := store.Peek(ctx, "p1")
-	if !ok || !slices.Equal(r.Contributors, []string{"bob"}) {
-		t.Fatalf("record = %+v, %v; want bob's edit recorded for the next version", r, ok)
-	}
 
-	// The version already holds bob's edit, so the next save has nothing new.
-	res, err := s.Save(ctx, "p1", "Saved", doc.state)
+	res, err := s.Save(ctx, "p1", "auto", doc.state)
 	if err != nil || res.Saved {
-		t.Fatalf("next Save = %+v, %v; want nothing saved: the document equals the newest version", res, err)
+		t.Fatalf("next Save = %+v, %v; want no new version: nothing changed since", res, err)
 	}
-	if len(snaps.saved) != 1 {
-		t.Fatalf("versions = %d, want 1", len(snaps.saved))
+	v := snaps.all()
+	if len(v) != 1 || !slices.Equal(v[0].Contributors, []string{"alice", "bob"}) || v[0].LastEditor != "bob" || !v[0].LastEditedAt.Equal(at(5)) {
+		t.Fatalf("versions = %+v, want bob credited to the one version", v)
 	}
-	if _, ok, _ := store.Peek(ctx, "p1"); ok {
-		t.Fatal("the record must be taken even when nothing was saved")
+	n := notes.list()
+	if len(n) != 2 || n[1].VersionID != 1 || n[1].Label != "Saved" || n[1].LastEditorID != "bob" || !n[1].LastEditedAt.Equal(at(5)) {
+		t.Fatalf("notices = %+v, want the version's notice sent again with bob", n)
+	}
+	if _, ok, _ := store.FirstEdit(ctx, "p1"); ok {
+		t.Fatal("the credited record must be taken")
 	}
 }
 
-func TestSave_UndoneEditSavesNothing(t *testing.T) {
+func TestSave_RecordAlreadyCreditedSendsNothing(t *testing.T) {
 	t.Parallel()
 
 	ctx := context.Background()
-	s, store, snaps, _ := newSaver()
-	doc := newTestDoc()
-	doc.write("x")
-	markEdit(t, store, "p1", "alice", 1)
+	s, store, snaps, notes := newSaver()
+	doc := newTestDoc(1)
+	u := doc.write("x")
+	mark(t, store, "p1", "alice", u, 5)
 	if res, _ := s.Save(ctx, "p1", "Saved", doc.state); !res.Saved {
 		t.Fatal("first version not saved")
 	}
-
-	// A change record whose edits leave the document as the version has it.
-	markEdit(t, store, "p1", "alice", 2)
+	// The same edit recorded again (an instance retried a write that had
+	// landed): nothing new to save, nobody new to credit.
+	mark(t, store, "p1", "alice", u, 5)
 	if res, err := s.Save(ctx, "p1", "Saved", doc.state); err != nil || res.Saved {
-		t.Fatalf("Save = %+v, %v; want nothing saved", res, err)
+		t.Fatalf("Save = %+v, %v", res, err)
 	}
-	if len(snaps.saved) != 1 {
-		t.Fatalf("versions = %d, want 1", len(snaps.saved))
+	if len(snaps.all()) != 1 || len(notes.list()) != 1 {
+		t.Fatalf("versions %d notices %d, want 1 and 1", len(snaps.all()), len(notes.list()))
 	}
 }
 
@@ -241,23 +243,68 @@ func TestSave_DeletionIsAChange(t *testing.T) {
 
 	ctx := context.Background()
 	s, store, snaps, _ := newSaver()
-	doc := newTestDoc()
-	doc.write("xy")
-	markEdit(t, store, "p1", "alice", 1)
+	doc := newTestDoc(1)
+	mark(t, store, "p1", "alice", doc.write("xy"), 1)
 	if res, _ := s.Save(ctx, "p1", "Saved", doc.state); !res.Saved {
 		t.Fatal("first version not saved")
 	}
-
-	// A deletion adds no item, only a deletion range.
-	txt := doc.doc.GetText("t")
-	doc.doc.Transact(func(txn *crdt.Transaction) { txt.Delete(txn, 0, 1) })
-	markEdit(t, store, "p1", "alice", 2)
+	mark(t, store, "p1", "alice", doc.deleteFirst(), 2)
 	if res, err := s.Save(ctx, "p1", "Saved", doc.state); err != nil || !res.Saved {
 		t.Fatalf("Save = %+v, %v; want the deletion saved", res, err)
 	}
-	if len(snaps.saved) != 2 {
-		t.Fatalf("versions = %d, want 2", len(snaps.saved))
+	if len(snaps.all()) != 2 {
+		t.Fatalf("versions = %d, want 2", len(snaps.all()))
 	}
+}
+
+// assertPutBack checks that alice's taken edit is in p1's record again and
+// that nothing was announced.
+func assertPutBack(t *testing.T, store *MemoryStore, notes *savedLog) {
+	t.Helper()
+	r, ok, _ := store.Take(context.Background(), "p1")
+	if !ok || !slices.Equal(r.Contributors(), []string{"alice"}) {
+		t.Fatalf("record = %v, %v; want it back", r, ok)
+	}
+	if len(notes.list()) != 0 {
+		t.Fatal("an unsaved version was announced")
+	}
+}
+
+func TestSave_FailedSnapshotPutsTheRecordBack(t *testing.T) {
+	t.Parallel()
+
+	s, store, snaps, notes := newSaver()
+	snaps.fail = errors.New("gcs down")
+	doc := newTestDoc(1)
+	mark(t, store, "p1", "alice", doc.write("a"), 1)
+	if res, err := s.Save(context.Background(), "p1", "Saved", doc.state); res.Saved || err == nil {
+		t.Fatalf("Save = %+v, %v", res, err)
+	}
+	assertPutBack(t, store, notes)
+}
+
+func TestSave_FailedStateReadPutsTheRecordBack(t *testing.T) {
+	t.Parallel()
+
+	s, store, _, notes := newSaver()
+	mark(t, store, "p1", "alice", newTestDoc(1).write("a"), 1)
+	state := func(context.Context) ([]byte, error) { return nil, errors.New("load failed") }
+	if res, err := s.Save(context.Background(), "p1", "Saved", state); res.Saved || err == nil {
+		t.Fatalf("Save = %+v, %v", res, err)
+	}
+	assertPutBack(t, store, notes)
+}
+
+func TestSave_MissingStatePutsTheRecordBack(t *testing.T) {
+	t.Parallel()
+
+	s, store, _, notes := newSaver()
+	mark(t, store, "p1", "alice", newTestDoc(1).write("a"), 1)
+	state := func(context.Context) ([]byte, error) { return nil, nil }
+	if res, _ := s.Save(context.Background(), "p1", "Saved", state); res.Saved {
+		t.Fatal("saved")
+	}
+	assertPutBack(t, store, notes)
 }
 
 func TestSave_CheckpointFailureKeepsTheVersion(t *testing.T) {
@@ -265,16 +312,15 @@ func TestSave_CheckpointFailureKeepsTheVersion(t *testing.T) {
 
 	ctx := context.Background()
 	s, store, _, notes := newSaver()
-	s.Checkpoint = func(context.Context, string, []byte) error { return errors.New("gcs down") }
-	doc := newTestDoc()
-	doc.write("x")
-	markEdit(t, store, "p1", "alice", 1)
+	s.Checkpoint = func(context.Context, string) error { return errors.New("gcs down") }
+	doc := newTestDoc(1)
+	mark(t, store, "p1", "alice", doc.write("x"), 1)
 
 	res, err := s.Save(ctx, "p1", "Saved", doc.state)
 	if !res.Saved || !errors.Is(err, ErrCheckpoint) {
 		t.Fatalf("Save = %+v, %v; want the version saved and ErrCheckpoint", res, err)
 	}
-	if len(notes.all) != 1 {
+	if len(notes.list()) != 1 {
 		t.Fatal("the version must still be announced")
 	}
 }
@@ -283,23 +329,79 @@ func TestSave_FlushesThisInstancesEditsFirst(t *testing.T) {
 	t.Parallel()
 
 	ctx := context.Background()
-	s, store, _, _ := newSaver()
-	s.Tracker = NewTracker(store, 0, nil)
-	s.Tracker.every = 1 << 62 // hold everything after the first write back
-	s.Tracker.Edit("p1", "alice")
+	s, store, snaps, _ := newSaver()
+	s.Tracker = NewTracker(store, time.Hour, nil)
+	doc := newTestDoc(1)
+	s.Tracker.Edit("p1", "alice", idsOf(t, doc.write("a")))
 	if err := s.Tracker.Flush(ctx, "p1"); err != nil {
 		t.Fatal(err)
 	}
-	s.Tracker.Edit("p1", "bob") // gathered, not yet written
+	s.Tracker.Edit("p1", "bob", idsOf(t, doc.write("b"))) // gathered, not yet written
 
-	doc := newTestDoc()
-	doc.write("x")
-	res, err := s.Save(ctx, "p1", "Saved", doc.state)
-	if err != nil || !res.Saved {
+	if res, err := s.Save(ctx, "p1", "Saved", doc.state); err != nil || !res.Saved {
 		t.Fatalf("Save = %+v, %v", res, err)
 	}
-	if _, ok, _ := store.Peek(ctx, "p1"); ok {
-		t.Fatal("bob's gathered edit reached the store after the version instead of before it")
+	if v := snaps.all()[0]; !slices.Equal(v.Contributors, []string{"alice", "bob"}) {
+		t.Fatalf("contributors = %v; bob's gathered edit must reach the record first", v.Contributors)
+	}
+}
+
+func TestSave_SavesOfARoomDoNotOverlap(t *testing.T) {
+	t.Parallel()
+
+	ctx := context.Background()
+	s, store, _, _ := newSaver()
+	var locked atomic.Int32
+	s.Lock = func(ctx context.Context, room string, fn func(context.Context) error) error {
+		locked.Add(1)
+		return fn(ctx)
+	}
+	doc := newTestDoc(1)
+	mark(t, store, "p1", "alice", doc.write("a"), 1)
+
+	var running, overlapped atomic.Int32
+	state := func(ctx context.Context) ([]byte, error) {
+		if running.Add(1) > 1 {
+			overlapped.Store(1)
+		}
+		time.Sleep(20 * time.Millisecond)
+		running.Add(-1)
+		return doc.state(ctx)
+	}
+	var wg sync.WaitGroup
+	for range 4 {
+		wg.Add(1)
+		go func() {
+			defer wg.Done()
+			mark(t, store, "p1", "alice", doc.write("a"), 1)
+			_, _ = s.Save(ctx, "p1", "Saved", state)
+		}()
+	}
+	wg.Wait()
+	if overlapped.Load() != 0 {
+		t.Fatal("two saves of one room overlapped")
+	}
+	if locked.Load() != 4 {
+		t.Fatalf("Lock taken %d times, want once per save", locked.Load())
+	}
+}
+
+func TestSave_NoticeWithoutEditTimeUsesTheSaveTime(t *testing.T) {
+	t.Parallel()
+
+	ctx := context.Background()
+	s, store, _, notes := newSaver()
+	doc := newTestDoc(1)
+	e := NewEdits()
+	e.add(idsOf(t, doc.write("a")), time.Time{})
+	if err := store.Mark(ctx, "p1", Record{"alice": e}); err != nil {
+		t.Fatal(err)
+	}
+	if res, _ := s.Save(ctx, "p1", "Saved", doc.state); !res.Saved {
+		t.Fatal("not saved")
+	}
+	if n := notes.list(); n[0].LastEditedAt.IsZero() || !n[0].LastEditedAt.Equal(n[0].SavedAt) {
+		t.Fatalf("lastEditedAt = %v, want the save time rather than year 1", n[0].LastEditedAt)
 	}
 }
 

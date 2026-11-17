@@ -65,8 +65,10 @@ type Config struct {
 	// last person leaving saved it sooner. 0 disables this trigger only.
 	AutoVersionEvery time.Duration
 
-	// KeepSnapshots bounds retained versions per label and room: an automatic
-	// version never evicts one saved under another label.
+	// KeepSnapshots bounds a room's retained versions in each of two classes:
+	// automatic ones ("auto") and every other label together, so an automatic
+	// version never evicts one saved on request. Always at least 1: a value
+	// below 1 selects the default.
 	KeepSnapshots int
 
 	// OTLP tracing config.

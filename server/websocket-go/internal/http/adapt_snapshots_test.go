@@ -8,7 +8,7 @@ import (
 
 	"github.com/reearth/ygo/persistence"
 
-	"github.com/reearth/reearth-flow/websocket-go/internal/gcs"
+	"github.com/reearth/reearth-flow/websocket-go/internal/versions"
 )
 
 // memSnapshotStore is an in-memory persistence.SnapshotStore mirroring the real
@@ -225,10 +225,10 @@ func TestStoreAdapterSnapshots_UnsupportedStoreFallsBackGracefully(t *testing.T)
 // adapter does.
 type detailedSnapshotStore struct {
 	*memSnapshotStore
-	details []gcs.SnapshotDetail
+	details []versions.ListedVersion
 }
 
-func (d *detailedSnapshotStore) ListSnapshotDetails(context.Context, string) ([]gcs.SnapshotDetail, error) {
+func (d *detailedSnapshotStore) ListSnapshotDetails(context.Context, string) ([]versions.ListedVersion, error) {
 	return d.details, nil
 }
 
@@ -238,12 +238,11 @@ func TestStoreAdapterListSnapshots_CarriesAttribution(t *testing.T) {
 	created := time.Date(2026, 11, 17, 0, 0, 0, 0, time.UTC)
 	p := &detailedSnapshotStore{
 		memSnapshotStore: newMemSnapshotStore(),
-		details: []gcs.SnapshotDetail{
+		details: []versions.ListedVersion{
 			{
 				SnapshotInfo:     persistence.SnapshotInfo{ID: 2, Label: "auto", CreatedAt: created, Size: 9},
-				Contributors:     []string{"bob", "alice"},
+				Attribution:      versions.Attribution{Contributors: []string{"alice", "bob"}, LastEditor: "bob"},
 				ContributorCount: 3,
-				LastEditor:       "bob",
 			},
 			{SnapshotInfo: persistence.SnapshotInfo{ID: 1, Label: "Before restore", CreatedAt: created}},
 		},

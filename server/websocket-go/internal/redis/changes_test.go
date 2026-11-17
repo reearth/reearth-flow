@@ -7,6 +7,8 @@ import (
 	"testing"
 	"time"
 
+	"github.com/reearth/ygo/crdt"
+
 	"github.com/reearth/reearth-flow/websocket-go/internal/versions"
 )
 
@@ -14,45 +16,48 @@ var changesT0 = time.UnixMilli(1_700_000_000_000)
 
 func ms(n int) time.Time { return changesT0.Add(time.Duration(n) * time.Millisecond) }
 
+// edit returns user's batch inserting s at client's next clock.
+func edit(t *testing.T, doc *crdt.Doc, user, s string, at time.Time) versions.Record {
+	t.Helper()
+	txt := doc.GetText("t")
+	before := doc.StateVector()
+	doc.Transact(func(txn *crdt.Transaction) { txt.Insert(txn, txt.Len(), s, nil) })
+	ids, err := crdt.ContentIDsFromUpdateV1(crdt.EncodeStateAsUpdateV1(doc, before))
+	if err != nil {
+		t.Fatal(err)
+	}
+	return versions.Record{user: {Inserts: ids.Inserts, Deletes: ids.Deletes, FirstAt: at, LastAt: at}}
+}
+
 func TestChangeStore_MarkMergesAcrossInstances(t *testing.T) {
 	t.Parallel()
 
 	c, _ := newTestClient(t)
 	ctx := context.Background()
+	doc := crdt.New(crdt.WithClientID(1))
 	// Two instances share one Redis, so their batches land in one record.
 	a, b := NewChangeStore(c), NewChangeStore(c)
-	if err := a.Mark(ctx, "p1", versions.Mark{Editors: []string{"bob", ""}, LastEditor: "bob", LastEditorAt: ms(10), FirstAt: ms(5), LastAt: ms(10)}); err != nil {
+	if err := a.Mark(ctx, "p1", edit(t, doc, "bob", "x", ms(10))); err != nil {
 		t.Fatal(err)
 	}
-	if err := b.Mark(ctx, "p1", versions.Mark{Editors: []string{"alice"}, LastEditor: "alice", LastEditorAt: ms(7), FirstAt: ms(1), LastAt: ms(7)}); err != nil {
+	if err := b.Mark(ctx, "p1", edit(t, doc, "alice", "y", ms(1))); err != nil {
 		t.Fatal(err)
 	}
-	r, ok, err := a.Peek(ctx, "p1")
+	if first, ok, err := a.FirstEdit(ctx, "p1"); err != nil || !ok || !first.Equal(ms(1)) {
+		t.Fatalf("FirstEdit = %v, %v, %v; want the older batch's", first, ok, err)
+	}
+	r, ok, err := a.Take(ctx, "p1")
 	if err != nil || !ok {
-		t.Fatalf("Peek = %v, %v", ok, err)
+		t.Fatalf("Take = %v, %v", ok, err)
 	}
-	if !slices.Equal(r.Contributors, []string{"alice", "bob"}) {
-		t.Fatalf("contributors = %v", r.Contributors)
+	if !slices.Equal(r.Contributors(), []string{"alice", "bob"}) {
+		t.Fatalf("contributors = %v", r.Contributors())
 	}
-	if r.LastEditor != "bob" || !r.LastEditorAt.Equal(ms(10)) {
-		t.Fatalf("last editor = %q at %v, want bob: alice's batch was older", r.LastEditor, r.LastEditorAt)
+	if who, at := r.LastEditor(); who != "bob" || !at.Equal(ms(10)) {
+		t.Fatalf("last editor = %q at %v", who, at)
 	}
-	if !r.FirstEditAt.Equal(ms(1)) || !r.LastEditAt.Equal(ms(10)) {
-		t.Fatalf("first/last = %v/%v", r.FirstEditAt, r.LastEditAt)
-	}
-}
-
-func TestChangeStore_EditWithoutSenderKeepsTheLastEditor(t *testing.T) {
-	t.Parallel()
-
-	c, _ := newTestClient(t)
-	ctx := context.Background()
-	s := NewChangeStore(c)
-	_ = s.Mark(ctx, "p1", versions.Mark{Editors: []string{"bob"}, LastEditor: "bob", LastEditorAt: ms(1), FirstAt: ms(1), LastAt: ms(1)})
-	_ = s.Mark(ctx, "p1", versions.Mark{FirstAt: ms(2), LastAt: ms(2)})
-	r, _, _ := s.Peek(ctx, "p1")
-	if r.LastEditor != "bob" || !r.LastEditAt.Equal(ms(2)) {
-		t.Fatalf("record = %+v", r)
+	if r["bob"].Inserts.IsEmpty() {
+		t.Fatal("bob's items were lost")
 	}
 }
 
@@ -62,10 +67,9 @@ func TestChangeStore_TakeGivesTheRecordToOneCaller(t *testing.T) {
 	c, _ := newTestClient(t)
 	ctx := context.Background()
 	s := NewChangeStore(c)
-	if err := s.Mark(ctx, "p1", versions.Mark{Editors: []string{"bob"}, FirstAt: ms(1), LastAt: ms(1)}); err != nil {
+	if err := s.Mark(ctx, "p1", edit(t, crdt.New(), "bob", "x", ms(1))); err != nil {
 		t.Fatal(err)
 	}
-
 	var (
 		wg   sync.WaitGroup
 		mu   sync.Mutex
@@ -90,7 +94,7 @@ func TestChangeStore_TakeGivesTheRecordToOneCaller(t *testing.T) {
 	if gots != 1 {
 		t.Fatalf("%d callers got the record, want exactly 1", gots)
 	}
-	if _, ok, _ := s.Peek(ctx, "p1"); ok {
+	if _, ok, _ := s.FirstEdit(ctx, "p1"); ok {
 		t.Fatal("Take left the record behind")
 	}
 }
@@ -103,8 +107,8 @@ func TestChangeStore_NoRecord(t *testing.T) {
 	if _, ok, err := s.Take(context.Background(), "p1"); ok || err != nil {
 		t.Fatalf("Take = %v, %v; want no record", ok, err)
 	}
-	if _, ok, err := s.Peek(context.Background(), "p1"); ok || err != nil {
-		t.Fatalf("Peek = %v, %v; want no record", ok, err)
+	if _, ok, err := s.FirstEdit(context.Background(), "p1"); ok || err != nil {
+		t.Fatalf("FirstEdit = %v, %v; want no record", ok, err)
 	}
 }
 
@@ -113,7 +117,7 @@ func TestChangeStore_RecordExpires(t *testing.T) {
 
 	c, mr := newTestClient(t)
 	s := NewChangeStore(c)
-	_ = s.Mark(context.Background(), "p1", versions.Mark{FirstAt: ms(1), LastAt: ms(1)})
+	_ = s.Mark(context.Background(), "p1", edit(t, crdt.New(), "bob", "x", ms(1)))
 	if ttl := mr.TTL(changesKey("p1")); ttl <= 0 || ttl > changesTTLSeconds*time.Second {
 		t.Fatalf("ttl = %v, want up to %ds", ttl, changesTTLSeconds)
 	}
@@ -190,5 +194,83 @@ func TestEvictUsesTheLastInstanceFlush(t *testing.T) {
 	defer fl.mu.Unlock()
 	if fl.lasts != 1 || fl.checkpoints != 0 {
 		t.Fatalf("last-instance flushes %d, checkpoints %d; want the last-instance flush only", fl.lasts, fl.checkpoints)
+	}
+}
+
+func TestWaitCaughtUp_WaitsForEntriesPublishedAfterActivation(t *testing.T) {
+	t.Parallel()
+
+	c, mr := newTestClient(t)
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+	r := mustRelay(t, mr.Addr())
+	defer r.Close()
+	sink := &fakeSink{}
+	if err := r.Start(ctx, sink); err != nil {
+		t.Fatalf("Start: %v", err)
+	}
+	r.RoomActivated("p1")
+	wctx, wcancel := context.WithTimeout(ctx, 3*time.Second)
+	defer wcancel()
+	if err := r.WaitCaughtUp(wctx, "p1"); err != nil {
+		t.Fatal(err)
+	}
+	before := sink.count()
+
+	// Another instance publishes after the initial replay.
+	if err := xaddEntry(ctx, c, streamKey("p1"), msgTypeSync, []byte{9}, r.clientID+1); err != nil {
+		t.Fatal(err)
+	}
+	if err := r.WaitCaughtUp(wctx, "p1"); err != nil {
+		t.Fatal(err)
+	}
+	if sink.count() <= before {
+		t.Fatal("WaitCaughtUp returned before the newer entry was applied")
+	}
+}
+
+func TestWaitCaughtUp_ReturnsWhenTheReaderStops(t *testing.T) {
+	t.Parallel()
+
+	c, mr := newTestClient(t)
+	ctx, cancel := context.WithCancel(context.Background())
+	r := mustRelay(t, mr.Addr())
+	defer r.Close()
+	if err := r.Start(ctx, &fakeSink{}); err != nil {
+		t.Fatalf("Start: %v", err)
+	}
+	r.RoomActivated("p1")
+	cancel() // the reader stops; the room stays registered
+	r.mu.Lock()
+	done := r.rooms["p1"].done
+	r.mu.Unlock()
+	<-done
+	// An entry the stopped reader will never apply.
+	if err := xaddEntry(context.Background(), c, streamKey("p1"), msgTypeSync, []byte{9}, r.clientID+1); err != nil {
+		t.Fatal(err)
+	}
+
+	wctx, wcancel := context.WithTimeout(context.Background(), 5*time.Second)
+	defer wcancel()
+	start := time.Now()
+	if err := r.WaitCaughtUp(wctx, "p1"); err != ErrRoomNotActive {
+		t.Fatalf("WaitCaughtUp = %v, want ErrRoomNotActive", err)
+	}
+	if time.Since(start) > time.Second {
+		t.Fatal("WaitCaughtUp waited although the reader had stopped")
+	}
+}
+
+func TestStreamIDBefore(t *testing.T) {
+	t.Parallel()
+
+	if !streamIDBefore("0", "1-0") {
+		t.Error("the reader's initial cursor sorts first")
+	}
+	if !streamIDBefore("5-9", "6-0") || !streamIDBefore("5-1", "5-2") {
+		t.Error("ids order by time, then sequence")
+	}
+	if streamIDBefore("5-2", "5-2") || streamIDBefore("10-0", "9-99") {
+		t.Error("an id is not before itself or an earlier one")
 	}
 }

@@ -185,8 +185,11 @@ func run() error {
 		log.Warn("ws provider shutdown", "err", err)
 	}
 	err = httpSrv.Shutdown(shutdownCtx)
-	if werr := notifier.Wait(shutdownCtx); werr != nil {
-		log.Warn("version notices still pending at shutdown", "err", werr)
+	if werr := srv.WaitVersions(shutdownCtx); werr != nil {
+		log.Warn("versions still saving at shutdown", "err", werr)
+	}
+	if werr := notifier.Shutdown(shutdownCtx); werr != nil {
+		log.Warn("version notices abandoned at shutdown", "err", werr)
 	}
 	return err
 }
@@ -204,9 +207,16 @@ func enableVersions(srv *server.Server, cfg *config.Config, p *persistence, log 
 		Log:    log,
 	})
 	srv.EnableVersions(server.VersionsConfig{
-		Store:      changes,
-		Snapshots:  p.adapter.Versions(cfg.KeepSnapshots),
-		Checkpoint: p.flusher.FlushState,
+		Store:     changes,
+		Snapshots: p.adapter.Versions(cfg.KeepSnapshots),
+		// One save per room at a time across instances, so a slower save can
+		// never store an older state after a newer one.
+		Lock: func(ctx context.Context, room string, fn func(context.Context) error) error {
+			return p.locks.Locker.WithLock(ctx, versionLockKey(room), fn)
+		},
+		// The checkpoint is written from the room's current state, never older
+		// than what a concurrent flush already wrote.
+		Checkpoint: p.flusher.FlushRoom,
 		Stored: func(ctx context.Context, room string) ([]byte, error) {
 			res, err := p.adapter.Load(ctx, room)
 			return res.Update, err
@@ -216,6 +226,9 @@ func enableVersions(srv *server.Server, cfg *config.Config, p *persistence, log 
 	})
 	return notifier, nil
 }
+
+// versionLockKey is the lock serializing a room's version saves.
+func versionLockKey(room string) string { return "lock:version:" + room }
 
 // newInstanceOwner returns a per-process lock-owner token unique across
 // instances even when they share a PID (e.g. PID 1 in separate containers).

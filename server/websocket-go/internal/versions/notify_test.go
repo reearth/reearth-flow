@@ -30,7 +30,7 @@ func TestNotifier_PostsTheVersionWithTheSecret(t *testing.T) {
 		ContributorIDs: []string{"alice", "bob"},
 	}
 	n.Notify(want)
-	if err := n.Wait(context.Background()); err != nil {
+	if err := n.Shutdown(context.Background()); err != nil {
 		t.Fatal(err)
 	}
 	if path != CallbackPath || secret != "s3cret" {
@@ -55,7 +55,7 @@ func TestNotifier_RetriesAServerError(t *testing.T) {
 
 	n := NewNotifier(NotifierConfig{APIURL: srv.URL, Backoff: noBackoff})
 	n.Notify(Saved{ProjectID: "p1", VersionID: 1})
-	if err := n.Wait(context.Background()); err != nil {
+	if err := n.Shutdown(context.Background()); err != nil {
 		t.Fatal(err)
 	}
 	if c := calls.Load(); c != 3 {
@@ -75,7 +75,7 @@ func TestNotifier_DoesNotRetryARefusal(t *testing.T) {
 
 	n := NewNotifier(NotifierConfig{APIURL: srv.URL, Backoff: noBackoff})
 	n.Notify(Saved{ProjectID: "p1", VersionID: 1})
-	if err := n.Wait(context.Background()); err != nil {
+	if err := n.Shutdown(context.Background()); err != nil {
 		t.Fatal(err)
 	}
 	if c := calls.Load(); c != 1 {
@@ -95,7 +95,7 @@ func TestNotifier_GivesUpAfterItsAttempts(t *testing.T) {
 
 	n := NewNotifier(NotifierConfig{APIURL: srv.URL, Attempts: 4, Backoff: noBackoff})
 	n.Notify(Saved{ProjectID: "p1", VersionID: 1})
-	if err := n.Wait(context.Background()); err != nil {
+	if err := n.Shutdown(context.Background()); err != nil {
 		t.Fatal(err)
 	}
 	if c := calls.Load(); c != 4 {
@@ -129,5 +129,27 @@ func TestDefaultBackoff_IsBounded(t *testing.T) {
 	}
 	if d := defaultBackoff(100); d != notifyBackoffMax {
 		t.Fatalf("backoff(100) = %v, want the cap", d)
+	}
+}
+
+func TestNotifier_ShutdownAbandonsDeliveriesItCannotFinish(t *testing.T) {
+	t.Parallel()
+
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.WriteHeader(http.StatusServiceUnavailable)
+	}))
+	defer srv.Close()
+
+	// A long backoff: without Shutdown the delivery would sleep for an hour.
+	n := NewNotifier(NotifierConfig{APIURL: srv.URL, Backoff: func(int) time.Duration { return time.Hour }})
+	n.Notify(Saved{ProjectID: "p1", VersionID: 1})
+	ctx, cancel := context.WithTimeout(context.Background(), 100*time.Millisecond)
+	defer cancel()
+	start := time.Now()
+	if err := n.Shutdown(ctx); err == nil {
+		t.Fatal("Shutdown reported every delivery finished")
+	}
+	if d := time.Since(start); d > 2*time.Second {
+		t.Fatalf("Shutdown took %v; the delivery must stop when abandoned", d)
 	}
 }
