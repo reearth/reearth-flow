@@ -5439,7 +5439,6 @@ dependencies = [
  "indexmap 2.14.2",
  "indoc",
  "json-subscriber",
- "num_cpus",
  "once_cell",
  "opentelemetry_sdk",
  "reearth-flow-action-log",
