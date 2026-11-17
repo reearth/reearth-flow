@@ -84,6 +84,7 @@ impl ProcessorFactory for FeatureLodFilterFactory {
         let process = FeatureLodFilter {
             filter_key: params.filter_key,
             fallback: params.fallback,
+            max_lod_attribute: params.max_lod_attribute,
             buffer_features: HashMap::new(),
             max_lod: HashMap::new(),
         };
@@ -104,6 +105,8 @@ struct FeatureLodFilterParam {
     /// the ports of the LODs it has.
     #[serde(default = "default_fallback")]
     fallback: bool,
+    /// Attribute that receives the highest LOD in the feature's group
+    max_lod_attribute: Option<Attribute>,
 }
 
 fn default_fallback() -> bool {
@@ -118,6 +121,7 @@ struct LodCount {
 struct FeatureLodFilter {
     filter_key: Attribute,
     fallback: bool,
+    max_lod_attribute: Option<Attribute>,
     buffer_features: HashMap<AttributeValue, Vec<Feature>>,
     max_lod: HashMap<AttributeValue, u8>,
 }
@@ -175,7 +179,28 @@ impl FeatureLodFilter {
                 max_lod: self.max_lod.get(key).cloned().unwrap_or(0),
             };
             features.iter().for_each(|feature| {
-                Self::routing_feature_by_lod(ctx.clone(), fw, feature, &lod_count, self.fallback);
+                if let Some(attribute) = &self.max_lod_attribute {
+                    let mut feature = feature.clone();
+                    feature.insert(
+                        attribute.clone(),
+                        AttributeValue::Number(lod_count.max_lod.into()),
+                    );
+                    Self::routing_feature_by_lod(
+                        ctx.clone(),
+                        fw,
+                        &feature,
+                        &lod_count,
+                        self.fallback,
+                    );
+                } else {
+                    Self::routing_feature_by_lod(
+                        ctx.clone(),
+                        fw,
+                        feature,
+                        &lod_count,
+                        self.fallback,
+                    );
+                }
             });
         }
     }
@@ -300,6 +325,7 @@ mod tests {
         let mut processor = FeatureLodFilter {
             filter_key: Attribute::new("city_code"),
             fallback,
+            max_lod_attribute: None,
             buffer_features: HashMap::new(),
             max_lod: HashMap::new(),
         };
@@ -338,5 +364,37 @@ mod tests {
     #[test]
     fn no_fallback_sends_only_existing_lod() {
         assert_eq!(ids_sent_to_lod3(false), vec!["lod3"]);
+    }
+
+    #[test]
+    fn max_lod_attribute_carries_group_max_lod() {
+        let fw = ProcessorChannelForwarder::Noop(NoopChannelForwarder::default());
+        let mut processor = FeatureLodFilter {
+            filter_key: Attribute::new("city_code"),
+            fallback: true,
+            max_lod_attribute: Some(Attribute::new("_max_lod")),
+            buffer_features: HashMap::new(),
+            max_lod: HashMap::new(),
+        };
+        for feature in [
+            make_feature("lod1_only", &[1]),
+            make_feature("lod3", &[1, 3]),
+        ] {
+            let ctx = create_default_execute_context(&feature);
+            processor.process(ctx, &fw).unwrap();
+        }
+        processor.finish(NodeContext::default(), &fw).unwrap();
+
+        let ProcessorChannelForwarder::Noop(noop) = fw else {
+            unreachable!()
+        };
+        let features = noop.send_features.lock().unwrap();
+        assert!(!features.is_empty());
+        for feature in features.iter() {
+            assert_eq!(
+                feature.get(Attribute::new("_max_lod")),
+                Some(&AttributeValue::Number(3.into()))
+            );
+        }
     }
 }

@@ -177,7 +177,7 @@ where
     );
 }
 
-/// Drops each flow output `X` whose truth exists only as `X_full_attributes`,
+/// Drops each flow output `X` whose truth exists only as `X_full`,
 /// so flat outputs without their own truth are not compared.
 fn remove_flat_outputs_without_truth(truth_extracted_dir: &Path, flow_extracted_dir: &Path) {
     let Ok(entries) = fs::read_dir(flow_extracted_dir) else {
@@ -186,9 +186,7 @@ fn remove_flat_outputs_without_truth(truth_extracted_dir: &Path, flow_extracted_
     for entry in entries.filter_map(|e| e.ok()) {
         let name = entry.file_name().to_string_lossy().to_string();
         if !truth_extracted_dir.join(&name).exists()
-            && truth_extracted_dir
-                .join(format!("{name}_full_attributes"))
-                .exists()
+            && truth_extracted_dir.join(format!("{name}_full")).exists()
         {
             let _ = fs::remove_dir_all(entry.path());
         }
