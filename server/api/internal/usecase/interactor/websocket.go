@@ -2,6 +2,7 @@ package interactor
 
 import (
 	"context"
+	"time"
 
 	"github.com/reearth/reearth-flow/api/internal/rbac"
 	"github.com/reearth/reearth-flow/api/internal/usecase/gateway"
@@ -161,6 +162,16 @@ func (i *Websocket) ImportDocument(ctx context.Context, docID string, data []byt
 		return err
 	}
 	return i.client.ImportDocument(ctx, docID, data)
+}
+
+// SetProjectLock is called by UpdateProject, which already checked edit
+// permission; it is gated here like the other writes in case of other callers.
+// Not authorizeWorkflowChange: unlocking a locked project must get through.
+func (i *Websocket) SetProjectLock(ctx context.Context, docID string, locked bool, changedAt time.Time) error {
+	if err := i.authorize(ctx, docID, rbac.ActionEdit); err != nil {
+		return err
+	}
+	return i.client.SetProjectLock(ctx, docID, locked, changedAt)
 }
 
 // DeleteDocument is not refused for a locked project: deleting the project is

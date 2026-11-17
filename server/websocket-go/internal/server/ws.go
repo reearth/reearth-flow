@@ -32,6 +32,10 @@ type Server struct {
 	// onPeriodicSync, if set, is invoked once per re-sync tick (tests only).
 	onPeriodicSync func()
 
+	// locks and presence back the project lock: see project_lock.go.
+	locks    *projectLocks
+	presence Presence
+
 	health healthDeps
 }
 
@@ -52,6 +56,7 @@ func New(cfg *config.Config) *Server {
 	if cfg.SlowPeerResync {
 		s.ws.SlowPeerPolicy = ygws.SlowPeerResync
 	}
+	s.enableProjectLock()
 	return s
 }
 

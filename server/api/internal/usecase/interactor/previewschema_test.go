@@ -42,6 +42,9 @@ func (w *fakeWebsocket) GetLatest(_ context.Context, docID string) (*websocket.D
 	}
 	return &websocket.Document{ID: docID, Version: 7}, nil
 }
+func (w *fakeWebsocket) SetProjectLock(context.Context, string, bool, time.Time) error {
+	return nil
+}
 func (w *fakeWebsocket) FlushToGCS(_ context.Context, id string) error {
 	w.flushed = append(w.flushed, id)
 	return nil

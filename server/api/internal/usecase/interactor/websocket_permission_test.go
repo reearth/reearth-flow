@@ -3,6 +3,7 @@ package interactor
 import (
 	"context"
 	"testing"
+	"time"
 
 	accountsid "github.com/reearth/reearth-accounts/server/pkg/id"
 	"github.com/reearth/reearth-flow/api/internal/infrastructure/memory"
@@ -67,7 +68,11 @@ func (c *countingWSClient) GetSnapshotState(context.Context, string, int) (*ws.S
 	return nil, nil
 }
 func (c *countingWSClient) DeleteDocument(context.Context, string) error { c.calls++; return nil }
-func (c *countingWSClient) Close() error                                 { c.calls++; return nil }
+func (c *countingWSClient) SetProjectLock(context.Context, string, bool, time.Time) error {
+	c.calls++
+	return nil
+}
+func (c *countingWSClient) Close() error { c.calls++; return nil }
 
 var (
 	_ interfaces.WebsocketClient = (*countingWSClient)(nil)
@@ -156,6 +161,9 @@ func getSnapshotState(ctx context.Context, i *Websocket, d string) error {
 func deleteDocument(ctx context.Context, i *Websocket, d string) error {
 	return i.DeleteDocument(ctx, d)
 }
+func setProjectLock(ctx context.Context, i *Websocket, d string) error {
+	return i.SetProjectLock(ctx, d, true, time.UnixMilli(1))
+}
 
 // TestWebsocket_DeniedOperationsNeverReachTheClient is the security assertion:
 // before this interactor, any authenticated user could act on any project.
@@ -176,6 +184,7 @@ func TestWebsocket_DeniedOperationsNeverReachTheClient(t *testing.T) {
 	assertDenied(t, "FlushToGCS", flushToGCS)
 	assertDenied(t, "ImportDocument", importDocument)
 	assertDenied(t, "DeleteDocument", deleteDocument)
+	assertDenied(t, "SetProjectLock", setProjectLock)
 }
 
 // TestWebsocket_ChecksTargetProjectWorkspace pins the action each operation
@@ -201,6 +210,7 @@ func TestWebsocket_ChecksTargetProjectWorkspace(t *testing.T) {
 	assertChecks(t, "FlushToGCS", rbac.ActionAny, flushToGCS)
 	assertChecks(t, "ImportDocument", rbac.ActionEdit, importDocument)
 	assertChecks(t, "DeleteDocument", rbac.ActionDelete, deleteDocument)
+	assertChecks(t, "SetProjectLock", rbac.ActionEdit, setProjectLock)
 }
 
 // TestWebsocket_ReaderCannotFlushToGCS is the exact regression this fix
@@ -348,6 +358,16 @@ func TestWebsocket_LockedProjectKeepsReadsAndSaves(t *testing.T) {
 	require.NoError(t, flushToGCS(ctx, i, docID))
 	require.NoError(t, saveNamedSnapshot(ctx, i, docID))
 	assert.Equal(t, 3, client.calls)
+}
+
+// TestWebsocket_LockedProjectCanBeUnlocked: the lock entry is not a workflow
+// change, so a locked project must still accept it or it could never be unlocked.
+func TestWebsocket_LockedProjectCanBeUnlocked(t *testing.T) {
+	t.Parallel()
+
+	i, client, docID := lockedWSFixture(t)
+	require.NoError(t, i.SetProjectLock(context.Background(), docID, false, time.UnixMilli(1)))
+	assert.Equal(t, 1, client.calls)
 }
 
 func TestWebsocket_LockedProjectCanBeCopiedFrom(t *testing.T) {

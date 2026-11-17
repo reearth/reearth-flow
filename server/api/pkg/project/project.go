@@ -117,9 +117,18 @@ func (p *Project) SetIsBasicAuthActive(isBasicAuthActive bool) {
 	p.updatedAt = time.Now()
 }
 
+// SetIsLocked also moves updatedAt at least a millisecond past its previous
+// value, even when this replica's clock reads earlier than the one that saved
+// it. A lock change's updatedAt orders it against the project's earlier lock
+// changes (see Project.UpdateProject), which may have been saved by other
+// replicas.
 func (p *Project) SetIsLocked(isLocked bool) {
 	p.isLocked = isLocked
-	p.updatedAt = time.Now()
+	now := time.Now()
+	if prev := p.updatedAt.UnixMilli(); now.UnixMilli() <= prev {
+		now = time.UnixMilli(prev + 1)
+	}
+	p.updatedAt = now
 }
 
 func (p *Project) SetLicense(license string) {

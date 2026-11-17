@@ -2,6 +2,7 @@ package project
 
 import (
 	"testing"
+	"time"
 
 	accountsid "github.com/reearth/reearth-accounts/server/pkg/id"
 	"github.com/stretchr/testify/assert"
@@ -64,9 +65,24 @@ func TestProject_IsBasicAuthActive(t *testing.T) {
 }
 
 func TestProject_SetIsLocked(t *testing.T) {
+	t.Parallel()
+
 	p := &Project{}
 	p.SetIsLocked(true)
-	assert.True(t, true, p.IsLocked())
+	assert.True(t, p.IsLocked())
+}
+
+func TestProject_SetIsLocked_OrdersAfterAClockThatRanAhead(t *testing.T) {
+	t.Parallel()
+
+	// Saved by a replica whose clock runs an hour ahead of this one.
+	ahead := time.Now().Add(time.Hour).Truncate(time.Millisecond)
+	p := New().NewID().Workspace(NewWorkspaceID()).UpdatedAt(ahead).MustBuild()
+
+	p.SetIsLocked(true)
+	assert.True(t, p.UpdatedAt().Equal(ahead.Add(time.Millisecond)), "updatedAt = %v", p.UpdatedAt())
+	p.SetIsLocked(false)
+	assert.True(t, p.UpdatedAt().Equal(ahead.Add(2*time.Millisecond)), "updatedAt = %v", p.UpdatedAt())
 }
 
 func TestProject_BasicAuthUsername(t *testing.T) {

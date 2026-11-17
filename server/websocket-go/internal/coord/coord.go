@@ -91,6 +91,19 @@ func NewRelay(cfg *config.Config, locks *Locks, flusher Flusher, log *slog.Logge
 	}
 }
 
+// Presence returns how to count the instances holding a room, for a relay
+// backed by a shared store; nil for the in-memory relay, whose only instance
+// is the local one.
+func Presence(r cluster.Relay) func(ctx context.Context, room string) (int, error) {
+	p, ok := r.(interface {
+		ActiveInstances(ctx context.Context, room string) (int, error)
+	})
+	if !ok {
+		return nil
+	}
+	return p.ActiveInstances
+}
+
 // Describe summarises the active backend for the startup log and /health
 func Describe(cfg *config.Config) string {
 	if cfg.CoordBackend != config.BackendPostgres {

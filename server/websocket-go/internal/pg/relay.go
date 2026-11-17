@@ -289,6 +289,11 @@ func (r *Relay) Publish(_ context.Context, out cluster.Outbound) error {
 // DroppedWrites returns the cumulative count of updates dropped on a full queue.
 func (r *Relay) DroppedWrites() uint64 { return r.droppedWrites.Load() }
 
+// ActiveInstances counts the instances holding room, by their heartbeats.
+func (r *Relay) ActiveInstances(ctx context.Context, room string) (int, error) {
+	return r.activeInstances(ctx, room)
+}
+
 // RoomActivated starts the room's reader, heartbeat and writer, and registers this
 // instance as live. Idempotent.
 //

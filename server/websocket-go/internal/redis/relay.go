@@ -211,6 +211,12 @@ func (r *Relay) Publish(_ context.Context, out cluster.Outbound) error {
 // write queue.
 func (r *Relay) DroppedWrites() uint64 { return r.droppedWrites.Load() }
 
+// ActiveInstances counts the instances holding room, by their heartbeats.
+func (r *Relay) ActiveInstances(ctx context.Context, room string) (int, error) {
+	n, err := getActiveInstances(ctx, r.client, room, activeTimeoutSecs)
+	return int(n), err
+}
+
 // RoomActivated starts the per-room subscriber + heartbeat and refreshes the
 // stream EXPIRE. Catch-up replay of the existing stream is performed by the
 // reader goroutine (NOT inline here): ygo invokes RoomActivated while holding its
