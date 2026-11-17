@@ -26,6 +26,7 @@ var errorCodes = []struct {
 	{interfaces.ErrViewsUnavailable, "VIEWS_UNAVAILABLE"},
 	{interfaces.ErrRenderTimedOut, "VIEW_RENDER_TIMED_OUT"},
 	{interfaces.ErrViewWorkersBusy, "VIEW_WORKERS_BUSY"},
+	{interfaces.ErrProjectLocked, "PROJECT_LOCKED"},
 }
 
 // ErrorCode is the code a client receives for err, or "" for an error that has

@@ -304,13 +304,6 @@ nodes:
           "error_geometry/" + variables["packagePrefixes"][attributes["folder"]] + "_LOD1-2境界面のエラー位置.geojson"
       writeCrs: true
 
-  # The original workspace has no orientation check, so the port is consumed
-  # rather than left dangling.
-  - id: dd000000-0000-4000-8000-000000000016
-    name: IncorrectOrientationSink
-    type: action
-    action: Noop Sink
-
   # --- Face checks of the surfaces ---
   - id: dd000000-0000-4000-8000-000000000017
     name: SurfaceChecksLod2To3
@@ -1738,11 +1731,6 @@ edges:
     to: dd000000-0000-4000-8000-000000000015
     fromPort: features
     toPort: features
-  - id: dd000000-0000-4000-8000-00010000001e
-    from: dd000000-0000-4000-8000-00000000000f
-    to: dd000000-0000-4000-8000-000000000016
-    fromPort: incorrectOrientation
-    toPort: features
 
   # Face checks of the LOD2 and LOD3 surfaces
   - id: dd000000-0000-4000-8000-00010000001f
@@ -1804,11 +1792,6 @@ edges:
     from: dd000000-0000-4000-8000-00000000001c
     to: dd000000-0000-4000-8000-00000000001d
     fromPort: features
-    toPort: features
-  - id: dd000000-0000-4000-8000-00010000002b
-    from: dd000000-0000-4000-8000-000000000017
-    to: dd000000-0000-4000-8000-000000000016
-    fromPort: incorrectOrientation
     toPort: features
 
   # Solid checks

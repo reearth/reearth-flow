@@ -53,6 +53,7 @@ const DebugPanel: React.FC = () => {
     selectedDataURL,
     dataURLs,
     outputDataForDownload,
+    archiveName,
     selectedOutputData,
     selectedFeatureId,
     selectedFeature,
@@ -189,7 +190,7 @@ const DebugPanel: React.FC = () => {
               <div className="ml-2 h-full w-1 border-l" />
               <OutputDataDownload
                 outputData={outputDataForDownload}
-                archiveName={`job_${debugJobId}`}
+                archiveName={archiveName}
               />
             </div>
             {/* <div className="absolute left-1/2 mr-[120px] flex h-full translate-x-1/2 items-center justify-center gap-2">

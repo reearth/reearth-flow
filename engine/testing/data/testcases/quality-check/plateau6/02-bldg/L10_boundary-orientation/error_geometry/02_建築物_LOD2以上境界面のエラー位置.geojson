@@ -1,0 +1,45 @@
+{
+  "type": "FeatureCollection",
+  "crs": {
+    "type": "name",
+    "properties": {
+      "name": "urn:ogc:def:crs:EPSG::6677"
+    }
+  },
+  "features": [
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [-7154.392424431441, -37060.3120008548, 2.87]
+      },
+      "properties": {
+        "check": "LOD2以上境界面のエラー位置",
+        "issue": "IncorrectInteriorOrientation",
+        "filename": "53393690_bldg_6697_op.gml",
+        "featureType": "con:GroundSurface",
+        "gmlId": "surface-3b9da6b2-6223-440f-83b4-3e8fb31c3633",
+        "parentGmlId": "bldg_a5d3629d-b115-418f-9068-e100b4bdeac5",
+        "rootGmlId": "bldg_a5d3629d-b115-418f-9068-e100b4bdeac5",
+        "lod": 2
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [-7516.928000015447, -37582.17875026928, 3.931]
+      },
+      "properties": {
+        "check": "LOD2以上境界面のエラー位置",
+        "issue": "IncorrectInteriorOrientation",
+        "filename": "53393690_bldg_6697_op.gml",
+        "featureType": "con:GroundSurface",
+        "gmlId": "surface-035bda12-505f-433f-a9ef-3d8f5a8e83da",
+        "parentGmlId": "bldg_468427ae-fc81-4d0c-9b18-d0b3ff589159",
+        "rootGmlId": "bldg_468427ae-fc81-4d0c-9b18-d0b3ff589159",
+        "lod": 2
+      }
+    }
+  ]
+}
