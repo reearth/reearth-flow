@@ -85,6 +85,10 @@ export default () => {
     [outputURLs],
   );
 
+  // What "Download all" suggests calling the archive: the project's name, or
+  // the job's id when the project has none.
+  const archiveName = currentProject?.name || `job_${debugJobId}`;
+
   const selectedDataURL = useMemo(() => {
     if (!debugJobState?.focusedIntermediateData) return undefined;
     return debugJobState.focusedIntermediateData;
@@ -391,6 +395,7 @@ export default () => {
     selectedDataURL,
     dataURLs,
     outputDataForDownload,
+    archiveName,
     selectedOutputData,
     selectedFeatureId,
     selectedFeature,

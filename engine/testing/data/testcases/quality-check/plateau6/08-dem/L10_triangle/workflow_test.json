@@ -1,0 +1,55 @@
+{
+  "description": "Test L10 for plateau6",
+  "workflowPath": "quality-check/plateau6/08-dem/workflow.yml",
+  "workflowVariables": [
+    {
+      "name": "cityGmlPath",
+      "value": "dem_.zip"
+    },
+    {
+      "name": "codelistsPath",
+      "value": "codelists_.zip"
+    },
+    {
+      "name": "schemasPath",
+      "value": "schemas_.zip"
+    },
+    {
+      "name": "objectListsPath",
+      "value": "../../../../../fixtures/plateau6-citymodel/13997_tokyo_udx-mlit_2026_citygml_1_sample-tokyoCG3_op/13997_milt_2026_objectlist_sample-tokyoCG3_op__empty.xlsx"
+    },
+    {
+      "name": "prcs",
+      "value": 6677
+    }
+  ],
+  "zipBeforeTest": [
+    {
+      "path": "udx/dem",
+      "name": "dem_.zip"
+    },
+    {
+      "path": "../../../../../fixtures/plateau6-citymodel/13997_tokyo_udx-mlit_2026_citygml_1_sample-tokyoCG3_op/codelists",
+      "name": "codelists_.zip"
+    },
+    {
+      "path": "../../../../../fixtures/plateau6-citymodel/13997_tokyo_udx-mlit_2026_citygml_1_sample-tokyoCG3_op/schemas",
+      "name": "schemas_.zip"
+    }
+  ],
+  "expectedOutput": {
+    "expectedFile": [
+      "08_地形_向きが不正な三角形.csv",
+      "error_geometry/08_地形_向きが不正な三角形.geojson"
+    ]
+  },
+  "summaryOutput": {
+    "errorCountSummary": {
+      "expectedFile": "summary_dem.json"
+    },
+    "fileErrorSummary": {
+      "expectedFile": "08_地形_検査結果一覧.csv"
+    }
+  },
+  "expectResultOkFile": false
+}

@@ -40,10 +40,10 @@
   "expectedOutput": {
     "expectedFile": [
       "09-3_地下街_LOD0面のエラー.csv",
-      "09-3_地下街_LOD0面の向きエラー.csv",
+      "09-3_地下街_LOD0面の向き不正.csv",
       "error_geometry/09-3_地下街_LOD0面のエラー.geojson",
       "error_geometry/09-3_地下街_LOD0面のエラー位置.geojson",
-      "error_geometry/09-3_地下街_LOD0面の向きエラー.geojson"
+      "error_geometry/09-3_地下街_LOD0面の向き不正.geojson"
     ]
   },
   "summaryOutput": {

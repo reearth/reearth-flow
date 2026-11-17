@@ -2180,12 +2180,15 @@ CityGML Writer: kept and exposed
              and name `lodFilter`. Code unchanged (append-only), text only.
   diag:    DEFERRED. `finish()` returns plain errors for failures the user can fix: the three
              srsName cases (geometry in two CRSs, `epsgCode` contradicting the geometry, no CRS and
-             no `epsgCode`), an unusable output path, an ADE schema that cannot be read, texture
-             staging, and the final storage write. They reach the user as `internal.unclassified`.
+             no `epsgCode`), an unusable output path, texture staging, and the final storage
+             write. They reach the user as `internal.unclassified`.
              Their text already names the cause and the fix. Classifying them needs a
              finish()-time report that carries a message: `report_drop` records the code alone,
              which would lose the EPSG codes and paths. TRIGGER: the diagnostics handle gaining a
              message-bearing fatal for `finish()`.
+  diag:    FIXED. The ADE schemas were read in `finish()`, so a bad `schemaLocation` failed only
+             after every feature had been accumulated. They are now read in `build()`, which fails
+             the job before it processes anything.
   diag:    NOTE. `citygml.non_citygml_geometry` is raised only by the legacy converter; the
              new-geometry converter accepts any geometry. Its text goes with the legacy cleanup.
   name:    OK.
@@ -2212,7 +2215,10 @@ CityGML Writer: kept and exposed
 `dem:TINRelief` to the description, and #2637 makes each `adeSchemas` entry either a `builtIn`
 module (`iur-uro-3.2` and the like) or a `file` path, in place of the `iurVersion` it first
 proposed; each owes a check of its new text against this standard when it lands, and whichever
-merges second regenerates the schema rather than resolving it by hand.
+merges second regenerates the schema rather than resolving it by hand. The `builtIn` modules
+were later removed again: `schemaLocation` now also takes an `https://` URL, such as the official
+i-UR schema, so an entry is back to `prefix`, `namespace`, `schemaLocation` and
+`declaredLocation`, with no `type`.
 
 **Reopened: Feature Writer `format: citygml`.** Its withdrawal above recorded "TRIGGER to restore:
 the CityGML Writer sink's port landing (#2355)". #2355 merged on 2026-10-01 and nothing reopened

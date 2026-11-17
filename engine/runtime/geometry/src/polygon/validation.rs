@@ -99,9 +99,13 @@ impl Validate for Polygon2D {
             let Ok(sign) = self.frame.orientation_sign() else {
                 return;
             };
-            check_ring_orientation_2d(&self.frame, sign, self.exterior(), true, r);
-            for hole in self.interiors() {
-                check_ring_orientation_2d(&self.frame, sign, hole, false, r);
+            r.record_part(IssuePart::Ring(0), |r| {
+                check_ring_orientation_2d(&self.frame, sign, self.exterior(), true, r)
+            });
+            for (i, hole) in self.interiors().enumerate() {
+                r.record_part(IssuePart::Ring(i + 1), |r| {
+                    check_ring_orientation_2d(&self.frame, sign, hole, false, r)
+                });
             }
         })
     }
@@ -1539,6 +1543,50 @@ mod tests {
             ValidationResult::Failed(issues) => {
                 assert_eq!(issues.len(), 1);
                 assert_eq!(issues[0].part, IssuePart::Ring(1));
+            }
+            other => panic!("expected a failure, got {other:?}"),
+        }
+    }
+
+    #[test]
+    fn misoriented_rings_are_attributed_to_their_own_ring() {
+        // Exterior clockwise, first hole clockwise (correct), second hole
+        // counter-clockwise.
+        let ext = [[0.0, 0.0], [0.0, 8.0], [8.0, 8.0], [8.0, 0.0], [0.0, 0.0]];
+        let good = vec![[1.0, 1.0], [1.0, 2.0], [2.0, 2.0], [2.0, 1.0], [1.0, 1.0]];
+        let bad = vec![[4.0, 4.0], [5.0, 4.0], [5.0, 5.0], [4.0, 5.0], [4.0, 4.0]];
+        let p = poly2(ext, vec![good, bad]);
+        assert_eq!(
+            parts(&p, ValidationType::Orientation),
+            vec![IssuePart::Ring(0), IssuePart::Ring(2)]
+        );
+    }
+
+    #[test]
+    fn same_wound_hole_of_a_3d_face_is_attributed_to_the_hole() {
+        let opposite = vec![
+            [1.0, 1.0, 0.0],
+            [1.0, 2.0, 0.0],
+            [2.0, 2.0, 0.0],
+            [2.0, 1.0, 0.0],
+            [1.0, 1.0, 0.0],
+        ];
+        let same = vec![
+            [3.0, 1.0, 0.0],
+            [3.5, 1.0, 0.0],
+            [3.5, 2.0, 0.0],
+            [3.0, 2.0, 0.0],
+            [3.0, 1.0, 0.0],
+        ];
+        let p = poly3(square3d(), vec![opposite, same]);
+        match validate_one(
+            &p,
+            ValidationType::Orientation,
+            &ValidationParams::default(),
+        ) {
+            ValidationResult::Failed(issues) => {
+                let found: Vec<_> = issues.into_iter().map(|i| i.part).collect();
+                assert_eq!(found, vec![IssuePart::Ring(2)]);
             }
             other => panic!("expected a failure, got {other:?}"),
         }

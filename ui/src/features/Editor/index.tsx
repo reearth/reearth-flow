@@ -65,6 +65,7 @@ export default function Editor({
     handleWorkflowDeployment,
     sharingUrl,
     handleProjectShare,
+    handleProjectShareOpen,
     handleCurrentProjectExport,
     handleWorkflowOpen,
     handleWorkflowClose,
@@ -231,6 +232,7 @@ export default function Editor({
             onWorkflowUndo={handleWorkflowUndo}
             sharingUrl={sharingUrl}
             onProjectShare={handleProjectShare}
+            onProjectShareOpen={handleProjectShareOpen}
             onProjectExport={handleCurrentProjectExport}
             onWorkflowDeployment={handleWorkflowDeployment}
             onDebugRunStart={handleDebugRunStart}

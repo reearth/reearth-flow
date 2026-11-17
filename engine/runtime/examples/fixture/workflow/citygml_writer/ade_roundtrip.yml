@@ -51,15 +51,13 @@ graphs:
           epsgCode: 6697
           prettyPrint: true
           adeSchemas:
-            - type: file
-              prefix: uro
+            - prefix: uro
               namespace: https://www.geospatial.jp/iur/uro/3.1
               schemaLocation:
                 type: flowExpr
                 value: variables["uroSchemaPath"]
               declaredLocation: https://www.geospatial.jp/iur/uro/3.1/urbanObject.xsd
-            - type: file
-              prefix: urf
+            - prefix: urf
               namespace: https://www.geospatial.jp/iur/urf/3.1
               schemaLocation:
                 type: flowExpr

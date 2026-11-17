@@ -1,5 +1,5 @@
 {
-  "description": "Test surface orientation errors for plateau6 03-tran. Orientation is reported in the result list but is not summed into totalErrorCount, so qc_result_ok is still written.",
+  "description": "Test L10 for plateau6 03-tran.",
   "workflowPath": "quality-check/plateau6/03-tran/workflow.yml",
   "workflowVariables": [
     {
@@ -49,5 +49,5 @@
       "keyColumns": ["Filename", "フィーチャータイプ", "LOD"]
     }
   },
-  "expectResultOkFile": true
+  "expectResultOkFile": false
 }
