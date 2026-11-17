@@ -1,9 +1,9 @@
 use super::{Polygon2D, Polygon3D};
 use crate::coordinate::{CoordinateFrame, EpsgCode};
 use crate::ops::reproject::{transform_coords_2d, transform_coords_3d};
-use crate::ops::triangulation::{expand_appearance, triangulate_2d, triangulate_3d, Cache};
+use crate::ops::triangulation::{Cache, expand_appearance, triangulate_2d, triangulate_3d};
 use crate::ops::{
-    lift_coords, Aabb, BoundingBox, Reproject, ReprojectionCache, Triangulate, UnsupportedOperation,
+    Aabb, BoundingBox, Reproject, ReprojectionCache, Triangulate, UnsupportedOperation, lift_coords,
 };
 use crate::triangular_mesh::{TriangularMesh2D, TriangularMesh3D};
 use crate::{Euclidean2DGeometry, Euclidean3DGeometry, Geometry};
@@ -104,7 +104,7 @@ impl Reproject for Polygon3D {
     }
 }
 
-use crate::ops::{plan_frame_step, translate_2d, translate_3d, ConvertFrame, FrameStep, Translate};
+use crate::ops::{ConvertFrame, FrameStep, Translate, plan_frame_step, translate_2d, translate_3d};
 
 impl Translate for Polygon2D {
     fn translate(&mut self, delta: [f64; 3]) -> crate::error::Result<()> {
@@ -357,7 +357,7 @@ impl Polygon2D {
 }
 
 use crate::ops::{
-    emit_face_2d, emit_face_3d, CountHoles, ExtractHoles, ExtractedPart, RemoveAppearance,
+    CountHoles, ExtractHoles, ExtractedPart, RemoveAppearance, emit_face_2d, emit_face_3d,
 };
 
 // One offset per interior ring, so the count is the offsets' length.
@@ -504,9 +504,9 @@ impl Footprint for Polygon3D {
 }
 
 #[cfg(feature = "new-geometry")]
-use crate::ops::area::polygon_3d_surface_area;
-#[cfg(feature = "new-geometry")]
 use crate::ops::Area;
+#[cfg(feature = "new-geometry")]
+use crate::ops::area::polygon_3d_surface_area;
 
 #[cfg(feature = "new-geometry")]
 impl Area for Polygon2D {
@@ -584,7 +584,7 @@ impl Polygon3D {
     }
 }
 
-use crate::ops::boundary::{unsupported as unbounded, Boundary, ExtractBoundary};
+use crate::ops::boundary::{Boundary, ExtractBoundary, unsupported as unbounded};
 
 // A face is bounded by its own rings, exterior first, each kept verbatim. A face
 // with no exterior ring encloses nothing, so there is nothing to bound. That is
@@ -1011,8 +1011,8 @@ mod grid_impl {
     use super::{Polygon2D, Polygon3D};
     use crate::appearance::{Appearance, ChannelId, Side, ThemeBinding, UvSet, UvSource};
     use crate::ops::grid::{
-        clip_to_window, faces_area_xy, CellCoverage, Corner, DivideByGrid, ExteriorWinding, Face,
-        GridCell, GridDivideError, GridSpec,
+        CellCoverage, Corner, DivideByGrid, ExteriorWinding, Face, GridCell, GridDivideError,
+        GridSpec, clip_to_window, faces_area_xy,
     };
     use crate::ops::{Aabb, BoundingBox};
     use crate::{Euclidean2DGeometry, Euclidean3DGeometry, Geometry};

@@ -4,8 +4,8 @@ use std::io::BufReader;
 use std::sync::Arc;
 
 use approx::AbsDiffEq;
-use quick_xml::events::Event;
 use quick_xml::Reader;
+use quick_xml::events::Event;
 use reearth_flow_geometry::types::{
     coordinate::Coordinate3D, geometry::Geometry3D, line_string::LineString3D,
     triangular_mesh::TriangularMesh,
@@ -15,7 +15,7 @@ use reearth_flow_runtime::{
     event::EventHub,
     executor_operation::{ExecutorContext, NodeContext},
     forwarder::ProcessorChannelForwarder,
-    node::{Port, Processor, ProcessorFactory, FEATURES_PORT, REJECTED_PORT},
+    node::{FEATURES_PORT, Port, Processor, ProcessorFactory, REJECTED_PORT},
 };
 use reearth_flow_types::{
     Attribute, AttributeValue, Code, CodeType, CompiledCode, Feature, Geometry as FlowGeometry,
@@ -493,7 +493,7 @@ impl CityGmlMeshBuilder {
                         reader.buffer_position(),
                         e
                     )
-                    .into())
+                    .into());
                 }
                 _ => {}
             }

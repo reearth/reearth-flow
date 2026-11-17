@@ -12,8 +12,8 @@ use std::path::{Path, PathBuf};
 use std::sync::OnceLock;
 
 use proj_sys::{
-    proj_context_create, proj_context_destroy, proj_context_get_database_path,
-    proj_context_get_user_writable_directory, proj_context_set_search_paths, PJ_CONTEXT,
+    PJ_CONTEXT, proj_context_create, proj_context_destroy, proj_context_get_database_path,
+    proj_context_get_user_writable_directory, proj_context_set_search_paths,
 };
 
 use crate::error::{Error, Result};

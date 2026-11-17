@@ -4,7 +4,7 @@ use nusamai_citygml::schema::{Schema, TypeDef};
 use once_cell::sync::Lazy;
 use reearth_flow_runtime::event::{Event, EventHub};
 use reearth_flow_runtime::executor_operation::{ExecutorContext, NodeContext};
-use reearth_flow_runtime::node::{Port, Sink, SinkFactory, FEATURES_PORT};
+use reearth_flow_runtime::node::{FEATURES_PORT, Port, Sink, SinkFactory};
 use reearth_flow_runtime::{errors::BoxedError, executor_operation::Context};
 use reearth_flow_types::geometry as geometry_types;
 use reearth_flow_types::{Code, CompiledCode, Feature};
@@ -310,7 +310,7 @@ impl Sink for Cesium3DTilesWriter {
             port => {
                 return Err(
                     SinkError::Cesium3DTilesWriter(format!("Unknown port with: {port:?}")).into(),
-                )
+                );
             }
         }
         Ok(())
@@ -692,7 +692,7 @@ mod diagnostics_tests {
     use indexmap::IndexMap;
     use reearth_flow_runtime::diagnostics::NodeDiagnosticsHandle;
     use reearth_flow_runtime::executor_operation::{ExecutorContext, NodeContext};
-    use reearth_flow_runtime::node::{NodeHandle, FEATURES_PORT};
+    use reearth_flow_runtime::node::{FEATURES_PORT, NodeHandle};
     use reearth_flow_types::AttributeValue;
 
     use super::*;
@@ -739,8 +739,10 @@ mod diagnostics_tests {
         let summaries = handle.inner.drain_summaries();
         assert_eq!(summaries.len(), 1);
         assert_eq!(summaries[0].aggregated.as_ref().unwrap().count, 1);
-        assert!(summaries[0]
-            .message
-            .contains("cesium3dtiles.empty_geometry"));
+        assert!(
+            summaries[0]
+                .message
+                .contains("cesium3dtiles.empty_geometry")
+        );
     }
 }

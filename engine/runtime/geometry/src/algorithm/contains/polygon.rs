@@ -1,7 +1,7 @@
 use crate::{
     algorithm::{
-        coordinate_position::{CoordPos, CoordinatePosition},
         GeoNum,
+        coordinate_position::{CoordPos, CoordinatePosition},
     },
     types::{
         coordinate::Coordinate, line::Line, line_string::LineString,

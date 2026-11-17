@@ -31,8 +31,7 @@ fn get_distance_per_pixel(vertices: &[(f64, f64, f64)], pixel_coords: &[(u32, u3
         }
     }
 
-    let avg_scale = valid_scales.iter().sum::<f64>() / valid_scales.len() as f64;
-    avg_scale
+    valid_scales.iter().sum::<f64>() / valid_scales.len() as f64
 }
 
 // WARN: This function has an equivalent in `atlas-packer/src/texture.rs`.

@@ -64,9 +64,11 @@ mod tests {
         let id = Uuid::new_v4();
         let subdir = executor_cache_subdir(id, "test-subdir");
         assert!(subdir.ends_with("test-subdir"));
-        assert!(subdir
-            .to_string_lossy()
-            .contains("reearth-flow-engine-cache"));
+        assert!(
+            subdir
+                .to_string_lossy()
+                .contains("reearth-flow-engine-cache")
+        );
         assert!(subdir.to_string_lossy().contains(&id.to_string()));
     }
 }

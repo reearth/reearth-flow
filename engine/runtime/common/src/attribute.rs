@@ -13,7 +13,7 @@ use serde_json::Number;
 use crate::datetime::DateTime;
 use crate::str::base64_encode;
 use crate::uri::Uri;
-use crate::xml::{xpath_value_to_json, XmlXpathValue};
+use crate::xml::{XmlXpathValue, xpath_value_to_json};
 
 /// An ordered set of attributes, held both by a feature and by a nested
 /// [`AttributeValue::Map`].
@@ -402,15 +402,15 @@ impl Hash for AttributeValue {
 }
 
 fn compare_numbers(n1: &Number, n2: &Number) -> Option<Ordering> {
-    if let Some(i1) = n1.as_i64() {
-        if let Some(i2) = n2.as_i64() {
-            return i1.partial_cmp(&i2);
-        }
+    if let Some(i1) = n1.as_i64()
+        && let Some(i2) = n2.as_i64()
+    {
+        return i1.partial_cmp(&i2);
     }
-    if let Some(f1) = n1.as_f64() {
-        if let Some(f2) = n2.as_f64() {
-            return f1.partial_cmp(&f2);
-        }
+    if let Some(f1) = n1.as_f64()
+        && let Some(f2) = n2.as_f64()
+    {
+        return f1.partial_cmp(&f2);
     }
     None
 }

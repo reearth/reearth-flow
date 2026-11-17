@@ -3,9 +3,9 @@ use indexmap::IndexMap;
 use reearth_flow_geometry::types::geometry::{Geometry2D, Geometry3D};
 use reearth_flow_types::{Geometry, GeometryValue};
 use schemars::{
-    gen::SchemaGenerator,
-    schema::{InstanceType, Metadata, ObjectValidation, Schema, SchemaObject, SubschemaValidation},
     JsonSchema,
+    r#gen::SchemaGenerator,
+    schema::{InstanceType, Metadata, ObjectValidation, Schema, SchemaObject, SubschemaValidation},
 };
 use serde::{Deserialize, Serialize};
 use std::fmt::Write as _;

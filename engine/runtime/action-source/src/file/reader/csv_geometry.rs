@@ -17,9 +17,9 @@ use reearth_flow_geometry::types::{
 #[cfg(not(feature = "new-geometry"))]
 use reearth_flow_types::{Geometry, GeometryValue};
 use schemars::{
-    gen::SchemaGenerator,
-    schema::{InstanceType, Metadata, ObjectValidation, Schema, SchemaObject, SubschemaValidation},
     JsonSchema,
+    r#gen::SchemaGenerator,
+    schema::{InstanceType, Metadata, ObjectValidation, Schema, SchemaObject, SubschemaValidation},
 };
 use serde::{Deserialize, Serialize};
 use std::str::FromStr;

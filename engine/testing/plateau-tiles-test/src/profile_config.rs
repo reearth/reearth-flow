@@ -1,5 +1,5 @@
 use crate::cast_config::CastConfigValue;
-use crate::rasterize::{RasterMode, RasterSize, DEFAULT_STROKE, RASTER3D_SIZE};
+use crate::rasterize::{DEFAULT_STROKE, RASTER3D_SIZE, RasterMode, RasterSize};
 use serde::Deserialize;
 use std::collections::HashMap;
 

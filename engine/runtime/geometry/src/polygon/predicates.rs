@@ -98,9 +98,11 @@ mod tests {
     #[test]
     fn a_face_is_not_equal_to_one_with_a_hole_it_lacks() {
         let big = ring(0.0, 10.0);
-        assert!(!face(big.clone(), vec![ring(3.0, 7.0)])
-            .equal(&face(big, vec![]), tolerance())
-            .unwrap());
+        assert!(
+            !face(big.clone(), vec![ring(3.0, 7.0)])
+                .equal(&face(big, vec![]), tolerance())
+                .unwrap()
+        );
     }
 
     #[test]

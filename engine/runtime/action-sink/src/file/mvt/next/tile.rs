@@ -6,7 +6,7 @@ use tinymvt::geometry::GeometryEncoder;
 use tinymvt::tag::TagsEncoder;
 use tinymvt::vector_tile;
 
-use super::slice::{PolygonPart, SlicedGeom, MARGIN_WIDTH};
+use super::slice::{MARGIN_WIDTH, PolygonPart, SlicedGeom};
 use crate::file::mvt::tags::convert_scalar_property;
 
 // Error budget of a full-detail tile: one unit of the nominal extent.

@@ -16,8 +16,8 @@ use std::collections::BTreeSet;
 
 use serde::{Deserialize, Serialize};
 
-use super::texture::Texture;
 use super::ChannelId;
+use super::texture::Texture;
 
 /// One self-contained shading description: exactly one of the two shading
 /// models.

@@ -555,7 +555,7 @@ mod grid_impl {
     use super::{Collection2D, Collection3D};
     use crate::coordinate::CoordinateFrame;
     use crate::ops::grid::{
-        geometry_area_xy, CellCoverage, DivideByGrid, GridCell, GridDivideError, GridSpec,
+        CellCoverage, DivideByGrid, GridCell, GridDivideError, GridSpec, geometry_area_xy,
     };
     use crate::{Euclidean2DGeometry, Euclidean3DGeometry, Geometry};
 

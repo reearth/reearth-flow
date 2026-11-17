@@ -12,10 +12,10 @@ use reearth_flow_geometry::algorithm::{
 use reearth_flow_geometry::types::{geometry::Geometry2D, polygon::Polygon2D};
 #[cfg(feature = "new-geometry")]
 use reearth_flow_geometry::{
-    coordinate::{CoordinateFrame, EpsgCode},
-    ops::{rings_as_faces_2d, Elevation},
-    predicates::view::{flatten_2d, Leaf2D},
     Euclidean2DGeometry, Geometry,
+    coordinate::{CoordinateFrame, EpsgCode},
+    ops::{Elevation, rings_as_faces_2d},
+    predicates::view::{Leaf2D, flatten_2d},
 };
 // The mesh grid is still described with the pre-migration rectangle types.
 #[cfg(not(feature = "new-geometry"))]
@@ -26,21 +26,21 @@ use reearth_flow_runtime::{
     event::EventHub,
     executor_operation::{ExecutorContext, NodeContext},
     forwarder::ProcessorChannelForwarder,
-    node::{Port, Processor, ProcessorFactory, FEATURES_PORT},
+    node::{FEATURES_PORT, Port, Processor, ProcessorFactory},
 };
-#[cfg(feature = "new-geometry")]
-use reearth_flow_types::jpmesh::overlap::{largest_area_overlap, MeshOverlap};
-use reearth_flow_types::jpmesh::{JPMeshCode, JPMeshType};
 #[cfg(not(feature = "new-geometry"))]
 use reearth_flow_types::GeometryValue;
+#[cfg(feature = "new-geometry")]
+use reearth_flow_types::jpmesh::overlap::{MeshOverlap, largest_area_overlap};
+use reearth_flow_types::jpmesh::{JPMeshCode, JPMeshType};
 use reearth_flow_types::{Attribute, AttributeValue, Code, CodeType, CompiledCode, Feature};
 use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
 use serde_json::Number;
 use serde_json::Value;
 
-use super::errors::PlateauProcessorError;
 use super::PlateauProfile;
+use super::errors::PlateauProcessorError;
 
 // Thread-local cache for PROJ transformations.
 // Stores both forward (6697 -> target) and inverse (target -> 6697) projections.

@@ -1,5 +1,5 @@
 use std::{
-    collections::{hash_map::Entry, HashMap, HashSet},
+    collections::{HashMap, HashSet, hash_map::Entry},
     fmt::{Debug, Display},
     hash::Hash,
 };
@@ -12,8 +12,8 @@ use crate::{
     event::EventHub,
     executor_operation::NodeContext,
     node::{
-        EdgeId, GraphId, NodeHandle, NodeId, NodeKind as DagNodeKind, Port, Processor, Sink,
-        Source, FEATURE_FILTER_ACTION, OUTPUT_ROUTING_ACTION, ROUTING_PARAM_KEY,
+        EdgeId, FEATURE_FILTER_ACTION, GraphId, NodeHandle, NodeId, NodeKind as DagNodeKind,
+        OUTPUT_ROUTING_ACTION, Port, Processor, ROUTING_PARAM_KEY, Sink, Source,
     },
 };
 

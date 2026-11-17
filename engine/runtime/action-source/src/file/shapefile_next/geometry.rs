@@ -7,6 +7,7 @@
 use std::cell::Cell;
 
 use reearth_flow_geometry::{
+    Euclidean2DGeometry, Euclidean3DGeometry, Geometry,
     collection::{Collection2D, Collection3D},
     coordinate::{CoordinateFrame, EpsgCode},
     line_string::{LineString2D, LineString3D},
@@ -14,9 +15,8 @@ use reearth_flow_geometry::{
     polygon::{Polygon2D, Polygon3D},
     polygon_mesh::PolygonMesh3D,
     triangular_mesh::TriangularMesh3D,
-    Euclidean2DGeometry, Euclidean3DGeometry, Geometry,
 };
-use shapefile::{Patch, PolygonRing, Shape, NO_DATA};
+use shapefile::{NO_DATA, Patch, PolygonRing, Shape};
 
 use crate::errors::{ShapefileError, SourceError};
 
@@ -427,11 +427,7 @@ fn strip_indices(n: usize) -> Vec<u32> {
     (0..n.saturating_sub(2))
         .flat_map(|i| {
             let (a, b, c) = (i as u32, i as u32 + 1, i as u32 + 2);
-            if i % 2 == 0 {
-                [a, c, b]
-            } else {
-                [a, b, c]
-            }
+            if i % 2 == 0 { [a, c, b] } else { [a, b, c] }
         })
         .collect()
 }

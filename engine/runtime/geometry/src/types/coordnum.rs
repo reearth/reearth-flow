@@ -13,15 +13,15 @@ pub trait CoordNum:
 {
 }
 impl<
-        T: Num
-            + Copy
-            + NumCast
-            + PartialOrd
-            + Debug
-            + std::ops::Sub<Output = Self>
-            + std::ops::Mul<Output = Self>
-            + Default,
-    > CoordNum for T
+    T: Num
+        + Copy
+        + NumCast
+        + PartialOrd
+        + Debug
+        + std::ops::Sub<Output = Self>
+        + std::ops::Mul<Output = Self>
+        + Default,
+> CoordNum for T
 {
 }
 

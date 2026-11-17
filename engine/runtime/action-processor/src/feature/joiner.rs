@@ -1,5 +1,5 @@
 use std::{
-    collections::{hash_map::Entry, HashMap},
+    collections::{HashMap, hash_map::Entry},
     fs::File,
     io::{BufRead, BufReader, BufWriter, Write},
     path::{Path, PathBuf},
@@ -14,7 +14,7 @@ use reearth_flow_runtime::{
     forwarder::ProcessorChannelForwarder,
     node::{Port, Processor, ProcessorFactory},
 };
-use reearth_flow_types::{fetch_attribute_value, Attribute, Code, CodeType, CompiledCode, Feature};
+use reearth_flow_types::{Attribute, Code, CodeType, CompiledCode, Feature, fetch_attribute_value};
 use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
 use serde_json::Value;

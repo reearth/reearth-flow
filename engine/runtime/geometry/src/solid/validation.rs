@@ -9,8 +9,8 @@ use crate::predicates::surface_intersection::intersecting_faces_3d;
 use crate::predicates::view3d::TriangleSet;
 use crate::triangular_mesh::TriangularMesh3D;
 use crate::validation_next::{
-    check_degenerate_ring_3d, check_duplicate_points, check_edge_orientation_3d, check_finite_3d,
-    Validate, ValidationParams, ValidationReport, ValidationType,
+    Validate, ValidationParams, ValidationReport, ValidationType, check_degenerate_ring_3d,
+    check_duplicate_points, check_edge_orientation_3d, check_finite_3d,
 };
 use crate::{Euclidean3DGeometry, Geometry};
 
@@ -321,7 +321,7 @@ mod tests {
     use super::*;
     use crate::coordinate::EpsgCode;
     use crate::triangular_mesh::TriangularMesh3DData;
-    use crate::validation_next::{validate_one, ValidationParams, ValidationResult};
+    use crate::validation_next::{ValidationParams, ValidationResult, validate_one};
 
     fn tetra_verts() -> Vec<[f64; 3]> {
         vec![

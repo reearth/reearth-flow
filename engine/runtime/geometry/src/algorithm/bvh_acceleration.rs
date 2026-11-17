@@ -170,11 +170,12 @@ impl<'a> AcceleratedGeometrySet<'a> {
             }
 
             let geom = &self.geometries[bvh_ref.index];
-            if let Some(hit) = geom.closest_ray_intersection(ray, tolerance) {
-                if hit.t >= min_t && hit.t < best_t {
-                    best_t = hit.t;
-                    best_hit = Some((bvh_ref.index, hit));
-                }
+            if let Some(hit) = geom.closest_ray_intersection(ray, tolerance)
+                && hit.t >= min_t
+                && hit.t < best_t
+            {
+                best_t = hit.t;
+                best_hit = Some((bvh_ref.index, hit));
             }
         }
 
