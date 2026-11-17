@@ -79,7 +79,7 @@ impl Reproject for Point3D {
     }
 }
 
-use crate::ops::{plan_frame_step, ConvertFrame, FrameStep, Translate};
+use crate::ops::{ConvertFrame, FrameStep, Translate, plan_frame_step};
 
 impl Translate for Point2D {
     fn translate(&mut self, delta: [f64; 3]) -> crate::error::Result<()> {

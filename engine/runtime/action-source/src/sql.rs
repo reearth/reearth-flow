@@ -4,7 +4,7 @@ use reearth_flow_runtime::{
     errors::BoxedError,
     event::EventHub,
     executor_operation::NodeContext,
-    node::{IngestionMessage, Port, Source, SourceFactory, FEATURES_PORT},
+    node::{FEATURES_PORT, IngestionMessage, Port, Source, SourceFactory},
 };
 use reearth_flow_sql::SqlAdapter;
 use reearth_flow_types::{Code, Feature};

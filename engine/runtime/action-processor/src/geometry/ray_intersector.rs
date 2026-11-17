@@ -424,11 +424,7 @@ impl RayIntersector {
                 return None;
             }
             let s = av.to_string();
-            if s.is_empty() {
-                None
-            } else {
-                Some(s)
-            }
+            if s.is_empty() { None } else { Some(s) }
         })
     }
 

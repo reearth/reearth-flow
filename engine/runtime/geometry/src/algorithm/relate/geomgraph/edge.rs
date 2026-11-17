@@ -1,7 +1,7 @@
 use std::collections::BTreeSet;
 
 use crate::{
-    algorithm::{dimensions::Dimensions, line_intersection::LineIntersection, GeoFloat},
+    algorithm::{GeoFloat, dimensions::Dimensions, line_intersection::LineIntersection},
     types::{coordinate::Coordinate, line::Line},
 };
 

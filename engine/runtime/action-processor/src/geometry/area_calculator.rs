@@ -2,20 +2,20 @@ use std::collections::HashMap;
 
 #[cfg(feature = "new-geometry")]
 use reearth_flow_diagnostics::{DiagnosticDraft, ErrorCode};
+#[cfg(feature = "new-geometry")]
+use reearth_flow_geometry::Geometry;
 #[cfg(not(feature = "new-geometry"))]
 use reearth_flow_geometry::algorithm::{area2d::Area2D, area3d::Area3D};
 #[cfg(feature = "new-geometry")]
 use reearth_flow_geometry::coordinate::UnitKind;
 #[cfg(feature = "new-geometry")]
-use reearth_flow_geometry::ops::{area_report, Area, AreaFrame};
-#[cfg(feature = "new-geometry")]
-use reearth_flow_geometry::Geometry;
+use reearth_flow_geometry::ops::{Area, AreaFrame, area_report};
 use reearth_flow_runtime::{
     errors::BoxedError,
     event::EventHub,
     executor_operation::{ExecutorContext, NodeContext},
     forwarder::ProcessorChannelForwarder,
-    node::{Port, Processor, ProcessorFactory, FEATURES_PORT},
+    node::{FEATURES_PORT, Port, Processor, ProcessorFactory},
 };
 #[cfg(not(feature = "new-geometry"))]
 use reearth_flow_types::GeometryValue;
@@ -356,10 +356,12 @@ mod tests {
         let feature = Feature::from(tilted_square());
 
         let default = run(&mut *build(None), &feature);
-        assert!(default
-            .attributes
-            .get(&Attribute::new("area".to_string()))
-            .is_some());
+        assert!(
+            default
+                .attributes
+                .get(&Attribute::new("area".to_string()))
+                .is_some()
+        );
 
         let named = run(
             &mut *build(Some(json!({"outputAttribute": "roofArea"}))),

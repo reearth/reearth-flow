@@ -26,8 +26,8 @@
 use std::collections::{BTreeMap, BTreeSet, HashMap};
 
 use crate::appearance::{
-    append_theme, single_channel_uv, validate_uv_coupling, Appearance, ChannelId, FaceBinding,
-    Material, MaterialIndex, Side, ThemeId, UvSet, UvSource,
+    Appearance, ChannelId, FaceBinding, Material, MaterialIndex, Side, ThemeId, UvSet, UvSource,
+    append_theme, single_channel_uv, validate_uv_coupling,
 };
 use crate::coordinate::CoordinateFrame;
 use crate::error::Error;
@@ -74,15 +74,17 @@ impl TriangularMesh3DData {
         triangle_count: usize,
         indices: impl IntoIterator<Item = u32>,
     ) -> Self {
-        let width = index_width_for(vertices.len());
-        Self {
-            indices: IndexBuffer::from_exact_unchecked(
-                width,
-                triangle_count,
-                group_triples(indices),
-            ),
-            vertices,
-            appearance: None,
+        unsafe {
+            let width = index_width_for(vertices.len());
+            Self {
+                indices: IndexBuffer::from_exact_unchecked(
+                    width,
+                    triangle_count,
+                    group_triples(indices),
+                ),
+                vertices,
+                appearance: None,
+            }
         }
     }
 
@@ -176,10 +178,12 @@ impl TriangularMesh3D {
         triangle_count: usize,
         indices: impl IntoIterator<Item = u32>,
     ) -> Self {
-        Self::new(
-            frame,
-            TriangularMesh3DData::from_parts_unchecked(vertices, triangle_count, indices),
-        )
+        unsafe {
+            Self::new(
+                frame,
+                TriangularMesh3DData::from_parts_unchecked(vertices, triangle_count, indices),
+            )
+        }
     }
 
     /// Build from a triangle soup; see [`TriangularMesh3DData::from_soup`].
@@ -267,17 +271,19 @@ impl TriangularMesh2D {
         indices: impl IntoIterator<Item = u32>,
         elevation: f64,
     ) -> Self {
-        let width = index_width_for(vertices.len());
-        Self {
-            frame,
-            indices: IndexBuffer::from_exact_unchecked(
-                width,
-                triangle_count,
-                group_triples(indices),
-            ),
-            vertices,
-            z: Some(elevation),
-            appearance: None,
+        unsafe {
+            let width = index_width_for(vertices.len());
+            Self {
+                frame,
+                indices: IndexBuffer::from_exact_unchecked(
+                    width,
+                    triangle_count,
+                    group_triples(indices),
+                ),
+                vertices,
+                z: Some(elevation),
+                appearance: None,
+            }
         }
     }
 
@@ -291,17 +297,19 @@ impl TriangularMesh2D {
         triangle_count: usize,
         indices: impl IntoIterator<Item = u32>,
     ) -> Self {
-        let width = index_width_for(vertices.len());
-        Self {
-            frame,
-            indices: IndexBuffer::from_exact_unchecked(
-                width,
-                triangle_count,
-                group_triples(indices),
-            ),
-            vertices,
-            z: None,
-            appearance: None,
+        unsafe {
+            let width = index_width_for(vertices.len());
+            Self {
+                frame,
+                indices: IndexBuffer::from_exact_unchecked(
+                    width,
+                    triangle_count,
+                    group_triples(indices),
+                ),
+                vertices,
+                z: None,
+                appearance: None,
+            }
         }
     }
 

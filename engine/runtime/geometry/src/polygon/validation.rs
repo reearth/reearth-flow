@@ -1,13 +1,12 @@
 use super::{Polygon2D, Polygon3D};
 use crate::validation_next::{
-    check_chain_simple_2d, check_chain_simple_3d, check_degenerate_ring_2d,
-    check_degenerate_ring_3d, check_duplicate_points, check_face_orientation_3d, check_finite_2d,
-    check_finite_3d, check_finite_elevation, check_holes_in_exterior_2d,
-    check_holes_in_exterior_3d, check_interior_connected_2d, check_interior_connected_3d,
-    check_planarity_3d, check_ring_orientation_2d, check_ring_pair_2d, check_ring_pair_3d,
-    check_too_few_points_2d, check_too_few_points_3d, check_unclosed_ring_2d,
-    check_unclosed_ring_3d, open_ring, IssuePart, Validate, ValidationParams, ValidationReport,
-    ValidationType,
+    IssuePart, Validate, ValidationParams, ValidationReport, ValidationType, check_chain_simple_2d,
+    check_chain_simple_3d, check_degenerate_ring_2d, check_degenerate_ring_3d,
+    check_duplicate_points, check_face_orientation_3d, check_finite_2d, check_finite_3d,
+    check_finite_elevation, check_holes_in_exterior_2d, check_holes_in_exterior_3d,
+    check_interior_connected_2d, check_interior_connected_3d, check_planarity_3d,
+    check_ring_orientation_2d, check_ring_pair_2d, check_ring_pair_3d, check_too_few_points_2d,
+    check_too_few_points_3d, check_unclosed_ring_2d, check_unclosed_ring_3d, open_ring,
 };
 use crate::{Euclidean2DGeometry, Geometry};
 
@@ -99,9 +98,13 @@ impl Validate for Polygon2D {
             let Ok(sign) = self.frame.orientation_sign() else {
                 return;
             };
-            check_ring_orientation_2d(&self.frame, sign, self.exterior(), true, r);
-            for hole in self.interiors() {
-                check_ring_orientation_2d(&self.frame, sign, hole, false, r);
+            r.record_part(IssuePart::Ring(0), |r| {
+                check_ring_orientation_2d(&self.frame, sign, self.exterior(), true, r)
+            });
+            for (i, hole) in self.interiors().enumerate() {
+                r.record_part(IssuePart::Ring(i + 1), |r| {
+                    check_ring_orientation_2d(&self.frame, sign, hole, false, r)
+                });
             }
         })
     }
@@ -262,7 +265,7 @@ mod tests {
     use crate::coordinate::{CoordinateFrame, EpsgCode};
     use crate::polygon::Polygon2D;
     use crate::validation_next::{
-        validate_one, DuplicateCounting, ValidationParams, ValidationResult,
+        DuplicateCounting, ValidationParams, ValidationResult, validate_one,
     };
 
     fn square() -> [[f64; 2]; 5] {
@@ -1539,6 +1542,50 @@ mod tests {
             ValidationResult::Failed(issues) => {
                 assert_eq!(issues.len(), 1);
                 assert_eq!(issues[0].part, IssuePart::Ring(1));
+            }
+            other => panic!("expected a failure, got {other:?}"),
+        }
+    }
+
+    #[test]
+    fn misoriented_rings_are_attributed_to_their_own_ring() {
+        // Exterior clockwise, first hole clockwise (correct), second hole
+        // counter-clockwise.
+        let ext = [[0.0, 0.0], [0.0, 8.0], [8.0, 8.0], [8.0, 0.0], [0.0, 0.0]];
+        let good = vec![[1.0, 1.0], [1.0, 2.0], [2.0, 2.0], [2.0, 1.0], [1.0, 1.0]];
+        let bad = vec![[4.0, 4.0], [5.0, 4.0], [5.0, 5.0], [4.0, 5.0], [4.0, 4.0]];
+        let p = poly2(ext, vec![good, bad]);
+        assert_eq!(
+            parts(&p, ValidationType::Orientation),
+            vec![IssuePart::Ring(0), IssuePart::Ring(2)]
+        );
+    }
+
+    #[test]
+    fn same_wound_hole_of_a_3d_face_is_attributed_to_the_hole() {
+        let opposite = vec![
+            [1.0, 1.0, 0.0],
+            [1.0, 2.0, 0.0],
+            [2.0, 2.0, 0.0],
+            [2.0, 1.0, 0.0],
+            [1.0, 1.0, 0.0],
+        ];
+        let same = vec![
+            [3.0, 1.0, 0.0],
+            [3.5, 1.0, 0.0],
+            [3.5, 2.0, 0.0],
+            [3.0, 2.0, 0.0],
+            [3.0, 1.0, 0.0],
+        ];
+        let p = poly3(square3d(), vec![opposite, same]);
+        match validate_one(
+            &p,
+            ValidationType::Orientation,
+            &ValidationParams::default(),
+        ) {
+            ValidationResult::Failed(issues) => {
+                let found: Vec<_> = issues.into_iter().map(|i| i.part).collect();
+                assert_eq!(found, vec![IssuePart::Ring(2)]);
             }
             other => panic!("expected a failure, got {other:?}"),
         }

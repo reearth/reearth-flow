@@ -97,15 +97,15 @@ pub(crate) struct I18nSchema {
 
 /// Stamps translated `title` / `description` values onto a JSON Schema node.
 fn patch_text(node: &mut serde_json::Value, i18n: &PropertyI18n) {
-    if let Some(title) = &i18n.title {
-        if !title.is_empty() {
-            node["title"] = serde_json::Value::String(title.clone());
-        }
+    if let Some(title) = &i18n.title
+        && !title.is_empty()
+    {
+        node["title"] = serde_json::Value::String(title.clone());
     }
-    if let Some(desc) = &i18n.description {
-        if !desc.is_empty() {
-            node["description"] = serde_json::Value::String(desc.clone());
-        }
+    if let Some(desc) = &i18n.description
+        && !desc.is_empty()
+    {
+        node["description"] = serde_json::Value::String(desc.clone());
     }
 }
 
@@ -251,15 +251,14 @@ pub(crate) fn apply_parameter_i18n(
     {
         // def_i18n → schema["definitions"][def_name]["properties"][prop_name]
         for (def_name, props) in def_i18n {
-            if let Some(def_schema) = definitions.get_mut(def_name) {
-                if let Some(def_props) = def_schema
+            if let Some(def_schema) = definitions.get_mut(def_name)
+                && let Some(def_props) = def_schema
                     .get_mut("properties")
                     .and_then(|p| p.as_object_mut())
-                {
-                    for (prop_name, i18n) in props {
-                        if let Some(node) = def_props.get_mut(prop_name) {
-                            patch_node(node, i18n);
-                        }
+            {
+                for (prop_name, i18n) in props {
+                    if let Some(node) = def_props.get_mut(prop_name) {
+                        patch_node(node, i18n);
                     }
                 }
             }
@@ -272,10 +271,10 @@ pub(crate) fn apply_parameter_i18n(
                     if let Some(arr) = def_schema.get_mut(*keyword).and_then(|v| v.as_array_mut()) {
                         for variant in arr.iter_mut() {
                             let enum_val = enum_variant_key(variant);
-                            if let Some(val) = enum_val {
-                                if let Some(i18n) = variants.get(&val) {
-                                    patch_variant(variant, &val, i18n);
-                                }
+                            if let Some(val) = enum_val
+                                && let Some(i18n) = variants.get(&val)
+                            {
+                                patch_variant(variant, &val, i18n);
                             }
                         }
                     }
@@ -527,8 +526,10 @@ mod tests {
 
         patch_variant(&mut variant, "crs", &i18n);
 
-        assert!(variant["properties"]["crs"]["properties"]["value"]
-            .get("title")
-            .is_none());
+        assert!(
+            variant["properties"]["crs"]["properties"]["value"]
+                .get("title")
+                .is_none()
+        );
     }
 }

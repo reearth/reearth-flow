@@ -7,8 +7,8 @@ use reearth_flow_common::attribute::Attributes;
 
 use crate::coordinate::CoordinateFrame;
 use crate::line_string::{LineString2D, LineString3D};
-use crate::ops::coerce::{wrap_2d, wrap_3d};
 use crate::ops::UnsupportedOperation;
+use crate::ops::coerce::{wrap_2d, wrap_3d};
 use crate::{Euclidean2DGeometry, Euclidean3DGeometry, Geometry};
 
 /// What bounding a geometry produced.
@@ -321,11 +321,11 @@ pub(crate) fn surface_boundary_3d(
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::GeometryCollection;
     use crate::point::Point3D;
     use crate::polygon::Polygon3D;
     use crate::polygon_mesh::PolygonMesh3D;
     use crate::triangular_mesh::TriangularMesh3D;
-    use crate::GeometryCollection;
     use pretty_assertions::assert_eq;
     use reearth_flow_common::attribute::{Attribute, AttributeValue, Attributes};
 

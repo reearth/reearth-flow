@@ -13,7 +13,7 @@ use reearth_flow_runtime::errors::BoxedError;
 use reearth_flow_types::{Attribute, AttributeValue, Attributes, Feature};
 
 use crate::common::building_usage_attribute_validator::{
-    city_code_error, usage_violation_messages, BuildingUsageAttributeStrategy, UsageAnalysis,
+    BuildingUsageAttributeStrategy, UsageAnalysis, city_code_error, usage_violation_messages,
 };
 
 /// Zero-sized strategy; passed as `&Plateau6BuildingUsageStrategy` (rvalue static

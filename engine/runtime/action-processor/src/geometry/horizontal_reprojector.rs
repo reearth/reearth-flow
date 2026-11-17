@@ -24,7 +24,7 @@ use reearth_flow_runtime::{
     event::EventHub,
     executor_operation::{ExecutorContext, NodeContext},
     forwarder::ProcessorChannelForwarder,
-    node::{Port, Processor, ProcessorFactory, FEATURES_PORT},
+    node::{FEATURES_PORT, Port, Processor, ProcessorFactory},
 };
 use reearth_flow_types::{Code, CodeType, CompiledCode, GeometryValue};
 use schemars::JsonSchema;
@@ -492,7 +492,7 @@ impl Processor for HorizontalReprojector {
                 feature.geometry_mut().epsg = Some(target_epsg);
                 fw.send(ctx.new_with_feature_and_port(feature, FEATURES_PORT.clone()));
             }
-            GeometryValue::CityGmlGeometry(ref geos) => {
+            GeometryValue::CityGmlGeometry(geos) => {
                 let mut feature = feature.clone();
                 let mut transformed_geos = geos.clone();
                 with_proj(&from_crs, &to_crs, |proj| {

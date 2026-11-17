@@ -5,20 +5,20 @@ use std::sync::Arc;
 
 use reearth_flow_diagnostics::{DiagnosticDraft, ErrorCode};
 use reearth_flow_geometry::{
+    Euclidean2DGeometry, Geometry,
     coordinate::{CoordinateFrame, EpsgCode},
     point::Point2D,
-    Euclidean2DGeometry, Geometry,
 };
 use reearth_flow_runtime::{
     errors::BoxedError,
     event::EventHub,
     executor_operation::{ExecutorContext, NodeContext},
     forwarder::ProcessorChannelForwarder,
-    node::{Port, Processor, ProcessorFactory, FEATURES_PORT, REJECTED_PORT},
+    node::{FEATURES_PORT, Port, Processor, ProcessorFactory, REJECTED_PORT},
 };
 use reearth_flow_types::jpmesh::{
-    overlap::{cell_centre, cell_face},
     JPMeshCode, TenDigitReading,
+    overlap::{cell_centre, cell_face},
 };
 use reearth_flow_types::{Attribute, AttributeValue};
 use schemars::JsonSchema;
@@ -74,7 +74,7 @@ impl ProcessorFactory for JPMeshCodeReplacerFactory {
                 return Err(GeometryProcessorError::JPMeshCodeReplacerFactory(
                     "Missing required parameter `meshCodeAttribute`".to_string(),
                 )
-                .into())
+                .into());
             }
         };
         let epsg = two_dimensional(params.epsg_code)
@@ -238,14 +238,14 @@ mod tests {
 
     use pretty_assertions::assert_eq;
     use reearth_flow_common::uri::Uri;
-    use reearth_flow_geometry::ops::reproject::{transform_coords_3d, ReprojectionCache};
+    use reearth_flow_geometry::ops::reproject::{ReprojectionCache, transform_coords_3d};
     use reearth_flow_geometry::polygon::Polygon2D;
     use reearth_flow_runtime::event::Event;
     use reearth_flow_runtime::forwarder::NoopChannelForwarder;
     use reearth_flow_runtime::kvs;
     use reearth_flow_storage::resolve::StorageResolver;
-    use reearth_flow_types::jpmesh::overlap::containing;
     use reearth_flow_types::jpmesh::JPMeshType;
+    use reearth_flow_types::jpmesh::overlap::containing;
     use reearth_flow_types::{Attributes, Feature};
     use serde_json::json;
 
@@ -564,13 +564,15 @@ mod tests {
     #[test]
     fn the_mesh_code_attribute_is_required() {
         let with: HashMap<String, Value> = serde_json::from_value(json!({})).unwrap();
-        assert!(JPMeshCodeReplacerFactory
-            .build(
-                NodeContext::default(),
-                EventHub::new(1),
-                "JP Mesh Code Replacer".to_string(),
-                Some(with),
-            )
-            .is_err());
+        assert!(
+            JPMeshCodeReplacerFactory
+                .build(
+                    NodeContext::default(),
+                    EventHub::new(1),
+                    "JP Mesh Code Replacer".to_string(),
+                    Some(with),
+                )
+                .is_err()
+        );
     }
 }

@@ -75,14 +75,14 @@ fn effective_output_ports(
                     ports.push(p);
                 }
             }
-        } else if action == crate::node::FEATURE_FILTER_ACTION {
-            if let Some(serde_json::Value::Array(conditions)) = with.get("conditions") {
-                for c in conditions {
-                    if let Some(serde_json::Value::String(port)) = c.get("outputPort") {
-                        let p = Port::new(port.clone());
-                        if !ports.contains(&p) {
-                            ports.push(p);
-                        }
+        } else if action == crate::node::FEATURE_FILTER_ACTION
+            && let Some(serde_json::Value::Array(conditions)) = with.get("conditions")
+        {
+            for c in conditions {
+                if let Some(serde_json::Value::String(port)) = c.get("outputPort") {
+                    let p = Port::new(port.clone());
+                    if !ports.contains(&p) {
+                        ports.push(p);
                     }
                 }
             }
@@ -275,7 +275,7 @@ mod tests {
 
     use crate::event::EventHub;
     use crate::executor_operation::NodeContext;
-    use crate::node::{Processor, Source, FEATURES_PORT};
+    use crate::node::{FEATURES_PORT, Processor, Source};
 
     // ---- Stub factories -------------------------------------------------
 
@@ -479,9 +479,11 @@ mod tests {
                     .is_some_and(|s| s.fields.contains_key(&Attribute::new("foo".to_string())))
             })
             .expect("an output with field foo");
-        assert!(adder_out["features"]
-            .fields
-            .contains_key(&Attribute::new("foo".to_string())));
+        assert!(
+            adder_out["features"]
+                .fields
+                .contains_key(&Attribute::new("foo".to_string()))
+        );
     }
 
     #[test]
@@ -508,9 +510,11 @@ mod tests {
                     .is_some_and(|s| s.fields.contains_key(&Attribute::new("foo".to_string())))
             })
             .expect("an output with field foo");
-        assert!(adder_out["features"]
-            .fields
-            .contains_key(&Attribute::new("foo".to_string())));
+        assert!(
+            adder_out["features"]
+                .fields
+                .contains_key(&Attribute::new("foo".to_string()))
+        );
     }
 
     #[test]

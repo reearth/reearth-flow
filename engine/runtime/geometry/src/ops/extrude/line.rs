@@ -6,11 +6,11 @@ use super::math::{cross, norm, sub};
 use super::place::{place, placement};
 use super::weld::{weld, weld_tolerance};
 use super::{ExtrudeError, ExtrudeSpec};
+use crate::Euclidean3DGeometry;
 use crate::coordinate::CoordinateFrame;
 use crate::line_string::LineString3D;
 use crate::polygon::Polygon3D;
 use crate::polygon_mesh::PolygonMesh3D;
-use crate::Euclidean3DGeometry;
 
 pub(crate) fn sweep_point(
     frame: &CoordinateFrame,

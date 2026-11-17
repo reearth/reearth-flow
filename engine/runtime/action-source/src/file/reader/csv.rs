@@ -3,7 +3,7 @@ use crate::errors::GeometryParsingError;
 use bytes::Bytes;
 use indexmap::IndexMap;
 use reearth_flow_common::csv::{
-    auto_generate_header, build_csv_reader, read_merged_header, Delimiter,
+    Delimiter, auto_generate_header, build_csv_reader, read_merged_header,
 };
 #[cfg(feature = "new-geometry")]
 use reearth_flow_diagnostics::ErrorCode;
@@ -11,7 +11,7 @@ use reearth_flow_diagnostics::ErrorCode;
 use reearth_flow_geometry::Geometry;
 #[cfg(feature = "new-geometry")]
 use reearth_flow_runtime::executor_operation::NodeContext;
-use reearth_flow_runtime::node::{IngestionMessage, Port, FEATURES_PORT};
+use reearth_flow_runtime::node::{FEATURES_PORT, IngestionMessage, Port};
 use reearth_flow_types::{AttributeValue, Feature};
 use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
@@ -144,10 +144,10 @@ pub(crate) async fn read_csv(
     // `read_merged_header` returns an empty list, and column names are only
     // auto-generated from the first data row inside the loop below -- so that
     // path validates there instead, right after the header is synthesised.
-    if header_rows != 0 {
-        if let Some(config) = &props.geometry {
-            validate_geometry_columns(&header, config)?;
-        }
+    if header_rows != 0
+        && let Some(config) = &props.geometry
+    {
+        validate_geometry_columns(&header, config)?;
     }
 
     let mut data_rows = 0usize;
@@ -207,7 +207,7 @@ pub(crate) async fn read_csv(
                     Err(why) => {
                         return Err(crate::errors::SourceError::CsvFileReader(format!(
                             "row {data_rows}: {why}"
-                        )))
+                        )));
                     }
                 }
             }
@@ -601,8 +601,10 @@ mod tests {
 
     #[tokio::test]
     async fn a_header_only_file_yields_nothing_and_still_succeeds() {
-        assert!(run("name,lon,lat\n", &param(Some(coords_geometry())))
-            .await
-            .is_empty());
+        assert!(
+            run("name,lon,lat\n", &param(Some(coords_geometry())))
+                .await
+                .is_empty()
+        );
     }
 }

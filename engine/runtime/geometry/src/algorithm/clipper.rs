@@ -6,14 +6,14 @@ THE SOFTWARE IS PROVIDED "AS IS" AND THE AUTHOR DISCLAIMS ALL WARRANTIES WITH RE
  */
 
 use clipper_sys::{
-    clean, execute, free_polygons, offset, offset_simplify_clean, simplify, ClipType,
-    ClipType_ctDifference, ClipType_ctIntersection, ClipType_ctUnion, ClipType_ctXor,
+    ClipType, ClipType_ctDifference, ClipType_ctIntersection, ClipType_ctUnion, ClipType_ctXor,
     EndType as ClipperEndType, EndType_etClosedLine, EndType_etClosedPolygon, EndType_etOpenButt,
     EndType_etOpenRound, EndType_etOpenSquare, JoinType as ClipperJoinType, JoinType_jtMiter,
     JoinType_jtRound, JoinType_jtSquare, Path, PolyFillType as ClipperPolyFillType,
     PolyFillType_pftEvenOdd, PolyFillType_pftNegative, PolyFillType_pftNonZero,
     PolyFillType_pftPositive, PolyType, PolyType_ptClip, PolyType_ptSubject,
-    Polygon as ClipperPolygon, Polygons, Vertice,
+    Polygon as ClipperPolygon, Polygons, Vertice, clean, execute, free_polygons, offset,
+    offset_simplify_clean, simplify,
 };
 
 use crate::types::{

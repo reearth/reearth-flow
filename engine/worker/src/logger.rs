@@ -16,12 +16,12 @@ use tokio::runtime::Handle;
 use tracing::Level;
 use tracing::{Event, Subscriber};
 use tracing_appender::non_blocking::{NonBlocking, WorkerGuard};
+use tracing_subscriber::EnvFilter;
+use tracing_subscriber::Layer;
 use tracing_subscriber::fmt::time::UtcTime;
 use tracing_subscriber::layer::Context;
 use tracing_subscriber::prelude::*;
 use tracing_subscriber::registry::LookupSpan;
-use tracing_subscriber::EnvFilter;
-use tracing_subscriber::Layer;
 use uuid::Uuid;
 
 static ENABLE_JSON_LOG: Lazy<bool> = Lazy::new(|| {

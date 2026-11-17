@@ -19,7 +19,7 @@ use reearth_flow_runtime::{
     event::{Event, EventHandler, EventHub, NodeMetrics},
     executor_operation::{ExecutorContext, NodeContext},
     forwarder::ProcessorChannelForwarder,
-    node::{NodeKind, NodeStatus, Port, Processor, ProcessorFactory, FEATURES_PORT},
+    node::{FEATURES_PORT, NodeKind, NodeStatus, Port, Processor, ProcessorFactory},
 };
 use reearth_flow_state::State;
 use reearth_flow_storage::resolve::StorageResolver;
@@ -29,7 +29,8 @@ use serde_json::Value;
 static INIT: Once = Once::new();
 fn init_test_env() {
     INIT.call_once(|| {
-        std::env::set_var("FLOW_RUNTIME_ACTION_LOG_DISABLE", "true");
+        // FIXME: Audit that the environment access only happens in single-threaded code.
+        unsafe { std::env::set_var("FLOW_RUNTIME_ACTION_LOG_DISABLE", "true") };
     });
 }
 

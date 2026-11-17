@@ -1,6 +1,6 @@
 use super::Contains;
-use crate::algorithm::intersects::Intersects;
 use crate::algorithm::GeoNum;
+use crate::algorithm::intersects::Intersects;
 use crate::types::coordinate::Coordinate;
 use crate::types::coordnum::CoordNum;
 use crate::types::line::Line;

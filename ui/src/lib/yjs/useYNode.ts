@@ -12,10 +12,31 @@ import type {
 } from "@flow/types";
 
 import { yNodeConstructor } from "./conversions";
-import type { YNodesMap, YNodeValue, YWorkflow } from "./types";
+import type { YNode, YNodesMap, YNodeValue, YWorkflow } from "./types";
 import { updateParentYWorkflow } from "./useParentYWorkflow";
 import { removeParentYWorkflowNodePseudoPort } from "./useParentYWorkflow/removeParentYWorkflowNodePseudoPort";
 import { computeWorkflowPath } from "./utils/computeWorkflowPath";
+
+// Y.Map.set records a new item even when the value is identical, and every
+// item is a document update. React Flow reports dimensions for every node each
+// time it measures them, and the same position again at the end of a drag, so
+// only the values that actually differ are written.
+const setYNodeValues = (
+  yNode: YNode,
+  key: string,
+  values: Record<string, number | string>,
+) => {
+  const existing = yNode.get(key);
+  if (existing instanceof Y.Map) {
+    for (const [k, v] of Object.entries(values)) {
+      if (existing.get(k) !== v) existing.set(k, v);
+    }
+    return;
+  }
+  const yMap = new Y.Map<unknown>();
+  for (const [k, v] of Object.entries(values)) yMap.set(k, v);
+  yNode.set(key, yMap);
+};
 
 export default ({
   currentYWorkflow,
@@ -166,19 +187,10 @@ export default ({
             const existingYNode = yNodes.get(change.id);
 
             if (existingYNode && change.position) {
-              const existingPosition = existingYNode.get(
-                "position",
-              ) as Y.Map<unknown>;
-
-              if (existingPosition) {
-                existingPosition.set("x", change.position.x);
-                existingPosition.set("y", change.position.y);
-              } else {
-                const newPosition = new Y.Map<unknown>();
-                newPosition.set("x", change.position.x);
-                newPosition.set("y", change.position.y);
-                existingYNode.set("position", newPosition);
-              }
+              setYNodeValues(existingYNode, "position", {
+                x: change.position.x,
+                y: change.position.y,
+              });
             }
             break;
           }
@@ -195,34 +207,14 @@ export default ({
             const existingYNode = yNodes.get(change.id);
 
             if (existingYNode && change.dimensions) {
-              const existingMeasured = existingYNode.get(
-                "measured",
-              ) as Y.Map<unknown>;
-
-              if (existingMeasured) {
-                existingMeasured.set("width", change.dimensions.width);
-                existingMeasured.set("height", change.dimensions.height);
-              } else {
-                const newMeasured = new Y.Map<unknown>();
-                newMeasured.set("width", change.dimensions.width);
-                newMeasured.set("height", change.dimensions.height);
-                existingYNode.set("measured", newMeasured);
-              }
+              const { width, height } = change.dimensions;
+              setYNodeValues(existingYNode, "measured", { width, height });
 
               if (change.setAttributes) {
-                const existingStyle = existingYNode.get(
-                  "style",
-                ) as Y.Map<unknown>;
-
-                if (existingStyle) {
-                  existingStyle.set("width", change.dimensions.width + "px");
-                  existingStyle.set("height", change.dimensions.height + "px");
-                } else {
-                  const newStyle = new Y.Map<unknown>();
-                  newStyle.set("width", change.dimensions.width + "px");
-                  newStyle.set("height", change.dimensions.height + "px");
-                  existingYNode.set("style", newStyle);
-                }
+                setYNodeValues(existingYNode, "style", {
+                  width: width + "px",
+                  height: height + "px",
+                });
               }
             }
             break;

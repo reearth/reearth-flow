@@ -14,7 +14,7 @@ use reearth_flow_runtime::errors::BoxedError;
 use reearth_flow_runtime::event::EventHub;
 use reearth_flow_runtime::executor_operation::{ExecutorContext, NodeContext};
 use reearth_flow_runtime::forwarder::ProcessorChannelForwarder;
-use reearth_flow_runtime::node::{Port, Processor, ProcessorFactory, FEATURES_PORT};
+use reearth_flow_runtime::node::{FEATURES_PORT, Port, Processor, ProcessorFactory};
 use reearth_flow_types::{Attribute, AttributeValue, Code, CodeType, Feature};
 use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
@@ -393,7 +393,7 @@ impl Processor for CityGmlAttributeInserter {
                 self.insert_attributes(&input_bytes, collect_rings)?;
 
             // If we have roof rings and texture info, append appearance block
-            let final_output = if let (false, Some(epsg), Some(ref tex_fname)) =
+            let final_output = if let (false, Some(epsg), Some(tex_fname)) =
                 (roof_rings.is_empty(), source_epsg, &texture_filename)
             {
                 let appearance_xml = CityGmlAttributeInserter::build_appearance_xml(
@@ -691,10 +691,10 @@ impl CityGmlAttributeInserter {
                     }
 
                     if building_depth == Some(depth) {
-                        if let Some(ref gml_id) = current_gml_id {
-                            if let Some(values) = self.elements.get(gml_id) {
-                                self.write_measure_attributes(&mut writer, values)?;
-                            }
+                        if let Some(ref gml_id) = current_gml_id
+                            && let Some(values) = self.elements.get(gml_id)
+                        {
+                            self.write_measure_attributes(&mut writer, values)?;
                         }
                         building_depth = None;
                         current_gml_id = None;
@@ -710,15 +710,14 @@ impl CityGmlAttributeInserter {
                     })?;
                 }
                 Ok(Event::Text(ref e)) => {
-                    if in_image_uri {
-                        if let Ok(text) = e.unescape() {
-                            image_uri_text.push_str(&text);
-                        }
+                    if in_image_uri && let Ok(text) = e.unescape() {
+                        image_uri_text.push_str(&text);
                     }
-                    if collect_rings && in_pos_list {
-                        if let Ok(text) = e.unescape() {
-                            pos_list_text.push_str(&text);
-                        }
+                    if collect_rings
+                        && in_pos_list
+                        && let Ok(text) = e.unescape()
+                    {
+                        pos_list_text.push_str(&text);
                     }
                     writer.write_event(Event::Text(e.clone())).map_err(|e| {
                         CityGmlAttributeInserterError::Process(format!("XML write error: {e}"))

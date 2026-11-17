@@ -105,7 +105,7 @@ fn reproject_shell(
     transform_coords_3d(cache, from, target, vertices)
 }
 
-use crate::ops::{plan_frame_step, translate_3d, ConvertFrame, FrameStep, Translate};
+use crate::ops::{ConvertFrame, FrameStep, Translate, plan_frame_step, translate_3d};
 
 impl Translate for Solid {
     fn translate(&mut self, delta: [f64; 3]) -> crate::error::Result<()> {
@@ -148,7 +148,7 @@ crate::unsupported!(Solid: ForceTwoDimension);
 crate::unsupported!(Solid: DivideByGrid);
 
 use crate::ops::{
-    emit_face_3d, emit_triangles_3d, CountHoles, ExtractHoles, ExtractedPart, RemoveAppearance,
+    CountHoles, ExtractHoles, ExtractedPart, RemoveAppearance, emit_face_3d, emit_triangles_3d,
 };
 
 impl CountHoles for Solid {
@@ -286,9 +286,9 @@ impl Footprint for Solid {
 }
 
 #[cfg(feature = "new-geometry")]
-use crate::ops::area::polygon_3d_surface_area;
-#[cfg(feature = "new-geometry")]
 use crate::ops::Area;
+#[cfg(feature = "new-geometry")]
+use crate::ops::area::polygon_3d_surface_area;
 
 #[cfg(feature = "new-geometry")]
 impl Area for Solid {

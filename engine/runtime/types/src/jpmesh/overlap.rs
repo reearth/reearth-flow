@@ -5,20 +5,20 @@
 use std::cell::RefCell;
 
 use reearth_flow_geometry::{
+    Euclidean2DGeometry,
     collection::Collection2D,
     coordinate::{CoordinateFrame, EpsgCode},
     ops::{
-        reproject::transform_coords_3d, rings_as_faces_2d, Aabb, BoundingBox, ReprojectionCache,
+        Aabb, BoundingBox, ReprojectionCache, reproject::transform_coords_3d, rings_as_faces_2d,
     },
-    overlay::{clip_2d, overlay_2d, OverlayOp},
+    overlay::{OverlayOp, clip_2d, overlay_2d},
     polygon::Polygon2D,
-    predicates::view::{flatten_2d, Leaf2D},
-    Euclidean2DGeometry,
+    predicates::view::{Leaf2D, flatten_2d},
 };
 // The mesh grid is still described with the pre-migration rectangle types.
 use reearth_flow_geometry::types::{coordinate::Coordinate2D, rect::Rect2D};
 
-use super::{in_jis_range, JPMeshCode, JPMeshType};
+use super::{JPMeshCode, JPMeshType, in_jis_range};
 
 /// The geographic CRS the Japanese mesh grid is described in: the 2D horizontal
 /// counterpart of EPSG:6697, sharing its datum and its `[latitude, longitude]`

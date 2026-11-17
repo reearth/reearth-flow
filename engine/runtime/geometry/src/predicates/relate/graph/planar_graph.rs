@@ -1,6 +1,6 @@
 use super::{
-    node_map::{NodeFactory, NodeMap},
     CoordNode, Edge,
+    node_map::{NodeFactory, NodeMap},
 };
 use crate::predicates::kernel::CoordPos;
 

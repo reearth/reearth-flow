@@ -29,15 +29,15 @@ use reearth_flow_runtime::{
     event::EventHub,
     executor_operation::{ExecutorContext, NodeContext},
     forwarder::ProcessorChannelForwarder,
-    node::{Port, Processor, ProcessorFactory, FEATURES_PORT},
+    node::{FEATURES_PORT, Port, Processor, ProcessorFactory},
 };
+#[cfg(not(feature = "new-geometry"))]
+use reearth_flow_types::GeometryValue;
 #[cfg(feature = "new-geometry")]
 use reearth_flow_types::datetime::DateTime;
 #[cfg(not(feature = "new-geometry"))]
 use reearth_flow_types::jpmesh::JPMeshCode;
 use reearth_flow_types::jpmesh::JPMeshType;
-#[cfg(not(feature = "new-geometry"))]
-use reearth_flow_types::GeometryValue;
 use reearth_flow_types::{Attribute, AttributeValue};
 use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
@@ -47,16 +47,16 @@ use serde_json::Value;
 use reearth_flow_diagnostics::DiagnosticDraft;
 #[cfg(feature = "new-geometry")]
 use reearth_flow_geometry::{
+    Euclidean2DGeometry, Geometry,
     collection::Collection2D,
     coordinate::{CoordinateFrame, EpsgCode},
     ops::common_frame,
     point::Point2D,
-    Euclidean2DGeometry, Geometry,
 };
 #[cfg(feature = "new-geometry")]
 use reearth_flow_types::jpmesh::{
-    overlap::{cell_centre, cell_face, touched_cells},
     JPMeshCode,
+    overlap::{cell_centre, cell_face, touched_cells},
 };
 #[cfg(feature = "new-geometry")]
 use reearth_flow_types::{Attributes, Feature};
@@ -64,7 +64,7 @@ use reearth_flow_types::{Attributes, Feature};
 use super::errors::GeometryProcessorError;
 use super::jp_mesh_code_extractor::MeshLevel;
 #[cfg(feature = "new-geometry")]
-use super::jp_mesh_code_extractor::{reaches_outside_mesh_range, Skip};
+use super::jp_mesh_code_extractor::{Skip, reaches_outside_mesh_range};
 
 #[derive(Debug, Clone, Default)]
 pub struct JPStandardGridAccumulatorFactory;
@@ -639,9 +639,9 @@ mod tests {
 
     use reearth_flow_common::uri::Uri;
     use reearth_flow_diagnostics::ErrorCode;
-    use reearth_flow_geometry::ops::reproject::{transform_coords_3d, ReprojectionCache};
-    use reearth_flow_geometry::polygon::{Polygon2D, Polygon3D};
     use reearth_flow_geometry::Euclidean3DGeometry;
+    use reearth_flow_geometry::ops::reproject::{ReprojectionCache, transform_coords_3d};
+    use reearth_flow_geometry::polygon::{Polygon2D, Polygon3D};
     use reearth_flow_runtime::event::Event;
     use reearth_flow_runtime::forwarder::NoopChannelForwarder;
     use reearth_flow_runtime::kvs;
@@ -1104,9 +1104,11 @@ mod tests {
             .map(|f| f.attributes.get(&Attribute::new("g".to_string())).cloned())
             .collect();
         assert_ne!(groups[0], groups[1]);
-        assert!(groups
-            .iter()
-            .all(|g| matches!(g, Some(AttributeValue::Map(_)))));
+        assert!(
+            groups
+                .iter()
+                .all(|g| matches!(g, Some(AttributeValue::Map(_))))
+        );
     }
 
     fn solid_in(epsg: EpsgCode) -> Geometry {

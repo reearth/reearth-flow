@@ -42,20 +42,28 @@ const EcosystemNavigator: React.FC<Props> = ({
 
   const handleLinkClick = () => setOpen(false);
 
-  const dataServices = [
+  const dataServices: {
+    name: string;
+    description: string;
+    icon: IconName;
+    href?: string;
+  }[] = [
     {
       name: "Terrain",
       description: t("Open terrain tiles for 3D globes"),
+      icon: "reearthTerrain",
       href: reearthTerrainUrl,
     },
     {
       name: "Buildings",
       description: t("Open 3D buildings tiles for the world"),
+      icon: "reearthBuildings",
       href: reearthBuildingsUrl,
     },
     {
       name: "Papers",
       description: t("Open Map Tile Service"),
+      icon: "reearthPapers",
       href: reearthPapersUrl,
     },
   ];
@@ -126,17 +134,26 @@ const EcosystemNavigator: React.FC<Props> = ({
         <Divider />
         <SectionLabel>{t("Re:Earth data services")}</SectionLabel>
         <div className="flex flex-col gap-2">
-          {dataServices.map(({ name, description, href }) => (
+          {dataServices.map(({ name, description, icon, href }) => (
             <ExternalLink
               key={name}
-              className="group flex w-fit flex-col"
+              className="group flex w-fit items-center gap-3"
               href={href}
               onClick={handleLinkClick}>
-              <LinkName
-                className="-mx-1 rounded px-1 py-0.5 group-hover:bg-primary"
-                name={name}
+              <Icon
+                className="shrink-0 overflow-hidden rounded-[5px]"
+                icon={icon}
+                size={28}
               />
-              <LinkDescription>{description}</LinkDescription>
+              <div className="flex flex-col">
+                <LinkName
+                  className="-mx-1 rounded px-1 py-0.5 group-hover:bg-primary"
+                  name={name}
+                />
+                <LinkDescription className="wrap-break-word whitespace-normal">
+                  {description}
+                </LinkDescription>
+              </div>
             </ExternalLink>
           ))}
         </div>

@@ -5,7 +5,7 @@ use reearth_flow_geometry::types::line_string::LineString3D;
 use reearth_flow_geometry::types::polygon::Polygon3D;
 use reearth_flow_types::{GeometryType, GmlGeometry};
 
-use super::utils::{gml_id_attr, local_name, XmlChild, XmlNode};
+use super::utils::{XmlChild, XmlNode, gml_id_attr, local_name};
 
 pub fn extract_geometries(node: &Arc<XmlNode>) -> (Arc<XmlNode>, Vec<GmlGeometry>) {
     let mut out: Vec<GmlGeometry> = Vec::new();
@@ -110,11 +110,7 @@ fn parse_gml_geom(node: &XmlNode, ty: GeometryType, lod: Option<u8>) -> Option<G
     }
 
     let empty = geom.polygons.is_empty() && geom.line_strings.is_empty() && geom.points.is_empty();
-    if empty {
-        None
-    } else {
-        Some(geom)
-    }
+    if empty { None } else { Some(geom) }
 }
 
 fn collect_polygons(node: &XmlNode, out: &mut Vec<Polygon3D<f64>>) {
@@ -539,7 +535,7 @@ mod tests {
 
     use super::*;
     use crate::utils::{
-        test_url, NsId, XmlChild, EMPTY_NS_ID, GML_NS_32, GML_NS_ID, XLINK_NS, XLINK_NS_ID,
+        EMPTY_NS_ID, GML_NS_32, GML_NS_ID, NsId, XLINK_NS, XLINK_NS_ID, XmlChild, test_url,
     };
 
     fn text_node(t: &str) -> XmlChild {

@@ -121,7 +121,9 @@ pub enum ExecutionError {
     SerializeRecordWriter(#[source] SerializationError),
     #[error("InValid Sink: {0}")]
     InvalidSink(String),
-    #[error("Subgraph expansion did not complete after {max_iterations} iterations — possible cycle in subgraph references. Unexpanded subgraph ids: {ids:?}")]
+    #[error(
+        "Subgraph expansion did not complete after {max_iterations} iterations — possible cycle in subgraph references. Unexpanded subgraph ids: {ids:?}"
+    )]
     SubgraphCycle {
         max_iterations: usize,
         ids: Vec<String>,

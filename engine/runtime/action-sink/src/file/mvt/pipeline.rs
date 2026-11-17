@@ -4,7 +4,7 @@ use std::io::Write;
 use std::sync::Arc;
 use std::sync::Mutex;
 
-use flate2::{write::ZlibEncoder, Compression};
+use flate2::{Compression, write::ZlibEncoder};
 use flatgeom::LineString2;
 use flatgeom::MultiLineString as NMultiLineString;
 use flatgeom::MultiLineString2;

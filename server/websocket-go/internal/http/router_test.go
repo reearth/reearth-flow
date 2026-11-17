@@ -408,6 +408,8 @@ type fakeSignaler struct {
 	clearCtxErr error
 }
 
+func (f *fakeSignaler) SignalLock(context.Context, string, bool, time.Time) error { return nil }
+
 func (f *fakeSignaler) SignalRollback(ctx context.Context, room string, inProgress bool) error {
 	f.room = room
 	if inProgress {

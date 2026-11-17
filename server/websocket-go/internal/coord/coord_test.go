@@ -194,3 +194,33 @@ func TestMemoryBackendIsHealthy(t *testing.T) {
 		t.Errorf("memory probe = %v, want healthy", err)
 	}
 }
+
+func TestPresenceComesFromASharedStore(t *testing.T) {
+	t.Parallel()
+
+	t.Run("redis", func(t *testing.T) {
+		t.Parallel()
+
+		r, err := NewRelay(redisCfg(t), nil, nil, nil)
+		if err != nil {
+			t.Fatalf("NewRelay: %v", err)
+		}
+		defer func() { _ = r.Close() }()
+		if Presence(r) == nil {
+			t.Error("the redis relay has no presence")
+		}
+	})
+
+	t.Run("memory", func(t *testing.T) {
+		t.Parallel()
+
+		r, err := NewRelay(&config.Config{CoordBackend: config.BackendMemory}, nil, nil, nil)
+		if err != nil {
+			t.Fatalf("NewRelay: %v", err)
+		}
+		defer func() { _ = r.Close() }()
+		if Presence(r) != nil {
+			t.Error("the in-memory relay reports presence; only the local instance holds its rooms")
+		}
+	})
+}
