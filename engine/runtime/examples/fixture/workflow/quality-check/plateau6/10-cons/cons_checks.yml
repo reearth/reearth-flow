@@ -160,8 +160,29 @@ nodes:
     with:
       filterType: geometryType
 
+  # L11 (planarity): LOD1 faces are checked against a tighter thickness than the
+  # higher LODs.
+  - id: db000000-0000-4000-8000-00000000003b
+    name: FeatureFilterLod1
+    type: action
+    action: Feature Filter
+    with:
+      conditions:
+        - expr:
+            type: flowExpr
+            value: attributes.get("lod") == 1
+          outputPort: lod1
+
+  - id: db000000-0000-4000-8000-00000000003c
+    name: SurfaceChecksLod1
+    type: subGraph
+    subGraphId: c4000000-0000-4000-8000-000000000000
+    with:
+      planarityThreshold:
+        maxHeight: 0.001
+
   - id: db000000-0000-4000-8000-00000000000e
-    name: SurfaceChecksLod1To3
+    name: SurfaceChecksLod2To3
     type: subGraph
     subGraphId: c4000000-0000-4000-8000-000000000000
     with:
@@ -1057,8 +1078,35 @@ edges:
     toPort: features
   - id: db000000-0000-4000-8000-000100000011
     from: db000000-0000-4000-8000-00000000000d
-    to: db000000-0000-4000-8000-00000000000e
+    to: db000000-0000-4000-8000-00000000003b
     fromPort: surface
+    toPort: features
+  - id: db000000-0000-4000-8000-000100000057
+    from: db000000-0000-4000-8000-00000000003b
+    to: db000000-0000-4000-8000-00000000003c
+    fromPort: lod1
+    toPort: features
+  - id: db000000-0000-4000-8000-000100000058
+    from: db000000-0000-4000-8000-00000000003b
+    to: db000000-0000-4000-8000-00000000000e
+    fromPort: unfiltered
+    toPort: features
+
+  # LOD1 surface checks share every output of the LOD2-3 ones
+  - id: db000000-0000-4000-8000-000100000059
+    from: db000000-0000-4000-8000-00000000003c
+    to: db000000-0000-4000-8000-00000000000f
+    fromPort: invalidSurface
+    toPort: features
+  - id: db000000-0000-4000-8000-00010000005a
+    from: db000000-0000-4000-8000-00000000003c
+    to: db000000-0000-4000-8000-000000000011
+    fromPort: invalidSurface
+    toPort: features
+  - id: db000000-0000-4000-8000-00010000005b
+    from: db000000-0000-4000-8000-00000000003c
+    to: db000000-0000-4000-8000-000000000013
+    fromPort: issueLocation
     toPort: features
 
   # Face errors

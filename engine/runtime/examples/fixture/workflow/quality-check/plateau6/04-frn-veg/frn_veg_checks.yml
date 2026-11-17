@@ -100,6 +100,16 @@ nodes:
     subGraphId: b1000000-0000-4000-8000-000000000000
 
   # --- Surface checks ---
+  # L11 (planarity): LOD1 faces are checked against a tighter thickness than the
+  # higher LODs.
+  - id: d6000000-0000-4000-8000-00000000003f
+    name: SurfaceChecksLod1
+    type: subGraph
+    subGraphId: c4000000-0000-4000-8000-000000000000
+    with:
+      planarityThreshold:
+        maxHeight: 0.001
+
   - id: d6000000-0000-4000-8000-00000000000a
     name: SurfaceChecks
     type: subGraph
@@ -1128,7 +1138,7 @@ edges:
 
   - id: d6000000-0000-4000-8000-00010000000b
     from: d6000000-0000-4000-8000-000000000009
-    to: d6000000-0000-4000-8000-00000000000a
+    to: d6000000-0000-4000-8000-00000000003f
     fromPort: lod1
     toPort: features
   - id: d6000000-0000-4000-8000-00010000000c
@@ -1140,6 +1150,23 @@ edges:
     from: d6000000-0000-4000-8000-000000000009
     to: d6000000-0000-4000-8000-00000000000a
     fromPort: lod3
+    toPort: features
+
+  # LOD1 surface checks share every output of the other LODs' ones
+  - id: d6000000-0000-4000-8000-00010000005b
+    from: d6000000-0000-4000-8000-00000000003f
+    to: d6000000-0000-4000-8000-00000000000c
+    fromPort: invalidSurface
+    toPort: features
+  - id: d6000000-0000-4000-8000-00010000005c
+    from: d6000000-0000-4000-8000-00000000003f
+    to: d6000000-0000-4000-8000-00000000000e
+    fromPort: invalidSurface
+    toPort: features
+  - id: d6000000-0000-4000-8000-00010000005d
+    from: d6000000-0000-4000-8000-00000000003f
+    to: d6000000-0000-4000-8000-000000000010
+    fromPort: issueLocation
     toPort: features
 
   # Surface checks -> result CSV
