@@ -78,6 +78,7 @@ impl Cesium3DTilesWriter {
             schema_key: self.params.schema_key.as_deref(),
             skip_unexposed_attributes: self.params.skip_unexposed_attributes,
             array_map_separator: self.params.array_map_separator.as_deref(),
+            column_order: None,
         };
         let render = RenderOptions {
             draco: self.params.draco_compression,
@@ -241,6 +242,16 @@ pub fn build(
         })
         .collect();
 
+    // One column order for every glb, inferred before the cells are built in
+    // parallel, so a path takes the same place in each table (and in
+    // `tileset.json`) whichever cells it appears in.
+    let rendered: Vec<&Feature> = extracted.iter().map(|(feature, _)| *feature).collect();
+    let column_order = metadata::ColumnOrder::of_features(&rendered, options);
+    let options = MetadataOptions {
+        column_order: Some(&column_order),
+        ..options
+    };
+
     let property_stats: IndexMap<String, ColumnStats> = IndexMap::new();
 
     if extracted.is_empty() {
@@ -333,7 +344,10 @@ pub fn build(
             },
         )
         .collect::<crate::errors::Result<_>>()?;
-    let property_stats = property_stats.into_inner().unwrap();
+    // Cells merge in whatever order they finish; the shared order puts the
+    // paths back in one fixed sequence.
+    let mut property_stats = property_stats.into_inner().unwrap();
+    property_stats.sort_by_cached_key(|path, _| column_order.rank(path));
 
     let content_counts: HashMap<Cell, usize> = cell_results
         .iter()
@@ -1520,6 +1534,7 @@ mod tests {
             schema_key: None,
             skip_unexposed_attributes: false,
             array_map_separator: Some("_"),
+            column_order: None,
         };
 
         // `build` streams each content glb to the callback; capture them.
@@ -1646,6 +1661,7 @@ mod tests {
             schema_key: None,
             skip_unexposed_attributes: false,
             array_map_separator: Some("_"),
+            column_order: None,
         }
     }
 
