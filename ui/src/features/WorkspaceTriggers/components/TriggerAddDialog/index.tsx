@@ -140,7 +140,10 @@ const TriggerAddDialog: React.FC<Props> = ({ setShowDialog }) => {
                 </SelectTrigger>
                 <SelectContent>
                   {Object.entries(eventSources).map(([value, label]) => (
-                    <SelectItem key={value} value={value}>
+                    <SelectItem
+                      key={value}
+                      value={value}
+                      disabled={value === "CMS"}>
                       {label}
                     </SelectItem>
                   ))}

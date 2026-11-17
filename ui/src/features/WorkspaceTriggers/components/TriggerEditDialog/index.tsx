@@ -121,7 +121,10 @@ const TriggerEditDialog: React.FC<Props> = ({
                 </SelectTrigger>
                 <SelectContent>
                   {Object.entries(eventSources).map(([value, label]) => (
-                    <SelectItem key={value} value={value}>
+                    <SelectItem
+                      key={value}
+                      value={value}
+                      disabled={value === "CMS"}>
                       {label}
                     </SelectItem>
                   ))}
