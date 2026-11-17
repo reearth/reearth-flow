@@ -295,14 +295,14 @@ graphs:
           mappers:
             - attribute: meshcode
               valueAttribute: meshcode
-            - attribute: gml_id
-              valueAttribute: gml_id
+            - attribute: feature_type
+              valueAttribute: feature_type
             - attribute: city_code
               valueAttribute: city_code
             - attribute: city_name
               valueAttribute: city_name
-            - attribute: feature_type
-              valueAttribute: feature_type
+            - attribute: gml_id
+              valueAttribute: gml_id
             - attribute: attributes
               valueAttribute: attributes
             - attribute: core:creationDate
@@ -343,14 +343,14 @@ graphs:
           mappers:
             - attribute: meshcode
               valueAttribute: meshcode
-            - attribute: gml_id
-              valueAttribute: gml_id
+            - attribute: feature_type
+              valueAttribute: feature_type
             - attribute: city_code
               valueAttribute: city_code
             - attribute: city_name
               valueAttribute: city_name
-            - attribute: feature_type
-              valueAttribute: feature_type
+            - attribute: gml_id
+              valueAttribute: gml_id
             - attribute: attributes
               valueAttribute: attributes
             - attribute: gml:name
@@ -384,14 +384,14 @@ graphs:
           mappers:
             - attribute: meshcode
               valueAttribute: meshcode
-            - attribute: gml_id
-              valueAttribute: gml_id
+            - attribute: feature_type
+              valueAttribute: feature_type
             - attribute: city_code
               valueAttribute: city_code
             - attribute: city_name
               valueAttribute: city_name
-            - attribute: feature_type
-              valueAttribute: feature_type
+            - attribute: gml_id
+              valueAttribute: gml_id
             - attribute: attributes
               valueAttribute: attributes
             - attribute: core:creationDate
@@ -501,14 +501,14 @@ graphs:
           mappers:
             - attribute: meshcode
               valueAttribute: meshcode
-            - attribute: gml_id
-              valueAttribute: gml_id
+            - attribute: feature_type
+              valueAttribute: feature_type
             - attribute: city_code
               valueAttribute: city_code
             - attribute: city_name
               valueAttribute: city_name
-            - attribute: feature_type
-              valueAttribute: feature_type
+            - attribute: gml_id
+              valueAttribute: gml_id
             - attribute: attributes
               valueAttribute: attributes
             - attribute: core:creationDate
@@ -565,14 +565,14 @@ graphs:
           mappers:
             - attribute: meshcode
               valueAttribute: meshcode
-            - attribute: gml_id
-              valueAttribute: gml_id
+            - attribute: feature_type
+              valueAttribute: feature_type
             - attribute: city_code
               valueAttribute: city_code
             - attribute: city_name
               valueAttribute: city_name
-            - attribute: feature_type
-              valueAttribute: feature_type
+            - attribute: gml_id
+              valueAttribute: gml_id
             - attribute: attributes
               valueAttribute: attributes
             - attribute: gml:name
@@ -622,14 +622,14 @@ graphs:
           mappers:
             - attribute: meshcode
               valueAttribute: meshcode
-            - attribute: gml_id
-              valueAttribute: gml_id
+            - attribute: feature_type
+              valueAttribute: feature_type
             - attribute: city_code
               valueAttribute: city_code
             - attribute: city_name
               valueAttribute: city_name
-            - attribute: feature_type
-              valueAttribute: feature_type
+            - attribute: gml_id
+              valueAttribute: gml_id
             - attribute: attributes
               valueAttribute: attributes
             - attribute: core:creationDate

@@ -235,6 +235,37 @@ graphs:
                   }
                   city_gml + suffix
 
+      # Builds the final attribute order from four groups, each kept in order on its own:
+      # base keys, lod, __flat (AttributeTableExtractor) and the dm_* keys of a
+      # DmGeometricAttribute feature. No earlier step can affect it. The writers do not
+      # expose "__" keys; the ones the later nodes read are kept after the others.
+      - id: 7e9a1c3b-5d2f-4b8a-a6c0-1f3b5d7a9c24
+        name: AttributeOrderMapper
+        type: action
+        action: Attribute Mapper
+        with:
+          mappers:
+            - multipleExpr:
+                type: flowExpr
+                value: |
+                  out = {};
+                  for k in ["meshcode", "feature_type", "city_code", "city_name", "gml_id", "attributes"] {
+                    if k in attributes { out[k] = attributes[k]; }
+                  }
+                  if "lod" in attributes { out["lod"] = attributes["lod"]; }
+                  flat = attributes.get("__flat", {});
+                  for k in flat.keys() { out[k] = flat[k]; }
+                  for k in ["dm_dmCode", "dm_dmCode_code", "dm_geometryType", "dm_geometryType_code", "dm_mapLevel", "dm_mapLevel_code", "dm_shapeType", "dm_shapeType_code", "dm_attributes"] {
+                    if k in attributes { out[k] = attributes[k]; }
+                  }
+                  out
+            - attribute: __dm
+              valueAttribute: __dm
+            - attribute: __citygml_gml_id
+              valueAttribute: __citygml_gml_id
+            - attribute: __output_base
+              valueAttribute: __output_base
+
       - id: 6ebb79f9-67e8-490d-b397-187e9889b4da
         name: GeometryFilterHasGeometry
         type: action
@@ -421,6 +452,11 @@ graphs:
         toPort: features
       - id: 58af97c5-7c9d-418f-b02b-0385a7ff7df8
         from: 048967ac-f0ac-4bfb-90b5-c5a80d0acede
+        to: 7e9a1c3b-5d2f-4b8a-a6c0-1f3b5d7a9c24
+        fromPort: features
+        toPort: features
+      - id: 2b4d6f8a-1c3e-4a5b-9d7f-0e2a4c6e8b13
+        from: 7e9a1c3b-5d2f-4b8a-a6c0-1f3b5d7a9c24
         to: b7f7453c-3f9f-45c2-8517-b6104b94de42
         fromPort: features
         toPort: features

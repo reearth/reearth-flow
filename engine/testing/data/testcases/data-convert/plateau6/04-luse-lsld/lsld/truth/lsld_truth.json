@@ -1,6 +1,10 @@
 {
   "lsld_436ed132-804a-411c-8e1b-f9abb2a8529f": {
+    "meshcode": "493023",
     "feature_type": "urf:SedimentDisasterProneArea",
+    "city_code": "43206",
+    "city_name": "熊本県玉名市",
+    "gml_id": "lsld_436ed132-804a-411c-8e1b-f9abb2a8529f",
     "attributes": {
       "meshcode": "493023",
       "feature_type": "urf:SedimentDisasterProneArea",
@@ -27,8 +31,7 @@
       "urf:status": "特別警戒区域指定済み",
       "urf:status_code": "0"
     },
-    "meshcode": "493023",
-    "city_name": "熊本県玉名市",
+    "lod": 1,
     "core:creationDate": "2025-03-21T00:00:00",
     "core:validFrom": "2016-03-25T00:00:00",
     "urf:prefecture": "熊本県",
@@ -45,13 +48,14 @@
     "urc:geometrySrcDescLod1": "その他のGISデータ",
     "urc:geometrySrcDescLod1_code": "400",
     "urc:thematicSrcDesc": "その他のGISデータ",
-    "urc:thematicSrcDesc_code": "400",
-    "lod": 1,
-    "gml_id": "lsld_436ed132-804a-411c-8e1b-f9abb2a8529f",
-    "city_code": "43206"
+    "urc:thematicSrcDesc_code": "400"
   },
   "lsld_de43fb8b-30f7-47b4-9b16-b561ea2d1030": {
+    "meshcode": "493023",
     "feature_type": "urf:SedimentDisasterProneArea",
+    "city_code": "43206",
+    "city_name": "熊本県玉名市",
+    "gml_id": "lsld_de43fb8b-30f7-47b4-9b16-b561ea2d1030",
     "attributes": {
       "meshcode": "493023",
       "feature_type": "urf:SedimentDisasterProneArea",
@@ -78,8 +82,7 @@
       "urf:status": "特別警戒区域指定済み",
       "urf:status_code": "0"
     },
-    "meshcode": "493023",
-    "city_name": "熊本県玉名市",
+    "lod": 1,
     "core:creationDate": "2025-03-21T00:00:00",
     "core:validFrom": "2016-03-25T00:00:00",
     "urf:prefecture": "熊本県",
@@ -96,9 +99,6 @@
     "urc:geometrySrcDescLod1": "その他のGISデータ",
     "urc:geometrySrcDescLod1_code": "400",
     "urc:thematicSrcDesc": "その他のGISデータ",
-    "urc:thematicSrcDesc_code": "400",
-    "lod": 1,
-    "gml_id": "lsld_de43fb8b-30f7-47b4-9b16-b561ea2d1030",
-    "city_code": "43206"
+    "urc:thematicSrcDesc_code": "400"
   }
 }

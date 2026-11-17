@@ -1,5 +1,10 @@
 {
   "veg_23183a4d-8e87-42cd-a759-aaa4a470b676": {
+    "meshcode": "54401008",
+    "feature_type": "veg:PlantCover",
+    "city_code": "08220",
+    "city_name": "茨城県つくば市",
+    "gml_id": "veg_23183a4d-8e87-42cd-a759-aaa4a470b676",
     "attributes": {
       "meshcode": "54401008",
       "feature_type": "veg:PlantCover",
@@ -68,17 +73,17 @@
       "veg:averageHeight": 0.3,
       "veg:averageHeight_uom": "m"
     },
-    "city_code": "08220",
-    "city_name": "茨城県つくば市",
     "core:creationDate": "2024-03-19T00:00:00",
-    "feature_type": "veg:PlantCover",
-    "gml_id": "veg_23183a4d-8e87-42cd-a759-aaa4a470b676",
-    "meshcode": "54401008",
-    "urc:geometrySrcDescLod1": "公共測量成果又は基本測量成果",
+    "veg:class": "草花",
     "veg:averageHeight": 0.3,
-    "veg:class": "草花"
+    "urc:geometrySrcDescLod1": "公共測量成果又は基本測量成果"
   },
   "veg_7a43e497-ed0e-4e04-a861-c5e85a620c04": {
+    "meshcode": "54401008",
+    "feature_type": "veg:PlantCover",
+    "city_code": "08220",
+    "city_name": "茨城県つくば市",
+    "gml_id": "veg_7a43e497-ed0e-4e04-a861-c5e85a620c04",
     "attributes": {
       "meshcode": "54401008",
       "feature_type": "veg:PlantCover",
@@ -147,17 +152,17 @@
       "veg:averageHeight": 0.5,
       "veg:averageHeight_uom": "m"
     },
-    "city_code": "08220",
-    "city_name": "茨城県つくば市",
     "core:creationDate": "2024-03-19T00:00:00",
-    "feature_type": "veg:PlantCover",
-    "gml_id": "veg_7a43e497-ed0e-4e04-a861-c5e85a620c04",
-    "meshcode": "54401008",
-    "urc:geometrySrcDescLod1": "公共測量成果又は基本測量成果",
+    "veg:class": "草花",
     "veg:averageHeight": 0.5,
-    "veg:class": "草花"
+    "urc:geometrySrcDescLod1": "公共測量成果又は基本測量成果"
   },
   "veg_9019893c-1850-42a0-a17e-e3541b3d6254": {
+    "meshcode": "54401008",
+    "feature_type": "veg:PlantCover",
+    "city_code": "08220",
+    "city_name": "茨城県つくば市",
+    "gml_id": "veg_9019893c-1850-42a0-a17e-e3541b3d6254",
     "attributes": {
       "meshcode": "54401008",
       "feature_type": "veg:PlantCover",
@@ -226,14 +231,9 @@
       "veg:averageHeight": 0.8,
       "veg:averageHeight_uom": "m"
     },
-    "city_code": "08220",
-    "city_name": "茨城県つくば市",
     "core:creationDate": "2024-03-19T00:00:00",
-    "feature_type": "veg:PlantCover",
-    "gml_id": "veg_9019893c-1850-42a0-a17e-e3541b3d6254",
-    "meshcode": "54401008",
-    "urc:geometrySrcDescLod1": "公共測量成果又は基本測量成果",
+    "veg:class": "草花",
     "veg:averageHeight": 0.8,
-    "veg:class": "草花"
+    "urc:geometrySrcDescLod1": "公共測量成果又は基本測量成果"
   }
 }

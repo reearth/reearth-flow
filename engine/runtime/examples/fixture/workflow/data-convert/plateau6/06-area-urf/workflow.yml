@@ -297,6 +297,29 @@ graphs:
             - feature_type
           order: ascending
 
+      # Builds the final attribute order from three groups, each kept in order on its own:
+      # base keys, lod, then __flat (AttributeTableExtractor). No earlier step can affect it.
+      # The writer does not expose "__" keys, so only __output_base is kept after them.
+      - id: 4d7b9e1a-3c5f-4a8d-b2e6-9f0a1c3e5b78
+        name: AttributeOrderMapper
+        type: action
+        action: Attribute Mapper
+        with:
+          mappers:
+            - multipleExpr:
+                type: flowExpr
+                value: |
+                  out = {};
+                  for k in ["meshcode", "feature_type", "city_code", "city_name", "gml_id", "attributes"] {
+                    if k in attributes { out[k] = attributes[k]; }
+                  }
+                  if "lod" in attributes { out["lod"] = attributes["lod"]; }
+                  flat = attributes.get("__flat", {});
+                  for k in flat.keys() { out[k] = flat[k]; }
+                  out
+            - attribute: __output_base
+              valueAttribute: __output_base
+
       # one layer and file per feature type and lod, as in plateau4
       - id: 66e1420a-e524-4e9d-99c7-c0ece9de3376
         name: MVTWriter
@@ -453,6 +476,11 @@ graphs:
         toPort: features
       - id: 57556fed-8c11-4de3-a2f0-b9d1ca3e773b
         from: 777f3269-b84e-4926-b398-1b93d2fe8fa8
+        to: 4d7b9e1a-3c5f-4a8d-b2e6-9f0a1c3e5b78
+        fromPort: features
+        toPort: features
+      - id: 8a2c4e6f-0b1d-4c3e-9a5b-7d9f1b3d5e07
+        from: 4d7b9e1a-3c5f-4a8d-b2e6-9f0a1c3e5b78
         to: 66e1420a-e524-4e9d-99c7-c0ece9de3376
         fromPort: features
         toPort: features

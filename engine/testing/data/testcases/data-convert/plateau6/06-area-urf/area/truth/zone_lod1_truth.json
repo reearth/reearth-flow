@@ -1,6 +1,10 @@
 {
   "area_d14a8141-6597-42ed-a5b4-6232986df2f4": {
+    "meshcode": "523856",
     "feature_type": "urf:Zone",
+    "city_code": "22203",
+    "city_name": "静岡県沼津市",
+    "gml_id": "area_d14a8141-6597-42ed-a5b4-6232986df2f4",
     "attributes": {
       "meshcode": "523856",
       "feature_type": "urf:Zone",
@@ -20,20 +24,20 @@
       "urf:validFromType": "決定",
       "urf:validFromType_code": "1"
     },
-    "meshcode": "523856",
-    "city_name": "静岡県沼津市",
+    "lod": 1,
     "core:creationDate": "2021-03-26T00:00:00",
     "urf:function": "海岸保全区域",
     "core:validFrom": "0001-01-01T00:00:00",
     "urf:validFromType": "決定",
     "urc:geometrySrcDescLod1": "BIMモデル、CADデータ、設計図、完成図、一般図（平面図、配置図、断面図等）",
-    "urc:thematicSrcDesc": "BIMモデル、CADデータ、設計図、完成図、一般図（平面図、配置図、断面図等）",
-    "lod": 1,
-    "gml_id": "area_d14a8141-6597-42ed-a5b4-6232986df2f4",
-    "city_code": "22203"
+    "urc:thematicSrcDesc": "BIMモデル、CADデータ、設計図、完成図、一般図（平面図、配置図、断面図等）"
   },
   "area_e6b0bbf8-07f3-4afa-afa5-1a9b71ac777f": {
+    "meshcode": "523856",
     "feature_type": "urf:Zone",
+    "city_code": "22203",
+    "city_name": "静岡県沼津市",
+    "gml_id": "area_e6b0bbf8-07f3-4afa-afa5-1a9b71ac777f",
     "attributes": {
       "meshcode": "523856",
       "feature_type": "urf:Zone",
@@ -53,16 +57,12 @@
       "urf:validFromType": "決定",
       "urf:validFromType_code": "1"
     },
-    "meshcode": "523856",
-    "city_name": "静岡県沼津市",
+    "lod": 1,
     "core:creationDate": "2021-03-26T00:00:00",
     "urf:function": "港湾隣接区域",
     "core:validFrom": "0001-01-01T00:00:00",
     "urf:validFromType": "決定",
     "urc:geometrySrcDescLod1": "BIMモデル、CADデータ、設計図、完成図、一般図（平面図、配置図、断面図等）",
-    "urc:thematicSrcDesc": "BIMモデル、CADデータ、設計図、完成図、一般図（平面図、配置図、断面図等）",
-    "lod": 1,
-    "gml_id": "area_e6b0bbf8-07f3-4afa-afa5-1a9b71ac777f",
-    "city_code": "22203"
+    "urc:thematicSrcDesc": "BIMモデル、CADデータ、設計図、完成図、一般図（平面図、配置図、断面図等）"
   }
 }
