@@ -102,7 +102,13 @@ const DebugRunSummary: React.FC<Props> = ({
     debugJobState.joinedUserName
       ? t("{{userName}}'s run", { userName: debugJobState.joinedUserName })
       : undefined,
-    debugJobState.startNodeId ? t("From selected action") : undefined,
+    debugJobState.endNodeId
+      ? debugJobState.startNodeId
+        ? t("To selected action, reusing earlier results")
+        : t("To selected action")
+      : debugJobState.startNodeId
+        ? t("From selected action")
+        : undefined,
   ].filter((note): note is string => !!note);
 
   // Collapsing only hides the variables, so it is offered only when there are some.

@@ -41,6 +41,11 @@ export type EditorContextType = {
    * send the user to the action that the row is about.
    */
   onNodeNavigate?: (nodeId: string) => void;
+  /**
+   * Whether the last debug run holds every result a run from this action would
+   * reuse. A run that stopped at a selected action may not.
+   */
+  canDebugRunFromNode?: (nodeId: string) => boolean;
 };
 
 const EditorContext = createContext<EditorContextType | undefined>(undefined);

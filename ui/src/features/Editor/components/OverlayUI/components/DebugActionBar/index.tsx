@@ -62,6 +62,10 @@ type Props = {
     node?: Node,
     nodes?: Node[],
   ) => Promise<void>;
+  onDebugRunStartToSelectedNode?: (
+    node?: Node,
+    nodes?: Node[],
+  ) => Promise<void>;
   onDebugRunStop: () => Promise<void>;
   onResetDebugRunWorkflowVariables: () => void;
   customDebugRunWorkflowVariables?: AnyWorkflowVariable[];
@@ -80,6 +84,7 @@ const DebugActionBar: React.FC<Props> = ({
   onDebugRunJoin,
   onDebugRunStart,
   onDebugRunStartFromSelectedNode,
+  onDebugRunStartToSelectedNode,
   onDebugRunStop,
   onResetDebugRunWorkflowVariables,
   onUserFocusedElement,
@@ -126,6 +131,7 @@ const DebugActionBar: React.FC<Props> = ({
         onPopoverClose={handlePopoverClose}
         onDebugRunStart={handleDebugRunStart}
         onDebugRunStartFromSelectedNode={onDebugRunStartFromSelectedNode}
+        onDebugRunStartToSelectedNode={onDebugRunStartToSelectedNode}
       />
       <StopButton
         isReaderRestricted={isReaderRestricted}
@@ -186,6 +192,10 @@ const StartButton: React.FC<{
     node?: Node,
     nodes?: Node[],
   ) => Promise<void>;
+  onDebugRunStartToSelectedNode?: (
+    node?: Node,
+    nodes?: Node[],
+  ) => Promise<void>;
   onPopoverClose: () => void;
 }> = ({
   isReaderRestricted,
@@ -198,6 +208,7 @@ const StartButton: React.FC<{
   showPopover,
   onDebugRunStart,
   onDebugRunStartFromSelectedNode,
+  onDebugRunStartToSelectedNode,
   onShowDebugStartPopover,
   onPopoverClose,
 }) => {
@@ -304,6 +315,7 @@ const StartButton: React.FC<{
                 onDebugRunStartFromSelectedNode={
                   onDebugRunStartFromSelectedNode
                 }
+                onDebugRunStartToSelectedNode={onDebugRunStartToSelectedNode}
               />
             </div>
           }
@@ -383,6 +395,10 @@ const DebugRunDropDownMenu: React.FC<{
     node?: Node,
     nodes?: Node[],
   ) => Promise<void>;
+  onDebugRunStartToSelectedNode?: (
+    node?: Node,
+    nodes?: Node[],
+  ) => Promise<void>;
 
   onShowDebugStartPopover: () => void;
 }> = ({
@@ -393,10 +409,12 @@ const DebugRunDropDownMenu: React.FC<{
   jobStatus,
   debugJob,
   onDebugRunStartFromSelectedNode,
+  onDebugRunStartToSelectedNode,
   onShowDebugStartPopover,
 }) => {
   const t = useT();
   const { toast } = useToast();
+  const { canDebugRunFromNode } = useEditorContext();
   const [showDropDownMenu, setShowDropDownMenu] = useState<boolean>(false);
   const { getNodes } = useReactFlow();
   const selectedNode =
@@ -457,7 +475,8 @@ const DebugRunDropDownMenu: React.FC<{
             getConnectedEdges([selectedNode], edges ?? []).length === 0 ||
             selectedNodeIds.length > 1 ||
             !debugJob?.jobId ||
-            debugJob.status !== "completed"
+            debugJob.status !== "completed" ||
+            canDebugRunFromNode?.(selectedNode.id) === false
           }
           onClick={() => {
             setTimeout(() => {
@@ -473,6 +492,34 @@ const DebugRunDropDownMenu: React.FC<{
               />
             </span>
             <p>{t("Run From Selected Action")}</p>
+          </div>
+        </DropdownMenuItem>
+        <DropdownMenuItem
+          className="flex items-center justify-between"
+          disabled={
+            isSaving ||
+            !selectedNode ||
+            selectedNodeIds.length > 1 ||
+            selectedNode.type === "batch" ||
+            selectedNode.type === "note" ||
+            !!selectedNode.data.isDisabled ||
+            jobStatus === "running" ||
+            jobStatus === "queued"
+          }
+          onClick={() => {
+            setTimeout(() => {
+              onDebugRunStartToSelectedNode?.(selectedNode);
+            }, 180);
+          }}>
+          <div className="flex items-center gap-2">
+            <span className="relative flex items-center">
+              <ArrowRightIcon weight="bold" className="scale-80 transform" />
+              <CircleIcon
+                weight="fill"
+                className="absolute left-1.25 scale-60 transform"
+              />
+            </span>
+            <p>{t("Run To Selected Action")}</p>
           </div>
         </DropdownMenuItem>
         <DropdownMenuSeparator />
