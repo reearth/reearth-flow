@@ -38,9 +38,9 @@ func (s *VersionStore) Save(ctx context.Context, room string, v versions.Version
 	return id, nil
 }
 
-// Latest returns room's newest snapshot; ok is false when it has none.
+// Latest returns room's newest version; ok is false when it has none.
 func (s *VersionStore) Latest(ctx context.Context, room string) (versions.StoredVersion, bool, error) {
-	return s.a.LatestSnapshot(ctx, room)
+	return s.a.LatestVersion(ctx, room)
 }
 
 // Attribute replaces the attribution of room's snapshot id.

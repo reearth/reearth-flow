@@ -292,18 +292,38 @@ func TestAttributeSnapshot_KeepsTheVersionsClass(t *testing.T) {
 	}
 }
 
-func TestLatestSnapshot(t *testing.T) {
+func TestLatestVersion(t *testing.T) {
 	t.Parallel()
 
 	ctx := context.Background()
 	a := newVersionAdapter(t)
-	if _, ok, err := a.LatestSnapshot(ctx, "room"); ok || err != nil {
+	vs := a.Versions(0)
+	if _, ok, err := vs.Latest(ctx, "room"); ok || err != nil {
 		t.Fatalf("empty room = %v, %v", ok, err)
 	}
-	_, _ = a.SaveSnapshot(ctx, "room", "a", []byte("first"))
-	_, _ = a.SaveSnapshot(ctx, "room", "b", []byte("second"))
-	v, ok, err := a.LatestSnapshot(ctx, "room")
-	if err != nil || !ok || string(v.State) != "second" || v.Label != "b" {
+	_, _ = vs.Save(ctx, "room", versions.Version{Label: versions.AutoLabel, State: []byte("first")})
+	_, _ = vs.Save(ctx, "room", versions.Version{Label: "Saved", State: []byte("second")})
+	v, ok, err := vs.Latest(ctx, "room")
+	if err != nil || !ok || string(v.State) != "second" || v.Label != "Saved" {
 		t.Fatalf("latest = %+v, %v, %v", v, ok, err)
+	}
+}
+
+func TestLatestVersion_SkipsOtherSnapshots(t *testing.T) {
+	t.Parallel()
+
+	ctx := context.Background()
+	a := newVersionAdapter(t)
+	vs := a.Versions(0)
+	// Only a snapshot taken before a restore: no version to credit edits to.
+	_, _ = a.SaveSnapshot(ctx, "room", "Before restore", []byte("restore"))
+	if v, ok, err := vs.Latest(ctx, "room"); ok || err != nil {
+		t.Fatalf("latest = %+v, %v, %v; a restore snapshot is not a version", v, ok, err)
+	}
+	_, _ = vs.Save(ctx, "room", versions.Version{Label: versions.AutoLabel, State: []byte("version")})
+	_, _ = a.SaveSnapshot(ctx, "room", "Before restore", []byte("newer"))
+	v, ok, err := vs.Latest(ctx, "room")
+	if err != nil || !ok || string(v.State) != "version" {
+		t.Fatalf("latest = %+v, %v, %v; want the version under the newer restore snapshot", v, ok, err)
 	}
 }

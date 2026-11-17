@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"slices"
 	"sort"
 	"strconv"
 	"strings"
@@ -409,14 +410,19 @@ func (a *Adapter) trimSnapshots(ctx context.Context, room string, class snapshot
 	return errors.Join(errs...)
 }
 
-// LatestSnapshot returns room's newest snapshot with its state; ok is false
-// when it has none.
-func (a *Adapter) LatestSnapshot(ctx context.Context, room string) (versions.StoredVersion, bool, error) {
-	listed, err := a.ListSnapshotDetails(ctx, room)
-	if err != nil || len(listed) == 0 {
+// LatestVersion returns room's newest version, automatic or saved on request,
+// with its state; ok is false when it has none. Other snapshots, such as the
+// one taken before a restore, are skipped: edits are never credited to them.
+func (a *Adapter) LatestVersion(ctx context.Context, room string) (versions.StoredVersion, bool, error) {
+	listed, err := a.listSnapshots(ctx, room)
+	if err != nil {
 		return versions.StoredVersion{}, false, err
 	}
-	l := listed[0]
+	i := slices.IndexFunc(listed, func(l listedSnapshot) bool { return l.class != classOther })
+	if i < 0 {
+		return versions.StoredVersion{}, false, nil
+	}
+	l := listed[i]
 	state, err := a.GetSnapshotState(ctx, room, l.ID)
 	if errors.Is(err, persistence.ErrSnapshotNotFound) {
 		return versions.StoredVersion{}, false, nil // deleted since the listing
