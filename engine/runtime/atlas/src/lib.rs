@@ -17,9 +17,7 @@ pub use error::{AtlasError, Result};
 #[cfg(not(feature = "new-geometry"))]
 use image::RgbaImage;
 #[cfg(feature = "new-geometry")]
-pub use multipage::{
-    MultiPageAtlas, PageWrap, PolygonPlacement, TextureCache, build_atlas_multipage,
-};
+pub use multipage::{MultiPageAtlas, PageWrap, PolygonPlacement, build_atlas_multipage};
 #[cfg(not(feature = "new-geometry"))]
 pub use plan::plan_layout;
 

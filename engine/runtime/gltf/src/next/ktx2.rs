@@ -157,6 +157,39 @@ fn linear_to_srgb(c: f32) -> u8 {
 mod tests {
     use super::*;
 
+    /// Channel ids of each sample in the KTX2 basic data format descriptor.
+    fn dfd_channel_ids(ktx2: &[u8]) -> Vec<u8> {
+        let u32_at = |off: usize| u32::from_le_bytes(ktx2[off..off + 4].try_into().unwrap());
+        // Header index: dfdByteOffset at 48. The DFD starts with dfdTotalSize,
+        // then the basic descriptor block.
+        let block = u32_at(48) as usize + 4;
+        let block_size = (u32_at(block + 4) >> 16) as usize;
+        // Samples follow the 24-byte block header, 16 bytes each; the channel
+        // id is the low nibble of the fourth byte.
+        (24..block_size)
+            .step_by(16)
+            .map(|s| ktx2[block + s + 3] & 0x0F)
+            .collect()
+    }
+
+    /// An opaque atlas page must encode to a KTX2 that declares RGB only.
+    #[test]
+    fn opaque_page_encodes_rgb_only() {
+        // An atlas page: a texture on the opaque background pages start with.
+        let mut page = RgbaImage::from_pixel(16, 16, image::Rgba([0, 0, 0, 255]));
+        for (x, y, p) in page.enumerate_pixels_mut() {
+            if x < 8 {
+                *p = image::Rgba([(x * 30) as u8, (y * 15) as u8, 90, 255]);
+            }
+        }
+        // KHR_DF_CHANNEL_ETC1S_RGB and KHR_DF_CHANNEL_UASTC_RGB are both 0; an
+        // alpha channel shows up as an ETC1S_AAA sample or a UASTC_RGBA (3) id.
+        for supercompression in [Supercompression::Etc1s, Supercompression::Uastc] {
+            let ktx2 = Ktx2Codec { supercompression }.encode(&page).unwrap();
+            assert_eq!(dfd_channel_ids(&ktx2), vec![0], "{supercompression:?}");
+        }
+    }
+
     /// The mip chain must run from the base resolution down to 1x1, halving each
     /// axis (floor, floored at 1). `encode` derives the KTX2 level count from
     /// the same formula independently, so an off-by-one here desyncs the two and
