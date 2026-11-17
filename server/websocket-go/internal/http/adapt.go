@@ -8,6 +8,8 @@ import (
 	"time"
 
 	"github.com/reearth/ygo/persistence"
+
+	"github.com/reearth/reearth-flow/websocket-go/internal/versions"
 )
 
 // Persistence is the subset of the GCS adapter's VersionedPersistence surface
@@ -190,9 +192,32 @@ func (s *StoreAdapter) cleanupRooms(ctx context.Context) ([]string, error) {
 	return s.listRooms(), nil
 }
 
+// SnapshotDetailer lists snapshots with their attribution. The GCS adapter
+// satisfies it.
+type SnapshotDetailer interface {
+	ListSnapshotDetails(ctx context.Context, room string) ([]versions.ListedVersion, error)
+}
+
 // ListSnapshots maps ygo SnapshotInfo onto the wire DTO; an unsupported store
 // yields an empty list so callers render an empty history rather than failing.
 func (s *StoreAdapter) ListSnapshots(ctx context.Context, room string) ([]SnapshotItem, error) {
+	if sd, ok := s.p.(SnapshotDetailer); ok {
+		listed, err := sd.ListSnapshotDetails(ctx, room)
+		if err != nil {
+			return nil, err
+		}
+		out := make([]SnapshotItem, 0, len(listed))
+		for _, l := range listed {
+			item := snapshotItem(l.SnapshotInfo)
+			if l.Contributors != nil {
+				item.Contributors = l.Contributors
+			}
+			item.ContributorCount = l.ContributorCount
+			item.LastEditor = l.LastEditor
+			out = append(out, item)
+		}
+		return out, nil
+	}
 	ss, ok := s.p.(persistence.SnapshotStore)
 	if !ok {
 		return []SnapshotItem{}, nil
@@ -203,14 +228,21 @@ func (s *StoreAdapter) ListSnapshots(ctx context.Context, room string) ([]Snapsh
 	}
 	out := make([]SnapshotItem, 0, len(snaps))
 	for _, sn := range snaps {
-		out = append(out, SnapshotItem{
-			ID:        sn.ID,
-			Label:     sn.Label,
-			Timestamp: sn.CreatedAt.Format(time.RFC3339),
-			Size:      sn.Size,
-		})
+		out = append(out, snapshotItem(sn))
 	}
 	return out, nil
+}
+
+// snapshotItem renders a snapshot's listing. Contributors is never null on
+// the wire.
+func snapshotItem(sn persistence.SnapshotInfo) SnapshotItem {
+	return SnapshotItem{
+		ID:           sn.ID,
+		Label:        sn.Label,
+		Timestamp:    sn.CreatedAt.Format(time.RFC3339),
+		Size:         sn.Size,
+		Contributors: []string{},
+	}
 }
 
 // GetSnapshotState returns one snapshot's V1 state. Reports

@@ -184,13 +184,14 @@ func (s *Server) watchProjectLock(_ context.Context, room string, doc *crdt.Doc)
 }
 
 // gateLockedWrite refuses a write to a project locked while the peer was
-// connected. Refusing closes the peer, whose reconnect is read-only.
+// connected. Refusing closes the peer, whose reconnect is read-only. A write it
+// lets through is recorded as a user edit for versioning.
 func (s *Server) gateLockedWrite(info ygws.PeerUpdateInfo, apply func() error) error {
 	if s.locks.locked(info.Room, info.Doc) {
 		s.log.Info("refused write to locked project", "room", info.Room)
 		return &ygws.PeerClose{Code: CloseProjectLocked, Reason: "project locked"}
 	}
-	return apply()
+	return s.applyAndRecord(info, apply)
 }
 
 // SignalLock records a project lock change in the room's live document, which
@@ -237,10 +238,7 @@ func (s *Server) applyProjectLock(ctx context.Context, room string, l projectLoc
 		err = nil
 	}
 	if !loaded {
-		if cerr := s.ws.CloseRoom(room, false); cerr != nil &&
-			!errors.Is(cerr, ygws.ErrRoomHasPeers) && !errors.Is(cerr, ygws.ErrRoomNotFound) {
-			s.log.Warn("closing a room loaded for a project lock change failed", "room", room, "err", cerr)
-		}
+		s.closeLoadedRoom(room, "a project lock change")
 	}
 	return err
 }

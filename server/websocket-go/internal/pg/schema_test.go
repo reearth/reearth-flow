@@ -12,7 +12,7 @@ import (
 // relpersistence: 'u' = unlogged, 'p' = permanent, 't' = temporary.
 func TestTablesAreUnlogged(t *testing.T) {
 	pool := newPool(t)
-	for _, table := range []string{"ws_stream", "ws_instance", "ws_lock"} {
+	for _, table := range []string{"ws_stream", "ws_instance", "ws_lock", "ws_version_change"} {
 		var persistence string
 		err := pool.QueryRow(context.Background(), `
 			SELECT c.relpersistence

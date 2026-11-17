@@ -37,43 +37,47 @@ type ProjectDocumentAccess struct {
 
 var _ ProjectAccessChecker = (*ProjectDocumentAccess)(nil)
 
-func (a *ProjectDocumentAccess) UserAccess(ctx context.Context, rawProjectID string) (bool, bool, error) {
+func (a *ProjectDocumentAccess) UserAccess(ctx context.Context, rawProjectID string) (DocumentAccess, error) {
+	denied := DocumentAccess{}
 	pid, err := id.ProjectIDFrom(rawProjectID)
 	if err != nil {
-		return false, false, nil
+		return denied, nil
 	}
 	u, err := a.Users.FindMe(ctx)
 	if err != nil {
-		return false, false, err
+		return denied, err
 	}
 	if u == nil {
-		return false, false, nil
+		return denied, nil
 	}
 	ctx = adapter.AttachUser(ctx, u)
 
 	p, err := a.Projects.FindByID(ctx, pid)
 	if errors.Is(err, rerror.ErrNotFound) || (err == nil && p == nil) {
-		return false, false, nil
+		return denied, nil
 	}
 	if err != nil {
-		return false, false, err
+		return denied, err
 	}
+	granted := DocumentAccess{Read: true, UserID: u.ID().String()}
 	if a.SkipPermissionCheck {
-		return true, !p.IsLocked(), nil
+		granted.Edit = !p.IsLocked()
+		return granted, nil
 	}
 
 	read, err := a.Checker.CheckPermission(ctx, rbac.ResourceProject, rbac.ActionRead, p.Workspace())
 	if err != nil || !read {
-		return false, false, err
+		return denied, err
 	}
 	if p.IsLocked() {
-		return true, false, nil
+		return granted, nil
 	}
 	edit, err := a.Checker.CheckPermission(ctx, rbac.ResourceProject, rbac.ActionAny, p.Workspace())
 	if err != nil {
-		return false, false, err
+		return denied, err
 	}
-	return true, edit, nil
+	granted.Edit = edit
+	return granted, nil
 }
 
 func (a *ProjectDocumentAccess) SharedAccess(ctx context.Context, shareToken, rawProjectID string) (bool, error) {
