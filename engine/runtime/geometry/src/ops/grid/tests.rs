@@ -1,10 +1,10 @@
 //! Op-level tests for `DivideByGrid`.
 
+use crate::Geometry;
 use crate::coordinate::CoordinateFrame;
 use crate::ops::grid::{CellCoverage, DivideByGrid, GridCell, GridDivideError, GridSpec};
 use crate::point::Point3D;
 use crate::polygon::{Polygon2D, Polygon3D};
-use crate::Geometry;
 
 fn unit_grid() -> GridSpec {
     GridSpec::new([0.0, 0.0], 1.0).expect("valid spec")
@@ -243,7 +243,7 @@ fn world_to_texture_uv_carries_through_untouched() {
 /// `exterior().len()` -- which is only the true total for a hole-free face --
 /// would let a piece whose UV is out of step with its rings slip through.
 fn assert_appearance_couples(p: &Polygon2D) {
-    use crate::appearance::{validate_uv_coupling, FaceBinding, Side};
+    use crate::appearance::{FaceBinding, Side, validate_uv_coupling};
     use std::collections::{BTreeMap, BTreeSet};
 
     let Some(app) = p.appearance().as_ref() else {

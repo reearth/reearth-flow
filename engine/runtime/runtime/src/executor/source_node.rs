@@ -3,25 +3,25 @@ use std::{
     fmt::Debug,
     future::Future,
     pin::pin,
-    sync::{atomic::AtomicU64, Arc},
+    sync::{Arc, atomic::AtomicU64},
     time,
 };
 
 use petgraph::visit::IntoNodeIdentifiers;
 
 use async_stream::stream;
-use futures::{future::select_all, future::Either, Stream, StreamExt};
+use futures::{Stream, StreamExt, future::Either, future::select_all};
 use reearth_flow_common::uri::Uri;
 use reearth_flow_storage::resolve::StorageResolver;
 use tokio::{
     runtime::Handle,
-    sync::mpsc::{channel, Receiver, Sender},
+    sync::mpsc::{Receiver, Sender, channel},
 };
 use tracing::info_span;
 
 use crate::{
     builder_dag::NodeKind,
-    errors::{to_node_error, ExecutionError, NodeErrorKind},
+    errors::{ExecutionError, NodeErrorKind, to_node_error},
     event::{Event, EventHub},
     executor_operation::{ExecutorContext, ExecutorOptions, NodeContext},
     forwarder::ChannelManager,
@@ -358,11 +358,11 @@ pub async fn create_source_node<F>(
 
         // ★ incremental: run only selected sources
         let node_id = dag.graph()[node_index].handle.id.clone();
-        if let Some(set) = execute_node_ids.as_ref() {
-            if !set.contains(&node_id) {
-                tracing::info!("Skipping source node {} for incremental run", node_id);
-                continue;
-            }
+        if let Some(set) = execute_node_ids.as_ref()
+            && !set.contains(&node_id)
+        {
+            tracing::info!("Skipping source node {} for incremental run", node_id);
+            continue;
         }
 
         let node = dag.node_weight_mut(node_index);

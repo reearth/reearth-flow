@@ -136,11 +136,7 @@ impl RotateQuery3D {
 
 fn normalize_vector(v: Vector3<f64>) -> Option<Vector3<f64>> {
     let norm = v.norm();
-    if norm == 0.0 {
-        None
-    } else {
-        Some(v / norm)
-    }
+    if norm == 0.0 { None } else { Some(v / norm) }
 }
 
 #[cfg(test)]

@@ -22,7 +22,7 @@ use reearth_flow_geometry::coordinate::CoordinateFrame;
 use reearth_flow_geometry::ops::ReprojectionCache;
 use serde_json::Value;
 
-use super::coords::{to_wgs84, FrameError};
+use super::coords::{FrameError, to_wgs84};
 use super::extract::Face;
 
 /// Reproject `vertices` to WGS84 and flatten to CZML's `cartographicDegrees`

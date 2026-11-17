@@ -23,6 +23,7 @@ use bytes::Bytes;
 use indexmap::IndexMap;
 use reearth_flow_common::{image::MimeType, uri::Uri};
 use reearth_flow_geometry::{
+    Euclidean3DGeometry, Geometry,
     appearance::{
         AlphaMode, ChannelId, FaceBinding, Filter, Material, MaterialIndex, PbrMaterial, Raster,
         RasterData, Sampler, Texture, TextureTransform, ThemeId, UvSource, WrapMode,
@@ -30,18 +31,17 @@ use reearth_flow_geometry::{
     coordinate::CoordinateFrame,
     triangular_mesh::TriangularMesh3D,
     types::coordinate::Coordinate,
-    Euclidean3DGeometry, Geometry,
 };
 use reearth_flow_runtime::{
     executor_operation::NodeContext,
-    node::{IngestionMessage, Port, FEATURES_PORT},
+    node::{FEATURES_PORT, IngestionMessage, Port},
 };
 use reearth_flow_types::{Attribute, AttributeValue, Feature};
 use tokio::sync::mpsc::Sender;
 
 use crate::{errors::SourceError, file::reader::runner::get_input_path};
 
-use super::{load_buffers, FeatureGranularity, GltfReaderCompiledParam, MeshInfo};
+use super::{FeatureGranularity, GltfReaderCompiledParam, MeshInfo, load_buffers};
 
 /// New-geometry glTF read: mirrors the old-world `read_gltf` traversal, converting
 /// each extracted geometry into the new model and streaming features to `sender` as
@@ -473,7 +473,7 @@ fn triangle_corners(
             other => {
                 return Err(SourceError::GltfReader(format!(
                     "Unsupported primitive mode: {other:?}"
-                )))
+                )));
             }
         },
         None => match mode {
@@ -487,7 +487,7 @@ fn triangle_corners(
             other => {
                 return Err(SourceError::GltfReader(format!(
                     "Unsupported non-indexed primitive mode: {other:?}"
-                )))
+                )));
             }
         },
     }
@@ -1140,11 +1140,12 @@ mod tests {
     fn extract(bytes: &[u8]) -> MeshBuild {
         let mut gltf =
             reearth_flow_gltf::parse_gltf(&Bytes::copy_from_slice(bytes)).expect("parse");
-        let mut buffer_data = vec![gltf
-            .blob
-            .as_ref()
-            .expect("glb has an embedded buffer")
-            .clone()];
+        let mut buffer_data = vec![
+            gltf.blob
+                .as_ref()
+                .expect("glb has an embedded buffer")
+                .clone(),
+        ];
         if reearth_flow_gltf::uses_draco(&gltf) {
             gltf = reearth_flow_gltf::decode_draco(gltf, &mut buffer_data).expect("decode");
         }

@@ -15,7 +15,7 @@ use super::point::Point;
 use super::traits::Elevation;
 use crate::algorithm::GeoFloat;
 use crate::coord;
-use crate::utils::{are_points_coplanar, PointsCoplanar};
+use crate::utils::{PointsCoplanar, are_points_coplanar};
 
 #[derive(Serialize, Deserialize, Eq, PartialEq, Clone, Copy, Debug, Hash, Default)]
 pub struct Coordinate<T: CoordNum = f64, Z: CoordNum = f64> {
@@ -338,11 +338,7 @@ where
 {
     pub fn normalize(&self) -> Self {
         let norm = self.norm();
-        if norm.is_zero() {
-            *self
-        } else {
-            *self / norm
-        }
+        if norm.is_zero() { *self } else { *self / norm }
     }
 }
 

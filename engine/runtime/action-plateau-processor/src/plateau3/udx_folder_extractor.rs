@@ -1,6 +1,6 @@
 use std::{
     collections::HashMap,
-    path::{PathBuf, MAIN_SEPARATOR, MAIN_SEPARATOR_STR},
+    path::{MAIN_SEPARATOR, MAIN_SEPARATOR_STR, PathBuf},
     str::FromStr,
     sync::Arc,
 };
@@ -12,7 +12,7 @@ use reearth_flow_runtime::{
     event::EventHub,
     executor_operation::{ExecutorContext, NodeContext},
     forwarder::ProcessorChannelForwarder,
-    node::{Port, Processor, ProcessorFactory, FEATURES_PORT, REJECTED_PORT},
+    node::{FEATURES_PORT, Port, Processor, ProcessorFactory, REJECTED_PORT},
 };
 use reearth_flow_storage::resolve::StorageResolver;
 
@@ -226,9 +226,15 @@ fn mapper(
             dirs = format!("{pkg}{MAIN_SEPARATOR_STR}{area}");
             rtdir = PathBuf::from(folders[..folders.len() - 4].join(MAIN_SEPARATOR_STR));
         }
-        [.., sixth_last, _fifth_last, fourth_last, third_last, second_last, _last]
-            if PKG_FOLDERS.contains(&fourth_last.as_str()) =>
-        {
+        [
+            ..,
+            sixth_last,
+            _fifth_last,
+            fourth_last,
+            third_last,
+            second_last,
+            _last,
+        ] if PKG_FOLDERS.contains(&fourth_last.as_str()) => {
             root = sixth_last.to_string();
             pkg = fourth_last.to_string();
             admin = third_last.to_string();

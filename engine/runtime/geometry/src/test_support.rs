@@ -130,7 +130,7 @@ pub(crate) fn explicit_uv_appearance(corners: &[[f64; 2]]) -> crate::appearance:
 /// `faces()` drops appearance.
 #[cfg(feature = "new-geometry")]
 pub(crate) fn assert_mesh_appearance_couples(mesh: &crate::polygon_mesh::PolygonMesh3DData) {
-    use crate::appearance::{validate_uv_coupling, FaceBinding, Side};
+    use crate::appearance::{FaceBinding, Side, validate_uv_coupling};
     use std::collections::{BTreeMap, BTreeSet};
 
     let Some(app) = mesh.appearance().as_ref() else {

@@ -8,7 +8,7 @@ use reearth_flow_runtime::{
     errors::BoxedError,
     event::EventHub,
     executor_operation::NodeContext,
-    node::{IngestionMessage, Port, Source, SourceFactory, FEATURES_PORT},
+    node::{FEATURES_PORT, IngestionMessage, Port, Source, SourceFactory},
 };
 // Old-world feature/geometry construction lives only in the not(new-geometry)
 // `send_feature`; the new-world path builds features in `gltf_next`.
@@ -23,7 +23,7 @@ use tokio::sync::mpsc::Sender;
 use crate::{
     errors::SourceError,
     file::reader::runner::{
-        get_content, get_input_path, FileReaderCommonParam, FileReaderCompiledParam,
+        FileReaderCommonParam, FileReaderCompiledParam, get_content, get_input_path,
     },
 };
 

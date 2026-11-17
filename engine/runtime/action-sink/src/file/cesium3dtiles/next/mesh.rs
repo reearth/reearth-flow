@@ -2,7 +2,7 @@ use reearth_flow_geometry::appearance::Appearance;
 use reearth_flow_geometry::coordinate::{CoordinateFrame, EpsgCode};
 use reearth_flow_geometry::ops::reproject::transform_coords_3d;
 use reearth_flow_geometry::ops::{
-    triangulation::Cache as TriangulationCache, Reproject, ReprojectionCache,
+    Reproject, ReprojectionCache, triangulation::Cache as TriangulationCache,
 };
 use reearth_flow_geometry::polygon_mesh::PolygonMesh3D;
 use reearth_flow_geometry::solid::Shell;

@@ -2,7 +2,7 @@ use std::{cmp::Ordering, fmt::Debug};
 
 use crate::algorithm::GeoFloat;
 
-use super::{im_segment::IMSegment, Cross, LineOrPoint};
+use super::{Cross, LineOrPoint, im_segment::IMSegment};
 
 /// A segment of input [`LineOrPoint`] generated during the sweep.
 #[derive(Clone)]

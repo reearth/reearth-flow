@@ -18,8 +18,9 @@ use rstar::AABB;
 
 use super::math::{centroid, dot, newell, norm, scale, sub};
 use super::place::{orientation_sign, place, placement};
-use super::weld::{weld, weld_tolerance, Tolerance};
+use super::weld::{Tolerance, weld, weld_tolerance};
 use super::{ExtrudeDirection, ExtrudeError, ExtrudeOutput, ExtrudeSpec};
+use crate::Euclidean3DGeometry;
 use crate::appearance::{Appearance, ThemeId};
 use crate::collection::Collection3D;
 use crate::coordinate::CoordinateFrame;
@@ -28,10 +29,9 @@ use crate::polygon_mesh::{PolygonMesh3D, PolygonMesh3DData};
 use crate::predicates::edge_set::for_each_candidate_pair;
 use crate::solid::{Shell, Solid};
 use crate::validation_next::{
-    check_chain_simple_3d, check_ring_pair_3d, ExteriorOrientation, HoleWinding, OrientationFrame,
-    UndecidableReason, ValidationReport,
+    ExteriorOrientation, HoleWinding, OrientationFrame, UndecidableReason, ValidationReport,
+    check_chain_simple_3d, check_ring_pair_3d,
 };
-use crate::Euclidean3DGeometry;
 
 /// One face to sweep: its rings (exterior first) exactly as stored, and its
 /// appearance, which only survives on a cap that keeps this ring layout.
@@ -168,29 +168,28 @@ fn clean(faces: Vec<CapFace>, frame: OrientationFrame) -> Result<Cleaned, Extrud
             }
             rings.push(open);
         }
-        if let Some((exterior, holes)) = rings.split_first_mut() {
-            if !holes.is_empty() {
-                let points = |ring: &[usize]| -> Vec<[f64; 3]> {
-                    ring.iter().map(|&i| positions[i]).collect()
-                };
-                match ExteriorOrientation::new(frame, &points(exterior)) {
-                    Ok(ext) => {
-                        for hole in holes {
-                            match ext.hole_winding(&points(hole)) {
-                                HoleWinding::Opposite => {}
-                                HoleWinding::Same => {
-                                    hole.reverse();
-                                    changed = true;
-                                }
-                                HoleWinding::Undecidable(why) => {
-                                    pending.get_or_insert(undecidable(why));
-                                }
+        if let Some((exterior, holes)) = rings.split_first_mut()
+            && !holes.is_empty()
+        {
+            let points =
+                |ring: &[usize]| -> Vec<[f64; 3]> { ring.iter().map(|&i| positions[i]).collect() };
+            match ExteriorOrientation::new(frame, &points(exterior)) {
+                Ok(ext) => {
+                    for hole in holes {
+                        match ext.hole_winding(&points(hole)) {
+                            HoleWinding::Opposite => {}
+                            HoleWinding::Same => {
+                                hole.reverse();
+                                changed = true;
+                            }
+                            HoleWinding::Undecidable(why) => {
+                                pending.get_or_insert(undecidable(why));
                             }
                         }
                     }
-                    Err(why) => {
-                        pending.get_or_insert(undecidable(why));
-                    }
+                }
+                Err(why) => {
+                    pending.get_or_insert(undecidable(why));
                 }
             }
         }
@@ -344,7 +343,7 @@ fn orient(
                 Some(&have) if have != want => {
                     return Err(ExtrudeError::InvalidSurface(
                         "the surface is not orientable",
-                    ))
+                    ));
                 }
                 Some(_) => {}
                 None => {
@@ -605,13 +604,13 @@ fn is_boundary(edges: &EdgeUses, a: usize, b: usize) -> bool {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::Geometry;
     use crate::coordinate::EpsgCode;
     use crate::ops::extrude::test_util::{assert_valid, up, vertical};
-    use crate::ops::extrude::{extrude, BaseMode, ExtrudeDirection, ExtrudeOutput, TopMode};
+    use crate::ops::extrude::{BaseMode, ExtrudeDirection, ExtrudeOutput, TopMode, extrude};
     use crate::polygon::Polygon3D;
     use crate::solid::Shell;
     use crate::validation_next::unit_normal;
-    use crate::Geometry;
 
     fn square(o: [f64; 3], s: f64) -> Vec<[f64; 3]> {
         vec![
@@ -866,8 +865,8 @@ mod tests {
 
     #[test]
     fn a_2d_polygon_with_no_elevation_starts_at_zero() {
-        use crate::polygon::Polygon2D;
         use crate::Euclidean2DGeometry;
+        use crate::polygon::Polygon2D;
         let p = Polygon2D::from_rings(
             CoordinateFrame::Euclidean,
             [[0.0, 0.0], [1.0, 0.0], [1.0, 1.0], [0.0, 1.0], [0.0, 0.0]],
@@ -1294,8 +1293,8 @@ mod tests {
     }
 
     fn polygon_2d(ring: Vec<[f64; 2]>) -> Geometry {
-        use crate::polygon::Polygon2D;
         use crate::Euclidean2DGeometry;
+        use crate::polygon::Polygon2D;
         Geometry::Euclidean2D(Euclidean2DGeometry::Polygon(Box::new(
             Polygon2D::from_rings(
                 CoordinateFrame::Euclidean,
@@ -1330,8 +1329,8 @@ mod tests {
 
     #[test]
     fn a_2d_surface_normal_still_needs_linear_units() {
-        use crate::polygon::Polygon2D;
         use crate::Euclidean2DGeometry;
+        use crate::polygon::Polygon2D;
         let p = Polygon2D::from_rings(
             CoordinateFrame::Crs(EpsgCode::from(4326u16)),
             [
@@ -2300,10 +2299,11 @@ mod tests {
             .as_ref()
             .expect("the left cap keeps appearance");
         assert_eq!(*app.default_theme(), crate::test_support::theme("a"));
-        assert!(app
-            .themes()
-            .iter()
-            .all(|t| t.theme != crate::test_support::theme("b")));
+        assert!(
+            app.themes()
+                .iter()
+                .all(|t| t.theme != crate::test_support::theme("b"))
+        );
         crate::test_support::assert_mesh_appearance_couples(m);
     }
 

@@ -1,16 +1,16 @@
 //! Reproject geometry types between coordinate reference systems.
 
+use crate::Geometry;
 use crate::coordinate::EpsgCode;
 use crate::error::{Error, Result};
-use crate::Geometry;
 
 mod ffi;
 pub(crate) mod grids;
 
+pub use ffi::ReprojectionCache;
 #[cfg(feature = "new-geometry")]
 pub(crate) use ffi::north_axis_index;
-pub use ffi::ReprojectionCache;
-pub(crate) use ffi::{axis_order_sign, crs_demote_to_2d, crs_is_linear, TwoDimensionalCrs};
+pub(crate) use ffi::{TwoDimensionalCrs, axis_order_sign, crs_demote_to_2d, crs_is_linear};
 // Reached from outside the crate: the readers and writers of formats that
 // describe a CRS by its definition rather than by code.
 pub use ffi::{esri_wkt1, identify_epsg};

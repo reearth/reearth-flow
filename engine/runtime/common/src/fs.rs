@@ -1,6 +1,6 @@
-use std::path::{Path, PathBuf, MAIN_SEPARATOR_STR};
+use std::path::{MAIN_SEPARATOR_STR, Path, PathBuf};
 
-use async_zip::{tokio::write::ZipFileWriter, Compression, ZipDateTime, ZipEntryBuilder};
+use async_zip::{Compression, ZipDateTime, ZipEntryBuilder, tokio::write::ZipFileWriter};
 use tokio::{self, fs::File, io::AsyncReadExt};
 
 pub struct Metadata {
@@ -240,11 +240,13 @@ mod tests {
         tokio::fs::File::create(subfile_path).await?;
 
         empty_dir(temp_dir.path()).await?;
-        assert!(tokio::fs::read_dir(temp_dir.path())
-            .await?
-            .next_entry()
-            .await?
-            .is_none());
+        assert!(
+            tokio::fs::read_dir(temp_dir.path())
+                .await?
+                .next_entry()
+                .await?
+                .is_none()
+        );
         Ok(())
     }
 

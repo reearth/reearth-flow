@@ -49,20 +49,20 @@ where
     D: serde::Deserializer<'de>,
 {
     let error = Option::<f64>::deserialize(deserializer)?;
-    if let Some(error) = error {
-        if !error.is_finite() || error <= 0.0 {
-            return Err(serde::de::Error::invalid_value(
-                serde::de::Unexpected::Float(error),
-                &"a positive quantization error in meters",
-            ));
-        }
+    if let Some(error) = error
+        && (!error.is_finite() || error <= 0.0)
+    {
+        return Err(serde::de::Error::invalid_value(
+            serde::de::Unexpected::Float(error),
+            &"a positive quantization error in meters",
+        ));
     }
     Ok(error)
 }
 
 /// JSON schema for the quantization error: a positive number, or absent.
 fn quantization_error_schema(
-    generator: &mut schemars::gen::SchemaGenerator,
+    generator: &mut schemars::r#gen::SchemaGenerator,
 ) -> schemars::schema::Schema {
     let mut schema = <Option<f64>>::json_schema(generator).into_object();
     schema.number().exclusive_minimum = Some(0.0);

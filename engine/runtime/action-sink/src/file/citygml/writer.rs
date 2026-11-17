@@ -1,8 +1,8 @@
 use std::collections::{BTreeMap, HashMap, HashSet};
 use std::io::Write;
 
-use quick_xml::events::{BytesDecl, BytesEnd, BytesStart, BytesText, Event};
 use quick_xml::Writer;
+use quick_xml::events::{BytesDecl, BytesEnd, BytesStart, BytesText, Event};
 use reearth_flow_citygml::schema::{ClassModel, QName, SchemaSet};
 use reearth_flow_types::material::X3DMaterial;
 
@@ -582,10 +582,8 @@ impl<'a, W: Write> CityGmlXmlWriter<'a, W> {
         let name = format!("{}:{}", property.prefix, property.local);
         let mut start = BytesStart::new(name.as_str());
         let declares_xal = property.prefix == "xAL" && !in_xal;
-        if declares_xal {
-            if let Some(uri) = self.prefixes.namespace("xAL") {
-                start.push_attribute(("xmlns:xAL", uri));
-            }
+        if declares_xal && let Some(uri) = self.prefixes.namespace("xAL") {
+            start.push_attribute(("xmlns:xAL", uri));
         }
         for (key, value) in &property.attrs {
             if key == "gml:id" {
@@ -943,16 +941,16 @@ impl<'a, W: Write> CityGmlXmlWriter<'a, W> {
             .map_err(|e| SinkError::CityGmlWriter(e.to_string()))?;
 
         // Record appearance info using the generated ID
-        if let Some(id) = poly_id {
-            if surface.material_idx.is_some() || surface.texture_idx.is_some() {
-                surface_appearances.push(SurfaceAppearance {
-                    surface_id: id,
-                    material_idx: surface.material_idx,
-                    texture_idx: surface.texture_idx,
-                    uv_exterior: surface.uv_exterior.clone(),
-                    uv_interiors: surface.uv_interiors.clone(),
-                });
-            }
+        if let Some(id) = poly_id
+            && (surface.material_idx.is_some() || surface.texture_idx.is_some())
+        {
+            surface_appearances.push(SurfaceAppearance {
+                surface_id: id,
+                material_idx: surface.material_idx,
+                texture_idx: surface.texture_idx,
+                uv_exterior: surface.uv_exterior.clone(),
+                uv_interiors: surface.uv_interiors.clone(),
+            });
         }
 
         Ok(())
@@ -1656,7 +1654,7 @@ fn absorb(held: &mut GeometryEntry, extra: GeometryEntry) -> Option<GeometryEntr
                 property: extra.property,
                 owner: extra.owner,
                 element,
-            })
+            });
         }
     }
     None
@@ -2976,10 +2974,10 @@ mod tests {
             ],
         );
         let xml = write_with_properties(shell_entries(1), placed);
-        let gen = xml.find("<gen:stringAttribute").unwrap();
+        let r#gen = xml.find("<gen:stringAttribute").unwrap();
         let height = xml.find("<bldg:measuredHeight").unwrap();
         let solid = xml.find("<bldg:lod1Solid").unwrap();
-        assert!(gen < height && height < solid, "{xml}");
+        assert!(r#gen < height && height < solid, "{xml}");
     }
 
     #[test]

@@ -6,7 +6,7 @@ use reearth_flow_geometry::types::geometry::{Geometry2D, Geometry3D};
 use reearth_flow_runtime::errors::BoxedError;
 use reearth_flow_runtime::event::EventHub;
 use reearth_flow_runtime::executor_operation::{ExecutorContext, NodeContext};
-use reearth_flow_runtime::node::{Port, Sink, SinkFactory, FEATURES_PORT};
+use reearth_flow_runtime::node::{FEATURES_PORT, Port, Sink, SinkFactory};
 use reearth_flow_sql::SqlAdapter;
 use reearth_flow_types::{AttributeValue, Code, Feature, Geometry, GeometryValue};
 use schemars::JsonSchema;
@@ -1003,7 +1003,7 @@ fn geometry_2d_to_wkb(geom: &Geometry2D) -> Result<Vec<u8>, BoxedError> {
         _ => {
             return Err(
                 SinkError::GeoPackageWriter("Unsupported 2D geometry type".to_string()).into(),
-            )
+            );
         }
     }
 
@@ -1143,7 +1143,7 @@ fn geometry_3d_to_wkb(geom: &Geometry3D) -> Result<Vec<u8>, BoxedError> {
         _ => {
             return Err(
                 SinkError::GeoPackageWriter("Unsupported 3D geometry type".to_string()).into(),
-            )
+            );
         }
     }
 

@@ -16,19 +16,19 @@ use reearth_flow_runtime::{
     errors::BoxedError,
     event::EventHub,
     executor_operation::NodeContext,
-    node::{IngestionMessage, Port, Source, SourceFactory, FEATURES_PORT},
+    node::{FEATURES_PORT, IngestionMessage, Port, Source, SourceFactory},
 };
 use reearth_flow_sql::SqlAdapter;
 use reearth_flow_types::{Attribute, AttributeValue, Feature, Geometry, GeometryValue};
 use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
-use sqlx::{sqlite::SqliteRow, Column, Row, TypeInfo, ValueRef};
+use sqlx::{Column, Row, TypeInfo, ValueRef, sqlite::SqliteRow};
 use tokio::sync::mpsc::Sender;
 
 use crate::{
     errors::SourceError,
-    file::reader::runner::{get_content, FileReaderCommonParam, FileReaderCompiledParam},
+    file::reader::runner::{FileReaderCommonParam, FileReaderCompiledParam, get_content},
 };
 
 // New-geometry WKB parsing lives in a sibling file, declared here as a child module
@@ -361,10 +361,10 @@ async fn get_geometry_column(
         SourceError::GeoPackageReader(format!("Failed to query geometry column: {e}"))
     })?;
 
-    if let Some(row) = rows.first() {
-        if let Ok(col_name) = row.try_get::<String, _>(0) {
-            return Ok(col_name);
-        }
+    if let Some(row) = rows.first()
+        && let Ok(col_name) = row.try_get::<String, _>(0)
+    {
+        return Ok(col_name);
     }
 
     Ok("geom".to_string())
@@ -381,10 +381,10 @@ async fn get_layer_srs_id(adapter: &SqlAdapter, table_name: &str) -> Result<i32,
         .await
         .map_err(|e| SourceError::GeoPackageReader(format!("Failed to query SRS ID: {e}")))?;
 
-    if let Some(row) = rows.first() {
-        if let Ok(srs_id) = row.try_get::<i32, _>(0) {
-            return Ok(srs_id);
-        }
+    if let Some(row) = rows.first()
+        && let Ok(srs_id) = row.try_get::<i32, _>(0)
+    {
+        return Ok(srs_id);
     }
 
     Ok(4326)
@@ -434,48 +434,40 @@ fn get_attribute_value(row: &SqliteRow, idx: usize) -> Result<AttributeValue, So
     let type_name = type_info.name();
 
     match type_name {
-        "BOOLEAN" | "BOOL" => {
-            if let Ok(v) = row.try_get::<bool, _>(idx) {
-                Ok(AttributeValue::Bool(v))
-            } else {
-                Ok(AttributeValue::Null)
-            }
-        }
+        "BOOLEAN" | "BOOL" => match row.try_get::<bool, _>(idx) {
+            Ok(v) => Ok(AttributeValue::Bool(v)),
+            _ => Ok(AttributeValue::Null),
+        },
         "INTEGER" | "INT" | "INT4" | "INT8" | "BIGINT" | "SMALLINT" => {
-            if let Ok(v) = row.try_get::<i64, _>(idx) {
-                Ok(AttributeValue::Number(serde_json::Number::from(v)))
-            } else if let Ok(v) = row.try_get::<i32, _>(idx) {
-                Ok(AttributeValue::Number(serde_json::Number::from(v)))
-            } else {
-                Ok(AttributeValue::Null)
+            match row.try_get::<i64, _>(idx) {
+                Ok(v) => Ok(AttributeValue::Number(serde_json::Number::from(v))),
+                _ => match row.try_get::<i32, _>(idx) {
+                    Ok(v) => Ok(AttributeValue::Number(serde_json::Number::from(v))),
+                    _ => Ok(AttributeValue::Null),
+                },
             }
         }
-        "REAL" | "DOUBLE" | "FLOAT" | "NUMERIC" => {
-            if let Ok(v) = row.try_get::<f64, _>(idx) {
+        "REAL" | "DOUBLE" | "FLOAT" | "NUMERIC" => match row.try_get::<f64, _>(idx) {
+            Ok(v) => {
                 if let Some(n) = serde_json::Number::from_f64(v) {
                     Ok(AttributeValue::Number(n))
                 } else {
                     Ok(AttributeValue::String(v.to_string()))
                 }
-            } else {
-                Ok(AttributeValue::Null)
             }
-        }
-        "TEXT" | "VARCHAR" => {
-            if let Ok(v) = row.try_get::<String, _>(idx) {
-                Ok(AttributeValue::String(v))
-            } else {
-                Ok(AttributeValue::Null)
-            }
-        }
-        "BLOB" => {
-            if let Ok(v) = row.try_get::<Vec<u8>, _>(idx) {
+            _ => Ok(AttributeValue::Null),
+        },
+        "TEXT" | "VARCHAR" => match row.try_get::<String, _>(idx) {
+            Ok(v) => Ok(AttributeValue::String(v)),
+            _ => Ok(AttributeValue::Null),
+        },
+        "BLOB" => match row.try_get::<Vec<u8>, _>(idx) {
+            Ok(v) => {
                 let encoded = base64::engine::general_purpose::STANDARD.encode(&v);
                 Ok(AttributeValue::String(encoded))
-            } else {
-                Ok(AttributeValue::Null)
             }
-        }
+            _ => Ok(AttributeValue::Null),
+        },
         _ => Ok(AttributeValue::Null),
     }
 }
@@ -537,7 +529,7 @@ fn parse_geopackage_geometry(
         _ => {
             return Err(SourceError::GeoPackageReader(format!(
                 "Invalid envelope type: {_envelope_type}"
-            )))
+            )));
         }
     };
 
@@ -564,17 +556,13 @@ fn parse_wkb(wkb: &[u8], srs_id: i32, force_2d: bool) -> Result<Geometry, Source
         .map_err(|e| SourceError::GeoPackageReader(format!("Failed to read byte order: {e}")))?;
 
     let wkb_type = if byte_order == 0x01 {
-        let t = cursor
+        cursor
             .read_u32::<LittleEndian>()
-            .map_err(|e| SourceError::GeoPackageReader(format!("Failed to read WKB type: {e}")))?;
-
-        t
+            .map_err(|e| SourceError::GeoPackageReader(format!("Failed to read WKB type: {e}")))?
     } else {
-        let t = cursor
+        cursor
             .read_u32::<BigEndian>()
-            .map_err(|e| SourceError::GeoPackageReader(format!("Failed to read WKB type: {e}")))?;
-
-        t
+            .map_err(|e| SourceError::GeoPackageReader(format!("Failed to read WKB type: {e}")))?
     };
 
     let has_z = (wkb_type & 0x80000000) != 0;

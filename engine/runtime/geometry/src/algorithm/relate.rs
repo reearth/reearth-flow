@@ -8,7 +8,7 @@ use crate::types::{
     point::Point, polygon::Polygon, rect::Rect, triangle::Triangle,
 };
 
-use super::{geometry_cow::GeometryCow, GeoFloat};
+use super::{GeoFloat, geometry_cow::GeometryCow};
 
 mod edge_end_builder;
 mod geomgraph;

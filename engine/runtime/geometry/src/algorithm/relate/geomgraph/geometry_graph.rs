@@ -2,11 +2,11 @@ use parking_lot::RwLock;
 
 use crate::{
     algorithm::{
+        GeoFloat,
         coordinate_position::CoordPos,
         dimensions::HasDimensions,
         geometry_cow::GeometryCow,
         winding_order::{Winding, WindingOrder},
-        GeoFloat,
     },
     types::{
         coordinate::Coordinate, line::Line, line_string::LineString, point::Point, polygon::Polygon,
@@ -14,11 +14,11 @@ use crate::{
 };
 
 use super::{
+    CoordNode, Direction, Edge, Label, PlanarGraph, TopologyPosition,
     index::{
         EdgeSetIntersector, RstarEdgeSetIntersector, SegmentIntersector, SimpleEdgeSetIntersector,
     },
     line_intersector::LineIntersector,
-    CoordNode, Direction, Edge, Label, PlanarGraph, TopologyPosition,
 };
 
 use std::rc::Rc;

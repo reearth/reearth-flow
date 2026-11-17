@@ -1,5 +1,5 @@
 use crate::{
-    algorithm::{line_intersection::LineIntersection, GeoFloat},
+    algorithm::{GeoFloat, line_intersection::LineIntersection},
     types::line::Line,
 };
 

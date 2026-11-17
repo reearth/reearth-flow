@@ -404,9 +404,11 @@ fn segment_intersections_cases() {
             .unwrap()
             .is_empty()
     );
-    assert!(segment_intersections(&horizontal, &Geometry::None)
-        .unwrap()
-        .is_empty());
+    assert!(
+        segment_intersections(&horizontal, &Geometry::None)
+            .unwrap()
+            .is_empty()
+    );
 
     // Non-line leaves error.
     assert_eq!(

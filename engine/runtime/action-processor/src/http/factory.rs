@@ -4,7 +4,7 @@ use reearth_flow_runtime::{
     errors::BoxedError,
     event::EventHub,
     executor_operation::NodeContext,
-    node::{Port, Processor, ProcessorFactory, FEATURES_PORT, REJECTED_PORT},
+    node::{FEATURES_PORT, Port, Processor, ProcessorFactory, REJECTED_PORT},
 };
 use serde_json::Value;
 
@@ -166,12 +166,12 @@ impl HttpCallerFactory {
         }
 
         // Validate rate limit configuration to prevent division by zero
-        if let Some(rate_limit) = &params.rate_limit {
-            if rate_limit.requests == 0 {
-                return Err(HttpProcessorError::CallerFactory(
-                    "Rate limit 'requests' must be greater than 0".to_string(),
-                ));
-            }
+        if let Some(rate_limit) = &params.rate_limit
+            && rate_limit.requests == 0
+        {
+            return Err(HttpProcessorError::CallerFactory(
+                "Rate limit 'requests' must be greater than 0".to_string(),
+            ));
         }
 
         // A multipart body cannot be cloned for a retry, so the combination
@@ -263,10 +263,12 @@ mod tests {
 
         let result = factory.validate_parameters(&params);
         assert!(result.is_err());
-        assert!(result
-            .unwrap_err()
-            .to_string()
-            .contains("must be greater than 0"));
+        assert!(
+            result
+                .unwrap_err()
+                .to_string()
+                .contains("must be greater than 0")
+        );
     }
 
     #[test]
@@ -295,10 +297,12 @@ mod tests {
 
         let result = factory.validate_parameters(&params);
         assert!(result.is_err());
-        assert!(result
-            .unwrap_err()
-            .to_string()
-            .contains("not supported for multipart"));
+        assert!(
+            result
+                .unwrap_err()
+                .to_string()
+                .contains("not supported for multipart")
+        );
 
         // Multipart without retry is valid.
         params.retry = None;
