@@ -11,6 +11,8 @@ import (
 	"time"
 
 	"github.com/reearth/ygo/persistence"
+
+	"github.com/reearth/reearth-flow/websocket-go/internal/docid"
 )
 
 // keepUpdates is the update-object retention count for the cleanup routes.
@@ -67,10 +69,12 @@ type DocStore interface {
 	SaveSnapshot(ctx context.Context, room, label string) (int64, error)
 }
 
-// Signaler toggles metadata.rollbackInProgress on a live room so UI clients hide
-// the canvas during a rollback. Optional (nil ⇒ no-op).
+// Signaler writes server-owned state into a live room: metadata.rollbackInProgress
+// so UI clients hide the canvas during a rollback, and the project lock so peers
+// connected before a lock lose write access. Optional (nil ⇒ no-op).
 type Signaler interface {
 	SignalRollback(ctx context.Context, room string, inProgress bool) error
+	SignalLock(ctx context.Context, room string, locked bool, at time.Time) error
 }
 
 // Deps are the router's collaborators.
@@ -100,6 +104,7 @@ func NewRouter(d Deps) http.Handler {
 	mux.HandleFunc("GET /api/document/{id}/history/version/{version}", r.getHistoryByVersion)
 	mux.HandleFunc("POST /api/document/{id}/rollback", r.rollback)
 	mux.HandleFunc("POST /api/document/{id}/flush", r.flush)
+	mux.HandleFunc("POST /api/document/{id}/lock", r.lock)
 	mux.HandleFunc("POST /api/document/snapshot", r.createSnapshot)
 	mux.HandleFunc("POST /api/document/{id}/{source}/copy", r.copyDocument)
 	mux.HandleFunc("POST /api/document/{id}/import", r.importDocument)
@@ -263,6 +268,31 @@ func (r *router) signal(ctx context.Context, room string, inProgress bool) {
 	if err := r.signaler.SignalRollback(ctx, room, inProgress); err != nil {
 		r.log.Warn("rollback signal failed", "room", room, "inProgress", inProgress, "err", err)
 	}
+}
+
+// lock records a project lock change in the live room, if any instance holds it.
+func (r *router) lock(w http.ResponseWriter, req *http.Request) {
+	room := docid.Normalize(req.PathValue("id"))
+	if room == "" {
+		writeErr(w, http.StatusBadRequest, "doc id required")
+		return
+	}
+	var body LockRequest
+	if err := json.NewDecoder(req.Body).Decode(&body); err != nil {
+		writeErr(w, http.StatusBadRequest, "invalid body")
+		return
+	}
+	if body.ChangedAt <= 0 {
+		writeErr(w, http.StatusBadRequest, "changedAt required")
+		return
+	}
+	if r.signaler != nil {
+		if err := r.signaler.SignalLock(req.Context(), room, body.Locked, time.UnixMilli(body.ChangedAt)); err != nil {
+			r.fail(w, "lock signal failed", err, "doc", room, "locked", body.Locked)
+			return
+		}
+	}
+	writeJSON(w, http.StatusOK, map[string]string{"status": "ok"})
 }
 
 func (r *router) flush(w http.ResponseWriter, req *http.Request) {
