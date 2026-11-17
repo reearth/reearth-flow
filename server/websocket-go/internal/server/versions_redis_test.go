@@ -2,6 +2,7 @@ package server
 
 import (
 	"context"
+	"fmt"
 	"net/http/httptest"
 	"slices"
 	"testing"
@@ -29,13 +30,16 @@ func TestVersions_AcrossInstancesThroughRedis(t *testing.T) {
 	defer mr.Close()
 	client := goredis.NewClient(&goredis.Options{Addr: mr.Addr()})
 	defer func() { _ = client.Close() }()
-	store := redisrelay.NewChangeStore(client)
+	// Each instance writes its own field; the record is shared.
+	store := redisrelay.NewChangeStore(client, "reader")
+	n := 0
 	mem := persistence.NewMemoryPersistence()
 	snaps := &memVersions{}
 
 	instance := func() *Server {
 		s := NewWithPersistence(ctx, testConfig(), mem)
-		enableTestVersions(s, store, snaps, 0)
+		n++
+		enableTestVersions(s, redisrelay.NewChangeStore(client, fmt.Sprintf("instance-%d", n)), snaps, 0)
 		relay, err := redisrelay.New(redisrelay.Options{Addr: mr.Addr(), Flusher: s.VersionedFlusher(&countingFlusher{})})
 		if err != nil {
 			t.Fatal(err)

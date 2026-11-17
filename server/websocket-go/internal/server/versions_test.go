@@ -3,6 +3,7 @@ package server
 import (
 	"context"
 	"errors"
+	"fmt"
 	"net/http"
 	"net/http/httptest"
 	"slices"
@@ -595,5 +596,63 @@ func TestVersions_WaitVersionsCoversTheLastPeerSave(t *testing.T) {
 	}
 	if len(snaps.all()) != 1 {
 		t.Fatal("WaitVersions returned before the version was saved")
+	}
+}
+
+func TestVersions_WaitVersionsCoversEverySave(t *testing.T) {
+	t.Parallel()
+
+	store, snaps := versions.NewMemoryStore(), &memVersions{}
+	s := versionedServer(store, snaps, 0)
+	stored, rec := insertDoc(t, "x")
+	entered, release := make(chan struct{}), make(chan struct{})
+	s.stored = func(context.Context, string) ([]byte, error) {
+		close(entered)
+		<-release
+		return encodeFullState(stored), nil
+	}
+	if err := store.Mark(context.Background(), versionRoom, rec); err != nil {
+		t.Fatal(err)
+	}
+	// A save on request, not one lastPeerLeft started.
+	go func() { _, _ = s.SaveVersion(context.Background(), versionRoom, "Saved") }()
+	<-entered
+	short, cancel := context.WithTimeout(context.Background(), 50*time.Millisecond)
+	defer cancel()
+	if err := s.WaitVersions(short); err == nil {
+		t.Fatal("WaitVersions returned while a save was in progress")
+	}
+	close(release)
+	if err := s.WaitVersions(context.Background()); err != nil {
+		t.Fatal(err)
+	}
+	if len(snaps.all()) != 1 {
+		t.Fatal("WaitVersions returned before the version was saved")
+	}
+}
+
+func TestVersionedFlusher_LeavesTheVersionToABusySave(t *testing.T) {
+	t.Parallel()
+
+	ctx := context.Background()
+	store, snaps := versions.NewMemoryStore(), &memVersions{}
+	s := versionedServer(store, snaps, 0)
+	stored, rec := insertDoc(t, "x")
+	s.stored = func(context.Context, string) ([]byte, error) { return encodeFullState(stored), nil }
+	s.versions.Lock = func(context.Context, string, func(context.Context) error) error {
+		return fmt.Errorf("%w: lock timed out", versions.ErrBusy)
+	}
+	if err := store.Mark(ctx, versionRoom, rec); err != nil {
+		t.Fatal(err)
+	}
+	inner := &countingFlusher{}
+	if err := s.VersionedFlusher(inner).FlushLastInstance(ctx, versionRoom); err != nil {
+		t.Fatal(err)
+	}
+	if inner.calls != 1 || len(snaps.all()) != 0 {
+		t.Fatalf("inner flushes %d, versions %d; want a plain flush", inner.calls, len(snaps.all()))
+	}
+	if _, ok, _ := store.FirstEdit(ctx, versionRoom); !ok {
+		t.Fatal("the record must stay for the save holding the lock")
 	}
 }

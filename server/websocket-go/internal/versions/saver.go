@@ -32,6 +32,15 @@ type Attribution struct {
 	LastEditor string
 	// LastEditedAt is when the latest of those edits was made.
 	LastEditedAt time.Time
+	// ContributorCount is how many contributors there are. It exceeds
+	// len(Contributors) when the list was cut short to fit storage; zero
+	// means len(Contributors).
+	ContributorCount int
+}
+
+// Count is how many contributors there are.
+func (a Attribution) Count() int {
+	return max(a.ContributorCount, len(a.Contributors))
 }
 
 // attributionOf credits the edits in r.
@@ -40,7 +49,9 @@ func attributionOf(r Record) Attribution {
 	return Attribution{Contributors: r.Contributors(), LastEditor: editor, LastEditedAt: r.LastEditAt()}
 }
 
-// merge credits b's edits in addition to a's.
+// merge credits b's edits in addition to a's. When a's list was cut short, a
+// contributor of b's missing from it may be one already counted, so the count
+// only ever grows to the larger of the two counts and the merged list.
 func (a Attribution) merge(b Attribution) Attribution {
 	out := Attribution{
 		Contributors: slices.Clone(a.Contributors),
@@ -61,11 +72,13 @@ func (a Attribution) merge(b Attribution) Attribution {
 	if out.LastEditor == "" {
 		out.LastEditor = b.LastEditor
 	}
+	out.ContributorCount = max(a.Count(), b.Count(), len(out.Contributors))
 	return out
 }
 
 func (a Attribution) equal(b Attribution) bool {
-	return slices.Equal(a.Contributors, b.Contributors) && a.LastEditor == b.LastEditor && a.LastEditedAt.Equal(b.LastEditedAt)
+	return slices.Equal(a.Contributors, b.Contributors) && a.LastEditor == b.LastEditor &&
+		a.LastEditedAt.Equal(b.LastEditedAt) && a.Count() == b.Count()
 }
 
 // Version is one version to store.
@@ -76,7 +89,8 @@ type Version struct {
 	Attribution
 }
 
-// StoredVersion is a stored version.
+// StoredVersion is a stored version. Its contributor list can be cut short to
+// fit storage; ContributorCount says how many there are.
 type StoredVersion struct {
 	ID        int64
 	Label     string
@@ -85,13 +99,10 @@ type StoredVersion struct {
 	Attribution
 }
 
-// ListedVersion is a stored version as listed: no state, and an attribution
-// whose contributor list can be cut short to fit storage; ContributorCount is
-// how many contributors there were.
+// ListedVersion is a stored version as listed, without its state.
 type ListedVersion struct {
 	persistence.SnapshotInfo
 	Attribution
-	ContributorCount int
 }
 
 // Snapshots stores versions.
@@ -134,6 +145,11 @@ type Result struct {
 	SnapshotID int64
 }
 
+// ErrBusy reports that another save of the room, here or on another
+// instance, held the room's save lock for longer than this save would wait.
+// That save takes the record this one would have, so nothing is lost.
+var ErrBusy = errors.New("versions: another save of the room is in progress")
+
 // ErrCheckpoint wraps a failure to refresh the room's checkpoint after its
 // version was saved. The version itself stands.
 var ErrCheckpoint = errors.New("versions: refresh checkpoint")
@@ -159,6 +175,50 @@ type Saver struct {
 	Now    func() time.Time
 
 	stripes [64]sync.Mutex
+
+	// running counts saves in progress, for Wait.
+	runMu   sync.Mutex
+	running int
+	idle    chan struct{}
+}
+
+// Wait waits until no save is in progress, including the put-back of a save
+// its caller cancelled, or until ctx ends. A save that starts while Wait waits
+// is waited for too.
+func (s *Saver) Wait(ctx context.Context) error {
+	for {
+		s.runMu.Lock()
+		if s.running == 0 {
+			s.runMu.Unlock()
+			return nil
+		}
+		if s.idle == nil {
+			s.idle = make(chan struct{})
+		}
+		idle := s.idle
+		s.runMu.Unlock()
+		select {
+		case <-idle:
+		case <-ctx.Done():
+			return ctx.Err()
+		}
+	}
+}
+
+func (s *Saver) started() {
+	s.runMu.Lock()
+	s.running++
+	s.runMu.Unlock()
+}
+
+func (s *Saver) finished() {
+	s.runMu.Lock()
+	s.running--
+	if s.running == 0 && s.idle != nil {
+		close(s.idle)
+		s.idle = nil
+	}
+	s.runMu.Unlock()
 }
 
 // Save saves room's document as a version labelled label, if users changed it
@@ -171,6 +231,11 @@ type Saver struct {
 // Edits the state holds that turn out to be in the newest version already
 // (they arrived during the previous save) are credited to that version.
 func (s *Saver) Save(ctx context.Context, room, label string, state func(context.Context) ([]byte, error)) (Result, error) {
+	s.started()
+	defer s.finished()
+	// Write this instance's edits before waiting for the lock too, so they are
+	// in the shared record even if this save never gets the lock.
+	s.flushTracker(ctx, room)
 	mu := &s.stripes[stripe(room)]
 	mu.Lock()
 	defer mu.Unlock()
@@ -192,15 +257,22 @@ func stripe(room string) int {
 	return int(h.Sum32() % 64)
 }
 
+// flushTracker writes this instance's gathered edits for room to the store.
+func (s *Saver) flushTracker(ctx context.Context, room string) {
+	if s.Tracker == nil {
+		return
+	}
+	if err := s.Tracker.Flush(ctx, room); err != nil {
+		// The Tracker keeps the edits and writes them later, so a later
+		// version accounts for them.
+		s.log().Warn("writing this instance's edits before a version failed", "room", room, "err", err)
+	}
+}
+
 func (s *Saver) save(ctx context.Context, room, label string, state func(context.Context) ([]byte, error)) (Result, error) {
 	log := s.log()
-	if s.Tracker != nil {
-		if err := s.Tracker.Flush(ctx, room); err != nil {
-			// The Tracker keeps the edits and writes them later, so a later
-			// version accounts for them.
-			log.Warn("writing this instance's edits before a version failed", "room", room, "err", err)
-		}
-	}
+	// Edits made while this save waited for the lock.
+	s.flushTracker(ctx, room)
 	rec, ok, err := s.Store.Take(ctx, room)
 	if err != nil {
 		return Result{}, fmt.Errorf("versions: take change record: %w", err)
@@ -232,11 +304,12 @@ func (s *Saver) save(ctx context.Context, room, label string, state func(context
 		log.Warn("no document state to save as a version", "room", room)
 		return Result{}, nil
 	}
-	held, missing, err := rec.Split(st)
+	doc, err := decodeState(st)
 	if err != nil {
 		putBack(rec, err)
 		return Result{}, err
 	}
+	held, missing := rec.split(doc)
 	if len(missing) > 0 {
 		// Recorded edits the state does not hold yet, such as one another
 		// instance received that has not reached this copy of the room.
@@ -249,11 +322,16 @@ func (s *Saver) save(ctx context.Context, room, label string, state func(context
 
 	latest, hasLatest, err := s.Snapshots.Latest(ctx, room)
 	if err != nil {
-		log.Warn("reading the newest version failed; saving without comparing", "room", room, "err", err)
-		hasLatest = false
+		// Saving without the comparison could store a copy of the newest
+		// version, which takes a place in retention from a distinct one.
+		putBack(held, err)
+		return Result{}, fmt.Errorf("versions: read newest version: %w", err)
 	}
-	if hasLatest && sameContent(latest.State, st) {
-		s.credit(ctx, room, latest, attributionOf(held))
+	if hasLatest && sameContent(doc, st, latest.State) {
+		if err := s.credit(ctx, room, latest, attributionOf(held)); err != nil {
+			putBack(held, err)
+			return Result{}, err
+		}
 		return Result{}, nil
 	}
 
@@ -277,17 +355,17 @@ func (s *Saver) save(ctx context.Context, room, label string, state func(context
 
 // credit adds a to the attribution of latest, which already holds the edits a
 // describes.
-func (s *Saver) credit(ctx context.Context, room string, latest StoredVersion, a Attribution) {
+func (s *Saver) credit(ctx context.Context, room string, latest StoredVersion, a Attribution) error {
 	merged := latest.merge(a)
 	if merged.equal(latest.Attribution) {
-		return
+		return nil
 	}
 	if err := s.Snapshots.Attribute(ctx, room, latest.ID, merged); err != nil {
-		s.log().Warn("crediting edits to the newest version failed", "room", room, "snapshot", latest.ID, "err", err)
-		return
+		return fmt.Errorf("versions: credit edits to version %d: %w", latest.ID, err)
 	}
 	s.log().Info("credited edits to the newest version", "room", room, "snapshot", latest.ID)
 	s.notify(room, latest.ID, latest.Label, latest.CreatedAt, merged)
+	return nil
 }
 
 func (s *Saver) notify(room string, id int64, label string, savedAt time.Time, a Attribution) {
@@ -313,12 +391,14 @@ func (s *Saver) notify(room string, id int64, label string, savedAt time.Time, a
 	})
 }
 
-// sameContent reports whether two full states hold exactly the same content.
-// It compares content, not bytes: two copies of a document can encode the same
-// content differently. Anything that prevents the comparison counts as a
-// difference, so a change is never dropped for it.
-func sameContent(a, b []byte) bool {
-	return holds(a, b) && holds(b, a)
+// sameContent reports whether doc, which state encodes, holds exactly the
+// content of other, another full state. It compares content, not bytes: two
+// copies of a document can encode the same content differently. Anything that
+// prevents the comparison counts as a difference, so a change is never dropped
+// for it.
+func sameContent(doc *crdt.Doc, state, other []byte) bool {
+	held, err := crdt.DocContainsUpdateV1(doc, other)
+	return err == nil && held && holds(other, state)
 }
 
 // holds reports whether the document encoded by doc holds everything update

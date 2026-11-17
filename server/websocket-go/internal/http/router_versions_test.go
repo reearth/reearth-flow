@@ -104,6 +104,16 @@ func TestPostVersion_FailureIs500(t *testing.T) {
 	}
 }
 
+func TestPostVersion_BusyIs409(t *testing.T) {
+	t.Parallel()
+
+	v := &fakeVersioner{err: fmt.Errorf("%w: lock timed out", versions.ErrBusy)}
+	rec := do(t, versionRouter(v), "POST", "/api/document/proj1/versions", `{"label":"Saved"}`)
+	if rec.Code != http.StatusConflict {
+		t.Fatalf("status = %d, want 409: another save is in progress", rec.Code)
+	}
+}
+
 func TestPostVersion_CheckpointFailureStillReportsTheVersion(t *testing.T) {
 	t.Parallel()
 

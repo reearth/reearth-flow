@@ -23,11 +23,21 @@ import (
 //
 // Notices arrive in no particular order and can arrive more than once: each is
 // delivered and retried on its own. A version's notice is also sent again when
-// edits made during the save turn out to be in it, with the attribution grown
-// and a later LastEditedAt. The API should therefore apply a notice only when
-// its LastEditedAt is later than what it already holds, which makes delivery
-// order and repeats harmless; it must not drop a notice because it has seen
-// its VersionID before.
+// edits made during its save turn out to be in it, with more contributors; its
+// LastEditedAt can stay the same, since a credited edit can be older than the
+// version's latest one. The rules that make order and repeats harmless:
+//
+//   - The project's last editor and update time take LastEditorID and
+//     LastEditedAt only when LastEditedAt is later than the project's.
+//   - Anything kept per version is keyed by VersionID and merged, whatever
+//     order notices arrive in: ContributorIDs by union, and the version's own
+//     last editor and edit time advanced only when LastEditedAt is later. A
+//     notice must never be dropped because its VersionID was seen before.
+//
+// Version ids restart only when the document is deleted, so the API should
+// drop what it keeps per version when it deletes a project's document. The
+// websocket server's snapshot listing (GET /api/document/{id}/snapshots) is
+// the authoritative attribution of each version.
 const CallbackPath = "/auth/versions"
 
 const (

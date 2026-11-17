@@ -16,8 +16,13 @@ import (
 
 func newVersionAdapter(t *testing.T) *Adapter {
 	t.Helper()
+	return newVersionAdapterKeeping(t, 0)
+}
+
+func newVersionAdapterKeeping(t *testing.T, keep int) *Adapter {
+	t.Helper()
 	client, bucket := newFakeGCS(t)
-	a, err := New(Options{Client: client, Bucket: bucket, Locker: NewNoLock()})
+	a, err := New(Options{Client: client, Bucket: bucket, Locker: NewNoLock(), KeepSnapshots: keep})
 	if err != nil {
 		t.Fatalf("gcs.New: %v", err)
 	}
@@ -97,6 +102,41 @@ func TestVersionStore_AttributeRewritesOnlyTheAttribution(t *testing.T) {
 	}
 	if err := vs.Attribute(ctx, "room", id+5, versions.Attribution{}); !errors.Is(err, persistence.ErrSnapshotNotFound) {
 		t.Fatalf("Attribute(unknown) = %v", err)
+	}
+}
+
+func TestVersionStore_CreditingACutListKeepsItsCount(t *testing.T) {
+	t.Parallel()
+
+	ctx := context.Background()
+	a := newVersionAdapter(t)
+	vs := a.Versions(0)
+	var ids []string
+	for i := range 400 {
+		ids = append(ids, fmt.Sprintf("01J%023d", i))
+	}
+	id, err := vs.Save(ctx, "room", versions.Version{Label: "auto", State: []byte("s"), Attribution: versions.Attribution{
+		Contributors: ids, LastEditor: ids[0], LastEditedAt: editedAt,
+	}})
+	if err != nil {
+		t.Fatal(err)
+	}
+	latest, _, err := vs.Latest(ctx, "room")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(latest.Contributors) >= 400 || latest.Count() != 400 {
+		t.Fatalf("latest lists %d and counts %d; want a cut list counting 400", len(latest.Contributors), latest.Count())
+	}
+	// What Saver.credit stores after merging one more contributor in.
+	grown := latest.Attribution
+	grown.Contributors = append(slices.Clone(grown.Contributors), "zz-new")
+	if err := vs.Attribute(ctx, "room", id, grown); err != nil {
+		t.Fatal(err)
+	}
+	listed, _ := a.ListSnapshotDetails(ctx, "room")
+	if listed[0].Count() != 400 {
+		t.Fatalf("count = %d after crediting; it must not shrink to the cut list", listed[0].Count())
 	}
 }
 
@@ -196,6 +236,59 @@ func TestTrimSnapshots_DistinctLabelsShareOneBound(t *testing.T) {
 	}
 	if others != 2 || n[versions.AutoLabel] != 1 || n["Deployment 4"] != 1 || n["Deployment 3"] != 1 {
 		t.Fatalf("counts = %v; a label per save must still be bounded, newest kept", n)
+	}
+}
+
+func TestTrimSnapshots_VersionsNeverEvictTheRestoreSnapshot(t *testing.T) {
+	t.Parallel()
+
+	ctx := context.Background()
+	a := newVersionAdapterKeeping(t, 2)
+	vs := a.Versions(2)
+	if _, err := a.SaveSnapshot(ctx, "room", "Before restore", []byte("s")); err != nil {
+		t.Fatal(err)
+	}
+	for range 4 {
+		if _, err := vs.Save(ctx, "room", versions.Version{Label: "Saved", State: []byte("s")}); err != nil {
+			t.Fatal(err)
+		}
+	}
+	if n := labelCounts(t, a); n["Saved"] != 2 || n["Before restore"] != 1 {
+		t.Fatalf("counts = %v; want 2 versions and the restore snapshot kept", n)
+	}
+}
+
+func TestSaveSnapshot_TrimsOnlyItsOwnClass(t *testing.T) {
+	t.Parallel()
+
+	ctx := context.Background()
+	a := newVersionAdapterKeeping(t, 2)
+	if _, err := a.Versions(2).Save(ctx, "room", versions.Version{Label: "Saved", State: []byte("s")}); err != nil {
+		t.Fatal(err)
+	}
+	for range 4 {
+		if _, err := a.SaveSnapshot(ctx, "room", "Before restore", []byte("s")); err != nil {
+			t.Fatal(err)
+		}
+	}
+	if n := labelCounts(t, a); n["Before restore"] != 2 || n["Saved"] != 1 {
+		t.Fatalf("counts = %v; want restore snapshots bounded and the version kept", n)
+	}
+}
+
+func TestAttributeSnapshot_KeepsTheVersionsClass(t *testing.T) {
+	t.Parallel()
+
+	ctx := context.Background()
+	a := newVersionAdapter(t)
+	vs := a.Versions(0)
+	id, _ := vs.Save(ctx, "room", versions.Version{Label: "Saved", State: []byte("s")})
+	if err := vs.Attribute(ctx, "room", id, versions.Attribution{Contributors: []string{"bob"}}); err != nil {
+		t.Fatal(err)
+	}
+	listed, err := a.listSnapshots(ctx, "room")
+	if err != nil || len(listed) != 1 || listed[0].class != classVersion {
+		t.Fatalf("listed = %+v, %v; crediting must keep the version in its class", listed, err)
 	}
 }
 

@@ -318,6 +318,9 @@ var ErrRoomNotActive = errors.New("pg: room not active on this instance")
 // caughtUpPoll is how often WaitCaughtUp checks the reader's cursor.
 const caughtUpPoll = 5 * time.Millisecond
 
+// caughtUpRewake is how often WaitCaughtUp wakes the reader while it waits.
+const caughtUpRewake = 100 * time.Millisecond
+
 // WaitCaughtUp waits until this instance's reader has applied every row the
 // room had when it was called, so the room's document holds every update
 // other instances had written by then.
@@ -340,14 +343,21 @@ func (r *Relay) WaitCaughtUp(ctx context.Context, room string) error {
 	case <-ctx.Done():
 		return ctx.Err()
 	}
-	// Read now rather than at the next poll.
+	// Read now rather than at the next poll, and again while the target is
+	// outstanding: with ReadLag a row can still be too young when the commit
+	// notice wakes the reader, and a notify-only reader gets no other wake.
 	r.wakeRoom(room)
+	woke := time.Now()
 	for {
 		r.mu.Lock()
 		cur := rs.cursor
 		r.mu.Unlock()
 		if cur >= target {
 			return nil
+		}
+		if time.Since(woke) >= caughtUpRewake {
+			r.wakeRoom(room)
+			woke = time.Now()
 		}
 		select {
 		case <-rs.done:

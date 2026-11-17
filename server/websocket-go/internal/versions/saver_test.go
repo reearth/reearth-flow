@@ -12,9 +12,11 @@ import (
 
 // memSnapshots is an in-memory Snapshots.
 type memSnapshots struct {
-	mu    sync.Mutex
-	saved []StoredVersion
-	fail  error
+	mu          sync.Mutex
+	saved       []StoredVersion
+	fail        error
+	failLatest  error
+	failAttribs error
 }
 
 func (m *memSnapshots) Save(_ context.Context, _ string, v Version) (int64, error) {
@@ -31,6 +33,9 @@ func (m *memSnapshots) Save(_ context.Context, _ string, v Version) (int64, erro
 func (m *memSnapshots) Latest(context.Context, string) (StoredVersion, bool, error) {
 	m.mu.Lock()
 	defer m.mu.Unlock()
+	if m.failLatest != nil {
+		return StoredVersion{}, false, m.failLatest
+	}
 	if len(m.saved) == 0 {
 		return StoredVersion{}, false, nil
 	}
@@ -40,6 +45,9 @@ func (m *memSnapshots) Latest(context.Context, string) (StoredVersion, bool, err
 func (m *memSnapshots) Attribute(_ context.Context, _ string, id int64, a Attribution) error {
 	m.mu.Lock()
 	defer m.mu.Unlock()
+	if m.failAttribs != nil {
+		return m.failAttribs
+	}
 	m.saved[id-1].Attribution = a
 	return nil
 }
@@ -213,6 +221,138 @@ func TestSave_EditDuringSaveIsCreditedToTheVersionHoldingIt(t *testing.T) {
 	}
 	if _, ok, _ := store.FirstEdit(ctx, "p1"); ok {
 		t.Fatal("the credited record must be taken")
+	}
+}
+
+func TestSave_CreditedEditOlderThanTheVersionKeepsItsEditTime(t *testing.T) {
+	t.Parallel()
+
+	ctx := context.Background()
+	s, store, snaps, notes := newSaver()
+	doc := newTestDoc(1)
+	mark(t, store, "p1", "alice", doc.write("a"), 10)
+	// bob's edit was made before alice's, but its record arrives during the save.
+	state := func(ctx context.Context) ([]byte, error) {
+		mark(t, store, "p1", "bob", doc.write("b"), 3)
+		return doc.state(ctx)
+	}
+	if res, _ := s.Save(ctx, "p1", "Saved", state); !res.Saved {
+		t.Fatal("first version not saved")
+	}
+	if res, err := s.Save(ctx, "p1", "auto", doc.state); err != nil || res.Saved {
+		t.Fatalf("Save = %+v, %v", res, err)
+	}
+	if v := snaps.all(); !slices.Equal(v[0].Contributors, []string{"alice", "bob"}) || v[0].LastEditor != "alice" {
+		t.Fatalf("version = %+v", v[0])
+	}
+	// What the callback contract has to handle: the second notice has more
+	// contributors and the same lastEditedAt.
+	n := notes.list()
+	if len(n) != 2 || !n[1].LastEditedAt.Equal(n[0].LastEditedAt) || len(n[1].ContributorIDs) != 2 {
+		t.Fatalf("notices = %+v", n)
+	}
+}
+
+func TestSave_CreditKeepsTheCountOfACutList(t *testing.T) {
+	t.Parallel()
+
+	ctx := context.Background()
+	s, store, snaps, notes := newSaver()
+	doc := newTestDoc(1)
+	doc.write("a")
+	ub := doc.write("b")
+	st, _ := doc.state(ctx)
+	// The stored list was cut to fit: 400 contributors, one listed.
+	snaps.saved = []StoredVersion{{ID: 1, Label: "auto", State: st, Attribution: Attribution{
+		Contributors: []string{"alice"}, LastEditor: "alice", LastEditedAt: at(10), ContributorCount: 400,
+	}}}
+	mark(t, store, "p1", "bob", ub, 5)
+	if res, err := s.Save(ctx, "p1", "auto", doc.state); err != nil || res.Saved {
+		t.Fatalf("Save = %+v, %v", res, err)
+	}
+	if v := snaps.all()[0]; v.Count() != 400 || !slices.Equal(v.Contributors, []string{"alice", "bob"}) {
+		t.Fatalf("version = %+v; the count must not shrink to the cut list", v)
+	}
+	if len(notes.list()) != 1 {
+		t.Fatalf("notices = %+v", notes.list())
+	}
+}
+
+func TestSave_FailedCreditPutsTheRecordBack(t *testing.T) {
+	t.Parallel()
+
+	ctx := context.Background()
+	s, store, snaps, notes := newSaver()
+	doc := newTestDoc(1)
+	mark(t, store, "p1", "alice", doc.write("a"), 1)
+	state := func(ctx context.Context) ([]byte, error) {
+		mark(t, store, "p1", "bob", doc.write("b"), 5)
+		return doc.state(ctx)
+	}
+	if res, _ := s.Save(ctx, "p1", "Saved", state); !res.Saved {
+		t.Fatal("first version not saved")
+	}
+	snaps.failAttribs = errors.New("gcs down")
+	if res, err := s.Save(ctx, "p1", "auto", doc.state); err == nil || res.Saved {
+		t.Fatalf("Save = %+v, %v; want the failure reported", res, err)
+	}
+	if _, ok, _ := store.FirstEdit(ctx, "p1"); !ok {
+		t.Fatal("bob's edit was dropped")
+	}
+	snaps.failAttribs = nil
+	if _, err := s.Save(ctx, "p1", "auto", doc.state); err != nil {
+		t.Fatal(err)
+	}
+	if v := snaps.all(); len(v) != 1 || !slices.Equal(v[0].Contributors, []string{"alice", "bob"}) {
+		t.Fatalf("versions = %+v, want bob credited on the retry", v)
+	}
+	if len(notes.list()) != 2 {
+		t.Fatalf("notices = %d, want 2", len(notes.list()))
+	}
+}
+
+func TestSave_FailedNewestVersionLookupPutsTheRecordBack(t *testing.T) {
+	t.Parallel()
+
+	s, store, snaps, notes := newSaver()
+	snaps.failLatest = errors.New("gcs down")
+	doc := newTestDoc(1)
+	mark(t, store, "p1", "alice", doc.write("a"), 1)
+	if res, err := s.Save(context.Background(), "p1", "Saved", doc.state); res.Saved || err == nil {
+		t.Fatalf("Save = %+v, %v; want no version without the comparison", res, err)
+	}
+	if len(snaps.all()) != 0 {
+		t.Fatal("a version was saved without comparing it to the newest")
+	}
+	assertPutBack(t, store, notes)
+}
+
+func TestSaver_WaitWaitsForASaveInProgress(t *testing.T) {
+	t.Parallel()
+
+	s, store, _, _ := newSaver()
+	doc := newTestDoc(1)
+	mark(t, store, "p1", "alice", doc.write("a"), 1)
+	entered, release := make(chan struct{}), make(chan struct{})
+	state := func(ctx context.Context) ([]byte, error) {
+		close(entered)
+		<-release
+		return doc.state(ctx)
+	}
+	go func() { _, _ = s.Save(context.Background(), "p1", "auto", state) }()
+	<-entered
+
+	ctx, cancel := context.WithTimeout(context.Background(), 50*time.Millisecond)
+	defer cancel()
+	if err := s.Wait(ctx); err == nil {
+		t.Fatal("Wait returned while a save was in progress")
+	}
+	close(release)
+	if err := s.Wait(context.Background()); err != nil {
+		t.Fatal(err)
+	}
+	if _, ok, _ := store.FirstEdit(context.Background(), "p1"); ok {
+		t.Fatal("Wait returned before the save finished")
 	}
 }
 

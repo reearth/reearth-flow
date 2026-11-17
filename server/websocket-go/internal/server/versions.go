@@ -70,12 +70,25 @@ func (s *Server) EnableVersions(cfg VersionsConfig) {
 	s.ws.OnLastPeer = s.lastPeerLeft
 }
 
-// WaitVersions waits until the versions lastPeerLeft has started saving have
-// finished, or until ctx ends. ygo runs OnLastPeer after its Shutdown stops
-// waiting, so a hook that has not fired yet is not covered; that path serves
-// only deployments without a shared store, whose change records live in this
+// WaitVersions waits until every version save in progress has finished,
+// whatever started it, including the put-back of one its trigger cancelled, or
+// until ctx ends. ygo runs OnLastPeer after its Shutdown stops waiting, so a
+// hook that has not fired yet is not covered; that path serves only
+// deployments without a shared store, whose change records live in this
 // process anyway.
 func (s *Server) WaitVersions(ctx context.Context) error {
+	if err := s.waitLeaveSaves(ctx); err != nil {
+		return err
+	}
+	if s.versions == nil {
+		return nil
+	}
+	return s.versions.Wait(ctx)
+}
+
+// waitLeaveSaves waits for the saves lastPeerLeft started, some of which may
+// not have reached the Saver yet.
+func (s *Server) waitLeaveSaves(ctx context.Context) error {
 	for {
 		s.leaveMu.Lock()
 		if s.leaveSaves == 0 {
@@ -327,7 +340,14 @@ func (f *VersionedFlusher) FlushLastInstance(ctx context.Context, room string) e
 		// stream, as it does when its own flush fails.
 		return err
 	}
-	if err != nil {
+	switch {
+	case err == nil:
+	case errors.Is(err, versions.ErrBusy):
+		// Another instance is saving this room. This instance's edits were
+		// written to the record before waiting, so that save, or the room's
+		// next one, includes them.
+		f.s.log.Info("another instance is saving this room; leaving the version to it", "room", room)
+	default:
 		f.s.log.Warn("version on leave failed", "room", room, "err", err)
 	}
 	return f.inner.FlushRoom(ctx, room)

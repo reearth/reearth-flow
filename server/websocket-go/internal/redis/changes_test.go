@@ -2,6 +2,7 @@ package redis
 
 import (
 	"context"
+	"fmt"
 	"slices"
 	"sync"
 	"testing"
@@ -36,7 +37,7 @@ func TestChangeStore_MarkMergesAcrossInstances(t *testing.T) {
 	ctx := context.Background()
 	doc := crdt.New(crdt.WithClientID(1))
 	// Two instances share one Redis, so their batches land in one record.
-	a, b := NewChangeStore(c), NewChangeStore(c)
+	a, b := NewChangeStore(c, "a"), NewChangeStore(c, "b")
 	if err := a.Mark(ctx, "p1", edit(t, doc, "bob", "x", ms(10))); err != nil {
 		t.Fatal(err)
 	}
@@ -66,7 +67,7 @@ func TestChangeStore_TakeGivesTheRecordToOneCaller(t *testing.T) {
 
 	c, _ := newTestClient(t)
 	ctx := context.Background()
-	s := NewChangeStore(c)
+	s := NewChangeStore(c, "a")
 	if err := s.Mark(ctx, "p1", edit(t, crdt.New(), "bob", "x", ms(1))); err != nil {
 		t.Fatal(err)
 	}
@@ -103,7 +104,7 @@ func TestChangeStore_NoRecord(t *testing.T) {
 	t.Parallel()
 
 	c, _ := newTestClient(t)
-	s := NewChangeStore(c)
+	s := NewChangeStore(c, "a")
 	if _, ok, err := s.Take(context.Background(), "p1"); ok || err != nil {
 		t.Fatalf("Take = %v, %v; want no record", ok, err)
 	}
@@ -116,7 +117,7 @@ func TestChangeStore_RecordExpires(t *testing.T) {
 	t.Parallel()
 
 	c, mr := newTestClient(t)
-	s := NewChangeStore(c)
+	s := NewChangeStore(c, "a")
 	_ = s.Mark(context.Background(), "p1", edit(t, crdt.New(), "bob", "x", ms(1)))
 	if ttl := mr.TTL(changesKey("p1")); ttl <= 0 || ttl > changesTTLSeconds*time.Second {
 		t.Fatalf("ttl = %v, want up to %ds", ttl, changesTTLSeconds)
@@ -272,5 +273,116 @@ func TestStreamIDBefore(t *testing.T) {
 	}
 	if streamIDBefore("5-2", "5-2") || streamIDBefore("10-0", "9-99") {
 		t.Error("an id is not before itself or an earlier one")
+	}
+}
+
+func TestChangeStore_OneEntryPerInstanceHoweverManyMarks(t *testing.T) {
+	t.Parallel()
+
+	c, _ := newTestClient(t)
+	ctx := context.Background()
+	doc := crdt.New(crdt.WithClientID(1))
+	a, b := NewChangeStore(c, "a"), NewChangeStore(c, "b")
+	for i := range 50 {
+		if err := a.Mark(ctx, "p1", edit(t, doc, "alice", "x", ms(i))); err != nil {
+			t.Fatal(err)
+		}
+	}
+	if err := b.Mark(ctx, "p1", edit(t, doc, "bob", "y", ms(100))); err != nil {
+		t.Fatal(err)
+	}
+	if n := c.HLen(ctx, changesKey("p1")).Val() - 1; n != 2 { // less "first"
+		t.Fatalf("%d entries, want one per instance", n)
+	}
+	r, _, err := a.Take(ctx, "p1")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !slices.Equal(r.Contributors(), []string{"alice", "bob"}) || len(r["alice"].Inserts.Ranges(1)) != 1 {
+		t.Fatalf("record = %+v; want alice's 50 edits merged", r)
+	}
+	if first := r["alice"].FirstAt; !first.Equal(ms(0)) {
+		t.Fatalf("alice's first edit = %v, want the oldest", first)
+	}
+}
+
+func TestChangeStore_MarkAfterTakeDoesNotRestoreTakenEdits(t *testing.T) {
+	t.Parallel()
+
+	c, _ := newTestClient(t)
+	ctx := context.Background()
+	doc := crdt.New(crdt.WithClientID(1))
+	s := NewChangeStore(c, "a")
+	if err := s.Mark(ctx, "p1", edit(t, doc, "alice", "x", ms(1))); err != nil {
+		t.Fatal(err)
+	}
+	if _, ok, _ := s.Take(ctx, "p1"); !ok {
+		t.Fatal("no record")
+	}
+	if err := s.Mark(ctx, "p1", edit(t, doc, "bob", "y", ms(2))); err != nil {
+		t.Fatal(err)
+	}
+	r, _, _ := s.Take(ctx, "p1")
+	if !slices.Equal(r.Contributors(), []string{"bob"}) {
+		t.Fatalf("contributors = %v; alice's edit went to the earlier version", r.Contributors())
+	}
+}
+
+func TestChangeStore_MarksRacingTakesLoseNothing(t *testing.T) {
+	t.Parallel()
+
+	c, _ := newTestClient(t)
+	ctx := context.Background()
+	s := NewChangeStore(c, "a")
+	const users = 40
+	var (
+		wg    sync.WaitGroup
+		mu    sync.Mutex
+		taken = map[string]bool{}
+	)
+	keep := func(r versions.Record) {
+		mu.Lock()
+		defer mu.Unlock()
+		for u := range r {
+			taken[u] = true
+		}
+	}
+	stop, takerDone := make(chan struct{}), make(chan struct{})
+	go func() {
+		defer close(takerDone)
+		for {
+			select {
+			case <-stop:
+				return
+			default:
+			}
+			r, _, err := s.Take(ctx, "p1")
+			if err != nil {
+				t.Errorf("Take: %v", err)
+				return
+			}
+			keep(r)
+		}
+	}()
+	for i := range users {
+		wg.Add(1)
+		go func() {
+			defer wg.Done()
+			doc := crdt.New(crdt.WithClientID(crdt.ClientID(i + 1)))
+			if err := s.Mark(ctx, "p1", edit(t, doc, fmt.Sprintf("u%02d", i), "x", ms(i))); err != nil {
+				t.Errorf("Mark: %v", err)
+			}
+		}()
+	}
+	wg.Wait()
+	close(stop)
+	<-takerDone
+	r, _, err := s.Take(ctx, "p1")
+	if err != nil {
+		t.Fatal(err)
+	}
+	keep(r)
+	if len(taken) != users {
+		t.Fatalf("%d of %d users' edits were taken; the rest were lost", len(taken), users)
 	}
 }

@@ -176,16 +176,20 @@ func run() error {
 		log.Info("shutdown signal received, draining")
 	}
 
-	shutdownCtx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
+	shutdownCtx, cancel := context.WithTimeout(context.Background(), shutdownTimeout)
 	defer cancel()
+	// The saves get the drain's budget less what the notices need, so the
+	// notices of versions saved late in the drain still go out.
+	savesCtx, cancelSaves := context.WithTimeout(shutdownCtx, shutdownTimeout-noticeReserve)
+	defer cancelSaves()
 	// Drain WebSocket peers first, then stop accepting HTTP. Rooms the drain
-	// releases are saved as versions on the way out, so let their API notices
-	// finish too.
-	if err := srv.WSProvider().Shutdown(shutdownCtx); err != nil {
+	// releases are saved as versions on the way out, so let those saves, and
+	// any other save in progress, finish, and then their API notices.
+	if err := srv.WSProvider().Shutdown(savesCtx); err != nil {
 		log.Warn("ws provider shutdown", "err", err)
 	}
-	err = httpSrv.Shutdown(shutdownCtx)
-	if werr := srv.WaitVersions(shutdownCtx); werr != nil {
+	err = httpSrv.Shutdown(savesCtx)
+	if werr := srv.WaitVersions(savesCtx); werr != nil {
 		log.Warn("versions still saving at shutdown", "err", werr)
 	}
 	if werr := notifier.Shutdown(shutdownCtx); werr != nil {
@@ -193,6 +197,19 @@ func run() error {
 	}
 	return err
 }
+
+const (
+	// shutdownTimeout is the drain's whole budget.
+	shutdownTimeout = 30 * time.Second
+	// noticeReserve is kept from the drain's budget for the API notices of the
+	// versions saved during it.
+	noticeReserve = 5 * time.Second
+	// versionLockWait bounds the wait for another save of the same room to
+	// finish. A save can wait catchUpTimeout (10s) for the relay and then read
+	// and write whole documents in GCS, so the lock store's own 5s budget is too
+	// short.
+	versionLockWait = time.Minute
+)
 
 // enableVersions wires versioning into srv and returns the notifier that tells
 // the API about each version.
@@ -212,7 +229,7 @@ func enableVersions(srv *server.Server, cfg *config.Config, p *persistence, log 
 		// One save per room at a time across instances, so a slower save can
 		// never store an older state after a newer one.
 		Lock: func(ctx context.Context, room string, fn func(context.Context) error) error {
-			return p.locks.Locker.WithLock(ctx, versionLockKey(room), fn)
+			return lockWithin(ctx, p.locks.Locker, versionLockKey(room), versionLockWait, fn)
 		},
 		// The checkpoint is written from the room's current state, never older
 		// than what a concurrent flush already wrote.
@@ -229,6 +246,26 @@ func enableVersions(srv *server.Server, cfg *config.Config, p *persistence, log 
 
 // versionLockKey is the lock serializing a room's version saves.
 func versionLockKey(room string) string { return "lock:version:" + room }
+
+// lockWithin runs fn under key, retrying the lock store's bounded acquisition
+// until wait has passed. It then returns versions.ErrBusy. An error fn returns
+// is returned as is, never retried, even when it is a lock timeout of fn's own.
+func lockWithin(ctx context.Context, l gcs.Locker, key string, wait time.Duration, fn func(context.Context) error) error {
+	deadline := time.Now().Add(wait)
+	for {
+		ran := false
+		err := l.WithLock(ctx, key, func(ctx context.Context) error {
+			ran = true
+			return fn(ctx)
+		})
+		if ran || !coord.IsLockTimeout(err) {
+			return err
+		}
+		if ctx.Err() != nil || time.Now().After(deadline) {
+			return fmt.Errorf("%w: %w", versions.ErrBusy, err)
+		}
+	}
+}
 
 // newInstanceOwner returns a per-process lock-owner token unique across
 // instances even when they share a PID (e.g. PID 1 in separate containers).
@@ -289,6 +326,7 @@ func buildPersistence(ctx context.Context, cfg *config.Config) (*persistence, er
 		Locker:           locks.Locker,
 		Phase2:           os.Getenv("REEARTH_FLOW_GCS_PHASE2") == "true",
 		TransientMapKeys: server.TransientMapKeys(),
+		KeepSnapshots:    cfg.KeepSnapshots,
 	})
 	if err != nil {
 		_ = stClient.Close()

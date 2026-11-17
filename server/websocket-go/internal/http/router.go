@@ -467,6 +467,10 @@ func (r *router) postVersion(w http.ResponseWriter, req *http.Request) {
 		writeErr(w, http.StatusNotImplemented, "snapshots not supported by this backend")
 		return
 	}
+	if errors.Is(err, versions.ErrBusy) {
+		writeErr(w, http.StatusConflict, "another save of this document is in progress")
+		return
+	}
 	if err != nil && !res.Saved {
 		r.fail(w, "save version failed", err, "doc", room)
 		return

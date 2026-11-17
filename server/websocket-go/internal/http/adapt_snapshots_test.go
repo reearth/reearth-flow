@@ -240,9 +240,8 @@ func TestStoreAdapterListSnapshots_CarriesAttribution(t *testing.T) {
 		memSnapshotStore: newMemSnapshotStore(),
 		details: []versions.ListedVersion{
 			{
-				SnapshotInfo:     persistence.SnapshotInfo{ID: 2, Label: "auto", CreatedAt: created, Size: 9},
-				Attribution:      versions.Attribution{Contributors: []string{"alice", "bob"}, LastEditor: "bob"},
-				ContributorCount: 3,
+				SnapshotInfo: persistence.SnapshotInfo{ID: 2, Label: "auto", CreatedAt: created, Size: 9},
+				Attribution:  versions.Attribution{Contributors: []string{"alice", "bob"}, LastEditor: "bob", ContributorCount: 3},
 			},
 			{SnapshotInfo: persistence.SnapshotInfo{ID: 1, Label: "Before restore", CreatedAt: created}},
 		},

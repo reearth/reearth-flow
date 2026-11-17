@@ -2,6 +2,7 @@ package coord
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"log/slog"
 
@@ -32,10 +33,20 @@ type Locks struct {
 
 	// handle carries the backend's client from NewLocker to NewRelay so both reach the same store.
 	handle any
+	// owner is this instance's lock-owner token, unique across instances.
+	owner string
 }
 
 // NewLocker builds the lock store for cfg.CoordBackend. Call before gcs.New.
 func NewLocker(cfg *config.Config, owner string) (*Locks, error) {
+	locks, err := newLocker(cfg, owner)
+	if locks != nil {
+		locks.owner = owner
+	}
+	return locks, err
+}
+
+func newLocker(cfg *config.Config, owner string) (*Locks, error) {
 	switch cfg.CoordBackend {
 	case config.BackendRedis:
 		opt, err := goredis.ParseURL(cfg.RedisURL)
@@ -109,6 +120,12 @@ func Presence(r cluster.Relay) func(ctx context.Context, room string) (int, erro
 	return p.ActiveInstances
 }
 
+// IsLockTimeout reports whether err is a lock store's bounded acquisition
+// running out, on any backend.
+func IsLockTimeout(err error) bool {
+	return errors.Is(err, gcs.ErrLockTimeout) || errors.Is(err, pg.ErrLockTimeout)
+}
+
 // NewChangeStore returns the store for versioning's change records, on the same
 // backend and connection as the lock store, so every instance shares it.
 func NewChangeStore(cfg *config.Config, locks *Locks) (versions.Store, error) {
@@ -118,7 +135,7 @@ func NewChangeStore(cfg *config.Config, locks *Locks) (versions.Store, error) {
 		if client == nil {
 			return nil, fmt.Errorf("coord: redis change store needs the client from NewLocker; got none")
 		}
-		return redisrelay.NewChangeStore(client), nil
+		return redisrelay.NewChangeStore(client, locks.owner), nil
 
 	case config.BackendMemory:
 		return versions.NewMemoryStore(), nil
@@ -128,7 +145,7 @@ func NewChangeStore(cfg *config.Config, locks *Locks) (versions.Store, error) {
 		if pool == nil {
 			return nil, fmt.Errorf("coord: postgres change store needs the pool from NewLocker; got none")
 		}
-		return pg.NewChangeStore(pool), nil
+		return pg.NewChangeStore(pool, locks.owner), nil
 
 	default:
 		return nil, fmt.Errorf("coord: unhandled backend %q", cfg.CoordBackend)

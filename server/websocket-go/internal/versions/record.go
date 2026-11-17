@@ -133,10 +133,25 @@ func (r Record) LastEditAt() time.Time {
 // delete is held when the document has the item deleted. A user whose edits
 // are partly held appears in both.
 func (r Record) Split(state []byte) (held, missing Record, err error) {
+	d, err := decodeState(state)
+	if err != nil {
+		return nil, nil, err
+	}
+	held, missing = r.split(d)
+	return held, missing, nil
+}
+
+// decodeState decodes a full state into a document.
+func decodeState(state []byte) (*crdt.Doc, error) {
 	d := crdt.New()
 	if err := crdt.ApplyUpdateV1(d, state, nil); err != nil {
-		return nil, nil, fmt.Errorf("versions: decode state: %w", err)
+		return nil, fmt.Errorf("versions: decode state: %w", err)
 	}
+	return d, nil
+}
+
+// split is Split against an already decoded document.
+func (r Record) split(d *crdt.Doc) (held, missing Record) {
 	present := crdt.NewIDSet()
 	for client, clock := range d.StateVector() {
 		present.Add(client, 0, clock)
@@ -166,7 +181,7 @@ func (r Record) Split(state []byte) (held, missing Record, err error) {
 			held[u] = have
 		}
 	}
-	return held, missing, nil
+	return held, missing
 }
 
 // wireEdits is the stored form of one user's Edits.
@@ -184,8 +199,8 @@ func EncodeRecord(r Record) ([]byte, error) {
 		w[u] = wireEdits{
 			Inserts: encodeIDSet(e.Inserts),
 			Deletes: encodeIDSet(e.Deletes),
-			FirstAt: e.FirstAt.UnixMilli(),
-			LastAt:  e.LastAt.UnixMilli(),
+			FirstAt: unixMilli(e.FirstAt),
+			LastAt:  unixMilli(e.LastAt),
 		}
 	}
 	return json.Marshal(w)
@@ -207,9 +222,25 @@ func DecodeRecord(b []byte) (Record, error) {
 		if err != nil {
 			return nil, err
 		}
-		r[u] = Edits{Inserts: ins, Deletes: del, FirstAt: time.UnixMilli(we.FirstAt), LastAt: time.UnixMilli(we.LastAt)}
+		r[u] = Edits{Inserts: ins, Deletes: del, FirstAt: fromUnixMilli(we.FirstAt), LastAt: fromUnixMilli(we.LastAt)}
 	}
 	return r, nil
+}
+
+// unixMilli encodes t, and the zero time as 0, so a time that was never set
+// decodes back as unset rather than as a date in 1754.
+func unixMilli(t time.Time) int64 {
+	if t.IsZero() {
+		return 0
+	}
+	return t.UnixMilli()
+}
+
+func fromUnixMilli(ms int64) time.Time {
+	if ms == 0 {
+		return time.Time{}
+	}
+	return time.UnixMilli(ms)
 }
 
 // DecodeRecords decodes and merges stored batches.

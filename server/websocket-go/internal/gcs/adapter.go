@@ -57,6 +57,8 @@ type Adapter struct {
 	// keys). Used for ephemeral UI state (e.g. metadata.rollbackInProgress) that
 	// rides the CRDT for live broadcast but must never persist to storage.
 	transientKeys map[string][]string
+	// keepSnapshots is Options.KeepSnapshots.
+	keepSnapshots int
 }
 
 // Options configure a GCS Adapter.
@@ -75,6 +77,9 @@ type Options struct {
 	// TransientMapKeys are doc map keys stripped from every doc_v2 snapshot
 	// (mapName → keys), for ephemeral UI state that must never be persisted.
 	TransientMapKeys map[string][]string
+	// KeepSnapshots bounds the snapshots SaveSnapshot keeps per retention
+	// class (see trimSnapshots); zero keeps them all.
+	KeepSnapshots int
 }
 
 // New builds a GCS Adapter: LegacyRootLayout in Phase 1; ProjectFolderLayout
@@ -101,6 +106,7 @@ func New(opts Options) (*Adapter, error) {
 		phase2:        opts.Phase2,
 		oidCache:      make(map[string]uint32),
 		transientKeys: opts.TransientMapKeys,
+		keepSnapshots: opts.KeepSnapshots,
 	}
 	if opts.Phase2 {
 		a.layout = ProjectFolderLayout{}

@@ -118,6 +118,27 @@ func TestRecordEncodeRoundTrip(t *testing.T) {
 	}
 }
 
+func TestRecordEncode_UnsetTimesStayUnset(t *testing.T) {
+	t.Parallel()
+
+	e := NewEdits()
+	e.add(idsOf(t, newTestDoc(1).write("a")), time.Time{})
+	b, err := EncodeRecord(Record{"alice": e})
+	if err != nil {
+		t.Fatal(err)
+	}
+	back, err := DecodeRecord(b)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if a := back["alice"]; !a.FirstAt.IsZero() || !a.LastAt.IsZero() {
+		t.Fatalf("times = %v / %v, want unset rather than a date in 1754", a.FirstAt, a.LastAt)
+	}
+	if !back.FirstEditAt().IsZero() || !back.LastEditAt().IsZero() {
+		t.Fatal("an unset time decoded as set")
+	}
+}
+
 func TestRecordSplit_ByWhatTheStateHolds(t *testing.T) {
 	t.Parallel()
 
