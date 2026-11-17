@@ -16,8 +16,8 @@ import (
 // TokenVerifyRequest is the websocket server's pre-upgrade check. Room is the
 // websocket room ("{projectId}:{workflowId}"); when set, the caller must have
 // access to that project, either as a workspace member (Token) or through the
-// project's public share token (ShareToken). A request without Room is the
-// legacy token-only check the Rust server still sends.
+// project's public share token (ShareToken). The websocket server always
+// sends Room; a request without it only checks that the token is valid.
 type TokenVerifyRequest struct {
 	Token      string `json:"token"`
 	Room       string `json:"room,omitempty"`
@@ -32,7 +32,7 @@ type TokenVerifyResponse struct {
 // ProjectAccessChecker decides access to a project's live document.
 type ProjectAccessChecker interface {
 	// UserAccess reports whether the user whose JWT is in ctx may read and edit
-	// the project's document.
+	// the project's document. edit is false while the project is locked.
 	UserAccess(ctx context.Context, projectID string) (read, edit bool, err error)
 	// SharedAccess reports whether shareToken is the project's live public
 	// share token.

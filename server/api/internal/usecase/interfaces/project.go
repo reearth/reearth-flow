@@ -86,6 +86,8 @@ var (
 	ErrProjectAliasAlreadyUsed  error = errors.New("project alias is already used by another project")
 	ErrPrivateProjectNotAllowed error = errors.New("this workspace's plan does not allow private projects")
 	ErrWorkflowFileRequired     error = errors.New("workflow file is required")
+	// ErrProjectLocked refuses a change to a locked project's workflow.
+	ErrProjectLocked error = errors.New("project is locked")
 )
 
 type Project interface {

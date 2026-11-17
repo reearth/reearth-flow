@@ -132,6 +132,51 @@ func TestUserAccess_SkipPermissionCheckStillNeedsUserAndProject(t *testing.T) {
 	assert.False(t, read)
 }
 
+func lockProject(t *testing.T, a *ProjectDocumentAccess, p *project.Project) {
+	t.Helper()
+	p.SetIsLocked(true)
+	require.NoError(t, a.Projects.Save(context.Background(), p))
+}
+
+func TestUserAccess_LockedProjectIsReadOnlyForWriters(t *testing.T) {
+	t.Parallel()
+
+	a, p, checker := newAccessFixture(t)
+	checker.allow[rbac.ActionRead] = true
+	checker.allow[rbac.ActionAny] = true
+	lockProject(t, a, p)
+
+	read, edit, err := a.UserAccess(context.Background(), p.ID().String())
+	require.NoError(t, err)
+	assert.True(t, read, "locking must not take away read access")
+	assert.False(t, edit, "nobody may edit a locked project's document")
+}
+
+func TestUserAccess_LockedProjectIsReadOnlyWithoutPermissionCheck(t *testing.T) {
+	t.Parallel()
+
+	a, p, _ := newAccessFixture(t)
+	a.SkipPermissionCheck = true
+	lockProject(t, a, p)
+
+	read, edit, err := a.UserAccess(context.Background(), p.ID().String())
+	require.NoError(t, err)
+	assert.True(t, read)
+	assert.False(t, edit)
+}
+
+func TestUserAccess_LockedProjectStillDeniesNonMembers(t *testing.T) {
+	t.Parallel()
+
+	a, p, _ := newAccessFixture(t)
+	lockProject(t, a, p)
+
+	read, edit, err := a.UserAccess(context.Background(), p.ID().String())
+	require.NoError(t, err)
+	assert.False(t, read)
+	assert.False(t, edit)
+}
+
 func saveAccess(t *testing.T, a *ProjectDocumentAccess, pid id.ProjectID, public bool) string {
 	t.Helper()
 	pa := projectAccess.New().NewID().Project(pid).IsPublic(public).Token("share-" + pid.String()).MustBuild()
