@@ -19,7 +19,7 @@ type VariableArrayInputProps = {
   showVariableDialog?: boolean;
   onVariableDialogOpen?: (arrayItemIndex: number) => void;
   onVariableDialogClose?: () => void;
-  onAssetDialogOpen?: (dialog: "assets" | "cms") => void;
+  onAssetDialogOpen?: () => void;
 };
 
 export default function VariableArrayInput({

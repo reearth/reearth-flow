@@ -1,3 +1,5 @@
+import type { CmsProject } from "@flow/types/cmsIntegration";
+
 import type { CmsExportType } from "../__gen__/graphql";
 
 import { useQueries } from "./useQueries";
@@ -9,6 +11,7 @@ export const useCms = () => {
     useGetCmsModelsQuery,
     useGetCmsItemsQuery,
     useGetCmsAssetQuery,
+    useGetCmsAssetsAcrossProjectsQuery,
     useGetCmsModelExportUrlQuery,
   } = useQueries();
 
@@ -109,12 +112,26 @@ export const useCms = () => {
     };
   };
 
+  const useGetCmsAssetsAcrossProjects = (
+    projects: Pick<CmsProject, "id" | "workspaceId">[],
+  ) => {
+    const { data, ...rest } = useGetCmsAssetsAcrossProjectsQuery(projects);
+    const pages = data?.pages ?? [];
+    const failedProjectIds = new Set(pages.flatMap((p) => p.failedProjectIds));
+    return {
+      cmsAssets: pages.flatMap((p) => p.assets),
+      failedProjectCount: failedProjectIds.size,
+      ...rest,
+    };
+  };
+
   return {
     useGetCmsProjects,
     useGetCmsProject,
     useGetCmsModels,
     useGetCmsItems,
     useGetCmsAsset,
+    useGetCmsAssetsAcrossProjects,
     useGetCmsModelExportUrl,
   };
 };
