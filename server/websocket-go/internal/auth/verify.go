@@ -30,8 +30,24 @@ type Config struct {
 }
 
 type tokenVerifyResponse struct {
-	Authorized bool `json:"authorized"`
-	ReadOnly   bool `json:"readOnly"`
+	Authorized bool   `json:"authorized"`
+	ReadOnly   bool   `json:"readOnly"`
+	UserID     string `json:"userId"`
+}
+
+// Identity is the ConnectionConfig.Identity of an accepted connection: the user
+// the API resolved the token to. Share-token connections carry none.
+type Identity struct {
+	UserID string
+}
+
+// UserIDOf returns the user an OnPeerUpdate identity names, or "" when the
+// connection carries none.
+func UserIDOf(identity any) string {
+	if id, ok := identity.(Identity); ok {
+		return id.UserID
+	}
+	return ""
 }
 
 // verifyEndpoint joins the AuthURL base with verifyPath, trimming any trailing
@@ -108,6 +124,12 @@ func NewAuthorize(cfg Config) func(*http.Request) (ygws.ConnectionConfig, bool) 
 		if !vr.Authorized {
 			return deny, false
 		}
-		return ygws.ConnectionConfig{ReadOnly: vr.ReadOnly || token == ""}, true
+		cc := ygws.ConnectionConfig{ReadOnly: vr.ReadOnly || token == ""}
+		// Only a token names a user. A share-token connection is read-only, so it
+		// never edits, and the API does not resolve a user for it.
+		if token != "" && vr.UserID != "" {
+			cc.Identity = Identity{UserID: vr.UserID}
+		}
+		return cc, true
 	}
 }

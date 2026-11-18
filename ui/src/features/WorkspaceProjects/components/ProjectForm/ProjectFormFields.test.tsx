@@ -27,7 +27,7 @@ describe("ProjectFormFields", () => {
   it("fills the alias as the name is typed", () => {
     render(<Harness />);
     const name = screen.getByLabelText("Project Name");
-    const alias = screen.getByLabelText("Alias (optional)");
+    const alias = screen.getByLabelText("Alias");
 
     fireEvent.change(name, { target: { value: "Tokyo roads" } });
     expect(alias).toHaveValue("Tokyo-roads");
@@ -37,7 +37,7 @@ describe("ProjectFormFields", () => {
 
   it("turns a space typed into the alias into a dash", () => {
     render(<Harness />);
-    const alias = screen.getByLabelText("Alias (optional)");
+    const alias = screen.getByLabelText("Alias");
 
     fireEvent.change(alias, { target: { value: "my alias" } });
     expect(alias).toHaveValue("my-alias");

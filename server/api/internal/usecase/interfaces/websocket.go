@@ -27,6 +27,13 @@ type WebsocketClient interface {
 	// access. changedAt orders a project's lock changes, so it must increase
 	// with each change: the project's updatedAt after SetIsLocked does.
 	SetProjectLock(ctx context.Context, docID string, locked bool, changedAt time.Time) error
+	// SaveVersion asks the websocket server to save the document as a version
+	// labelled label, if users changed it since its last version; saved is
+	// false when nothing changed. The server tells the API about each version
+	// it saves (POST /auth/versions), which is what moves the project's
+	// updatedAt. It returns ErrVersionSaveBusy or ErrVersionsUnsupported when no
+	// version could be saved and none is missing; see IsVersionSaveSkipped.
+	SaveVersion(ctx context.Context, docID, label string) (saved bool, err error)
 
 	Close() error
 }
@@ -35,3 +42,19 @@ type WebsocketClient interface {
 // websocket server refuses the request itself (a 4xx), such as for a wrong API
 // secret. Sending it again cannot succeed.
 var ErrWebsocketRequestRejected = errors.New("websocket server rejected the request")
+
+var (
+	// ErrVersionSaveBusy reports that another save of the document held it for
+	// the websocket server's whole wait. The changes stay recorded, so a save
+	// in progress or the next one includes them.
+	ErrVersionSaveBusy = errors.New("another save of the document is in progress")
+	// ErrVersionsUnsupported reports that the websocket server's storage keeps
+	// no versions, as in some local setups.
+	ErrVersionsUnsupported = errors.New("websocket server does not keep versions")
+)
+
+// IsVersionSaveSkipped reports whether a SaveVersion error leaves nothing
+// wrong for the caller: no version was saved, and none is missing.
+func IsVersionSaveSkipped(err error) bool {
+	return errors.Is(err, ErrVersionSaveBusy) || errors.Is(err, ErrVersionsUnsupported)
+}

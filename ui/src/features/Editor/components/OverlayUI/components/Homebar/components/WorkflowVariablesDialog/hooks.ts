@@ -1,12 +1,10 @@
 import { useState, useEffect, useCallback, useMemo, useRef } from "react";
-import { useY } from "react-yjs";
-import { Map as YMap } from "yjs";
 
 import { useEditorContext } from "@flow/features/Editor/editorContext";
 import { useToast } from "@flow/features/NotificationSystem/useToast";
 import { useWorkflowVars } from "@flow/hooks";
 import { useT } from "@flow/lib/i18n";
-import type { WorkflowVarSession } from "@flow/lib/yjs/workflowVarSession";
+import useWorkflowVarSession from "@flow/lib/yjs/useWorkflowVarSession";
 import { computeSessionChanges } from "@flow/lib/yjs/workflowVarSession";
 import type { AwarenessUser, WorkflowVariable, VarType } from "@flow/types";
 import {
@@ -66,30 +64,26 @@ export default ({
 }) => {
   const t = useT();
   const { toast } = useToast();
-  const { yDoc, workflowVarAwareness } = useEditorContext();
+  const { yDoc, yAwareness, workflowVarAwareness } = useEditorContext();
 
-  const myClientId = String(yDoc?.clientID ?? "local");
+  const myClientId = String(yAwareness?.clientID ?? yDoc?.clientID ?? "local");
 
-  // Shared Yjs session — all users read from and write to the same map so every
-  // change is immediately visible to everyone (analogous to params in Yjs nodes).
-  const yVarSession = useMemo(
-    () => yDoc?.getMap<any>("workflowVarSession"),
-    [yDoc],
-  );
-  const rawSession = useY(
-    yVarSession ?? new YMap(),
-  ) as Partial<WorkflowVarSession>;
+  // Shared session — everyone in the dialog sees the same unsaved edits. It
+  // lives in awareness, not the document: variables are saved through the API,
+  // and opening or cancelling the dialog must not edit the workflow.
+  const { session, getSession, publishSession, leaveSession } =
+    useWorkflowVarSession(yAwareness);
 
-  // Derive display variables and original base from session; fall back to server
-  // state until the session is first initialised.
+  // Until someone edits there is no session, and the dialog shows the saved
+  // variables.
   const sessionVars = useMemo<WorkflowVariable[]>(
-    () => rawSession?.variables ?? currentWorkflowVariables ?? [],
-    [rawSession?.variables, currentWorkflowVariables],
+    () => session?.variables ?? currentWorkflowVariables ?? [],
+    [session?.variables, currentWorkflowVariables],
   );
 
   const sessionBase = useMemo<WorkflowVariable[]>(
-    () => rawSession?.base ?? currentWorkflowVariables ?? [],
-    [rawSession?.base, currentWorkflowVariables],
+    () => session?.base ?? currentWorkflowVariables ?? [],
+    [session?.base, currentWorkflowVariables],
   );
 
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -109,83 +103,31 @@ export default ({
 
   // ── Session helpers ────────────────────────────────────────────────────────
 
-  // TODO(CRDT safety): for true per-item CRDT merging, migrate yVarSession to a
-  // Y.Array of Y.Maps so concurrent edits to different variables do not resolve
-  // as last-writer-wins on the whole array. For now, wrap multi-field writes in
-  // a single Yjs transaction so they land atomically.
+  // The first edit starts the session, with the saved variables as its base.
+  // Last writer wins on the whole list, as each revision replaces the last.
   const writeVars = useCallback(
     (newVars: WorkflowVariable[]) => {
-      if (!yVarSession || !yDoc) return;
-      yDoc.transact(() => {
-        yVarSession.set("variables", newVars);
-        yVarSession.set("timestamp", Date.now());
+      publishSession({
+        variables: newVars,
+        base: getSession()?.base ?? currentWorkflowVariablesRef.current ?? [],
       });
     },
-    [yVarSession, yDoc],
+    [publishSession, getSession],
   );
 
-  const clearSession = useCallback(() => {
-    if (!yVarSession) return;
-    yVarSession.delete("variables");
-    yVarSession.delete("base");
-    yVarSession.delete("timestamp");
-    yVarSession.delete("pendingRefetch");
-  }, [yVarSession]);
-
-  // Initialise the shared session once from server data (first open wins).
-  // Subsequent openers read the already-live session so they see each other's
-  // in-progress edits immediately. If pendingRefetch is set, we join the
-  // existing session and let the second useEffect below handle temp_ ID
-  // resolution once TQ has returned fresh data — we never reinitialise here
-  // from potentially stale currentWorkflowVariables.
-  const hasInitRef = useRef(false);
+  // After a save that created variables, the session holds their temp_ IDs.
+  // Replace it with server data once TanStack Query has the real IDs, which
+  // is when it holds at least as many variables as the saved base.
   useEffect(() => {
-    if (!yVarSession || currentWorkflowVariables === undefined) return;
-    if (hasInitRef.current) return;
-    hasInitRef.current = true;
-
-    if (yVarSession.get("variables") === undefined) {
-      // Fresh session — nobody has started editing yet.
-      yVarSession.doc?.transact(() => {
-        yVarSession.set("variables", [...currentWorkflowVariables]);
-        yVarSession.set("base", [...currentWorkflowVariables]);
-        yVarSession.set("timestamp", Date.now());
-      });
-    }
-    // else: live session (possibly with pendingRefetch) — join without
-    // overwriting. The effect below resolves temp_ IDs when TQ is ready.
-  }, [yVarSession, currentWorkflowVariables]);
-
-  // After a successful save with creates, resolve temp_ IDs once TQ has the
-  // real server IDs. We use a per-mount "already processed" flag rather than
-  // object-identity change detection so this fires correctly whether TQ was
-  // already fresh at mount time or catches up later. Freshness is confirmed by
-  // checking that currentWorkflowVariables is at least as long as the session
-  // base (the saving client wrote base to include the temp_ variables).
-  const hasProcessedPendingRefetchRef = useRef(false);
-  useEffect(() => {
-    if (!yVarSession || currentWorkflowVariables === undefined) return;
-
-    if (!rawSession?.pendingRefetch) {
-      hasProcessedPendingRefetchRef.current = false;
+    if (!session?.pendingRefetch || currentWorkflowVariables === undefined) {
       return;
     }
-
-    if (hasProcessedPendingRefetchRef.current) return;
-
-    const sessionBaseLen = (
-      (yVarSession.get("base") ?? []) as WorkflowVariable[]
-    ).length;
-    if (currentWorkflowVariables.length < sessionBaseLen) return; // TQ still stale
-
-    hasProcessedPendingRefetchRef.current = true;
-    yVarSession.doc?.transact(() => {
-      yVarSession.set("variables", [...currentWorkflowVariables]);
-      yVarSession.set("base", [...currentWorkflowVariables]);
-      yVarSession.set("timestamp", Date.now());
-      yVarSession.delete("pendingRefetch");
+    if (currentWorkflowVariables.length < session.base.length) return; // TQ still stale
+    publishSession({
+      variables: [...currentWorkflowVariables],
+      base: [...currentWorkflowVariables],
     });
-  }, [yVarSession, currentWorkflowVariables, rawSession?.pendingRefetch]);
+  }, [session, currentWorkflowVariables, publishSession]);
 
   // ── Always-current refs ───────────────────────────────────────────────────
   // All mutable state that cancel / unmount cleanup needs to read freshly.
@@ -195,19 +137,20 @@ export default ({
   const sessionVarsRef = useRef(sessionVars);
   sessionVarsRef.current = sessionVars;
 
+  const currentWorkflowVariablesRef = useRef(currentWorkflowVariables);
+  currentWorkflowVariablesRef.current = currentWorkflowVariables;
+
   const sessionBaseRef = useRef(sessionBase);
   sessionBaseRef.current = sessionBase;
 
   const usersRef = useRef(users);
   usersRef.current = users;
 
-  const pendingRefetchRef = useRef<
-    WorkflowVarSession["pendingRefetch"] | undefined
-  >(rawSession?.pendingRefetch);
-  pendingRefetchRef.current = rawSession?.pendingRefetch;
+  const leaveSessionRef = useRef(leaveSession);
+  leaveSessionRef.current = leaveSession;
 
-  const clearSessionRef = useRef(clearSession);
-  clearSessionRef.current = clearSession;
+  const writeVarsRef = useRef(writeVars);
+  writeVarsRef.current = writeVars;
 
   // ── Unsaved-changes detection ─────────────────────────────────────────────
 
@@ -231,17 +174,16 @@ export default ({
 
   // ── Variable list mutations (all write directly to shared Yjs) ────────────
 
-  // Snapshot of session vars at the moment this user joined (or initialised)
-  // the dialog. Used in handleCancel to know what to revert TO for vars this
-  // user changed. Captured once on the first non-null rawSession.variables.
+  // Snapshot of the variables at the moment this user joined the dialog. Used
+  // in handleCancel to know what to revert TO for vars this user changed.
+  // Captured once, from the session or, with none yet, the saved variables.
   const joinedSessionVarsRef = useRef<WorkflowVariable[] | null>(null);
   useEffect(() => {
     if (joinedSessionVarsRef.current !== null) return;
-    if (!rawSession?.variables) return;
-    joinedSessionVarsRef.current = [
-      ...(rawSession.variables as WorkflowVariable[]),
-    ];
-  }, [rawSession?.variables]);
+    const vars = session?.variables ?? currentWorkflowVariables;
+    if (!vars) return;
+    joinedSessionVarsRef.current = [...vars];
+  }, [session?.variables, currentWorkflowVariables]);
 
   // Tracks temp_ variables this user added and their latest self-authored
   // state. Used in handleCancel to determine whether another collaborator has
@@ -330,7 +272,8 @@ export default ({
   // Extracted into a ref-based function so it can be called both from
   // handleCancel (explicit user action) and from the unmount cleanup
   // (navigation away without Cancel/Save). Reading all mutable state via refs
-  // means the unmount closure never captures stale values.
+  // means the unmount closure never captures stale values. It leaves the
+  // session afterwards; the session ends with its last participant.
 
   const performCancelCleanupRef = useRef<() => void>(() => {});
   performCancelCleanupRef.current = () => {
@@ -340,21 +283,8 @@ export default ({
     );
 
     if (!otherUsersInDialog) {
-      if (pendingRefetchRef.current && yVarSession) {
-        // A save with creates is pending temp_→real ID resolution. Wiping the
-        // session here would delete the pendingRefetch flag, so the next opener
-        // would init from a potentially stale TQ cache and miss the new variable.
-        // Instead, revert variables back to the saved base (discarding this
-        // user's unsaved additions) while keeping pendingRefetch so the next
-        // opener's watcher can resolve temp_ IDs once TQ is fresh.
-        yVarSession.doc?.transact(() => {
-          yVarSession.set("variables", [...sessionBaseRef.current]);
-          yVarSession.set("timestamp", Date.now());
-        });
-      } else {
-        // No pending save — wipe the session entirely.
-        clearSessionRef.current();
-      }
+      // Nobody else is editing: leaving discards the session.
+      leaveSessionRef.current();
     } else {
       // Other collaborators are still editing.
       // 1. Revert existing vars this user changed back to their joined-state values.
@@ -440,12 +370,9 @@ export default ({
           (v, i) => JSON.stringify(v) !== JSON.stringify(currentVars[i]),
         );
 
-      if (changed && yVarSession) {
-        yVarSession.doc?.transact(() => {
-          yVarSession.set("variables", reverted);
-          yVarSession.set("timestamp", Date.now());
-        });
-      }
+      // Published before leaving, so the others keep the reverted state.
+      if (changed) writeVarsRef.current(reverted);
+      leaveSessionRef.current();
     }
   };
 
@@ -506,21 +433,17 @@ export default ({
 
       await new Promise((resolve) => setTimeout(resolve, 100));
 
-      // Write the committed state to Yjs so users who still have the dialog
-      // open see the saved data immediately (instead of the stale server
-      // fallback that clearSession would have caused).
-      // If creates were submitted, mark pendingRefetch so the session is
-      // re-initialised with real server IDs once TanStack Query refetches.
-      if (yVarSession) {
-        yVarSession.doc?.transact(() => {
-          yVarSession.set("variables", [...sessionVarsRef.current]);
-          yVarSession.set("base", [...sessionVarsRef.current]);
-          yVarSession.set("timestamp", Date.now());
-          if (hasChanges && changes.creates.length > 0) {
-            yVarSession.set("pendingRefetch", myClientId);
-          }
-        });
-      }
+      // Publish the committed state so users who still have the dialog open
+      // see the saved data immediately, rather than their own stale copy of
+      // the server's. If creates were submitted, mark pendingRefetch so the
+      // session is replaced with real server IDs once TanStack Query
+      // refetches. Then leave: the others keep the session.
+      publishSession({
+        variables: [...sessionVarsRef.current],
+        base: [...sessionVarsRef.current],
+        pendingRefetch: hasChanges && changes.creates.length > 0,
+      });
+      leaveSession();
 
       hasExplicitlyClosedRef.current = true;
       workflowVarAwareness?.onDialogClose();
@@ -537,8 +460,8 @@ export default ({
     onChange,
     onDeleteBatch,
     onDelete,
-    yVarSession,
-    myClientId,
+    publishSession,
+    leaveSession,
     workflowVarAwareness,
     onClose,
   ]);
@@ -554,8 +477,8 @@ export default ({
 
   // Broadcast awareness that this user has the dialog open. On unmount, clear
   // awareness and — if the dialog was not explicitly closed via Cancel/Save
-  // (e.g., the user navigated away) — revert/clear the Yjs session so stale
-  // temp_ variables do not leak into the next open.
+  // (e.g., the user navigated away) — revert this user's edits and leave the
+  // session.
   const workflowVarAwarenessRef = useRef(workflowVarAwareness);
   workflowVarAwarenessRef.current = workflowVarAwareness;
   useEffect(() => {

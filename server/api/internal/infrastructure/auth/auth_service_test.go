@@ -20,14 +20,18 @@ type fakeProjects struct {
 	gotProject string
 	gotJWT     string
 	gotShare   string
+	userID     string
 
 	read, edit, shared bool
 }
 
-func (f *fakeProjects) UserAccess(ctx context.Context, projectID string) (bool, bool, error) {
+func (f *fakeProjects) UserAccess(ctx context.Context, projectID string) (DocumentAccess, error) {
 	f.gotProject = projectID
 	f.gotJWT = adapter.JWT(ctx)
-	return f.read, f.edit, f.err
+	if !f.read {
+		return DocumentAccess{}, f.err
+	}
+	return DocumentAccess{Read: true, Edit: f.edit, UserID: f.userID}, f.err
 }
 
 func (f *fakeProjects) SharedAccess(_ context.Context, shareToken, projectID string) (bool, error) {
@@ -68,6 +72,24 @@ func TestVerifyRoom_MemberWithEditGetsReadWrite(t *testing.T) {
 	assert.False(t, resp.ReadOnly)
 	assert.Equal(t, "proj-1", p.gotProject, "the project is the room's prefix before the first colon")
 	assert.Equal(t, "good", p.gotJWT, "the accounts calls must carry the caller's JWT")
+}
+
+func TestVerifyRoom_TokenConnectionNamesItsUser(t *testing.T) {
+	t.Parallel()
+
+	p := &fakeProjects{read: true, edit: true, userID: "user-1"}
+	code, resp := verify(t, newTestHandler(p), TokenVerifyRequest{Token: "good", Room: "proj-1:main"})
+	assert.Equal(t, http.StatusOK, code)
+	assert.Equal(t, "user-1", resp.UserID, "the websocket server records edits under this user")
+}
+
+func TestVerifyRoom_ShareTokenConnectionHasNoUser(t *testing.T) {
+	t.Parallel()
+
+	p := &fakeProjects{shared: true, userID: "user-1"}
+	code, resp := verify(t, newTestHandler(p), TokenVerifyRequest{ShareToken: "s1", Room: "proj-1:main"})
+	assert.Equal(t, http.StatusOK, code)
+	assert.Empty(t, resp.UserID)
 }
 
 func TestVerifyRoom_ReaderGetsReadOnly(t *testing.T) {

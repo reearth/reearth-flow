@@ -4,12 +4,16 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"slices"
 	"sort"
 	"strconv"
 	"strings"
+	"time"
 	"unicode/utf8"
 
 	"github.com/reearth/ygo/persistence"
+
+	"github.com/reearth/reearth-flow/websocket-go/internal/versions"
 )
 
 // Snapver object metadata. Stored so ListSnapshots never reads a payload; the
@@ -17,12 +21,136 @@ import (
 const (
 	snapMetaLabel = "ygo-label"
 	snapMetaSize  = "ygo-size"
+	// snapMetaContributors lists the users whose edits the version holds,
+	// comma-separated, the last editor first and the rest sorted;
+	// snapMetaContributorCount is how many there were, which is more than the
+	// list holds when it was cut to fit. snapMetaLastEditor is the last editor
+	// and snapMetaLastEditedAt the time of the latest edit (Unix ms).
+	snapMetaContributors     = "flow-contributors"
+	snapMetaContributorCount = "flow-contributor-count"
+	snapMetaLastEditor       = "flow-last-editor"
+	snapMetaLastEditedAt     = "flow-last-edited-at"
+	// snapMetaOrigin is "version" on a snapshot versions.Saver stored.
+	snapMetaOrigin = "flow-origin"
+	originVersion  = "version"
 )
 
-// SaveSnapshot stores state as a new labelled snapshot and returns its id.
-// state is an opaque blob, only compressed, never decoded as a CRDT update:
-// SnapshotStore's contract allows any non-empty bytes.
+// snapshotClass is a retention class: TrimSnapshots bounds each separately.
+type snapshotClass int
+
+const (
+	// classAuto is the automatic versions (versions.AutoLabel).
+	classAuto snapshotClass = iota
+	// classVersion is the versions saved on request (Ctrl+S, runs,
+	// deployments), whatever their label.
+	classVersion
+	// classOther is every other snapshot: the one the editor takes before a
+	// restore, and named snapshots saved before versions were attributed.
+	classOther
+)
+
+func classOf(label string, meta map[string]string) snapshotClass {
+	switch {
+	case label == versions.AutoLabel:
+		return classAuto
+	case meta[snapMetaOrigin] == originVersion:
+		return classVersion
+	default:
+		return classOther
+	}
+}
+
+// maxContributorBytes bounds the contributor list. GCS caps an object's custom
+// metadata at 8 KiB, keys included; the label takes up to maxLabelBytes of it.
+const maxContributorBytes = 4096
+
+// SaveSnapshot stores state as a new labelled snapshot and returns its id,
+// then trims its class to the adapter's KeepSnapshots (see TrimSnapshots); a
+// failed trim is logged. state is an opaque blob, only compressed, never
+// decoded as a CRDT update: SnapshotStore's contract allows any non-empty bytes.
 func (a *Adapter) SaveSnapshot(ctx context.Context, room, label string, state []byte) (int64, error) {
+	id, err := a.saveSnapshot(ctx, room, label, state, nil)
+	if err != nil {
+		return 0, err
+	}
+	if err := a.trimSnapshots(ctx, room, classOf(label, nil), a.keepSnapshots); err != nil {
+		a.log.Warn("trimming old snapshots failed", "room", room, "label", label, "err", err)
+	}
+	return id, nil
+}
+
+// SaveAttributedSnapshot stores a version versions.Saver saved, recording who
+// it is attributed to. It does not trim.
+func (a *Adapter) SaveAttributedSnapshot(ctx context.Context, room, label string, state []byte, attr versions.Attribution) (int64, error) {
+	meta := attributionMeta(attr)
+	meta[snapMetaOrigin] = originVersion
+	return a.saveSnapshot(ctx, room, label, state, meta)
+}
+
+// attributionMeta encodes attr as object metadata, cutting the contributor
+// list to maxContributorBytes. The last editor is kept first so a cut list
+// still names them. An id containing a comma cannot be listed and is left out.
+func attributionMeta(attr versions.Attribution) map[string]string {
+	ids := make([]string, 0, len(attr.Contributors)+1)
+	seen := map[string]bool{}
+	add := func(id string) {
+		if id == "" || seen[id] || strings.Contains(id, ",") || !utf8.ValidString(id) {
+			return
+		}
+		seen[id] = true
+		ids = append(ids, id)
+	}
+	add(attr.LastEditor)
+	rest := append([]string(nil), attr.Contributors...)
+	sort.Strings(rest)
+	for _, id := range rest {
+		add(id)
+	}
+	var b strings.Builder
+	for _, id := range ids {
+		n := len(id)
+		if b.Len() > 0 {
+			n++
+		}
+		if b.Len()+n > maxContributorBytes {
+			break
+		}
+		if b.Len() > 0 {
+			b.WriteByte(',')
+		}
+		b.WriteString(id)
+	}
+	meta := map[string]string{
+		snapMetaContributors:     b.String(),
+		snapMetaContributorCount: strconv.Itoa(max(attr.ContributorCount, len(ids))),
+	}
+	if seen[attr.LastEditor] {
+		meta[snapMetaLastEditor] = attr.LastEditor
+	}
+	if !attr.LastEditedAt.IsZero() {
+		meta[snapMetaLastEditedAt] = strconv.FormatInt(attr.LastEditedAt.UnixMilli(), 10)
+	}
+	return meta
+}
+
+// attributionFromMeta reads a snapshot's attribution from its object metadata.
+// The contributor list is as stored, so it can be cut short; ContributorCount
+// is how many contributors there were.
+func attributionFromMeta(meta map[string]string) (attr versions.Attribution) {
+	attr.LastEditor = meta[snapMetaLastEditor]
+	if v := meta[snapMetaContributors]; v != "" {
+		attr.Contributors = strings.Split(v, ",")
+		sort.Strings(attr.Contributors)
+	}
+	if ms, err := strconv.ParseInt(meta[snapMetaLastEditedAt], 10, 64); err == nil {
+		attr.LastEditedAt = time.UnixMilli(ms)
+	}
+	count, _ := strconv.Atoi(meta[snapMetaContributorCount])
+	attr.ContributorCount = max(count, len(attr.Contributors))
+	return attr
+}
+
+func (a *Adapter) saveSnapshot(ctx context.Context, room, label string, state []byte, extra map[string]string) (int64, error) {
 	if err := a.validate(room); err != nil {
 		return 0, err
 	}
@@ -38,6 +166,9 @@ func (a *Adapter) SaveSnapshot(ctx context.Context, room, label string, state []
 	meta := map[string]string{
 		snapMetaLabel: label,
 		snapMetaSize:  strconv.Itoa(len(state)),
+	}
+	for k, v := range extra {
+		meta[k] = v
 	}
 
 	var id int64
@@ -153,6 +284,38 @@ func (a *Adapter) snapshotLayouts() []Layout {
 // attributes. Merges the legacy root under Phase 2, without which flipping
 // REEARTH_FLOW_GCS_PHASE2 would silently empty every existing room's history.
 func (a *Adapter) ListSnapshots(ctx context.Context, room string) ([]persistence.SnapshotInfo, error) {
+	listed, err := a.ListSnapshotDetails(ctx, room)
+	if err != nil {
+		return nil, err
+	}
+	out := make([]persistence.SnapshotInfo, len(listed))
+	for i, l := range listed {
+		out[i] = l.SnapshotInfo
+	}
+	return out, nil
+}
+
+// ListSnapshotDetails is ListSnapshots with each snapshot's attribution.
+func (a *Adapter) ListSnapshotDetails(ctx context.Context, room string) ([]versions.ListedVersion, error) {
+	listed, err := a.listSnapshots(ctx, room)
+	if err != nil {
+		return nil, err
+	}
+	out := make([]versions.ListedVersion, len(listed))
+	for i, l := range listed {
+		out[i] = l.ListedVersion
+	}
+	return out, nil
+}
+
+// listedSnapshot is a listed snapshot with its retention class.
+type listedSnapshot struct {
+	versions.ListedVersion
+	class snapshotClass
+}
+
+// listSnapshots lists room's snapshots newest first, from object attributes.
+func (a *Adapter) listSnapshots(ctx context.Context, room string) ([]listedSnapshot, error) {
 	if err := a.validate(room); err != nil {
 		return nil, err
 	}
@@ -161,7 +324,7 @@ func (a *Adapter) ListSnapshots(ctx context.Context, room string) ([]persistence
 	// first, so a room that already re-saved a snapshot post-cutover shows the
 	// primary copy and the legacy one is ignored.
 	seen := make(map[int64]struct{})
-	out := make([]persistence.SnapshotInfo, 0)
+	out := make([]listedSnapshot, 0)
 	for _, l := range a.snapshotLayouts() {
 		attrs, err := a.store.listAttrs(ctx, l.SnapVersionPrefix(d))
 		if err != nil {
@@ -179,11 +342,18 @@ func (a *Adapter) ListSnapshots(ctx context.Context, room string) ([]persistence
 			}
 			seen[id] = struct{}{}
 			size, _ := strconv.ParseInt(at.Metadata[snapMetaSize], 10, 64)
-			out = append(out, persistence.SnapshotInfo{
-				ID:        id,
-				Label:     at.Metadata[snapMetaLabel],
-				CreatedAt: at.Created.UTC(),
-				Size:      size,
+			label := at.Metadata[snapMetaLabel]
+			out = append(out, listedSnapshot{
+				ListedVersion: versions.ListedVersion{
+					SnapshotInfo: persistence.SnapshotInfo{
+						ID:        id,
+						Label:     label,
+						CreatedAt: at.Created.UTC(),
+						Size:      size,
+					},
+					Attribution: attributionFromMeta(at.Metadata),
+				},
+				class: classOf(label, at.Metadata),
 			})
 		}
 	}
@@ -208,6 +378,87 @@ func (a *Adapter) GetSnapshotState(ctx context.Context, room string, id int64) (
 		}
 	}
 	return nil, persistence.ErrSnapshotNotFound
+}
+
+// trimSnapshots deletes the oldest of room's snapshots in class beyond keep.
+// Each class is bounded on its own, so automatic versions never evict ones
+// saved on request, neither evicts the snapshot taken before a restore, and a
+// caller sending a new label each time still has its versions bounded.
+// keep <= 0 keeps everything.
+func (a *Adapter) trimSnapshots(ctx context.Context, room string, class snapshotClass, keep int) error {
+	if keep <= 0 {
+		return nil
+	}
+	snaps, err := a.listSnapshots(ctx, room)
+	if err != nil {
+		return err
+	}
+	var errs []error
+	n := 0
+	for _, sn := range snaps { // newest first
+		if sn.class != class {
+			continue
+		}
+		n++
+		if n <= keep {
+			continue
+		}
+		if err := a.DeleteSnapshot(ctx, room, sn.ID); err != nil {
+			errs = append(errs, err)
+		}
+	}
+	return errors.Join(errs...)
+}
+
+// LatestVersion returns room's newest version, automatic or saved on request,
+// with its state; ok is false when it has none. Other snapshots, such as the
+// one taken before a restore, are skipped: edits are never credited to them.
+func (a *Adapter) LatestVersion(ctx context.Context, room string) (versions.StoredVersion, bool, error) {
+	listed, err := a.listSnapshots(ctx, room)
+	if err != nil {
+		return versions.StoredVersion{}, false, err
+	}
+	i := slices.IndexFunc(listed, func(l listedSnapshot) bool { return l.class != classOther })
+	if i < 0 {
+		return versions.StoredVersion{}, false, nil
+	}
+	l := listed[i]
+	state, err := a.GetSnapshotState(ctx, room, l.ID)
+	if errors.Is(err, persistence.ErrSnapshotNotFound) {
+		return versions.StoredVersion{}, false, nil // deleted since the listing
+	}
+	if err != nil {
+		return versions.StoredVersion{}, false, err
+	}
+	return versions.StoredVersion{ID: l.ID, Label: l.Label, CreatedAt: l.CreatedAt, State: state, Attribution: l.Attribution}, true, nil
+}
+
+// AttributeSnapshot replaces the attribution of room's snapshot id, keeping its
+// label and size. persistence.ErrSnapshotNotFound when there is no such
+// snapshot.
+func (a *Adapter) AttributeSnapshot(ctx context.Context, room string, id int64, attr versions.Attribution) error {
+	if err := a.validate(room); err != nil {
+		return err
+	}
+	d := DocID(room)
+	for _, l := range a.snapshotLayouts() {
+		err := a.store.updateMeta(ctx, l.SnapVersionName(d, id), func(meta map[string]string) {
+			for _, k := range []string{snapMetaContributors, snapMetaContributorCount, snapMetaLastEditor, snapMetaLastEditedAt} {
+				delete(meta, k)
+			}
+			// The origin and the rest of the metadata stay.
+			for k, v := range attributionMeta(attr) {
+				meta[k] = v
+			}
+		})
+		if err == nil {
+			return nil
+		}
+		if err != errNotFound {
+			return err
+		}
+	}
+	return persistence.ErrSnapshotNotFound
 }
 
 // DeleteSnapshot removes one snapshot; unknown ids are a no-op. Sweeps both

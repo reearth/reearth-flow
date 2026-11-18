@@ -60,7 +60,6 @@ colored.workspace = true
 indexmap.workspace = true
 indoc.workspace = true
 json-subscriber.workspace = true
-num_cpus.workspace = true
 once_cell.workspace = true
 opentelemetry_sdk.workspace = true
 schemars.workspace = true

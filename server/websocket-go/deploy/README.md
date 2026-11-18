@@ -49,3 +49,41 @@ adapter dual-reads new-prefix → legacy-root and lazily backfills the legacy ba
 on first write. Backfill wiring at startup and activation is a follow-up before
 relying on it broadly. Phase-2 changes the keyspace, so it was gated on no Rust
 server reading or writing the same bucket.
+
+## Workflow versions
+
+The server saves a room's document as a version (an entry in the editor's
+Version panel) only when users changed it, once per change across instances,
+and records who did. See `internal/versions`.
+
+| Env var | Meaning |
+|---|---|
+| `REEARTH_FLOW_AUTO_VERSION_EVERY` | How long a room's first unsaved edit waits before the room is saved as an `auto` version, measured across instances (default `15m`; `0` turns this trigger off). Before Flow saved versions itself, it meant "at most once per interval per instance". |
+| `REEARTH_FLOW_KEEP_SNAPSHOTS` | Snapshots kept per room in each of three classes (default `50`; a value below `1` uses the default): `auto` versions; versions saved on request through `/versions`, whatever their label; and every other snapshot, such as the one the editor takes before a restore (`POST …/snapshots`). Before, it bounded `auto` versions only, and nothing bounded the others. At the default a room now keeps at most 150 snapshots. |
+
+Versions are also saved when the last instance lets a room go, and on request:
+
+- `POST /api/document/{id}/versions` with `{"label": "…"}` (behind
+  `X-API-Secret`, label required, at most 256 bytes) answers
+  `{"saved": true, "snapshotId": n}`, or `{"saved": false}` when no user edit
+  is waiting. The API calls it on Ctrl+S, debug runs and deployments, with a
+  fixed label for each.
+
+After every version the server tells the API at
+`POST {REEARTH_FLOW_THRIFT_AUTH_URL}/auth/versions` with `X-API-Secret` set to
+`REEARTH_FLOW_API_SECRET`. The body and the rules the API must follow are on
+`versions.CallbackPath`. In short:
+
+- Require the secret.
+- Notices are unordered and retried, and a version's notice is sent again with
+  more contributors and possibly the same `lastEditedAt`.
+- Set the project's last editor and update time only from a notice whose
+  `lastEditedAt` is later than the project's.
+- Merge anything kept per version by `versionId` (contributors by union), and
+  never drop a notice for a `versionId` seen before.
+
+Change records live in the coordination store: a Redis hash per room with one
+field per instance (`flow:version:changes:{room}`, 30-day TTL), or one
+`ws_version_change` row per room and instance in Postgres (swept after 30
+days).
+

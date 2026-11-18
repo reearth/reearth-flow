@@ -29,6 +29,7 @@ import (
 	"github.com/reearth/reearth-flow/websocket-go/internal/logging"
 	flowotel "github.com/reearth/reearth-flow/websocket-go/internal/otel"
 	"github.com/reearth/reearth-flow/websocket-go/internal/server"
+	"github.com/reearth/reearth-flow/websocket-go/internal/versions"
 )
 
 func main() {
@@ -99,18 +100,27 @@ func run() error {
 		Logger:    log,
 	})
 	apiRouter := flowhttp.NewRouter(flowhttp.Deps{
-		Store:    store,
-		Signaler: srv,
-		Logger:   log,
+		Store:     store,
+		Signaler:  srv,
+		Versioner: srv,
+		Logger:    log,
 	})
 
 	// Wire the real /health probes. A client-construction failure is non-fatal:
 	// /health reports that component unconfigured (503) instead.
 	wireHealth(ctx, srv, cfg, p.locks, log)
 
+	// Versions are saved from user edits, recorded in the coordination store so
+	// every instance shares one record per room, and the API hears of each.
+	notifier, err := enableVersions(srv, cfg, p, log)
+	if err != nil {
+		return err
+	}
+
 	// Attach the cluster relay so instances share rooms. The GCS Flusher is the
-	// relay's last-instance persistence seam. Fatal on failure.
-	relay, err := coord.NewRelay(cfg, p.locks, flusher, log)
+	// relay's last-instance persistence seam; wrapped, it first saves the room
+	// as a version when users changed it. Fatal on failure.
+	relay, err := coord.NewRelay(cfg, p.locks, srv.VersionedFlusher(flusher), log)
 	if err != nil {
 		return fmt.Errorf("build cluster relay: %w", err)
 	}
@@ -118,12 +128,17 @@ func run() error {
 	if err := srv.AttachRedisRelay(ctx, relay); err != nil {
 		return fmt.Errorf("attach cluster relay: %w", err)
 	}
-	// A project lock change must reach a room open only on another instance.
+	// A project lock change or a version request must reach a room open only on
+	// another instance.
 	if p := coord.Presence(relay); p != nil {
 		srv.SetPresence(p)
 	}
+	if c := coord.CatchUp(relay); c != nil {
+		srv.SetCatchUp(c)
+	}
 
 	go srv.StartPeriodicSync(ctx, 0) // 0 => default 30s
+	go srv.StartPeriodicVersions(ctx)
 
 	// Retention sweep for backends without key TTLs; a no-op for the others.
 	coord.StartJanitor(ctx, cfg, p.locks, log)
@@ -161,13 +176,95 @@ func run() error {
 		log.Info("shutdown signal received, draining")
 	}
 
-	shutdownCtx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
+	shutdownCtx, cancel := context.WithTimeout(context.Background(), shutdownTimeout)
 	defer cancel()
-	// Drain WebSocket peers first, then stop accepting HTTP.
-	if err := srv.WSProvider().Shutdown(shutdownCtx); err != nil {
+	// The saves get the drain's budget less what the notices need, so the
+	// notices of versions saved late in the drain still go out.
+	savesCtx, cancelSaves := context.WithTimeout(shutdownCtx, shutdownTimeout-noticeReserve)
+	defer cancelSaves()
+	// Drain WebSocket peers first, then stop accepting HTTP. Rooms the drain
+	// releases are saved as versions on the way out, so let those saves, and
+	// any other save in progress, finish, and then their API notices.
+	if err := srv.WSProvider().Shutdown(savesCtx); err != nil {
 		log.Warn("ws provider shutdown", "err", err)
 	}
-	return httpSrv.Shutdown(shutdownCtx)
+	err = httpSrv.Shutdown(savesCtx)
+	if werr := srv.WaitVersions(savesCtx); werr != nil {
+		log.Warn("versions still saving at shutdown", "err", werr)
+	}
+	if werr := notifier.Shutdown(shutdownCtx); werr != nil {
+		log.Warn("version notices abandoned at shutdown", "err", werr)
+	}
+	return err
+}
+
+const (
+	// shutdownTimeout is the drain's whole budget.
+	shutdownTimeout = 30 * time.Second
+	// noticeReserve is kept from the drain's budget for the API notices of the
+	// versions saved during it.
+	noticeReserve = 5 * time.Second
+	// versionLockWait bounds the wait for another save of the same room to
+	// finish. A save can wait catchUpTimeout (10s) for the relay and then read
+	// and write whole documents in GCS, so the lock store's own 5s budget is too
+	// short.
+	versionLockWait = time.Minute
+)
+
+// enableVersions wires versioning into srv and returns the notifier that tells
+// the API about each version.
+func enableVersions(srv *server.Server, cfg *config.Config, p *persistence, log *slog.Logger) (*versions.Notifier, error) {
+	changes, err := coord.NewChangeStore(cfg, p.locks)
+	if err != nil {
+		return nil, fmt.Errorf("version change store: %w", err)
+	}
+	notifier := versions.NewNotifier(versions.NotifierConfig{
+		APIURL: cfg.ThriftAuthURL,
+		Secret: cfg.APISecret,
+		Log:    log,
+	})
+	srv.EnableVersions(server.VersionsConfig{
+		Store:     changes,
+		Snapshots: p.adapter.Versions(cfg.KeepSnapshots),
+		// One save per room at a time across instances, so a slower save can
+		// never store an older state after a newer one.
+		Lock: func(ctx context.Context, room string, fn func(context.Context) error) error {
+			return lockWithin(ctx, p.locks.Locker, versionLockKey(room), versionLockWait, fn)
+		},
+		// The checkpoint is written from the room's current state, never older
+		// than what a concurrent flush already wrote.
+		Checkpoint: p.flusher.FlushRoom,
+		Stored: func(ctx context.Context, room string) ([]byte, error) {
+			res, err := p.adapter.Load(ctx, room)
+			return res.Update, err
+		},
+		Notify: notifier.Notify,
+		Every:  cfg.AutoVersionEvery,
+	})
+	return notifier, nil
+}
+
+// versionLockKey is the lock serializing a room's version saves.
+func versionLockKey(room string) string { return "lock:version:" + room }
+
+// lockWithin runs fn under key, retrying the lock store's bounded acquisition
+// until wait has passed. It then returns versions.ErrBusy. An error fn returns
+// is returned as is, never retried, even when it is a lock timeout of fn's own.
+func lockWithin(ctx context.Context, l gcs.Locker, key string, wait time.Duration, fn func(context.Context) error) error {
+	deadline := time.Now().Add(wait)
+	for {
+		ran := false
+		err := l.WithLock(ctx, key, func(ctx context.Context) error {
+			ran = true
+			return fn(ctx)
+		})
+		if ran || !coord.IsLockTimeout(err) {
+			return err
+		}
+		if ctx.Err() != nil || time.Now().After(deadline) {
+			return fmt.Errorf("%w: %w", versions.ErrBusy, err)
+		}
+	}
 }
 
 // newInstanceOwner returns a per-process lock-owner token unique across
@@ -229,6 +326,7 @@ func buildPersistence(ctx context.Context, cfg *config.Config) (*persistence, er
 		Locker:           locks.Locker,
 		Phase2:           os.Getenv("REEARTH_FLOW_GCS_PHASE2") == "true",
 		TransientMapKeys: server.TransientMapKeys(),
+		KeepSnapshots:    cfg.KeepSnapshots,
 	})
 	if err != nil {
 		_ = stClient.Close()

@@ -5,8 +5,7 @@ import type { AnyWorkflowVariable } from "@flow/types";
 
 import WorkflowVariablesRunDialog from ".";
 
-vi.mock("@flow/features/AssetsDialog", () => ({ default: () => null }));
-vi.mock("@flow/features/CmsIntegrationDialog", () => ({ default: () => null }));
+vi.mock("@flow/features/AssetPickerDialog", () => ({ default: () => null }));
 
 const variable = (name: string, defaultValue: any): AnyWorkflowVariable =>
   ({

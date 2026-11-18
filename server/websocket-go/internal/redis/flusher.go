@@ -15,6 +15,23 @@ type Flusher interface {
 	FlushRoom(ctx context.Context, room string) error
 }
 
+// LastInstanceFlusher is a Flusher with more to do when the last instance lets
+// a room go than when the relay only needs a durable checkpoint of a live room:
+// the relay calls FlushLastInstance instead of FlushRoom on that path. The same
+// CONTRACT applies.
+type LastInstanceFlusher interface {
+	Flusher
+	FlushLastInstance(ctx context.Context, room string) error
+}
+
+// flushLastInstance persists a room the last instance is letting go.
+func flushLastInstance(ctx context.Context, f Flusher, room string) error {
+	if lf, ok := f.(LastInstanceFlusher); ok {
+		return lf.FlushLastInstance(ctx, room)
+	}
+	return f.FlushRoom(ctx, room)
+}
+
 // noopFlusher is the default when no real Flusher is injected.
 type noopFlusher struct{}
 

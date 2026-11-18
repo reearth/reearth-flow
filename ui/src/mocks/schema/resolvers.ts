@@ -20,6 +20,7 @@ import {
   mockCmsProjects,
   mockCmsModels,
   mockCmsItems,
+  mockCmsAssets,
 } from "../data/cmsIntegration";
 import { mockDeployments } from "../data/deployments";
 import {
@@ -79,6 +80,7 @@ const requireCmsProject = (workspaceId: string, projectIdOrAlias: string) => {
   return project;
 };
 const cmsItems = [...mockCmsItems];
+const cmsAssets = [...mockCmsAssets];
 
 // Helper functions
 const generateId = (prefix: string) =>
@@ -769,6 +771,33 @@ export const resolvers = {
       return {
         items: filteredItems.slice(startIndex, endIndex),
         totalCount: filteredItems.length,
+      };
+    },
+
+    cmsAsset: (_: any, args: { workspaceId: string; assetId: string }) => {
+      const asset = cmsAssets.find((a) => a.id === args.assetId);
+      if (!asset) return null;
+      return findCmsProject(args.workspaceId, asset.projectId) ? asset : null;
+    },
+
+    cmsAssets: (
+      _: any,
+      args: {
+        workspaceId: string;
+        projectId: string;
+        page?: number;
+        pageSize?: number;
+      },
+    ) => {
+      const project = requireCmsProject(args.workspaceId, args.projectId);
+      const projectAssets = cmsAssets.filter((a) => a.projectId === project.id);
+      const page = args.page || 1;
+      const pageSize = args.pageSize || 50;
+      const startIndex = (page - 1) * pageSize;
+      return {
+        assets: projectAssets.slice(startIndex, startIndex + pageSize),
+        totalCount: projectAssets.length,
+        pageInfo: { page, pageSize },
       };
     },
 

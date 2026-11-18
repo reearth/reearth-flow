@@ -301,7 +301,7 @@ export const toCmsAsset = (cmsAsset: CmsAssetFragment): CmsAsset => ({
   url: cmsAsset.url,
   archiveExtractionStatus: cmsAsset.archiveExtractionStatus ?? undefined,
   public: cmsAsset.public,
-  createdAt: formatDate(cmsAsset.createdAt),
+  createdAt: cmsAsset.createdAt,
 });
 
 export const toWorkerConfig = (

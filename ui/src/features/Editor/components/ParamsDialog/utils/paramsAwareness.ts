@@ -1,3 +1,5 @@
+import type { Map as YMap } from "yjs";
+
 import {
   deleteAtPath,
   parsePathKey,
@@ -27,6 +29,29 @@ export type DraftPatch = {
 /** Every client's draft for one node, keyed by client id. */
 export type NodeDrafts = Record<string, DraftPatch | undefined>;
 export type DraftStore = Record<string, NodeDrafts | undefined>;
+
+/**
+ * Drops one client's draft for a node from the shared draft map.
+ *
+ * A client that holds no draft for the node writes nothing: rewriting the entry
+ * with only the other clients' drafts would still be a document update, which
+ * the server records as an edit by this user.
+ */
+export const removeClientDraft = (
+  yDrafts: YMap<NodeDrafts | undefined>,
+  nodeId: string,
+  clientId: string,
+) => {
+  const nodeDrafts = yDrafts.get(nodeId);
+  if (!nodeDrafts || !(clientId in nodeDrafts)) return;
+
+  const { [clientId]: _removed, ...remainingDrafts } = nodeDrafts;
+  if (Object.keys(remainingDrafts).length === 0) {
+    yDrafts.delete(nodeId);
+  } else {
+    yDrafts.set(nodeId, remainingDrafts);
+  }
+};
 
 /**
  * The counter to stamp on the next edit: above every counter already present in
