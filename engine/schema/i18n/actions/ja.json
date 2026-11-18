@@ -114,10 +114,10 @@
         }
       },
       "enumI18n": {
-        "AttributeAccumulationStrategy": {
+        "AttributeAccumulation": {
           "collectAttributes": {
             "title": "属性を収集",
-            "description": "グループ化属性を保持し、それ以外の各属性を統合された地物ごとに1要素を持つ配列にする。要素は到着順で、属性を持たない地物の要素は null になる。"
+            "description": "グループ化属性を保持し、統合された各地物のそれ以外の属性を、到着順に地物ごとに1つのマップを持つ配列として `__members` に書き込む。"
           },
           "groupAttributesOnly": {
             "title": "グループ化属性のみ保持",
@@ -1441,10 +1441,10 @@
         }
       },
       "enumI18n": {
-        "AttributeAccumulationStrategy": {
+        "AttributeAccumulation": {
           "collectAttributes": {
             "title": "属性を収集",
-            "description": "グループ化属性を保持し、それ以外の各属性を統合された地物ごとに1要素を持つ配列にする。要素は到着順で、属性を持たない地物の要素は null になる。"
+            "description": "グループ化属性を保持し、統合された各地物のそれ以外の属性を、到着順に地物ごとに1つのマップを持つ配列として `__members` に書き込む。"
           },
           "groupAttributesOnly": {
             "title": "グループ化属性のみ保持",
@@ -3373,10 +3373,10 @@
         }
       },
       "enumI18n": {
-        "AttributeAccumulationStrategy": {
+        "AttributeAccumulation": {
           "collectAttributes": {
             "title": "属性を収集",
-            "description": "グループ化属性を保持し、それ以外の各属性を統合された地物ごとに1要素を持つ配列にする。要素は到着順で、属性を持たない地物の要素は null になる。"
+            "description": "グループ化属性を保持し、統合された各地物のそれ以外の属性を、到着順に地物ごとに1つのマップを持つ配列として `__members` に書き込む。"
           },
           "groupAttributesOnly": {
             "title": "グループ化属性のみ保持",

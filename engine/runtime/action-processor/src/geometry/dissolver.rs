@@ -40,69 +40,11 @@ use reearth_flow_geometry::{
 
 use super::errors::GeometryProcessorError;
 use crate::ACCUMULATOR_BUFFER_BYTE_THRESHOLD;
+use crate::accumulation::{AttributeAccumulation, accumulate_attributes};
 
 /// Executor-specific engine cache folder for accumulating processors
 fn engine_cache_dir(executor_id: uuid::Uuid) -> PathBuf {
     executor_cache_subdir(executor_id, "processors")
-}
-
-/// # Attribute Accumulation Strategy
-/// Which attributes a merged feature keeps.
-#[derive(Debug, Clone, Serialize, Deserialize, JsonSchema, PartialEq, Default)]
-#[serde(rename_all = "camelCase")]
-pub enum AttributeAccumulationStrategy {
-    /// # Keep Group Attributes Only
-    /// Keeps only the grouping attributes, discarding everything else.
-    GroupAttributesOnly,
-    /// # Collect Attributes
-    /// Keeps the grouping attributes and turns every other attribute into an array with one
-    /// entry per merged feature, in arrival order, holding null where a feature lacks it.
-    CollectAttributes,
-    /// # Use Attributes From One Feature
-    /// Keeps the attributes of a single feature from the group and discards the rest.
-    #[default]
-    UseOneFeature,
-}
-
-/// Every attribute of `features` not in `exclude`, as an array with one entry per
-/// feature in order, null where a feature lacks it.
-pub(crate) fn collect_attributes<'a>(
-    features: impl IntoIterator<Item = &'a Attributes>,
-    exclude: &[Attribute],
-) -> Attributes {
-    let mut collected: IndexMap<Attribute, Vec<AttributeValue>> = IndexMap::new();
-    for (n, attributes) in features.into_iter().enumerate() {
-        push_collected(&mut collected, n, attributes, exclude);
-    }
-    collected
-        .into_iter()
-        .map(|(key, values)| (key, AttributeValue::Array(values)))
-        .collect()
-}
-
-/// Append the `n`th feature's `attributes` to `collected`, keeping every array
-/// `n + 1` long: a key first seen here is back-filled with null, and a key this
-/// feature lacks gets null.
-pub(crate) fn push_collected(
-    collected: &mut IndexMap<Attribute, Vec<AttributeValue>>,
-    n: usize,
-    attributes: &Attributes,
-    exclude: &[Attribute],
-) {
-    for (key, value) in attributes.iter() {
-        if exclude.contains(key) {
-            continue;
-        }
-        collected
-            .entry(key.clone())
-            .or_insert_with(|| vec![AttributeValue::Null; n])
-            .push(value.clone());
-    }
-    for values in collected.values_mut() {
-        if values.len() == n {
-            values.push(AttributeValue::Null);
-        }
-    }
 }
 
 #[derive(Debug, Clone, Default)]
@@ -201,13 +143,13 @@ pub struct DissolverParam {
     /// # Attribute Accumulation
     /// Which attributes the merged feature keeps.
     #[serde(default)]
-    attribute_accumulation: AttributeAccumulationStrategy,
+    attribute_accumulation: AttributeAccumulation,
 }
 
 pub struct Dissolver {
     group_by: Option<Vec<Attribute>>,
     tolerance: f64,
-    attribute_accumulation: AttributeAccumulationStrategy,
+    attribute_accumulation: AttributeAccumulation,
     // Disk-backed state
     group_map: HashMap<AttributeValue, usize>,
     /// The coordinate frame each group's members must share, fixed by the
@@ -415,34 +357,13 @@ impl Dissolver {
         &self,
         features: &[Feature],
         representative: Option<&Feature>,
-    ) -> IndexMap<Attribute, AttributeValue> {
-        let group_attributes = || -> Attributes {
-            match (&self.group_by, representative) {
-                (Some(group_by), Some(representative)) => group_by
-                    .iter()
-                    .filter_map(|attr| {
-                        let value = representative.attributes.get(attr).cloned()?;
-                        Some((attr.clone(), value))
-                    })
-                    .collect(),
-                _ => IndexMap::new(),
-            }
-        };
-        match self.attribute_accumulation {
-            AttributeAccumulationStrategy::GroupAttributesOnly => group_attributes(),
-            AttributeAccumulationStrategy::CollectAttributes => {
-                let exclude = self.group_by.as_deref().unwrap_or_default();
-                let mut attributes = group_attributes();
-                attributes.extend(collect_attributes(
-                    features.iter().map(|f| f.attributes.as_ref()),
-                    exclude,
-                ));
-                attributes
-            }
-            AttributeAccumulationStrategy::UseOneFeature => representative
-                .map(|feature| (*feature.attributes).clone())
-                .unwrap_or_default(),
-        }
+    ) -> Attributes {
+        accumulate_attributes(
+            &self.attribute_accumulation,
+            features,
+            representative,
+            self.group_by.as_deref().unwrap_or_default(),
+        )
     }
 }
 
@@ -717,7 +638,7 @@ mod tests {
     fn dissolver(
         group_by: Option<Vec<Attribute>>,
         tolerance: f64,
-        attribute_accumulation: AttributeAccumulationStrategy,
+        attribute_accumulation: AttributeAccumulation,
     ) -> Dissolver {
         Dissolver {
             group_by,
@@ -841,7 +762,7 @@ mod tests {
     #[test]
     fn adjacent_squares_in_one_group_dissolve_into_one_feature() {
         let (area, rejected) = run(
-            dissolver(None, 0.0, AttributeAccumulationStrategy::UseOneFeature),
+            dissolver(None, 0.0, AttributeAccumulation::UseOneFeature),
             vec![square([0.0, 0.0], 2.0), square([2.0, 0.0], 2.0)],
         );
         assert_eq!(rejected.len(), 0);
@@ -861,7 +782,7 @@ mod tests {
             dissolver(
                 Some(vec![Attribute::new("side".to_string())]),
                 0.0,
-                AttributeAccumulationStrategy::UseOneFeature,
+                AttributeAccumulation::UseOneFeature,
             ),
             features,
         );
@@ -875,7 +796,7 @@ mod tests {
     #[test]
     fn separate_squares_in_one_group_stay_separate_faces() {
         let (area, _) = run(
-            dissolver(None, 0.0, AttributeAccumulationStrategy::UseOneFeature),
+            dissolver(None, 0.0, AttributeAccumulation::UseOneFeature),
             vec![square([0.0, 0.0], 2.0), square([10.0, 0.0], 2.0)],
         );
         assert_eq!(area.len(), 1);
@@ -884,7 +805,7 @@ mod tests {
     }
 
     #[test]
-    fn collect_attributes_keeps_one_entry_per_feature() {
+    fn collect_attributes_keeps_one_map_per_feature() {
         let features = vec![
             with_attributes(
                 square([0.0, 0.0], 2.0),
@@ -899,23 +820,31 @@ mod tests {
             dissolver(
                 Some(vec![Attribute::new("side".to_string())]),
                 0.0,
-                AttributeAccumulationStrategy::CollectAttributes,
+                AttributeAccumulation::CollectAttributes,
             ),
             features,
         );
         assert_eq!(area.len(), 1);
         let s = |v: &str| AttributeValue::String(v.to_string());
         assert_eq!(attribute(&area[0], "side"), Some(s("west")));
-        // A feature lacking an attribute holds null in its slot.
+        let map = |pairs: &[(&str, &str)]| {
+            AttributeValue::Map(
+                pairs
+                    .iter()
+                    .map(|(k, v)| (Attribute::new(k.to_string()), s(v)))
+                    .collect(),
+            )
+        };
+        // One map per feature, without the group attributes; a key a feature
+        // lacks is absent from its map.
         assert_eq!(
-            attribute(&area[0], "name"),
-            Some(AttributeValue::Array(vec![s("a"), AttributeValue::Null]))
+            attribute(&area[0], "__members"),
+            Some(AttributeValue::Array(vec![
+                map(&[("name", "a"), ("kind", "road")]),
+                map(&[("kind", "road")]),
+            ]))
         );
-        // Values the whole group agrees on are still one entry per feature.
-        assert_eq!(
-            attribute(&area[0], "kind"),
-            Some(AttributeValue::Array(vec![s("road"), s("road")]))
-        );
+        assert_eq!(attribute(&area[0], "kind"), None);
     }
 
     #[test]
@@ -928,7 +857,7 @@ mod tests {
             dissolver(
                 Some(vec![Attribute::new("side".to_string())]),
                 0.0,
-                AttributeAccumulationStrategy::GroupAttributesOnly,
+                AttributeAccumulation::GroupAttributesOnly,
             ),
             vec![feature],
         );
@@ -943,7 +872,7 @@ mod tests {
     #[test]
     fn an_empty_input_produces_no_output() {
         let (area, rejected) = run(
-            dissolver(None, 0.0, AttributeAccumulationStrategy::UseOneFeature),
+            dissolver(None, 0.0, AttributeAccumulation::UseOneFeature),
             vec![],
         );
         assert_eq!((area.len(), rejected.len()), (0, 0));
@@ -955,14 +884,14 @@ mod tests {
         let nearly_adjacent = || vec![square([0.0, 0.0], 2.0), square([2.001, 0.0], 2.0)];
 
         let (untouched, _) = run(
-            dissolver(None, 0.0, AttributeAccumulationStrategy::UseOneFeature),
+            dissolver(None, 0.0, AttributeAccumulation::UseOneFeature),
             nearly_adjacent(),
         );
         assert_eq!(untouched.len(), 1);
         assert_eq!(output_faces(&untouched[0]), 2);
 
         let (snapped, _) = run(
-            dissolver(None, 0.01, AttributeAccumulationStrategy::UseOneFeature),
+            dissolver(None, 0.01, AttributeAccumulation::UseOneFeature),
             nearly_adjacent(),
         );
         assert_eq!(snapped.len(), 1);
@@ -981,7 +910,7 @@ mod tests {
             with_attributes(square([0.0, 0.0], 1.0), &[("name", "small")]),
         ];
         let (area, _) = run(
-            dissolver(None, 0.0, AttributeAccumulationStrategy::UseOneFeature),
+            dissolver(None, 0.0, AttributeAccumulation::UseOneFeature),
             features,
         );
         assert_eq!(area.len(), 1);
@@ -1003,7 +932,7 @@ mod tests {
             with_attributes(square([0.0, 0.0], 1.0), &[("name", "small")]),
         ];
         let (area, _) = run(
-            dissolver(None, 0.0, AttributeAccumulationStrategy::UseOneFeature),
+            dissolver(None, 0.0, AttributeAccumulation::UseOneFeature),
             features,
         );
         assert_eq!(area.len(), 1);
@@ -1016,7 +945,7 @@ mod tests {
     #[cfg(feature = "new-geometry")]
     fn rejects(feature: Feature) -> bool {
         let (area, rejected) = run(
-            dissolver(None, 0.0, AttributeAccumulationStrategy::UseOneFeature),
+            dissolver(None, 0.0, AttributeAccumulation::UseOneFeature),
             vec![feature],
         );
         area.is_empty() && rejected.len() == 1
@@ -1092,7 +1021,7 @@ mod tests {
         use reearth_flow_geometry::coordinate::EpsgCode;
 
         let (area, rejected) = run(
-            dissolver(None, 0.0, AttributeAccumulationStrategy::UseOneFeature),
+            dissolver(None, 0.0, AttributeAccumulation::UseOneFeature),
             vec![
                 square([0.0, 0.0], 2.0),
                 square_in(CoordinateFrame::Crs(EpsgCode::new(6677)), [2.0, 0.0], 3.0),
@@ -1111,7 +1040,7 @@ mod tests {
 
         let frame = CoordinateFrame::Crs(EpsgCode::new(6677));
         let (area, _) = run(
-            dissolver(None, 0.0, AttributeAccumulationStrategy::UseOneFeature),
+            dissolver(None, 0.0, AttributeAccumulation::UseOneFeature),
             vec![
                 square_in(frame.clone(), [0.0, 0.0], 2.0),
                 square_in(frame.clone(), [2.0, 0.0], 2.0),
@@ -1144,7 +1073,7 @@ mod tests {
         )));
 
         let (area, rejected) = run(
-            dissolver(None, 0.0, AttributeAccumulationStrategy::UseOneFeature),
+            dissolver(None, 0.0, AttributeAccumulation::UseOneFeature),
             vec![mesh, square([2.0, 0.0], 2.0)],
         );
         assert_eq!(rejected.len(), 0);

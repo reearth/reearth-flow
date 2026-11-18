@@ -114,10 +114,10 @@
         }
       },
       "enumI18n": {
-        "AttributeAccumulationStrategy": {
+        "AttributeAccumulation": {
           "collectAttributes": {
             "title": "收集属性",
-            "description": "保留分组属性，并将其他每个属性转为数组，每个被合并的要素对应一个元素，按到达顺序排列，要素缺少该属性时为 null。"
+            "description": "保留分组属性，并将每个被合并要素的其他属性写入 `__members`，即按到达顺序每个要素对应一个映射的数组。"
           },
           "groupAttributesOnly": {
             "title": "仅保留分组属性",
@@ -1441,10 +1441,10 @@
         }
       },
       "enumI18n": {
-        "AttributeAccumulationStrategy": {
+        "AttributeAccumulation": {
           "collectAttributes": {
             "title": "收集属性",
-            "description": "保留分组属性，并将其他每个属性转为数组，每个被合并的要素对应一个元素，按到达顺序排列，要素缺少该属性时为 null。"
+            "description": "保留分组属性，并将每个被合并要素的其他属性写入 `__members`，即按到达顺序每个要素对应一个映射的数组。"
           },
           "groupAttributesOnly": {
             "title": "仅保留分组属性",
@@ -3373,10 +3373,10 @@
         }
       },
       "enumI18n": {
-        "AttributeAccumulationStrategy": {
+        "AttributeAccumulation": {
           "collectAttributes": {
             "title": "收集属性",
-            "description": "保留分组属性，并将其他每个属性转为数组，每个被合并的要素对应一个元素，按到达顺序排列，要素缺少该属性时为 null。"
+            "description": "保留分组属性，并将每个被合并要素的其他属性写入 `__members`，即按到达顺序每个要素对应一个映射的数组。"
           },
           "groupAttributesOnly": {
             "title": "仅保留分组属性",

@@ -15,8 +15,8 @@ use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
 
-use super::dissolver::{AttributeAccumulationStrategy, collect_attributes};
 use super::errors::GeometryProcessorError;
+use crate::accumulation::{AttributeAccumulation, accumulate_attributes};
 
 #[derive(Debug, Clone, Default)]
 pub struct MeshMergerFactory;
@@ -93,13 +93,13 @@ pub struct MeshMergerParam {
     /// # Attribute Accumulation
     /// Which attributes the merged feature keeps.
     #[serde(default)]
-    attribute_accumulation: AttributeAccumulationStrategy,
+    attribute_accumulation: AttributeAccumulation,
 }
 
 #[derive(Debug, Clone)]
 pub struct MeshMerger {
     group_by: Option<Vec<Attribute>>,
-    attribute_accumulation: AttributeAccumulationStrategy,
+    attribute_accumulation: AttributeAccumulation,
     /// Groups in first-seen order, which is the order they are emitted in.
     groups: IndexMap<AttributeValue, Vec<Feature>>,
 }
@@ -124,31 +124,12 @@ impl MeshMerger {
     }
 
     fn attributes(&self, features: &[Feature]) -> Attributes {
-        let group_by = self.group_by.as_deref().unwrap_or_default();
-        let group_attributes = || -> Attributes {
-            group_by
-                .iter()
-                .filter_map(|attr| {
-                    let value = features.first()?.attributes.get(attr)?.clone();
-                    Some((attr.clone(), value))
-                })
-                .collect()
-        };
-        match self.attribute_accumulation {
-            AttributeAccumulationStrategy::GroupAttributesOnly => group_attributes(),
-            AttributeAccumulationStrategy::CollectAttributes => {
-                let mut attributes = group_attributes();
-                attributes.extend(collect_attributes(
-                    features.iter().map(|f| f.attributes.as_ref()),
-                    group_by,
-                ));
-                attributes
-            }
-            AttributeAccumulationStrategy::UseOneFeature => features
-                .first()
-                .map(|f| (*f.attributes).clone())
-                .unwrap_or_default(),
-        }
+        accumulate_attributes(
+            &self.attribute_accumulation,
+            features,
+            features.first(),
+            self.group_by.as_deref().unwrap_or_default(),
+        )
     }
 }
 
@@ -261,7 +242,7 @@ mod tests {
         )
     }
 
-    fn merger(group_by: &[&str], strategy: AttributeAccumulationStrategy) -> MeshMerger {
+    fn merger(group_by: &[&str], strategy: AttributeAccumulation) -> MeshMerger {
         MeshMerger {
             group_by: (!group_by.is_empty())
                 .then(|| group_by.iter().map(|a| Attribute::new(*a)).collect()),
@@ -311,7 +292,7 @@ mod tests {
     #[test]
     fn each_group_becomes_one_mesh() {
         let (merged, rejected) = run(
-            merger(&["rank"], AttributeAccumulationStrategy::UseOneFeature),
+            merger(&["rank"], AttributeAccumulation::UseOneFeature),
             vec![
                 lower(&[("rank", "1")]),
                 lower(&[("rank", "2")]),
@@ -329,9 +310,9 @@ mod tests {
     }
 
     #[test]
-    fn collect_attributes_keeps_one_entry_per_feature() {
+    fn collect_attributes_keeps_one_map_per_feature() {
         let (merged, _) = run(
-            merger(&["rank"], AttributeAccumulationStrategy::CollectAttributes),
+            merger(&["rank"], AttributeAccumulation::CollectAttributes),
             vec![
                 lower(&[("rank", "1"), ("id", "a")]),
                 upper(&[("rank", "1")]),
@@ -339,22 +320,21 @@ mod tests {
         );
         let attributes = &merged[0].attributes;
         assert_eq!(attributes.get(&Attribute::new("rank")), Some(&string("1")));
+        let first: Attributes = [(Attribute::new("id"), string("a"))].into_iter().collect();
         assert_eq!(
-            attributes.get(&Attribute::new("id")),
+            attributes.get(&Attribute::new("__members")),
             Some(&AttributeValue::Array(vec![
-                string("a"),
-                AttributeValue::Null
+                AttributeValue::Map(first),
+                AttributeValue::Map(Attributes::new()),
             ]))
         );
+        assert_eq!(attributes.get(&Attribute::new("id")), None);
     }
 
     #[test]
     fn group_attributes_only_drops_the_rest() {
         let (merged, _) = run(
-            merger(
-                &["rank"],
-                AttributeAccumulationStrategy::GroupAttributesOnly,
-            ),
+            merger(&["rank"], AttributeAccumulation::GroupAttributesOnly),
             vec![lower(&[("rank", "1"), ("id", "a")])],
         );
         assert_eq!(merged[0].attributes.get(&Attribute::new("id")), None);
@@ -370,7 +350,7 @@ mod tests {
             Point3D::new(CoordinateFrame::Euclidean, [0., 0., 0.]),
         )));
         let (merged, rejected) = run(
-            merger(&[], AttributeAccumulationStrategy::UseOneFeature),
+            merger(&[], AttributeAccumulation::UseOneFeature),
             vec![point, lower(&[])],
         );
         assert_eq!(merged.len(), 1);
@@ -385,7 +365,7 @@ mod tests {
             &[],
         );
         let (merged, rejected) = run(
-            merger(&[], AttributeAccumulationStrategy::UseOneFeature),
+            merger(&[], AttributeAccumulation::UseOneFeature),
             vec![lower(&[]), other],
         );
         assert!(merged.is_empty());

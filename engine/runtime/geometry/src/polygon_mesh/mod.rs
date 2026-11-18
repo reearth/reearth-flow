@@ -27,6 +27,7 @@ mod predicates;
 #[cfg(feature = "new-geometry")]
 mod validation;
 
+#[cfg(feature = "new-geometry")]
 pub(crate) use constructor::bake;
 pub use faces::{FaceRing, FaceVisit};
 pub(crate) use ops::build_open_rings;

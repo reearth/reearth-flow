@@ -241,7 +241,7 @@
             "default": "groupAttributesOnly",
             "allOf": [
               {
-                "$ref": "#/definitions/AttributeAccumulationStrategy"
+                "$ref": "#/definitions/AttributeAccumulation"
               }
             ]
           },
@@ -341,8 +341,8 @@
               }
             ]
           },
-          "AttributeAccumulationStrategy": {
-            "title": "Attribute Accumulation Strategy",
+          "AttributeAccumulation": {
+            "title": "Attribute Accumulation",
             "description": "Which attributes a merged feature keeps.",
             "oneOf": [
               {
@@ -355,7 +355,7 @@
               },
               {
                 "title": "Collect Attributes",
-                "description": "Keeps the grouping attributes and turns every other attribute into an array with one entry per merged feature, in arrival order, holding null where a feature lacks it.",
+                "description": "Keeps the grouping attributes and writes the other attributes of every merged feature to `__members`, an array with one map per feature in arrival order.",
                 "type": "string",
                 "enum": [
                   "collectAttributes"
@@ -4004,7 +4004,7 @@
             "default": "useOneFeature",
             "allOf": [
               {
-                "$ref": "#/definitions/AttributeAccumulationStrategy"
+                "$ref": "#/definitions/AttributeAccumulation"
               }
             ]
           }
@@ -4013,8 +4013,8 @@
           "Attribute": {
             "type": "string"
           },
-          "AttributeAccumulationStrategy": {
-            "title": "Attribute Accumulation Strategy",
+          "AttributeAccumulation": {
+            "title": "Attribute Accumulation",
             "description": "Which attributes a merged feature keeps.",
             "oneOf": [
               {
@@ -4027,7 +4027,7 @@
               },
               {
                 "title": "Collect Attributes",
-                "description": "Keeps the grouping attributes and turns every other attribute into an array with one entry per merged feature, in arrival order, holding null where a feature lacks it.",
+                "description": "Keeps the grouping attributes and writes the other attributes of every merged feature to `__members`, an array with one map per feature in arrival order.",
                 "type": "string",
                 "enum": [
                   "collectAttributes"
@@ -10004,7 +10004,7 @@
             "default": "useOneFeature",
             "allOf": [
               {
-                "$ref": "#/definitions/AttributeAccumulationStrategy"
+                "$ref": "#/definitions/AttributeAccumulation"
               }
             ]
           }
@@ -10013,8 +10013,8 @@
           "Attribute": {
             "type": "string"
           },
-          "AttributeAccumulationStrategy": {
-            "title": "Attribute Accumulation Strategy",
+          "AttributeAccumulation": {
+            "title": "Attribute Accumulation",
             "description": "Which attributes a merged feature keeps.",
             "oneOf": [
               {
@@ -10027,7 +10027,7 @@
               },
               {
                 "title": "Collect Attributes",
-                "description": "Keeps the grouping attributes and turns every other attribute into an array with one entry per merged feature, in arrival order, holding null where a feature lacks it.",
+                "description": "Keeps the grouping attributes and writes the other attributes of every merged feature to `__members`, an array with one map per feature in arrival order.",
                 "type": "string",
                 "enum": [
                   "collectAttributes"

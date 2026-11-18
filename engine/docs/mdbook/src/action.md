@@ -233,7 +233,7 @@ Groups features by attribute values and emits one feature per group, by default 
       "default": "groupAttributesOnly",
       "allOf": [
         {
-          "$ref": "#/definitions/AttributeAccumulationStrategy"
+          "$ref": "#/definitions/AttributeAccumulation"
         }
       ]
     },
@@ -333,8 +333,8 @@ Groups features by attribute values and emits one feature per group, by default 
         }
       ]
     },
-    "AttributeAccumulationStrategy": {
-      "title": "Attribute Accumulation Strategy",
+    "AttributeAccumulation": {
+      "title": "Attribute Accumulation",
       "description": "Which attributes a merged feature keeps.",
       "oneOf": [
         {
@@ -347,7 +347,7 @@ Groups features by attribute values and emits one feature per group, by default 
         },
         {
           "title": "Collect Attributes",
-          "description": "Keeps the grouping attributes and turns every other attribute into an array with one entry per merged feature, in arrival order, holding null where a feature lacks it.",
+          "description": "Keeps the grouping attributes and writes the other attributes of every merged feature to `__members`, an array with one map per feature in arrival order.",
           "type": "string",
           "enum": [
             "collectAttributes"
@@ -3908,7 +3908,7 @@ Merges area features that share the same grouping attribute values into one feat
       "default": "useOneFeature",
       "allOf": [
         {
-          "$ref": "#/definitions/AttributeAccumulationStrategy"
+          "$ref": "#/definitions/AttributeAccumulation"
         }
       ]
     }
@@ -3917,8 +3917,8 @@ Merges area features that share the same grouping attribute values into one feat
     "Attribute": {
       "type": "string"
     },
-    "AttributeAccumulationStrategy": {
-      "title": "Attribute Accumulation Strategy",
+    "AttributeAccumulation": {
+      "title": "Attribute Accumulation",
       "description": "Which attributes a merged feature keeps.",
       "oneOf": [
         {
@@ -3931,7 +3931,7 @@ Merges area features that share the same grouping attribute values into one feat
         },
         {
           "title": "Collect Attributes",
-          "description": "Keeps the grouping attributes and turns every other attribute into an array with one entry per merged feature, in arrival order, holding null where a feature lacks it.",
+          "description": "Keeps the grouping attributes and writes the other attributes of every merged feature to `__members`, an array with one map per feature in arrival order.",
           "type": "string",
           "enum": [
             "collectAttributes"
@@ -9751,7 +9751,7 @@ Merges the polygons and meshes of features that share the same grouping attribut
       "default": "useOneFeature",
       "allOf": [
         {
-          "$ref": "#/definitions/AttributeAccumulationStrategy"
+          "$ref": "#/definitions/AttributeAccumulation"
         }
       ]
     }
@@ -9760,8 +9760,8 @@ Merges the polygons and meshes of features that share the same grouping attribut
     "Attribute": {
       "type": "string"
     },
-    "AttributeAccumulationStrategy": {
-      "title": "Attribute Accumulation Strategy",
+    "AttributeAccumulation": {
+      "title": "Attribute Accumulation",
       "description": "Which attributes a merged feature keeps.",
       "oneOf": [
         {
@@ -9774,7 +9774,7 @@ Merges the polygons and meshes of features that share the same grouping attribut
         },
         {
           "title": "Collect Attributes",
-          "description": "Keeps the grouping attributes and turns every other attribute into an array with one entry per merged feature, in arrival order, holding null where a feature lacks it.",
+          "description": "Keeps the grouping attributes and writes the other attributes of every merged feature to `__members`, an array with one map per feature in arrival order.",
           "type": "string",
           "enum": [
             "collectAttributes"

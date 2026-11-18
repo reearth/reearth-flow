@@ -241,7 +241,7 @@
             "default": "groupAttributesOnly",
             "allOf": [
               {
-                "$ref": "#/definitions/AttributeAccumulationStrategy"
+                "$ref": "#/definitions/AttributeAccumulation"
               }
             ]
           },
@@ -341,8 +341,8 @@
               }
             ]
           },
-          "AttributeAccumulationStrategy": {
-            "title": "Attribute Accumulation Strategy",
+          "AttributeAccumulation": {
+            "title": "Attribute Accumulation",
             "description": "Which attributes a merged feature keeps.",
             "oneOf": [
               {
@@ -355,7 +355,7 @@
               },
               {
                 "title": "Collecter les attributs",
-                "description": "Conserve les attributs de regroupement et transforme chaque autre attribut en tableau comportant une entrée par entité fusionnée, dans l'ordre d'arrivée, avec null lorsqu'une entité n'a pas l'attribut.",
+                "description": "Conserve les attributs de regroupement et écrit les autres attributs de chaque entité fusionnée dans `__members`, un tableau contenant une table par entité dans l'ordre d'arrivée.",
                 "type": "string",
                 "enum": [
                   "collectAttributes"
@@ -4004,7 +4004,7 @@
             "default": "useOneFeature",
             "allOf": [
               {
-                "$ref": "#/definitions/AttributeAccumulationStrategy"
+                "$ref": "#/definitions/AttributeAccumulation"
               }
             ]
           }
@@ -4013,8 +4013,8 @@
           "Attribute": {
             "type": "string"
           },
-          "AttributeAccumulationStrategy": {
-            "title": "Attribute Accumulation Strategy",
+          "AttributeAccumulation": {
+            "title": "Attribute Accumulation",
             "description": "Which attributes a merged feature keeps.",
             "oneOf": [
               {
@@ -4027,7 +4027,7 @@
               },
               {
                 "title": "Collecter les attributs",
-                "description": "Conserve les attributs de regroupement et transforme chaque autre attribut en tableau comportant une entrée par entité fusionnée, dans l'ordre d'arrivée, avec null lorsqu'une entité n'a pas l'attribut.",
+                "description": "Conserve les attributs de regroupement et écrit les autres attributs de chaque entité fusionnée dans `__members`, un tableau contenant une table par entité dans l'ordre d'arrivée.",
                 "type": "string",
                 "enum": [
                   "collectAttributes"
@@ -10004,7 +10004,7 @@
             "default": "useOneFeature",
             "allOf": [
               {
-                "$ref": "#/definitions/AttributeAccumulationStrategy"
+                "$ref": "#/definitions/AttributeAccumulation"
               }
             ]
           }
@@ -10013,8 +10013,8 @@
           "Attribute": {
             "type": "string"
           },
-          "AttributeAccumulationStrategy": {
-            "title": "Attribute Accumulation Strategy",
+          "AttributeAccumulation": {
+            "title": "Attribute Accumulation",
             "description": "Which attributes a merged feature keeps.",
             "oneOf": [
               {
@@ -10027,7 +10027,7 @@
               },
               {
                 "title": "Collecter les attributs",
-                "description": "Conserve les attributs de regroupement et transforme chaque autre attribut en tableau comportant une entrée par entité fusionnée, dans l'ordre d'arrivée, avec null lorsqu'une entité n'a pas l'attribut.",
+                "description": "Conserve les attributs de regroupement et écrit les autres attributs de chaque entité fusionnée dans `__members`, un tableau contenant une table par entité dans l'ordre d'arrivée.",
                 "type": "string",
                 "enum": [
                   "collectAttributes"

@@ -114,10 +114,10 @@
         }
       },
       "enumI18n": {
-        "AttributeAccumulationStrategy": {
+        "AttributeAccumulation": {
           "collectAttributes": {
             "title": "Recopilar atributos",
-            "description": "Conserva los atributos de agrupación y convierte cada otro atributo en un arreglo con una entrada por entidad fusionada, en orden de llegada, con null cuando una entidad carece de él."
+            "description": "Conserva los atributos de agrupación y escribe los demás atributos de cada entidad fusionada en `__members`, un arreglo con un mapa por entidad en orden de llegada."
           },
           "groupAttributesOnly": {
             "title": "Conservar solo los atributos de agrupación",
@@ -1441,10 +1441,10 @@
         }
       },
       "enumI18n": {
-        "AttributeAccumulationStrategy": {
+        "AttributeAccumulation": {
           "collectAttributes": {
             "title": "Recopilar atributos",
-            "description": "Conserva los atributos de agrupación y convierte cada otro atributo en un arreglo con una entrada por entidad fusionada, en orden de llegada, con null cuando una entidad carece de él."
+            "description": "Conserva los atributos de agrupación y escribe los demás atributos de cada entidad fusionada en `__members`, un arreglo con un mapa por entidad en orden de llegada."
           },
           "groupAttributesOnly": {
             "title": "Conservar solo los atributos de agrupación",
@@ -3373,10 +3373,10 @@
         }
       },
       "enumI18n": {
-        "AttributeAccumulationStrategy": {
+        "AttributeAccumulation": {
           "collectAttributes": {
             "title": "Recopilar atributos",
-            "description": "Conserva los atributos de agrupación y convierte cada otro atributo en un arreglo con una entrada por entidad fusionada, en orden de llegada, con null cuando una entidad carece de él."
+            "description": "Conserva los atributos de agrupación y escribe los demás atributos de cada entidad fusionada en `__members`, un arreglo con un mapa por entidad en orden de llegada."
           },
           "groupAttributesOnly": {
             "title": "Conservar solo los atributos de agrupación",

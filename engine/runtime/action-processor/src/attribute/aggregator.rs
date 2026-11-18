@@ -20,7 +20,7 @@ use serde::{Deserialize, Serialize};
 use serde_json::Value;
 
 use super::errors::AttributeProcessorError;
-use crate::geometry::dissolver::{AttributeAccumulationStrategy, push_collected};
+use crate::accumulation::{AttributeAccumulation, MEMBERS_ATTRIBUTE, member};
 
 #[derive(Debug, Clone, Default)]
 pub(super) struct AttributeAggregatorFactory;
@@ -165,7 +165,7 @@ impl ProcessorFactory for AttributeAggregatorFactory {
 struct AttributeAggregator {
     aggregate_attributes: Vec<CompliledAggregateAttribute>,
     aggregation: Option<Aggregation>,
-    attribute_accumulation: AttributeAccumulationStrategy,
+    attribute_accumulation: AttributeAccumulation,
     /// The source attributes of the group values, left out of `collectAttributes`.
     source_attributes: Vec<Attribute>,
     /// Geometry is only accumulated under `new-geometry`.
@@ -196,10 +196,8 @@ struct Group {
     #[cfg(feature = "new-geometry")]
     member_attrs: Vec<Attributes>,
     /// The incoming attributes kept under the accumulation strategy: none, the first
-    /// feature's (one value per key), or one value per feature per key.
+    /// feature's (one value per key), or one map per feature under `members`.
     kept: IndexMap<Attribute, Vec<AttributeValue>>,
-    /// The number of features in the group.
-    count: usize,
     value: Option<i64>,
 }
 
@@ -226,15 +224,15 @@ struct AttributeAggregatorParam {
     /// # Attribute Accumulation
     /// Which incoming attributes the aggregated feature keeps besides the group-by attributes and the result. Using one feature keeps the group's first feature to arrive; collecting leaves out the attributes the group values are read from. Defaults to keeping only the group attributes.
     #[serde(default = "default_attribute_accumulation")]
-    attribute_accumulation: AttributeAccumulationStrategy,
+    attribute_accumulation: AttributeAccumulation,
     /// # Geometry Accumulation
     /// Which geometry the aggregated feature carries. Defaults to combining the group's geometries.
     #[serde(default)]
     geometry_accumulation: GeometryAccumulationStrategy,
 }
 
-fn default_attribute_accumulation() -> AttributeAccumulationStrategy {
-    AttributeAccumulationStrategy::GroupAttributesOnly
+fn default_attribute_accumulation() -> AttributeAccumulation {
+    AttributeAccumulation::GroupAttributesOnly
 }
 
 #[derive(Serialize, Deserialize, Debug, Clone, Copy, JsonSchema, PartialEq, Default)]
@@ -362,15 +360,14 @@ impl Processor for AttributeAggregator {
                     #[cfg(feature = "new-geometry")]
                     member_attrs: Vec::new(),
                     kept: IndexMap::new(),
-                    count: 0,
                     value: None,
                 }),
                 true,
             ),
         };
         match self.attribute_accumulation {
-            AttributeAccumulationStrategy::GroupAttributesOnly => {}
-            AttributeAccumulationStrategy::UseOneFeature => {
+            AttributeAccumulation::GroupAttributesOnly => {}
+            AttributeAccumulation::UseOneFeature => {
                 if first {
                     group.kept = feature
                         .attributes
@@ -379,16 +376,14 @@ impl Processor for AttributeAggregator {
                         .collect();
                 }
             }
-            AttributeAccumulationStrategy::CollectAttributes => {
-                push_collected(
-                    &mut group.kept,
-                    group.count,
-                    &feature.attributes,
-                    &self.source_attributes,
-                );
+            AttributeAccumulation::CollectAttributes => {
+                group
+                    .kept
+                    .entry(Attribute::new(MEMBERS_ATTRIBUTE))
+                    .or_default()
+                    .push(member(&feature.attributes, &self.source_attributes));
             }
         }
-        group.count += 1;
         if let (Some(aggregation), Some(calc)) = (&self.aggregation, calc) {
             group.value = Some(match aggregation.method {
                 Method::Max => group.value.map_or(calc, |v| v.max(calc)),
@@ -425,9 +420,9 @@ impl AttributeAggregator {
             .buffer
             .par_iter()
             .filter_map(|(key, group)| {
-                // `useOneFeature` keeps one value per key; `collectAttributes` one per feature.
+                // `useOneFeature` keeps one value per key; `collectAttributes` one map per feature.
                 let collect =
-                    self.attribute_accumulation == AttributeAccumulationStrategy::CollectAttributes;
+                    self.attribute_accumulation == AttributeAccumulation::CollectAttributes;
                 let kept: Attributes = group
                     .kept
                     .iter()
@@ -538,7 +533,7 @@ mod tests {
                 value: Some(1),
                 expr: None,
             }),
-            attribute_accumulation: AttributeAccumulationStrategy::GroupAttributesOnly,
+            attribute_accumulation: AttributeAccumulation::GroupAttributesOnly,
             source_attributes: vec![Attribute::new("file")],
             geometry_accumulation: GeometryAccumulationStrategy::DropGeometry,
             buffer: IndexMap::new(),
@@ -610,7 +605,7 @@ mod tests {
     fn use_one_feature_keeps_first_arrival() {
         let fw = ProcessorChannelForwarder::Noop(NoopChannelForwarder::default());
         let mut processor = make_processor();
-        processor.attribute_accumulation = AttributeAccumulationStrategy::UseOneFeature;
+        processor.attribute_accumulation = AttributeAccumulation::UseOneFeature;
 
         for tag in ["first", "second"] {
             let mut feature = make_feature("A");
@@ -632,10 +627,10 @@ mod tests {
     }
 
     #[test]
-    fn collect_attributes_keeps_one_entry_per_feature() {
+    fn collect_attributes_keeps_one_map_per_feature() {
         let fw = ProcessorChannelForwarder::Noop(NoopChannelForwarder::default());
         let mut processor = make_processor();
-        processor.attribute_accumulation = AttributeAccumulationStrategy::CollectAttributes;
+        processor.attribute_accumulation = AttributeAccumulation::CollectAttributes;
 
         let mut tagged = make_feature("A");
         tagged.insert("tag", AttributeValue::String("first".to_string()));
@@ -650,13 +645,20 @@ mod tests {
         };
         let features = noop.send_features.lock().unwrap();
         assert_eq!(features.len(), 1);
+        let tagged: Attributes = [(
+            Attribute::new("tag"),
+            AttributeValue::String("first".to_string()),
+        )]
+        .into_iter()
+        .collect();
         assert_eq!(
-            features[0].attributes.get(&Attribute::new("tag")),
+            features[0].attributes.get(&Attribute::new("__members")),
             Some(&AttributeValue::Array(vec![
-                AttributeValue::String("first".to_string()),
-                AttributeValue::Null,
+                AttributeValue::Map(tagged),
+                AttributeValue::Map(Attributes::new()),
             ]))
         );
+        assert_eq!(features[0].attributes.get(&Attribute::new("tag")), None);
         // The group value's source stays a single value.
         assert_eq!(
             features[0].attributes.get(&Attribute::new("file")),

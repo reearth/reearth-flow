@@ -114,10 +114,10 @@
         }
       },
       "enumI18n": {
-        "AttributeAccumulationStrategy": {
+        "AttributeAccumulation": {
           "collectAttributes": {
             "title": "Collecter les attributs",
-            "description": "Conserve les attributs de regroupement et transforme chaque autre attribut en tableau comportant une entrée par entité fusionnée, dans l'ordre d'arrivée, avec null lorsqu'une entité n'a pas l'attribut."
+            "description": "Conserve les attributs de regroupement et écrit les autres attributs de chaque entité fusionnée dans `__members`, un tableau contenant une table par entité dans l'ordre d'arrivée."
           },
           "groupAttributesOnly": {
             "title": "Conserver uniquement les attributs de regroupement",
@@ -1441,10 +1441,10 @@
         }
       },
       "enumI18n": {
-        "AttributeAccumulationStrategy": {
+        "AttributeAccumulation": {
           "collectAttributes": {
             "title": "Collecter les attributs",
-            "description": "Conserve les attributs de regroupement et transforme chaque autre attribut en tableau comportant une entrée par entité fusionnée, dans l'ordre d'arrivée, avec null lorsqu'une entité n'a pas l'attribut."
+            "description": "Conserve les attributs de regroupement et écrit les autres attributs de chaque entité fusionnée dans `__members`, un tableau contenant une table par entité dans l'ordre d'arrivée."
           },
           "groupAttributesOnly": {
             "title": "Conserver uniquement les attributs de regroupement",
@@ -3373,10 +3373,10 @@
         }
       },
       "enumI18n": {
-        "AttributeAccumulationStrategy": {
+        "AttributeAccumulation": {
           "collectAttributes": {
             "title": "Collecter les attributs",
-            "description": "Conserve les attributs de regroupement et transforme chaque autre attribut en tableau comportant une entrée par entité fusionnée, dans l'ordre d'arrivée, avec null lorsqu'une entité n'a pas l'attribut."
+            "description": "Conserve les attributs de regroupement et écrit les autres attributs de chaque entité fusionnée dans `__members`, un tableau contenant une table par entité dans l'ordre d'arrivée."
           },
           "groupAttributesOnly": {
             "title": "Conserver uniquement les attributs de regroupement",
