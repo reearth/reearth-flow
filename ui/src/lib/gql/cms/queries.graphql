@@ -83,3 +83,22 @@ query GetCmsModelExportUrl(
     exportType: $exportType
   )
 }
+
+query GetCmsAssets(
+  $workspaceId: ID!
+  $projectId: ID!
+  $page: Int
+  $pageSize: Int
+) {
+  cmsAssets(
+    workspaceId: $workspaceId
+    projectId: $projectId
+    page: $page
+    pageSize: $pageSize
+  ) {
+    assets {
+      ...CmsAsset
+    }
+    totalCount
+  }
+}
