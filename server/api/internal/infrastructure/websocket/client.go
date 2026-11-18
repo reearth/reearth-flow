@@ -600,13 +600,11 @@ func (c *Client) GetNamedSnapshots(ctx context.Context, docID string) ([]*websoc
 		}
 
 		snapshots[i] = &websocket.SnapshotMetadata{
-			ID:           item.ID,
-			Label:        item.Label,
-			Timestamp:    timestamp,
-			Size:         item.Size,
-			Contributors: contributors,
-			// The count is never below the list it describes, whatever the
-			// server sent.
+			ID:               item.ID,
+			Label:            item.Label,
+			Timestamp:        timestamp,
+			Size:             item.Size,
+			Contributors:     contributors,
 			ContributorCount: max(item.ContributorCount, len(contributors)),
 			LastEditor:       item.LastEditor,
 		}

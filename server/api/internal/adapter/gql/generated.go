@@ -4483,7 +4483,6 @@ type NamedSnapshot {
   contributors: [User!]!
   # How many contributors there are, including any missing from the lists.
   contributorCount: Int!
-  # The user who edited last before the snapshot.
   lastEditorId: ID
   lastEditor: User
 }

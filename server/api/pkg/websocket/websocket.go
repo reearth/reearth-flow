@@ -33,14 +33,11 @@ type HistoryMetadata struct {
 }
 
 type SnapshotMetadata struct {
-	Timestamp time.Time
-	Label     string
-	// LastEditor is the user who edited last before the snapshot; empty when
-	// unknown.
+	Timestamp  time.Time
+	Label      string
 	LastEditor string
-	// Contributors are the IDs of the users whose edits the snapshot holds.
-	// The list can be cut short; ContributorCount is how many there are. Both
-	// are empty for snapshots saved without attribution.
+	// Contributors can be cut short, so ContributorCount can exceed its length.
+	// Both are empty for snapshots saved without attribution.
 	Contributors     []string
 	ID               int64
 	Size             int64

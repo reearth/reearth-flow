@@ -31,10 +31,8 @@ func (c *UserLoader) Fetch(ctx context.Context, ids []gqlmodel.ID) ([]*gqlmodel.
 		return nil, []error{err}
 	}
 
-	// Accounts returns the users it found, in no particular order, while a data
-	// loader matches results to keys by position. Align them, leaving nil for a
-	// user that does not resolve, so one missing user cannot shift the others
-	// onto the wrong keys.
+	// Accounts returns only the users it found, in no particular order, but a
+	// data loader matches results to keys by position, so align them by ID.
 	found := make(map[string]*gqlmodel.User, len(res))
 	for _, u := range res {
 		if u != nil {

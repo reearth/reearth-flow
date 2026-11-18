@@ -117,10 +117,8 @@ func toNamedSnapshot(s *websocket.SnapshotMetadata) *gqlmodel.NamedSnapshot {
 
 type namedSnapshotResolver struct{ *Resolver }
 
-// Contributors resolves the contributors that are still users. Attribution is
-// decoration on the version history, so neither a user that no longer exists
-// nor a failed lookup may fail the history itself: the former is left out, the
-// latter leaves the list empty. contributorCount still counts both.
+// Contributors resolves the contributors that are still users. A failed lookup
+// gives an empty list rather than an error, so attribution never fails the history.
 func (r *namedSnapshotResolver) Contributors(ctx context.Context, obj *gqlmodel.NamedSnapshot) ([]*gqlmodel.User, error) {
 	ids := lo.Filter(obj.ContributorIds, func(id gqlmodel.ID, _ int) bool {
 		_, err := gqlmodel.ToID[accountsid.User](id)
@@ -141,8 +139,7 @@ func (r *namedSnapshotResolver) Contributors(ctx context.Context, obj *gqlmodel.
 	return lo.Compact(users), nil
 }
 
-// LastEditor resolves the last editor, or nil when they are unknown, no longer
-// a user, or could not be looked up.
+// LastEditor is nil when the last editor is unknown or cannot be resolved.
 func (r *namedSnapshotResolver) LastEditor(ctx context.Context, obj *gqlmodel.NamedSnapshot) (*gqlmodel.User, error) {
 	if obj.LastEditorID == nil {
 		return nil, nil
