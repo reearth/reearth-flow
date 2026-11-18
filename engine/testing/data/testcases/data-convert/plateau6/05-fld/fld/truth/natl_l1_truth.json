@@ -42,7 +42,22 @@
     "urc:rank_code": 1,
     "urc:adminType": "国",
     "urc:scale": "L1（計画規模）",
-    "urc:geometrySrcDescLod1": "その他のGISデータ"
+    "urc:geometrySrcDescLod1": "その他のGISデータ",
+    "__key_order": [
+      "city_code",
+      "feature_type",
+      "attributes",
+      "gml:name",
+      "core:creationDate",
+      "wtr:class",
+      "wtr:function",
+      "urc:description",
+      "urc:rank",
+      "urc:rank_code",
+      "urc:adminType",
+      "urc:scale",
+      "urc:geometrySrcDescLod1"
+    ]
   },
   "13997_tokyo_udx-mlit_2026_citygml_1_sample-tokyoCG3_op_fld_natl_arakawa_arakawa_3dtiles_l1_no_texture/2": {
     "city_code": "13997",
@@ -87,7 +102,22 @@
     "urc:rank_code": 2,
     "urc:adminType": "国",
     "urc:scale": "L1（計画規模）",
-    "urc:geometrySrcDescLod1": "その他のGISデータ"
+    "urc:geometrySrcDescLod1": "その他のGISデータ",
+    "__key_order": [
+      "city_code",
+      "feature_type",
+      "attributes",
+      "gml:name",
+      "core:creationDate",
+      "wtr:class",
+      "wtr:function",
+      "urc:description",
+      "urc:rank",
+      "urc:rank_code",
+      "urc:adminType",
+      "urc:scale",
+      "urc:geometrySrcDescLod1"
+    ]
   },
   "13997_tokyo_udx-mlit_2026_citygml_1_sample-tokyoCG3_op_fld_natl_arakawa_arakawa_3dtiles_l1_no_texture/3": {
     "city_code": "13997",
@@ -132,7 +162,22 @@
     "urc:rank_code": 3,
     "urc:adminType": "国",
     "urc:scale": "L1（計画規模）",
-    "urc:geometrySrcDescLod1": "その他のGISデータ"
+    "urc:geometrySrcDescLod1": "その他のGISデータ",
+    "__key_order": [
+      "city_code",
+      "feature_type",
+      "attributes",
+      "gml:name",
+      "core:creationDate",
+      "wtr:class",
+      "wtr:function",
+      "urc:description",
+      "urc:rank",
+      "urc:rank_code",
+      "urc:adminType",
+      "urc:scale",
+      "urc:geometrySrcDescLod1"
+    ]
   },
   "13997_tokyo_udx-mlit_2026_citygml_1_sample-tokyoCG3_op_fld_natl_arakawa_arakawa_3dtiles_l1_no_texture/4": {
     "city_code": "13997",
@@ -177,6 +222,21 @@
     "urc:rank_code": 4,
     "urc:adminType": "国",
     "urc:scale": "L1（計画規模）",
-    "urc:geometrySrcDescLod1": "その他のGISデータ"
+    "urc:geometrySrcDescLod1": "その他のGISデータ",
+    "__key_order": [
+      "city_code",
+      "feature_type",
+      "attributes",
+      "gml:name",
+      "core:creationDate",
+      "wtr:class",
+      "wtr:function",
+      "urc:description",
+      "urc:rank",
+      "urc:rank_code",
+      "urc:adminType",
+      "urc:scale",
+      "urc:geometrySrcDescLod1"
+    ]
   }
 }

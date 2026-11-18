@@ -29,7 +29,21 @@
     "core:validFrom": "0001-01-01T00:00:00",
     "urf:validFromType": "決定",
     "urc:geometrySrcDescLod1": "BIMモデル、CADデータ、設計図、完成図、一般図（平面図、配置図、断面図等）",
-    "urc:thematicSrcDesc": "BIMモデル、CADデータ、設計図、完成図、一般図（平面図、配置図、断面図等）"
+    "urc:thematicSrcDesc": "BIMモデル、CADデータ、設計図、完成図、一般図（平面図、配置図、断面図等）",
+    "__key_order": [
+      "meshcode",
+      "feature_type",
+      "city_code",
+      "city_name",
+      "gml_id",
+      "attributes",
+      "core:creationDate",
+      "urf:function",
+      "core:validFrom",
+      "urf:validFromType",
+      "urc:geometrySrcDescLod1",
+      "urc:thematicSrcDesc"
+    ]
   },
   "area_e6b0bbf8-07f3-4afa-afa5-1a9b71ac777f": {
     "meshcode": "523856",
@@ -61,6 +75,20 @@
     "core:validFrom": "0001-01-01T00:00:00",
     "urf:validFromType": "決定",
     "urc:geometrySrcDescLod1": "BIMモデル、CADデータ、設計図、完成図、一般図（平面図、配置図、断面図等）",
-    "urc:thematicSrcDesc": "BIMモデル、CADデータ、設計図、完成図、一般図（平面図、配置図、断面図等）"
+    "urc:thematicSrcDesc": "BIMモデル、CADデータ、設計図、完成図、一般図（平面図、配置図、断面図等）",
+    "__key_order": [
+      "meshcode",
+      "feature_type",
+      "city_code",
+      "city_name",
+      "gml_id",
+      "attributes",
+      "core:creationDate",
+      "urf:function",
+      "core:validFrom",
+      "urf:validFromType",
+      "urc:geometrySrcDescLod1",
+      "urc:thematicSrcDesc"
+    ]
   }
 }

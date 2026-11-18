@@ -76,7 +76,19 @@
     "core:creationDate": "2024-03-19T00:00:00",
     "veg:class": "高木（樹高3m以上）",
     "veg:height": 12.4,
-    "urc:geometrySrcDescLod1": "公共測量成果又は基本測量成果"
+    "urc:geometrySrcDescLod1": "公共測量成果又は基本測量成果",
+    "__key_order": [
+      "meshcode",
+      "city_code",
+      "city_name",
+      "feature_type",
+      "gml_id",
+      "attributes",
+      "core:creationDate",
+      "veg:class",
+      "veg:height",
+      "urc:geometrySrcDescLod1"
+    ]
   },
   "veg_99045825-5873-4cc7-acea-91f19dfd874c": {
     "meshcode": "54401008",
@@ -155,7 +167,19 @@
     "core:creationDate": "2024-03-19T00:00:00",
     "veg:class": "高木（樹高3m以上）",
     "veg:height": 8.0,
-    "urc:geometrySrcDescLod1": "公共測量成果又は基本測量成果"
+    "urc:geometrySrcDescLod1": "公共測量成果又は基本測量成果",
+    "__key_order": [
+      "meshcode",
+      "city_code",
+      "city_name",
+      "feature_type",
+      "gml_id",
+      "attributes",
+      "core:creationDate",
+      "veg:class",
+      "veg:height",
+      "urc:geometrySrcDescLod1"
+    ]
   },
   "veg_d376789c-4eb7-4be5-9d91-719d809f63ee": {
     "meshcode": "54401008",
@@ -234,6 +258,18 @@
     "core:creationDate": "2024-03-19T00:00:00",
     "veg:class": "高木（樹高3m以上）",
     "veg:height": 12.4,
-    "urc:geometrySrcDescLod1": "公共測量成果又は基本測量成果"
+    "urc:geometrySrcDescLod1": "公共測量成果又は基本測量成果",
+    "__key_order": [
+      "meshcode",
+      "city_code",
+      "city_name",
+      "feature_type",
+      "gml_id",
+      "attributes",
+      "core:creationDate",
+      "veg:class",
+      "veg:height",
+      "urc:geometrySrcDescLod1"
+    ]
   }
 }

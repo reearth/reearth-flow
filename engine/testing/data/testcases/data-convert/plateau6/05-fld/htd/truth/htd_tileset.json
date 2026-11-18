@@ -15,5 +15,21 @@
   },
   "urc:rankOrg": {},
   "urc:rankOrg_code": {},
-  "urc:geometrySrcDescLod1": {}
+  "urc:geometrySrcDescLod1": {},
+  "__key_order": [
+    "city_code",
+    "city_name",
+    "feature_type",
+    "attributes",
+    "gml:name",
+    "core:creationDate",
+    "wtr:class",
+    "wtr:function",
+    "urc:description",
+    "urc:rank",
+    "urc:rank_code",
+    "urc:rankOrg",
+    "urc:rankOrg_code",
+    "urc:geometrySrcDescLod1"
+  ]
 }

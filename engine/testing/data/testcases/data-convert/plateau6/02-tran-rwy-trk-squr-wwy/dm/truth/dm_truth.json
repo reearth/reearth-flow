@@ -86,6 +86,28 @@
     "dm_shapeType": "非区分（下記に該当しない全データ）",
     "dm_shapeType_code": "0",
     "dm_attributes": "{\"urc:dmCode\":\"徒歩道\",\"urc:dmCode_code\":\"2103\",\"urc:geometryType\":\"線\",\"urc:geometryType_code\":\"E2\",\"urc:mapLevel\":\"地図情報レベル2500\",\"urc:mapLevel_code\":\"2500\",\"urc:shapeType\":\"非区分（下記に該当しない全データ）\",\"urc:shapeType_code\":\"0\"}",
-    "dm_feature_type": "DmGeometricAttribute"
+    "dm_feature_type": "DmGeometricAttribute",
+    "__key_order": [
+      "meshcode",
+      "feature_type",
+      "city_code",
+      "city_name",
+      "gml_id",
+      "attributes",
+      "core:creationDate",
+      "tran:class",
+      "tran:function",
+      "urc:lodType",
+      "dm_dmCode",
+      "dm_dmCode_code",
+      "dm_geometryType",
+      "dm_geometryType_code",
+      "dm_mapLevel",
+      "dm_mapLevel_code",
+      "dm_shapeType",
+      "dm_shapeType_code",
+      "dm_attributes",
+      "dm_feature_type"
+    ]
   }
 }

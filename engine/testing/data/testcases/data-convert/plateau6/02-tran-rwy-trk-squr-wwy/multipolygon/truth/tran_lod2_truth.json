@@ -60,7 +60,16 @@
         }
       }
     ],
-    "tran:function": "島"
+    "tran:function": "島",
+    "__key_order": [
+      "meshcode",
+      "feature_type",
+      "city_code",
+      "city_name",
+      "gml_id",
+      "attributes",
+      "tran:function"
+    ]
   },
   "traf_aad39605-4836-42da-9c5a-d6c4817a7e57": {
     "meshcode": "53394503",
@@ -123,7 +132,16 @@
         }
       }
     ],
-    "tran:function": "歩道部"
+    "tran:function": "歩道部",
+    "__key_order": [
+      "meshcode",
+      "feature_type",
+      "city_code",
+      "city_name",
+      "gml_id",
+      "attributes",
+      "tran:function"
+    ]
   },
   "traf_bed931ec-cbff-4d64-ba25-5e8e760e7519": {
     "meshcode": "53394503",
@@ -186,7 +204,16 @@
         }
       }
     ],
-    "tran:function": "島"
+    "tran:function": "島",
+    "__key_order": [
+      "meshcode",
+      "feature_type",
+      "city_code",
+      "city_name",
+      "gml_id",
+      "attributes",
+      "tran:function"
+    ]
   },
   "traf_e5ea50ce-7198-4879-a380-9d99f1c6491f": {
     "meshcode": "53394503",
@@ -249,7 +276,16 @@
         }
       }
     ],
-    "tran:function": "車道交差部"
+    "tran:function": "車道交差部",
+    "__key_order": [
+      "meshcode",
+      "feature_type",
+      "city_code",
+      "city_name",
+      "gml_id",
+      "attributes",
+      "tran:function"
+    ]
   },
   "traf_f8f3ceeb-a7ec-447d-8a20-620b0b7bc413": {
     "meshcode": "53394503",
@@ -312,6 +348,15 @@
         }
       }
     ],
-    "tran:function": "島"
+    "tran:function": "島",
+    "__key_order": [
+      "meshcode",
+      "feature_type",
+      "city_code",
+      "city_name",
+      "gml_id",
+      "attributes",
+      "tran:function"
+    ]
   }
 }

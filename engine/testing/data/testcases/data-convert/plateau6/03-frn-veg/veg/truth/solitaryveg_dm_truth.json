@@ -86,7 +86,29 @@
     "dm_shapeType": "非区分（下記に該当しない全データ）",
     "dm_shapeType_code": "0",
     "dm_attributes": "{\"urc:dmCode\":\"並木\",\"urc:dmCode_code\":\"2238\",\"urc:geometryType\":\"点\",\"urc:geometryType_code\":\"E5\",\"urc:mapLevel\":\"地図情報レベル2500\",\"urc:mapLevel_code\":\"2500\",\"urc:shapeType\":\"非区分（下記に該当しない全データ）\",\"urc:shapeType_code\":\"0\"}",
-    "dm_feature_type": "DmGeometricAttribute"
+    "dm_feature_type": "DmGeometricAttribute",
+    "__key_order": [
+      "meshcode",
+      "city_code",
+      "city_name",
+      "feature_type",
+      "gml_id",
+      "attributes",
+      "core:creationDate",
+      "veg:class",
+      "veg:height",
+      "urc:geometrySrcDescLod1",
+      "dm_dmCode",
+      "dm_dmCode_code",
+      "dm_geometryType",
+      "dm_geometryType_code",
+      "dm_mapLevel",
+      "dm_mapLevel_code",
+      "dm_shapeType",
+      "dm_shapeType_code",
+      "dm_attributes",
+      "dm_feature_type"
+    ]
   },
   "veg_99045825-5873-4cc7-acea-91f19dfd874c__dm_E5": {
     "meshcode": "54401008",
@@ -175,7 +197,29 @@
     "dm_shapeType": "非区分（下記に該当しない全データ）",
     "dm_shapeType_code": "0",
     "dm_attributes": "{\"urc:dmCode\":\"並木\",\"urc:dmCode_code\":\"2238\",\"urc:geometryType\":\"点\",\"urc:geometryType_code\":\"E5\",\"urc:mapLevel\":\"地図情報レベル2500\",\"urc:mapLevel_code\":\"2500\",\"urc:shapeType\":\"非区分（下記に該当しない全データ）\",\"urc:shapeType_code\":\"0\"}",
-    "dm_feature_type": "DmGeometricAttribute"
+    "dm_feature_type": "DmGeometricAttribute",
+    "__key_order": [
+      "meshcode",
+      "city_code",
+      "city_name",
+      "feature_type",
+      "gml_id",
+      "attributes",
+      "core:creationDate",
+      "veg:class",
+      "veg:height",
+      "urc:geometrySrcDescLod1",
+      "dm_dmCode",
+      "dm_dmCode_code",
+      "dm_geometryType",
+      "dm_geometryType_code",
+      "dm_mapLevel",
+      "dm_mapLevel_code",
+      "dm_shapeType",
+      "dm_shapeType_code",
+      "dm_attributes",
+      "dm_feature_type"
+    ]
   },
   "veg_d376789c-4eb7-4be5-9d91-719d809f63ee__dm_E5": {
     "meshcode": "54401008",
@@ -264,6 +308,28 @@
     "dm_shapeType": "非区分（下記に該当しない全データ）",
     "dm_shapeType_code": "0",
     "dm_attributes": "{\"urc:dmCode\":\"並木\",\"urc:dmCode_code\":\"2238\",\"urc:geometryType\":\"点\",\"urc:geometryType_code\":\"E5\",\"urc:mapLevel\":\"地図情報レベル2500\",\"urc:mapLevel_code\":\"2500\",\"urc:shapeType\":\"非区分（下記に該当しない全データ）\",\"urc:shapeType_code\":\"0\"}",
-    "dm_feature_type": "DmGeometricAttribute"
+    "dm_feature_type": "DmGeometricAttribute",
+    "__key_order": [
+      "meshcode",
+      "city_code",
+      "city_name",
+      "feature_type",
+      "gml_id",
+      "attributes",
+      "core:creationDate",
+      "veg:class",
+      "veg:height",
+      "urc:geometrySrcDescLod1",
+      "dm_dmCode",
+      "dm_dmCode_code",
+      "dm_geometryType",
+      "dm_geometryType_code",
+      "dm_mapLevel",
+      "dm_mapLevel_code",
+      "dm_shapeType",
+      "dm_shapeType_code",
+      "dm_attributes",
+      "dm_feature_type"
+    ]
   }
 }

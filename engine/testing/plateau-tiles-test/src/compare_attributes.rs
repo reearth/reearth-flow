@@ -224,7 +224,16 @@ pub fn apply_cast(cast: &CastConfig, value: Value) -> Value {
             }
         }
         CastConfig::IgnoreBoth => Value::Null,
-        CastConfig::OrderedDict => value,
+        // Records the key order as a "__key_order" entry so that the unordered comparison
+        // also catches a reorder. Conversion-only: nested paths are left unchanged.
+        CastConfig::OrderedDict => match value {
+            Value::Object(mut map) => {
+                let order = map.keys().cloned().map(Value::String).collect();
+                map.insert("__key_order".to_string(), Value::Array(order));
+                Value::Object(map)
+            }
+            other => other,
+        },
     }
 }
 
@@ -276,8 +285,6 @@ pub struct AttributeComparer {
     casts: HashMap<String, CastConfig>,
     values: HashMap<String, Value>,
     mismatches: Vec<(String, String, Value, Value)>,
-    /// When set, every object's key sequence must match, not just its key set.
-    ordered: bool,
 }
 
 impl AttributeComparer {
@@ -291,14 +298,7 @@ impl AttributeComparer {
             casts,
             values,
             mismatches: Vec::new(),
-            ordered: false,
         }
-    }
-
-    /// Makes the comparison key-order sensitive at every object level.
-    pub fn ordered(mut self) -> Self {
-        self.ordered = true;
-        self
     }
 
     fn cast_attr(&self, key: &str, value: Value) -> Value {
@@ -383,18 +383,6 @@ impl AttributeComparer {
 
         match (&v1, &v2) {
             (Value::Object(obj1), Value::Object(obj2)) => {
-                if self.ordered
-                    && obj1.len() == obj2.len()
-                    && obj1.keys().ne(obj2.keys())
-                    && obj1.keys().all(|k| obj2.contains_key(k))
-                {
-                    self.mismatches.push((
-                        self.identifier.clone(),
-                        format!("{key}<key order>"),
-                        Value::Array(obj1.keys().cloned().map(Value::String).collect()),
-                        Value::Array(obj2.keys().cloned().map(Value::String).collect()),
-                    ));
-                }
                 let all_keys: std::collections::HashSet<_> =
                     obj1.keys().chain(obj2.keys()).collect();
                 for k in all_keys {
@@ -518,37 +506,23 @@ pub fn analyze_attributes(
     comparer.compare(attr1, attr2)
 }
 
-/// Like [`analyze_attributes`], but object key order must match too.
-pub fn analyze_attributes_ordered(
-    ident: &str,
-    attr1: &Value,
-    attr2: &Value,
-    casts: HashMap<String, CastConfig>,
-    values: HashMap<String, Value>,
-) -> Result<(), String> {
-    let mut comparer = AttributeComparer::new(ident.to_string(), casts, values).ordered();
-    comparer.compare(attr1, attr2)
-}
-
 #[cfg(test)]
 mod tests {
     use super::*;
     use serde_json::json;
 
     #[test]
-    fn test_ordered_mode_catches_nested_reorder() {
-        let v1 = json!({"outer": {"a": 1, "a_uom": "m", "b": 2}});
-        let v2 = json!({"outer": {"a": 1, "b": 2, "a_uom": "m"}});
-        assert!(
-            analyze_attributes("test", &v1, &v2, HashMap::new(), HashMap::new()).is_ok(),
-            "default mode ignores key order"
-        );
-        assert!(
-            analyze_attributes_ordered("test", &v1, &v2, HashMap::new(), HashMap::new()).is_err()
-        );
-        assert!(
-            analyze_attributes_ordered("test", &v1, &v1, HashMap::new(), HashMap::new()).is_ok()
-        );
+    fn test_ordered_dict_cast_at_conversion_records_key_order() {
+        let mut casts = HashMap::new();
+        casts.insert("".to_string(), CastConfig::OrderedDict);
+        let convert = |v: Value| apply_casts_to_value(v, "", &casts);
+
+        let a = convert(json!({"a": 1, "b": 2}));
+        let b = convert(json!({"b": 2, "a": 1}));
+        assert_eq!(a["__key_order"], json!(["a", "b"]));
+        // the plain comparison now sees the reorder
+        assert!(analyze_attributes("test", &a, &b, HashMap::new(), HashMap::new()).is_err());
+        assert!(analyze_attributes("test", &a, &a, HashMap::new(), HashMap::new()).is_ok());
     }
 
     #[test]

@@ -77,6 +77,14 @@
         "tran:function": "徒歩道",
         "tran:function_code": "1"
       }
+    ],
+    "__key_order": [
+      "meshcode",
+      "feature_type",
+      "city_code",
+      "city_name",
+      "gml_id",
+      "attributes"
     ]
   },
   "trk_98823040-65c2-4be4-97e1-62bf21bddf33": {
@@ -160,6 +168,15 @@
         "tran:function_code": "1"
       }
     ],
-    "tran:function": "歩道部"
+    "tran:function": "歩道部",
+    "__key_order": [
+      "meshcode",
+      "feature_type",
+      "city_code",
+      "city_name",
+      "gml_id",
+      "attributes",
+      "tran:function"
+    ]
   }
 }

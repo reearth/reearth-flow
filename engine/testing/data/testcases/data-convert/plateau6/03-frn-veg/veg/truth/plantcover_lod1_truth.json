@@ -76,7 +76,19 @@
     "core:creationDate": "2024-03-19T00:00:00",
     "veg:class": "草花",
     "veg:averageHeight": 0.3,
-    "urc:geometrySrcDescLod1": "公共測量成果又は基本測量成果"
+    "urc:geometrySrcDescLod1": "公共測量成果又は基本測量成果",
+    "__key_order": [
+      "meshcode",
+      "city_code",
+      "city_name",
+      "feature_type",
+      "gml_id",
+      "attributes",
+      "core:creationDate",
+      "veg:class",
+      "veg:averageHeight",
+      "urc:geometrySrcDescLod1"
+    ]
   },
   "veg_7a43e497-ed0e-4e04-a861-c5e85a620c04": {
     "meshcode": "54401008",
@@ -155,7 +167,19 @@
     "core:creationDate": "2024-03-19T00:00:00",
     "veg:class": "草花",
     "veg:averageHeight": 0.5,
-    "urc:geometrySrcDescLod1": "公共測量成果又は基本測量成果"
+    "urc:geometrySrcDescLod1": "公共測量成果又は基本測量成果",
+    "__key_order": [
+      "meshcode",
+      "city_code",
+      "city_name",
+      "feature_type",
+      "gml_id",
+      "attributes",
+      "core:creationDate",
+      "veg:class",
+      "veg:averageHeight",
+      "urc:geometrySrcDescLod1"
+    ]
   },
   "veg_9019893c-1850-42a0-a17e-e3541b3d6254": {
     "meshcode": "54401008",
@@ -234,6 +258,18 @@
     "core:creationDate": "2024-03-19T00:00:00",
     "veg:class": "草花",
     "veg:averageHeight": 0.8,
-    "urc:geometrySrcDescLod1": "公共測量成果又は基本測量成果"
+    "urc:geometrySrcDescLod1": "公共測量成果又は基本測量成果",
+    "__key_order": [
+      "meshcode",
+      "city_code",
+      "city_name",
+      "feature_type",
+      "gml_id",
+      "attributes",
+      "core:creationDate",
+      "veg:class",
+      "veg:averageHeight",
+      "urc:geometrySrcDescLod1"
+    ]
   }
 }

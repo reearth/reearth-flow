@@ -47,7 +47,32 @@
     "urc:geometrySrcDescLod1": "その他のGISデータ",
     "urc:geometrySrcDescLod1_code": "400",
     "urc:thematicSrcDesc": "その他のGISデータ",
-    "urc:thematicSrcDesc_code": "400"
+    "urc:thematicSrcDesc_code": "400",
+    "__key_order": [
+      "meshcode",
+      "city_code",
+      "city_name",
+      "feature_type",
+      "gml_id",
+      "attributes",
+      "core:creationDate",
+      "core:validFrom",
+      "urf:prefecture",
+      "urf:prefecture_code",
+      "urf:location",
+      "urf:disasterType",
+      "urf:disasterType_code",
+      "urf:areaType",
+      "urf:areaType_code",
+      "urf:zoneNumber",
+      "urf:zoneName",
+      "urf:status",
+      "urf:status_code",
+      "urc:geometrySrcDescLod1",
+      "urc:geometrySrcDescLod1_code",
+      "urc:thematicSrcDesc",
+      "urc:thematicSrcDesc_code"
+    ]
   },
   "lsld_de43fb8b-30f7-47b4-9b16-b561ea2d1030": {
     "meshcode": "493023",
@@ -97,6 +122,31 @@
     "urc:geometrySrcDescLod1": "その他のGISデータ",
     "urc:geometrySrcDescLod1_code": "400",
     "urc:thematicSrcDesc": "その他のGISデータ",
-    "urc:thematicSrcDesc_code": "400"
+    "urc:thematicSrcDesc_code": "400",
+    "__key_order": [
+      "meshcode",
+      "city_code",
+      "city_name",
+      "feature_type",
+      "gml_id",
+      "attributes",
+      "core:creationDate",
+      "core:validFrom",
+      "urf:prefecture",
+      "urf:prefecture_code",
+      "urf:location",
+      "urf:disasterType",
+      "urf:disasterType_code",
+      "urf:areaType",
+      "urf:areaType_code",
+      "urf:zoneNumber",
+      "urf:zoneName",
+      "urf:status",
+      "urf:status_code",
+      "urc:geometrySrcDescLod1",
+      "urc:geometrySrcDescLod1_code",
+      "urc:thematicSrcDesc",
+      "urc:thematicSrcDesc_code"
+    ]
   }
 }
