@@ -35,6 +35,16 @@ type NamedSnapshot {
   label: String!
   timestamp: DateTime!
   size: FileSize!
+  # The users whose edits the snapshot holds. Empty for snapshots saved without
+  # attribution. The list can be cut short, so contributorCount can exceed it.
+  contributorIds: [ID!]!
+  # The contributors that still resolve to a user.
+  contributors: [User!]!
+  # How many contributors there are, including any missing from the lists.
+  contributorCount: Int!
+  # The user who edited last before the snapshot.
+  lastEditorId: ID
+  lastEditor: User
 }
 
 # Mutation

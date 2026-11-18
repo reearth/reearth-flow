@@ -44,6 +44,7 @@ type ResolverRoot interface {
 	Job() JobResolver
 	Me() MeResolver
 	Mutation() MutationResolver
+	NamedSnapshot() NamedSnapshotResolver
 	Project() ProjectResolver
 	ProjectDocument() ProjectDocumentResolver
 	Query() QueryResolver
@@ -394,10 +395,15 @@ type ComplexityRoot struct {
 	}
 
 	NamedSnapshot struct {
-		Label          func(childComplexity int) int
-		Size           func(childComplexity int) int
-		SnapshotNumber func(childComplexity int) int
-		Timestamp      func(childComplexity int) int
+		ContributorCount func(childComplexity int) int
+		ContributorIds   func(childComplexity int) int
+		Contributors     func(childComplexity int) int
+		Label            func(childComplexity int) int
+		LastEditor       func(childComplexity int) int
+		LastEditorID     func(childComplexity int) int
+		Size             func(childComplexity int) int
+		SnapshotNumber   func(childComplexity int) int
+		Timestamp        func(childComplexity int) int
 	}
 
 	PageInfo struct {
@@ -766,6 +772,11 @@ type MutationResolver interface {
 	AddMemberToWorkspace(ctx context.Context, input gqlmodel.AddMemberToWorkspaceInput) (*gqlmodel.AddMemberToWorkspacePayload, error)
 	RemoveMemberFromWorkspace(ctx context.Context, input gqlmodel.RemoveMemberFromWorkspaceInput) (*gqlmodel.RemoveMemberFromWorkspacePayload, error)
 	UpdateMemberOfWorkspace(ctx context.Context, input gqlmodel.UpdateMemberOfWorkspaceInput) (*gqlmodel.UpdateMemberOfWorkspacePayload, error)
+}
+type NamedSnapshotResolver interface {
+	Contributors(ctx context.Context, obj *gqlmodel.NamedSnapshot) ([]*gqlmodel.User, error)
+
+	LastEditor(ctx context.Context, obj *gqlmodel.NamedSnapshot) (*gqlmodel.User, error)
 }
 type ProjectResolver interface {
 	Deployment(ctx context.Context, obj *gqlmodel.Project) (*gqlmodel.Deployment, error)
@@ -2477,12 +2488,42 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 
 		return e.complexity.Mutation.UpdateWorkspace(childComplexity, args["input"].(gqlmodel.UpdateWorkspaceInput)), true
 
+	case "NamedSnapshot.contributorCount":
+		if e.complexity.NamedSnapshot.ContributorCount == nil {
+			break
+		}
+
+		return e.complexity.NamedSnapshot.ContributorCount(childComplexity), true
+	case "NamedSnapshot.contributorIds":
+		if e.complexity.NamedSnapshot.ContributorIds == nil {
+			break
+		}
+
+		return e.complexity.NamedSnapshot.ContributorIds(childComplexity), true
+	case "NamedSnapshot.contributors":
+		if e.complexity.NamedSnapshot.Contributors == nil {
+			break
+		}
+
+		return e.complexity.NamedSnapshot.Contributors(childComplexity), true
 	case "NamedSnapshot.label":
 		if e.complexity.NamedSnapshot.Label == nil {
 			break
 		}
 
 		return e.complexity.NamedSnapshot.Label(childComplexity), true
+	case "NamedSnapshot.lastEditor":
+		if e.complexity.NamedSnapshot.LastEditor == nil {
+			break
+		}
+
+		return e.complexity.NamedSnapshot.LastEditor(childComplexity), true
+	case "NamedSnapshot.lastEditorId":
+		if e.complexity.NamedSnapshot.LastEditorID == nil {
+			break
+		}
+
+		return e.complexity.NamedSnapshot.LastEditorID(childComplexity), true
 	case "NamedSnapshot.size":
 		if e.complexity.NamedSnapshot.Size == nil {
 			break
@@ -4435,6 +4476,16 @@ type NamedSnapshot {
   label: String!
   timestamp: DateTime!
   size: FileSize!
+  # The users whose edits the snapshot holds. Empty for snapshots saved without
+  # attribution. The list can be cut short, so contributorCount can exceed it.
+  contributorIds: [ID!]!
+  # The contributors that still resolve to a user.
+  contributors: [User!]!
+  # How many contributors there are, including any missing from the lists.
+  contributorCount: Int!
+  # The user who edited last before the snapshot.
+  lastEditorId: ID
+  lastEditor: User
 }
 
 # Mutation
@@ -13298,6 +13349,16 @@ func (ec *executionContext) fieldContext_Mutation_saveNamedSnapshot(ctx context.
 				return ec.fieldContext_NamedSnapshot_timestamp(ctx, field)
 			case "size":
 				return ec.fieldContext_NamedSnapshot_size(ctx, field)
+			case "contributorIds":
+				return ec.fieldContext_NamedSnapshot_contributorIds(ctx, field)
+			case "contributors":
+				return ec.fieldContext_NamedSnapshot_contributors(ctx, field)
+			case "contributorCount":
+				return ec.fieldContext_NamedSnapshot_contributorCount(ctx, field)
+			case "lastEditorId":
+				return ec.fieldContext_NamedSnapshot_lastEditorId(ctx, field)
+			case "lastEditor":
+				return ec.fieldContext_NamedSnapshot_lastEditor(ctx, field)
 			}
 			return nil, fmt.Errorf("no field named %q was found under type NamedSnapshot", field.Name)
 		},
@@ -14976,6 +15037,175 @@ func (ec *executionContext) fieldContext_NamedSnapshot_size(_ context.Context, f
 		IsResolver: false,
 		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
 			return nil, errors.New("field of type FileSize does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _NamedSnapshot_contributorIds(ctx context.Context, field graphql.CollectedField, obj *gqlmodel.NamedSnapshot) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		ec.fieldContext_NamedSnapshot_contributorIds,
+		func(ctx context.Context) (any, error) {
+			return obj.ContributorIds, nil
+		},
+		nil,
+		ec.marshalNID2ᚕgithubᚗcomᚋreearthᚋreearthᚑflowᚋapiᚋinternalᚋadapterᚋgqlᚋgqlmodelᚐIDᚄ,
+		true,
+		true,
+	)
+}
+
+func (ec *executionContext) fieldContext_NamedSnapshot_contributorIds(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "NamedSnapshot",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type ID does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _NamedSnapshot_contributors(ctx context.Context, field graphql.CollectedField, obj *gqlmodel.NamedSnapshot) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		ec.fieldContext_NamedSnapshot_contributors,
+		func(ctx context.Context) (any, error) {
+			return ec.resolvers.NamedSnapshot().Contributors(ctx, obj)
+		},
+		nil,
+		ec.marshalNUser2ᚕᚖgithubᚗcomᚋreearthᚋreearthᚑflowᚋapiᚋinternalᚋadapterᚋgqlᚋgqlmodelᚐUserᚄ,
+		true,
+		true,
+	)
+}
+
+func (ec *executionContext) fieldContext_NamedSnapshot_contributors(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "NamedSnapshot",
+		Field:      field,
+		IsMethod:   true,
+		IsResolver: true,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			switch field.Name {
+			case "email":
+				return ec.fieldContext_User_email(ctx, field)
+			case "host":
+				return ec.fieldContext_User_host(ctx, field)
+			case "id":
+				return ec.fieldContext_User_id(ctx, field)
+			case "name":
+				return ec.fieldContext_User_name(ctx, field)
+			case "metadata":
+				return ec.fieldContext_User_metadata(ctx, field)
+			}
+			return nil, fmt.Errorf("no field named %q was found under type User", field.Name)
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _NamedSnapshot_contributorCount(ctx context.Context, field graphql.CollectedField, obj *gqlmodel.NamedSnapshot) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		ec.fieldContext_NamedSnapshot_contributorCount,
+		func(ctx context.Context) (any, error) {
+			return obj.ContributorCount, nil
+		},
+		nil,
+		ec.marshalNInt2int,
+		true,
+		true,
+	)
+}
+
+func (ec *executionContext) fieldContext_NamedSnapshot_contributorCount(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "NamedSnapshot",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type Int does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _NamedSnapshot_lastEditorId(ctx context.Context, field graphql.CollectedField, obj *gqlmodel.NamedSnapshot) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		ec.fieldContext_NamedSnapshot_lastEditorId,
+		func(ctx context.Context) (any, error) {
+			return obj.LastEditorID, nil
+		},
+		nil,
+		ec.marshalOID2ᚖgithubᚗcomᚋreearthᚋreearthᚑflowᚋapiᚋinternalᚋadapterᚋgqlᚋgqlmodelᚐID,
+		true,
+		false,
+	)
+}
+
+func (ec *executionContext) fieldContext_NamedSnapshot_lastEditorId(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "NamedSnapshot",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type ID does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _NamedSnapshot_lastEditor(ctx context.Context, field graphql.CollectedField, obj *gqlmodel.NamedSnapshot) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		ec.fieldContext_NamedSnapshot_lastEditor,
+		func(ctx context.Context) (any, error) {
+			return ec.resolvers.NamedSnapshot().LastEditor(ctx, obj)
+		},
+		nil,
+		ec.marshalOUser2ᚖgithubᚗcomᚋreearthᚋreearthᚑflowᚋapiᚋinternalᚋadapterᚋgqlᚋgqlmodelᚐUser,
+		true,
+		false,
+	)
+}
+
+func (ec *executionContext) fieldContext_NamedSnapshot_lastEditor(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "NamedSnapshot",
+		Field:      field,
+		IsMethod:   true,
+		IsResolver: true,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			switch field.Name {
+			case "email":
+				return ec.fieldContext_User_email(ctx, field)
+			case "host":
+				return ec.fieldContext_User_host(ctx, field)
+			case "id":
+				return ec.fieldContext_User_id(ctx, field)
+			case "name":
+				return ec.fieldContext_User_name(ctx, field)
+			case "metadata":
+				return ec.fieldContext_User_metadata(ctx, field)
+			}
+			return nil, fmt.Errorf("no field named %q was found under type User", field.Name)
 		},
 	}
 	return fc, nil
@@ -18049,6 +18279,16 @@ func (ec *executionContext) fieldContext_Query_projectNamedSnapshots(ctx context
 				return ec.fieldContext_NamedSnapshot_timestamp(ctx, field)
 			case "size":
 				return ec.fieldContext_NamedSnapshot_size(ctx, field)
+			case "contributorIds":
+				return ec.fieldContext_NamedSnapshot_contributorIds(ctx, field)
+			case "contributors":
+				return ec.fieldContext_NamedSnapshot_contributors(ctx, field)
+			case "contributorCount":
+				return ec.fieldContext_NamedSnapshot_contributorCount(ctx, field)
+			case "lastEditorId":
+				return ec.fieldContext_NamedSnapshot_lastEditorId(ctx, field)
+			case "lastEditor":
+				return ec.fieldContext_NamedSnapshot_lastEditor(ctx, field)
 			}
 			return nil, fmt.Errorf("no field named %q was found under type NamedSnapshot", field.Name)
 		},
@@ -28102,23 +28342,104 @@ func (ec *executionContext) _NamedSnapshot(ctx context.Context, sel ast.Selectio
 		case "snapshotNumber":
 			out.Values[i] = ec._NamedSnapshot_snapshotNumber(ctx, field, obj)
 			if out.Values[i] == graphql.Null {
-				out.Invalids++
+				atomic.AddUint32(&out.Invalids, 1)
 			}
 		case "label":
 			out.Values[i] = ec._NamedSnapshot_label(ctx, field, obj)
 			if out.Values[i] == graphql.Null {
-				out.Invalids++
+				atomic.AddUint32(&out.Invalids, 1)
 			}
 		case "timestamp":
 			out.Values[i] = ec._NamedSnapshot_timestamp(ctx, field, obj)
 			if out.Values[i] == graphql.Null {
-				out.Invalids++
+				atomic.AddUint32(&out.Invalids, 1)
 			}
 		case "size":
 			out.Values[i] = ec._NamedSnapshot_size(ctx, field, obj)
 			if out.Values[i] == graphql.Null {
-				out.Invalids++
+				atomic.AddUint32(&out.Invalids, 1)
 			}
+		case "contributorIds":
+			out.Values[i] = ec._NamedSnapshot_contributorIds(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				atomic.AddUint32(&out.Invalids, 1)
+			}
+		case "contributors":
+			field := field
+
+			innerFunc := func(ctx context.Context, fs *graphql.FieldSet) (res graphql.Marshaler) {
+				defer func() {
+					if r := recover(); r != nil {
+						ec.Error(ctx, ec.Recover(ctx, r))
+					}
+				}()
+				res = ec._NamedSnapshot_contributors(ctx, field, obj)
+				if res == graphql.Null {
+					atomic.AddUint32(&fs.Invalids, 1)
+				}
+				return res
+			}
+
+			if field.Deferrable != nil {
+				dfs, ok := deferred[field.Deferrable.Label]
+				di := 0
+				if ok {
+					dfs.AddField(field)
+					di = len(dfs.Values) - 1
+				} else {
+					dfs = graphql.NewFieldSet([]graphql.CollectedField{field})
+					deferred[field.Deferrable.Label] = dfs
+				}
+				dfs.Concurrently(di, func(ctx context.Context) graphql.Marshaler {
+					return innerFunc(ctx, dfs)
+				})
+
+				// don't run the out.Concurrently() call below
+				out.Values[i] = graphql.Null
+				continue
+			}
+
+			out.Concurrently(i, func(ctx context.Context) graphql.Marshaler { return innerFunc(ctx, out) })
+		case "contributorCount":
+			out.Values[i] = ec._NamedSnapshot_contributorCount(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				atomic.AddUint32(&out.Invalids, 1)
+			}
+		case "lastEditorId":
+			out.Values[i] = ec._NamedSnapshot_lastEditorId(ctx, field, obj)
+		case "lastEditor":
+			field := field
+
+			innerFunc := func(ctx context.Context, _ *graphql.FieldSet) (res graphql.Marshaler) {
+				defer func() {
+					if r := recover(); r != nil {
+						ec.Error(ctx, ec.Recover(ctx, r))
+					}
+				}()
+				res = ec._NamedSnapshot_lastEditor(ctx, field, obj)
+				return res
+			}
+
+			if field.Deferrable != nil {
+				dfs, ok := deferred[field.Deferrable.Label]
+				di := 0
+				if ok {
+					dfs.AddField(field)
+					di = len(dfs.Values) - 1
+				} else {
+					dfs = graphql.NewFieldSet([]graphql.CollectedField{field})
+					deferred[field.Deferrable.Label] = dfs
+				}
+				dfs.Concurrently(di, func(ctx context.Context) graphql.Marshaler {
+					return innerFunc(ctx, dfs)
+				})
+
+				// don't run the out.Concurrently() call below
+				out.Values[i] = graphql.Null
+				continue
+			}
+
+			out.Concurrently(i, func(ctx context.Context) graphql.Marshaler { return innerFunc(ctx, out) })
 		default:
 			panic("unknown field " + strconv.Quote(field.Name))
 		}
@@ -33126,6 +33447,50 @@ func (ec *executionContext) marshalNUpload2githubᚗcomᚋ99designsᚋgqlgenᚋg
 		}
 	}
 	return res
+}
+
+func (ec *executionContext) marshalNUser2ᚕᚖgithubᚗcomᚋreearthᚋreearthᚑflowᚋapiᚋinternalᚋadapterᚋgqlᚋgqlmodelᚐUserᚄ(ctx context.Context, sel ast.SelectionSet, v []*gqlmodel.User) graphql.Marshaler {
+	ret := make(graphql.Array, len(v))
+	var wg sync.WaitGroup
+	isLen1 := len(v) == 1
+	if !isLen1 {
+		wg.Add(len(v))
+	}
+	for i := range v {
+		i := i
+		fc := &graphql.FieldContext{
+			Index:  &i,
+			Result: &v[i],
+		}
+		ctx := graphql.WithFieldContext(ctx, fc)
+		f := func(i int) {
+			defer func() {
+				if r := recover(); r != nil {
+					ec.Error(ctx, ec.Recover(ctx, r))
+					ret = nil
+				}
+			}()
+			if !isLen1 {
+				defer wg.Done()
+			}
+			ret[i] = ec.marshalNUser2ᚖgithubᚗcomᚋreearthᚋreearthᚑflowᚋapiᚋinternalᚋadapterᚋgqlᚋgqlmodelᚐUser(ctx, sel, v[i])
+		}
+		if isLen1 {
+			f(i)
+		} else {
+			go f(i)
+		}
+
+	}
+	wg.Wait()
+
+	for _, e := range ret {
+		if e == graphql.Null {
+			return graphql.Null
+		}
+	}
+
+	return ret
 }
 
 func (ec *executionContext) marshalNUser2ᚖgithubᚗcomᚋreearthᚋreearthᚑflowᚋapiᚋinternalᚋadapterᚋgqlᚋgqlmodelᚐUser(ctx context.Context, sel ast.SelectionSet, v *gqlmodel.User) graphql.Marshaler {
