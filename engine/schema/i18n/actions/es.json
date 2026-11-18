@@ -74,7 +74,7 @@
         },
         "attributeAccumulation": {
           "title": "Attribute Accumulation",
-          "description": "Atributos de entrada que conserva la entidad agregada además de los atributos de agrupación y el resultado. Usar una entidad conserva la primera entidad del grupo en llegar; recopilar excluye los atributos de los que se leen los valores de grupo. Por defecto solo se conservan los atributos de agrupación."
+          "description": "Which incoming attributes the aggregated feature keeps besides the group-by attributes and the result. Using one feature keeps the group's first feature to arrive. Defaults to dropping them."
         },
         "calculation": {
           "title": "Calculation to perform",
@@ -114,14 +114,14 @@
         }
       },
       "enumI18n": {
-        "AttributeAccumulation": {
-          "collectAttributes": {
-            "title": "Recopilar atributos",
-            "description": "Conserva los atributos de agrupación y escribe los demás atributos de cada entidad fusionada en `__members`, un arreglo con un mapa por entidad en orden de llegada."
+        "AttributeAccumulationStrategy": {
+          "dropAttributes": {
+            "title": "Drop Incoming Attributes",
+            "description": "Keeps only the grouping attributes, discarding everything else."
           },
-          "groupAttributesOnly": {
-            "title": "Conservar solo los atributos de agrupación",
-            "description": "Conserva solo los atributos de agrupación y descarta todo lo demás."
+          "mergeAttributes": {
+            "title": "Merge Incoming Attributes",
+            "description": "Keeps every attribute from every feature in the group. Where features disagree on a value, all the differing values are collected into an array."
           },
           "useOneFeature": {
             "title": "Use Attributes From One Feature",
@@ -1441,14 +1441,14 @@
         }
       },
       "enumI18n": {
-        "AttributeAccumulation": {
-          "collectAttributes": {
-            "title": "Recopilar atributos",
-            "description": "Conserva los atributos de agrupación y escribe los demás atributos de cada entidad fusionada en `__members`, un arreglo con un mapa por entidad en orden de llegada."
+        "AttributeAccumulationStrategy": {
+          "dropAttributes": {
+            "title": "Drop Incoming Attributes",
+            "description": "No attributes from any incoming features will be preserved in the output (except group_by attributes if specified)"
           },
-          "groupAttributesOnly": {
-            "title": "Conservar solo los atributos de agrupación",
-            "description": "Conserva solo los atributos de agrupación y descarta todo lo demás."
+          "mergeAttributes": {
+            "title": "Merge Incoming Attributes",
+            "description": "The output feature will merge all input attributes. When multiple features have the same attribute with different values, all values are collected into an array"
           },
           "useOneFeature": {
             "title": "Use Attributes From One Feature",

@@ -237,11 +237,11 @@
           },
           "attributeAccumulation": {
             "title": "Attribute Accumulation",
-            "description": "Attributs d'entrée que l'entité agrégée conserve en plus des attributs de regroupement et du résultat. L'utilisation d'une entité conserve la première entité arrivée dans le groupe ; la collecte exclut les attributs dont les valeurs de groupe sont lues. Par défaut, seuls les attributs de regroupement sont conservés.",
-            "default": "groupAttributesOnly",
+            "description": "Which incoming attributes the aggregated feature keeps besides the group-by attributes and the result. Using one feature keeps the group's first feature to arrive. Defaults to dropping them.",
+            "default": "dropAttributes",
             "allOf": [
               {
-                "$ref": "#/definitions/AttributeAccumulation"
+                "$ref": "#/definitions/AttributeAccumulationStrategy"
               }
             ]
           },
@@ -341,24 +341,24 @@
               }
             ]
           },
-          "AttributeAccumulation": {
-            "title": "Attribute Accumulation",
+          "AttributeAccumulationStrategy": {
+            "title": "Attribute Accumulation Strategy",
             "description": "Which attributes a merged feature keeps.",
             "oneOf": [
               {
-                "title": "Conserver uniquement les attributs de regroupement",
-                "description": "Conserve uniquement les attributs de regroupement et supprime tous les autres.",
+                "title": "Drop Incoming Attributes",
+                "description": "Keeps only the grouping attributes, discarding everything else.",
                 "type": "string",
                 "enum": [
-                  "groupAttributesOnly"
+                  "dropAttributes"
                 ]
               },
               {
-                "title": "Collecter les attributs",
-                "description": "Conserve les attributs de regroupement et écrit les autres attributs de chaque entité fusionnée dans `__members`, un tableau contenant une table par entité dans l'ordre d'arrivée.",
+                "title": "Merge Incoming Attributes",
+                "description": "Keeps every attribute from every feature in the group. Where features disagree on a value, all the differing values are collected into an array.",
                 "type": "string",
                 "enum": [
-                  "collectAttributes"
+                  "mergeAttributes"
                 ]
               },
               {
@@ -4004,7 +4004,7 @@
             "default": "useOneFeature",
             "allOf": [
               {
-                "$ref": "#/definitions/AttributeAccumulation"
+                "$ref": "#/definitions/AttributeAccumulationStrategy"
               }
             ]
           }
@@ -4013,24 +4013,24 @@
           "Attribute": {
             "type": "string"
           },
-          "AttributeAccumulation": {
-            "title": "Attribute Accumulation",
+          "AttributeAccumulationStrategy": {
+            "title": "Attribute Accumulation Strategy",
             "description": "Which attributes a merged feature keeps.",
             "oneOf": [
               {
-                "title": "Conserver uniquement les attributs de regroupement",
-                "description": "Conserve uniquement les attributs de regroupement et supprime tous les autres.",
+                "title": "Drop Incoming Attributes",
+                "description": "No attributes from any incoming features will be preserved in the output (except group_by attributes if specified)",
                 "type": "string",
                 "enum": [
-                  "groupAttributesOnly"
+                  "dropAttributes"
                 ]
               },
               {
-                "title": "Collecter les attributs",
-                "description": "Conserve les attributs de regroupement et écrit les autres attributs de chaque entité fusionnée dans `__members`, un tableau contenant une table par entité dans l'ordre d'arrivée.",
+                "title": "Merge Incoming Attributes",
+                "description": "The output feature will merge all input attributes. When multiple features have the same attribute with different values, all values are collected into an array",
                 "type": "string",
                 "enum": [
-                  "collectAttributes"
+                  "mergeAttributes"
                 ]
               },
               {

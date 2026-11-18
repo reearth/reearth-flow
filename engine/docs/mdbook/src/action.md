@@ -229,11 +229,11 @@ Groups features by attribute values and emits one feature per group, by default 
     },
     "attributeAccumulation": {
       "title": "Attribute Accumulation",
-      "description": "Which incoming attributes the aggregated feature keeps besides the group-by attributes and the result. Using one feature keeps the group's first feature to arrive; collecting leaves out the attributes the group values are read from. Defaults to keeping only the group attributes.",
-      "default": "groupAttributesOnly",
+      "description": "Which incoming attributes the aggregated feature keeps besides the group-by attributes and the result. Using one feature keeps the group's first feature to arrive. Defaults to dropping them.",
+      "default": "dropAttributes",
       "allOf": [
         {
-          "$ref": "#/definitions/AttributeAccumulation"
+          "$ref": "#/definitions/AttributeAccumulationStrategy"
         }
       ]
     },
@@ -333,24 +333,24 @@ Groups features by attribute values and emits one feature per group, by default 
         }
       ]
     },
-    "AttributeAccumulation": {
-      "title": "Attribute Accumulation",
+    "AttributeAccumulationStrategy": {
+      "title": "Attribute Accumulation Strategy",
       "description": "Which attributes a merged feature keeps.",
       "oneOf": [
         {
-          "title": "Keep Group Attributes Only",
+          "title": "Drop Incoming Attributes",
           "description": "Keeps only the grouping attributes, discarding everything else.",
           "type": "string",
           "enum": [
-            "groupAttributesOnly"
+            "dropAttributes"
           ]
         },
         {
-          "title": "Collect Attributes",
-          "description": "Keeps the grouping attributes and writes the other attributes of every merged feature to `__members`, an array with one map per feature in arrival order.",
+          "title": "Merge Incoming Attributes",
+          "description": "Keeps every attribute from every feature in the group. Where features disagree on a value, all the differing values are collected into an array.",
           "type": "string",
           "enum": [
-            "collectAttributes"
+            "mergeAttributes"
           ]
         },
         {
@@ -3908,7 +3908,7 @@ Merges area features that share the same grouping attribute values into one feat
       "default": "useOneFeature",
       "allOf": [
         {
-          "$ref": "#/definitions/AttributeAccumulation"
+          "$ref": "#/definitions/AttributeAccumulationStrategy"
         }
       ]
     }
@@ -3917,24 +3917,24 @@ Merges area features that share the same grouping attribute values into one feat
     "Attribute": {
       "type": "string"
     },
-    "AttributeAccumulation": {
-      "title": "Attribute Accumulation",
+    "AttributeAccumulationStrategy": {
+      "title": "Attribute Accumulation Strategy",
       "description": "Which attributes a merged feature keeps.",
       "oneOf": [
         {
-          "title": "Keep Group Attributes Only",
+          "title": "Drop Incoming Attributes",
           "description": "Keeps only the grouping attributes, discarding everything else.",
           "type": "string",
           "enum": [
-            "groupAttributesOnly"
+            "dropAttributes"
           ]
         },
         {
-          "title": "Collect Attributes",
-          "description": "Keeps the grouping attributes and writes the other attributes of every merged feature to `__members`, an array with one map per feature in arrival order.",
+          "title": "Merge Incoming Attributes",
+          "description": "Keeps every attribute from every feature in the group. Where features disagree on a value, all the differing values are collected into an array.",
           "type": "string",
           "enum": [
-            "collectAttributes"
+            "mergeAttributes"
           ]
         },
         {

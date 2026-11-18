@@ -74,7 +74,7 @@
         },
         "attributeAccumulation": {
           "title": "入力属性の保持",
-          "description": "グループ化属性と計算結果以外に、集計後の地物がどの入力属性を保持するか。1つの地物の属性を使用する場合は、グループに最初に到着した地物の属性を保持する。収集する場合は、グループ値の読み取り元の属性を除く。デフォルトではグループ化属性のみを保持する。"
+          "description": "グループ化属性と計算結果以外に、集計後の地物がどの入力属性を保持するか。1つの地物の属性を使用する場合は、グループに最初に到着した地物の属性を保持する。デフォルトでは破棄する"
         },
         "calculation": {
           "title": "計算式",
@@ -114,14 +114,14 @@
         }
       },
       "enumI18n": {
-        "AttributeAccumulation": {
-          "collectAttributes": {
-            "title": "属性を収集",
-            "description": "グループ化属性を保持し、統合された各地物のそれ以外の属性を、到着順に地物ごとに1つのマップを持つ配列として `__members` に書き込む。"
+        "AttributeAccumulationStrategy": {
+          "dropAttributes": {
+            "title": "入力属性を破棄",
+            "description": "グループ化属性のみを保持し、それ以外はすべて破棄する"
           },
-          "groupAttributesOnly": {
-            "title": "グループ化属性のみ保持",
-            "description": "グループ化属性のみを保持し、それ以外はすべて破棄する。"
+          "mergeAttributes": {
+            "title": "入力属性をマージ",
+            "description": "グループ内のすべての地物のすべての属性を保持する。地物間で値が異なる場合は、異なる値をすべて配列にまとめる"
           },
           "useOneFeature": {
             "title": "1つの地物の属性を使用",
@@ -1441,14 +1441,14 @@
         }
       },
       "enumI18n": {
-        "AttributeAccumulation": {
-          "collectAttributes": {
-            "title": "属性を収集",
-            "description": "グループ化属性を保持し、統合された各地物のそれ以外の属性を、到着順に地物ごとに1つのマップを持つ配列として `__members` に書き込む。"
+        "AttributeAccumulationStrategy": {
+          "dropAttributes": {
+            "title": "入力属性を破棄",
+            "description": "入力フィーチャーの属性は出力に保持されない（group_by 属性を指定した場合はそれを除く）"
           },
-          "groupAttributesOnly": {
-            "title": "グループ化属性のみ保持",
-            "description": "グループ化属性のみを保持し、それ以外はすべて破棄する。"
+          "mergeAttributes": {
+            "title": "入力属性をマージ",
+            "description": "出力フィーチャーはすべての入力属性をマージする。複数のフィーチャーが同じ属性で異なる値を持つ場合、すべての値が配列に収集される"
           },
           "useOneFeature": {
             "title": "1 つのフィーチャーの属性を使用",

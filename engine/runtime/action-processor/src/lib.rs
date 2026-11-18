@@ -4,6 +4,7 @@
 // full lint coverage).
 #![cfg_attr(feature = "new-geometry", allow(unused_imports, dead_code))]
 
+#[cfg(feature = "new-geometry")]
 pub(crate) mod accumulation;
 pub(crate) mod attribute;
 pub(crate) mod echo;

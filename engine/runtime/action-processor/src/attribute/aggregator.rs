@@ -20,7 +20,7 @@ use serde::{Deserialize, Serialize};
 use serde_json::Value;
 
 use super::errors::AttributeProcessorError;
-use crate::accumulation::{AttributeAccumulation, MEMBERS_ATTRIBUTE, member};
+use crate::geometry::dissolver::AttributeAccumulationStrategy;
 
 #[derive(Debug, Clone, Default)]
 pub(super) struct AttributeAggregatorFactory;
@@ -144,13 +144,7 @@ impl ProcessorFactory for AttributeAggregatorFactory {
             }
         };
 
-        let source_attributes = aggregate_attributes
-            .iter()
-            .filter(|a| a.attribute_value.is_none())
-            .filter_map(|a| a.attribute.clone())
-            .collect();
         let process = AttributeAggregator {
-            source_attributes,
             aggregate_attributes,
             aggregation,
             attribute_accumulation: params.attribute_accumulation,
@@ -165,9 +159,7 @@ impl ProcessorFactory for AttributeAggregatorFactory {
 struct AttributeAggregator {
     aggregate_attributes: Vec<CompliledAggregateAttribute>,
     aggregation: Option<Aggregation>,
-    attribute_accumulation: AttributeAccumulation,
-    /// The source attributes of the group values, left out of `collectAttributes`.
-    source_attributes: Vec<Attribute>,
+    attribute_accumulation: AttributeAccumulationStrategy,
     /// Geometry is only accumulated under `new-geometry`.
     #[cfg_attr(not(feature = "new-geometry"), allow(dead_code))]
     geometry_accumulation: GeometryAccumulationStrategy,
@@ -196,7 +188,7 @@ struct Group {
     #[cfg(feature = "new-geometry")]
     member_attrs: Vec<Attributes>,
     /// The incoming attributes kept under the accumulation strategy: none, the first
-    /// feature's (one value per key), or one map per feature under `members`.
+    /// feature's, or every distinct value per key in arrival order.
     kept: IndexMap<Attribute, Vec<AttributeValue>>,
     value: Option<i64>,
 }
@@ -222,17 +214,17 @@ struct AttributeAggregatorParam {
     /// Expression evaluated to an integer per feature, used as the per-feature value when no calculation value is set.
     calculation: Option<Code<{ CodeType::FlowExpr as u32 }>>,
     /// # Attribute Accumulation
-    /// Which incoming attributes the aggregated feature keeps besides the group-by attributes and the result. Using one feature keeps the group's first feature to arrive; collecting leaves out the attributes the group values are read from. Defaults to keeping only the group attributes.
+    /// Which incoming attributes the aggregated feature keeps besides the group-by attributes and the result. Using one feature keeps the group's first feature to arrive. Defaults to dropping them.
     #[serde(default = "default_attribute_accumulation")]
-    attribute_accumulation: AttributeAccumulation,
+    attribute_accumulation: AttributeAccumulationStrategy,
     /// # Geometry Accumulation
     /// Which geometry the aggregated feature carries. Defaults to combining the group's geometries.
     #[serde(default)]
     geometry_accumulation: GeometryAccumulationStrategy,
 }
 
-fn default_attribute_accumulation() -> AttributeAccumulation {
-    AttributeAccumulation::GroupAttributesOnly
+fn default_attribute_accumulation() -> AttributeAccumulationStrategy {
+    AttributeAccumulationStrategy::DropAttributes
 }
 
 #[derive(Serialize, Deserialize, Debug, Clone, Copy, JsonSchema, PartialEq, Default)]
@@ -366,8 +358,8 @@ impl Processor for AttributeAggregator {
             ),
         };
         match self.attribute_accumulation {
-            AttributeAccumulation::GroupAttributesOnly => {}
-            AttributeAccumulation::UseOneFeature => {
+            AttributeAccumulationStrategy::DropAttributes => {}
+            AttributeAccumulationStrategy::UseOneFeature => {
                 if first {
                     group.kept = feature
                         .attributes
@@ -376,12 +368,13 @@ impl Processor for AttributeAggregator {
                         .collect();
                 }
             }
-            AttributeAccumulation::CollectAttributes => {
-                group
-                    .kept
-                    .entry(Attribute::new(MEMBERS_ATTRIBUTE))
-                    .or_default()
-                    .push(member(&feature.attributes, &self.source_attributes));
+            AttributeAccumulationStrategy::MergeAttributes => {
+                for (k, v) in feature.attributes.iter() {
+                    let values = group.kept.entry(k.clone()).or_default();
+                    if !values.contains(v) {
+                        values.push(v.clone());
+                    }
+                }
             }
         }
         if let (Some(aggregation), Some(calc)) = (&self.aggregation, calc) {
@@ -420,15 +413,13 @@ impl AttributeAggregator {
             .buffer
             .par_iter()
             .filter_map(|(key, group)| {
-                // `useOneFeature` keeps one value per key; `collectAttributes` one map per feature.
-                let collect =
-                    self.attribute_accumulation == AttributeAccumulation::CollectAttributes;
+                // A key with one distinct value keeps it as is; several become an array.
                 let kept: Attributes = group
                     .kept
                     .iter()
                     .map(|(k, values)| {
                         let value = match values.as_slice() {
-                            [only] if !collect => only.clone(),
+                            [only] => only.clone(),
                             _ => AttributeValue::Array(values.clone()),
                         };
                         (k.clone(), value)
@@ -533,8 +524,7 @@ mod tests {
                 value: Some(1),
                 expr: None,
             }),
-            attribute_accumulation: AttributeAccumulation::GroupAttributesOnly,
-            source_attributes: vec![Attribute::new("file")],
+            attribute_accumulation: AttributeAccumulationStrategy::DropAttributes,
             geometry_accumulation: GeometryAccumulationStrategy::DropGeometry,
             buffer: IndexMap::new(),
         }
@@ -605,7 +595,7 @@ mod tests {
     fn use_one_feature_keeps_first_arrival() {
         let fw = ProcessorChannelForwarder::Noop(NoopChannelForwarder::default());
         let mut processor = make_processor();
-        processor.attribute_accumulation = AttributeAccumulation::UseOneFeature;
+        processor.attribute_accumulation = AttributeAccumulationStrategy::UseOneFeature;
 
         for tag in ["first", "second"] {
             let mut feature = make_feature("A");
@@ -623,46 +613,6 @@ mod tests {
         assert_eq!(
             features[0].attributes.get(&Attribute::new("tag")),
             Some(&AttributeValue::String("first".to_string()))
-        );
-    }
-
-    #[test]
-    fn collect_attributes_keeps_one_map_per_feature() {
-        let fw = ProcessorChannelForwarder::Noop(NoopChannelForwarder::default());
-        let mut processor = make_processor();
-        processor.attribute_accumulation = AttributeAccumulation::CollectAttributes;
-
-        let mut tagged = make_feature("A");
-        tagged.insert("tag", AttributeValue::String("first".to_string()));
-        for feature in [tagged, make_feature("A")] {
-            let ctx = create_default_execute_context(&feature);
-            processor.process(ctx, &fw).unwrap();
-        }
-        processor.finish(make_node_context(), &fw).unwrap();
-
-        let ProcessorChannelForwarder::Noop(noop) = fw else {
-            unreachable!()
-        };
-        let features = noop.send_features.lock().unwrap();
-        assert_eq!(features.len(), 1);
-        let tagged: Attributes = [(
-            Attribute::new("tag"),
-            AttributeValue::String("first".to_string()),
-        )]
-        .into_iter()
-        .collect();
-        assert_eq!(
-            features[0].attributes.get(&Attribute::new("__members")),
-            Some(&AttributeValue::Array(vec![
-                AttributeValue::Map(tagged),
-                AttributeValue::Map(Attributes::new()),
-            ]))
-        );
-        assert_eq!(features[0].attributes.get(&Attribute::new("tag")), None);
-        // The group value's source stays a single value.
-        assert_eq!(
-            features[0].attributes.get(&Attribute::new("file")),
-            Some(&AttributeValue::String("A".to_string()))
         );
     }
 }
