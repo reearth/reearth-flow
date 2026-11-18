@@ -2,7 +2,8 @@ use std::collections::HashMap;
 
 use indexmap::IndexMap;
 use rayon::iter::{IntoParallelRefIterator, ParallelIterator};
-use reearth_flow_geometry::ops::merge::{is_mergeable, merge_meshes};
+use reearth_flow_geometry::Geometry;
+use reearth_flow_geometry::ops::merge::{MergeGranularity, is_mergeable, merge_meshes};
 use reearth_flow_runtime::{
     errors::BoxedError,
     event::EventHub,
@@ -27,7 +28,7 @@ impl ProcessorFactory for MeshMergerFactory {
     }
 
     fn description(&self) -> &str {
-        "Merges the polygons and meshes of features that share the same grouping attribute values into one mesh per group, keeping every face as it is. The result is a triangular mesh when every input is one, and a polygon mesh otherwise."
+        "Merges the polygons and meshes of features that share the same grouping attribute values into meshes, keeping every face as it is, and emits one feature per group or per connected part of it. The result is a triangular mesh when every input is one, and a polygon mesh otherwise."
     }
 
     fn parameter_schema(&self) -> Option<schemars::schema::RootSchema> {
@@ -75,6 +76,7 @@ impl ProcessorFactory for MeshMergerFactory {
         Ok(Box::new(MeshMerger {
             group_by: param.group_by,
             attribute_accumulation: param.attribute_accumulation,
+            granularity: param.granularity,
             groups: IndexMap::new(),
         }))
     }
@@ -94,12 +96,45 @@ pub struct MeshMergerParam {
     /// Which attributes the merged feature keeps.
     #[serde(default)]
     attribute_accumulation: AttributeAccumulation,
+    /// # Granularity
+    /// How finely each group's merged mesh is divided into output features.
+    #[serde(default)]
+    granularity: Granularity,
+}
+
+/// How finely each group's merged mesh is divided into output features.
+#[derive(Serialize, Deserialize, Debug, Clone, Copy, Default, PartialEq, Eq, JsonSchema)]
+#[serde(rename_all = "camelCase")]
+pub enum Granularity {
+    /// # Group
+    /// Emits one mesh per group.
+    #[default]
+    Group,
+    /// # Edge-Connected Part
+    /// Emits one mesh per set of faces connected through edges with exactly equal coordinates.
+    /// Faces meeting at a vertex alone become separate meshes.
+    EdgeConnectedPart,
+    /// # Manifold Part
+    /// Divides each edge-connected part further, so that every edge of a mesh borders one or two
+    /// of its faces. Where more faces meet at one edge, two of them stay joined there.
+    ManifoldPart,
+}
+
+impl From<Granularity> for MergeGranularity {
+    fn from(granularity: Granularity) -> Self {
+        match granularity {
+            Granularity::Group => MergeGranularity::Group,
+            Granularity::EdgeConnectedPart => MergeGranularity::EdgeConnectedPart,
+            Granularity::ManifoldPart => MergeGranularity::ManifoldPart,
+        }
+    }
 }
 
 #[derive(Debug, Clone)]
 pub struct MeshMerger {
     group_by: Option<Vec<Attribute>>,
     attribute_accumulation: AttributeAccumulation,
+    granularity: Granularity,
     /// Groups in first-seen order, which is the order they are emitted in.
     groups: IndexMap<AttributeValue, Vec<Feature>>,
 }
@@ -157,27 +192,37 @@ impl Processor for MeshMerger {
         ctx: NodeContext,
         fw: &ProcessorChannelForwarder,
     ) -> Result<(), BoxedError> {
-        let merged: Vec<Result<Feature, String>> = self
+        let merged: Vec<Result<Vec<Feature>, String>> = self
             .groups
             .par_iter()
             .map(|(_, features)| {
-                merge_meshes(features.iter().map(|f| f.geometry.as_ref()))
-                    .map(|geometry| {
-                        Feature::new_with_attributes_and_geometry(
-                            self.attributes(features),
-                            geometry,
-                        )
-                    })
-                    .map_err(|e| e.to_string())
+                let mut meshes = merge_meshes(
+                    features.iter().map(|f| f.geometry.as_ref()),
+                    self.granularity.into(),
+                )
+                .map_err(|e| e.to_string())?;
+                // A group without faces still yields its feature, without geometry.
+                if meshes.is_empty() {
+                    meshes.push(Geometry::None);
+                }
+                let attributes = self.attributes(features);
+                Ok(meshes
+                    .into_iter()
+                    .map(|mesh| Feature::new_with_attributes_and_geometry(attributes.clone(), mesh))
+                    .collect())
             })
             .collect();
         for (result, (_, features)) in merged.into_iter().zip(std::mem::take(&mut self.groups)) {
             match result {
-                Ok(feature) => fw.send(ExecutorContext::new_with_node_context_feature_and_port(
-                    &ctx,
-                    feature,
-                    FEATURES_PORT.clone(),
-                )),
+                Ok(merged) => {
+                    for feature in merged {
+                        fw.send(ExecutorContext::new_with_node_context_feature_and_port(
+                            &ctx,
+                            feature,
+                            FEATURES_PORT.clone(),
+                        ));
+                    }
+                }
                 Err(e) => {
                     ctx.event_hub.warn_log(
                         None,
@@ -247,6 +292,7 @@ mod tests {
             group_by: (!group_by.is_empty())
                 .then(|| group_by.iter().map(|a| Attribute::new(*a)).collect()),
             attribute_accumulation: strategy,
+            granularity: Granularity::Group,
             groups: IndexMap::new(),
         }
     }
@@ -370,5 +416,30 @@ mod tests {
         );
         assert!(merged.is_empty());
         assert_eq!(rejected.len(), 2);
+    }
+
+    #[test]
+    fn edge_connected_parts_become_separate_features() {
+        let apart = triangle(
+            CoordinateFrame::Euclidean,
+            [[5., 0., 0.], [6., 0., 0.], [5., 1., 0.]],
+            &[("rank", "1")],
+        );
+        let mut merger = merger(&["rank"], AttributeAccumulation::UseOneFeature);
+        merger.granularity = Granularity::EdgeConnectedPart;
+        let (merged, _) = run(
+            merger,
+            vec![lower(&[("rank", "1")]), apart, upper(&[("rank", "1")])],
+        );
+        assert_eq!(
+            merged.iter().map(face_count).collect::<Vec<_>>(),
+            vec![2, 1]
+        );
+        for feature in &merged {
+            assert_eq!(
+                feature.attributes.get(&Attribute::new("rank")),
+                Some(&string("1"))
+            );
+        }
     }
 }

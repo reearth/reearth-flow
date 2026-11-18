@@ -4,10 +4,11 @@
 //! same coordinates (exact `f64` bits) are welded into one shared pool.
 
 use std::collections::{HashMap, HashSet};
+use std::ops::Range;
 
 use crate::appearance::{
     Appearance, ChannelId, FaceBinding, Material, MaterialIndex, Side, ThemeBinding, ThemeId,
-    UvSet, UvSource,
+    UvSet, UvSource, faces_appearance,
 };
 use crate::coordinate::CoordinateFrame;
 use crate::error::Error;
@@ -53,26 +54,41 @@ fn mergeable_3d(geometry: &Euclidean3DGeometry) -> bool {
     }
 }
 
-/// Merge every face of `geometries` into one mesh.
+/// How finely a merged mesh is divided into output meshes.
+#[derive(Debug, Clone, Copy, Default, PartialEq, Eq)]
+pub enum MergeGranularity {
+    /// One mesh for everything merged.
+    #[default]
+    Group,
+    /// One mesh per set of faces connected through shared edges. Faces meeting
+    /// at a vertex alone fall into separate meshes.
+    EdgeConnectedPart,
+    /// As [`EdgeConnectedPart`](Self::EdgeConnectedPart), further divided so
+    /// every edge of a mesh borders one or two of its faces.
+    ManifoldPart,
+}
+
+/// Merge every face of `geometries` into meshes divided by `granularity`.
 ///
-/// The result is a triangular mesh when every input is a triangular mesh, and a
-/// polygon mesh otherwise. Faces keep their input order, and appearance is
+/// Each result is a triangular mesh when every input is a triangular mesh, and
+/// a polygon mesh otherwise. Faces keep their input order, and appearance is
 /// carried over: palettes concatenate, themes union, and each theme's UV is
-/// rebuilt per corner. Errors when an input is not
-/// [mergeable](is_mergeable), or when the inputs differ in dimension, frame, or
-/// 2D elevation. No faces yield [`Geometry::None`].
+/// rebuilt per corner. Meshes are ordered by their first face. Errors when an
+/// input is not [mergeable](is_mergeable), or when the inputs differ in
+/// dimension, frame, or 2D elevation. No faces yield no meshes.
 pub fn merge_meshes<'a>(
     geometries: impl IntoIterator<Item = &'a Geometry>,
-) -> Result<Geometry, Error> {
+    granularity: MergeGranularity,
+) -> Result<Vec<Geometry>, Error> {
     let mut leaves_2d = Vec::new();
     let mut leaves_3d = Vec::new();
     for geometry in geometries {
         collect(geometry, &mut leaves_2d, &mut leaves_3d)?;
     }
     match (leaves_2d.is_empty(), leaves_3d.is_empty()) {
-        (true, true) => Ok(Geometry::None),
-        (false, true) => merge_2d(&leaves_2d),
-        (true, false) => merge_3d(&leaves_3d),
+        (true, true) => Ok(Vec::new()),
+        (false, true) => merge_2d(&leaves_2d, granularity),
+        (true, false) => merge_3d(&leaves_3d, granularity),
         (false, false) => Err(Error::invalid_geometry(
             "cannot merge 2D and 3D geometries into one mesh",
         )),
@@ -131,7 +147,10 @@ fn unsupported() -> Error {
     Error::invalid_geometry("only polygons, polygon meshes and triangular meshes can be merged")
 }
 
-fn merge_2d(leaves: &[&Euclidean2DGeometry]) -> Result<Geometry, Error> {
+fn merge_2d(
+    leaves: &[&Euclidean2DGeometry],
+    granularity: MergeGranularity,
+) -> Result<Vec<Geometry>, Error> {
     let mut builder = Builder::<2>::default();
     let mut elevation: Option<Option<u64>> = None;
     let mut check_elevation = |z: Option<f64>| -> Result<(), Error> {
@@ -179,34 +198,41 @@ fn merge_2d(leaves: &[&Euclidean2DGeometry]) -> Result<Geometry, Error> {
     }
     let z = elevation.flatten().map(f64::from_bits);
     let Some(frame) = builder.frame.clone() else {
-        return Ok(Geometry::None);
+        return Ok(Vec::new());
     };
-    if builder.face_ends.is_empty() {
-        return Ok(Geometry::None);
-    }
+    let all_triangular = builder.all_triangular;
     let appearance = builder.appearance(|v| [v[0], v[1], z.unwrap_or(0.0)])?;
-    let geometry = if builder.all_triangular {
-        let mut mesh = TriangularMesh2D::from_parts(frame, builder.vertices, builder.face_indices)?;
-        mesh.set_elevation(z);
-        mesh.set_raw_appearance(appearance);
-        Euclidean2DGeometry::TriangularMesh(Box::new(mesh))
-    } else {
-        let face_offsets = internal_boundaries(&builder.face_ends);
-        let mut mesh = PolygonMesh2D::from_raw_parts(
-            frame,
-            builder.vertices,
-            builder.face_indices,
-            face_offsets,
-            builder.interior_offsets,
-        )?;
-        mesh.set_elevation(z);
-        *mesh.appearance_mut() = appearance;
-        Euclidean2DGeometry::PolygonMesh(Box::new(mesh))
-    };
-    Ok(Geometry::Euclidean2D(geometry))
+    builder
+        .into_parts(granularity, appearance)
+        .into_iter()
+        .map(|part| {
+            let geometry = if all_triangular {
+                let mut mesh =
+                    TriangularMesh2D::from_parts(frame.clone(), part.vertices, part.face_indices)?;
+                mesh.set_elevation(z);
+                mesh.set_raw_appearance(part.appearance);
+                Euclidean2DGeometry::TriangularMesh(Box::new(mesh))
+            } else {
+                let mut mesh = PolygonMesh2D::from_raw_parts(
+                    frame.clone(),
+                    part.vertices,
+                    part.face_indices,
+                    internal_boundaries(&part.face_ends),
+                    part.interior_offsets,
+                )?;
+                mesh.set_elevation(z);
+                *mesh.appearance_mut() = part.appearance;
+                Euclidean2DGeometry::PolygonMesh(Box::new(mesh))
+            };
+            Ok(Geometry::Euclidean2D(geometry))
+        })
+        .collect()
 }
 
-fn merge_3d(leaves: &[&Euclidean3DGeometry]) -> Result<Geometry, Error> {
+fn merge_3d(
+    leaves: &[&Euclidean3DGeometry],
+    granularity: MergeGranularity,
+) -> Result<Vec<Geometry>, Error> {
     let mut builder = Builder::<3>::default();
     for leaf in leaves {
         match leaf {
@@ -236,29 +262,33 @@ fn merge_3d(leaves: &[&Euclidean3DGeometry]) -> Result<Geometry, Error> {
         }
     }
     let Some(frame) = builder.frame.clone() else {
-        return Ok(Geometry::None);
+        return Ok(Vec::new());
     };
-    if builder.face_ends.is_empty() {
-        return Ok(Geometry::None);
-    }
+    let all_triangular = builder.all_triangular;
     let appearance = builder.appearance(|v| v)?;
-    let geometry = if builder.all_triangular {
-        let mut mesh = TriangularMesh3D::from_parts(frame, builder.vertices, builder.face_indices)?;
-        mesh.set_raw_appearance(appearance);
-        Euclidean3DGeometry::TriangularMesh(Box::new(mesh))
-    } else {
-        let face_offsets = internal_boundaries(&builder.face_ends);
-        let mut mesh = PolygonMesh3D::from_raw_parts(
-            frame,
-            builder.vertices,
-            builder.face_indices,
-            face_offsets,
-            builder.interior_offsets,
-        )?;
-        *mesh.appearance_mut() = appearance;
-        Euclidean3DGeometry::PolygonMesh(Box::new(mesh))
-    };
-    Ok(Geometry::Euclidean3D(geometry))
+    builder
+        .into_parts(granularity, appearance)
+        .into_iter()
+        .map(|part| {
+            let geometry = if all_triangular {
+                let mut mesh =
+                    TriangularMesh3D::from_parts(frame.clone(), part.vertices, part.face_indices)?;
+                mesh.set_raw_appearance(part.appearance);
+                Euclidean3DGeometry::TriangularMesh(Box::new(mesh))
+            } else {
+                let mut mesh = PolygonMesh3D::from_raw_parts(
+                    frame.clone(),
+                    part.vertices,
+                    part.face_indices,
+                    internal_boundaries(&part.face_ends),
+                    part.interior_offsets,
+                )?;
+                *mesh.appearance_mut() = part.appearance;
+                Euclidean3DGeometry::PolygonMesh(Box::new(mesh))
+            };
+            Ok(Geometry::Euclidean3D(geometry))
+        })
+        .collect()
 }
 
 /// The face boundaries a CSR buffer stores: every face end but the last.
@@ -565,6 +595,235 @@ impl<'a, const N: usize> Builder<'a, N> {
     }
 }
 
+/// One output mesh: its own vertex pool and CSR buffers, and its appearance.
+struct Part<const N: usize> {
+    vertices: Vec<[f64; N]>,
+    face_indices: Vec<u32>,
+    face_ends: Vec<u32>,
+    interior_offsets: Vec<u32>,
+    appearance: Option<Appearance>,
+}
+
+/// An undirected edge between two welded vertices, smaller index first.
+type Edge = (u32, u32);
+
+impl<const N: usize> Builder<'_, N> {
+    /// The merged mesh divided by `granularity`, with `appearance` (the whole
+    /// mesh's) sliced to each part. Empty when there are no faces.
+    fn into_parts(
+        self,
+        granularity: MergeGranularity,
+        appearance: Option<Appearance>,
+    ) -> Vec<Part<N>> {
+        if self.face_ends.is_empty() {
+            return Vec::new();
+        }
+        let rings = self.face_rings();
+        let groups = match granularity {
+            MergeGranularity::Group => {
+                return vec![Part {
+                    vertices: self.vertices,
+                    face_indices: self.face_indices,
+                    face_ends: self.face_ends,
+                    interior_offsets: self.interior_offsets,
+                    appearance,
+                }];
+            }
+            MergeGranularity::EdgeConnectedPart => edge_connected(&self.face_edges(&rings)),
+            MergeGranularity::ManifoldPart => manifold(&self.face_edges(&rings)),
+        };
+        if groups.len() == 1 {
+            return vec![Part {
+                vertices: self.vertices,
+                face_indices: self.face_indices,
+                face_ends: self.face_ends,
+                interior_offsets: self.interior_offsets,
+                appearance,
+            }];
+        }
+        groups
+            .into_iter()
+            .map(|faces| self.part(&faces, &rings, &appearance))
+            .collect()
+    }
+
+    /// Each face's rings as corner ranges, exterior first.
+    fn face_rings(&self) -> Vec<Vec<Range<usize>>> {
+        let mut holes = self.interior_offsets.iter().map(|&o| o as usize).peekable();
+        let mut start = 0usize;
+        self.face_ends
+            .iter()
+            .map(|&end| {
+                let end = end as usize;
+                let mut rings = Vec::new();
+                let mut ring_start = start;
+                while let Some(&hole) = holes.peek() {
+                    if hole >= end {
+                        break;
+                    }
+                    holes.next();
+                    rings.push(ring_start..hole);
+                    ring_start = hole;
+                }
+                rings.push(ring_start..end);
+                start = end;
+                rings
+            })
+            .collect()
+    }
+
+    /// Each face's distinct edges. An open ring also has its closing edge.
+    fn face_edges(&self, rings: &[Vec<Range<usize>>]) -> Vec<Vec<Edge>> {
+        rings
+            .iter()
+            .map(|face| {
+                let mut edges = Vec::new();
+                for ring in face {
+                    let ids = &self.face_indices[ring.clone()];
+                    let closing = match (ids.first(), ids.last()) {
+                        (Some(&first), Some(&last)) if first != last => Some((last, first)),
+                        _ => None,
+                    };
+                    for (a, b) in ids.windows(2).map(|w| (w[0], w[1])).chain(closing) {
+                        if a != b {
+                            edges.push((a.min(b), a.max(b)));
+                        }
+                    }
+                }
+                edges.sort_unstable();
+                edges.dedup();
+                edges
+            })
+            .collect()
+    }
+
+    /// The faces `faces` as a mesh of their own.
+    fn part(
+        &self,
+        faces: &[usize],
+        rings: &[Vec<Range<usize>>],
+        appearance: &Option<Appearance>,
+    ) -> Part<N> {
+        let mut remap: HashMap<u32, u32> = HashMap::new();
+        let mut vertices = Vec::new();
+        let mut face_indices = Vec::new();
+        let mut face_ends = Vec::with_capacity(faces.len());
+        let mut interior_offsets = Vec::new();
+        let mut corners = Vec::new();
+        for &face in faces {
+            for (r, ring) in rings[face].iter().enumerate() {
+                if r > 0 {
+                    interior_offsets.push(face_indices.len() as u32);
+                }
+                for corner in ring.clone() {
+                    let index = self.face_indices[corner];
+                    face_indices.push(*remap.entry(index).or_insert_with(|| {
+                        vertices.push(self.vertices[index as usize]);
+                        (vertices.len() - 1) as u32
+                    }));
+                    corners.push(corner);
+                }
+            }
+            face_ends.push(face_indices.len() as u32);
+        }
+        Part {
+            vertices,
+            face_indices,
+            face_ends,
+            interior_offsets,
+            appearance: faces_appearance(appearance, faces, &corners),
+        }
+    }
+}
+
+/// Union-find root of `i`, compressing the path.
+fn find(parent: &mut [usize], mut i: usize) -> usize {
+    while parent[i] != i {
+        parent[i] = parent[parent[i]];
+        i = parent[i];
+    }
+    i
+}
+
+/// The faces of each set, given each face's root, ordered by first face.
+fn groups(parent: &mut [usize]) -> Vec<Vec<usize>> {
+    let mut index_of_root: HashMap<usize, usize> = HashMap::new();
+    let mut groups: Vec<Vec<usize>> = Vec::new();
+    for face in 0..parent.len() {
+        let root = find(parent, face);
+        let index = *index_of_root.entry(root).or_insert_with(|| {
+            groups.push(Vec::new());
+            groups.len() - 1
+        });
+        groups[index].push(face);
+    }
+    groups
+}
+
+/// Faces grouped by connection through shared edges.
+fn edge_connected(face_edges: &[Vec<Edge>]) -> Vec<Vec<usize>> {
+    let mut parent: Vec<usize> = (0..face_edges.len()).collect();
+    let mut owner: HashMap<Edge, usize> = HashMap::new();
+    for (face, edges) in face_edges.iter().enumerate() {
+        for &edge in edges {
+            match owner.get(&edge) {
+                Some(&other) => {
+                    let (a, b) = (find(&mut parent, face), find(&mut parent, other));
+                    if a != b {
+                        parent[a.max(b)] = a.min(b);
+                    }
+                }
+                None => {
+                    owner.insert(edge, face);
+                }
+            }
+        }
+    }
+    groups(&mut parent)
+}
+
+/// Faces grouped by connection through shared edges, joining two groups only
+/// while every edge borders at most two faces of the joined group. Edges are
+/// visited in face order, so the result is deterministic.
+fn manifold(face_edges: &[Vec<Edge>]) -> Vec<Vec<usize>> {
+    let mut parent: Vec<usize> = (0..face_edges.len()).collect();
+    // Per root: how many of its faces border each edge.
+    let mut counts: Vec<HashMap<Edge, u8>> = face_edges
+        .iter()
+        .map(|edges| edges.iter().map(|&e| (e, 1)).collect())
+        .collect();
+    let mut first: HashMap<Edge, usize> = HashMap::new();
+    for (face, edges) in face_edges.iter().enumerate() {
+        for &edge in edges {
+            let Some(&other) = first.get(&edge) else {
+                first.insert(edge, face);
+                continue;
+            };
+            let (a, b) = (find(&mut parent, face), find(&mut parent, other));
+            if a == b {
+                continue;
+            }
+            let (big, small) = if counts[a].len() >= counts[b].len() {
+                (a, b)
+            } else {
+                (b, a)
+            };
+            let fits = counts[small]
+                .iter()
+                .all(|(e, &n)| counts[big].get(e).copied().unwrap_or(0) + n <= 2);
+            if !fits {
+                continue;
+            }
+            let moved = std::mem::take(&mut counts[small]);
+            for (e, n) in moved {
+                *counts[big].entry(e).or_insert(0) += n;
+            }
+            parent[small] = big;
+        }
+    }
+    groups(&mut parent)
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -575,6 +834,13 @@ mod tests {
     use crate::test_support::*;
 
     const F: CoordinateFrame = CoordinateFrame::Euclidean;
+
+    /// Merge into one group, which is one mesh or none.
+    fn merge_one(geometries: &[Geometry]) -> Result<Geometry, Error> {
+        let mut meshes = merge_meshes(geometries, MergeGranularity::Group)?;
+        assert!(meshes.len() <= 1);
+        Ok(meshes.pop().unwrap_or_default())
+    }
 
     fn tri(corners: [[f64; 3]; 3]) -> Polygon3D {
         Polygon3D::from_rings(F, corners, Vec::<Vec<[f64; 3]>>::new())
@@ -605,7 +871,7 @@ mod tests {
     fn polygons_weld_into_one_polygon_mesh() {
         let a = tri([[0., 0., 0.], [1., 0., 0.], [0., 1., 0.]]);
         let b = tri([[1., 0., 0.], [1., 1., 0.], [0., 1., 0.]]);
-        let merged = merge_meshes(&[polygon(a), polygon(b)]).unwrap();
+        let merged = merge_one(&[polygon(a), polygon(b)]).unwrap();
         let mesh = as_polygon_mesh(&merged);
         assert_eq!(mesh.num_faces(), 2);
         assert_eq!(mesh.vertices().len(), 4);
@@ -622,7 +888,7 @@ mod tests {
             vec![[1., 1., 0.], [0., 1., 0.], [1., 0., 0.]],
             vec![2, 0, 1],
         );
-        let merged = merge_meshes(&[a, b]).unwrap();
+        let merged = merge_one(&[a, b]).unwrap();
         let Geometry::Euclidean3D(Euclidean3DGeometry::TriangularMesh(mesh)) = &merged else {
             panic!("expected a triangular mesh, got {merged:?}");
         };
@@ -640,7 +906,7 @@ mod tests {
             vec![0, 1, 2],
         );
         let b = polygon(tri([[1., 0., 0.], [1., 1., 0.], [0., 1., 0.]]));
-        let merged = merge_meshes(&[a, b]).unwrap();
+        let merged = merge_one(&[a, b]).unwrap();
         let mesh = as_polygon_mesh(&merged);
         assert_eq!(mesh.num_faces(), 2);
         assert_eq!(mesh.vertices().len(), 4);
@@ -653,7 +919,7 @@ mod tests {
         let b =
             Euclidean3DGeometry::Polygon(Box::new(tri([[1., 0., 0.], [1., 1., 0.], [0., 1., 0.]])));
         let collection = g3(Euclidean3DGeometry::Collection(Collection3D::new([a, b])));
-        let merged = merge_meshes(&[collection]).unwrap();
+        let merged = merge_one(&[collection]).unwrap();
         assert_eq!(as_polygon_mesh(&merged).num_faces(), 2);
     }
 
@@ -662,7 +928,7 @@ mod tests {
         let outer = [[0., 0., 0.], [4., 0., 0.], [4., 4., 0.], [0., 4., 0.]];
         let hole = vec![[1., 1., 0.], [2., 1., 0.], [2., 2., 0.], [1., 2., 0.]];
         let with_hole = Polygon3D::from_rings(F, outer, vec![hole]);
-        let merged = merge_meshes(&[polygon(with_hole.clone())]).unwrap();
+        let merged = merge_one(&[polygon(with_hole.clone())]).unwrap();
         let faces = as_polygon_mesh(&merged).faces();
         assert_eq!(faces.len(), 1);
         assert_eq!(faces[0].interiors().count(), 1);
@@ -678,7 +944,7 @@ mod tests {
         )
         .unwrap();
         let b = tri([[1., 0., 0.], [1., 1., 0.], [0., 1., 0.]]);
-        let merged = merge_meshes(&[polygon(a), polygon(b)]).unwrap();
+        let merged = merge_one(&[polygon(a), polygon(b)]).unwrap();
         let mesh = as_polygon_mesh(&merged);
         let app = mesh.appearance().as_ref().unwrap();
         assert_eq!(app.materials().len(), 1);
@@ -713,7 +979,7 @@ mod tests {
         let mut b = tri([[1., 0., 0.], [1., 1., 0.], [0., 1., 0.]]);
         b.set_appearance(theme("rgb"), textured(), Some(uv(3)))
             .unwrap();
-        let merged = merge_meshes(&[polygon(a), polygon(b)]).unwrap();
+        let merged = merge_one(&[polygon(a), polygon(b)]).unwrap();
         let app = as_polygon_mesh(&merged).appearance().clone().unwrap();
         assert_eq!(app.materials().len(), 2);
         assert_eq!(
@@ -730,7 +996,7 @@ mod tests {
             [[0., 0., 0.], [1., 0., 0.], [0., 1., 0.]],
             Vec::<Vec<[f64; 3]>>::new(),
         ));
-        assert!(merge_meshes(&[a.clone(), other_frame]).is_err());
+        assert!(merge_one(&[a.clone(), other_frame]).is_err());
 
         let flat = Geometry::Euclidean2D(Euclidean2DGeometry::Polygon(Box::new(
             Polygon2D::from_rings(
@@ -739,11 +1005,11 @@ mod tests {
                 Vec::<Vec<[f64; 2]>>::new(),
             ),
         )));
-        assert!(merge_meshes(&[a.clone(), flat]).is_err());
+        assert!(merge_one(&[a.clone(), flat]).is_err());
 
         let point = g3(Euclidean3DGeometry::Point(Point3D::new(F, [0., 0., 0.])));
         assert!(!is_mergeable(&point));
-        assert!(merge_meshes(&[a, point]).is_err());
+        assert!(merge_one(&[a, point]).is_err());
     }
 
     #[test]
@@ -759,16 +1025,117 @@ mod tests {
             )))
         };
         let Geometry::Euclidean2D(Euclidean2DGeometry::PolygonMesh(mesh)) =
-            merge_meshes(&[at(5.0), at(5.0)]).unwrap()
+            merge_one(&[at(5.0), at(5.0)]).unwrap()
         else {
             panic!("expected a 2D polygon mesh");
         };
         assert_eq!(mesh.elevation(), Some(5.0));
-        assert!(merge_meshes(&[at(5.0), at(6.0)]).is_err());
+        assert!(merge_one(&[at(5.0), at(6.0)]).is_err());
     }
 
     #[test]
     fn nothing_to_merge_yields_none() {
-        assert_eq!(merge_meshes(&[Geometry::None]).unwrap(), Geometry::None);
+        assert_eq!(merge_one(&[Geometry::None]).unwrap(), Geometry::None);
+    }
+
+    /// Two triangles sharing an edge, a third touching them at one vertex.
+    fn bow_tie() -> Vec<Geometry> {
+        vec![
+            polygon(tri([[0., 0., 0.], [1., 0., 0.], [0., 1., 0.]])),
+            polygon(tri([[1., 0., 0.], [1., 1., 0.], [0., 1., 0.]])),
+            polygon(tri([[1., 1., 0.], [2., 1., 0.], [2., 2., 0.]])),
+        ]
+    }
+
+    fn face_counts(meshes: &[Geometry]) -> Vec<usize> {
+        meshes
+            .iter()
+            .map(|m| as_polygon_mesh(m).num_faces())
+            .collect()
+    }
+
+    #[test]
+    fn group_granularity_makes_one_mesh() {
+        let meshes = merge_meshes(&bow_tie(), MergeGranularity::Group).unwrap();
+        assert_eq!(face_counts(&meshes), vec![3]);
+    }
+
+    #[test]
+    fn edge_connected_parts_split_at_a_vertex() {
+        let meshes = merge_meshes(&bow_tie(), MergeGranularity::EdgeConnectedPart).unwrap();
+        assert_eq!(face_counts(&meshes), vec![2, 1]);
+        // Each part has a vertex pool of its own.
+        assert_eq!(as_polygon_mesh(&meshes[0]).vertices().len(), 4);
+        assert_eq!(as_polygon_mesh(&meshes[1]).vertices().len(), 3);
+    }
+
+    #[test]
+    fn manifold_parts_split_at_an_edge_of_three_faces() {
+        // Three fins on the edge (0,0,0)-(1,0,0), plus a triangle continuing the
+        // second fin.
+        let fins = vec![
+            polygon(tri([[0., 0., 0.], [1., 0., 0.], [0.5, 1., 0.]])),
+            polygon(tri([[0., 0., 0.], [1., 0., 0.], [0.5, -1., 0.]])),
+            polygon(tri([[0., 0., 0.], [1., 0., 0.], [0.5, 0., 1.]])),
+            polygon(tri([[1., 0., 0.], [0.5, 0., 1.], [1., 0., 1.]])),
+        ];
+        let edge = merge_meshes(&fins, MergeGranularity::EdgeConnectedPart).unwrap();
+        assert_eq!(face_counts(&edge), vec![4]);
+        let manifold = merge_meshes(&fins, MergeGranularity::ManifoldPart).unwrap();
+        assert_eq!(face_counts(&manifold), vec![2, 2]);
+    }
+
+    #[test]
+    fn manifold_parts_keep_a_manifold_mesh_whole() {
+        let meshes = merge_meshes(&bow_tie()[..2], MergeGranularity::ManifoldPart).unwrap();
+        assert_eq!(face_counts(&meshes), vec![2]);
+    }
+
+    #[test]
+    fn a_part_keeps_its_faces_appearance() {
+        let mut a = tri([[0., 0., 0.], [1., 0., 0.], [0., 1., 0.]]);
+        a.set_appearance(
+            theme("rgb"),
+            textured(),
+            Some(explicit_uv(&[[0., 0.], [1., 0.], [0., 1.]])),
+        )
+        .unwrap();
+        let b = tri([[5., 0., 0.], [6., 0., 0.], [5., 1., 0.]]);
+        let meshes = merge_meshes(
+            &[polygon(a), polygon(b)],
+            MergeGranularity::EdgeConnectedPart,
+        )
+        .unwrap();
+        assert_eq!(meshes.len(), 2);
+        let app = as_polygon_mesh(&meshes[0]).appearance().clone().unwrap();
+        let UvSource::Explicit(uv) = &app.themes()[0].uv_sets[0].uv else {
+            panic!("expected explicit UV");
+        };
+        assert_eq!(uv.to_vec(), vec![[0., 0.], [1., 0.], [0., 1.], [0., 0.]]);
+        // The bare triangle binds no material.
+        assert!(as_polygon_mesh(&meshes[1]).appearance().is_none());
+    }
+
+    #[test]
+    fn triangular_parts_stay_triangular() {
+        let mesh = trimesh(
+            vec![
+                [0., 0., 0.],
+                [1., 0., 0.],
+                [0., 1., 0.],
+                [5., 0., 0.],
+                [6., 0., 0.],
+                [5., 1., 0.],
+            ],
+            vec![0, 1, 2, 3, 4, 5],
+        );
+        let meshes = merge_meshes(&[mesh], MergeGranularity::EdgeConnectedPart).unwrap();
+        assert_eq!(meshes.len(), 2);
+        for m in &meshes {
+            assert!(matches!(
+                m,
+                Geometry::Euclidean3D(Euclidean3DGeometry::TriangularMesh(_))
+            ));
+        }
     }
 }

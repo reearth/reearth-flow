@@ -9724,7 +9724,7 @@ Writes features to Mapbox Vector Tiles (MVT) format.
 ### Type
 * processor
 ### Description
-Merges the polygons and meshes of features that share the same grouping attribute values into one mesh per group, keeping every face as it is. The result is a triangular mesh when every input is one, and a polygon mesh otherwise.
+Merges the polygons and meshes of features that share the same grouping attribute values into meshes, keeping every face as it is, and emits one feature per group or per connected part of it. The result is a triangular mesh when every input is one, and a polygon mesh otherwise.
 ### Parameters
 ```json
 {
@@ -9752,6 +9752,16 @@ Merges the polygons and meshes of features that share the same grouping attribut
       "allOf": [
         {
           "$ref": "#/definitions/AttributeAccumulation"
+        }
+      ]
+    },
+    "granularity": {
+      "title": "Granularity",
+      "description": "How finely each group's merged mesh is divided into output features.",
+      "default": "group",
+      "allOf": [
+        {
+          "$ref": "#/definitions/Granularity"
         }
       ]
     }
@@ -9786,6 +9796,35 @@ Merges the polygons and meshes of features that share the same grouping attribut
           "type": "string",
           "enum": [
             "useOneFeature"
+          ]
+        }
+      ]
+    },
+    "Granularity": {
+      "description": "How finely each group's merged mesh is divided into output features.",
+      "oneOf": [
+        {
+          "title": "Group",
+          "description": "Emits one mesh per group.",
+          "type": "string",
+          "enum": [
+            "group"
+          ]
+        },
+        {
+          "title": "Edge-Connected Part",
+          "description": "Emits one mesh per set of faces connected through edges with exactly equal coordinates. Faces meeting at a vertex alone become separate meshes.",
+          "type": "string",
+          "enum": [
+            "edgeConnectedPart"
+          ]
+        },
+        {
+          "title": "Manifold Part",
+          "description": "Divides each edge-connected part further, so that every edge of a mesh borders one or two of its faces. Where more faces meet at one edge, two of them stay joined there.",
+          "type": "string",
+          "enum": [
+            "manifoldPart"
           ]
         }
       ]

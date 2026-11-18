@@ -551,6 +551,91 @@ pub(crate) fn face_appearance(
     Some(result)
 }
 
+/// The part of a mesh-wide appearance that covers the mesh faces `faces`, in
+/// that order: each theme's binding narrowed to those faces, and each
+/// `Explicit` UV set gathered at `corners`, which must list the mesh corners
+/// of those faces in the same order. A UV set no remaining material samples is
+/// dropped, as is a theme binding none of the faces; `None` when no theme
+/// remains. `WorldToTexture` is positional and kept as is.
+#[cfg(feature = "new-geometry")]
+pub(crate) fn faces_appearance(
+    mesh_appearance: &Option<Appearance>,
+    faces: &[usize],
+    corners: &[usize],
+) -> Option<Appearance> {
+    let app = mesh_appearance.as_ref()?;
+
+    let narrow = |binding: &FaceBinding| -> FaceBinding {
+        match binding {
+            FaceBinding::Uniform(idx) => FaceBinding::Uniform(*idx),
+            FaceBinding::PerFace(v) => {
+                FaceBinding::PerFace(faces.iter().map(|&f| v.get(f).copied().flatten()).collect())
+            }
+        }
+    };
+    let bound = |binding: &FaceBinding| -> Vec<MaterialIndex> {
+        match binding {
+            FaceBinding::Uniform(idx) => vec![*idx],
+            FaceBinding::PerFace(v) => v.iter().flatten().copied().collect(),
+        }
+    };
+
+    let mut themes = Vec::new();
+    for theme in app.themes() {
+        let front = narrow(&theme.front);
+        let back = theme.back.as_ref().map(narrow);
+        let (front_bound, back_bound) =
+            (bound(&front), back.as_ref().map(bound).unwrap_or_default());
+        if front_bound.is_empty() && back_bound.is_empty() {
+            continue;
+        }
+        let sampled = |indices: &[MaterialIndex]| -> BTreeSet<ChannelId> {
+            indices
+                .iter()
+                .filter_map(|idx| app.materials().get(idx.get() as usize))
+                .flat_map(Material::referenced_channels)
+                .collect()
+        };
+        let (front_channels, back_channels) = (sampled(&front_bound), sampled(&back_bound));
+        let uv_sets = theme
+            .uv_sets
+            .iter()
+            .filter(|uv| match uv.side {
+                Side::Front => front_channels.contains(&uv.channel),
+                Side::Back => back_channels.contains(&uv.channel),
+            })
+            .map(|uv| UvSet {
+                side: uv.side,
+                channel: uv.channel,
+                uv: match &uv.uv {
+                    UvSource::Explicit(arr) => {
+                        UvSource::Explicit(corners.iter().map(|&c| arr[c]).collect())
+                    }
+                    UvSource::WorldToTexture(m) => UvSource::WorldToTexture(*m),
+                },
+            })
+            .collect();
+        themes.push(ThemeBinding {
+            theme: theme.theme.clone(),
+            front,
+            back,
+            uv_sets,
+        });
+    }
+
+    if themes.is_empty() {
+        return None;
+    }
+    let default_theme = if themes.iter().any(|t| t.theme == *app.default_theme()) {
+        app.default_theme().clone()
+    } else {
+        themes[0].theme.clone()
+    };
+    let mut result = Appearance::from_parts(app.materials().to_vec(), themes, default_theme);
+    result.compact_materials();
+    Some(result)
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;

@@ -9979,7 +9979,7 @@
     {
       "name": "Mesh Merger",
       "type": "processor",
-      "description": "Fusiona los polígonos y mallas de las entidades que comparten los mismos valores de atributos de agrupación en una malla por grupo, conservando cada cara tal cual. El resultado es una malla triangular cuando todas las entradas lo son, y una malla poligonal en caso contrario.",
+      "description": "Fusiona en mallas los polígonos y mallas de las entidades que comparten los mismos valores de atributos de agrupación, conservando cada cara tal cual, y emite una entidad por grupo o por cada parte conectada de este. El resultado es una malla triangular cuando todas las entradas lo son, y una malla poligonal en caso contrario.",
       "parameter": {
         "$schema": "http://json-schema.org/draft-07/schema#",
         "title": "Parámetros del fusionador de mallas",
@@ -10005,6 +10005,16 @@
             "allOf": [
               {
                 "$ref": "#/definitions/AttributeAccumulation"
+              }
+            ]
+          },
+          "granularity": {
+            "title": "Granularidad",
+            "description": "Con qué detalle se divide la malla fusionada de cada grupo en entidades de salida.",
+            "default": "group",
+            "allOf": [
+              {
+                "$ref": "#/definitions/Granularity"
               }
             ]
           }
@@ -10039,6 +10049,35 @@
                 "type": "string",
                 "enum": [
                   "useOneFeature"
+                ]
+              }
+            ]
+          },
+          "Granularity": {
+            "description": "How finely each group's merged mesh is divided into output features.",
+            "oneOf": [
+              {
+                "title": "Grupo",
+                "description": "Emite una malla por grupo.",
+                "type": "string",
+                "enum": [
+                  "group"
+                ]
+              },
+              {
+                "title": "Parte conectada por aristas",
+                "description": "Emite una malla por cada conjunto de caras conectadas por aristas con coordenadas exactamente iguales. Las caras que solo se tocan en un vértice forman mallas separadas.",
+                "type": "string",
+                "enum": [
+                  "edgeConnectedPart"
+                ]
+              },
+              {
+                "title": "Parte variedad",
+                "description": "Divide aún más cada parte conectada por aristas para que cada arista de una malla limite con una o dos de sus caras. Cuando varias caras coinciden en una arista, solo dos de ellas permanecen unidas allí.",
+                "type": "string",
+                "enum": [
+                  "manifoldPart"
                 ]
               }
             ]

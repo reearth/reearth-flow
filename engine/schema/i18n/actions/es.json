@@ -3357,7 +3357,7 @@
     },
     {
       "name": "Mesh Merger",
-      "description": "Fusiona los polígonos y mallas de las entidades que comparten los mismos valores de atributos de agrupación en una malla por grupo, conservando cada cara tal cual. El resultado es una malla triangular cuando todas las entradas lo son, y una malla poligonal en caso contrario.",
+      "description": "Fusiona en mallas los polígonos y mallas de las entidades que comparten los mismos valores de atributos de agrupación, conservando cada cara tal cual, y emite una entidad por grupo o por cada parte conectada de este. El resultado es una malla triangular cuando todas las entradas lo son, y una malla poligonal en caso contrario.",
       "parameterI18n": {
         "": {
           "title": "Parámetros del fusionador de mallas",
@@ -3366,6 +3366,10 @@
         "attributeAccumulation": {
           "title": "Acumulación de atributos",
           "description": "Atributos que conserva la entidad fusionada."
+        },
+        "granularity": {
+          "title": "Granularidad",
+          "description": "Con qué detalle se divide la malla fusionada de cada grupo en entidades de salida."
         },
         "groupBy": {
           "title": "Atributos de agrupación",
@@ -3385,6 +3389,20 @@
           "useOneFeature": {
             "title": "Usar atributos de una entidad",
             "description": "Conserva los atributos de una sola entidad del grupo y descarta el resto."
+          }
+        },
+        "Granularity": {
+          "edgeConnectedPart": {
+            "title": "Parte conectada por aristas",
+            "description": "Emite una malla por cada conjunto de caras conectadas por aristas con coordenadas exactamente iguales. Las caras que solo se tocan en un vértice forman mallas separadas."
+          },
+          "group": {
+            "title": "Grupo",
+            "description": "Emite una malla por grupo."
+          },
+          "manifoldPart": {
+            "title": "Parte variedad",
+            "description": "Divide aún más cada parte conectada por aristas para que cada arista de una malla limite con una o dos de sus caras. Cuando varias caras coinciden en una arista, solo dos de ellas permanecen unidas allí."
           }
         }
       }
