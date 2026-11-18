@@ -90,6 +90,7 @@ export default function Editor({
     handleDebugRunStop,
     handleResetDebugRunWorkflowVariables,
     schemaProbes,
+    schemaProbeOutcomes,
     readerAttributeSuggestions,
     handleNodeParamsSaved,
     handleProbeComplete,
@@ -171,6 +172,7 @@ export default function Editor({
       workflowNodeIds,
       diagnosticSeverityByNodeId,
       onNodeNavigate: handleNodeNavigate,
+      schemaProbeOutcomes,
     }),
     [
       isLocked,
@@ -186,6 +188,7 @@ export default function Editor({
       workflowNodeIds,
       diagnosticSeverityByNodeId,
       handleNodeNavigate,
+      schemaProbeOutcomes,
     ],
   );
 

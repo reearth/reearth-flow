@@ -2,6 +2,7 @@ import type { Dispatch, SetStateAction } from "react";
 import { useCallback, useRef } from "react";
 import * as Y from "yjs";
 
+import { applySchemaPatch } from "@flow/features/Editor/usePreviewSchema/schemaReport";
 import { DEFAULT_ROUTING_PORT } from "@flow/global-constants";
 import type {
   Node,
@@ -374,25 +375,25 @@ export default ({
   const handleYNodeSchemaUpdate = useCallback(
     (nodeId: string, patch: Partial<NodeSchemaMeta> | undefined) =>
       undoTrackerActionWrapper(() => {
-        const yNodes = currentYWorkflow?.get("nodes") as YNodesMap | undefined;
-        if (!yNodes) return;
-        const yData = yNodes.get(nodeId)?.get("data") as Y.Map<any> | undefined;
+        // A probe can finish after the user has switched to another workflow,
+        // so look for the node in every workflow, current one first.
+        const yNode =
+          (currentYWorkflow?.get("nodes") as YNodesMap | undefined)?.get(
+            nodeId,
+          ) ??
+          Array.from(yWorkflows.values())
+            .map((w) => (w.get("nodes") as YNodesMap | undefined)?.get(nodeId))
+            .find(Boolean);
+        const yData = yNode?.get("data") as Y.Map<any> | undefined;
         if (!yData) return;
         const prevMetadata =
           (yData.get("nodeMetadata") as NodeMetadata | undefined) ?? {};
-        if (!patch) {
-          yData.set("nodeMetadata", { ...prevMetadata, schema: undefined });
-          return;
-        }
-        const schema: NodeSchemaMeta = {
-          ports: {},
-          ...prevMetadata.schema,
-          ...patch,
-        };
-        if (!patch.jobId) delete schema.jobId;
-        yData.set("nodeMetadata", { ...prevMetadata, schema });
+        yData.set("nodeMetadata", {
+          ...prevMetadata,
+          schema: applySchemaPatch(prevMetadata.schema, patch),
+        });
       }, "schema-update"),
-    [currentYWorkflow, undoTrackerActionWrapper],
+    [currentYWorkflow, yWorkflows, undoTrackerActionWrapper],
   );
 
   return {

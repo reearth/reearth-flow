@@ -9,6 +9,8 @@ import type {
   AwarenessSelectionsMap,
 } from "@flow/types";
 
+import type { SchemaProbeOutcomes } from "./usePreviewSchema/schemaReport";
+
 export type WorkflowVarAwareness = {
   onDialogOpen: () => void;
   onDialogClose: () => void;
@@ -41,6 +43,11 @@ export type EditorContextType = {
    * send the user to the action that the row is about.
    */
   onNodeNavigate?: (nodeId: string) => void;
+  /**
+   * Outcomes of schema probes this client did not start, which it shows but
+   * never writes. See usePreviewSchema.
+   */
+  schemaProbeOutcomes?: SchemaProbeOutcomes;
 };
 
 const EditorContext = createContext<EditorContextType | undefined>(undefined);

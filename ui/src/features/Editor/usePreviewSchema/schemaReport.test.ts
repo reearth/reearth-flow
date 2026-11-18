@@ -1,9 +1,11 @@
 import type { NodeReport, SchemaReport } from "@flow/types";
 
 import {
+  applySchemaPatch,
   fetchSchemaReport,
   findSchemaReportUrl,
   getNodeReportFailure,
+  resolveNodeSchema,
   toNodeSchemaMeta,
 } from "./schemaReport";
 
@@ -129,5 +131,40 @@ describe("fetchSchemaReport", () => {
     ).rejects.toThrow("404");
 
     vi.unstubAllGlobals();
+  });
+});
+
+describe("applySchemaPatch", () => {
+  test("drops the job id once the probe is no longer running", () => {
+    expect(
+      applySchemaPatch(
+        { ports: {}, status: "running", jobId: "job-1" },
+        { status: "failed" },
+      ),
+    ).toEqual({ ports: {}, status: "failed" });
+  });
+
+  test("clears the schema when there is no patch", () => {
+    expect(applySchemaPatch({ ports: {} }, undefined)).toBeUndefined();
+  });
+});
+
+describe("resolveNodeSchema", () => {
+  const outcome = { ports: {}, status: "complete" as const };
+
+  test("shows the local outcome of a running probe", () => {
+    expect(
+      resolveNodeSchema(
+        { ports: {}, status: "running", jobId: "job-1" },
+        { "job-1": outcome },
+      ),
+    ).toBe(outcome);
+  });
+
+  test("ignores outcomes of other jobs and of finished probes", () => {
+    const running = { ports: {}, status: "running" as const, jobId: "job-2" };
+    expect(resolveNodeSchema(running, { "job-1": outcome })).toBe(running);
+    const failed = { ports: {}, status: "failed" as const };
+    expect(resolveNodeSchema(failed, { "job-1": outcome })).toBe(failed);
   });
 });
