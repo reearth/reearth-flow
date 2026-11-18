@@ -201,12 +201,10 @@ func TestJob_Mode_RoundTripAndPreviewSchemaExcluded(t *testing.T) {
 	require.NoError(t, r.Save(ctx, runJob))
 	require.NoError(t, r.Save(ctx, previewJob))
 
-	// Mode round-trips through Postgres.
 	got, err := r.FindByID(ctx, previewID)
 	require.NoError(t, err)
 	assert.Equal(t, job.ModePreviewSchema, got.Mode())
 
-	// FindByProject excludes the preview-schema job (run history must stay clean).
 	byProj, err := r.FindByProject(ctx, pid)
 	require.NoError(t, err)
 	require.Len(t, byProj, 1)

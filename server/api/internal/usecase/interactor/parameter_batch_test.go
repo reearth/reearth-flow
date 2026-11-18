@@ -71,11 +71,7 @@ func TestParameter_FetchByProjects_DeniedWorkspaceOmittedNotErrored(t *testing.T
 	assert.NotContains(t, res, deniedPID, "caller was denied on this workspace, its parameters must not leak through the batch")
 }
 
-// TestParameter_Fetch_CrossWorkspaceBatch_DeniedItemOmittedNotLeaked is the
-// regression test for the IDOR this fix closes: a batch mixing a parameter
-// the caller can see with one from a project in a workspace they cannot must
-// return the first and omit the second, instead of using the first
-// parameter's project to authorize the whole batch.
+// A batch must not be authorized by its first parameter's project alone.
 func TestParameter_Fetch_CrossWorkspaceBatch_DeniedItemOmittedNotLeaked(t *testing.T) {
 	wsAllowed := accountsid.NewWorkspaceID()
 	wsDenied := accountsid.NewWorkspaceID()

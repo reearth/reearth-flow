@@ -200,5 +200,3 @@ func TestFindByWorkspace(t *testing.T) {
 		})
 	}
 }
-
-// Removed TestAsset_TotalSizeByWorkspace as we switched to project-based assets

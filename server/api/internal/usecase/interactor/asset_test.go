@@ -35,8 +35,6 @@ func TestAsset_Create(t *testing.T) {
 	ctx = adapter.AttachAuthInfo(ctx, mockAuthInfo)
 	ctx = adapter.AttachUser(ctx, mockUser)
 
-	// aid := asset.NewID() - removed as the ID is generated in the interactor
-
 	ws := reearthxworkspace.New().NewID().MustBuild()
 
 	mfs := afero.NewMemMapFs()

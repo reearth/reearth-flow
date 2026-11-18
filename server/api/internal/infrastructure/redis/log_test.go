@@ -52,7 +52,6 @@ func TestToLogEntry(t *testing.T) {
 		assert.NotNil(t, entry.NodeID)
 		assert.Equal(t, nid.String(), *entry.NodeID)
 
-		// Converted to UTC on the ToLogEntry side
 		assert.Equal(t, now.UTC(), entry.Timestamp)
 		assert.Equal(t, log.LevelInfo, entry.LogLevel)
 		assert.Equal(t, "test message", entry.Message)
@@ -85,7 +84,6 @@ func TestLogEntry_ToDomain(t *testing.T) {
 		assert.Equal(t, jid, dl.JobID().String())
 		assert.Equal(t, nid, dl.NodeID().String())
 
-		// Convert to UTC on the ToDomain side
 		assert.Equal(t, now.UTC(), dl.Timestamp())
 		assert.Equal(t, log.LevelInfo, dl.Level())
 		assert.Equal(t, "hello", dl.Message())

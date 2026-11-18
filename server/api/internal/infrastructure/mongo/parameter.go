@@ -56,7 +56,7 @@ func (r *Parameter) FindByProject(ctx context.Context, pid id.ProjectID) (*param
 	filter := bson.M{"project": pid.String()}
 
 	opt := options.Find()
-	opt.SetSort(bson.D{{Key: "index", Value: 1}}) // Sort by index ascending
+	opt.SetSort(bson.D{{Key: "index", Value: 1}})
 
 	res, err := r.find(ctx, filter, opt)
 	if err != nil {

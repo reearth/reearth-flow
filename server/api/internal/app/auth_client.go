@@ -22,7 +22,6 @@ const (
 	debugUserHeader = "X-Reearth-Debug-User"
 )
 
-// attachOpMiddleware attaches the operator and user to the context
 func attachOpMiddleware(cfg *ServerConfig) echo.MiddlewareFunc {
 	return func(next echo.HandlerFunc) echo.HandlerFunc {
 		multiUser := accountinteractor.NewMultiUser(cfg.AccountRepos, cfg.AccountGateways, cfg.Config.SignupSecret, cfg.Config.Host_Web, cfg.AccountRepos.Users)

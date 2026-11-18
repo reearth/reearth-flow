@@ -19,18 +19,9 @@ func actionsFor(t *testing.T, resource string) map[string]generator.ActionRule {
 	return nil
 }
 
-// TestProjectPolicyCoversTheDocumentActions: an action with no rule is denied for
-// everyone, owners included. The interactor tests use a mock checker, so they
-// prove the action is requested but never that the policy grants it.
-//
-// ActionAny and ActionRead must NOT grant the same role sets. ActionAny also
-// gates FlushToGCS — interactor.Websocket's editor-save write — so it must
-// exclude reader; ActionRead gates the read-only document calls and must
-// include reader. A previous version of this policy let ActionAny include
-// reader (to satisfy "readers must see version history", since no ActionRead
-// rule existed yet for this resource), which meant any reader could also call
-// FlushToGCS and persist writes to a project they could only view. Do not
-// reintroduce that: readers get their access through ActionRead now.
+// The interactor tests use a mock checker, so only this test proves the policy
+// grants the actions interactor.Websocket requests. ActionAny gates FlushToGCS,
+// a write, so readers must get their document access through ActionRead instead.
 func TestProjectPolicyCoversTheDocumentActions(t *testing.T) {
 	actions := actionsFor(t, ResourceProject)
 
@@ -51,8 +42,8 @@ func TestProjectPolicyCoversTheDocumentActions(t *testing.T) {
 		"writers must retain read access alongside readers")
 }
 
-// TestProjectDocumentPolicyStaysDeclared keeps the target model intact so the
-// move back is one line. See the TODO in interactor.Websocket.
+// TestProjectDocumentPolicyStaysDeclared keeps the unused projectDocument model
+// declared, so moving interactor.Websocket back to it is a one-line change.
 func TestProjectDocumentPolicyStaysDeclared(t *testing.T) {
 	actions := actionsFor(t, ResourceProjectDocument)
 	assert.Contains(t, actions, ActionRead)

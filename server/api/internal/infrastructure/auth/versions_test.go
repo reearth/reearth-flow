@@ -207,8 +207,8 @@ func TestServer_RoutesVersionNotices(t *testing.T) {
 	assert.Equal(t, 1, f.calls)
 }
 
-// Notices arrive unordered and repeated; a version's notice can come again
-// with more contributors and the same lastEditedAt. Only the latest edit wins.
+// A version's notice can come again with more contributors and the same
+// lastEditedAt. Only the latest edit wins.
 func TestVersionHandler_UnorderedAndRepeatedNotices(t *testing.T) {
 	t.Parallel()
 	ctx := context.Background()

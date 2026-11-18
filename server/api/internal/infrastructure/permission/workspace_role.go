@@ -13,13 +13,10 @@ import (
 // so a rule naming it is satisfied by any member regardless of workspace role.
 const selfRole = "self"
 
-// roleAllows reports whether a caller holding workspaceRole in the target
-// workspace satisfies the policy rule for resource/action.
-//
-// It reads the same rbac.DefineResources() the Cerbos policies are generated
-// from, and evaluates the principal the accounts service will send once the
-// stale global roles are stripped: the workspace role plus self, with no
-// global roles unioned in.
+// roleAllows reports whether workspaceRole satisfies the rule for
+// resource/action in rbac.DefineResources(), which the Cerbos policies are
+// generated from. It evaluates the workspace role plus self, without the stale
+// global roles the accounts service still unions in.
 func roleAllows(resource, action, workspaceRole string) bool {
 	for _, r := range rbac.DefineResources() {
 		if r.Resource != resource {
@@ -39,31 +36,22 @@ func roleAllows(resource, action, workspaceRole string) bool {
 	return false
 }
 
-// workspaceRoleAllows re-evaluates resource/action against the caller's role in
-// wsID alone. It can only deny: callers reach it having already been allowed by
-// Cerbos, and it exists because the accounts service still unions each user's
-// stale global roles into every check, so a workspace reader can arrive at
-// Cerbos carrying maintainer or owner.
-//
-// TODO: remove once reearth-accounts#266 strips the stale global roles, after
-// which Cerbos alone returns this same answer.
+// workspaceRoleAllows re-checks a Cerbos allow against the caller's role in wsID
+// alone, because the accounts service unions stale global roles into every check.
+// TODO: remove once reearth-accounts#266 strips the stale global roles.
 func (c *checker) workspaceRoleAllows(ctx context.Context, resource, action string, wsID accountsid.WorkspaceID) bool {
 	u := adapter.User(ctx)
 	if u == nil {
 		return true // no user principal (integration, API trigger): not a workspace member, leave to Cerbos
 	}
 
-	// Cannot determine the role: keep the Cerbos verdict rather than deny a real
-	// user. Logged because this is the guard's blind spot — a spike here means
-	// it is silently not running, so it needs to be visible in production.
+	// When the role cannot be determined (failed lookup, no workspace, or no
+	// membership data), the guard keeps the Cerbos allow and logs a warning.
 	ws, err := c.workspaceRepo.FindByID(ctx, wsID.String())
 	if err != nil {
 		log.Warnfc(ctx, "permission: workspace %s lookup failed, skipping the workspace-role guard for %s/%s: %v", wsID, resource, action, err)
 		return true
 	}
-	// No membership at all is a data problem, not an answer: every caller would
-	// be denied. Distinguish it from a populated list the caller is absent
-	// from, which is a real non-member and a real deny.
 	if ws == nil {
 		log.Warnfc(ctx, "permission: workspace %s not found, skipping the workspace-role guard for %s/%s", wsID, resource, action)
 		return true

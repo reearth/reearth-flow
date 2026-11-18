@@ -5,9 +5,8 @@ import (
 	"github.com/reearth/reearth-flow/api/pkg/id"
 )
 
-// EdgeExecutionDocument decodes the legacy "edgeExecutions" Mongo collection.
-// Kept for cmd/dbmigrate's Mongo->Postgres ETL; there is no Mongo repo for
-// this collection anymore.
+// EdgeExecutionDocument decodes the legacy "edgeExecutions" collection for
+// cmd/dbmigrate's Mongo->Postgres ETL. No Mongo repo reads it.
 type EdgeExecutionDocument struct {
 	IntermediateDataURL *string `bson:"intermediateDataUrl,omitempty"`
 	ID                  string  `bson:"id"`

@@ -159,7 +159,6 @@ func TestAsset_WorkspaceOnly(t *testing.T) {
 	ws := accountsid.NewWorkspaceID()
 	uid := accountsid.NewUserID()
 
-	// Test creating a workspace-only asset (no project)
 	a := New().
 		NewID().
 		Workspace(ws).
@@ -173,6 +172,5 @@ func TestAsset_WorkspaceOnly(t *testing.T) {
 	assert.NotNil(t, a)
 	assert.NotNil(t, a.ID())
 	assert.Equal(t, ws, a.Workspace())
-	// Project should be empty/zero value
 	assert.Equal(t, id.ProjectID{}, a.Project())
 }

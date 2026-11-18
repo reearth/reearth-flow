@@ -9,21 +9,18 @@ import (
 	reearthxasset "github.com/reearth/reearthx/asset/domain/asset"
 )
 
-// WorkspaceOnlyProjectID is a special project ID used for workspace-only assets
-// This is needed because reearthx requires a valid project ID
+// WorkspaceOnlyProjectID marks workspace-only assets, because reearthx requires
+// every asset to have a project ID.
 var WorkspaceOnlyProjectID = func() id.ProjectID {
-	// Create a new project ID that we'll use as a marker for workspace-only assets
 	return id.NewProjectID()
 }()
 
-// Re-export types from reearthx
 type (
-	Asset                   = AssetWrapper // Use wrapper as the main Asset type
+	Asset                   = AssetWrapper
 	ArchiveExtractionStatus = reearthxasset.ArchiveExtractionStatus
 	SortType                = reearthxasset.SortType
 )
 
-// Re-export constants from reearthx
 const (
 	ArchiveExtractionStatusPending    = reearthxasset.ArchiveExtractionStatusPending
 	ArchiveExtractionStatusInProgress = reearthxasset.ArchiveExtractionStatusInProgress
@@ -32,20 +29,17 @@ const (
 	ArchiveExtractionStatusSkipped    = reearthxasset.ArchiveExtractionStatusSkipped
 )
 
-// Re-export sort types from reearthx
 var (
 	SortTypeID   = reearthxasset.SortTypeID
 	SortTypeNAME = reearthxasset.SortTypeName
 	SortTypeSIZE = reearthxasset.SortTypeSize
-	SortTypeDATE = SortType{Key: "date"} // Not available in reearthx, add it
+	SortTypeDATE = SortType{Key: "date"}
 )
 
-// Re-export functions from reearthx
 var (
 	ArchiveExtractionStatusFrom = reearthxasset.ArchiveExtractionStatusFrom
 )
 
-// ID generation functions - these use flow's ID types
 func NewID() id.AssetID {
 	return id.NewAssetID()
 }
@@ -87,8 +81,6 @@ func (b *Builder) Project(v id.ProjectID) *Builder {
 func (b *Builder) Workspace(v accountsid.WorkspaceID) *Builder {
 	// TODO: after migration, remove this cast
 	b.rxBuilder = b.rxBuilder.Workspace(accountdomain.WorkspaceID(v))
-	// If no project is set yet, use a dummy project ID for workspace-based assets
-	// This is required because reearthx requires a valid project ID
 	if b.projectID == nil {
 		b.projectID = &WorkspaceOnlyProjectID
 		b.rxBuilder = b.rxBuilder.Project(ConvertProjectIDToReearthx(WorkspaceOnlyProjectID))

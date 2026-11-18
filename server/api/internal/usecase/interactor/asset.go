@@ -99,13 +99,11 @@ func (i *Asset) createFromFile(ctx context.Context, inp interfaces.CreateAssetPa
 		return nil, err
 	}
 
-	// Use custom name if provided, otherwise use filename
 	name := path.Base(inp.File.Path)
 	if inp.Name != nil && *inp.Name != "" {
 		name = *inp.Name
 	}
 
-	// Get user ID from context
 	user := adapter.User(ctx)
 	if user == nil {
 		return nil, interfaces.ErrOperationDenied
@@ -189,13 +187,11 @@ func (i *Asset) Create(ctx context.Context, inp interfaces.CreateAssetParam) (re
 				assetURL = publicURL.String()
 			}
 
-			// Use custom name if provided, otherwise use filename
 			name := path.Base(file.Path)
 			if inp.Name != nil && *inp.Name != "" {
 				name = *inp.Name
 			}
 
-			// Get user ID from context
 			user := adapter.User(ctx)
 			if user == nil {
 				return nil, interfaces.ErrOperationDenied
@@ -251,20 +247,17 @@ func (i *Asset) Update(ctx context.Context, inp interfaces.UpdateAssetParam) (re
 				return nil, err
 			}
 
-			// Check if name needs to be updated
 			if inp.Name == nil || *inp.Name == "" || *inp.Name == oldAsset.Name() {
-				// No changes needed, return existing asset
 				return oldAsset, nil
 			}
 
-			// Since reearthx assets are immutable for name, we need to rebuild the asset
-			// with the new name while preserving all other properties
+			// A reearthx asset's name cannot be set, so the asset is rebuilt with the new name.
 			builder := asset.New().
 				ID(oldAsset.ID()).
 				Workspace(oldAsset.Workspace()).
 				CreatedAt(oldAsset.CreatedAt()).
 				FileName(oldAsset.FileName()).
-				Name(*inp.Name). // Use the new name
+				Name(*inp.Name).
 				Size(oldAsset.Size()).
 				URL(oldAsset.URL()).
 				ContentType(oldAsset.ContentType()).
@@ -272,30 +265,25 @@ func (i *Asset) Update(ctx context.Context, inp interfaces.UpdateAssetParam) (re
 				FlatFiles(oldAsset.FlatFiles()).
 				Public(oldAsset.Public())
 
-			// Set user or integration
 			if oldAsset.User() != nil {
 				builder = builder.CreatedByUser(*oldAsset.User())
 			} else if oldAsset.Integration() != nil {
 				builder = builder.CreatedByIntegration(oldAsset.Integration())
 			}
 
-			// Set thread if present
 			if oldAsset.Thread() != nil {
 				builder = builder.Thread(oldAsset.Thread())
 			}
 
-			// Set archive extraction status if present
 			if oldAsset.ArchiveExtractionStatus() != nil {
 				builder = builder.ArchiveExtractionStatus(*oldAsset.ArchiveExtractionStatus())
 			}
 
-			// Build the updated asset
 			updatedAsset, err := builder.Build()
 			if err != nil {
 				return nil, err
 			}
 
-			// Save the updated asset
 			if err := i.repos.Asset.Save(ctx, updatedAsset); err != nil {
 				return nil, err
 			}
@@ -337,9 +325,8 @@ func (i *Asset) Delete(ctx context.Context, aid id.AssetID) (result id.AssetID, 
 		return aid, err
 	}
 
-	// Only now is it safe to drop the object: the row that stopped referencing
-	// it is durable. Best-effort, since a failure here leaks an object rather
-	// than leaving a listed asset with no bytes behind it.
+	// The object is dropped only once the row that stopped referencing it is
+	// durable. A failure here leaks the object rather than failing the delete.
 	if deletedURL != "" {
 		if u, _ := url.Parse(deletedURL); u != nil {
 			if err := i.gateways.File.DeleteAsset(ctx, u); err != nil {

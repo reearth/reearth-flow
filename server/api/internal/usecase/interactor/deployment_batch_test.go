@@ -105,11 +105,8 @@ func TestDeployment_FindByProjects_DeniedWorkspaceOmittedNotErrored(t *testing.T
 	assert.NotContains(t, res, deniedPID, "caller was denied on this workspace, its deployment must not leak through the batch")
 }
 
-// TestDeployment_Fetch_NotFoundFirstElementDoesNotPanic pins a crash observed
-// in production: FindByIDs pads a not-found/unreadable id with nil, and if
-// that nil lands at index 0, deployments[0].Workspace() panics with a nil
-// pointer dereference. The permission check must fall back to the first
-// non-nil element instead of assuming index 0 is populated.
+// FindByIDs can pad a missing id with nil at index 0, so the permission check
+// must use the first non-nil element.
 func TestDeployment_Fetch_NotFoundFirstElementDoesNotPanic(t *testing.T) {
 	ws := accountsid.NewWorkspaceID()
 	projectRepo := memory.NewProject()
@@ -137,10 +134,6 @@ func TestDeployment_Fetch_NotFoundFirstElementDoesNotPanic(t *testing.T) {
 	})
 }
 
-// TestDeployment_Fetch_AllNotFound_UsesNoWorkspacePermissionPath pins the
-// other half of the same fix: when every id in the batch is unreadable or
-// missing, the permission check must take the no-items path rather than
-// dereferencing a nil element.
 func TestDeployment_Fetch_AllNotFound_UsesNoWorkspacePermissionPath(t *testing.T) {
 	projectRepo := memory.NewProject()
 	deploymentRepo := memory.NewDeployment()
@@ -157,11 +150,7 @@ func TestDeployment_Fetch_AllNotFound_UsesNoWorkspacePermissionPath(t *testing.T
 	})
 }
 
-// TestDeployment_Fetch_CrossWorkspaceBatch_DeniedItemOmittedNotLeaked is the
-// regression test for the IDOR this fix closes: a batch mixing a deployment
-// the caller can see with one from a workspace they cannot must return the
-// first and nil out the second, instead of using the first item's workspace
-// to authorize the whole batch.
+// A batch must not be authorized by its first item's workspace alone.
 func TestDeployment_Fetch_CrossWorkspaceBatch_DeniedItemOmittedNotLeaked(t *testing.T) {
 	wsAllowed := accountsid.NewWorkspaceID()
 	wsDenied := accountsid.NewWorkspaceID()

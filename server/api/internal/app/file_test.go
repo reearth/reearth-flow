@@ -27,10 +27,8 @@ func (f *artifactFakeFile) ReadArtifact(_ context.Context, name string) (io.Read
 	return io.NopCloser(strings.NewReader("{}")), nil
 }
 
-// A feature view's entry point is nested, so the artifacts route has to match
-// more than one path segment and hand the whole remainder to the repo. This
-// pins that: the URLs GetFeatureViewURL builds are the feature's only public
-// entry point, and nothing else would notice if the route stopped serving them.
+// A feature view's entry point is nested, so the artifacts route has to hand
+// the whole multi-segment remainder to the repo.
 func TestServeFilesArtifactsMatchesNestedPaths(t *testing.T) {
 	for _, tc := range []struct {
 		name string
@@ -90,9 +88,8 @@ func (f *closingFakeFile) ReadArtifact(context.Context, string) (io.ReadCloser, 
 	return f.body, nil
 }
 
-// Every tile of a view is served through this route, and each read opens a
-// storage object. A HEAD never reads the body, so the handler has to close it
-// rather than leave that to the stream.
+// Each read opens a storage object, and a HEAD never reads the body, so the
+// handler has to close it rather than leave that to the stream.
 func TestServeFilesClosesWhatItReads(t *testing.T) {
 	for _, method := range []string{http.MethodGet, http.MethodHead} {
 		t.Run(method, func(t *testing.T) {

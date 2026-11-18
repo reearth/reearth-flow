@@ -38,9 +38,8 @@ func (f *fileRepo) GetIntermediateDataURL(context.Context, string, string) strin
 }
 
 // Feature views are rendered by the engine worker straight into object
-// storage, which this repo is not. These return "not supported" rather than
-// panicking so a local filesystem deployment refuses a view request instead of
-// taking the process down with it.
+// storage, which this repo is not. These return "not supported" so a local
+// deployment refuses a view request rather than panicking.
 
 func (f *fileRepo) ResolveIntermediateDataURI(context.Context, string, string) (string, bool, error) {
 	return "", false, gateway.ErrUnsupportedOperation
@@ -286,8 +285,6 @@ func (f *fileRepo) GetPublicAssetURL(uuid string, filename string) (*url.URL, er
 	return nil, gateway.ErrUnsupportedOperation
 }
 
-// helpers
-
 func (f *fileRepo) read(ctx context.Context, filename string) (io.ReadCloser, error) {
 	if filename == "" {
 		return nil, rerror.ErrNotFound
@@ -368,7 +365,6 @@ func (f *fileRepo) validateURL(u *url.URL, base *url.URL) bool {
 		return false
 	}
 
-	// Handle the case where base path is empty (e.g., https://example.com)
 	basePath := base.Path
 	if basePath == "" {
 		basePath = "/"

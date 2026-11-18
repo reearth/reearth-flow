@@ -12,11 +12,8 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-// TestProject_Fetch_NotFoundFirstElementDoesNotPanic pins a crash observed
-// in production on the equivalent Deployment.Fetch: FindByIDs pads a
-// not-found/unreadable id with nil, and if that nil lands at index 0,
-// projects[0].Workspace() panics with a nil pointer dereference. The
-// permission check must fall back to the first non-nil element instead.
+// FindByIDs can pad a missing id with nil at index 0, so the permission check
+// must use the first non-nil element.
 func TestProject_Fetch_NotFoundFirstElementDoesNotPanic(t *testing.T) {
 	ws := accountsid.NewWorkspaceID()
 	projectRepo := memory.NewProject()
@@ -40,9 +37,6 @@ func TestProject_Fetch_NotFoundFirstElementDoesNotPanic(t *testing.T) {
 	})
 }
 
-// TestProject_Fetch_AllNotFound_UsesNoWorkspacePermissionPath pins the other
-// half of the same fix: an all-nil batch must take the no-items permission
-// path rather than dereferencing a nil element.
 func TestProject_Fetch_AllNotFound_UsesNoWorkspacePermissionPath(t *testing.T) {
 	projectRepo := memory.NewProject()
 	checker := &recordingChecker{allow: true}
@@ -58,11 +52,7 @@ func TestProject_Fetch_AllNotFound_UsesNoWorkspacePermissionPath(t *testing.T) {
 	})
 }
 
-// TestProject_Fetch_CrossWorkspaceBatch_DeniedItemOmittedNotLeaked is the
-// regression test for the IDOR this fix closes: a batch mixing a project the
-// caller can see with one from a workspace they cannot must return the first
-// and nil out the second, instead of using the first item's workspace to
-// authorize the whole batch.
+// A batch must not be authorized by its first item's workspace alone.
 func TestProject_Fetch_CrossWorkspaceBatch_DeniedItemOmittedNotLeaked(t *testing.T) {
 	wsAllowed := accountsid.NewWorkspaceID()
 	wsDenied := accountsid.NewWorkspaceID()

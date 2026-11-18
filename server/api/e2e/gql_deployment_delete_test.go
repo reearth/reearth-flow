@@ -34,17 +34,14 @@ func TestDeleteDeploymentWithTriggers(t *testing.T) {
 		},
 	}, true, true, mock)
 
-	// Create a deployment
 	deploymentID := createDeploymentForTest(t, e)
 	assert.NotEmpty(t, deploymentID)
 	t.Logf("Created deployment: %s", deploymentID)
 
-	// Create a trigger for the deployment
 	triggerID := createTriggerForDeployment(t, e, deploymentID)
 	assert.NotEmpty(t, triggerID)
 	t.Logf("Created trigger: %s", triggerID)
 
-	// Test: Attempt to delete deployment with active trigger (should fail)
 	t.Run("should_fail_to_delete_deployment_with_trigger", func(t *testing.T) {
 		mutation := `mutation($input: DeleteDeploymentInput!) {
 			deleteDeployment(input: $input) {
@@ -84,14 +81,12 @@ func TestDeleteDeploymentWithTriggers(t *testing.T) {
 		err = json.Unmarshal([]byte(resp.Body().Raw()), &result)
 		assert.NoError(t, err)
 
-		// Should have an error
 		if assert.NotEmpty(t, result.Errors, "Expected error when deleting deployment with triggers") {
 			assert.Contains(t, result.Errors[0].Message, "has active triggers", "Error should mention active triggers")
 			t.Logf("Expected error received: %s", result.Errors[0].Message)
 		}
 	})
 
-	// Delete the trigger
 	t.Run("delete_trigger", func(t *testing.T) {
 		mutation := `mutation($triggerId: ID!) {
 			deleteTrigger(triggerId: $triggerId)
@@ -125,13 +120,11 @@ func TestDeleteDeploymentWithTriggers(t *testing.T) {
 		err = json.Unmarshal([]byte(resp.Body().Raw()), &result)
 		assert.NoError(t, err)
 
-		// Should succeed
 		assert.Empty(t, result.Errors)
 		assert.True(t, result.Data.DeleteTrigger)
 		t.Log("Trigger deleted successfully")
 	})
 
-	// Test: Delete deployment without triggers (should succeed)
 	t.Run("should_succeed_to_delete_deployment_without_triggers", func(t *testing.T) {
 		mutation := `mutation($input: DeleteDeploymentInput!) {
 			deleteDeployment(input: $input) {
@@ -171,7 +164,6 @@ func TestDeleteDeploymentWithTriggers(t *testing.T) {
 		err = json.Unmarshal([]byte(resp.Body().Raw()), &result)
 		assert.NoError(t, err)
 
-		// Should succeed
 		assert.Empty(t, result.Errors, "Should not have errors when deleting deployment without triggers")
 		assert.Equal(t, deploymentID, result.Data.DeleteDeployment.DeploymentID)
 		t.Log("Deployment deleted successfully")

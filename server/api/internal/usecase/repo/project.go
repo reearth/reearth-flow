@@ -31,12 +31,10 @@ type Project interface {
 	// SetStar adds or removes the user's star in a single atomic write, and
 	// returns rerror.ErrNotFound when the project does not exist or is not readable.
 	SetStar(ctx context.Context, pid id.ProjectID, uid accountsid.UserID, starred bool) error
-	// RecordEdit is project.Project.RecordEdit as a single atomic write: the
-	// project's updatedAt becomes at and its updatedBy becomes by (nil for an
-	// unknown editor), only when at is later than the stored updatedAt. It never
-	// moves updatedAt backwards and never overwrites another field, so it is
-	// safe against concurrent edits of the project. It returns
-	// rerror.ErrNotFound when the project does not exist or is not writable.
+	// RecordEdit atomically sets updatedAt to at and updatedBy to by (nil for an
+	// unknown editor) only when at is later than the stored updatedAt, touching
+	// no other field. It returns rerror.ErrNotFound when the project does not
+	// exist or is not writable.
 	RecordEdit(ctx context.Context, pid id.ProjectID, at time.Time, by *accountsid.UserID) error
 }
 

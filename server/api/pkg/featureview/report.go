@@ -12,17 +12,10 @@ import (
 // reads. Bump it on the renderer side only for a change readers cannot absorb.
 const ReportVersion = 1
 
-// Report is what a render leaves beside its output, and the server's only
-// record of an outcome. It exists for every terminal outcome including the ones
-// that wrote no view, which is what lets "this row holds 2D geometry" reach the
-// user as an explanation instead of an exit code.
-//
-// Paths are relative to the view's own directory
-// (`feature-view/{fileID}/`), not absolute URIs: the renderer does not know
-// the public URL its output will be served from, and the server does not want
-// to reverse a gs:// URI into one.
-// Fields are ordered for struct packing (govet fieldalignment), not by
-// meaning.
+// Report is written beside every terminal render outcome, so a view that wrote
+// nothing can still be explained to the user. Paths are relative to the view's
+// directory (`feature-view/{fileID}/`) because the renderer does not know its
+// public URL.
 type Report struct {
 	// Format is set only when Status is StatusReady.
 	Format *Format `json:"format,omitempty"`
@@ -30,13 +23,9 @@ type Report struct {
 	Filter *string `json:"filter,omitempty"`
 	// Error carries the renderer's message for a non-Ready outcome.
 	Error *string `json:"error,omitempty"`
-	// SizeLimitedFeatures counts selected features a vector-tile render left
-	// out of at least one tile at its highest zoom, to keep that tile under its
-	// size limit. A viewer zoomed in further still shows the highest-zoom
-	// tiles, so where a feature was left out it is missing however far the
-	// viewer zooms in. Features left out only at lower zooms, which are
-	// overviews, are not counted. Nil for every other format: only vector tiles
-	// have a size limit.
+	// SizeLimitedFeatures counts features a vector-tile render left out of at
+	// least one highest-zoom tile to stay under the size limit, which no further
+	// zoom recovers. Nil for formats other than vector tiles.
 	SizeLimitedFeatures *int `json:"sizeLimitedFeatures,omitempty"`
 	// SizeLimitedTiles counts the tiles, at any zoom, that left out at least
 	// one feature to stay under the size limit. Nil whenever
@@ -52,26 +41,18 @@ type Report struct {
 	EngineVersion string `json:"engineVersion,omitempty"`
 	// Written lists every file the render produced, the entry points included.
 	Written []string `json:"written,omitempty"`
-	// Layers are a ready view's entry points, one per format, 3D Tiles before
-	// vector tiles; see ViewLayers. Format, EntryPoint and the size-limited
-	// counts above repeat the first. Empty in a report from an engine that
-	// wrote a single entry point.
+	// Layers are a ready view's entry points, one per format with 3D Tiles
+	// first, and the top-level fields above repeat the first. Empty from engines
+	// that wrote a single entry point; see ViewLayers.
 	Layers  []ReportLayer `json:"layers,omitempty"`
 	Version int           `json:"version"`
 	// SelectedFeatures counts features the selection kept, before the writer
 	// dropped any.
 	SelectedFeatures int `json:"selectedFeatures"`
-	// RenderedFeatures counts selected features drawn into the view, in any
-	// of its layers: a feature drawn into two layers counts once.
-	//
-	// Fewer than SelectedFeatures is normal, not a warning. Geometry naming no
-	// CRS is left out, and so is geometry the writer cannot draw, such as a
-	// CSG: the feature keeps its row in the table and only its geometry is
-	// absent from the view. In vector tiles a feature can also be left out of
-	// every tile, either because it is smaller than a pixel at every zoom, or to
-	// keep tiles under their size limit; SizeLimitedFeatures counts the second.
-	// Together the counts are how a client explains a view that looks sparser
-	// than the table.
+	// RenderedFeatures counts selected features drawn into any layer, once each.
+	// It is normally below SelectedFeatures, because geometry with no CRS,
+	// undrawable geometry, sub-pixel features and size-limited features are left
+	// out of the view.
 	RenderedFeatures int `json:"renderedFeatures"`
 	// Scanned counts non-empty lines the read examined. Short of the file's
 	// total for a row selection, which stops at its row.
@@ -82,11 +63,7 @@ type Report struct {
 }
 
 // ReportLayer is one entry point of a ready view, and what was drawn into it.
-// A tiles view of geometry holding both 3D and 2D has two: the 3D geometry in
-// 3D Tiles and the 2D geometry in vector tiles.
-//
-// Fields are ordered for struct packing (govet fieldalignment), not by
-// meaning.
+// A tiles view of mixed geometry has two: 3D Tiles and vector tiles.
 type ReportLayer struct {
 	// SizeLimitedFeatures and SizeLimitedTiles are what the layer's size limit
 	// left out, as on Report. Nil for every format but vector tiles.
@@ -104,10 +81,9 @@ type ReportLayer struct {
 	RenderedFeatures int `json:"renderedFeatures"`
 }
 
-// ViewLayers is a ready view's entry points. A report from an engine that
-// wrote a single entry point names it at the top level, and that is the view's
-// only layer. Nil for a view that is not ready, and for a ready report that
-// names no format.
+// ViewLayers is a ready view's entry points, falling back to the top-level one
+// for engines that wrote a single entry point. Nil when the view is not ready
+// or names no format.
 func (r *Report) ViewLayers() []ReportLayer {
 	if r.Status != StatusReady {
 		return nil
@@ -128,10 +104,9 @@ func (r *Report) ViewLayers() []ReportLayer {
 	}}
 }
 
-// UnreadableReport stands in for a report that exists but could not be parsed:
-// the render happened, so it is answered as a failure rather than as "not
-// rendered", which would send the caller into a render loop. It records no
-// shape and no counts, because nothing about the render can be trusted.
+// UnreadableReport stands in for a report that exists but cannot be parsed. It
+// is a failure rather than "not rendered", which would send the caller into a
+// render loop.
 func UnreadableReport(message string) *Report {
 	return &Report{
 		Version:       ReportVersion,
@@ -147,11 +122,8 @@ func (r *Report) CountsKnown() bool {
 	return !r.countsUnknown
 }
 
-// allowsFormat reports whether a shape can have produced a format. The engine
-// chooses the format from the geometry it finds, but only within the shape it
-// was asked for: a tiles render never yields a glb, and a gltf render never
-// yields a tile pyramid. A report claiming otherwise did not come from a render
-// the server asked for, and would hand the caller a tilejson URL for a glb.
+// allowsFormat reports whether a shape can have produced a format. A report
+// claiming otherwise did not come from a render the server asked for.
 func (s Shape) allowsFormat(f Format) error {
 	switch s {
 	case ShapeGLTF:
@@ -176,10 +148,8 @@ func ParseReport(r io.Reader) (*Report, error) {
 	if err := dec.Decode(&report); err != nil {
 		return nil, fmt.Errorf("%w: %v", ErrInvalidReport, err)
 	}
-	// Decode stops at the end of the first value, so trailing bytes would go
-	// unseen. This parser is the validation boundary for the renderer's only
-	// record of an outcome, and a report with anything after the object is not
-	// one the renderer wrote.
+	// Decode stops after the first value, so trailing data is checked for
+	// explicitly.
 	if err := dec.Decode(new(json.RawMessage)); !errors.Is(err, io.EOF) {
 		return nil, fmt.Errorf("%w: unexpected data after the report object", ErrInvalidReport)
 	}

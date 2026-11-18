@@ -94,12 +94,10 @@ func NewFile(bucketName, base, artifactBase string, cacheControl string, replace
 	return repo, nil
 }
 
-// probeSignedURL issues a throwaway signed URL at startup to catch signing
-// misconfiguration (e.g. missing iam.serviceAccounts.signBlob on the runtime
-// service account) at deploy time rather than on a user's first upload. It
-// never creates an object and must not fail boot. ctx only bounds how long we
-// wait: the signing RPC runs in its own goroutine and cloud.google.com/go/storage
-// hardcodes its own context for the ADC signing path, so it is not itself bounded.
+// probeSignedURL signs a throwaway URL at startup so signing misconfiguration
+// (e.g. missing iam.serviceAccounts.signBlob) shows at deploy time, without
+// creating an object or failing boot. ctx bounds only the wait, because
+// cloud.google.com/go/storage hardcodes its own context for the signing RPC.
 func (f *fileRepo) probeSignedURL(ctx context.Context) {
 	done := make(chan error, 1)
 	go func() { done <- f.signProbeURL() }()
@@ -459,7 +457,6 @@ func (f *fileRepo) CancelFlagURI(jobID string) string {
 	return fmt.Sprintf("gs://%s/cancel/%s", f.bucketName, jobID)
 }
 
-// helpers
 func (f *fileRepo) bucket() *storage.BucketHandle {
 	return f.client.Bucket(f.bucketName)
 }
@@ -623,7 +620,6 @@ func (f *fileRepo) GetPublicAssetURL(uuid, filename string) (*url.URL, error) {
 }
 
 func (f *fileRepo) toPublicUrl(uploadURL string) string {
-	// Replace storage.googleapis.com with custom asset base URL if configured and enabled
 	if f.replaceUploadURL && f.base != nil && f.base.Host != "" && f.base.Host != "storage.googleapis.com" {
 		parsedURL, err := url.Parse(uploadURL)
 		if err == nil {
@@ -670,13 +666,9 @@ func newWorkflowID() string {
 	return id.NewWorkflowID().String()
 }
 
-// sanitizePath cleans an object name that will be joined onto a base path, and
-// returns "" for one that would leave it. Callers treat "" as no such object.
-//
-// path.Clean alone is no protection here: it keeps a leading "..", which
-// path.Join then resolves against the base, so "../workflows/x" joined onto
-// "artifacts" reads "workflows/x". The read routes hand client-supplied names
-// straight to this.
+// sanitizePath cleans a client-supplied object name that will be joined onto a
+// base path, returning "" (no such object) for one that would leave it.
+// path.Clean alone keeps a leading "..", which path.Join resolves against the base.
 func sanitizePath(name string) string {
 	sn := path.Clean(name)
 	if sn == "." || sn == ".." || strings.HasPrefix(sn, "../") {
@@ -697,14 +689,13 @@ func IsValidUUID(u string) bool {
 	return err == nil
 }
 
-// gcsFeatureViewDir is the directory a view's files live in: alongside the
+// gcsFeatureViewDirName is the directory a view's files live in: alongside the
 // feature-store file they were rendered from, under the same job.
 const gcsFeatureViewDirName = "feature-view"
 
-// intermediateDataExtensions are the extensions a run writes its
-// intermediate data under, in the order they are probed. Which one appears
-// depends on WORKER_COMPRESS_INTERMEDIATE_DATA; the compressed form is tried
-// first because it is what current deployments produce.
+// intermediateDataExtensions are the extensions a run may write its intermediate
+// data under, depending on WORKER_COMPRESS_INTERMEDIATE_DATA.
+// The compressed form is probed first because current deployments produce it.
 var intermediateDataExtensions = [...]string{".jsonl.zst", ".jsonl"}
 
 func gcsFeatureViewDir(jobID, fileID string) string {

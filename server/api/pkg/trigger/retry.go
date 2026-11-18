@@ -6,10 +6,9 @@ import "time"
 // before the call counts as failed.
 const AttemptDeadline = 3 * time.Minute
 
-// RetryPolicy is how the scheduler tries a refused scheduled run again. The
-// scheduler ignores Retry-After and allows at most 5 retries, so the waits
-// double from a start that suits the interval. Every retry ends well before
-// the next run, which the scheduler may skip while a run is still retrying.
+// RetryPolicy is how the scheduler retries a refused scheduled run: at most 5
+// times, with doubling waits, ignoring Retry-After. Retries end well before the
+// next run, which the scheduler may skip while one is still retrying.
 type RetryPolicy struct {
 	MinBackoff   time.Duration
 	MaxBackoff   time.Duration
@@ -17,7 +16,6 @@ type RetryPolicy struct {
 	MaxDoublings int
 }
 
-// RetryPolicy is how a refused run of a trigger with this interval is retried.
 func (i TimeInterval) RetryPolicy() RetryPolicy {
 	if i == TimeIntervalEveryHour {
 		// 1, 2, 4, 8 and 16 minutes: about half an hour in all.

@@ -93,7 +93,6 @@ func TestProjectAccess_Save_Upsert(t *testing.T) {
 
 	require.NoError(t, r.Save(ctx, pa))
 
-	// Make private: token cleared, isPublic false.
 	require.NoError(t, pa.MakePrivate())
 	require.NoError(t, r.Save(ctx, pa))
 
@@ -108,7 +107,6 @@ func TestProjectAccess_Save_PrivateEntry(t *testing.T) {
 	ctx := context.Background()
 	paid := id.NewProjectAccessID()
 	pid := id.NewProjectID()
-	// Private entry: token empty, isPublic false.
 	pa, err := projectAccess.New().
 		ID(paid).
 		Project(pid).

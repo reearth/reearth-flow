@@ -57,7 +57,6 @@ func (i *Parameter) declareParameter(ctx context.Context, param interfaces.Decla
 
 	var p *parameter.Parameter
 	if err := i.transaction.WithinTransaction(ctx, func(ctx context.Context) error {
-		// Check if project exists
 		proj, err := i.projectRepo.FindByID(ctx, param.ProjectID)
 		if err != nil {
 			return err
@@ -82,7 +81,6 @@ func (i *Parameter) declareParameter(ctx context.Context, param interfaces.Decla
 			}
 		}
 
-		// Get next index if not specified
 		var index int
 		if param.Index == nil {
 			if params != nil {
@@ -92,7 +90,6 @@ func (i *Parameter) declareParameter(ctx context.Context, param interfaces.Decla
 			index = *param.Index
 		}
 
-		// Create parameter
 		p, err = parameter.New().
 			ProjectID(param.ProjectID).
 			Name(param.Name).
@@ -189,14 +186,8 @@ func (i *Parameter) Fetch(ctx context.Context, ids id.ParameterIDList) (*paramet
 		return parameter.NewParameterList(make([]*parameter.Parameter, len(ids))), nil
 	}
 
-	// A batch can span several projects, and each project can belong to a
-	// different workspace, so checking only the first parameter's project -
-	// the "single-workspace batch assumption" this replaces - would let it
-	// authorize parameters from other, unrelated workspaces riding along in
-	// the same batch. Instead, resolve every distinct project the batch
-	// touches, check permission once per distinct workspace among them, and
-	// omit parameters whose workspace fails the check, the same way
-	// FetchByProjects already omits projects the caller can't see.
+	// A batch can span projects in different workspaces, so permission is
+	// checked once per distinct workspace and parameters that fail it are omitted.
 	projectIDs := make([]id.ProjectID, 0, len(*params))
 	seenProject := map[id.ProjectID]struct{}{}
 	for _, p := range *params {
@@ -238,11 +229,8 @@ func (i *Parameter) Fetch(ctx context.Context, ids id.ParameterIDList) (*paramet
 		}
 	}
 
-	// ParameterLoader is a positional dataloader: it must get back one slot
-	// per requested id, in request order, nil for denied/missing/compacted
-	// entries - not just the allowed ones in whatever order the repo and the
-	// loop above happened to produce (that would make the loader attribute a
-	// found parameter to the wrong requested id).
+	// ParameterLoader is positional, so it needs one slot per requested id in
+	// request order, with nil for denied or missing entries.
 	aligned := alignToRequestedIDs(ids, allowed, nil, (*parameter.Parameter).ID)
 
 	return parameter.NewParameterList(aligned), nil
@@ -264,9 +252,8 @@ func (i *Parameter) FetchByProject(ctx context.Context, pid id.ProjectID) (*para
 	return params, err
 }
 
-// FetchByProjects batches FetchByProject for a dataloader: one project lookup and
-// one permission check per distinct workspace instead of one of each per project.
-// Projects in a workspace the caller can't see are simply omitted from the result.
+// FetchByProjects batches FetchByProject for a dataloader, checking permission
+// once per distinct workspace. Projects in a workspace the caller can't see are omitted.
 func (i *Parameter) FetchByProjects(ctx context.Context, ids []id.ProjectID) (map[id.ProjectID]*parameter.ParameterList, error) {
 	if len(ids) == 0 {
 		if err := i.checkPermission(ctx, rbac.ActionAny); err != nil {
@@ -291,7 +278,7 @@ func (i *Parameter) FetchByProjects(ctx context.Context, ids []id.ProjectID) (ma
 	result := make(map[id.ProjectID]*parameter.ParameterList, len(projects))
 	for ws, pids := range byWorkspace {
 		if err := i.checkPermission(ctx, rbac.ActionAny, ws); err != nil {
-			continue // caller can't see this workspace; omit its projects' parameters
+			continue
 		}
 		for _, pid := range pids {
 			params, err := i.paramRepo.FindByProject(ctx, pid)
@@ -306,7 +293,6 @@ func (i *Parameter) FetchByProjects(ctx context.Context, ids []id.ProjectID) (ma
 }
 
 func (i *Parameter) RemoveParameter(ctx context.Context, pid id.ParameterID) (id.ParameterID, error) {
-	// Use the batch delete method for consistency
 	removedIDs, err := i.RemoveParameters(ctx, id.ParameterIDList{pid})
 	if err != nil {
 		return pid, err
@@ -332,7 +318,8 @@ func (i *Parameter) RemoveParameters(ctx context.Context, pids id.ParameterIDLis
 	if preParams == nil || len(*preParams) == 0 {
 		return nil, rerror.ErrNotFound
 	}
-	// single-workspace batch assumption
+	// Permission is checked on the first parameter's project only, and the
+	// transaction refuses a batch that spans projects.
 	proj, err := i.projectRepo.FindByID(ctx, (*preParams)[0].ProjectID())
 	if err != nil {
 		return nil, err
@@ -345,7 +332,6 @@ func (i *Parameter) RemoveParameters(ctx context.Context, pids id.ParameterIDLis
 	}
 
 	if err := i.transaction.WithinTransaction(ctx, func(ctx context.Context) error {
-		// Fetch all parameters to be deleted to validate they exist and get project info
 		paramsToDelete, err := i.paramRepo.FindByIDs(ctx, pids)
 		if err != nil {
 			return err
@@ -366,29 +352,23 @@ func (i *Parameter) RemoveParameters(ctx context.Context, pids id.ParameterIDLis
 			deleteIndexes[param.Index()] = true
 		}
 
-		// Remove all specified parameters
 		if err := i.paramRepo.RemoveAll(ctx, pids); err != nil {
 			return err
 		}
 
-		// Fetch remaining parameters for the project to recalculate indexes
 		remainingParams, err := i.paramRepo.FindByProject(ctx, projectID)
 		if err != nil {
 			return err
 		}
 
-		// Recalculate indexes for remaining parameters
 		if remainingParams != nil && len(*remainingParams) > 0 {
-			// Sort remaining parameters by current index
 			sortedParams := make([]*parameter.Parameter, len(*remainingParams))
 			copy(sortedParams, *remainingParams)
 
-			// Sort remaining parameters by current index using sort.Slice
 			sort.Slice(sortedParams, func(i, j int) bool {
 				return sortedParams[i].Index() < sortedParams[j].Index()
 			})
 
-			// Reassign sequential indexes starting from 0
 			for newIndex, param := range sortedParams {
 				if param.Index() != newIndex {
 					param.SetIndex(newIndex)
@@ -434,11 +414,9 @@ func (i *Parameter) UpdateParameterOrder(ctx context.Context, param interfaces.U
 			return rerror.ErrNotFound
 		}
 
-		// Update indices
 		currentIndex := targetParam.Index()
 		newIndex := param.NewIndex
 
-		// Reorder parameters
 		for _, p := range *params {
 			switch {
 			case p.ID() == param.ParamID:

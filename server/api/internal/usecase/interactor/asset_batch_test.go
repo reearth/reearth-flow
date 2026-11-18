@@ -13,9 +13,8 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-// nilPaddingAssetRepo wraps a real repo.Asset and makes FindByIDs pad
-// not-found ids with nil at their requested position, matching the mongo
-// implementation's filterAssets (memory.Asset.FindByIDs just omits misses).
+// nilPaddingAssetRepo pads not-found ids with nil at their requested position,
+// as the Mongo repo does and memory.Asset does not.
 type nilPaddingAssetRepo struct {
 	repo.Asset
 }
@@ -37,11 +36,8 @@ func (r *nilPaddingAssetRepo) FindByIDs(ctx context.Context, ids id.AssetIDList)
 	return res, nil
 }
 
-// TestAsset_Fetch_NotFoundFirstElementDoesNotPanic pins a crash observed in
-// production on the equivalent Deployment.Fetch: FindByIDs pads a
-// not-found/unreadable id with nil, and if that nil lands at index 0,
-// res[0].Workspace() panics with a nil pointer dereference. The permission
-// check must fall back to the first non-nil element instead.
+// FindByIDs can pad a missing id with nil at index 0, so the permission check
+// must use the first non-nil element.
 func TestAsset_Fetch_NotFoundFirstElementDoesNotPanic(t *testing.T) {
 	ws := accountsid.NewWorkspaceID()
 	assetRepo := &nilPaddingAssetRepo{Asset: memory.NewAsset()}
@@ -65,9 +61,6 @@ func TestAsset_Fetch_NotFoundFirstElementDoesNotPanic(t *testing.T) {
 	})
 }
 
-// TestAsset_Fetch_AllNotFound_UsesNoWorkspacePermissionPath pins the other
-// half of the same fix: an all-nil batch must take the no-items permission
-// path rather than dereferencing a nil element.
 func TestAsset_Fetch_AllNotFound_UsesNoWorkspacePermissionPath(t *testing.T) {
 	assetRepo := &nilPaddingAssetRepo{Asset: memory.NewAsset()}
 	checker := &recordingChecker{allow: true}
@@ -83,11 +76,7 @@ func TestAsset_Fetch_AllNotFound_UsesNoWorkspacePermissionPath(t *testing.T) {
 	})
 }
 
-// TestAsset_Fetch_CrossWorkspaceBatch_DeniedItemOmittedNotLeaked is the
-// regression test for the IDOR this fix closes: a batch mixing an asset the
-// caller can see with one from a workspace they cannot must return the first
-// and nil out the second, instead of using the first item's workspace to
-// authorize the whole batch.
+// A batch must not be authorized by its first item's workspace alone.
 func TestAsset_Fetch_CrossWorkspaceBatch_DeniedItemOmittedNotLeaked(t *testing.T) {
 	wsAllowed := accountsid.NewWorkspaceID()
 	wsDenied := accountsid.NewWorkspaceID()

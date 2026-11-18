@@ -9,16 +9,14 @@ import (
 	"github.com/spf13/afero"
 )
 
-// File abstracts an abstract file
 type File struct {
 	Content io.ReadCloser
 	Path    string
-	// If the content type is not explicitly specified, ContenType will be an empty string.
+	// ContentType is empty when not specified.
 	ContentType string
 	Size        int64
 }
 
-// Iterator is an iterator of files
 type Iterator interface {
 	// Next returns the next File. If there is no next File, returns nil file and nil error
 	Next() (*File, error)

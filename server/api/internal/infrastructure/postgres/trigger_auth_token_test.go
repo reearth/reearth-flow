@@ -73,7 +73,7 @@ func TestMigration_HashTriggerAuthTokens_ExistingRows(t *testing.T) {
 		insert(weak, "API_DRIVEN", lo.ToPtr("abc"))
 		insert(long, "API_DRIVEN", lo.ToPtr("a-much-longer-hand-picked-token"))
 		insert(timed, "TIME_DRIVEN", nil)
-		// Switching a trigger to time-driven used to leave an empty token.
+		// Existing time-driven triggers can hold an empty token.
 		insert(emptied, "TIME_DRIVEN", lo.ToPtr(""))
 	})
 

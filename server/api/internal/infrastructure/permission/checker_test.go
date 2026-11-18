@@ -25,7 +25,6 @@ func (f *fakeCerbosRepo) CheckPermission(_ context.Context, param cerbos.CheckPe
 	return f.result, f.err
 }
 
-// embedding the interface satisfies the full method set; we override only FindByID.
 type fakeWorkspaceRepo struct {
 	gqlworkspace.WorkspaceRepo
 	ws  *workspace.Workspace
@@ -36,8 +35,8 @@ func (f *fakeWorkspaceRepo) FindByID(_ context.Context, _ string) (*workspace.Wo
 	return f.ws, f.err
 }
 
-// countingWorkspaceRepo counts FindByID calls to pin the checker's use of the
-// alias cache; bypassing the cache in resolveAlias would make this go RED.
+// countingWorkspaceRepo counts FindByID calls to pin resolveAlias's use of the
+// alias cache.
 type countingWorkspaceRepo struct {
 	gqlworkspace.WorkspaceRepo
 	ws    *workspace.Workspace

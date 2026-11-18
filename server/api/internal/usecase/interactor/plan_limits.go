@@ -16,21 +16,17 @@ import (
 	"github.com/reearth/reearthx/log"
 )
 
-// planLimits enforces the Flow limits of a workspace's plan: how many debug
-// runs it may have pending or running and start per hour, how often its
-// deployments may be run by hand and its triggers may run per day, how many
-// views it may render at once, how large its assets may be, how long a job may
-// run, and whether its triggers may run every hour. The plan answers whether a
-// use is allowed; Flow counts the use and sends the count.
-// A failure to reach the policy service or to count allows the action and logs
-// it: an outage must not stop workspaces from running.
+// planLimits enforces the Flow limits of a workspace's plan, which decides
+// whether a use is allowed from the counts Flow sends. Failing to reach the
+// policy service or to count allows the action and logs it, so an outage does
+// not stop workspaces from running.
 type planLimits struct {
 	policyChecker gateway.PolicyChecker
 	jobRepo       repo.Job
 	triggerRepo   repo.Trigger
 	usage         gateway.UsageCounter
-	// jobs brings a counted job's stored status up to date before a run is
-	// refused for it. Without it the stored status is taken as it is.
+	// jobs refreshes a counted job's stored status before a run is refused for
+	// it, and may be nil.
 	jobs        interfaces.Job
 	now         func() time.Time
 	jobLifetime time.Duration
@@ -125,16 +121,10 @@ func (a *jobAdmission) settle(ctx context.Context, err error) {
 	}
 }
 
-// ensureCanRunDebug admits a debug run: it refuses one early when the
-// workspace already has as many debug runs pending or running as its plan
-// allows, or has started as many this hour. Call it before any work for the
-// job is done, so a refused run costs nothing, save the job with the returned
-// admission, and refund it if the run is not started after all.
-//
-// A stored status only moves on while a monitoring loop watches the job, and
-// a server restart stops the loop. So before refusing, ensureCanRunDebug asks
-// the worker about the runs it counted, and one that has in fact finished stops
-// counting. The refusal names the runs that are still going.
+// ensureCanRunDebug refuses a debug run when the workspace already has as many
+// pending or running, or started this hour, as its plan allows. Counted runs
+// are refreshed from the worker before refusing, since stored statuses go stale
+// once a server restart stops their monitoring loop.
 func (l planLimits) ensureCanRunDebug(ctx context.Context, wid accountsid.WorkspaceID) (jobAdmission, error) {
 	a, err := l.reserveDebugSlot(ctx, wid)
 	if err != nil {
@@ -244,9 +234,8 @@ func jobIDs(jobs []*job.Job) []id.JobID {
 }
 
 // parseLimit reads a check's CurrentLimit as a count of debug runs to reserve,
-// and reports whether there is one. Anything but "unlimited" or a non-negative
-// count is logged: the plan's limit then holds only as far as reserveDebugSlot
-// checks it, and debug runs started together may pass it.
+// and reports whether there is one. An unparseable limit reserves no slot, so
+// debug runs started together may then exceed it.
 func (l planLimits) parseLimit(ctx context.Context, wid accountsid.WorkspaceID, s string) (int, bool) {
 	if s == gateway.PolicyLimitUnlimited {
 		return 0, false
@@ -295,9 +284,8 @@ type usageLimit struct {
 	// hourly makes the window an hour instead of a day in Japan.
 	hourly bool
 	// keepRefused keeps a refused use counted, so a caller looping on a
-	// refusal is not let through by its own retries. Otherwise a refused use
-	// is given back, so the count is only of uses that were allowed and a
-	// workspace whose plan is raised is let through at once.
+	// refusal cannot get through by retrying. Otherwise refused uses are given
+	// back, so a workspace whose plan is raised is let through at once.
 	keepRefused bool
 }
 
@@ -351,16 +339,14 @@ func (u usageLimit) window(now time.Time) (resetAt time.Time, name string) {
 	return start.AddDate(0, 0, 1), start.Format(time.DateOnly)
 }
 
-// countedUse is one use counted against a usageLimit.
 type countedUse struct {
 	resetAt time.Time
 	key     string
 }
 
-// count counts one use against the workspace's uses in the current window, and
-// refuses it once the plan's uses are used up. A refused use is given back
-// unless u keeps refused uses. Without a usage counter, or when it fails, the
-// use is allowed and not counted.
+// count counts one use in the current window and refuses it once the plan's
+// uses are used up, giving a refused use back unless u.keepRefused is set.
+// Without a usage counter, or when it fails, the use is allowed and not counted.
 func (l planLimits) count(ctx context.Context, wid accountsid.WorkspaceID, u usageLimit) (*countedUse, error) {
 	if l.usage == nil || l.policyChecker == nil {
 		return nil, nil
@@ -383,7 +369,6 @@ func (l planLimits) count(ctx context.Context, wid accountsid.WorkspaceID, u usa
 	return use, nil
 }
 
-// giveBack takes use off its counter.
 func (l planLimits) giveBack(ctx context.Context, use countedUse) {
 	if err := l.usage.Decrement(context.WithoutCancel(ctx), use.key, use.resetAt); err != nil {
 		log.Warnfc(ctx, "plan limits: could not give back a counted use: %v", err)
@@ -403,13 +388,10 @@ const renderWorkTimeout = renderTimeout + time.Minute
 // is above renderWorkTimeout, so a render still in progress keeps its slot.
 const renderSlotLifetime = renderWorkTimeout + time.Minute
 
-// startRender takes one of the workspace's render slots, or refuses the render
-// with ErrConcurrentRenderLimit when its plan's renders at a time are all
-// taken. Each render holds a lease of its own, so a release can only give
-// back its own slot, never one a newer render holds. Finish the render's work
-// within renderWorkTimeout and call the returned function once it is done to
-// give the slot back. Without a usage counter, or when it fails, the render is
-// allowed.
+// startRender takes one of the workspace's render slots, or returns
+// ErrConcurrentRenderLimit when they are all taken. Each render holds its own
+// lease, so the returned release can only give back its own slot, and the
+// render's work must finish within renderWorkTimeout.
 func (l planLimits) startRender(ctx context.Context, wid accountsid.WorkspaceID) (func(), error) {
 	done := func() {}
 	if l.usage == nil || l.policyChecker == nil {
@@ -445,11 +427,10 @@ func (l planLimits) assetSizeAllowed(ctx context.Context, wid accountsid.Workspa
 	return nil
 }
 
-// lifetime bounds how far back a pending or running debug run still counts
-// toward the plan's debug runs at a time. It must be at least as long as the
-// worker lets a job live, or a run that is still going stops counting and a
-// second one starts. A row older than that is stale: whatever ran it has
-// stopped, and it must not block its workspace forever.
+// lifetime bounds how far back a pending or running debug run counts toward the
+// plan, and must be at least as long as the worker lets a job live, or a run
+// still going stops counting. Older rows are stale and must not block the
+// workspace forever.
 func (l planLimits) lifetime() time.Duration {
 	if l.jobLifetime > 0 {
 		return l.jobLifetime
@@ -458,9 +439,8 @@ func (l planLimits) lifetime() time.Duration {
 }
 
 // enabledTriggerAllowed returns ErrEnabledTriggerLimit when the workspace
-// already has as many triggers enabled as its plan allows, so one more may not
-// be enabled. Callers ask it before any transaction, and only when a trigger
-// would become enabled. A failure to count allows it.
+// already has as many triggers enabled as its plan allows. Callers ask it
+// before any transaction, and only when a trigger would become enabled.
 func (l planLimits) enabledTriggerAllowed(ctx context.Context, wid accountsid.WorkspaceID) error {
 	if l.policyChecker == nil || l.triggerRepo == nil {
 		return nil

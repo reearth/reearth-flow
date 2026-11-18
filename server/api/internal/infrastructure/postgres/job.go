@@ -237,9 +237,8 @@ func (r *Job) SaveIfRunningBelow(ctx context.Context, j *job.Job, limit int, sin
 // FindByProject returns debug jobs for a project (mirrors Mongo: {projectid, debug:true}).
 func (r *Job) FindByProject(ctx context.Context, pid id.ProjectID) ([]*job.Job, error) {
 	db := r.c.DB(ctx)
-	// Exclude preview-schema jobs from run history: they are persisted (debug=true)
-	// but are not real runs. Legacy rows predate the mode column (default ''), so
-	// `mode <> 'preview-schema'` keeps them. Mirrors the Mongo FindByProject filter.
+	// Preview-schema jobs are persisted as debug jobs but are not real runs.
+	// Legacy rows hold the column default '', which `mode <> 'preview-schema'` keeps.
 	rows, err := pgxx.List(ctx, db,
 		"SELECT * FROM jobs WHERE project_id = $1 AND debug = true AND mode <> 'preview-schema'",
 		[]any{pid.String()},

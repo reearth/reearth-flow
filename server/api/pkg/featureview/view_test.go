@@ -19,9 +19,8 @@ func tilesRequest() Request {
 	return Request{Shape: ShapeTiles, Options: DefaultOptions()}
 }
 
-// Keys as they were before the engine version joined them, computed from that
-// code. A version the API could not learn must leave every key as it was, so
-// deploying this before the worker can answer changes nothing.
+// The expected keys were computed before engine versions were hashed, and an
+// unknown version must still produce them.
 func TestKeyWithNoEngineVersionIsTheKeyFromBeforeVersions(t *testing.T) {
 	tiles := tilesRequest()
 	tiles.ServedFrom = "https://api.example/artifacts/J/feature-view/node.default"
@@ -31,8 +30,6 @@ func TestKeyWithNoEngineVersionIsTheKeyFromBeforeVersions(t *testing.T) {
 	assert.Equal(t, "tiles-f-1cc6db342437372efbf6ef25a0a84fed", tiles.Key())
 }
 
-// An engine fix can change a glb as well as a tileset, so both shapes are
-// keyed by the engine that renders them.
 func TestKeyChangesWithTheEngineVersion(t *testing.T) {
 	for name, req := range map[string]Request{"gltf": gltfRequest(42), "tiles": tilesRequest()} {
 		unknown := req.Key()
@@ -46,8 +43,6 @@ func TestKeyChangesWithTheEngineVersion(t *testing.T) {
 	}
 }
 
-// The key is the cache contract: a repeat request must reuse a rendered view,
-// and any change to what would be rendered must not.
 func TestKeyIsStableForTheSameRequest(t *testing.T) {
 	assert.Equal(t, gltfRequest(42).Key(), gltfRequest(42).Key())
 	assert.NotEqual(t, gltfRequest(42).Key(), gltfRequest(43).Key())
@@ -86,9 +81,6 @@ func TestKeyChangesWithEveryRenderOption(t *testing.T) {
 	}
 }
 
-// A vector tileset's tilejson names its tiles by absolute URL, so a tiles view
-// served from somewhere else is a different view; a glb names no URL, so its
-// cached render stays good.
 func TestKeyChangesWithWhereATilesViewIsServed(t *testing.T) {
 	tiles := tilesRequest()
 	moved := tiles
@@ -101,8 +93,6 @@ func TestKeyChangesWithWhereATilesViewIsServed(t *testing.T) {
 	assert.Equal(t, glb.Key(), movedGLB.Key())
 }
 
-// The template's braces are what a viewer substitutes, so they must survive
-// as written rather than escaped like the rest of a URL path.
 func TestVectorTilesURLKeepsTheTemplateLiteral(t *testing.T) {
 	for _, dir := range []string{
 		"https://api.example/artifacts/J/feature-view/node.high%20rise/tiles-all-ab",
@@ -115,9 +105,6 @@ func TestVectorTilesURLKeepsTheTemplateLiteral(t *testing.T) {
 	}
 }
 
-// A configured artifact base may carry a query or fragment, such as a CDN
-// token. The template belongs in the path, ahead of it, and the tile requests
-// keep the same suffix the tilejson was served with.
 func TestVectorTilesURLGoesInThePathAheadOfAQueryOrFragment(t *testing.T) {
 	for dir, want := range map[string]string{
 		"https://cdn.example/artifacts/J/fv/n/tiles-all-ab?token=x":   "https://cdn.example/artifacts/J/fv/n/tiles-all-ab/{z}/{x}/{y}.mvt?token=x",
@@ -129,8 +116,6 @@ func TestVectorTilesURLGoesInThePathAheadOfAQueryOrFragment(t *testing.T) {
 	}
 }
 
-// A glb is not tiled, so folding the tile knobs into its key would invalidate a
-// perfectly good cached glb whenever an unrelated 2D default moved.
 func TestGltfKeyIgnoresTileOptions(t *testing.T) {
 	base := gltfRequest(7)
 
@@ -150,7 +135,6 @@ func TestGltfKeyIgnoresTileOptions(t *testing.T) {
 	assert.NotEqual(t, base.Key(), untextured.Key())
 }
 
-// The key is a path segment, so it has to survive being one.
 func TestKeyIsPathSafeAndReadable(t *testing.T) {
 	awkward := tilesRequest()
 	awkward.Selection.Filter = filter(`attributes["../etc/passwd"] == "/x"`)
@@ -164,8 +148,6 @@ func TestKeyIsPathSafeAndReadable(t *testing.T) {
 	assert.True(t, strings.HasPrefix(tilesRequest().Key(), "tiles-all-"))
 }
 
-// Each shape takes only the selection it can act on, mirroring the engine CLI
-// where clap rejects the other's argument outright.
 func TestAShapeTakesOnlyItsOwnSelection(t *testing.T) {
 	assert.NoError(t, gltfRequest(1).Validate())
 	assert.NoError(t, tilesRequest().Validate(), "a tileset may take every row")
@@ -189,8 +171,6 @@ func TestAShapeTakesOnlyItsOwnSelection(t *testing.T) {
 	assert.ErrorIs(t, unknown.Validate(), ErrInvalidRequest)
 }
 
-// The zoom span guard is the one that protects the renderer's memory: the
-// engine holds every level's sliced geometry at once.
 func TestZoomRangeIsBounded(t *testing.T) {
 	tests := map[string]struct {
 		min, max uint8
@@ -262,16 +242,10 @@ func TestEntryPointNameFollowsTheFormat(t *testing.T) {
 	assert.Error(t, err)
 }
 
-// The report is probed to answer "already rendered?", so its name must not
-// depend on a format the server cannot know until the render has run.
 func TestReportNameDoesNotDependOnFormat(t *testing.T) {
 	assert.Equal(t, "tiles-all-abcd1234.report.json", ReportName("tiles-all-abcd1234"))
 }
 
-// The default range has to reach a zoomed-out camera. The engine emits tiles
-// only for min..=max and the tilejson advertises minzoom, so a default that
-// starts at the detail levels renders the whole-port overview blank until the
-// user has already zoomed in — which is the one thing a tiles view is for.
 func TestDefaultOptionsCoverAZoomedOutCamera(t *testing.T) {
 	o := DefaultOptions()
 
@@ -280,8 +254,6 @@ func TestDefaultOptionsCoverAZoomedOutCamera(t *testing.T) {
 	assert.NoError(t, Request{Shape: ShapeTiles, Options: o}.Validate(), "the default must satisfy its own guards")
 }
 
-// Every key Key produces names its shape, so a view can be described as the
-// kind it is even when its report says nothing usable.
 func TestShapeFromKey(t *testing.T) {
 	row := 3
 	filter := "attributes.height > 10"

@@ -8,13 +8,9 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-// TestProjectRunActionAdmitsReadersAndWriters pins the role boundary for a
-// debug run. Project.Run authorizes with ActionRead; gating it on ActionEdit
-// (maintainer/owner) or ActionAny (writer and above) excludes the roles that
-// are meant to be able to run one.
-//
-// This asserts against DefineResources(), the same input the Cerbos policies
-// are generated from, so it fails if the roles for that action are narrowed.
+// Project.Run authorizes with ActionRead so readers and writers can start a
+// debug run. This asserts against DefineResources(), the input the Cerbos
+// policies are generated from.
 func TestProjectRunActionAdmitsReadersAndWriters(t *testing.T) {
 	var runRoles, anyRoles []string
 	for _, r := range rbac.DefineResources() {

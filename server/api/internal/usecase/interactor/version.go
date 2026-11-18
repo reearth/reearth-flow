@@ -8,10 +8,9 @@ import (
 	"github.com/reearth/reearthx/log"
 )
 
-// actionVersionTimeout bounds how long a debug run or a deployment waits for
-// its version. A save cut short loses nothing: the websocket server keeps the
-// changes recorded, and its next save (at most 15 minutes later, or when the
-// last editor leaves) includes them.
+// actionVersionTimeout bounds how long a debug run or a deployment waits for its
+// version. A save cut short loses nothing, since the websocket server's next save
+// includes the changes.
 const actionVersionTimeout = 20 * time.Second
 
 // saveActionVersion saves the project's workflow as a version labelled label

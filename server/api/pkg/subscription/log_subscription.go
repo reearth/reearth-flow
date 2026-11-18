@@ -54,8 +54,7 @@ func (m *LogManager) Notify(jobID string, logs []*log.Log) {
 			select {
 			case ch <- l:
 			default:
-				// Log dropped message or implement retry logic
-				// For now, we'll still drop but with larger buffer this should be rare
+				// A subscriber whose buffer is full misses this message.
 			}
 		}
 	}

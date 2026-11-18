@@ -22,14 +22,10 @@ const VersionsPath = "/auth/versions"
 // contributor IDs, which the websocket server caps well below this.
 const maxVersionNoticeBytes = 1 << 20
 
-// VersionNotice is the body of POST /auth/versions: a version of a project's
-// workflow was saved. The websocket server sends notices in no particular
-// order, retries them, and sends a version's notice again when edits made
-// during its save turn out to be in it, with more contributors and possibly
-// the same LastEditedAt.
-//
-// Nothing is kept per version, so a repeated notice needs no deduplication:
-// recording an edit only ever moves the project forward to LastEditedAt.
+// VersionNotice is the body of POST /auth/versions, which the websocket server
+// may send out of order, retry, or resend with more contributors and the same
+// LastEditedAt. None of that needs deduplication, because recording an edit
+// only ever moves the project forward.
 type VersionNotice struct {
 	SavedAt time.Time `json:"savedAt"`
 	// LastEditedAt is when the version's last recorded edit was made.
@@ -48,13 +44,10 @@ type ProjectEditRecorder interface {
 	RecordEdit(ctx context.Context, pid id.ProjectID, at time.Time, by *accountsid.UserID) error
 }
 
-// VersionHandler serves POST /auth/versions: the project's updatedAt and
-// updatedBy take the version's last edit when it is later than the project's.
-//
-// The request must carry the websocket server's shared secret in X-API-Secret.
-// The /auth routes share the API's public listener, so without it anyone could
-// set a project's last editor. With no secret configured, every notice is
-// refused.
+// VersionHandler serves POST /auth/versions, moving the project's updatedAt and
+// updatedBy to the version's last edit when it is later. It requires the
+// websocket server's secret in X-API-Secret because the /auth routes share the
+// public listener, and refuses every notice when no secret is configured.
 type VersionHandler struct {
 	projects ProjectEditRecorder
 	now      func() time.Time
@@ -93,9 +86,8 @@ func (h *VersionHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, "lastEditedAt or savedAt required", http.StatusBadRequest)
 		return
 	}
-	// Never ahead of this clock. Project setters stamp time.Now(), so a later
-	// metadata save would move a future updatedAt backwards, and the project
-	// lock orders its changes by updatedAt.
+	// Clamped to this clock: project setters stamp time.Now(), so a future
+	// updatedAt would later move backwards, and the project lock orders by it.
 	if now := h.now(); at.After(now) {
 		at = now
 	}

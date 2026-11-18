@@ -11,7 +11,7 @@ import (
 
 type AssetDocument struct {
 	CreatedAt               time.Time
-	Project                 *string // Made optional for workspace-based assets
+	Project                 *string // nil for workspace-only assets
 	User                    *string
 	Integration             *string
 	Thread                  *string
@@ -52,7 +52,6 @@ func NewAsset(asset *asset.Asset) (*AssetDocument, string) {
 		Public:      asset.Public(),
 	}
 
-	// Only set project if it's not empty
 	if pid := asset.Project(); !pid.IsNil() {
 		pidStr := pid.String()
 		doc.Project = &pidStr
@@ -104,7 +103,6 @@ func (d *AssetDocument) Model() (*asset.Asset, error) {
 		FlatFiles(d.FlatFiles).
 		Public(d.Public)
 
-	// Only set project if it exists
 	if d.Project != nil {
 		pid, err := id.ProjectIDFrom(*d.Project)
 		if err != nil {

@@ -9,13 +9,10 @@ import (
 	"github.com/reearth/reearthx/log"
 )
 
-// Job events are structured log lines for usage analytics. On GCP the logger writes JSON, so each key/value is a
-// jsonPayload field in Cloud Logging, and a sink filtered on
-// jsonPayload.event can route them to BigQuery. They join with the Batch job
-// labels on workspace_id, and on job_id to the original_id label.
-//
-// They are best-effort: a job finished while no monitoring loop watched it,
-// e.g. across a server restart, logs no finished event.
+// Job events are structured log lines for usage analytics, routed to BigQuery by
+// a Cloud Logging sink on jsonPayload.event and joined with the Batch job labels
+// on workspace_id and job_id. A job that finished while no monitoring loop
+// watched it, such as across a server restart, logs no finished event.
 const (
 	jobEventSubmitted    = "flow.job.submitted"
 	jobEventSubmitFailed = "flow.job.submit_failed"
@@ -47,7 +44,6 @@ const (
 	jobBackendCloudRun = "cloudrun"
 )
 
-// logJobEvent logs event for j, with kv as extra fields.
 func logJobEvent(ctx context.Context, event string, j *job.Job, kv ...any) {
 	logJobEventOn(ctx, event, j, jobBackend(j), kv...)
 }
@@ -73,9 +69,8 @@ func logJobEventOn(ctx context.Context, event string, j *job.Job, backend string
 }
 
 // logJobFinished logs the finished event for j, with the time from the job's
-// request to its completion. StartedAt is set when the job is requested, so
-// elapsed_sec includes upload and queue time, not only execution: no
-// execution-start timestamp is recorded.
+// request to its completion. elapsed_sec therefore includes upload and queue
+// time, since no execution-start timestamp is recorded.
 func logJobFinished(ctx context.Context, j *job.Job) {
 	end := time.Now()
 	if c := j.CompletedAt(); c != nil {

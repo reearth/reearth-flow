@@ -34,7 +34,6 @@ type AuthProvider interface {
 	Configs() AuthConfigs
 }
 
-// Decode is a custom decoder for AuthConfigs
 func (ipd *AuthConfigs) Decode(value string) error {
 	if value == "" {
 		return nil

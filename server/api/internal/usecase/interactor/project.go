@@ -149,8 +149,7 @@ func (i *Project) viewable(ctx context.Context, p *project.Project) (*project.Pr
 }
 
 // isMember reports whether the caller may list the workspace's projects, which
-// every workspace role may. A caller with no user is never a member. Only a
-// denial means no; other errors are returned.
+// every workspace role may. Only a permission denial means no, and other errors are returned.
 func (i *Project) isMember(ctx context.Context, wid accountsid.WorkspaceID) (bool, error) {
 	if adapter.User(ctx) == nil {
 		return false, nil
@@ -239,9 +238,7 @@ func (i *Project) Update(ctx context.Context, p interfaces.UpdateProjectParam) (
 		return nil, err
 	}
 	// The plan is asked before the transaction so the call never holds one open,
-	// but the decision below uses the project as read inside it: re-sending
-	// PRIVATE must not pass because the project was private when first read and
-	// has been made public since.
+	// but the decision uses the project as read inside it.
 	wantsPrivate := p.Visibility != nil && *p.Visibility == project.VisibilityPrivate
 	var privateAllowed bool
 	var privateErr error
@@ -258,8 +255,8 @@ func (i *Project) Update(ctx context.Context, p interfaces.UpdateProjectParam) (
 			return err
 		}
 
-		// Only a change is refused, so a project made private on a paid plan
-		// stays private after a downgrade; it just cannot be made private again.
+		// Only a change to private is refused, so a project made private before a
+		// plan downgrade stays private.
 		if wantsPrivate && prj.Visibility() != project.VisibilityPrivate {
 			if privateErr != nil {
 				return privateErr
@@ -330,10 +327,10 @@ const (
 	lockSignalAttemptTimeout = 2 * time.Second
 )
 
-// signalProjectLock tells the websocket server about a committed lock change,
-// so peers already editing the project lose (or regain) write access. New
-// connections are checked against the saved project anyway, so a failure is
-// logged rather than returned: the lock itself is saved.
+// signalProjectLock tells the websocket server about a committed lock change, so
+// peers already editing the project lose or regain write access. A failure is
+// logged rather than returned, since the lock is saved and new connections are
+// checked against it.
 func (i *Project) signalProjectLock(ctx context.Context, prj *project.Project) {
 	if i.websocket == nil {
 		return
@@ -412,8 +409,7 @@ func (i *Project) canCreatePrivate(ctx context.Context, wid accountsid.Workspace
 }
 
 // ensureVisibilityAllowed rejects making a project private when the plan does
-// not allow it. Public is always allowed. It runs before any transaction so the
-// policy call never holds one open.
+// not allow it. It runs before any transaction so the policy call never holds one open.
 func (i *Project) ensureVisibilityAllowed(ctx context.Context, wid accountsid.WorkspaceID, v *project.Visibility) error {
 	if v == nil || *v != project.VisibilityPrivate {
 		return nil
@@ -581,9 +577,8 @@ func (i *Project) Run(ctx context.Context, p interfaces.RunProjectParam) (_ *job
 	if proj == nil {
 		return nil, rerror.ErrNotFound
 	}
-	// A debug run executes the project without changing it, so anyone who can
-	// see the project may run one. ActionRead is the only rule carrying
-	// reader; ActionAny is writer and above, ActionEdit maintainer and above.
+	// A debug run does not change the project, so anyone who can see it may run
+	// one. ActionRead is the only rule that includes the reader role.
 	if err := i.checkPermission(ctx, rbac.ActionRead, proj.Workspace()); err != nil {
 		return nil, err
 	}
@@ -674,7 +669,6 @@ func (i *Project) Run(ctx context.Context, p interfaces.RunProjectParam) (_ *job
 
 	if useCloudRun {
 		if i.job != nil {
-			// Run on Cloud Run; the standard monitoring loop finalizes the job.
 			i.job.RunCloudRunWorker(j, gateway.RunJobParam{
 				JobID:          j.ID(),
 				WorkflowURL:    workflowURLStr,
@@ -706,17 +700,12 @@ func (i *Project) Run(ctx context.Context, p interfaces.RunProjectParam) (_ *job
 	return j, nil
 }
 
-// previewSampleSizeCap bounds the per-source sample count to keep probe cost
-// finite. A nil sampleSize is passed through so the engine applies its own
-// default.
+// previewSampleSizeCap bounds the per-source sample count to keep probe cost finite.
 const previewSampleSizeCap = 1000
 
-// PreviewSchema runs the engine's dynamic probe-schema over the live editor
-// graph. It mirrors Run's orchestration (flush Yjs -> GCS, snapshot, persisted
-// Job, Cloud Run worker dispatch with Batch fallback, monitoring) but is a fully
-// dedicated code path: it never calls Run, tags the job Mode=preview-schema, does
-// NOT upload metadata (the probe does not consume it), and dispatches through the
-// worker's dedicated probe-schema route.
+// PreviewSchema runs the engine's probe-schema over the live editor graph. It
+// mirrors Run's orchestration but uploads no metadata, since the probe does not
+// consume it, and dispatches through the worker's probe-schema route.
 func (i *Project) PreviewSchema(ctx context.Context, p interfaces.PreviewSchemaParam) (_ *job.Job, err error) {
 	ctx, span := otel.Tracer(tracerName).Start(ctx, "interactor.Project.PreviewSchema")
 	span.SetAttributes(attribute.String("project.id", p.ProjectID.String()))
@@ -783,13 +772,9 @@ func (i *Project) PreviewSchema(ctx context.Context, p interfaces.PreviewSchemaP
 	}
 	workflowURLStr := workflowURL.String()
 
-	// Intentionally NO UploadMetadata: probe-schema does not consume metadata.
-
 	j.SetParameters(withProject(p.Parameters, &projectID))
-	// The report URL is surfaced via outputURLs on completion by
-	// Job.updateJobArtifacts, not here: the artifact does not exist until the
-	// worker writes it (and never on failure), so setting it at creation time
-	// would hand clients a URL that 404s.
+	// The report URL is set on completion by Job.updateJobArtifacts, because the
+	// artifact does not exist until the worker writes it.
 
 	if err := i.transaction.WithinTransaction(ctx, func(ctx context.Context) error {
 		return i.jobRepo.Save(ctx, j)
@@ -817,8 +802,6 @@ func (i *Project) PreviewSchema(ctx context.Context, p interfaces.PreviewSchemaP
 
 	if useCloudRun {
 		if i.job != nil {
-			// Dispatch on Cloud Run via the dedicated probe-schema route; the
-			// standard monitoring loop finalizes the job.
 			i.job.PreviewSchemaCloudRunWorker(j, gateway.ProbeSchemaParam{
 				JobID:       j.ID(),
 				WorkflowURL: workflowURLStr,
@@ -867,9 +850,8 @@ func parametersToVariables(params []*parameter.Parameter) map[string]string {
 		if p == nil {
 			continue
 		}
-		// A parameter with no default must not be sent: stringifying nil yields
-		// the literal "<nil>", which would override the workflow's variables.get(...)
-		// resolution / the engine default. Leave it unset instead.
+		// A parameter with no default is not sent, since stringifying nil yields
+		// "<nil>" and would override the engine's own resolution.
 		dv := p.DefaultValue()
 		if dv == nil {
 			continue

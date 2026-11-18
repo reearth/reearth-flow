@@ -14,11 +14,9 @@ import (
 	"gopkg.in/yaml.v3"
 )
 
-// readWorkflowWith reads the `with` block of the workflow file a deployment
-// uploaded. A run that sets no values of its own hands the worker none, and
-// the worker takes these instead, so they are what such a run ran with. The
-// file is JSON when the editor deploys it and may be YAML when uploaded by
-// hand; YAML reads both.
+// readWorkflowWith reads the `with` block of a deployment's workflow file, which
+// the worker uses for a run that sets no values of its own. The file may be JSON
+// or YAML, and the YAML parser reads both.
 func readWorkflowWith(ctx context.Context, files gateway.File, workflowURL string) (map[string]any, error) {
 	u, err := url.Parse(workflowURL)
 	if err != nil {
@@ -45,10 +43,8 @@ func readWorkflowWith(ctx context.Context, files gateway.File, workflowURL strin
 }
 
 // workflowWithVariables types a workflow file's `with` values by the
-// deployment's variables, for the job's record. A value is kept as the file
-// holds it when its variable's type cannot read it, since that is still what
-// the worker ran with. A key the deployment does not define is recorded as
-// text.
+// deployment's variables, for the job's record. A value its type cannot read is
+// kept as the file holds it, and an undefined key is recorded as text.
 func workflowWithVariables(defs []*parameter.Parameter, with map[string]any) map[string]variable.Variable {
 	if len(with) == 0 {
 		return nil

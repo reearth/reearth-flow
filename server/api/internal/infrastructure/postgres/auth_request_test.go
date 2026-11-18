@@ -12,11 +12,9 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-// TestAuthRequest_AtlasSchema exercises the reearthx authserver.Postgres repo
-// against flow's Atlas-migrated auth_requests table (pgtest applies the embedded migrations
-// and never calls the library's self-managing Init). It asserts that flow's
-// schema matches what the repo expects — if the Atlas DDL and the reearthx repo
-// drift apart, this fails.
+// TestAuthRequest_AtlasSchema runs the reearthx authserver.Postgres repo against
+// flow's Atlas-migrated auth_requests table, without the library's own Init.
+// It fails if the Atlas DDL and the reearthx repo drift apart.
 func TestAuthRequest_AtlasSchema(t *testing.T) {
 	pool := pgtest.Connect(t)(t)
 	ctx := context.Background()

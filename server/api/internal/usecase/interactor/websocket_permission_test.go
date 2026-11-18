@@ -15,9 +15,8 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-// countingWSClient records how many times the underlying client was reached.
-// The count is the assertion that matters: a permission check that returns an
-// error but still calls through has denied nothing.
+// countingWSClient records how many times the underlying client was reached,
+// so a denial that still calls through is caught.
 type countingWSClient struct {
 	calls int
 }
@@ -97,9 +96,7 @@ func wsFixture(t *testing.T, allow bool) (*Websocket, *countingWSClient, *record
 	return NewWebsocket(client, projectRepo, rc), client, rc, prj.ID().String(), accountsid.WorkspaceID(wsID)
 }
 
-// assertDenied: a denied operation must error AND never reach the client. The
-// call count is the assertion that matters, since an error that still calls
-// through has denied nothing.
+// assertDenied: a denied operation must error AND never reach the client.
 func assertDenied(t *testing.T, name string, call func(context.Context, *Websocket, string) error) {
 	t.Helper()
 	i, client, _, docID, _ := wsFixture(t, false)
@@ -109,8 +106,8 @@ func assertDenied(t *testing.T, name string, call func(context.Context, *Websock
 }
 
 // assertChecks: the check must be scoped to the workspace owning the addressed
-// project, with the right action. Without the workspace the checker could
-// approve on membership of any workspace, which is the cross-tenant hole.
+// project, with the right action. Without the workspace, membership of any
+// workspace would approve it.
 func assertChecks(t *testing.T, name, action string, call func(context.Context, *Websocket, string) error) {
 	t.Helper()
 	i, client, rc, docID, wsID := wsFixture(t, true)
@@ -173,12 +170,8 @@ func setProjectLock(ctx context.Context, i *Websocket, d string) error {
 	return i.SetProjectLock(ctx, d, true, time.UnixMilli(1))
 }
 
-// TestWebsocket_DeniedOperationsNeverReachTheClient is the security assertion:
-// before this interactor, any authenticated user could act on any project.
-//
-// CopyDocument and Close are covered separately below. CopyDocument authorizes
-// twice and recordingChecker keeps only the last call, so listing it here would
-// assert the source's action and stop checking the destination.
+// CopyDocument and Close are covered separately below, because CopyDocument
+// authorizes twice and recordingChecker keeps only the last call.
 func TestWebsocket_DeniedOperationsNeverReachTheClient(t *testing.T) {
 	assertDenied(t, "GetLatest", getLatest)
 	assertDenied(t, "GetHistory", getHistory)
@@ -196,16 +189,9 @@ func TestWebsocket_DeniedOperationsNeverReachTheClient(t *testing.T) {
 	assertDenied(t, "SetProjectLock", setProjectLock)
 }
 
-// TestWebsocket_ChecksTargetProjectWorkspace pins the action each operation
-// demands, and that it is evaluated against the addressed project's workspace.
-//
-// The read-only operations use ActionRead, not ActionAny: ResourceProject's
-// ActionAny grants writer/maintainer/owner only (deliberately excluding
-// reader), because FlushToGCS — the editor's save path — is also gated by
-// ActionAny and must not be reachable by a reader. Genuine reads need their
-// own action so a reader can still view a document without also being able
-// to write one. Getting this wrong previously let any reader call
-// FlushToGCS and persist writes to a project they can only read.
+// Reads use ActionRead rather than ActionAny, because ActionAny excludes
+// readers. ActionAny also gates FlushToGCS, the editor's save path, which a
+// reader must not reach.
 func TestWebsocket_ChecksTargetProjectWorkspace(t *testing.T) {
 	assertChecks(t, "GetLatest", rbac.ActionRead, getLatest)
 	assertChecks(t, "GetHistory", rbac.ActionRead, getHistory)
@@ -223,15 +209,8 @@ func TestWebsocket_ChecksTargetProjectWorkspace(t *testing.T) {
 	assertChecks(t, "SetProjectLock", rbac.ActionEdit, setProjectLock)
 }
 
-// TestWebsocket_ReaderCannotFlushToGCS is the exact regression this fix
-// closes: a reader-scoped caller must be denied FlushToGCS, the write that
-// persists live document state to storage. Before this fix, ResourceProject's
-// live Cerbos policy granted ActionAny — which FlushToGCS is gated by — to
-// role "reader" as well as writer/maintainer/owner, so a Reader could
-// silently persist writes to a document they could only view. This test
-// pins the code-side half of the fix (the action FlushToGCS requests); the
-// role→action mapping itself is enforced by the deployed Cerbos policy, not
-// by this codebase, and was independently verified against the live service.
+// TestWebsocket_ReaderCannotFlushToGCS pins the action FlushToGCS requests.
+// Keeping that action away from readers is up to the deployed Cerbos policy.
 func TestWebsocket_ReaderCannotFlushToGCS(t *testing.T) {
 	i, client, rc, docID, _ := wsFixture(t, true)
 	require.NoError(t, i.FlushToGCS(context.Background(), docID))
@@ -240,10 +219,8 @@ func TestWebsocket_ReaderCannotFlushToGCS(t *testing.T) {
 	assert.Equal(t, 1, client.calls)
 }
 
-// TestWebsocket_UnresolvableProjectIsDenied: authorization depends on resolving
-// the project to a workspace, so anything that stops it resolving must deny
-// rather than fall through. Otherwise a malformed or unknown id would be a way to
-// skip the check entirely.
+// TestWebsocket_UnresolvableProjectIsDenied: authorization needs the project's
+// workspace, so a malformed or unknown id must deny rather than skip the check.
 func TestWebsocket_UnresolvableProjectIsDenied(t *testing.T) {
 	for _, docID := range []string{
 		"",                       // empty
@@ -259,10 +236,9 @@ func TestWebsocket_UnresolvableProjectIsDenied(t *testing.T) {
 	}
 }
 
-// TestWebsocket_CopyDocumentChecksBothProjects: a copy reads the source and
-// writes the destination, so it needs edit on the destination AND read on the
-// source. Checking only the destination would let a caller pull another
-// workspace's document into a project they legitimately own.
+// TestWebsocket_CopyDocumentChecksBothProjects: a copy needs edit on the
+// destination AND read on the source. Checking only the destination would let a
+// caller pull another workspace's document into their own project.
 func TestWebsocket_CopyDocumentChecksBothProjects(t *testing.T) {
 	ctx := context.Background()
 	projectRepo := memory.NewProject()
@@ -285,7 +261,6 @@ func TestWebsocket_CopyDocumentChecksBothProjects(t *testing.T) {
 	assert.ErrorIs(t, err, interfaces.ErrOperationDenied)
 	assert.Zero(t, client.calls, "copy proceeded despite no read permission on the source")
 
-	// With both workspaces permitted it goes through.
 	allowAll := &recordingChecker{allow: true}
 	client2 := &countingWSClient{}
 	i2 := NewWebsocket(client2, projectRepo, allowAll)
@@ -307,9 +282,8 @@ func (p *perWorkspaceChecker) CheckPermission(_ context.Context, _, _ string, wo
 	return true, nil
 }
 
-// TestWebsocket_CloseNeedsNoPermission: Close is connection lifecycle, not a
-// document operation, and is called on shutdown where there is no user context to
-// authorize against.
+// TestWebsocket_CloseNeedsNoPermission: Close is connection lifecycle and runs
+// on shutdown, where there is no user to authorize.
 func TestWebsocket_CloseNeedsNoPermission(t *testing.T) {
 	i, client, _, _, _ := wsFixture(t, false) // deny everything
 	require.NoError(t, i.Close())

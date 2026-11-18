@@ -33,7 +33,6 @@ func TestConfig_LockAndLoad_EmptyDB(t *testing.T) {
 	assert.Equal(t, int64(0), cfg.Migration)
 	assert.Nil(t, cfg.Auth)
 
-	// Release the lock so subsequent calls can proceed.
 	require.NoError(t, r.Unlock(ctx))
 }
 
@@ -45,7 +44,6 @@ func TestConfig_Save_And_Reload(t *testing.T) {
 	pool := connect(t)
 	ctx := context.Background()
 
-	// Write via first repo instance.
 	r1 := postgres.NewConfig(pgxx.NewClient(pool), postgres.NewLock(pool))
 	cfg1, err := r1.LockAndLoad(ctx)
 	require.NoError(t, err)
@@ -53,7 +51,6 @@ func TestConfig_Save_And_Reload(t *testing.T) {
 	cfg1.Auth = &config.Auth{Cert: "c", Key: "k"}
 	require.NoError(t, r1.SaveAndUnlock(ctx, cfg1))
 
-	// Read back via a second repo instance.
 	r2 := postgres.NewConfig(pgxx.NewClient(pool), postgres.NewLock(pool))
 	cfg2, err := r2.LockAndLoad(ctx)
 	require.NoError(t, err)
@@ -78,7 +75,6 @@ func TestConfig_SaveAuth(t *testing.T) {
 	require.NoError(t, err)
 	require.NoError(t, r1.SaveAndUnlock(ctx, cfg))
 
-	// SaveAuth updates auth without touching migration.
 	r2 := postgres.NewConfig(pgxx.NewClient(pool), postgres.NewLock(pool))
 	require.NoError(t, r2.SaveAuth(ctx, &config.Auth{Cert: "cert2", Key: "key2"}))
 
@@ -105,7 +101,6 @@ func TestConfig_SaveAndUnlock_ReleasesLock(t *testing.T) {
 	cfg.Migration = 7
 	require.NoError(t, r1.SaveAndUnlock(ctx, cfg))
 
-	// Lock is released; a second repo instance should be able to LockAndLoad.
 	r2 := postgres.NewConfig(pgxx.NewClient(pool), postgres.NewLock(pool))
 	cfg2, err := r2.LockAndLoad(ctx)
 	require.NoError(t, err)

@@ -1,7 +1,7 @@
 // Package accountsdb reads users and workspaces straight from the accounts
-// database, for callers that name a user but hold none of that user's tokens,
-// such as the internal API. The accounts GraphQL API answers only for the user
-// whose token it is given. Everything here is read-only.
+// database, read-only, for callers such as the internal API that name a user
+// but hold none of that user's tokens. The accounts GraphQL API answers only
+// for the user whose token it is given.
 package accountsdb
 
 import (

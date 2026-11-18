@@ -79,9 +79,8 @@ func (li *LogInteractor) GetLogs(ctx context.Context, since time.Time, jobID id.
 	return logs, nil
 }
 
-// GetLogsBatch batches GetLogs for a dataloader: one job lookup and one
-// permission check per distinct workspace instead of one of each per job.
-// Jobs in a workspace the caller can't see are simply omitted from the result.
+// GetLogsBatch batches GetLogs for a dataloader, checking permission once per
+// distinct workspace. Jobs in a workspace the caller can't see are omitted.
 func (li *LogInteractor) GetLogsBatch(ctx context.Context, since time.Time, jobIDs []id.JobID) (map[id.JobID][]*log.Log, error) {
 	if len(jobIDs) == 0 {
 		if err := li.checkPermission(ctx, rbac.ActionAny); err != nil {
@@ -115,7 +114,7 @@ func (li *LogInteractor) GetLogsBatch(ctx context.Context, since time.Time, jobI
 	result := make(map[id.JobID][]*log.Log, len(jobs))
 	for ws, jids := range byWorkspace {
 		if err := li.checkPermission(ctx, rbac.ActionAny, ws); err != nil {
-			continue // caller can't see this workspace; omit its jobs' logs
+			continue
 		}
 		for _, jid := range jids {
 			logs, err := li.logsGatewayRedis.GetLogs(ctx, since, until, jid)

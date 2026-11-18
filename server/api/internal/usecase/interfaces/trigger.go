@@ -78,7 +78,6 @@ var (
 	// already has as many triggers enabled as its plan allows.
 	ErrEnabledTriggerLimit error = errors.New("this workspace already has as many triggers enabled as its plan allows")
 
-	// ErrTriggerDisabled refuses running a trigger that is disabled.
 	ErrTriggerDisabled error = errors.New("trigger is disabled")
 
 	ErrTriggerNotAPIDriven error = errors.New("only an API-driven trigger has an auth token")
@@ -127,11 +126,8 @@ type Trigger interface {
 }
 
 // ScheduledRunRefusal names why err refused a scheduled run, and reports
-// whether a retry from the scheduler can succeed. Only errors known to be
-// permanent are not retried, so an error added later is retried until it is
-// listed here. A plan limit that resets with a period, such as a number of
-// runs per day, belongs here: retries end long before it resets. A limit on
-// runs at the same time does not, as a run ends.
+// whether a scheduler retry can succeed. Only errors listed as permanent, such
+// as per-period plan limits that outlast the retries, are not retried.
 func ScheduledRunRefusal(err error) (trigger.RefusalCode, bool) {
 	switch {
 	case errors.Is(err, ErrTriggerNotFound), errors.Is(err, rerror.ErrNotFound):

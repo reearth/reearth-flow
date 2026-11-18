@@ -96,7 +96,6 @@ func (r *Asset) FindByWorkspace(
 	whereSQL := "WHERE " + strings.Join(where, " AND ")
 	db := r.c.DB(ctx)
 
-	// Determine sort column and direction
 	orderCol := "created_at"
 	dir := "DESC"
 	if filter.Sort != nil {
@@ -213,7 +212,7 @@ func assetToParams(a *asset.Asset) gen.UpsertAssetParams {
 		Public:      a.Public(),
 	}
 
-	// project_id: only store if it's a real project (not the workspace-only sentinel)
+	// A nil project is the workspace-only sentinel and is stored as NULL.
 	if pid := a.Project(); !pid.IsNil() {
 		s := pid.String()
 		p.ProjectID = &s

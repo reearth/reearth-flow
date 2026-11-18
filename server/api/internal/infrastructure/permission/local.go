@@ -16,14 +16,10 @@ type WorkspaceFinder interface {
 	FindByID(context.Context, workspace.ID) (*workspace.Workspace, error)
 }
 
-// LocalChecker decides permissions from the caller's role in the workspace as
-// stored in the accounts database. It serves callers that name a user but hold
-// none of that user's tokens, such as the internal API: the accounts service
-// can only check permissions for the user whose token it is given.
-//
-// It applies roleAllows, the same rules the workspace-role guard in checker
-// applies after Cerbos. Anyone who is not an active member of the workspace is
-// denied, as is a check that names no workspace.
+// LocalChecker decides permissions from the caller's workspace role in the
+// accounts database, for callers such as the internal API that hold none of the
+// user's tokens. It applies roleAllows and denies non-members and checks that
+// name no workspace.
 type LocalChecker struct {
 	workspaces WorkspaceFinder
 }

@@ -69,7 +69,6 @@ func startInternalAPI(cfg *ServerConfig) {
 	s.GracefulStop()
 }
 
-// NewInternalAPIServer builds the gRPC server for the internal API.
 func NewInternalAPIServer(cfg *ServerConfig) *grpc.Server {
 	uc := newInternalUsecases(cfg)
 	s := grpc.NewServer(
@@ -86,12 +85,10 @@ func NewInternalAPIServer(cfg *ServerConfig) *grpc.Server {
 	return s
 }
 
-// newInternalUsecases builds the usecases with permissions decided from the
-// accounts database, since an internal call carries a user ID but none of the
-// user's tokens, and the accounts service only checks permissions for the
-// user whose token it is given. The accounts client therefore serves only
-// workspace reads, from the same database; none of the internal API's
-// usecases use its user or Cerbos repositories.
+// newInternalUsecases decides permissions from the accounts database, because
+// an internal call carries a user ID but no token the accounts service could
+// check. The accounts client therefore serves only workspace reads from that
+// database.
 func newInternalUsecases(cfg *ServerConfig) *interfaces.Container {
 	checker := permission.NewLocalChecker(cfg.AccountRepos.Workspace)
 	accounts := &gqlclient.Client{WorkspaceRepo: accountsdb.NewWorkspaces(cfg.AccountRepos.Workspace)}

@@ -37,8 +37,9 @@ func (i *Workspace) FindByUser(ctx context.Context, uid accountsid.UserID) (acco
 	return i.workspaceRepo.FindByUser(ctx, uid.String())
 }
 
-// Create checks unscoped: no workspace exists yet to scope against. An omitted alias is derived from the name; one the
-// caller supplied is passed through as given, so accounts judges it rather than us.
+// Create checks unscoped, since no workspace exists yet to scope against. An
+// omitted alias is derived from the name, while a supplied one is passed through
+// for accounts to judge.
 func (i *Workspace) Create(ctx context.Context, name string, alias *string) (*accountsworkspace.Workspace, error) {
 	if err := i.checkPermission(ctx, rbac.ActionCreate); err != nil {
 		return nil, err
@@ -50,7 +51,7 @@ func (i *Workspace) Create(ctx context.Context, name string, alias *string) (*ac
 		value = deriveAlias(name)
 	}
 
-	// Only a derived alias retries under a suffix; one the caller chose is theirs, so its rejection is reported.
+	// Only a derived alias retries under a suffix, and a rejected caller-chosen alias is reported.
 	candidate := value
 	for attempt := 1; ; attempt++ {
 		ws, err := i.workspaceRepo.CreateWorkspace(ctx, gqlworkspace.CreateWorkspaceInput{

@@ -121,10 +121,8 @@ func errorPresenter(dev bool) graphql.ErrorPresenterFunc {
 }
 
 // attachOperationPermissionMemo scopes the permission-verdict memo to a
-// single GraphQL operation. It runs for every transport (HTTP and websocket
-// alike) and, critically, re-attaches a fresh memo per operation on
-// long-lived websocket connections, where gqlgen otherwise derives every
-// operation's context from the original upgrade request.
+// single GraphQL operation. On a websocket, gqlgen derives every operation's
+// context from the upgrade request, so each operation needs a fresh memo.
 func attachOperationPermissionMemo(ctx context.Context, next graphql.OperationHandler) graphql.ResponseHandler {
 	ctx = adapter.AttachPermissionVerdictMemo(ctx)
 	return next(ctx)

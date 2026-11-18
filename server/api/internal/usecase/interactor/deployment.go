@@ -130,9 +130,8 @@ func (i *Deployment) FindByProject(ctx context.Context, id id.ProjectID) (*deplo
 	return i.deploymentRepo.FindByProject(ctx, id)
 }
 
-// FindByProjects batches FindByProject for a dataloader: one project lookup and
-// one permission check per distinct workspace instead of one of each per project.
-// Projects in a workspace the caller can't see are simply omitted from the result.
+// FindByProjects batches FindByProject for a dataloader, checking permission
+// once per distinct workspace. Projects in a workspace the caller can't see are omitted.
 func (i *Deployment) FindByProjects(ctx context.Context, ids []id.ProjectID) (map[id.ProjectID]*deployment.Deployment, error) {
 	if len(ids) == 0 {
 		if err := i.checkPermission(ctx, rbac.ActionAny); err != nil {
@@ -157,7 +156,7 @@ func (i *Deployment) FindByProjects(ctx context.Context, ids []id.ProjectID) (ma
 	result := make(map[id.ProjectID]*deployment.Deployment, len(projects))
 	for ws, pids := range byWorkspace {
 		if err := i.checkPermission(ctx, rbac.ActionAny, ws); err != nil {
-			continue // caller can't see this workspace; omit its projects' deployments
+			continue
 		}
 		for _, pid := range pids {
 			dep, err := i.deploymentRepo.FindByProject(ctx, pid)
@@ -283,10 +282,8 @@ func (i *Deployment) Create(ctx context.Context, dp interfaces.CreateDeploymentP
 		result = dep
 		return nil
 	}); err != nil {
-		// Only a failed callback means no row references the uploaded files. A
-		// commit that fails after it (result set) may still have saved the row,
-		// so the files stay: a leaked object beats a deployment without its
-		// workflow. Best-effort, like the cleanup after an update.
+		// Only a failed callback guarantees no row references the uploaded files.
+		// A commit that fails after it may still have saved the row, so the files stay.
 		if result == nil {
 			for _, u := range uploaded {
 				if rmErr := i.file.RemoveWorkflow(ctx, u); rmErr != nil {
@@ -328,9 +325,8 @@ func (i *Deployment) Update(ctx context.Context, dp interfaces.UpdateDeploymentP
 		}
 
 		if dp.Workflow != nil {
-			// Captured, not deleted, until the transaction commits: removing it here
-			// is irreversible, so any later failure (or a serialization retry) would
-			// roll the row back to a WorkflowURL whose object no longer exists.
+			// Captured, not deleted, until the transaction commits, since a later
+			// failure or retry would roll the row back to a WorkflowURL whose object is gone.
 			previousWorkflowURL = d.WorkflowURL()
 
 			u, err := i.file.UploadWorkflow(ctx, dp.Workflow)
@@ -353,9 +349,8 @@ func (i *Deployment) Update(ctx context.Context, dp interfaces.UpdateDeploymentP
 					return err
 				}
 
-				// Defensive: every repo returns ErrNotFound rather than a nil head,
-				// so this cannot be nil today. incrementVersion("") is "v1", which
-				// is what Create uses for a project with no head.
+				// incrementVersion("") is "v1", which is what Create uses for a
+				// project with no head.
 				var headVersion string
 				if currentHead != nil {
 					headVersion = currentHead.Version()
@@ -391,9 +386,8 @@ func (i *Deployment) Update(ctx context.Context, dp interfaces.UpdateDeploymentP
 		saveActionVersion(ctx, i.websocket, result.Project().String(), ws.VersionLabelDeploy)
 	}
 
-	// Only now is it safe to drop the old object: the row that stopped referencing
-	// it is durable. Best-effort, since a failure here leaks an object rather than
-	// breaking the deployment.
+	// The old object is dropped only once the row that stopped referencing it is
+	// durable. A failure here leaks the object rather than failing the update.
 	if previousWorkflowURL != "" && previousWorkflowURL != result.WorkflowURL() {
 		if u, _ := url.Parse(previousWorkflowURL); u != nil {
 			if err := i.file.RemoveWorkflow(ctx, u); err != nil {
@@ -520,10 +514,9 @@ func (i *Deployment) Execute(ctx context.Context, p interfaces.ExecuteDeployment
 	// count toward the day's deployment runs.
 	defer func() { admission.settle(ctx, err) }()
 
-	// Without overrides the worker is handed no variables and takes the
-	// workflow file's own `with`, so that is what the job records. The file
-	// can differ from the deployment's defaults: a deployment updated without
-	// a new file, or one uploaded by hand.
+	// Without overrides the worker takes the workflow file's own `with`, so that
+	// is what the job records. The file can differ from the deployment's
+	// defaults, for example after an update without a new file.
 	recordedVars := finalVars
 	if len(p.Variables) == 0 {
 		with, readErr := readWorkflowWith(ctx, i.file, dep.WorkflowURL())
@@ -558,8 +551,7 @@ func (i *Deployment) Execute(ctx context.Context, p interfaces.ExecuteDeployment
 	}
 	j.SetParameters(runParameters(params, recordedVars, dep.Project()))
 
-	// Without overrides the worker takes the defaults from the workflow
-	// file's own `with`, as it always has.
+	// Without overrides the worker takes the defaults from the workflow file's own `with`.
 	var workerVars map[string]string
 	if len(p.Variables) > 0 {
 		workerVars = variable.ToWorkerMap(finalVars)

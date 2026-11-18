@@ -57,7 +57,6 @@ func TestNewUserFacingLog(t *testing.T) {
 		timestamp := time.Now()
 		message := "Data processing"
 
-		// Complex nested JSON metadata
 		metadata := json.RawMessage(`{
 			"statistics": {
 				"total": 5000,
@@ -147,7 +146,6 @@ func TestUserFacingLog_TimestampPrecision(t *testing.T) {
 	jobID := id.NewJobID()
 	message := "Timestamp precision test"
 
-	// Test with different timestamp precisions
 	t.Run("microsecond precision", func(t *testing.T) {
 		timestamp := time.Now().Truncate(time.Microsecond)
 		log := NewUserFacingLog(jobID, timestamp, message, nil)
@@ -171,7 +169,6 @@ func TestUserFacingLog_LargeMessage(t *testing.T) {
 	jobID := id.NewJobID()
 	timestamp := time.Now()
 
-	// Create a large message
 	largeMessage := ""
 	for i := 0; i < 1000; i++ {
 		largeMessage += "This is a long message that simulates verbose logging output. "
@@ -181,7 +178,7 @@ func TestUserFacingLog_LargeMessage(t *testing.T) {
 
 	assert.NotNil(t, log)
 	assert.Equal(t, largeMessage, log.Message())
-	assert.Greater(t, len(log.Message()), 60000) // Should be > 60k characters
+	assert.Greater(t, len(log.Message()), 60000)
 }
 
 func TestUserFacingLog_InvalidMetadata(t *testing.T) {
@@ -195,11 +192,9 @@ func TestUserFacingLog_InvalidMetadata(t *testing.T) {
 		invalidMetadata := json.RawMessage(`{invalid json}`)
 		log := NewUserFacingLog(jobID, timestamp, message, invalidMetadata)
 
-		// The log should still be created
 		assert.NotNil(t, log)
 		assert.Equal(t, invalidMetadata, log.Metadata())
 
-		// But unmarshaling should fail
 		var result map[string]interface{}
 		err := json.Unmarshal(log.Metadata(), &result)
 		assert.Error(t, err)
@@ -212,7 +207,6 @@ func TestUserFacingLog_InvalidMetadata(t *testing.T) {
 		assert.NotNil(t, log)
 		assert.Equal(t, stringMetadata, log.Metadata())
 
-		// Should unmarshal as a string
 		var result string
 		err := json.Unmarshal(log.Metadata(), &result)
 		assert.NoError(t, err)

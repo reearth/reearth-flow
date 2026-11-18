@@ -52,9 +52,9 @@ const (
 	ProjectSortStarCount ProjectSortField = "starCount"
 )
 
-// ProjectSearchParam filters and pages a project search. A nil Workspace
-// searches every workspace, Topics matches projects that have all of them, and
-// an empty SortBy sorts by update time. Page starts at 1.
+// In ProjectSearchParam a nil Workspace searches every workspace, Topics
+// matches projects that have all of them, and an empty SortBy sorts by update
+// time. Page starts at 1.
 type ProjectSearchParam struct {
 	Workspace       *accountsid.WorkspaceID
 	Visibility      *project.Visibility

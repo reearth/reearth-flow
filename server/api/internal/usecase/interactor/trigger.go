@@ -159,8 +159,7 @@ func (i *Trigger) Create(ctx context.Context, param interfaces.CreateTriggerPara
 	if trg.EventSource() == "TIME_DRIVEN" && i.scheduler != nil {
 		if err := i.scheduler.CreateScheduledJob(ctx, trg); err != nil {
 			log.Errorf("Failed to create scheduled job for trigger %s: %v", trg.ID(), err)
-			// Don't fail trigger creation if scheduler registration fails
-			// The trigger can still be executed manually @pyshx
+			// Creation still succeeds, and saving the trigger again registers its job.
 		}
 	}
 
@@ -176,8 +175,7 @@ func (i *Trigger) ExecuteAPITrigger(ctx context.Context, p interfaces.ExecuteAPI
 		return nil, rerror.ErrNotFound
 	}
 
-	// API-driven triggers use their own secret token as the auth mechanism.
-	// No workspace membership is required — the token is sufficient proof of authorization.
+	// API-driven triggers authenticate by their own secret token instead of workspace membership.
 	if trigger.EventSource() == "API_DRIVEN" {
 		if !trigger.VerifyAuthToken(p.AuthenticationToken) {
 			return nil, interfaces.ErrInvalidTriggerToken
@@ -226,12 +224,10 @@ func (i *Trigger) ExecuteAPITrigger(ctx context.Context, p interfaces.ExecuteAPI
 		return nil, err
 	}
 
-	// The job is saved under the deployment's workspace, so that is the one
-	// whose limit applies, even for a trigger saved before cross-workspace
-	// references were refused. Only calls authenticated by the trigger's token
-	// count toward the daily API trigger calls; a user running any other
-	// trigger by hand runs its deployment by hand. The variables are checked
-	// first so a call they refuse is not counted.
+	// The job runs under the deployment's workspace, so its limit applies, and
+	// variables are checked first so a refused call is not counted. Only calls
+	// authenticated by the trigger's token count as API trigger calls, and any
+	// other run counts as a manual deployment run.
 	var admission jobAdmission
 	if trigger.EventSource() == "API_DRIVEN" {
 		admission, err = i.planLimits.ensureCanRunAPITrigger(ctx, deployment.Workspace())
@@ -269,7 +265,6 @@ func (i *Trigger) ExecuteAPITrigger(ctx context.Context, p interfaces.ExecuteAPI
 	}
 	j.SetParameters(runParameters(deployment.Parameters(), finalVarMap, deployment.Project()))
 
-	// Update last triggered time
 	trigger.SetLastTriggered(time.Now())
 
 	if err := i.saveTriggeredJob(ctx, admission, j, trigger); err != nil {
@@ -298,8 +293,6 @@ func (i *Trigger) ExecuteAPITrigger(ctx context.Context, p interfaces.ExecuteAPI
 		log.Errorf("Failed to save job %s with GCP ID: %v", j.ID(), err)
 		return nil, err
 	}
-	// A trigger run with its token is an API call; any other is a user running
-	// it by hand.
 	jobTrigger := jobTriggerManual
 	if trigger.EventSource() == "API_DRIVEN" {
 		jobTrigger = jobTriggerAPI
@@ -327,15 +320,13 @@ func (i *Trigger) ExecuteTimeDrivenTrigger(ctx context.Context, p interfaces.Exe
 			i.recordRefusal(ctx, trigger, p.ScheduledAt, err)
 		}
 	}()
-	// No user permission check: a scheduled run has no signed-in user. The
-	// caller is Cloud Scheduler, which the /execute-scheduled handler
-	// authenticates by its OIDC token, and the user who set up the schedule
-	// was checked when the trigger was created or updated.
+	// No user permission check: the caller is Cloud Scheduler, authenticated by
+	// OIDC in the /execute-scheduled handler. The user who set up the schedule
+	// was checked when the trigger was saved.
 
 	if !trigger.Enabled() {
-		// A disabled trigger's schedule is paused when it is saved; one that
-		// still fires, such as one saved before schedules were paused, is
-		// paused here.
+		// A disabled trigger's schedule is paused when it is saved, so one that
+		// still fires is paused here.
 		if trigger.EventSource() == "TIME_DRIVEN" && i.scheduler != nil {
 			if err := i.scheduler.PauseScheduledJob(ctx, trigger.ID()); err != nil {
 				log.Errorfc(ctx, "Failed to pause the scheduled job of disabled trigger %s: %v", trigger.ID(), err)
@@ -393,9 +384,7 @@ func (i *Trigger) ExecuteTimeDrivenTrigger(ctx context.Context, p interfaces.Exe
 		return nil, err
 	}
 
-	// The job is saved under the deployment's workspace, so that is the one
-	// whose limit applies, even for a trigger saved before cross-workspace
-	// references were refused.
+	// The job runs under the deployment's workspace, so its limit applies.
 	admission, err := i.planLimits.ensureCanRunTimeDrivenTrigger(ctx, deployment.Workspace())
 	if err != nil {
 		return nil, err
@@ -429,7 +418,6 @@ func (i *Trigger) ExecuteTimeDrivenTrigger(ctx context.Context, p interfaces.Exe
 	}
 	j.SetParameters(runParameters(deployment.Parameters(), finalVarMap, deployment.Project()))
 
-	// Update last triggered time
 	trigger.SetLastTriggered(time.Now())
 	trigger.SetLastRefusal(nil)
 
@@ -529,7 +517,7 @@ func (i *Trigger) ExecuteCMSTrigger(ctx context.Context, p interfaces.ExecuteCMS
 		return nil, err
 	}
 
-	// A user running a trigger by hand runs its deployment by hand.
+	// A CMS trigger run counts as a manual deployment run.
 	admission, err := i.planLimits.ensureCanRunDeployment(ctx, d.Workspace())
 	if err != nil {
 		return nil, err
@@ -605,17 +593,13 @@ func (i *Trigger) Update(ctx context.Context, param interfaces.UpdateTriggerPara
 		return nil, "", err
 	}
 	// The plan is asked before the transaction so the call never holds one open,
-	// but whether the update makes the trigger hourly is decided from the
-	// trigger as read inside it. A trigger that is hourly already needs no
-	// answer.
+	// but the answer is used only if the trigger read inside it still needs one.
 	wantsHourly := param.EventSource == "TIME_DRIVEN" && param.TimeInterval == trigger.TimeIntervalEveryHour
 	var hourlyErr error
 	if wantsHourly && !isHourly(trg) {
 		hourlyErr = i.planLimits.hourlyAllowed(ctx, trg.Workspace())
 	}
-	// Only turning a trigger on is asked, so disabling or editing one is never
-	// refused. Like the hourly answer, it is used only if the trigger is still
-	// disabled when read inside the transaction.
+	// Only enabling is checked, so disabling or editing a trigger is never refused.
 	wantsEnabled := param.Enabled != nil && *param.Enabled
 	var enableErr error
 	askedEnable := wantsEnabled && !trg.Enabled()
@@ -632,8 +616,8 @@ func (i *Trigger) Update(ctx context.Context, param interfaces.UpdateTriggerPara
 			return err
 		}
 
-		// Only a change is refused, so a trigger made hourly before a downgrade
-		// keeps its schedule; it just cannot be made hourly again.
+		// Only a change to hourly is refused, so a trigger made hourly before a
+		// plan downgrade keeps its schedule.
 		if wantsHourly && !isHourly(t) {
 			if hourlyErr == nil && isHourly(trg) {
 				// It stopped being hourly after the plan was skipped.
@@ -729,13 +713,10 @@ func (i *Trigger) Update(ctx context.Context, param interfaces.UpdateTriggerPara
 	return t, authToken, nil
 }
 
-// matchScheduledJob makes the Cloud Scheduler job of t, whose edit is saved,
-// match it. It runs after the edit's transaction, so a call that fails, or
-// whose answer is lost after Cloud Scheduler applied it, cannot roll back the
-// edit while the job keeps the edit's schedule. Updating sends the whole job,
-// and creates it when t has none, so saving t again brings its job in line.
-// A job left behind by a trigger that stopped being time-driven is only
-// logged: its runs are refused because the trigger is not time-driven.
+// matchScheduledJob syncs t's Cloud Scheduler job after the edit's transaction,
+// so a failed call cannot roll back an edit the scheduler may already have
+// applied. Updating sends the whole job and creates a missing one, so saving t
+// again repairs it.
 func (i *Trigger) matchScheduledJob(ctx context.Context, t *trigger.Trigger, wasTimeDriven bool) error {
 	if i.scheduler == nil {
 		return nil
@@ -747,6 +728,7 @@ func (i *Trigger) matchScheduledJob(ctx context.Context, t *trigger.Trigger, was
 			return interfaces.ErrTriggerScheduleNotUpdated
 		}
 	case wasTimeDriven:
+		// A leftover job's runs are refused because the trigger is not time-driven.
 		if err := i.scheduler.DeleteScheduledJob(ctx, t.ID()); err != nil {
 			log.Errorfc(ctx, "Failed to delete scheduled job for trigger %s: %v", t.ID(), err)
 		}
@@ -808,11 +790,9 @@ func (i *Trigger) Delete(ctx context.Context, id id.TriggerID) (err error) {
 	})
 }
 
-// recordRefusal records on t why its scheduled run was refused, and until
-// when the scheduler retries it, so its user can see why it did not run. Only
-// a call carrying its scheduled time, as Cloud Scheduler's always do, is a
-// scheduled run. A retry of a run that is already starting is not a refusal,
-// and a trigger that is not time-driven has no scheduled runs to show one for.
+// recordRefusal records on t why its scheduled run was refused and until when
+// the scheduler retries it, so its user can see why it did not run. Only calls
+// carrying a scheduled time count, and a retry of a run already starting is not a refusal.
 func (i *Trigger) recordRefusal(ctx context.Context, t *trigger.Trigger, scheduledAt *time.Time, err error) {
 	if scheduledAt == nil || errors.Is(err, interfaces.ErrScheduledRunInProgress) {
 		return
@@ -831,11 +811,9 @@ func (i *Trigger) recordRefusal(ctx context.Context, t *trigger.Trigger, schedul
 	}
 }
 
-// saveTriggeredJob saves a trigger's new job and then the trigger's last
-// triggered time. They are not in a transaction: the job save reserves the
-// plan's slot itself, and a transaction would make it refuse runs that start
-// together, such as daily triggers at midnight. A failure to save the trigger
-// does not fail the run.
+// saveTriggeredJob saves the job and then the trigger outside a transaction,
+// because the job save reserves the plan's slot itself and a transaction would
+// refuse runs that start together. A failure to save the trigger does not fail the run.
 func (i *Trigger) saveTriggeredJob(ctx context.Context, admission jobAdmission, j *job.Job, t *trigger.Trigger) error {
 	if err := admission.save(ctx, j); err != nil {
 		return err

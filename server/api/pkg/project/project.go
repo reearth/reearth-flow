@@ -117,11 +117,9 @@ func (p *Project) SetIsBasicAuthActive(isBasicAuthActive bool) {
 	p.updatedAt = time.Now()
 }
 
-// SetIsLocked also moves updatedAt at least a millisecond past its previous
-// value, even when this replica's clock reads earlier than the one that saved
-// it. A lock change's updatedAt orders it against the project's earlier lock
-// changes (see Project.UpdateProject), which may have been saved by other
-// replicas.
+// SetIsLocked moves updatedAt at least a millisecond past its previous value,
+// even if this replica's clock is behind. Lock changes saved by different
+// replicas are ordered by updatedAt (see Project.UpdateProject).
 func (p *Project) SetIsLocked(isLocked bool) {
 	p.isLocked = isLocked
 	now := time.Now()
@@ -163,10 +161,9 @@ func (p *Project) SetUpdatedBy(uid *UserID) {
 }
 
 // RecordEdit records an edit made outside the project's own fields, such as a
-// saved version of its workflow: by edited the project at at. It applies only
-// when at is later than updatedAt, so updatedAt never moves backwards and an
-// older edit cannot replace a newer editor. A nil by records an unknown editor.
-// It reports whether the project changed.
+// saved workflow version, only when at is later than updatedAt so neither the
+// time nor the editor regresses. It reports whether the project changed, and a
+// nil by means an unknown editor.
 func (p *Project) RecordEdit(at time.Time, by *UserID) bool {
 	if !at.After(p.updatedAt) {
 		return false

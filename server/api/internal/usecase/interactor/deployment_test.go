@@ -13,8 +13,7 @@ import (
 	"github.com/stretchr/testify/assert"
 )
 
-// nilDeploymentRepo is a stub that returns (nil, nil) from FindByID,
-// reproducing the production scenario that caused the nil pointer panic.
+// nilDeploymentRepo returns nil results with no error from every lookup.
 type nilDeploymentRepo struct{}
 
 func (r *nilDeploymentRepo) Filtered(_ repo.WorkspaceFilter) repo.Deployment { return r }

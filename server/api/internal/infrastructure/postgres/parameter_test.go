@@ -66,7 +66,6 @@ func TestParameter_FindByIDs_Order(t *testing.T) {
 	require.NoError(t, r.Save(ctx, p1))
 	require.NoError(t, r.Save(ctx, p2))
 	missing := id.NewParameterID()
-	// request in reverse order with a missing entry
 	got, err := r.FindByIDs(ctx, id.ParameterIDList{p2.ID(), missing, p1.ID()})
 	require.NoError(t, err)
 	require.NotNil(t, got)
@@ -81,7 +80,6 @@ func TestParameter_FindByProject_OrderedByIndex(t *testing.T) {
 	ctx := context.Background()
 	r := postgres.NewParameter(pgxx.NewClient(pool))
 	pid := id.NewProjectID()
-	// Insert in reverse index order
 	p2 := newParam(pid, 2)
 	p0 := newParam(pid, 0)
 	p1 := newParam(pid, 1)
@@ -157,7 +155,6 @@ func TestParameter_RemoveAll_Empty(t *testing.T) {
 	pool := pgtest.Connect(t)(t)
 	ctx := context.Background()
 	r := postgres.NewParameter(pgxx.NewClient(pool))
-	// Should not error on empty list
 	require.NoError(t, r.RemoveAll(ctx, id.ParameterIDList{}))
 }
 

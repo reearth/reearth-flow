@@ -9,9 +9,8 @@ import (
 	"github.com/reearth/reearthx/rerror"
 )
 
-// EdgeExecution writes edge_executions rows. Kept for cmd/dbmigrate's
-// Mongo->Postgres ETL; there is no read path (nothing in the API reads
-// this table).
+// EdgeExecution writes edge_executions rows for cmd/dbmigrate's Mongo->Postgres
+// ETL. Nothing in the API reads this table.
 type EdgeExecution struct {
 	c *pgxx.Client
 }

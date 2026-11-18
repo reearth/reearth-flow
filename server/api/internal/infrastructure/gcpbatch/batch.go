@@ -189,10 +189,8 @@ func (b *BatchRepo) SubmitProbeJob(
 	}
 
 	varString := strings.Join(varArgs(variables), " ")
-	// --job-id is required by the probe-schema subcommand and is the value it
-	// publishes in the completion event, which is the only thing that finalizes
-	// the job. Omitting it made this fallback fail at argument parsing and left
-	// the job PENDING until the monitoring cap.
+	// --job-id is required by probe-schema and is published in its completion
+	// event, which is the only thing that finalizes the job.
 	workflowCommand := fmt.Sprintf(
 		"%s probe-schema --workflow %s --report-url %s --job-id %s %s %s",
 		binaryPath,
@@ -213,11 +211,9 @@ func (b *BatchRepo) binaryPath() string {
 	return b.config.BinaryPath
 }
 
-// varArgs renders workflow variables as repeatable --var=k=v flags.
-//
-// Values are shell-quoted: they originate in project parameters, and the whole
-// command is handed to `/bin/sh -c`, so an unquoted value would be a command
-// injection.
+// varArgs renders workflow variables as repeatable --var=k=v flags. Values come
+// from project parameters and the command runs under `/bin/sh -c`, so they are
+// shell-quoted to prevent injection.
 func varArgs(variables map[string]string) []string {
 	if len(variables) == 0 {
 		return nil
@@ -233,20 +229,15 @@ func varArgs(variables map[string]string) []string {
 }
 
 // shellQuote wraps s in POSIX single quotes so `/bin/sh -c` treats it as one
-// literal word.
-//
-// Go's %q is not a substitute: it quotes with DOUBLE quotes, inside which sh
-// still expands $VAR, $(...) and backticks. Single quotes suppress all of it,
-// and the only character needing care is the single quote itself, which is
-// closed, escaped and reopened.
+// literal word. Go's %q is no substitute, because sh still expands $VAR, $(...)
+// and backticks inside double quotes.
 func shellQuote(s string) string {
 	return "'" + strings.ReplaceAll(s, "'", `'\''`) + "'"
 }
 
-// submitCommand builds and creates a Batch job running workflowCommand. It holds
-// the shared allocation/compute/logging assembly used by both run and probe jobs.
-// mode is recorded as the job_mode label, and maxRunDuration caps the run as in
-// SubmitJob.
+// submitCommand creates a Batch job running workflowCommand, with the allocation,
+// compute and logging shared by run and probe jobs. mode becomes the job_mode
+// label, and maxRunDuration caps the run as in SubmitJob.
 func (b *BatchRepo) submitCommand(
 	ctx context.Context,
 	jobID id.JobID,
@@ -294,7 +285,6 @@ func (b *BatchRepo) submitCommand(
 		MemoryMib:   int64(b.config.ComputeMemoryMib),
 	}
 
-	// Configure task retry for spot VM preemption.
 	maxRetryCount := b.config.maxRetryCount()
 	var lifecyclePolicies []*batchpb.LifecyclePolicy
 	if maxRetryCount > 0 {
@@ -333,7 +323,6 @@ func (b *BatchRepo) submitCommand(
 					"RUST_BACKTRACE":                            "1",
 				}
 
-				// Only set runtime config if values are provided
 				if b.config.ChannelBufferSize != "" {
 					vars["FLOW_RUNTIME_CHANNEL_BUFFER_SIZE"] = b.config.ChannelBufferSize
 				}
@@ -449,11 +438,10 @@ func (b *BatchRepo) submitCommand(
 // reconcileLookupTimeout bounds the lookup that settles a failed create.
 const reconcileLookupTimeout = 10 * time.Second
 
-// reconcileCreate settles whether a create that returned createErr made the
-// job anyway: a deadline or a dropped connection can come after Batch accepted
-// it. The job's name is fixed by its ID, so a lookup answers. It returns the
-// job's name when the job exists, an error wrapping gateway.ErrJobNotSubmitted
-// when it does not, and a plain error when that cannot be told.
+// reconcileCreate looks up whether a create that returned createErr made the job
+// anyway, since a deadline or dropped connection can follow Batch accepting it.
+// It returns the job's name when the job exists, an error wrapping
+// gateway.ErrJobNotSubmitted when it does not, and a plain error when that cannot be told.
 func (b *BatchRepo) reconcileCreate(ctx context.Context, jobName string, createErr error) (string, error) {
 	notSubmitted := fmt.Errorf("%w: failed to create job: %v", gateway.ErrJobNotSubmitted, createErr)
 	switch grpcstatus.Code(createErr) {

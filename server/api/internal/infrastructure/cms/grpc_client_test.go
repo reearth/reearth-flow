@@ -58,7 +58,6 @@ func TestNewGRPCClient(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			// Reset global pool for clean testing
 			globalPool = nil
 			poolOnce = sync.Once{}
 
@@ -745,7 +744,7 @@ func TestGrpcClient_ListModels(t *testing.T) {
 	})
 
 	t.Run("error listing models", func(t *testing.T) {
-		mockClient.ExpectedCalls = nil // Reset mock
+		mockClient.ExpectedCalls = nil
 		expectedReq := &cmspb.ListModelsRequest{
 			ProjectId: "project-error",
 		}

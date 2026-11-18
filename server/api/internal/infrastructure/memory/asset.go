@@ -73,7 +73,6 @@ func (r *Asset) FindByWorkspace(_ context.Context, wid accountsid.WorkspaceID, f
 	}
 
 	if filter.Pagination != nil && filter.Pagination.Page != nil {
-		// Page-based pagination
 		skip := (filter.Pagination.Page.Page - 1) * filter.Pagination.Page.PageSize
 		if skip >= len(result) {
 			return nil, interfaces.NewPageBasedInfo(total, filter.Pagination.Page.Page, filter.Pagination.Page.PageSize), nil

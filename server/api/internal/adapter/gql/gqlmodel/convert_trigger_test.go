@@ -51,7 +51,7 @@ func TestToTriggerRefusal(t *testing.T) {
 		assert.Equal(t, TriggerRefusalCodeTimeDrivenTriggerRunsDailyLimit, got.Code)
 	})
 
-	// Recorded before scheduled runs stopped being refused for running jobs.
+	// No longer recorded, but triggers may still have it stored.
 	t.Run("a stored concurrent job limit refusal", func(t *testing.T) {
 		t.Parallel()
 

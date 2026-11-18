@@ -119,7 +119,7 @@ func TestAsset_FindByIDs_OrderAndMissing(t *testing.T) {
 	require.NoError(t, r.Save(ctx, newAsset(t, wid, aid1, "first", 100)))
 	require.NoError(t, r.Save(ctx, newAsset(t, wid, aid2, "second", 200)))
 
-	// pgxx.OrderByIDs drops missing IDs (no nil padding); result has 2 items in request order
+	// pgxx.OrderByIDs drops missing IDs rather than padding with nil.
 	got, err := r.FindByIDs(ctx, id.AssetIDList{aid2, missing, aid1})
 	require.NoError(t, err)
 	require.Len(t, got, 2)
@@ -282,7 +282,6 @@ func TestAsset_Delete_WithWorkspaceFilter(t *testing.T) {
 	require.NoError(t, r.Delete(ctx, aid1))
 	require.NoError(t, r.Delete(ctx, aid2)) // not writable → no-op
 
-	// aid2 should still exist
 	got, err := base.FindByID(ctx, aid2)
 	require.NoError(t, err)
 	assert.NotNil(t, got)

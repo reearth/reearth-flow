@@ -137,9 +137,8 @@ func JobSaveIfRunningBelow(t *testing.T, r repo.Job) {
 }
 
 // JobSaveIfRunningBelowInTx is JobSaveIfRunningBelow with every call inside a
-// transaction. The run entry points do not make one, but a caller that does
-// must still never admit too many, and a call that loses a race has already
-// saved its job, so the refusal must roll that job back.
+// transaction. A call that loses a race has already saved its job, so the
+// refusal must roll that job back.
 func JobSaveIfRunningBelowInTx(t *testing.T, r repo.Job, tr usecasex.Transactor) {
 	t.Helper()
 	ctx := context.Background()
@@ -199,9 +198,8 @@ func JobSaveIfRunningBelowInTx(t *testing.T, r repo.Job, tr usecasex.Transactor)
 				assert.Error(t, findErr, "a refused job is rolled back")
 			}
 			// A transaction that loses the race cannot count again inside the
-			// aborted transaction, so it is refused even if a slot is left:
-			// contention may admit fewer than limit, never more. This is why
-			// the run entry points save outside a transaction.
+			// aborted transaction, so it is refused even if a slot is left.
+			// Contention may therefore admit fewer than limit, but never more.
 			assert.GreaterOrEqual(t, admitted, 1)
 			assert.LessOrEqual(t, admitted, limit)
 			n, err := r.CountRunningByWorkspace(ctx, ws, since)
@@ -212,10 +210,9 @@ func JobSaveIfRunningBelowInTx(t *testing.T, r repo.Job, tr usecasex.Transactor)
 }
 
 // JobScheduledRun checks that a time-driven trigger has at most one job for
-// each scheduled time: FindByScheduledRun finds it, and Save and
-// SaveIfRunningBelow refuse a second job for the same time. Each subtest gets
-// its own repository from newRepo, because a memory repository keeps the jobs
-// it is given and a subtest changes its own.
+// each scheduled time. Each subtest gets its own repository from newRepo,
+// because a memory repository keeps the jobs it is given and a subtest changes
+// its own.
 func JobScheduledRun(t *testing.T, newRepo func(*testing.T) repo.Job) {
 	t.Helper()
 	ctx := context.Background()

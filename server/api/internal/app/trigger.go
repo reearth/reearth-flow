@@ -148,12 +148,8 @@ const (
 	codeScheduledRunInProgress = "scheduled_run_in_progress"
 )
 
-// triggerError writes err as the response. A run refused by a plan limit is a
-// 429, so callers can tell it from a failure, with Retry-After and a code
-// naming the limit; a disabled trigger is a 409 with its own code. A scheduled
-// run refused by either is skipped before it gets here (see
-// scheduledTriggerError); the scheduler retries any other answer outside 2xx
-// on its own backoff and ignores Retry-After (see trigger.RetryPolicy).
+// triggerError writes err as the response. A plan-limit refusal is a 429 with
+// Retry-After and a code naming the limit, so callers can tell it from a failure.
 func triggerError(c echo.Context, err error) error {
 	var limit *interfaces.APITriggerLimitError
 	var usage *interfaces.UsageLimitError
@@ -200,8 +196,7 @@ func scheduleTime(r *http.Request) *time.Time {
 
 // scheduledTriggerError writes err as the answer to Cloud Scheduler, which
 // retries any answer outside 2xx. A run that can never succeed is answered 200
-// with status skipped and a code naming why, so it is not retried; any other
-// error is answered as triggerError does, and retried.
+// with status skipped and a code naming why, so it is not retried.
 func scheduledTriggerError(c echo.Context, err error) error {
 	if errors.Is(err, interfaces.ErrScheduledRunInProgress) {
 		return c.JSON(http.StatusConflict, map[string]string{"error": err.Error(), "code": codeScheduledRunInProgress})
@@ -227,11 +222,9 @@ func retryAfterSeconds(resetAt, now time.Time) int {
 
 func SetupTriggerRoutes(e *echo.Echo, scheduler *schedulerAuth) {
 	h := NewTriggerHandler(scheduler)
-	// Trigger endpoints are public webhooks callable from any origin.
-	// ExecuteTrigger enforces its own Bearer token; ExecuteScheduledTrigger
-	// accepts only Cloud Scheduler's OIDC token. OPTIONS routes must be registered
-	// explicitly so Echo's router matches preflight requests and the CORS
-	// middleware runs for them.
+	// Trigger endpoints are public webhooks that check their own tokens, so any
+	// origin may call them. OPTIONS routes are registered explicitly so Echo
+	// matches preflight requests and runs the CORS middleware for them.
 	triggerCORS := middleware.CORSWithConfig(middleware.CORSConfig{
 		AllowOrigins: []string{"*"},
 		AllowMethods: []string{http.MethodPost, http.MethodOptions},

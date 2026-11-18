@@ -15,11 +15,6 @@ import (
 	"github.com/vektah/gqlparser/v2/ast"
 )
 
-// TestAttachOperationPermissionMemo_ScopedPerOperation pins the fix for
-// gqlgen's websocket transport deriving every operation on a connection from
-// the ctx of the original upgrade request: two operations sharing the same
-// parent (connection) ctx must not share a permission-verdict memo, while
-// checks within a single operation must.
 func TestAttachOperationPermissionMemo_ScopedPerOperation(t *testing.T) {
 	// connCtx simulates the long-lived ctx gqlgen's websocket transport
 	// derives every operation from (captured once at connection upgrade).
@@ -43,9 +38,7 @@ func TestAttachOperationPermissionMemo_ScopedPerOperation(t *testing.T) {
 	require.True(t, ok)
 	assert.True(t, allowed, "second check within the same operation reuses the first verdict")
 
-	// Operation 2 on the SAME connection (same parent connCtx) — this is what
-	// happens for every subsequent operation sent over one websocket
-	// connection — must NOT see operation 1's memoized verdict.
+	// Operation 2 on the same connection must not see operation 1's verdict.
 	var op2Ctx context.Context
 	resp2 := attachOperationPermissionMemo(connCtx, func(ctx context.Context) graphql.ResponseHandler {
 		op2Ctx = ctx

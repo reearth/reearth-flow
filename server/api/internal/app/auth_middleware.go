@@ -34,9 +34,8 @@ func newAuthMiddlewares(param *authMiddlewaresParam) authMiddlewares {
 	}
 }
 
-// graphqlBodyLimitMiddleware caps the GraphQL request body at read time.
-// Multipart requests (file uploads) get uploadLimit, since gqlgen streams them
-// and spills large files to disk. Every other body is buffered in memory by
+// graphqlBodyLimitMiddleware caps multipart uploads, which gqlgen streams to
+// disk, at uploadLimit. Every other body is buffered in memory by
 // gqlOpNameMiddleware, so it gets the much smaller jsonLimit.
 func graphqlBodyLimitMiddleware(uploadLimit, jsonLimit int64) echo.MiddlewareFunc {
 	return func(next echo.HandlerFunc) echo.HandlerFunc {
@@ -97,7 +96,6 @@ func jwtContextMiddleware() echo.MiddlewareFunc {
 		return func(c echo.Context) error {
 			authHeader := c.Request().Header.Get("Authorization")
 			if authHeader != "" {
-				// Remove the "Bearer " prefix from the Authorization header to extract the token
 				const bearerPrefix = "Bearer "
 				if len(authHeader) > len(bearerPrefix) && authHeader[:len(bearerPrefix)] == bearerPrefix {
 					token := authHeader[len(bearerPrefix):]
@@ -128,9 +126,8 @@ func authMiddleware(gqlClient *gqlclient.Client, skipOps map[string]struct{}) ec
 
 			ctx := c.Request().Context()
 
-			// TODO: Optimize performance by including necessary user information (userID, email, etc.)
-			// directly in the JWT token instead of executing a GQL query on every request.
-			// This will eliminate the overhead of making an API call to fetch user data for each request.
+			// TODO: Carry the user information (userID, email, etc.) in the JWT instead
+			// of querying the accounts API on every request.
 			u, err := gqlClient.UserRepo.FindMe(ctx)
 			if err != nil {
 				log.Debugc(ctx, err, "authMiddleware: FindMe failed; continue as anonymous")

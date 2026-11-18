@@ -33,9 +33,9 @@ type JobInfo struct {
 var ErrJobNotSubmitted = errors.New("the job was not submitted")
 
 type Batch interface {
-	// SubmitJob dispatches a run. maxRunDuration caps how long it may run below
-	// the configured limit; 0 leaves the configured limit. An error wraps
-	// ErrJobNotSubmitted only when the job is known not to exist.
+	// SubmitJob dispatches a run, with maxRunDuration capping it below the
+	// configured limit (0 leaves that limit). An error wraps ErrJobNotSubmitted
+	// only when the job is known not to exist.
 	SubmitJob(ctx context.Context, jobID id.JobID, workflowsURL string, metadataURL string, variables map[string]string, projectID id.ProjectID, workspaceID accountsid.WorkspaceID, previousJobID *id.JobID, startNodeID *uuid.UUID, maxRunDuration time.Duration) (string, error)
 	// SubmitProbeJob dispatches a Batch job invoking the `probe-schema` subcommand
 	// (not `run`). It is the Batch fallback for the preview-schema pipeline.

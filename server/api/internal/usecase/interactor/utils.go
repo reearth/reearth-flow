@@ -225,9 +225,8 @@ func isEmptyValue(v any) bool {
 	}
 }
 
-// normalizeRequestVars types an API call's `with` by the variables it
-// targets. A value its variable's type refuses, or a key the deployment does
-// not define, fails the call, as a manual run's override does, rather than
+// normalizeRequestVars types an API call's `with` by the variables it targets.
+// A value its type refuses, or an undefined key, fails the call rather than
 // reaching the worker, which would ignore it.
 func normalizeRequestVars(
 	vars map[string]any,
@@ -329,7 +328,6 @@ func applyRunOverrides(
 		out[o.Key] = variable.Variable{Key: o.Key, Type: t, Value: v}
 	}
 
-	// One refusal naming every offending key, of both kinds.
 	var errs []error
 	if len(unknown) > 0 {
 		errs = append(errs, fmt.Errorf("%w: %s", interfaces.ErrUnknownVariable, strings.Join(unknown, ", ")))
@@ -343,11 +341,10 @@ func applyRunOverrides(
 	return out, nil
 }
 
-// runParameters copies the deployment's variables with the values a run
-// resolved, so the job keeps a record of what it ran with. A variable the run
-// left without a value is kept with none. Values for keys the deployment does
-// not define (from the workflow file's own `with`) reach the worker too, so
-// they follow in key order, belonging to project when there is one.
+// runParameters copies the deployment's variables with the values a run resolved,
+// so the job records what it ran with. Keys the deployment does not define, from
+// the workflow file's own `with`, follow in key order since they reach the worker
+// too.
 func runParameters(defs []*parameter.Parameter, final map[string]variable.Variable, project *parameter.ProjectID) []*parameter.Parameter {
 	out := make([]*parameter.Parameter, 0, len(defs)+len(final))
 	defined := make(map[string]struct{}, len(defs))
@@ -411,8 +408,7 @@ func definedVariables(vars, schema map[string]variable.Variable) map[string]vari
 }
 
 // withProject gives each of params that has no project pid, copying rather
-// than modifying them. Parameters sent with a run arrive without one. A nil
-// pid leaves params as they are.
+// than modifying them. Parameters sent with a run arrive without one.
 func withProject(params []*parameter.Parameter, pid *parameter.ProjectID) []*parameter.Parameter {
 	if pid == nil || pid.IsNil() || len(params) == 0 {
 		return params

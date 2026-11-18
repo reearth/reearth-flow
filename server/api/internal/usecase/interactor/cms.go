@@ -32,13 +32,9 @@ func NewCMS(r *repo.Container, gr *gateway.Container, permissionChecker gateway.
 }
 
 // resolveCMSProject fetches projectIDOrAlias from inside workspaceID and
-// returns it with the parsed workspace id. The CMS internal API needs the
-// workspace to find a project at all; the owner is re-checked here so a
-// gateway that ignored the workspace could not pair a project with a
-// workspace the caller is a member of but that does not own it.
-// Never cache this on the interactor: the container is per-request today but
-// is becoming a boot-time singleton, and struct-level state here would turn
-// into a process-wide cross-tenant cache.
+// re-checks the owner, so a gateway that ignored the workspace cannot pair a
+// project with a workspace that does not own it. Never cache the result on the
+// interactor, which would become a cross-tenant cache once the container is a singleton.
 func (i *cmsInteractor) resolveCMSProject(ctx context.Context, workspaceID, projectIDOrAlias string) (*cms.Project, accountsid.WorkspaceID, error) {
 	wsID, err := accountsid.WorkspaceIDFrom(workspaceID)
 	if err != nil {

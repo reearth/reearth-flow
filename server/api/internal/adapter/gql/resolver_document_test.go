@@ -13,12 +13,9 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-// projectSnapshot serves two addressing modes through one field, which the schema
-// cannot constrain to exactly one. These guards are that constraint, so they are
-// asserted here rather than left to the caller.
-//
-// Both reject before any usecase call, so a nil resolver is enough: reaching the
-// websocket client would panic and fail the test.
+// projectSnapshot serves two addressing modes through one field, and the schema
+// cannot require exactly one, so these guards are that constraint. Both reject
+// before any usecase call, so a nil resolver is enough.
 func TestProjectSnapshot_RejectsAmbiguousArguments(t *testing.T) {
 	r := &queryResolver{}
 

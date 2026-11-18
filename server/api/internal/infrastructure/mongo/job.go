@@ -68,7 +68,6 @@ func (r *Job) FindByIDs(ctx context.Context, ids id.JobIDList) ([]*job.Job, erro
 		return nil, nil
 	}
 
-	// Convert JobIDs to strings for MongoDB query
 	idStrings := make([]string, len(ids))
 	for i, id := range ids {
 		idStrings[i] = id.String()
@@ -224,9 +223,8 @@ func runningFilter(ws accountsid.WorkspaceID, since time.Time) bson.M {
 }
 
 func (r *Job) FindByProject(ctx context.Context, projectID id.ProjectID) ([]*job.Job, error) {
-	// Exclude preview-schema jobs from run history. They are persisted (debug=true)
-	// but are not real runs, so they must not pollute the project's job listing.
-	// Legacy docs predate the mode field, so treat missing/empty mode as a run.
+	// Preview-schema jobs are persisted as debug jobs but are not real runs.
+	// Legacy docs have no mode field, which $ne still matches.
 	filter := bson.M{
 		"projectid": projectID.String(),
 		"debug":     true,
@@ -245,31 +243,21 @@ func (r *Job) RemoveByProject(ctx context.Context, projectID id.ProjectID) error
 	})
 }
 
-// jobAdmissionRetries bounds how often SaveIfRunningBelow retries after losing
-// more races than the limit explains. Every lost race means another job was
-// admitted, so after limit lost races the count reaches the limit unless jobs
-// finished in between; the extra retries cover those.
+// jobAdmissionRetries are SaveIfRunningBelow's attempts beyond limit. After limit
+// lost races the count reaches the limit unless jobs finished in between, which
+// these extra attempts allow for.
 const jobAdmissionRetries = 3
 
-// SaveIfRunningBelow reads the workspace's admission version, counts, saves
-// the job, and then moves the version on only if it is still the one it read.
-// A concurrent call that admitted a job in between has moved it already, so
-// this call withdraws its job and counts again, now seeing the other job. Each
-// admitted job therefore counted every job admitted before it.
-//
-// Callers must not wrap it in a transaction. Inside one, a lost race aborts
-// the transaction (a write conflict or duplicate key on the version document,
-// or a version that moved), so it cannot count again: the run is refused even
-// if a slot is still free, and the rollback withdraws the job. That never
-// admits too many, but it refuses runs that fire together, such as daily
-// triggers at midnight.
-// FindByScheduledRun finds nothing: Mongo does not keep a job's scheduled run,
-// so a retried scheduler call may start a second job. New persistence is
-// Postgres-only.
+// FindByScheduledRun always reports not found because Mongo does not store a
+// job's scheduled run, so a retried scheduler call can start a second job.
 func (r *Job) FindByScheduledRun(_ context.Context, _ job.ScheduledRun) (*job.Job, error) {
 	return nil, rerror.ErrNotFound
 }
 
+// SaveIfRunningBelow counts and saves the job, then advances the workspace's
+// admission version only if no concurrent admission moved it first, withdrawing
+// the job and counting again when one did. Callers must not wrap it in a
+// transaction, where a lost race aborts and refuses the run even if a slot is free.
 func (r *Job) SaveIfRunningBelow(ctx context.Context, j *job.Job, limit int, since time.Time) error {
 	ws := j.Workspace().String()
 	inTx := mongo.SessionFromContext(ctx) != nil
@@ -333,9 +321,8 @@ func (r *Job) admissionVersion(ctx context.Context, ws string) (int64, error) {
 }
 
 // bumpAdmission moves the version from v to v+1 and reports whether it was
-// still v. The first admission creates the document, and the unique _id makes
-// a concurrent first admission lose the same way. A write conflict inside a
-// transaction is a lost race too.
+// still v. A duplicate _id on a concurrent first admission, or a write conflict
+// inside a transaction, also counts as a lost race.
 func (r *Job) bumpAdmission(ctx context.Context, ws string, v int64) (bool, error) {
 	var err error
 	matched := true

@@ -16,10 +16,8 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-// snapshotAssetRepo hands back the same asset to every FindByID call and just
-// counts Deletes, standing in for a transaction retried from a consistent
-// snapshot (unlike a mutating in-memory repo, where a second read after the
-// first attempt's delete would see the row gone).
+// snapshotAssetRepo returns the same asset to every FindByID and only counts
+// Deletes, like a transaction retried from a consistent snapshot.
 type snapshotAssetRepo struct {
 	repo.Asset
 	a           *asset.Asset

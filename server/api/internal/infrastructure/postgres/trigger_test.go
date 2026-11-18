@@ -249,7 +249,6 @@ func TestTrigger_Save_RollsBackInTransaction(t *testing.T) {
 	wid := accountsid.NewWorkspaceID()
 	did := id.NewDeploymentID()
 	tid := id.NewTriggerID()
-	// Return a non-nil error to trigger rollback.
 	_ = c.WithinTransaction(ctx, func(ctx context.Context) error {
 		require.NoError(t, r.Save(ctx, newTrig(wid, did, tid)))
 		return errors.New("rollback")

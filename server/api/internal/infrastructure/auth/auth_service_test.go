@@ -147,8 +147,8 @@ func TestVerifyRoom_NoCheckerFailsClosed(t *testing.T) {
 	assert.False(t, resp.Authorized)
 }
 
-// TestVerifyLegacy_TokenOnly keeps the Rust server's request shape working: no
-// room means the token-only check it has always had.
+// TestVerifyLegacy_TokenOnly covers the Rust server's request shape, which
+// sends no room and gets the token-only check.
 func TestVerifyLegacy_TokenOnly(t *testing.T) {
 	code, resp := verify(t, newTestHandler(nil), TokenVerifyRequest{Token: "good"})
 	assert.Equal(t, http.StatusOK, code)

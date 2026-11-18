@@ -133,7 +133,6 @@ func TestProjectShareFlow(t *testing.T) {
 		SharedPath: "shared",
 	}, true, true, mock)
 
-	// create a project
 	pId := testCreateProject(t, e, operatorID.String(), wid.String())
 
 	// 1. Share the project (success)

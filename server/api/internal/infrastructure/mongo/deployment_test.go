@@ -64,7 +64,6 @@ func TestDeployment_FindByWorkspace(t *testing.T) {
 
 	r := NewDeployment(mongox.NewClientWithDatabase(c))
 
-	// Test without pagination
 	got, pageInfo, err := r.FindByWorkspace(ctx, wid, nil, nil)
 	assert.NoError(t, err)
 	assert.NotNil(t, pageInfo)
@@ -76,7 +75,6 @@ func TestDeployment_FindByWorkspace(t *testing.T) {
 	assert.Equal(t, 1, pageInfo.CurrentPage)
 	assert.Equal(t, 1, pageInfo.TotalPages)
 
-	// Test page-based pagination: first page
 	pagination := &interfaces.PaginationParam{
 		Page: &interfaces.PageBasedPaginationParam{
 			Page:     1,
@@ -93,7 +91,6 @@ func TestDeployment_FindByWorkspace(t *testing.T) {
 	assert.Equal(t, 1, pageInfo.CurrentPage)
 	assert.Equal(t, 2, pageInfo.TotalPages)
 
-	// Test page-based pagination: second page
 	pagination = &interfaces.PaginationParam{
 		Page: &interfaces.PageBasedPaginationParam{
 			Page:     2,
@@ -109,7 +106,6 @@ func TestDeployment_FindByWorkspace(t *testing.T) {
 	assert.Equal(t, 2, pageInfo.CurrentPage)
 	assert.Equal(t, 2, pageInfo.TotalPages)
 
-	// Test page-based pagination: empty page
 	pagination = &interfaces.PaginationParam{
 		Page: &interfaces.PageBasedPaginationParam{
 			Page:     3,
@@ -124,7 +120,6 @@ func TestDeployment_FindByWorkspace(t *testing.T) {
 	assert.Equal(t, 3, pageInfo.CurrentPage)
 	assert.Equal(t, 2, pageInfo.TotalPages)
 
-	// Test with workspace filter
 	r2 := r.Filtered(repo.WorkspaceFilter{
 		Readable: accountsid.WorkspaceIDList{wid2},
 	})

@@ -46,20 +46,6 @@ func (m *mockBatchClient) Close() error {
 	return args.Error(0)
 }
 
-// type mockJobIterator struct {
-// 	jobs    []*batchpb.Job
-// 	current int
-// }
-
-// func (m *mockJobIterator) Next() (*batchpb.Job, error) {
-// 	if m.current >= len(m.jobs) {
-// 		return nil, iterator.Done
-// 	}
-// 	job := m.jobs[m.current]
-// 	m.current++
-// 	return job, nil
-// }
-
 func TestBatchRepo_SubmitJob(t *testing.T) {
 	ctx := context.Background()
 	mockClient := new(mockBatchClient)
@@ -259,17 +245,14 @@ func TestBatchRepo_SubmitJob_SpotVM(t *testing.T) {
 			taskSpec := job.TaskGroups[0].TaskSpec
 			instancePolicy := job.AllocationPolicy.Instances[0].GetPolicy()
 
-			// Verify provisioning model
 			if tc.expectSpot {
 				assert.Equal(t, batchpb.AllocationPolicy_SPOT, instancePolicy.ProvisioningModel)
 			} else {
 				assert.Equal(t, batchpb.AllocationPolicy_STANDARD, instancePolicy.ProvisioningModel)
 			}
 
-			// Verify MaxRetryCount
 			assert.Equal(t, tc.expectMaxRetryCount, taskSpec.MaxRetryCount)
 
-			// Verify lifecycle policies
 			if tc.expectLifecyclePolicies {
 				assert.Len(t, taskSpec.LifecyclePolicies, 1)
 				assert.Equal(t, batchpb.LifecyclePolicy_RETRY_TASK, taskSpec.LifecyclePolicies[0].Action)

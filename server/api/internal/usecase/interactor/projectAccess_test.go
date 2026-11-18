@@ -34,7 +34,6 @@ func TestProjectAccess_Fetch(t *testing.T) {
 		permissionChecker: mockPermissionCheckerFalse,
 	}
 
-	// Set up a workspace, project, and shared project access
 	ws := factory.NewWorkspace(func(b *accountsworkspace.Builder) {})
 
 	pid1 := project.NewID()
@@ -99,7 +98,6 @@ func TestProjectAccess_Fetch(t *testing.T) {
 }
 
 func TestProjectAccess_Share(t *testing.T) {
-	// prepare
 	mockAuthInfo := &appx.AuthInfo{
 		Token: "token",
 	}
@@ -127,7 +125,6 @@ func TestProjectAccess_Share(t *testing.T) {
 		permissionChecker: mockPermissionCheckerTrue,
 	}
 
-	// Set up a workspace, project
 	ws := factory.NewWorkspace(func(b *accountsworkspace.Builder) {})
 
 	pid := project.NewID()
@@ -176,7 +173,6 @@ func TestProjectAccess_Share(t *testing.T) {
 }
 
 func TestProjectAccess_Unshare(t *testing.T) {
-	// prepare
 	mockAuthInfo := &appx.AuthInfo{
 		Token: "token",
 	}
@@ -202,7 +198,6 @@ func TestProjectAccess_Unshare(t *testing.T) {
 		permissionChecker: mockPermissionCheckerTrue,
 	}
 
-	// Set up a workspace, project, and shared project access
 	ws := factory.NewWorkspace(func(b *accountsworkspace.Builder) {})
 
 	pid := project.NewID()

@@ -59,8 +59,7 @@ func (m *JobManager) Notify(jobID string, status job.Status) {
 		select {
 		case ch <- status:
 		default:
-			// Log dropped message or implement retry logic
-			// For now, we'll still drop but with larger buffer this should be rare
+			// A subscriber whose buffer is full misses this status.
 		}
 	}
 }

@@ -160,11 +160,9 @@ func (i *Job) Cancel(ctx context.Context, jobID id.JobID) (*job.Job, error) {
 
 const cloudRunInfraFailureGrace = 30 * time.Second
 
-// RunCloudRunWorker executes a debug job on the Cloud Run worker; the worker
-// publishes its result to Redis and the standard monitoring loop finalizes the
-// job. Only an infra failure (no result will ever arrive) is finalized here.
-// notStarted, when set, is called once the worker is known not to have started
-// the run, so a caller can give back what the run was counted as.
+// RunCloudRunWorker executes a debug job on the Cloud Run worker, and the
+// standard monitoring loop finalizes it unless the worker call itself fails.
+// notStarted, when set, is called once the worker is known not to have started the run.
 func (i *Job) RunCloudRunWorker(j *job.Job, p gateway.RunJobParam, notStarted func()) {
 	go func() {
 		ctx := context.Background()
@@ -203,10 +201,8 @@ func (i *Job) RunCloudRunWorker(j *job.Job, p gateway.RunJobParam, notStarted fu
 	}()
 }
 
-// PreviewSchemaCloudRunWorker executes a preview-schema probe on the Cloud Run
-// worker via its dedicated probe-schema route. Mirrors RunCloudRunWorker: the
-// worker publishes its result and the standard monitoring loop finalizes the
-// job; only an infra failure is finalized here.
+// PreviewSchemaCloudRunWorker runs a preview-schema probe on the worker's
+// probe-schema route, finalized the same way as RunCloudRunWorker.
 func (i *Job) PreviewSchemaCloudRunWorker(j *job.Job, p gateway.ProbeSchemaParam) {
 	go func() {
 		ctx := context.Background()
@@ -254,10 +250,9 @@ func (i *Job) markCloudRunJobRunning(ctx context.Context, jobID id.JobID) {
 	i.subscriptions.Notify(jobID.String(), job.StatusRunning)
 }
 
-// failCloudRunJob marks a debug job failed when the worker call fails. A
-// client-side error may still yield a result, so it waits a grace period and
-// bails if the loop already finalized or a worker event arrived; it sets the
-// legacy status (not batchStatus) so a late success isn't forced to FAILED.
+// failCloudRunJob marks a debug job failed when the worker call fails, after a
+// grace period in case a result still arrives. It sets the legacy status rather
+// than batchStatus, so a late success is not forced to FAILED.
 func (i *Job) failCloudRunJob(ctx context.Context, jobID id.JobID) {
 	select {
 	case <-ctx.Done():
@@ -535,8 +530,8 @@ func (i *Job) checkJobStatus(ctx context.Context, j *job.Job) error {
 	computedStatus := currentJob.Status()
 	isTerminalState := computedStatus == job.StatusCompleted || computedStatus == job.StatusFailed ||
 		computedStatus == job.StatusCancelled
-	// statusChanged guard: don't re-run completion side-effects if another path
-	// (failCloudRunJob, Cancel) already finalized the job.
+	// The statusChanged guard keeps completion side effects from re-running when
+	// another path, such as failCloudRunJob or Cancel, already finalized the job.
 	if statusChanged && isTerminalState {
 		log.Infof(
 			"Job %s transitioning to terminal state %s, handling completion",
@@ -610,8 +605,7 @@ func (i *Job) updateJobArtifacts(ctx context.Context, j *job.Job) error {
 		j.SetUserFacingLogsURL(userFacingLogURL)
 	}
 
-	// A preview-schema job's only output is its SchemaReport; surface it via
-	// outputURLs (no dedicated Job field).
+	// A preview-schema job's only output is its SchemaReport, surfaced via outputURLs.
 	if j.Mode() == job.ModePreviewSchema {
 		if schemaURL := i.file.GetJobPreviewSchemaURL(jobID); schemaURL != "" {
 			j.SetOutputURLs([]string{schemaURL})

@@ -96,7 +96,6 @@ func TestDeclareParameter(t *testing.T) {
 		},
 	}, true, true, mock)
 
-	// Create a test project first
 	projectID := createTestProject(t, e)
 	t.Logf("Using project ID: %s for parameter tests", projectID)
 
@@ -204,7 +203,6 @@ func TestDeclareParameter(t *testing.T) {
 				JSON().
 				Object()
 
-			// Log raw response for debugging
 			t.Logf("Raw response: %v", response.Raw())
 
 			if tc.expectError {
@@ -225,7 +223,7 @@ func TestDeclareParameter(t *testing.T) {
 				if tc.index != nil {
 					paramData.Value("index").Number().IsEqual(float64(*tc.index))
 				} else {
-					// Should auto-increment to next available index
+					// The server assigns the index when none is given.
 					paramData.Value("index").Number().Ge(0)
 				}
 
@@ -257,10 +255,8 @@ func TestUpdateParameter(t *testing.T) {
 		},
 	}, true, true, mock)
 
-	// Create a test project first
 	projectID := createTestProject(t, e)
 
-	// Create a parameter to update
 	paramID := createTestParameter(t, e, projectID, "original_param", "TEXT", true, true, "original value")
 
 	testCases := []struct {
@@ -373,10 +369,8 @@ func TestUpdateParameterOrder(t *testing.T) {
 		},
 	}, true, true, mock)
 
-	// Create a test project first
 	projectID := createTestProject(t, e)
 
-	// Create multiple parameters to test ordering
 	param1ID := createTestParameter(t, e, projectID, "param1", "TEXT", true, true, "value1")
 	param2ID := createTestParameter(t, e, projectID, "param2", "TEXT", true, true, "value2")
 	param3ID := createTestParameter(t, e, projectID, "param3", "TEXT", true, true, "value3")
@@ -441,9 +435,8 @@ func TestUpdateParameterOrder(t *testing.T) {
 					String().Contains(tc.errorMessage)
 			} else {
 				paramsArray := response.Value("data").Object().Value("updateParameterOrder").Array()
-				paramsArray.Length().IsEqual(3) // Should return all 3 parameters
+				paramsArray.Length().IsEqual(3)
 
-				// Find the moved parameter and verify its new index
 				found := false
 				for i := 0; i < 3; i++ {
 					param := paramsArray.Value(i).Object()
@@ -460,7 +453,6 @@ func TestUpdateParameterOrder(t *testing.T) {
 		})
 	}
 
-	// Cleanup - remove the test parameters
 	removeTestParameter(t, e, param1ID)
 	removeTestParameter(t, e, param2ID)
 	removeTestParameter(t, e, param3ID)
@@ -488,13 +480,10 @@ func TestRemoveParameter(t *testing.T) {
 		},
 	}, true, true, mock)
 
-	// Create a test project first
 	projectID := createTestProject(t, e)
 
-	// Create a parameter to remove
 	paramID := createTestParameter(t, e, projectID, "param_to_remove", "TEXT", true, true, "remove me")
 
-	// Generate a valid but non-existent Parameter ID
 	nonExistentParamID := id.NewParameterID().String()
 
 	testCases := []struct {
@@ -584,10 +573,8 @@ func TestParametersQuery(t *testing.T) {
 		},
 	}, true, true, mock)
 
-	// Create a test project first
 	projectID := createTestProject(t, e)
 
-	// Create some test parameters
 	param1ID := createTestParameter(t, e, projectID, "query_param1", "TEXT", true, true, "value1")
 	param2ID := createTestParameter(t, e, projectID, "query_param2", "NUMBER", false, false, 42)
 
@@ -631,9 +618,8 @@ func TestParametersQuery(t *testing.T) {
 		Object()
 
 	paramsArray := response.Value("data").Object().Value("parameters").Array()
-	paramsArray.Length().Ge(2) // Should have at least our 2 test parameters
+	paramsArray.Length().Ge(2)
 
-	// Verify parameters are sorted by index
 	for i := 0; i < int(paramsArray.Length().Raw())-1; i++ {
 		currentIndex := paramsArray.Value(i).Object().Value("index").Number().Raw()
 		nextIndex := paramsArray.Value(i + 1).Object().Value("index").Number().Raw()
@@ -642,12 +628,9 @@ func TestParametersQuery(t *testing.T) {
 
 	t.Logf("Successfully queried parameters")
 
-	// Cleanup
 	removeTestParameter(t, e, param1ID)
 	removeTestParameter(t, e, param2ID)
 }
-
-// Helper functions
 
 func intPtr(i int) *int {
 	return &i

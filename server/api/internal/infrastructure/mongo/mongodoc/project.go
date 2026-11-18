@@ -13,7 +13,6 @@ type ProjectDocument struct {
 	PublishedAt time.Time
 	UpdatedAt   time.Time
 
-	// Core Identity
 	ID        string
 	Alias     string
 	Name      string
@@ -24,11 +23,9 @@ type ProjectDocument struct {
 	CreatedBy *string
 	UpdatedBy *string
 
-	// Authentication
 	BasicAuthPassword string
 	BasicAuthUsername string
 
-	// Content
 	Description string
 	ImageURL    string
 	Readme      string
@@ -40,7 +37,6 @@ type ProjectDocument struct {
 	// a stale read cannot drop a star added in the meantime.
 	StarredBy []string `bson:",omitempty"`
 
-	// Public Visibility Configuration
 	PublicDescription string
 	PublicImage       string
 	PublicTitle       string
@@ -49,12 +45,10 @@ type ProjectDocument struct {
 	TrackingID        string
 	IsBasicAuthActive bool
 
-	// Metadata
 	Archived      bool
 	PublicNoIndex bool
 	IsLocked      bool
 
-	// Analytics
 	EnableGA bool
 }
 

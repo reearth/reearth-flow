@@ -67,7 +67,7 @@ func (r *Parameter) FindByProject(ctx context.Context, projectID id.ProjectID) (
 
 	pl := parameter.NewParameterList(result)
 	if pl != nil {
-		pl.Sort() // Sort by index
+		pl.Sort()
 	}
 
 	return pl, nil

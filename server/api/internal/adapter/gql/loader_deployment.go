@@ -186,8 +186,8 @@ func (c *DeploymentLoader) DataLoader(ctx context.Context) DeploymentDataLoader 
 	})
 }
 
-// ByProjectDataLoader batches deploymentResolver's sibling, projectResolver.Deployment
-// (Project -> its Deployment), keyed by project ID instead of deployment ID.
+// DeploymentByProjectDataLoader batches projectResolver.Deployment, keyed by
+// project ID instead of deployment ID.
 type DeploymentByProjectDataLoader interface {
 	Load(gqlmodel.ID) (*gqlmodel.Deployment, error)
 	LoadAll([]gqlmodel.ID) ([]*gqlmodel.Deployment, []error)

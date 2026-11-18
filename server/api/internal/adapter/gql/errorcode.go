@@ -7,12 +7,9 @@ import (
 	"github.com/reearth/reearth-flow/api/internal/usecase/repo"
 )
 
-// errorCodes are the errors a client tells apart by code rather than by
-// message, sent as the GraphQL error's `extensions.code`. A message is written
-// for people and may change; a code is a contract and does not.
-//
-// The first match wins, and an error is matched however deeply it is wrapped,
-// since the interactors add detail by wrapping.
+// errorCodes are the errors a client tells apart by `extensions.code`, which is
+// a contract that must not change even when messages do. The first match wins,
+// and an error matches however deeply the interactors wrap it.
 var errorCodes = []struct {
 	err  error
 	code string

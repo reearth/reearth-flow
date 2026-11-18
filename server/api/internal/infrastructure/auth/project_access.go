@@ -18,13 +18,10 @@ type UserFinder interface {
 	FindMe(ctx context.Context) (*accountsuser.User, error)
 }
 
-// ProjectDocumentAccess checks websocket access to a project's live document.
-//
-// It uses the project resource, as the document API does (interactor.Websocket):
-// Cerbos denies resources absent from its policy store, and projectDocument is
-// not published there. project:read admits readers; project:any (writer and
-// above) grants editing, since project:edit is maintainer-only. A locked
-// project's document is read-only for everyone.
+// ProjectDocumentAccess checks the project resource rather than projectDocument,
+// which is absent from the Cerbos policy store and so always denied.
+// project:read admits readers and project:any (writer and above) grants
+// editing, since project:edit is maintainer-only.
 type ProjectDocumentAccess struct {
 	Projects repo.Project
 	Access   repo.ProjectAccess

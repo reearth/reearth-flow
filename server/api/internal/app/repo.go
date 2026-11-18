@@ -99,29 +99,22 @@ func initReposAndGateways(ctx context.Context, conf *config.Config, _ bool) (*re
 			log.Fatalf("Failed to init mongo: %+v\n", err)
 		}
 	}
-	// Redis
 	gateways.Redis, gateways.UsageCounter = initRedis(ctx, conf)
 
-	// File
 	gateways.File = initFile(ctx, conf)
 
-	// Batch
 	gateways.Batch, gateways.JobLifetime = initBatch(ctx, conf)
 
 	// CloudRunWorker (must be after File)
 	gateways.CloudRunWorker = initCloudRunWorker(ctx, conf, gateways.File)
 
-	// Scheduler
 	gateways.Scheduler = initScheduler(ctx, conf)
 
-	// Auth0
 	auth0 := auth0.New(conf.Auth0.Domain, conf.Auth0.ClientID, conf.Auth0.ClientSecret)
 	acGateways.Authenticator = auth0
 
-	// CMS
 	gateways.CMS = initCMS(ctx, conf)
 
-	// Plan policy
 	gateways.PolicyChecker = initPolicyChecker(ctx, conf)
 
 	return repos, gateways, accountRepos, acGateways
@@ -148,8 +141,8 @@ func initFile(ctx context.Context, conf *config.Config) (fileRepo gateway.File) 
 }
 
 // initBatch also returns how long Batch can keep a job alive, which bounds how
-// long a pending or running job counts toward the plan's concurrent jobs.
-// Without Batch it is 0, which uses the default.
+// long a pending or running job counts toward the plan's concurrent jobs. It
+// is 0, meaning the default, without Batch.
 func initBatch(ctx context.Context, conf *config.Config) (gateway.Batch, time.Duration) {
 	if conf.Worker_ImageURL == "" {
 		return nil, 0

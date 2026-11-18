@@ -27,7 +27,6 @@ func TestWorkerConfigMemory(t *testing.T) {
 		t.Fatalf("unexpected stored config: %+v", stored)
 	}
 
-	// Test FindAll
 	storedAll, err := repo.FindAll(ctx)
 	if err != nil {
 		t.Fatalf("find all failed: %v", err)

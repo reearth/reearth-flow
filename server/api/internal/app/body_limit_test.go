@@ -41,7 +41,6 @@ func (r *fillReader) Read(p []byte) (int, error) {
 	return len(p), nil
 }
 
-// countingReader records how many bytes have been read from r.
 type countingReader struct {
 	r io.Reader
 	n int
@@ -184,11 +183,9 @@ func TestGraphqlBodyLimitMiddleware(t *testing.T) {
 				uploadLimit, jsonLimit = smallUpload, smallJSON
 			}
 
-			// Chain the same two middlewares in the same order as
-			// newAuthMiddlewares. Non-multipart bodies are rejected with 413
-			// by gqlOpNameMiddleware itself; multipart bodies reach the
-			// handler unread (gqlgen in production), so the handler reports a
-			// capped read as 413 to show the limit is enforced there too.
+			// Same two middlewares in the same order as newAuthMiddlewares.
+			// Multipart bodies reach the handler unread (gqlgen in production),
+			// so the handler reports a capped read as 413.
 			e := echo.New()
 			e.Add(method, path, func(c echo.Context) error {
 				if _, err := io.Copy(io.Discard, c.Request().Body); err != nil {
@@ -277,7 +274,6 @@ func TestGqlOpNameMiddleware(t *testing.T) {
 
 			assert.Equal(t, http.StatusOK, rec.Code)
 			assert.Equal(t, tt.wantOp, gotOp)
-			// The handler must always see the full, unchanged body.
 			assert.Equal(t, tt.body, gotBody)
 			if tt.wantBuffered {
 				assert.Equal(t, len(tt.body), readBeforeHandler)

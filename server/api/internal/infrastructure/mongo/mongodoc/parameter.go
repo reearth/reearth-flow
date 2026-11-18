@@ -25,7 +25,7 @@ type ParameterConsumer = Consumer[*ParameterDocument, *parameter.Parameter]
 
 func NewParameterConsumer() *ParameterConsumer {
 	return NewConsumer[*ParameterDocument](func(a *parameter.Parameter) bool {
-		return true // No filtering needed for parameters
+		return true
 	})
 }
 
@@ -102,7 +102,7 @@ func ParametersFromDocs(docs []ParameterDocument) []*parameter.Parameter {
 	for _, d := range docs {
 		p, err := d.Model()
 		if err != nil {
-			// One unreadable entry should not cost the job the rest of its record.
+			// Unreadable entries are skipped so the job's other parameters still load.
 			continue
 		}
 		params = append(params, p)

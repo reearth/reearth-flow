@@ -130,7 +130,6 @@ func TestParameterDocument_Config(t *testing.T) {
 	projID := id.NewProjectID()
 	now := time.Now().UTC()
 
-	// Test with config data
 	configData := map[string]interface{}{
 		"choices": []string{"option1", "option2", "option3"},
 
@@ -155,13 +154,11 @@ func TestParameterDocument_Config(t *testing.T) {
 		t.Fatalf("unexpected error building parameter: %v", err)
 	}
 
-	// Test NewParameter conversion
 	doc, docID := NewParameter(param)
 	if docID != pid.String() {
 		t.Errorf("expected docID %s, got %s", pid.String(), docID)
 	}
 
-	// Verify config is stored properly
 	if doc.Config == nil {
 		t.Fatal("expected config to be stored, got nil")
 	}
@@ -175,7 +172,6 @@ func TestParameterDocument_Config(t *testing.T) {
 		t.Errorf("config data mismatch.\nExpected: %+v\nGot: %+v", configData, storedConfig)
 	}
 
-	// Test Model() conversion back to domain
 	reconstructedParam, err := doc.Model()
 	if err != nil {
 		t.Fatalf("unexpected error from Model(): %v", err)

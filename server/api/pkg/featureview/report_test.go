@@ -34,8 +34,7 @@ func TestParseReportReadsAReadyView(t *testing.T) {
 		"a partial drop is intended behaviour and still a READY view")
 }
 
-// A vector-tile report says what the size cap left out; no other format has a
-// size cap, so its report carries neither count.
+// Only vector tiles have a size cap, so other formats carry neither count.
 func TestParseReportReadsTheSizeLimitedCounts(t *testing.T) {
 	report, err := ParseReport(strings.NewReader(`{
 	  "version": 1, "status": "ready", "shape": "tiles", "format": "vector_tiles",
@@ -59,8 +58,6 @@ func TestParseReportReadsTheSizeLimitedCounts(t *testing.T) {
 	assert.Nil(t, report.SizeLimitedTiles)
 }
 
-// The outcomes that wrote no view are the reason the report exists: without it
-// "this row holds 2D geometry" would reach the user as an exit code.
 func TestParseReportReadsTheOutcomesThatWroteNothing(t *testing.T) {
 	for _, status := range []Status{StatusEmpty, StatusUnsupportedGeometry, StatusFailed} {
 		t.Run(string(status), func(t *testing.T) {
@@ -83,8 +80,6 @@ func TestParseReportReadsTheOutcomesThatWroteNothing(t *testing.T) {
 	}
 }
 
-// A truncated or self-contradicting report must not be served to a client as a
-// usable view.
 func TestParseReportRefusesAnUnusableReport(t *testing.T) {
 	for name, body := range map[string]string{
 		"not json":               `{`,
@@ -119,8 +114,6 @@ func TestParseReportRefusesAnUnusableReport(t *testing.T) {
 	}
 }
 
-// A parsed report carries counts the renderer measured; the stand-in for an
-// unreadable one carries none, so its zeros must not be served as a count.
 func TestUnreadableReportHasNoKnownCounts(t *testing.T) {
 	stand := UnreadableReport("could not be read")
 	assert.Equal(t, StatusFailed, stand.Status)
@@ -133,8 +126,6 @@ func TestUnreadableReportHasNoKnownCounts(t *testing.T) {
 	assert.True(t, parsed.CountsKnown(), "zero is a measured count on a report the renderer wrote")
 }
 
-// The report names the engine that wrote it, so a view keyed for one engine
-// but rendered by another can be noticed.
 func TestParseReportReadsTheEngineVersion(t *testing.T) {
 	r, err := ParseReport(strings.NewReader(`{"version":1,"engineVersion":"0.0.583","status":"empty","shape":"tiles",
 	  "selectedFeatures":0,"renderedFeatures":0,"scanned":3}`))
@@ -147,8 +138,6 @@ func TestParseReportReadsTheEngineVersion(t *testing.T) {
 	assert.Empty(t, r.EngineVersion)
 }
 
-// A view of geometry holding both 3D and 2D lists both of its layers, each
-// with its own counts, and the top level repeats the first.
 func TestParseReportReadsTheLayers(t *testing.T) {
 	t.Parallel()
 
@@ -179,8 +168,6 @@ func TestParseReportReadsTheLayers(t *testing.T) {
 	assert.Equal(t, 2, *layers[1].SizeLimitedFeatures)
 }
 
-// A report from an engine that wrote a single entry point names it at the top
-// level, and that is the view's only layer. A view that is not ready has none.
 func TestReportViewLayersOfASingleEntryPoint(t *testing.T) {
 	t.Parallel()
 

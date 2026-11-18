@@ -35,7 +35,6 @@ type HealthChecker struct {
 // @Security     BasicAuth
 func (hc *HealthChecker) Handler() echo.HandlerFunc {
 	return func(c echo.Context) error {
-		// Optional HTTP Basic Auth
 		if hc.config.HealthCheck.Username != "" && hc.config.HealthCheck.Password != "" {
 			username, password, ok := c.Request().BasicAuth()
 			if !ok || username != hc.config.HealthCheck.Username || password != hc.config.HealthCheck.Password {
@@ -45,7 +44,6 @@ func (hc *HealthChecker) Handler() echo.HandlerFunc {
 			}
 		}
 
-		// Serve the health check
 		hc.health.Handler().ServeHTTP(c.Response(), c.Request())
 		return nil
 	}
@@ -61,7 +59,6 @@ func NewHealthChecker(conf *config.Config, ver string, fileRepo gateway.File, re
 		},
 	}
 
-	// Add checks for additional DB users
 	for _, u := range conf.DB_Users {
 		checks = append(checks, health.Config{
 			Name:      "db-" + u.Name,
@@ -71,7 +68,6 @@ func NewHealthChecker(conf *config.Config, ver string, fileRepo gateway.File, re
 		})
 	}
 
-	// Redis check
 	if conf.Redis_URL != "" {
 		checks = append(checks, health.Config{
 			Name:      "redis",
@@ -81,7 +77,6 @@ func NewHealthChecker(conf *config.Config, ver string, fileRepo gateway.File, re
 		})
 	}
 
-	// File storage check (GCS/local)
 	if fileRepo != nil {
 		checks = append(checks, health.Config{
 			Name:      "storage",
@@ -91,7 +86,6 @@ func NewHealthChecker(conf *config.Config, ver string, fileRepo gateway.File, re
 		})
 	}
 
-	// Auth server checks
 	for _, a := range conf.Auths() {
 		if a.ISS != "" {
 			u, err := url.Parse(a.ISS)
@@ -156,24 +150,18 @@ func authServerPingCheck(issuerURL string) (checkErr error) {
 	return nil
 }
 
-// createStorageCheck creates a health check function for file storage
-// This is a simple connectivity check - we verify the storage is accessible
+// createStorageCheck treats storage as reachable when reading a missing object
+// fails with a not-found error rather than a connection error.
 func createStorageCheck(fileRepo gateway.File) func(ctx context.Context) error {
 	return func(ctx context.Context) error {
-		// Try to read a non-existent file to verify connectivity
-		// The storage should return a "not found" error rather than a connection error
 		_, err := fileRepo.ReadAsset(ctx, "__health_check_test__")
 		if err != nil {
-			// Check if it's a "not found" error (expected) vs a connectivity error
 			errStr := err.Error()
-			// These are expected "not found" type errors - storage is working
 			if contains(errStr, "not found", "no such file", "does not exist", "404", "NoSuchKey", "storage: object doesn't exist") {
 				return nil
 			}
-			// Any other error indicates a problem with storage connectivity
 			return fmt.Errorf("storage connectivity error: %v", err)
 		}
-		// If no error, file somehow exists (unlikely) - storage is working
 		return nil
 	}
 }

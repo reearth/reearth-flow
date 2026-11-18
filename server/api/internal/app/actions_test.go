@@ -301,9 +301,8 @@ func jsonKeyOrder(t *testing.T, raw json.RawMessage) []string {
 	return keys
 }
 
-// Property order in a JSON Schema is meaningful — it drives the field order the
-// UI renders. Decoding Action.Parameter into a map would let encoding/json sort
-// the keys alphabetically on the way out, so it is kept as raw bytes.
+// Property order in a JSON Schema drives the field order the UI renders, so
+// Action.Parameter must not pass through a map that encoding/json would sort.
 func TestGetActionDetailsPreservesParameterOrder(t *testing.T) {
 	// Deliberately not in alphabetical order, at both the top level and nested.
 	const parameter = `{` +

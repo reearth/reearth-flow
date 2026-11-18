@@ -127,15 +127,10 @@ func (s *SchedulerRepo) UpdateScheduledJob(ctx context.Context, t *trigger.Trigg
 	return s.matchEnabled(ctx, updated, t.Enabled())
 }
 
-// matchEnabled pauses the job of a disabled trigger and resumes the job of an
-// enabled one, so Cloud Scheduler only calls the server for triggers that can
-// run. A job's state cannot be sent with the job: Cloud Scheduler sets it, and
-// only pauses an enabled job and resumes a paused one, so the state the job
-// was saved with decides the call.
-//
-// A failed resume is returned, so its user is told that the enabled trigger's
-// job does not call. A failed pause is only logged: a job left enabled only
-// calls for runs the server skips, because the trigger is disabled.
+// matchEnabled pauses a disabled trigger's job and resumes an enabled one's,
+// deciding from the job's saved state because Cloud Scheduler sets state itself.
+// A failed resume is returned so the user learns the job will not fire, while a
+// failed pause is only logged because the server skips a disabled trigger's runs.
 func (s *SchedulerRepo) matchEnabled(ctx context.Context, job *schedulerpb.Job, enabled bool) error {
 	switch {
 	case !enabled && job.GetState() == schedulerpb.Job_ENABLED:

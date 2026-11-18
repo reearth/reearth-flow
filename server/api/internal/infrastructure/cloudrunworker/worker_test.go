@@ -168,7 +168,6 @@ func TestPreviewSchema_HitsDedicatedRouteWithBody(t *testing.T) {
 
 	assert.NoError(t, err)
 	assert.Equal(t, gateway.JobStatusCompleted, st)
-	// Dedicated route, NOT /run.
 	assert.Equal(t, "/probe-schema", gotPath)
 	assert.Contains(t, string(gotBody), `"job_id":"`+jid.String()+`"`)
 	assert.Contains(t, string(gotBody), `"workflow_url":"https://wf"`)
@@ -237,10 +236,8 @@ func (f *fakeFile) CheckFeatureViewFileExists(context.Context, string, string, s
 }
 
 // renderViewRequiredFields are the keys of the engine's RenderViewRequest
-// (engine/worker/src/wrapper.rs) that have no serde default: a body missing
-// one is rejected by the worker. row, filter and tiles_url are the only
-// optional keys.
-// Keep this list in step with that struct.
+// (engine/worker/src/wrapper.rs) without a serde default, so the worker rejects
+// a body missing one. Keep this list in step with that struct.
 var renderViewRequiredFields = []string{
 	"input_uri", "output_uri", "report_url", "name", "shape",
 	"draco", "texel_size", "texture_codec", "target_tile_size",
@@ -350,8 +347,8 @@ func TestRenderView_500IsFailed(t *testing.T) {
 	assert.NotErrorIs(t, err, gateway.ErrWorkerBusy, "a render that ran and failed is not a busy pool")
 }
 
-// Cloud Run answers 429 itself, without reaching the worker, when every
-// instance it may run is busy. The body is Cloud Run's, not the worker's JSON.
+// Cloud Run answers 429 itself when every instance is busy, with its own body
+// rather than the worker's JSON.
 func TestRenderView_429IsWorkerBusy(t *testing.T) {
 	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		w.WriteHeader(http.StatusTooManyRequests)
@@ -399,8 +396,8 @@ func TestEngineVersion_ReadsTheServicesVersion(t *testing.T) {
 	assert.Equal(t, "0.0.583", v)
 }
 
-// A worker deployed before the route existed answers 404, which is expected
-// until it is redeployed; any other non-200 is as much an error.
+// A worker deployed before the route existed answers 404, which is an error
+// like any other non-200.
 func TestEngineVersion_AnErrorStatusIsAnError(t *testing.T) {
 	for _, status := range []int{http.StatusNotFound, http.StatusInternalServerError} {
 		srv, _ := versionServer(t, status, `{"engineVersion":"0.0.583"}`)
@@ -422,8 +419,6 @@ func TestEngineVersion_AnEmptyVersionIsAnError(t *testing.T) {
 	}
 }
 
-// The Service takes one request per instance, so a version asked on every
-// render could start an instance just to answer it.
 func TestEngineVersion_AsksOncePerFiveMinutes(t *testing.T) {
 	srv, calls := versionServer(t, http.StatusOK, `{"engineVersion":"0.0.583"}`)
 	clock := &fakeClock{t: time.Unix(1_000_000, 0)}
@@ -460,8 +455,6 @@ func TestEngineVersion_RemembersAFailureForAMinute(t *testing.T) {
 	assert.EqualValues(t, 2, calls.Load(), "a failure is retried sooner than a success")
 }
 
-// Renders that arrive together share one request rather than each making
-// their own.
 func TestEngineVersion_ConcurrentCallersShareOneRequest(t *testing.T) {
 	var calls atomic.Int32
 	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
@@ -486,8 +479,6 @@ func TestEngineVersion_ConcurrentCallersShareOneRequest(t *testing.T) {
 	assert.EqualValues(t, 1, calls.Load())
 }
 
-// The client's own timeout is sized for an hour-long run; asking the version
-// must not wait anything like that.
 func TestEngineVersion_GivesUpAtItsOwnLimit(t *testing.T) {
 	release := make(chan struct{})
 	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
@@ -512,8 +503,6 @@ func TestEngineVersion_GivesUpAtItsOwnLimit(t *testing.T) {
 	}
 }
 
-// One caller giving up must not be remembered as the Service failing: the
-// failure would be cached for everyone for a minute.
 func TestEngineVersion_ACancelledCallerDoesNotSpoilTheCache(t *testing.T) {
 	srv, calls := versionServer(t, http.StatusOK, `{"engineVersion":"0.0.583"}`)
 	w := &Worker{serviceURL: srv.URL, httpClient: srv.Client()}

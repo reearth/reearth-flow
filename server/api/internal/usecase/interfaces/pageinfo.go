@@ -2,7 +2,6 @@ package interfaces
 
 import "github.com/reearth/reearthx/usecasex"
 
-// PageBasedInfo extends usecasex.PageInfo with page-based pagination information
 type PageBasedInfo struct {
 	*usecasex.PageInfo
 	CurrentPage int

@@ -11,37 +11,26 @@ import (
 )
 
 // ErrWorkerBusy is a request the worker Service turned away because every
-// instance it may run was busy. The Service takes one request per instance,
-// so this is what a full pool looks like. Nothing ran.
+// instance it may run was busy. Nothing ran.
 var ErrWorkerBusy = errors.New("the worker service has no free instance")
 
 // CloudRunWorker runs debug jobs on a min=0 Cloud Run Service.
-// RunJob holds until the run finishes (the HTTP response is the infra status).
 type CloudRunWorker interface {
 	// RunJob POSTs to the Service and blocks until the workflow completes.
 	// Returns the terminal infra status (COMPLETED / FAILED / CANCELLED).
 	RunJob(ctx context.Context, p RunJobParam) (JobStatus, error)
-	// PreviewSchema POSTs to the Service's dedicated probe-schema route and blocks
-	// until the probe completes. Returns the terminal infra status. This is a
-	// distinct seam from RunJob: it targets a different worker route that runs the
-	// `reearth-flow-worker probe-schema` subcommand, not `run`.
+	// PreviewSchema POSTs to the Service's probe-schema route, which runs the
+	// worker's `probe-schema` subcommand, and blocks until it completes.
 	PreviewSchema(ctx context.Context, p ProbeSchemaParam) (JobStatus, error)
-	// RenderView POSTs to the Service's dedicated render-view route and blocks
-	// until the render completes. Returns the terminal infra status. Like
-	// PreviewSchema this is its own seam, not a flag on RunJob: it targets a
-	// different worker route running the `reearth-flow-worker render-view`
-	// subcommand, and it consumes an artifact rather than a workflow.
-	//
-	// Unlike the other two, this one is called from the request path rather
-	// than a goroutine: a view is a seconds-long artifact transform, and its
-	// caller wants the answer, not a handle to poll.
+	// RenderView POSTs to the Service's render-view route and blocks until the
+	// render completes. Unlike the others it is called from the request path,
+	// not a goroutine.
 	RenderView(ctx context.Context, p RenderViewParam) (JobStatus, error)
 	// CancelJob writes the cancel flag for jobID so the wrapper kills the subprocess.
 	CancelJob(ctx context.Context, jobID id.JobID) error
-	// EngineVersion is the version of the engine the Service runs. A cached
-	// view outlives the engine that rendered it, so the version is part of a
-	// view's key, and the key is computed before rendering. Implementations
-	// cache the answer: asking on every render would cost a request each time.
+	// EngineVersion is part of a view's key, since a cached view outlives the
+	// engine that rendered it. Implementations cache it to avoid a request per
+	// render.
 	EngineVersion(ctx context.Context) (string, error)
 }
 
@@ -72,19 +61,12 @@ type ProbeSchemaParam struct {
 	JobID       id.JobID
 }
 
-// RenderViewParam carries the inputs for the worker's render-view route.
-//
-// There is deliberately no WorkflowURL: a view is rendered from the
-// intermediate data a finished run already left in storage, so this path
-// uploads no workflow and consumes no metadata. There is no job id either —
-// nothing tracks a view render, so the renderer has no completion event to
-// publish and no work root to name.
+// RenderViewParam has no WorkflowURL or job id: a view is rendered from a
+// finished run's intermediate data, and nothing tracks the render as a job.
 type RenderViewParam struct {
-	// InputURI is the gs:// intermediate-data file to render.
 	InputURI string
 	// OutputURI is the gs:// directory the view's files are written under.
 	OutputURI string
-	// ReportURI is the gs:// destination for the render's report.
 	ReportURI string
 	// Name is the view key, which the renderer uses as its output prefix.
 	Name  string

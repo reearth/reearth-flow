@@ -212,8 +212,6 @@ func tilesReq() featureview.Request {
 
 // --- tests ---------------------------------------------------------------
 
-// A rendered view is reused rather than rebuilt: it is a pure function of the
-// request, so the second look costs one report read and no job.
 func TestIntermediateDataView_Render_ReusesARenderedView(t *testing.T) {
 	h := newViewHarness(t, job.StatusCompleted, true)
 	key := gltfReq(42).Key()
@@ -239,10 +237,8 @@ func TestIntermediateDataView_Render_ReusesARenderedView(t *testing.T) {
 	assert.Equal(t, key, h.file.lastReportKey)
 }
 
-// A report and the view it describes have separate lifetimes. When a retention
-// rule takes the view and leaves the report, the report is not a cache hit:
-// reusing it would pin the port to an entry point that 404s, and because a
-// non-failed report is otherwise never re-rendered, it would do so forever.
+// A retention rule can sweep the view and leave its report. Reusing that report
+// would pin the port to an entry point that 404s, forever.
 func TestIntermediateDataView_Render_RerendersWhenTheViewIsGone(t *testing.T) {
 	h := newViewHarness(t, job.StatusCompleted, true)
 	key := gltfReq(42).Key()
@@ -260,7 +256,6 @@ func TestIntermediateDataView_Render_RerendersWhenTheViewIsGone(t *testing.T) {
 	assert.Equal(t, featureview.StatusReady, got.Status)
 }
 
-// The counterpart: the view is there, so the report is served without a render.
 func TestIntermediateDataView_Render_ChecksTheViewBeforeReusingIt(t *testing.T) {
 	h := newViewHarness(t, job.StatusCompleted, true)
 	key := h.key(tilesReq())
@@ -275,8 +270,7 @@ func TestIntermediateDataView_Render_ChecksTheViewBeforeReusingIt(t *testing.T) 
 	assert.Zero(t, h.worker.calls)
 }
 
-// A view that drew nothing wrote no files, so there is nothing to look for and
-// the report stands on its own.
+// An empty view wrote no files, so its report stands on its own.
 func TestIntermediateDataView_Render_DoesNotLookForAnEmptyViewsFiles(t *testing.T) {
 	h := newViewHarness(t, job.StatusCompleted, true)
 	h.file.report = `{"version":1,"status":"empty","shape":"tiles",
@@ -291,10 +285,8 @@ func TestIntermediateDataView_Render_DoesNotLookForAnEmptyViewsFiles(t *testing.
 	assert.Zero(t, h.worker.calls, "and is not re-rendered for the lack of one")
 }
 
-// The entry point served is the one the server's own layout implies, derived
-// from the key and the reported format. The report's entryPoint is the
-// renderer's word for the same file and reaches a path join, where ".." would
-// escape the view's directory, so it is cross-checked and not followed.
+// The report's entryPoint would reach a path join, where ".." escapes the view's
+// directory, so it is cross-checked and not followed.
 func TestIntermediateDataView_Render_DerivesTheEntryPointRatherThanTrustingTheReport(t *testing.T) {
 	h := newViewHarness(t, job.StatusCompleted, true)
 	key := gltfReq(7).Key()
@@ -314,8 +306,6 @@ func TestIntermediateDataView_Render_DerivesTheEntryPointRatherThanTrustingTheRe
 	assert.NotContains(t, got.Layers[0].EntryPointURL, "..")
 }
 
-// A ready report that names no format cannot be resolved to a file at all, so
-// it is reported as failed rather than served as a view with no entry point.
 func TestIntermediateDataView_Get_FailsAReadyReportWithNoFormat(t *testing.T) {
 	h := newViewHarness(t, job.StatusCompleted, true)
 	key := tilesReq().Key()
@@ -329,11 +319,8 @@ func TestIntermediateDataView_Get_FailsAReadyReportWithNoFormat(t *testing.T) {
 	require.NotNil(t, got.Error)
 }
 
-// Geometry naming no CRS, and geometry the writer cannot draw, are dropped on
-// purpose: the feature keeps its row in the table and only its geometry is
-// missing from the view. So a view that rendered fewer features than it
-// selected is READY, not degraded — and both counts come back so a client can
-// say so.
+// Geometry with no CRS, or that the writer cannot draw, is dropped on purpose,
+// so a partial render is READY. Both counts come back so a client can say so.
 func TestIntermediateDataView_Render_ReportsAPartialDropAsReady(t *testing.T) {
 	h := newViewHarness(t, job.StatusCompleted, true)
 	key := h.key(tilesReq())
@@ -352,8 +339,6 @@ func TestIntermediateDataView_Render_ReportsAPartialDropAsReady(t *testing.T) {
 	assert.NotEmpty(t, got.Layers)
 }
 
-// The size limit applies to vector tiles alone, so a vector-tile view carries
-// what it left out.
 func TestIntermediateDataView_Render_CarriesTheSizeLimitedCountsOfVectorTiles(t *testing.T) {
 	h := newViewHarness(t, job.StatusCompleted, true)
 	key := tilesReq().Key()
@@ -371,9 +356,8 @@ func TestIntermediateDataView_Render_CarriesTheSizeLimitedCountsOfVectorTiles(t 
 	assert.Equal(t, 3, *got.SizeLimitedTiles)
 }
 
-// No other format has a size limit, so its counts are null rather than a zero
-// that would claim nothing was left out, even from a report that carries them.
-// An unreadable report measured nothing at all.
+// Other formats get null rather than a zero that would claim nothing was left
+// out, even from a report that carries counts.
 func TestIntermediateDataView_HasNoSizeLimitedCountsOutsideVectorTiles(t *testing.T) {
 	for name, tc := range map[string]struct {
 		report func(key string) string
@@ -406,8 +390,6 @@ func TestIntermediateDataView_HasNoSizeLimitedCountsOutsideVectorTiles(t *testin
 	}
 }
 
-// "0 of 900 selected" is the explanation for an empty view, so the counts must
-// survive exactly when there is nothing to show.
 func TestIntermediateDataView_Render_KeepsTheCountsOnAnEmptyView(t *testing.T) {
 	h := newViewHarness(t, job.StatusCompleted, true)
 	h.file.report = `{"version":1,"status":"empty","shape":"tiles",
@@ -434,7 +416,6 @@ func TestIntermediateDataView_Render_RendersAndReturnsTheFinishedView(t *testing
 	got, err := h.render(viewTestContext(), gltfReq(42))
 	require.NoError(t, err)
 
-	// One round trip: the caller gets the loadable view, not a handle to poll.
 	assert.Equal(t, featureview.StatusReady, got.Status)
 	require.Len(t, got.Layers, 1)
 	assert.Equal(t, featureview.FormatGLB, got.Layers[0].Format)
@@ -452,8 +433,7 @@ func TestIntermediateDataView_Render_RendersAndReturnsTheFinishedView(t *testing
 	assert.Contains(t, p.ReportURI, featureview.ReportName(key))
 }
 
-// A tiles view is told the absolute URL its tiles will be served at, and keyed
-// by where it is served; a glb names no URL, so it is told none.
+// A tiles view is also keyed by where it is served. A glb view is told no URL.
 func TestIntermediateDataView_Render_TellsATilesViewWhereItIsServed(t *testing.T) {
 	h := newViewHarness(t, job.StatusCompleted, true)
 	key := h.key(tilesReq())
@@ -482,8 +462,6 @@ func TestIntermediateDataView_Render_TellsATilesViewWhereItIsServed(t *testing.T
 	assert.Nil(t, g.worker.lastParam.TilesURL)
 }
 
-// A view is keyed by the engine that renders it, which the worker names, so a
-// view cached by one engine is not reused for the next.
 func TestIntermediateDataView_Render_KeysAViewByTheWorkersEngine(t *testing.T) {
 	for name, req := range map[string]featureview.Request{"gltf": gltfReq(1), "tiles": tilesReq()} {
 		h := newViewHarness(t, job.StatusCompleted, true)
@@ -498,8 +476,8 @@ func TestIntermediateDataView_Render_KeysAViewByTheWorkersEngine(t *testing.T) {
 	}
 }
 
-// A worker that cannot say which engine it runs, such as one deployed before
-// it could, still renders, under the key a view had before versions.
+// A worker that cannot report its engine version still renders, under the
+// unversioned key.
 func TestIntermediateDataView_Render_RendersWhenTheEngineIsUnknown(t *testing.T) {
 	h := newViewHarness(t, job.StatusCompleted, true)
 	h.worker.versionErr = errors.New("cloudrunworker: version: http 404")
@@ -532,9 +510,8 @@ func TestIntermediateDataView_Render_PrefersTheReportOverTheCallStatus(t *testin
 	assert.Contains(t, *got.Error, "needs 3D geometry")
 }
 
-// A render the worker stopped at its time limit comes back as a failed call
-// and a failed report saying why. The caller is answered from the report: the
-// render ended inside the request's wait, so this is not a timeout of ours.
+// A render the worker stopped at its own time limit ended inside the request's
+// wait, so it is answered from its failed report rather than as a timeout.
 func TestIntermediateDataView_Render_AnswersAStoppedRenderFromItsReport(t *testing.T) {
 	h := newViewHarness(t, job.StatusCompleted, true)
 	h.worker.status = gateway.JobStatusFailed
@@ -552,9 +529,8 @@ func TestIntermediateDataView_Render_AnswersAStoppedRenderFromItsReport(t *testi
 	assert.Contains(t, *got.Error, "did not finish within 100 seconds")
 }
 
-// A render that recorded nothing has nothing to show the user but the failure.
-// Its detail is the infrastructure's — worker stderr, storage paths — so it is
-// logged, and the caller gets the failure without it.
+// The failure detail is infrastructure's (worker stderr, storage paths), so it
+// is logged and not returned to the caller.
 func TestIntermediateDataView_Render_FailsWhenNoReportIsWritten(t *testing.T) {
 	h := newViewHarness(t, job.StatusCompleted, true)
 	h.worker.status = gateway.JobStatusFailed
@@ -567,7 +543,7 @@ func TestIntermediateDataView_Render_FailsWhenNoReportIsWritten(t *testing.T) {
 }
 
 // A worker that claims success but leaves no report is a fault, not an empty
-// view — saying "nothing to show" would be inventing an outcome.
+// view.
 func TestIntermediateDataView_Render_FailsOnASilentSuccess(t *testing.T) {
 	h := newViewHarness(t, job.StatusCompleted, true)
 
@@ -576,8 +552,6 @@ func TestIntermediateDataView_Render_FailsOnASilentSuccess(t *testing.T) {
 	assert.Equal(t, "failed to render the view", err.Error())
 }
 
-// Views have no second pipeline, so where no worker service is configured they
-// are simply not offered.
 func TestIntermediateDataView_Render_UnavailableWithoutAWorker(t *testing.T) {
 	h := newViewHarness(t, job.StatusCompleted, false)
 
@@ -586,9 +560,8 @@ func TestIntermediateDataView_Render_UnavailableWithoutAWorker(t *testing.T) {
 	assert.Zero(t, h.worker.calls)
 }
 
-// Empty and unsupported-geometry are properties of the data and will not change
-// on a retry, so they are served from the report. A fault might have been
-// transient, so asking again re-renders.
+// Empty and unsupported-geometry outcomes come from the data, so they are served
+// from the report. A fault might be transient, so it is re-rendered.
 func TestIntermediateDataView_Render_CachesOutcomesButNotFaults(t *testing.T) {
 	tests := map[string]struct {
 		status     featureview.Status
@@ -624,8 +597,6 @@ func TestIntermediateDataView_Render_CachesOutcomesButNotFaults(t *testing.T) {
 	}
 }
 
-// A render did happen; the server simply cannot read what it wrote. Reporting
-// "not rendered" would send the caller into a render loop.
 func TestIntermediateDataView_Render_TreatsAnUnreadableReportAsAFault(t *testing.T) {
 	h := newViewHarness(t, job.StatusCompleted, true)
 	h.file.report = `{"version":1,"status":"ready","shape":"gltf"}` // ready with no entry point
@@ -655,9 +626,7 @@ func TestIntermediateDataView_Render_RefusesAnUnfinishedJob(t *testing.T) {
 		})
 	}
 
-	// A failed or cancelled run still leaves data for the ports that did run,
-	// so those are not refused. Whether the render then succeeds is a separate
-	// question, covered elsewhere.
+	// A failed or cancelled run still leaves data for the ports that did run.
 	for _, status := range []job.Status{job.StatusCompleted, job.StatusFailed, job.StatusCancelled} {
 		t.Run(string(status), func(t *testing.T) {
 			h := newViewHarness(t, status, true)
@@ -703,9 +672,8 @@ func TestIntermediateDataView_Render_ValidatesTheRequest(t *testing.T) {
 	assert.Zero(t, h.worker.calls)
 }
 
-// Views are authorized by an action the edge policy grants. The checker answers
-// as the generated policy does, so asking for an action the edge policy has no
-// rule for is denied even for an owner; the allow-all mock cannot tell.
+// The checker mirrors the generated edge policy, which denies an action it has
+// no rule for even to an owner. The allow-all mock could not catch that.
 func TestIntermediateDataView_IsAuthorizedByTheEdgePolicy(t *testing.T) {
 	for _, tc := range []struct {
 		role    string
@@ -755,8 +723,6 @@ func TestIntermediateDataView_Get(t *testing.T) {
 	assert.Zero(t, h.worker.calls, "Get reads an existing view and never renders")
 }
 
-// "Not rendered yet" is an expected state, so it is no view rather than an
-// error: the query documents null for it.
 func TestIntermediateDataView_Get_NoViewWhenNoneExists(t *testing.T) {
 	h := newViewHarness(t, job.StatusCompleted, true)
 
@@ -783,9 +749,8 @@ func TestIntermediateDataView_Render_PropagatesAStorageFault(t *testing.T) {
 	assert.Zero(t, h.worker.calls)
 }
 
-// The view key reaches storage as a path segment, and on this path it comes
-// straight from the query. A key that could climb out of the view's directory
-// has to be refused before anything is read, not cleaned up afterwards.
+// The key comes straight from the query and reaches storage as a path segment.
+// A key that could climb out of the view's directory is refused before any read.
 func TestIntermediateDataView_Get_RefusesATraversingKey(t *testing.T) {
 	for _, key := range []string{"../../secret", "..", "a/b", "tiles-all-dead.beef"} {
 		h := newViewHarness(t, job.StatusCompleted, true)
@@ -800,9 +765,8 @@ func TestIntermediateDataView_Get_RefusesATraversingKey(t *testing.T) {
 	}
 }
 
-// A report outlives the view it describes, so retention can leave a ready
-// report pointing at an entry point that is gone. Render re-renders in that
-// case; Get cannot, so it must not answer READY with a URL that 404s.
+// Retention can leave a ready report whose view is gone. Get cannot re-render,
+// so it must not answer READY with a URL that 404s.
 func TestIntermediateDataView_Get_NoViewWhenTheViewWasSwept(t *testing.T) {
 	h := newViewHarness(t, job.StatusCompleted, true)
 	key := tilesReq().Key()
@@ -817,10 +781,8 @@ func TestIntermediateDataView_Get_NoViewWhenTheViewWasSwept(t *testing.T) {
 	assert.Zero(t, h.worker.calls, "Get never renders, even when the view is gone")
 }
 
-// A re-render replaces a stale report, and a render that dies first writes
-// nothing. The old report has to be gone by then, or the read-back would answer
-// with it: a READY pointing at the swept view, or the earlier failure's message
-// in place of this one's.
+// A render that dies first writes nothing, so the stale report must be cleared
+// beforehand or the read-back would answer with it.
 func TestIntermediateDataView_Render_NeverAnswersWithTheReportItReplaces(t *testing.T) {
 	key := gltfReq(42).Key()
 	tests := map[string]struct {
@@ -857,8 +819,6 @@ func TestIntermediateDataView_Render_NeverAnswersWithTheReportItReplaces(t *test
 	}
 }
 
-// If the old report cannot be cleared, rendering would bring the stale answer
-// back, so the render is not dispatched at all.
 func TestIntermediateDataView_Render_DoesNotRenderOverAReportItCannotClear(t *testing.T) {
 	h := newViewHarness(t, job.StatusCompleted, true)
 	h.file.report = `{"version":1,"status":"failed","shape":"gltf","row":3,
@@ -873,9 +833,8 @@ func TestIntermediateDataView_Render_DoesNotRenderOverAReportItCannotClear(t *te
 	assert.Zero(t, h.worker.calls)
 }
 
-// A report Get cannot parse is answered as a failed view of the kind the key
-// names, with no counts: the stand-in measured nothing, and describing a glb
-// view as tiles would send the client to the wrong viewer.
+// An unparseable report is answered as a failed view of the kind the key names,
+// with no counts. Describing a glb view as tiles would open the wrong viewer.
 func TestIntermediateDataView_Get_DescribesAnUnreadableReportByItsKey(t *testing.T) {
 	h := newViewHarness(t, job.StatusCompleted, true)
 	key := gltfReq(3).Key()
@@ -891,8 +850,6 @@ func TestIntermediateDataView_Get_DescribesAnUnreadableReportByItsKey(t *testing
 	assert.Nil(t, got.RenderedFeatures)
 }
 
-// A timed-out render is reported as a timeout rather than hidden behind the
-// generic failure label, since a timeout is something a user can understand.
 func TestIntermediateDataView_Render_ReportsATimeoutAsATimeout(t *testing.T) {
 	h := newViewHarness(t, job.StatusCompleted, true)
 	h.worker.status = gateway.JobStatusFailed
@@ -904,8 +861,6 @@ func TestIntermediateDataView_Render_ReportsATimeoutAsATimeout(t *testing.T) {
 	assert.Equal(t, "the view did not finish rendering in time", err.Error())
 }
 
-// A full worker pool turned the render away before it ran, so the caller is
-// told the workers are busy rather than shown an internal error.
 func TestIntermediateDataView_Render_ReportsAFullWorkerPoolAsBusy(t *testing.T) {
 	h := newViewHarness(t, job.StatusCompleted, true)
 	h.worker.status = gateway.JobStatusFailed
@@ -917,8 +872,8 @@ func TestIntermediateDataView_Render_ReportsAFullWorkerPoolAsBusy(t *testing.T) 
 	assert.Equal(t, "no worker is free to render the view", err.Error())
 }
 
-// Storage that cannot hold a view at all (the local filesystem) is the same
-// answer as having no worker: views are not offered here.
+// Storage that cannot hold views, such as the local filesystem, gets the same
+// answer as having no worker.
 func TestIntermediateDataView_ViewsUnavailableOnStorageWithoutViews(t *testing.T) {
 	h := newViewHarness(t, job.StatusCompleted, true)
 	h.file.reportErr = gateway.ErrUnsupportedOperation
@@ -931,9 +886,8 @@ func TestIntermediateDataView_ViewsUnavailableOnStorageWithoutViews(t *testing.T
 	assert.ErrorIs(t, err, interfaces.ErrViewsUnavailable)
 }
 
-// twoLayerReport is a ready tiles report of geometry holding both 3D and 2D:
-// 3D Tiles for the 3D features and vector tiles for the 2D ones, with the
-// vector tiles' entry point as given.
+// twoLayerReport is a ready tiles report with 3D Tiles for 3D features and
+// vector tiles, at vectorEntryPoint, for 2D ones.
 func twoLayerReport(key, vectorEntryPoint string) string {
 	return `{"version":1,"status":"ready","shape":"tiles","format":"cesium_3d_tiles",
 	  "selectedFeatures":16,"renderedFeatures":15,"scanned":16,
@@ -946,9 +900,8 @@ func twoLayerReport(key, vectorEntryPoint string) string {
 	  ]}`
 }
 
-// Every layer of a view is served, each from the entry point the server's own
-// layout gives it and with its own counts. The view's size-limited counts are
-// its vector tile layer's.
+// Each layer carries its own counts, and the view's size-limited counts are its
+// vector tile layer's.
 func TestIntermediateDataView_Render_ServesEveryLayerOfAView(t *testing.T) {
 	t.Parallel()
 
@@ -984,8 +937,6 @@ func TestIntermediateDataView_Render_ServesEveryLayerOfAView(t *testing.T) {
 	assert.Zero(t, h.worker.calls)
 }
 
-// A view missing any one of its layers is not a cache hit, the same as one
-// missing its only entry point.
 func TestIntermediateDataView_Render_RerendersWhenOneLayerIsGone(t *testing.T) {
 	t.Parallel()
 
@@ -1001,8 +952,7 @@ func TestIntermediateDataView_Render_RerendersWhenOneLayerIsGone(t *testing.T) {
 	assert.Equal(t, 1, h.worker.calls, "the vector tiles are gone, so render again")
 }
 
-// Each layer is served from the server's own layout, not from the entry point
-// its report names, which would reach a path join where ".." escapes the
+// A layer's reported entry point would reach a path join where ".." escapes the
 // view's directory.
 func TestIntermediateDataView_Render_DerivesEveryLayersEntryPoint(t *testing.T) {
 	t.Parallel()
@@ -1021,8 +971,6 @@ func TestIntermediateDataView_Render_DerivesEveryLayersEntryPoint(t *testing.T) 
 	assert.NotContains(t, got.Layers[1].EntryPointURL, "..")
 }
 
-// A report from an engine that wrote a single entry point is a view with one
-// layer.
 func TestIntermediateDataView_Get_ServesASingleEntryPointAsOneLayer(t *testing.T) {
 	t.Parallel()
 

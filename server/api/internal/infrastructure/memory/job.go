@@ -123,7 +123,6 @@ func (r *Job) FindByWorkspace(ctx context.Context, id accountsid.WorkspaceID, pa
 			}
 		})
 
-		// Apply pagination
 		skip := (pagination.Page.Page - 1) * pagination.Page.PageSize
 		if skip >= len(result) {
 			return nil, interfaces.NewPageBasedInfo(total, pagination.Page.Page, pagination.Page.PageSize), nil

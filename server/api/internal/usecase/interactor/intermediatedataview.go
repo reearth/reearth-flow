@@ -18,13 +18,8 @@ import (
 	"github.com/reearth/reearthx/rerror"
 )
 
-// renderTimeout bounds how long a request waits for the renderer. A view is
-// normally seconds of work, so this is a ceiling, not an expected wait.
-//
-// It sits above the worker's own limit: the worker stops a render at 100
-// seconds and has a short budget left to write its failed report, which the
-// request then reads and answers with. So this only runs out when the worker
-// never answers at all.
+// renderTimeout bounds how long a request waits for the renderer. It sits above
+// the worker's own 100-second limit, so it only runs out when the worker never answers.
 const renderTimeout = 2 * time.Minute
 
 // IntermediateDataView renders the intermediate data a finished run left on one
@@ -52,15 +47,10 @@ func NewIntermediateDataView(
 	}
 }
 
-// checkPermission guards views with the edge resource, which nothing else
-// checks yet. Like the job's, the edge rule grants the action "any" to a
-// workspace writer, maintainer or owner. "any" is an action name in its own
-// right, not a wildcard: the generated policy has no rule for any other action,
-// so checking "read" is denied for everyone. Views therefore check
-// rbac.ActionAny, as the job interactor does, so whoever can see a run's jobs
-// can render and read its views, and a reader can do neither. The intermediate
-// data itself is not behind this check: the table is fetched through the
-// /artifacts route.
+// checkPermission is called with rbac.ActionAny because "any" is a literal action
+// name in the edge policy, not a wildcard, and the policy defines no other action.
+// The intermediate data itself is fetched through the /artifacts route and is not
+// behind this check.
 func (i *IntermediateDataView) checkPermission(ctx context.Context, action string, workspaceID ...accountsid.WorkspaceID) error {
 	return checkPermission(ctx, i.permissionChecker, rbac.ResourceEdge, action, workspaceID...)
 }
@@ -84,9 +74,7 @@ func (i *IntermediateDataView) Render(
 	p.Request.EngineVersion = i.engineVersion(ctx)
 	key := p.Request.Key()
 
-	// A rendered view is reused rather than rebuilt: it is a pure function of
-	// the request, and the key already encodes every input. This is also what
-	// keeps clicking around a table from re-rendering anything.
+	// A view is a pure function of its key, so a rendered one is reused rather than rebuilt.
 	existing, err := i.readReport(ctx, p.JobID, p.FileID, key)
 	if err != nil {
 		return nil, err
@@ -101,9 +89,7 @@ func (i *IntermediateDataView) Render(
 		}
 		// The report outlived its view. Fall through and render it again.
 	}
-	// A cached FAILURE is not reused. Empty and unsupported-geometry are
-	// properties of the data and will not change; a fault might have been a
-	// storage blip, so the caller gets to retry by asking again.
+	// A cached failure is not reused, since it may have been transient.
 
 	if i.cloudRunWorker == nil {
 		return nil, interfaces.ErrViewsUnavailable
@@ -117,10 +103,8 @@ func (i *IntermediateDataView) Render(
 		return nil, fmt.Errorf("%w: %s on job %s", interfaces.ErrIntermediateDataNotFound, p.FileID, p.JobID)
 	}
 
-	// Only a render takes one of the plan's slots: a view reused above costs
-	// the worker nothing. The slot is taken before the previous report is
-	// cleared, so a refused retry leaves that report's outcome in place, and
-	// it is given back however the render ends, a failed clear included.
+	// The slot is taken before the previous report is cleared, so a refused retry
+	// leaves that report in place.
 	done, err := i.planLimits.startRender(ctx, source.Workspace())
 	if err != nil {
 		return nil, err
@@ -130,11 +114,9 @@ func (i *IntermediateDataView) Render(
 	ctx, cancel := context.WithTimeout(ctx, renderWorkTimeout)
 	defer cancel()
 
-	// The outcome is read back from the report after the call, so a report left
-	// by an earlier render has to go first. A render that dies before writing
-	// one — a timeout, a reclaimed instance — would otherwise be answered with
-	// the old outcome: a READY whose view is gone, or a stale failure in place
-	// of the real one.
+	// The outcome is read back from the report after the call, so an earlier
+	// report must go first. Otherwise a render that dies before writing one would
+	// be answered with the stale outcome.
 	if existing != nil {
 		if err := i.file.DeleteFeatureViewReport(ctx, p.JobID.String(), p.FileID, key); err != nil {
 			return nil, rerror.ErrInternalByWithContextAndLabel(ctx, "failed to clear the previous view report", err)
@@ -172,10 +154,9 @@ func (i *IntermediateDataView) render(
 		Options:   p.Request.Options,
 	})
 
-	// Read the report before judging the call. A render that drew nothing exits
-	// successfully and says why in the report, so the report is more
-	// informative than the status whenever it exists. Any report found here is
-	// this render's: Render cleared the previous one before dispatching.
+	// The report is more informative than the call's status, since a render that
+	// drew nothing still exits successfully. Render cleared the previous report,
+	// so any found here is this render's.
 	report, err := i.readReport(ctx, p.JobID, p.FileID, key)
 	if err != nil {
 		return nil, err
@@ -188,8 +169,6 @@ func (i *IntermediateDataView) render(
 			log.Warnfc(ctx, "intermediateDataView: %s/%s/%s was keyed for engine %q but rendered by %q",
 				p.JobID, p.FileID, key, p.Request.EngineVersion, report.EngineVersion)
 		}
-		// The report is what the caller sees, but a call that also failed is
-		// still worth a trace in the log.
 		if renderErr != nil {
 			log.Warnfc(ctx, "intermediateDataView: render of %s/%s/%s reported %s and failed: %v",
 				p.JobID, p.FileID, key, report.Status, renderErr)
@@ -197,14 +176,8 @@ func (i *IntermediateDataView) render(
 		return i.result(ctx, p.JobID, p.FileID, key, p.Request.Shape, report), nil
 	}
 
-	// No report and no view: the render did not get far enough to record an
-	// outcome, so there is nothing to show the user but the failure itself.
-	//
-	// A full worker pool turned the render away before it ran, and running out
-	// of our own wait means the worker never answered: a render that is merely
-	// slow is stopped by the worker and answered from its failed report above.
-	// Both are said plainly. Any other failure is the infrastructure's, and its
-	// detail — worker stderr, storage paths — is logged, not returned.
+	// No report means the render never recorded an outcome. Infrastructure
+	// failure detail, such as worker stderr and storage paths, is logged rather than returned.
 	if errors.Is(renderErr, gateway.ErrWorkerBusy) {
 		log.Warnfc(ctx, "intermediateDataView: render of %s/%s/%s turned away: %v", p.JobID, p.FileID, key, renderErr)
 		return nil, interfaces.ErrViewWorkersBusy
@@ -221,9 +194,8 @@ func (i *IntermediateDataView) render(
 }
 
 // engineVersion is the engine the worker runs, for the view key, or "" when it
-// cannot be learned. An unknown version keys a view as it was keyed before
-// versions were part of the key, so a worker that cannot answer yet, such as
-// one deployed before it could, costs nothing but the version's protection.
+// cannot be learned. An unknown version leaves the version out of the key instead
+// of failing the request.
 func (i *IntermediateDataView) engineVersion(ctx context.Context) string {
 	if i.cloudRunWorker == nil {
 		return ""
@@ -247,9 +219,8 @@ func (i *IntermediateDataView) Get(
 	if err := featureview.ValidateFileID(fileID); err != nil {
 		return nil, err
 	}
-	// The key is client-supplied here and becomes a storage path segment, so it
-	// is checked before any read rather than only for emptiness. A malformed
-	// key is an error rather than "no view", the same as a malformed job id.
+	// The key is client-supplied and becomes a storage path segment, so it is
+	// validated before any read.
 	if err := featureview.ValidateViewKey(key); err != nil {
 		return nil, err
 	}
@@ -259,14 +230,12 @@ func (i *IntermediateDataView) Get(
 		return nil, err
 	}
 	if report == nil {
-		// No report means no render has finished: an expected state, not a
-		// failure, so it is answered with no view rather than an error.
+		// No report means no render has finished, which is not an error.
 		return nil, nil
 	}
 
-	// A report outlives the view it describes, so a ready one whose entry point
-	// has been swept would otherwise be answered READY with a URL that 404s.
-	// Get does not render, so the honest answer is that there is no view.
+	// A report can outlive its swept view, and Get does not render, so that case
+	// answers no view.
 	present, err := i.viewStillPresent(ctx, jobID, fileID, key, report)
 	if err != nil {
 		return nil, err
@@ -275,9 +244,7 @@ func (i *IntermediateDataView) Get(
 		return nil, nil
 	}
 
-	// Get has no request to fall back on, so a report that recorded no shape —
-	// an unreadable one — is described by the key, which names the shape the
-	// view was rendered for.
+	// A report that recorded no shape falls back to the shape named in the key.
 	keyShape, _ := featureview.ShapeFromKey(key)
 	return i.result(ctx, jobID, fileID, key, keyShape, report), nil
 }
@@ -294,9 +261,8 @@ func (i *IntermediateDataView) authorizedSourceJob(ctx context.Context, jobID id
 		return nil, err
 	}
 
-	// The feature writer appends as the run proceeds, so a file belonging to an
-	// unfinished job may be truncated mid-feature. Rendering it would produce a
-	// view that disagrees with the table for no visible reason.
+	// The feature writer appends as the run proceeds, so an unfinished job's file
+	// may be truncated mid-feature.
 	switch source.Status() {
 	case job.StatusCompleted, job.StatusFailed, job.StatusCancelled:
 	default:
@@ -306,11 +272,9 @@ func (i *IntermediateDataView) authorizedSourceJob(ctx context.Context, jobID id
 	return source, nil
 }
 
-// readReport returns a view's recorded outcome, or nil when none exists.
-//
-// A report that cannot be parsed is reported as a failed view rather than an
-// error: the render did happen, the server simply cannot read what it wrote,
-// and answering "not rendered" would send the caller into a render loop.
+// readReport returns a view's recorded outcome, or nil when none exists. An
+// unparseable report is returned as a failed view, because answering "not
+// rendered" would send the caller into a render loop.
 func (i *IntermediateDataView) readReport(
 	ctx context.Context,
 	jobID id.JobID,
@@ -343,15 +307,9 @@ func (i *IntermediateDataView) readReport(
 	return report, nil
 }
 
-// viewStillPresent reports whether a non-failed cached report can be served as
-// it stands.
-//
-// A report and the view it describes are separate objects with separate
-// lifetimes: a retention rule can remove the view and leave the report behind.
-// Because a non-failed report is otherwise reused forever, that would pin the
-// port to an entry point that 404s with no way to rebuild it. Only a ready
-// report has anything to check — empty and unsupported-geometry describe a view
-// that was never written — and every one of its layers has to be there.
+// viewStillPresent reports whether a non-failed cached report can be served,
+// since a retention rule can remove a view and leave its report behind. Only a
+// ready report has files to check, and every layer's entry point must exist.
 func (i *IntermediateDataView) viewStillPresent(
 	ctx context.Context,
 	jobID id.JobID,
@@ -364,8 +322,7 @@ func (i *IntermediateDataView) viewStillPresent(
 
 	names, err := entryPointNames(key, report)
 	if err != nil {
-		// A ready report the server cannot resolve to files is not a cache
-		// hit; rendering again is the only way it improves.
+		// A ready report that cannot be resolved to files is treated as a cache miss.
 		log.Warnfc(ctx, "intermediateDataView: unusable cached report for %s/%s/%s: %v", jobID, fileID, key, err)
 		return false, nil
 	}
@@ -383,15 +340,9 @@ func (i *IntermediateDataView) viewStillPresent(
 	return true, nil
 }
 
-// entryPointNames are a ready view's entry points as the server lays them out,
-// one per layer, derived from the key and each layer's format rather than read
-// out of the report.
-//
-// The server chose the layout — it passed the key to the renderer as --name —
-// so it can name the files itself. The report's own entry points are the
-// renderer's word for the same thing, and they would otherwise reach
-// GetFeatureViewURL as path segments, where path.Join resolves ".." and a wrong
-// or hostile report could address a file outside the view's directory.
+// entryPointNames derives a ready view's entry points from the key and each
+// layer's format rather than trusting the report. The report's own names would
+// reach GetFeatureViewURL as path segments, where ".." could escape the view's directory.
 func entryPointNames(key string, report *featureview.Report) ([]string, error) {
 	layers := report.ViewLayers()
 	if len(layers) == 0 {
@@ -408,11 +359,9 @@ func entryPointNames(key string, report *featureview.Report) ([]string, error) {
 	return names, nil
 }
 
-// result maps a report onto the usecase result, resolving each of the view's
-// entry points to a URL a browser can open.
-//
-// fallbackShape covers a report that recorded no shape; it is what the caller
-// asked for, which is the same thing the renderer was given.
+// result maps a report onto the usecase result, resolving each of the view's entry
+// points to a URL a browser can open. fallbackShape is used when the report
+// recorded no shape.
 func (i *IntermediateDataView) result(
 	ctx context.Context,
 	jobID id.JobID,
@@ -434,10 +383,7 @@ func (i *IntermediateDataView) result(
 		Error:  report.Error,
 	}
 
-	// The counts explain a view whether or not it drew anything: a partial drop
-	// is intended behaviour, so "812 of 900" is not a warning, and "0 of 900"
-	// is the whole reason an empty view is empty. A report the server could not
-	// read measured nothing, so it answers null rather than a false "0 of 0".
+	// An unreadable report measured nothing, so its counts stay null rather than "0 of 0".
 	if report.CountsKnown() {
 		selected, rendered := report.SelectedFeatures, report.RenderedFeatures
 		out.SelectedFeatures = &selected
@@ -454,9 +400,7 @@ func (i *IntermediateDataView) result(
 			return out
 		}
 		out.Layers = i.layers(ctx, jobID, fileID, key, report.ViewLayers(), names)
-		// Only vector tiles have a size limit, so the view's are its vector
-		// tile layer's. A view without one answers null, not zero, so "nothing
-		// was left out" is never claimed where nothing could have been.
+		// Only vector tiles have a size limit, so other views leave these null rather than zero.
 		for _, layer := range out.Layers {
 			if layer.Format == featureview.FormatVectorTiles {
 				out.SizeLimitedFeatures = layer.SizeLimitedFeatures

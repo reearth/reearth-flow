@@ -8,7 +8,8 @@ import (
 	"strings"
 )
 
-// Accounts accepts 5-32 chars of alphanumerics and single internal hyphens; we derive shorter to leave room for a suffix.
+// Accounts accepts 5-32 chars of alphanumerics and single internal hyphens.
+// Derived aliases stop at 30 to leave room for a suffix.
 const (
 	aliasMinLen         = 5
 	aliasMaxLen         = 30
@@ -27,7 +28,7 @@ func deriveAlias(name string) string {
 	slug = aliasHyphenRun.ReplaceAllString(slug, "-")
 	slug = strings.ToLower(strings.Trim(slug, "-"))
 
-	// A name with no ASCII leaves nothing to slug; padding would give every such workspace the same alias, so this is unique by construction.
+	// A name with no ASCII leaves nothing to slug, so a random token keeps such aliases distinct.
 	if slug == "" {
 		return "w-" + randomAliasToken()
 	}
@@ -55,7 +56,7 @@ func isDuplicateAliasErr(err error) bool {
 	return err != nil && strings.Contains(strings.ToLower(err.Error()), "alias already exists")
 }
 
-// Uniqueness is all this needs, so an unseeded PRNG and a fixed width are enough.
+// randomAliasToken needs uniqueness, not unpredictability.
 func randomAliasToken() string {
 	return fmt.Sprintf("%016x", rand.Uint64())
 }

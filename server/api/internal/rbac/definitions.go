@@ -46,21 +46,12 @@ const (
 	roleOwner      = "owner"
 )
 
-// DefineResources returns the flow RBAC policy as declarative resource rules.
-// reearthx's generator.GeneratePolicies builds and sorts these into Cerbos
-// policies (action ordering is deterministic via the generator), so only the
-// resource→action→roles mapping matters here.
-//
-// Role vocabulary matches the accounts system and the UI: owner, maintainer,
-// writer, reader, self. The backend previously used "editor", which is not a
-// real workspace role (the accounts roles are owner/maintainer/writer/reader),
-// so writers were effectively ungranted.
+// DefineResources returns the flow RBAC policy as resource→action→roles rules,
+// which reearthx's generator turns into Cerbos policies. Role names must match
+// the accounts system's workspace roles, or the rule grants nobody.
 func DefineResources() []generator.ResourceRule {
 	// Project content, deploy/run/debug and execution-data actions are granted to
-	// writers, maintainers and owners. Per the Flow user-stories RBAC spec,
-	// deploying a project and listing runs are Writer(Editor) + Maintainer + Owner,
-	// and owner ⊇ maintainer is a universal invariant. These were previously
-	// maintainer-only, which denied workspace owners and writers.
+	// writers, maintainers and owners, per the Flow RBAC user stories.
 	writerMaintainerOwner := map[string]generator.ActionRule{
 		ActionAny: {Roles: []string{roleWriter, roleMaintainer, roleOwner}},
 	}

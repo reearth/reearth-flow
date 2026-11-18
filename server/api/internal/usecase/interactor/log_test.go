@@ -301,10 +301,8 @@ func TestLogInteractor_StopsMonitoringWhenJobCompleted(t *testing.T) {
 	})
 }
 
-// TestLogInteractor_SecondSubscriberDoesNotStartSecondPoller pins the fix: with
-// a container built once at boot, the same LogInteractor (and its watchers map)
-// is shared by every request. Two subscribers on the same job must collapse
-// onto one background poller, not each start their own.
+// Every request shares the LogInteractor built at boot, and with it the
+// watchers map.
 func TestLogInteractor_SecondSubscriberDoesNotStartSecondPoller(t *testing.T) {
 	runningJob, err := job.New().
 		NewID().
@@ -336,8 +334,6 @@ func TestLogInteractor_SecondSubscriberDoesNotStartSecondPoller(t *testing.T) {
 	ctx = adapter.AttachAuthInfo(ctx, mockAuthInfo)
 	ctx = adapter.AttachUser(ctx, mockUser)
 
-	// Two "requests" subscribing to the same running job concurrently, as
-	// happens once every request shares the same interactor instance.
 	var wg sync.WaitGroup
 	chans := make([]chan *log.Log, 2)
 	errs := make([]error, 2)

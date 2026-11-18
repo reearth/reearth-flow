@@ -13,20 +13,19 @@ import (
 	"github.com/reearth/reearthx/appx"
 )
 
-// TokenVerifyRequest is the websocket server's pre-upgrade check. Room is the
-// websocket room ("{projectId}:{workflowId}"); when set, the caller must have
-// access to that project, either as a workspace member (Token) or through the
-// project's public share token (ShareToken). The websocket server always
-// sends Room; a request without it only checks that the token is valid.
+// TokenVerifyRequest is the websocket server's pre-upgrade check, which without
+// Room only validates the token. With Room ("{projectId}:{workflowId}"), the
+// caller must reach that project as a workspace member (Token) or through its
+// public share token (ShareToken).
 type TokenVerifyRequest struct {
 	Token      string `json:"token"`
 	Room       string `json:"room,omitempty"`
 	ShareToken string `json:"shareToken,omitempty"`
 }
 
-// TokenVerifyResponse is the verdict. UserID names the user a token
-// connection belongs to, so the websocket server can record who edited the
-// document; a share-token connection has none.
+// TokenVerifyResponse names the user a token connection belongs to, so the
+// websocket server can record who edited the document. A share-token
+// connection has no user.
 type TokenVerifyResponse struct {
 	UserID     string `json:"userId,omitempty"`
 	Authorized bool   `json:"authorized"`
@@ -194,7 +193,7 @@ func NewServer(jwtProviders []appx.JWTProvider, projects ProjectAccessChecker, v
 }
 
 func (s *Server) Stop() {
-	// HTTP服务器不需要明确关闭
+	// Server owns no listener, so there is nothing to close.
 }
 
 func (s *Server) ServeHTTP(w http.ResponseWriter, r *http.Request) {

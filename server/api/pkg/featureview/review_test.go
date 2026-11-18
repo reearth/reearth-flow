@@ -8,9 +8,6 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-// A key becomes a storage path segment, and on the read path it arrives from
-// the client. Anything that could climb out of the view's directory, or name a
-// sibling, has to be refused before it reaches path.Join.
 func TestValidateViewKeyRefusesTraversal(t *testing.T) {
 	for _, bad := range []string{
 		"", "..", "../..", "../../secret", "a/b", "a.b",
@@ -20,7 +17,6 @@ func TestValidateViewKeyRefusesTraversal(t *testing.T) {
 	}
 }
 
-// Every key Key() produces has to survive its own validator.
 func TestValidateViewKeyAcceptsGeneratedKeys(t *testing.T) {
 	row := 42
 	filter := "attributes.x > 1"
@@ -34,17 +30,12 @@ func TestValidateViewKeyAcceptsGeneratedKeys(t *testing.T) {
 	}
 }
 
-// The selector in a key is a hint, not identity: every filtered tiles request
-// shares "f", so the digest alone carries the cache contract. 32 bits would
-// start reusing another request's render in the tens of thousands.
 func TestKeyCarriesAWideDigest(t *testing.T) {
 	key := Request{Shape: ShapeTiles, Options: DefaultOptions()}.Key()
 	digest := key[strings.LastIndexByte(key, '-')+1:]
 	assert.Len(t, digest, 32, "expected a 128-bit hex digest, got %q", digest)
 }
 
-// ParseReport is the validation boundary for the renderer's only record of an
-// outcome, so a document with anything after the object is not a usable report.
 func TestParseReportRejectsTrailingData(t *testing.T) {
 	valid := `{"version":1,"status":"empty","shape":"tiles","selectedFeatures":0,"renderedFeatures":0,"scanned":9}`
 
@@ -57,9 +48,6 @@ func TestParseReportRejectsTrailingData(t *testing.T) {
 	}
 }
 
-// The engine picks the format from the geometry it finds, but only within the
-// shape it was asked for. A report pairing them otherwise would hand the caller
-// a tilejson URL for a glb request.
 func TestParseReportRejectsShapeFormatMismatch(t *testing.T) {
 	report := func(shape, format string) string {
 		return `{"version":1,"status":"ready","shape":"` + shape + `","format":"` + format +

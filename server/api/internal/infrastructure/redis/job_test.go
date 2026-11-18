@@ -35,17 +35,14 @@ func TestGetJobCompleteEvent(t *testing.T) {
 		data, err := json.Marshal(event)
 		require.NoError(t, err)
 
-		// Mock Redis Get
 		mock.ExpectGet(key).SetVal(string(data))
 
-		// Read event
 		result, err := r.GetJobCompleteEvent(ctx, jobID)
 		assert.NoError(t, err)
 		assert.NotNil(t, result)
 		assert.Equal(t, "failed", result.Result)
 		assert.Equal(t, jobID.String(), result.JobID)
 
-		// Verify all expectations were met
 		assert.NoError(t, mock.ExpectationsWereMet())
 	})
 
@@ -57,7 +54,6 @@ func TestGetJobCompleteEvent(t *testing.T) {
 		jobID := id.NewJobID()
 		key := "job_complete:" + jobID.String()
 
-		// Mock Redis Get returning nil (key doesn't exist)
 		mock.ExpectGet(key).RedisNil()
 
 		result, err := r.GetJobCompleteEvent(ctx, jobID)
@@ -168,13 +164,11 @@ func TestDeleteJobCompleteEvent(t *testing.T) {
 		jobID := id.NewJobID()
 		key := "job_complete:" + jobID.String()
 
-		// Mock Redis Del
 		mock.ExpectDel(key).SetVal(1)
 
 		err = r.DeleteJobCompleteEvent(ctx, jobID)
 		assert.NoError(t, err)
 
-		// Verify all expectations were met
 		assert.NoError(t, mock.ExpectationsWereMet())
 	})
 
@@ -186,7 +180,6 @@ func TestDeleteJobCompleteEvent(t *testing.T) {
 		jobID := id.NewJobID()
 		key := "job_complete:" + jobID.String()
 
-		// Mock Redis Del returning error
 		mock.ExpectDel(key).SetErr(assert.AnError)
 
 		err = r.DeleteJobCompleteEvent(ctx, jobID)

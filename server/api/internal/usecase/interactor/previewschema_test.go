@@ -273,14 +273,12 @@ func TestProject_PreviewSchema_CloudRunWorker(t *testing.T) {
 	assert.NoError(t, err)
 	assert.NotNil(t, got)
 
-	// Job tagged as preview-schema and debug.
 	assert.Equal(t, job.ModePreviewSchema, got.Mode())
 	assert.NotNil(t, got.Debug())
 	assert.True(t, *got.Debug())
 	assert.Equal(t, prj.Workspace(), got.Workspace())
 	assert.Equal(t, 7, *got.ProjectVersion())
 
-	// Dedicated probe-schema dispatch invoked; run dispatch NOT invoked.
 	assert.Len(t, fj.previewCalls, 1)
 	assert.Len(t, fj.runCalls, 0)
 	assert.Equal(t, got.ID(), fj.previewCalls[0].JobID)
@@ -289,14 +287,11 @@ func TestProject_PreviewSchema_CloudRunWorker(t *testing.T) {
 	assert.Equal(t, "gs://bucket/artifacts/"+got.ID().String()+"/schema/schema-report.json", fj.previewCalls[0].ReportURL)
 	assert.Equal(t, 1, fj.monitored)
 
-	// Metadata NOT uploaded; workflow uploaded once.
 	assert.Equal(t, 0, ff.uploadMetadataCalls)
 	assert.Equal(t, 1, ff.uploadWorkflowCalls)
 
-	// Yjs flushed for the project.
 	assert.Equal(t, []string{prj.ID().String()}, ws.flushed)
 
-	// Persisted job exists and carries the mode.
 	saved, err := jobRepo.FindByID(ctx, got.ID())
 	assert.NoError(t, err)
 	assert.Equal(t, job.ModePreviewSchema, saved.Mode())
@@ -337,18 +332,15 @@ func TestProject_PreviewSchema_BatchFallback(t *testing.T) {
 	assert.NoError(t, err)
 	assert.NotNil(t, got)
 
-	// Batch probe submission used; run submission NOT used.
 	assert.Equal(t, 1, fb.probeCalls)
 	assert.Equal(t, 0, fb.runCalls)
-	// No Cloud Run dispatch on the fallback path.
 	assert.Len(t, fj.previewCalls, 0)
 	assert.Equal(t, 1, fj.monitored)
 	assert.Equal(t, 0, ff.uploadMetadataCalls)
 }
 
-// stubCloudRunWorker satisfies gateway.CloudRunWorker; not exercised directly in
-// the interactor tests (dispatch is recorded by previewFakeJob) but required to
-// set the non-nil cloudRunWorker field that selects the Cloud Run path.
+// stubCloudRunWorker only makes cloudRunWorker non-nil, which selects the Cloud
+// Run path. Dispatch itself is recorded by previewFakeJob.
 type stubCloudRunWorker struct{}
 
 func (s *stubCloudRunWorker) RunJob(context.Context, gateway.RunJobParam) (gateway.JobStatus, error) {
@@ -373,15 +365,13 @@ func TestProject_PreviewSchema_RequiresWorkflow(t *testing.T) {
 		Workflow:  nil,
 	})
 
-	// A missing workflow yields a clear error, not a nil job (which would violate
-	// the non-null PreviewSchemaPayload.job at the GraphQL layer).
+	// A nil job would violate the non-null PreviewSchemaPayload.job in GraphQL.
 	assert.Nil(t, got)
 	assert.ErrorIs(t, err, interfaces.ErrWorkflowFileRequired)
 }
 
 // TestProject_PreviewSchema_ChecksTargetProjectWorkspace pins the check to the
-// project's own workspace, not the caller's: a workspace-less check would let a
-// caller in one workspace run a schema preview against a project in another.
+// project's own workspace, not the caller's.
 func TestProject_PreviewSchema_ChecksTargetProjectWorkspace(t *testing.T) {
 	ctx := previewTestContext()
 	projectRepo := memory.NewProject()
@@ -418,8 +408,7 @@ func TestProject_PreviewSchema_ChecksTargetProjectWorkspace(t *testing.T) {
 }
 
 // TestProject_PreviewSchema_DeniedNeverFlushesOrDispatches ensures a denied
-// caller cannot trigger the Yjs flush or job creation: a check that runs but is
-// not enforced before the first side effect is not a real check.
+// caller cannot trigger the Yjs flush or job creation.
 func TestProject_PreviewSchema_DeniedNeverFlushesOrDispatches(t *testing.T) {
 	ctx := previewTestContext()
 	projectRepo := memory.NewProject()

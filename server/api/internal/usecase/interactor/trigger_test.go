@@ -181,7 +181,6 @@ func TestTrigger_Update(t *testing.T) {
 	job := NewJob(&repo, gateway, mockPermissionCheckerTrue)
 	i := NewTrigger(&repo, gateway, job, mockPermissionCheckerTrue)
 
-	// Test updating description and event source
 	newDesc := "Updated trigger"
 	updateVars := []variable.Variable{
 		{Key: "NEW_VAR", Type: parameter.TypeText, Value: "updated"},
@@ -207,7 +206,6 @@ func TestTrigger_Update(t *testing.T) {
 		assert.Equal(t, lastTriggered, *got.LastTriggered())
 	}
 
-	// Test updating deployment
 	param = interfaces.UpdateTriggerParam{
 		ID:           tid,
 		DeploymentID: &newDid,
@@ -229,14 +227,12 @@ func TestTrigger_Update(t *testing.T) {
 		assert.Equal(t, lastTriggered, *got.LastTriggered())
 	}
 
-	// Test updating with invalid trigger ID
 	param.ID = id.NewTriggerID()
 	param.Variables = updateVars
 	got, _, err = i.Update(ctx, param)
 	assert.Error(t, err)
 	assert.Nil(t, got)
 
-	// Test updating with invalid deployment ID
 	invalidDid := id.NewDeploymentID()
 	param.ID = tid
 	param.DeploymentID = &invalidDid
@@ -313,7 +309,6 @@ func TestTrigger_Fetch(t *testing.T) {
 	assert.NoError(t, err)
 	assert.Equal(t, 2, len(got))
 
-	// tid1
 	assert.Equal(t, tid1, got[0].ID())
 	assert.Equal(t, "Daily trigger", got[0].Description())
 	assert.True(t, got[0].Enabled())
@@ -325,7 +320,6 @@ func TestTrigger_Fetch(t *testing.T) {
 		assert.Equal(t, lastTriggered, *got[0].LastTriggered())
 	}
 
-	// tid2
 	assert.Equal(t, tid2, got[1].ID())
 	assert.Equal(t, "API trigger", got[1].Description())
 	assert.False(t, got[1].Enabled())

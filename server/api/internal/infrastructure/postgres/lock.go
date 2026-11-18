@@ -10,9 +10,9 @@ import (
 	"github.com/reearth/reearthx/pgxx"
 )
 
-// Lock implements repo.Lock using Postgres session-level advisory locks. Each
-// held lock occupies a pooled connection until Unlock; intended for coarse,
-// short-lived coordination (e.g. the config lock), mirroring the Mongo lock.
+// Lock implements repo.Lock with Postgres session-level advisory locks, each
+// holding a pooled connection until Unlock. It suits coarse, short-lived
+// coordination such as the config lock.
 type Lock struct {
 	pool  *pgxpool.Pool
 	locks sync.Map // name -> pgxx.Unlock

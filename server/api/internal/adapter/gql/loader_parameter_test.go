@@ -86,15 +86,9 @@ func TestQueryResolver_Parameters_Success(t *testing.T) {
 	assert.Len(t, res, 1)
 }
 
-// TestParameterLoader_Fetch_ReversedOrder_DeniedFirstDoesNotShiftAllowed is a
-// loader-level regression test: ParameterLoader is a positional dataloader
-// (gqldataloader maps response slot i back to the i-th requested key), so
-// Parameter.Fetch must return one slot per requested id, nil for a denied
-// one, rather than compacting to just the allowed parameters. Requesting the
-// denied id FIRST and the allowed id second is the case that would have
-// caught the bug: compacting to [allowed] would make the loader cache the
-// allowed parameter under the denied id's key and return nil for the id the
-// caller actually has access to.
+// ParameterLoader is positional, so Parameter.Fetch must return one slot per
+// requested id, nil for a denied one. With the denied id first, a compacted
+// result would cache the allowed parameter under the denied id's key.
 func TestParameterLoader_Fetch_ReversedOrder_DeniedFirstDoesNotShiftAllowed(t *testing.T) {
 	wsAllowed := accountsid.NewWorkspaceID()
 	wsDenied := accountsid.NewWorkspaceID()

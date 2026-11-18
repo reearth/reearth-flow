@@ -25,11 +25,9 @@ type Project struct {
 }
 
 // projectColumns lists the projects table's columns in gen.Project's field
-// order, for the hand-written queries below. SELECT * relies on the table's
-// physical column order matching that struct, which silently breaks (with a
-// confusing "number of field descriptions must equal number of destinations"
-// error) the moment the two drift — naming the columns here turns that into
-// the same clear "column ... does not exist" error the generated queries give.
+// order for the hand-written queries below. Naming them, rather than SELECT *,
+// turns drift between table and struct into a clear "column ... does not
+// exist" error instead of a confusing field-count mismatch.
 const projectColumns = `id, workspace_id, workflow_id, name, description,
 	is_archived, is_basic_auth_active, basic_auth_username, basic_auth_password,
 	shared_token, updated_at, is_locked,
@@ -103,8 +101,7 @@ var projectOrderByColumns = map[string]string{
 	"id":        "id",
 }
 
-// FindByWorkspace lists projects for a workspace.
-// includeArchived: nil or false → exclude archived; true → include archived.
+// FindByWorkspace includes archived projects only when includeArchived is true.
 func (r *Project) FindByWorkspace(
 	ctx context.Context,
 	wid accountsid.WorkspaceID,

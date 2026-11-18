@@ -10,8 +10,6 @@ import (
 	reearthxid "github.com/reearth/reearthx/asset/domain/id"
 )
 
-// ID type conversions between reearth-flow and reearthx
-
 func ConvertAssetIDToReearthx(flowID id.AssetID) reearthxid.AssetID {
 	rxID, _ := reearthxid.AssetIDFrom(flowID.String())
 	return rxID
@@ -129,8 +127,6 @@ func ConvertToReearthx(
 	return builder.Build()
 }
 
-// Getter methods that handle ID conversions
-
 func (w *AssetWrapper) ID() id.AssetID {
 	return ConvertAssetIDFromReearthx(w.asset.ID())
 }
@@ -139,7 +135,6 @@ func (w *AssetWrapper) Project() id.ProjectID {
 	rxProject := w.asset.Project()
 	flowProject := ConvertProjectIDFromReearthx(rxProject)
 
-	// If this is our special workspace-only project ID, return empty
 	if flowProject == WorkspaceOnlyProjectID {
 		return id.ProjectID{}
 	}
@@ -209,8 +204,6 @@ func (w *AssetWrapper) FlatFiles() bool {
 func (w *AssetWrapper) Public() bool {
 	return w.asset.Public()
 }
-
-// Utility functions to work with asset lists
 
 func ConvertAssetListFromReearthx(rxAssets []*reearthxasset.Asset) []*AssetWrapper {
 	wrappers := make([]*AssetWrapper, len(rxAssets))

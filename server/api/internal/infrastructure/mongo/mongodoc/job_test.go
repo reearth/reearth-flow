@@ -11,7 +11,6 @@ import (
 )
 
 func TestJobDocument_UserFacingLogsURL(t *testing.T) {
-	// Test conversion to/from MongoDB document
 	j := job.New().
 		ID(id.NewJobID()).
 		Deployment(id.NewDeploymentID().Ref()).

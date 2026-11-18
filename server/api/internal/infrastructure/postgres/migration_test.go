@@ -42,13 +42,11 @@ func TestPostgresMigration_RunnerAppliesAndTracks(t *testing.T) {
 	require.NoError(t, runner.Migrate(ctx))
 	assert.Equal(t, 1, ran)
 
-	// version persisted via the config row
 	got, err := cfg.LockAndLoad(ctx)
 	require.NoError(t, err)
 	assert.Equal(t, int64(1), got.Migration)
 	require.NoError(t, cfg.Unlock(ctx))
 
-	// re-run is a no-op (already at version 1)
 	require.NoError(t, runner.Migrate(ctx))
 	assert.Equal(t, 1, ran)
 }

@@ -1,7 +1,6 @@
 package workflow
 
 type Workflow struct {
-	// Meta      *string
 	url       string
 	id        ID
 	project   ProjectID

@@ -45,7 +45,7 @@ func tracerConfig(conf *config.Config) *apiotel.Config {
 	case "jaeger":
 		cfg.Enabled = true
 		cfg.ExporterType = apiotel.ExporterTypeJaeger
-		// the previous Jaeger tracer always sampled; keep that when no ratio is set
+		// Jaeger (local tracing) samples every request unless a ratio is set.
 		if conf.TracerSample == 0 {
 			cfg.SamplingRatio = 1
 		}

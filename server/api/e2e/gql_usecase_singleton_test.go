@@ -57,21 +57,8 @@ func (g *countingRedisGateway) GetJobDiagnostics(_ context.Context, _ id.JobID) 
 
 const logsSubscriptionQuery = `subscription($jobId: ID!) { logs(jobId: $jobId) { jobId message } }`
 
-// TestUsecaseContainer_SharedAcrossRequests_LogPollerIsNotDuplicated boots the
-// real server the same way main.Start does -- one interactor.Container built
-// once, reused by every request -- and proves the fix end-to-end: two
-// independent GraphQL subscriptions on the same running job collapse onto a
-// single background log poller.
-//
-// Before this fix, UsecaseMiddleware called interactor.NewContainer per
-// request, so each subscription got its own LogInteractor with a fresh
-// watchers map and its own 15s poller. No unit test on the interactor alone
-// can see that regression: it never has two requests sharing, or failing to
-// share, one container. Only booting the real server and driving it with two
-// separate connections proves the container the server actually serves is
-// the singleton.
-//
-// Memory-backed on purpose (no live MongoDB needed) so this runs anywhere.
+// Two subscriptions on one running job must share a single log poller, which
+// holds only if every request uses the one interactor.Container main.Start builds.
 func TestUsecaseContainer_SharedAcrossRequests_LogPollerIsNotDuplicated(t *testing.T) {
 	if testing.Short() {
 		t.Skip("skipping test in short mode.")
@@ -79,8 +66,7 @@ func TestUsecaseContainer_SharedAcrossRequests_LogPollerIsNotDuplicated(t *testi
 
 	ctx := context.Background()
 	repos := memory.New()
-	// memory.New doesn't wire a Job repo (it's not needed by the e2e suites
-	// that already exist); this test needs one to persist a running job.
+	// memory.New does not wire a Job repo, and this test persists a running job.
 	repos.Job = memory.NewJob()
 
 	runningJob, err := job.New().
@@ -119,15 +105,13 @@ func TestUsecaseContainer_SharedAcrossRequests_LogPollerIsNotDuplicated(t *testi
 	sub2 := cli.Websocket(logsSubscriptionQuery, gqlgenclient.Var("jobId", runningJob.ID().String()))
 	defer func() { _ = sub2.Close() }()
 
-	// Both subscriptions trigger their own "initial missed logs" fetch on top
-	// of the periodic poller; that is not the behaviour under test, so let it
-	// settle first.
+	// Let each subscription's initial missed-logs fetch settle before counting
+	// poller ticks.
 	time.Sleep(500 * time.Millisecond)
 	afterSubscribe := redisGateway.getLogsCalls.Load()
 
-	// Wait for the first monitoring tick (internal/usecase/interactor/log.go,
-	// 15s ticker) rather than sleeping a fixed window: this is both faster in
-	// the common case and avoids CI scheduling jitter around tick alignment.
+	// Wait for the first 15s monitoring tick rather than a fixed window, which
+	// avoids CI jitter around tick alignment.
 	var afterFirstTick int64
 	require.Eventually(t, func() bool {
 		afterFirstTick = redisGateway.getLogsCalls.Load()
@@ -140,9 +124,8 @@ func TestUsecaseContainer_SharedAcrossRequests_LogPollerIsNotDuplicated(t *testi
 		"expected exactly one poller ticking for the shared job, observed %d GetLogs call(s) by the first tick",
 		afterFirstTick-afterSubscribe)
 
-	// Give a duplicated poller with a slightly offset ticker a chance to fire
-	// its own first tick too; a genuine second poller starts within
-	// milliseconds of the first, so this window need not be long.
+	// A duplicate poller would start within milliseconds of the first, so a
+	// short window is enough for its first tick to show.
 	time.Sleep(1 * time.Second)
 	afterGrace := redisGateway.getLogsCalls.Load()
 

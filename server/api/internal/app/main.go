@@ -66,7 +66,6 @@ func Start(debug bool, version string) {
 
 	go reconcileScheduledJobs(repos, gateways)
 
-	// Health checker
 	healthChecker := NewHealthChecker(conf, version, gateways.File, gateways.Redis)
 
 	if conf.AccountsApiHost == "" {
@@ -78,11 +77,9 @@ func Start(debug bool, version string) {
 		return
 	}
 
-	// AccountGQLClient
 	const accountsTimeoutSec = 30
 	accountGQLClient := gqlclient.NewClient(conf.AccountsApiHost, accountsTimeoutSec, otelhttp.NewTransport(authserver.NewDynamicAuthTransport()))
 
-	// PermissionChecker
 	permissionChecker := permission.NewChecker(accountGQLClient.CerbosRepo, accountGQLClient.WorkspaceRepo, rbac.ServiceName)
 
 	serverCfg := &ServerConfig{

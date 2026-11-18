@@ -62,7 +62,6 @@ var unlimitedFlowPlan = flowPlan{
 	hourlySchedule:              true,
 }
 
-// with returns the plan with change applied.
 func (p flowPlan) with(change func(*flowPlan)) flowPlan {
 	change(&p)
 	return p

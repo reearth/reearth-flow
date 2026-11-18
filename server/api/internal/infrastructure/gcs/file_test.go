@@ -60,7 +60,7 @@ func TestGetGCSObjectNameFromURL_WithUnderscores(t *testing.T) {
 			baseURL:     "https://hoge2.com",
 			objectURL:   "https://hoge.com/assets/my_file.txt",
 			gcsBasePath: "assets",
-			expected:    "", // should fail due to different host
+			expected:    "",
 		},
 		{
 			name:        "underscore in path",
@@ -222,9 +222,9 @@ func TestSanitizePath(t *testing.T) {
 	}
 }
 
-// The read routes pass a client-supplied name straight to these. A name that
-// climbs out of the route's prefix must be refused before storage is touched:
-// the repo here has no client, so reaching the bucket would panic.
+// The read routes pass client-supplied names straight to these, so a name that
+// climbs out of the route's prefix must be refused before storage is touched.
+// The repo here has no client, so reaching the bucket would panic.
 func TestReadsRefuseANameThatLeavesTheirPrefix(t *testing.T) {
 	f := &fileRepo{bucketName: "flow-bucket"}
 	ctx := context.Background()

@@ -28,10 +28,9 @@ func wsWithMember(t *testing.T, r role.RoleType) (*workspace.Workspace, context.
 	return ws, adapter.AttachUser(context.Background(), u), uid
 }
 
-// TestChecker_ReaderDeniedEvenWhenCerbosAllows is the regression this guard
-// exists for: accounts unions each user's stale global roles into every check,
-// so a workspace reader can arrive at Cerbos carrying maintainer and be
-// allowed. The workspace role must still decide.
+// Accounts unions each user's stale global roles into every check, so a
+// workspace reader can reach Cerbos carrying maintainer. The workspace role
+// must still decide.
 func TestChecker_ReaderDeniedEvenWhenCerbosAllows(t *testing.T) {
 	ws, ctx, _ := wsWithMember(t, role.RoleReader)
 	cer := &fakeCerbosRepo{result: &cerbos.CheckPermissionResult{Allowed: true}}
@@ -104,10 +103,8 @@ func TestChecker_DeniedByCerbosStaysDenied(t *testing.T) {
 	assert.False(t, allowed, "the guard can only deny; it must never turn a Cerbos deny into an allow")
 }
 
-// The guard has three deliberate fall-throughs where it cannot determine the
-// caller's role and keeps the Cerbos verdict rather than denying a real user.
-// They are pinned so switching any of them to fail-closed is a conscious
-// change rather than an accident, since each one is a hole while it lasts.
+// The tests below pin the guard's fail-open cases, where it cannot determine
+// the caller's role and keeps the Cerbos verdict.
 
 // sequencedWorkspaceRepo returns a different result per FindByID call, so a
 // test can let the alias lookup succeed and fail the guard's membership
@@ -173,8 +170,6 @@ func TestChecker_NilWorkspaceKeepsCerbosVerdict(t *testing.T) {
 	})
 }
 
-// An empty membership list means accounts returned no members at all, which
-// would otherwise deny every caller for that workspace.
 func TestChecker_EmptyMembershipKeepsCerbosVerdict(t *testing.T) {
 	_, ctx, _ := wsWithMember(t, role.RoleReader)
 	noMembers := workspace.New().NewID().Alias("acme").MustBuild()

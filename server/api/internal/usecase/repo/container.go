@@ -35,10 +35,9 @@ type Container struct {
 
 // TODO: Remove this once the replace user management is complete.
 func (c *Container) AccountRepos() *accountrepo.Container {
-	// Production builds the account container directly in app/repo.go; this shim
-	// adapts the account fields for the e2e/memory paths. Transaction is omitted
-	// deliberately — those paths drive transactions via repo.Container.Transaction,
-	// not accountrepo.Container.Transaction.
+	// Production builds the account container in app/repo.go, so this shim
+	// serves only the e2e and memory paths. Transaction is omitted because those
+	// paths use repo.Container.Transaction.
 	return &accountrepo.Container{
 		Workspace:   c.Workspace,
 		User:        c.User,

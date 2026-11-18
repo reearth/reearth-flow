@@ -17,9 +17,9 @@ const (
 	authTokenHintLength  = 4
 )
 
-// HashAuthToken is what is stored in place of a token. A generated token is
-// random enough that a plain SHA-256 cannot be reversed; the migration that
-// hashed the tokens saved before generation computes the same value in SQL.
+// HashAuthToken is what is stored in place of a token, and a plain SHA-256 is
+// enough because generated tokens are random. The token-hashing migration
+// computes the same value in SQL.
 func HashAuthToken(token string) string {
 	sum := sha256.Sum256([]byte(token))
 	return hex.EncodeToString(sum[:])

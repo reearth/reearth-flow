@@ -109,14 +109,10 @@ func (r *mutationResolver) RollbackProject(ctx context.Context, projectId gqlmod
 	}, nil
 }
 
-// SaveSnapshot backs the editor's save (Ctrl+S): it saves the workflow as a
-// version when users changed it since the last one. It answers true when a
-// version now holds the project's edits, false when there was nothing new to
-// save, and an error when the save failed.
-//
-// Another save of the project in progress answers true: its version takes
-// these edits too. So does a websocket server that keeps no versions, since
-// the flush that persists the edits succeeded.
+// SaveSnapshot backs the editor's save (Ctrl+S) and answers true when a version
+// now holds the project's edits, or false when there was nothing new to save. A
+// skipped version save (another save in progress, or a websocket server that
+// keeps no versions) also answers true, because the edits were flushed.
 func (r *mutationResolver) SaveSnapshot(ctx context.Context, projectId gqlmodel.ID) (bool, error) {
 	uc := usecases(ctx).Websocket
 	if err := uc.FlushToGCS(ctx, string(projectId)); err != nil {

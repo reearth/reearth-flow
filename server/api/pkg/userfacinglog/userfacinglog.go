@@ -27,7 +27,7 @@ func NewUserFacingLog(jobID JobID, timestamp time.Time, message string, metadata
 	return &UserFacingLog{
 		jobID:     jobID,
 		timestamp: timestamp,
-		level:     LogLevelInfo, // Default level
+		level:     LogLevelInfo,
 		message:   message,
 		metadata:  metadata,
 	}

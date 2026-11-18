@@ -50,9 +50,8 @@ func (c *Client) Close() error {
 	return nil
 }
 
-// setCommonHeaders adds shared authentication headers to outgoing requests.
-// If an APISecret is configured, it sets the X-API-Secret header required by
-// the WebSocket server's HTTP document API authentication middleware.
+// setCommonHeaders sets X-API-Secret, when configured, for the websocket
+// server's document API authentication middleware.
 func (c *Client) setCommonHeaders(req *http.Request) {
 	if c.config.APISecret != "" {
 		req.Header.Set("X-API-Secret", c.config.APISecret)

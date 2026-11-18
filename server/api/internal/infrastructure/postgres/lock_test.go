@@ -20,17 +20,13 @@ func TestLock_LockUnlock(t *testing.T) {
 	ctx := context.Background()
 	r := postgres.NewLock(pool)
 
-	// First lock succeeds.
 	require.NoError(t, r.Lock(ctx, "config"))
 
-	// Second lock on same name returns ErrAlreadyLocked.
 	err := r.Lock(ctx, "config")
 	assert.ErrorIs(t, err, repo.ErrAlreadyLocked)
 
-	// Unlock succeeds.
 	require.NoError(t, r.Unlock(ctx, "config"))
 
-	// Unlock again returns ErrNotLocked.
 	err = r.Unlock(ctx, "config")
 	assert.ErrorIs(t, err, repo.ErrNotLocked)
 }

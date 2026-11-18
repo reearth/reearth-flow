@@ -13,9 +13,8 @@ const (
 	defaultAliasCacheTTL  = 5 * time.Minute
 )
 
-// aliasCache memoizes workspaceID -> alias lookups process-wide. Aliases
-// change rarely and a stale alias fails closed at Cerbos, so staleness is
-// not a security concern; boundedness and TTL keep memory in check.
+// aliasCache memoizes workspaceID -> alias lookups process-wide, bounded in
+// size and by TTL. A stale alias fails closed at Cerbos.
 type aliasCache struct {
 	lru   *expirable.LRU[string, string]
 	group singleflight.Group
@@ -31,9 +30,8 @@ func newAliasCache(size int, ttl time.Duration) *aliasCache {
 	return &aliasCache{lru: expirable.NewLRU[string, string](size, nil, ttl)}
 }
 
-// resolve returns the cached alias for key, calling fetch on a miss.
-// Concurrent misses for the same key collapse into a single fetch call.
-// Errors from fetch are never cached.
+// resolve returns the cached alias for key, collapsing concurrent misses into
+// one fetch. Fetch errors are never cached.
 func (c *aliasCache) resolve(ctx context.Context, key string, fetch func(context.Context) (string, error)) (string, error) {
 	if alias, ok := c.lru.Get(key); ok {
 		return alias, nil

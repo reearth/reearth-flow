@@ -20,10 +20,8 @@ import (
 	_ "github.com/reearth/reearth-flow/api/internal/app/docs" // swagger docs
 )
 
-// nonGraphQLBodyLimit bounds request bodies on every route except GraphQL.
-// GraphQL is excluded not because its bodies are small (multipart uploads
-// can be large) but because it's bounded separately via http.MaxBytesReader
-// (see auth_middleware.go).
+// nonGraphQLBodyLimit bounds request bodies on every route except GraphQL,
+// which is bounded separately via http.MaxBytesReader (see auth_middleware.go).
 const nonGraphQLBodyLimit = "32M"
 
 func initEcho(ctx context.Context, cfg *ServerConfig) *echo.Echo {
@@ -37,7 +35,6 @@ func initEcho(ctx context.Context, cfg *ServerConfig) *echo.Echo {
 	e.HidePort = true
 	e.HTTPErrorHandler = errorHandler(e.DefaultHTTPErrorHandler)
 
-	// basic middleware
 	logger := log.NewEcho()
 	e.Logger = logger
 	e.Use(
@@ -72,7 +69,6 @@ func initEcho(ctx context.Context, cfg *ServerConfig) *echo.Echo {
 		)
 	}
 
-	// auth config
 	authConfig := cfg.Config.JWTProviders()
 
 	log.Infof("auth: config: %#v", authConfig)
@@ -84,7 +80,6 @@ func initEcho(ctx context.Context, cfg *ServerConfig) *echo.Echo {
 		SkipOps: skipOps,
 	})
 
-	// enable pprof
 	if e.Debug {
 		pprofGroup := e.Group("/debug/pprof")
 		pprofGroup.Any("/cmdline", echo.WrapHandler(http.HandlerFunc(pprof.Cmdline)))
@@ -102,7 +97,6 @@ func initEcho(ctx context.Context, cfg *ServerConfig) *echo.Echo {
 		))
 		log.Infofc(ctx, "gql: GraphQL Playground is available")
 
-		// Swagger UI
 		e.GET("/swagger/*", echoSwagger.WrapHandler)
 		log.Infofc(ctx, "swagger: Swagger UI is available at /swagger/index.html")
 	}
@@ -119,7 +113,6 @@ func initEcho(ctx context.Context, cfg *ServerConfig) *echo.Echo {
 	})
 	e.Use(UsecaseMiddleware(&uc))
 
-	// apis
 	api := e.Group("/api")
 	api.GET("/ping", Ping(), privateCache)
 	api.GET("/health", cfg.HealthChecker.Handler(), privateCache)

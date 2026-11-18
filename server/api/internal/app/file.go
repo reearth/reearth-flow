@@ -11,10 +11,8 @@ import (
 	"github.com/reearth/reearthx/log"
 )
 
-// Content types Go's mime table does not carry, registered so a view artifact
-// is served as what it is rather than as application/octet-stream. Both are
-// served through the /artifacts route: a glb or a vector tile is an artifact
-// like any other, but a viewer that sniffs the header needs the real type.
+// Content types Go's mime table lacks, registered so a view artifact is not
+// served as application/octet-stream to a viewer that needs the real type.
 func init() {
 	for ext, ct := range map[string]string{
 		".glb": "model/gltf-binary",
@@ -40,9 +38,8 @@ func serveFiles(
 			if err != nil {
 				return err
 			}
-			// The repos hand back an open object reader. Close it whether the
-			// body is streamed or, for HEAD, never read: each one holds a
-			// storage connection until it is.
+			// Close the object reader even for HEAD, which never reads the body.
+			// Each one holds a storage connection until it is closed.
 			if c, ok := reader.(io.Closer); ok {
 				defer func() {
 					if err := c.Close(); err != nil {
@@ -58,7 +55,6 @@ func serveFiles(
 				}
 			}
 
-			// For HEAD requests, just set headers without streaming body
 			if ctx.Request().Method == "HEAD" {
 				ctx.Response().Header().Set("Content-Type", ct)
 				return ctx.NoContent(http.StatusOK)

@@ -13,33 +13,28 @@ import (
 func TestHealthChecker_Handler_NoAuth(t *testing.T) {
 	t.Parallel()
 
-	// Create a minimal config without auth
 	conf := &config.Config{
 		DB: "mongodb://localhost:27017",
 	}
 
-	// Create health checker (will skip Redis and file checks since they're nil)
 	hc := NewHealthChecker(conf, "test-version", nil, nil)
 	assert.NotNil(t, hc)
 
-	// Create echo context
 	e := echo.New()
 	req := httptest.NewRequest(http.MethodGet, "/api/health", nil)
 	rec := httptest.NewRecorder()
 	c := e.NewContext(req, rec)
 
-	// Execute handler (note: will fail if MongoDB is not running, but tests the handler flow)
 	handler := hc.Handler()
-	_ = handler(c) // Don't check error as MongoDB may not be running
+	_ = handler(c)
 
-	// The handler should at least respond
+	// MongoDB may be unreachable, so either status shows the handler ran.
 	assert.True(t, rec.Code == http.StatusOK || rec.Code == http.StatusServiceUnavailable)
 }
 
 func TestHealthChecker_Handler_WithAuth_Unauthorized(t *testing.T) {
 	t.Parallel()
 
-	// Create a config with auth
 	conf := &config.Config{
 		DB: "mongodb://localhost:27017",
 		HealthCheck: config.HealthCheckConfig{
@@ -51,25 +46,21 @@ func TestHealthChecker_Handler_WithAuth_Unauthorized(t *testing.T) {
 	hc := NewHealthChecker(conf, "test-version", nil, nil)
 	assert.NotNil(t, hc)
 
-	// Create echo context without auth
 	e := echo.New()
 	req := httptest.NewRequest(http.MethodGet, "/api/health", nil)
 	rec := httptest.NewRecorder()
 	c := e.NewContext(req, rec)
 
-	// Execute handler
 	handler := hc.Handler()
 	err := handler(c)
 	assert.NoError(t, err)
 
-	// Should return unauthorized
 	assert.Equal(t, http.StatusUnauthorized, rec.Code)
 }
 
 func TestHealthChecker_Handler_WithAuth_Authorized(t *testing.T) {
 	t.Parallel()
 
-	// Create a config with auth
 	conf := &config.Config{
 		DB: "mongodb://localhost:27017",
 		HealthCheck: config.HealthCheckConfig{
@@ -81,25 +72,22 @@ func TestHealthChecker_Handler_WithAuth_Authorized(t *testing.T) {
 	hc := NewHealthChecker(conf, "test-version", nil, nil)
 	assert.NotNil(t, hc)
 
-	// Create echo context with correct auth
 	e := echo.New()
 	req := httptest.NewRequest(http.MethodGet, "/api/health", nil)
 	req.SetBasicAuth("admin", "secret")
 	rec := httptest.NewRecorder()
 	c := e.NewContext(req, rec)
 
-	// Execute handler
 	handler := hc.Handler()
 	_ = handler(c)
 
-	// Should either succeed or fail due to DB, but not due to auth
+	// MongoDB may be unreachable, so this only checks the request was not refused.
 	assert.True(t, rec.Code == http.StatusOK || rec.Code == http.StatusServiceUnavailable)
 }
 
 func TestHealthChecker_Handler_WithAuth_WrongPassword(t *testing.T) {
 	t.Parallel()
 
-	// Create a config with auth
 	conf := &config.Config{
 		DB: "mongodb://localhost:27017",
 		HealthCheck: config.HealthCheckConfig{
@@ -111,19 +99,16 @@ func TestHealthChecker_Handler_WithAuth_WrongPassword(t *testing.T) {
 	hc := NewHealthChecker(conf, "test-version", nil, nil)
 	assert.NotNil(t, hc)
 
-	// Create echo context with wrong password
 	e := echo.New()
 	req := httptest.NewRequest(http.MethodGet, "/api/health", nil)
 	req.SetBasicAuth("admin", "wrong-password")
 	rec := httptest.NewRecorder()
 	c := e.NewContext(req, rec)
 
-	// Execute handler
 	handler := hc.Handler()
 	err := handler(c)
 	assert.NoError(t, err)
 
-	// Should return unauthorized
 	assert.Equal(t, http.StatusUnauthorized, rec.Code)
 }
 

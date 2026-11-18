@@ -41,7 +41,6 @@ func TestProjectsPagination(t *testing.T) {
 		},
 	}, true, true, mock)
 
-	// Create multiple projects for testing
 	projectIDs := make([]string, 5)
 	for i := 0; i < 5; i++ {
 		query := `mutation($input: CreateProjectInput!) {
@@ -92,17 +91,14 @@ func TestProjectsPagination(t *testing.T) {
 		assert.NotEmpty(t, result.Data.CreateProject.Project.ID, "Project creation failed")
 		projectIDs[i] = result.Data.CreateProject.Project.ID
 
-		// Add a small delay between project creations
 		time.Sleep(100 * time.Millisecond)
 	}
 
-	// Verify all projects were created
 	assert.Len(t, projectIDs, 5, "Expected 5 projects to be created")
 	for i, id := range projectIDs {
 		assert.NotEmpty(t, id, fmt.Sprintf("Project %d was not created successfully", i))
 	}
 
-	// Test page-based pagination
 	t.Run("test_page_based_pagination", func(t *testing.T) {
 		query := fmt.Sprintf(`{
 			projects(
@@ -161,9 +157,7 @@ func TestProjectsPagination(t *testing.T) {
 		assert.Equal(t, 1, result.Data.ProjectsPage.PageInfo.CurrentPage)
 	})
 
-	// Test sorting
 	t.Run("test_sorting", func(t *testing.T) {
-		// First test ASC order
 		query := fmt.Sprintf(`{
 			projects(
 				workspaceId: "%s"
@@ -207,14 +201,12 @@ func TestProjectsPagination(t *testing.T) {
 		err = json.Unmarshal([]byte(resp.Body().Raw()), &resultAsc)
 		assert.NoError(t, err)
 
-		// Verify ASC order
 		for i := 1; i < len(resultAsc.Data.ProjectsPage.Nodes); i++ {
 			prev := resultAsc.Data.ProjectsPage.Nodes[i-1].Name
 			curr := resultAsc.Data.ProjectsPage.Nodes[i].Name
 			assert.True(t, prev <= curr, "Projects should be sorted by name in ascending order")
 		}
 
-		// Now test DESC order
 		query = fmt.Sprintf(`{
 			projects(
 				workspaceId: "%s"
@@ -258,14 +250,12 @@ func TestProjectsPagination(t *testing.T) {
 		err = json.Unmarshal([]byte(resp.Body().Raw()), &resultDesc)
 		assert.NoError(t, err)
 
-		// Verify DESC order
 		for i := 1; i < len(resultDesc.Data.ProjectsPage.Nodes); i++ {
 			prev := resultDesc.Data.ProjectsPage.Nodes[i-1].Name
 			curr := resultDesc.Data.ProjectsPage.Nodes[i].Name
 			assert.True(t, prev >= curr, "Projects should be sorted by name in descending order")
 		}
 
-		// Verify that ASC and DESC orders are opposite of each other
 		if len(resultAsc.Data.ProjectsPage.Nodes) > 0 && len(resultDesc.Data.ProjectsPage.Nodes) > 0 {
 			assert.Equal(t,
 				resultAsc.Data.ProjectsPage.Nodes[0].Name,
@@ -306,11 +296,9 @@ func TestJobsPagination(t *testing.T) {
 		}
 	}`
 
-	// Create multipart form data
 	var b bytes.Buffer
 	w := multipart.NewWriter(&b)
 
-	// Add operations field
 	operations := map[string]any{
 		"query": deploymentQuery,
 		"variables": map[string]any{
@@ -327,11 +315,9 @@ func TestJobsPagination(t *testing.T) {
 	err = w.WriteField("operations", string(operationsJSON))
 	assert.NoError(t, err)
 
-	// Add map field
 	err = w.WriteField("map", `{"0": ["variables.input.file"]}`)
 	assert.NoError(t, err)
 
-	// Add file
 	workflowContent := `{
 		"name": "Test Workflow",
 		"version": "1.0",
@@ -365,7 +351,6 @@ func TestJobsPagination(t *testing.T) {
 	assert.NoError(t, err)
 	deploymentId := deploymentResult.Data.CreateDeployment.Deployment.ID
 
-	// Create multiple jobs
 	for i := 0; i < 5; i++ {
 		jobQuery := `mutation($input: ExecuteDeploymentInput!) {
 			executeDeployment(input: $input) {
@@ -411,11 +396,10 @@ func TestJobsPagination(t *testing.T) {
 		err = json.Unmarshal([]byte(resp.Body().Raw()), &result)
 		assert.NoError(t, err)
 
-		// Add a small delay to ensure the job is saved
+		// Spaced out so each job gets a distinct StartedAt for the sort assertions.
 		time.Sleep(100 * time.Millisecond)
 	}
 
-	// Test pagination
 	t.Run("test_pagination", func(t *testing.T) {
 		query := fmt.Sprintf(`{
 			jobs(
@@ -468,14 +452,11 @@ func TestJobsPagination(t *testing.T) {
 		err = json.Unmarshal([]byte(resp.Body().Raw()), &result)
 		assert.NoError(t, err)
 
-		// Verify first page results
 		assert.Len(t, result.Data.Jobs.Nodes, 2, "Should return exactly 2 jobs")
 		assert.Greater(t, result.Data.Jobs.PageInfo.TotalCount, 0, "Total count should be greater than zero")
 	})
 
-	// Test sorting
 	t.Run("test_sorting", func(t *testing.T) {
-		// First test DESC order
 		query := fmt.Sprintf(`{
 			jobs(
 				workspaceId: "%s"
@@ -519,14 +500,12 @@ func TestJobsPagination(t *testing.T) {
 		err = json.Unmarshal([]byte(resp.Body().Raw()), &resultDesc)
 		assert.NoError(t, err)
 
-		// Verify DESC order
 		for i := 1; i < len(resultDesc.Data.Jobs.Nodes); i++ {
 			prev := resultDesc.Data.Jobs.Nodes[i-1].StartedAt
 			curr := resultDesc.Data.Jobs.Nodes[i].StartedAt
 			assert.True(t, prev.After(curr) || prev.Equal(curr), "Jobs should be sorted by startedAt in descending order")
 		}
 
-		// Now test ASC order
 		query = fmt.Sprintf(`{
 			jobs(
 				workspaceId: "%s"
@@ -570,14 +549,12 @@ func TestJobsPagination(t *testing.T) {
 		err = json.Unmarshal([]byte(resp.Body().Raw()), &resultAsc)
 		assert.NoError(t, err)
 
-		// Verify ASC order
 		for i := 1; i < len(resultAsc.Data.Jobs.Nodes); i++ {
 			prev := resultAsc.Data.Jobs.Nodes[i-1].StartedAt
 			curr := resultAsc.Data.Jobs.Nodes[i].StartedAt
 			assert.True(t, prev.Before(curr) || prev.Equal(curr), "Jobs should be sorted by startedAt in ascending order")
 		}
 
-		// Verify that ASC and DESC orders are opposite of each other
 		if len(resultAsc.Data.Jobs.Nodes) > 0 && len(resultDesc.Data.Jobs.Nodes) > 0 {
 			assert.Equal(t,
 				resultAsc.Data.Jobs.Nodes[0].StartedAt,
@@ -587,9 +564,7 @@ func TestJobsPagination(t *testing.T) {
 		}
 	})
 
-	// Test page-based pagination
 	t.Run("test_page_pagination", func(t *testing.T) {
-		// Test first page
 		query := fmt.Sprintf(`{
 			jobs(
 				workspaceId: "%s"
@@ -641,13 +616,11 @@ func TestJobsPagination(t *testing.T) {
 		err = json.Unmarshal([]byte(resp.Body().Raw()), &result)
 		assert.NoError(t, err)
 
-		// Verify first page results
 		assert.Len(t, result.Data.Jobs.Nodes, 2)
 		assert.Equal(t, 1, result.Data.Jobs.PageInfo.CurrentPage)
 		assert.Equal(t, 5, result.Data.Jobs.PageInfo.TotalCount)
 		assert.Equal(t, 3, result.Data.Jobs.PageInfo.TotalPages)
 
-		// Test second page
 		query = fmt.Sprintf(`{
 			jobs(
 				workspaceId: "%s"
@@ -683,7 +656,6 @@ func TestJobsPagination(t *testing.T) {
 		err = json.Unmarshal([]byte(resp.Body().Raw()), &result)
 		assert.NoError(t, err)
 
-		// Verify second page results
 		assert.Equal(t, 2, result.Data.Jobs.PageInfo.CurrentPage)
 		assert.Equal(t, 5, result.Data.Jobs.PageInfo.TotalCount)
 		assert.Equal(t, 3, result.Data.Jobs.PageInfo.TotalPages)
@@ -713,11 +685,9 @@ func TestTriggersPagination(t *testing.T) {
 		},
 	}, true, true, mock)
 
-	// Create a test deployment first
 	deploymentId := createTestDeployment(t, e)
 	assert.NotEmpty(t, deploymentId)
 
-	// Create multiple triggers for testing
 	triggerIDs := make([]string, 5)
 	for i := 0; i < 5; i++ {
 		query := `mutation($input: CreateTriggerInput!) {
@@ -769,17 +739,14 @@ func TestTriggersPagination(t *testing.T) {
 		assert.NotEmpty(t, result.Data.CreateTrigger.Trigger.ID, "Trigger creation failed")
 		triggerIDs[i] = result.Data.CreateTrigger.Trigger.ID
 
-		// Add a small delay between trigger creations
 		time.Sleep(100 * time.Millisecond)
 	}
 
-	// Verify all triggers were created
 	assert.Len(t, triggerIDs, 5, "Expected 5 triggers to be created")
 	for i, id := range triggerIDs {
 		assert.NotEmpty(t, id, fmt.Sprintf("Trigger %d was not created successfully", i))
 	}
 
-	// Test page-based pagination
 	t.Run("test_page_based_pagination", func(t *testing.T) {
 		query := fmt.Sprintf(`{
 			triggers(
@@ -838,9 +805,7 @@ func TestTriggersPagination(t *testing.T) {
 		assert.Equal(t, 1, result.Data.Triggers.PageInfo.CurrentPage)
 	})
 
-	// Test sorting
 	t.Run("test_sorting", func(t *testing.T) {
-		// First test ASC order
 		query := fmt.Sprintf(`{
 			triggers(
 				workspaceId: "%s"
@@ -884,14 +849,12 @@ func TestTriggersPagination(t *testing.T) {
 		err = json.Unmarshal([]byte(resp.Body().Raw()), &resultAsc)
 		assert.NoError(t, err)
 
-		// Verify ASC order
 		for i := 1; i < len(resultAsc.Data.Triggers.Nodes); i++ {
 			prev := resultAsc.Data.Triggers.Nodes[i-1].Description
 			curr := resultAsc.Data.Triggers.Nodes[i].Description
 			assert.True(t, prev <= curr, "Triggers should be sorted by description in ascending order")
 		}
 
-		// Now test DESC order
 		query = fmt.Sprintf(`{
 			triggers(
 				workspaceId: "%s"
@@ -935,14 +898,12 @@ func TestTriggersPagination(t *testing.T) {
 		err = json.Unmarshal([]byte(resp.Body().Raw()), &resultDesc)
 		assert.NoError(t, err)
 
-		// Verify DESC order
 		for i := 1; i < len(resultDesc.Data.Triggers.Nodes); i++ {
 			prev := resultDesc.Data.Triggers.Nodes[i-1].Description
 			curr := resultDesc.Data.Triggers.Nodes[i].Description
 			assert.True(t, prev >= curr, "Triggers should be sorted by description in descending order")
 		}
 
-		// Verify that ASC and DESC orders are opposite of each other
 		if len(resultAsc.Data.Triggers.Nodes) > 0 && len(resultDesc.Data.Triggers.Nodes) > 0 {
 			assert.Equal(t,
 				resultAsc.Data.Triggers.Nodes[0].Description,
@@ -952,7 +913,6 @@ func TestTriggersPagination(t *testing.T) {
 		}
 	})
 
-	// Test last page
 	t.Run("test_last_page", func(t *testing.T) {
 		query := fmt.Sprintf(`{
 			triggers(
@@ -1005,7 +965,7 @@ func TestTriggersPagination(t *testing.T) {
 		err = json.Unmarshal([]byte(resp.Body().Raw()), &result)
 		assert.NoError(t, err)
 
-		assert.Len(t, result.Data.Triggers.Nodes, 1) // Last page should have 1 item
+		assert.Len(t, result.Data.Triggers.Nodes, 1)
 		assert.Equal(t, 5, result.Data.Triggers.PageInfo.TotalCount)
 		assert.Equal(t, 3, result.Data.Triggers.PageInfo.TotalPages)
 		assert.Equal(t, 3, result.Data.Triggers.PageInfo.CurrentPage)

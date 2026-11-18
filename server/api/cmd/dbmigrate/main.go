@@ -1,14 +1,6 @@
-// Command dbmigrate replicates flow-owned data from MongoDB to PostgreSQL.
-//
-// It streams every document in each Mongo collection, decodes it with the same
-// mongodoc decoder the Mongo repositories use, and upserts it through the same
-// Postgres adapter Save the API uses. Both sides are the production-tested
-// read/write paths, so the ETL inherits their field mappings exactly and is
-// idempotent (Save is an upsert, so re-runs are safe).
-//
-// Scope: the 12 flow-owned data repos. Account repos (user/workspace/role/
-// permittable) stay on Mongo and are not copied. Config (migration bookkeeping)
-// and AuthRequest (transient OAuth state) are intentionally skipped.
+// Command dbmigrate replicates flow-owned data, but not account data, from
+// MongoDB to PostgreSQL. It reuses the Mongo repositories' decoders and the
+// Postgres adapters' upserting Save, so re-runs are idempotent.
 //
 // Usage:
 //

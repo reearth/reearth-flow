@@ -41,10 +41,9 @@ type (
 
 		AccountsApiHost string `envconfig:"REEARTH_ACCOUNTS_API_HOST" pp:",omitempty"`
 		AssetBaseURL    string `default:"http://localhost:8080/assets"`
-		// ArtifactBaseURL is the public base a job's artifacts are served from.
-		// Unset, it is the /artifacts route on this API (Host + "/artifacts");
-		// set it only when a CDN fronts that route. Feature views are addressed
-		// through it.
+		// ArtifactBaseURL is the public base that job artifacts and feature views
+		// are served from. Unset, it is Host + "/artifacts", so set it only when a
+		// CDN fronts that route.
 		ArtifactBaseURL string `pp:",omitempty"`
 		DB              string `default:"mongodb://localhost"`
 		DB_Account      string `pp:",omitempty"`
@@ -149,7 +148,6 @@ type (
 )
 
 func ReadConfig(debug bool) (*Config, error) {
-	// load .env
 	if err := godotenv.Load(".env"); err != nil && !os.IsNotExist(err) {
 		return nil, err
 	} else if err == nil {
@@ -187,9 +185,8 @@ func ReadConfig(debug bool) (*Config, error) {
 		c.AuthSrv.UIDomain = addHTTPScheme(c.AuthSrv.UIDomain)
 	}
 
-	// Derived from Host rather than given a fixed default: a localhost default
-	// would hand every deployment that never set it view URLs no browser can
-	// open, and nothing would say so.
+	// Derived from Host because a localhost default would give deployments that
+	// never set it view URLs no browser can open.
 	if c.ArtifactBaseURL == "" {
 		c.ArtifactBaseURL = strings.TrimSuffix(c.Host, "/") + "/artifacts"
 	}

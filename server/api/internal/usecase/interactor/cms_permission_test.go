@@ -459,8 +459,8 @@ func TestCMS_UnresolvableProjectIsDenied(t *testing.T) {
 	assert.Zero(t, gw.listAssetsCalls)
 }
 
-// Regression: the CMS internal API resolves projects inside a workspace, and
-// an empty workspace is not-found. Every project-scoped call must send it.
+// The CMS internal API resolves projects inside a workspace, so every
+// project-scoped call must send it.
 func TestCMS_ProjectLookupSendsWorkspace(t *testing.T) {
 	t.Parallel()
 
@@ -488,8 +488,6 @@ func TestCMS_ProjectLookupSendsWorkspace(t *testing.T) {
 		},
 	}
 
-	// Go 1.22+ scopes name/call per iteration, so the parallel subtests each
-	// see their own; every subtest builds its own gateway and checker.
 	for name, call := range calls {
 		t.Run(name, func(t *testing.T) {
 			t.Parallel()

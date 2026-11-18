@@ -42,7 +42,7 @@ func TestRun(t *testing.T) {
 	assert.Same(t, b, gotb)
 	assert.Same(t, c, gotc)
 	assert.Nil(t, goterr)
-	assert.False(t, tr.IsCommitted()) // not IsCommitted
+	assert.False(t, tr.IsCommitted())
 
 	// regular2: with tx
 	tr = &usecasex.NopTransaction{}

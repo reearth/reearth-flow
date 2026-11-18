@@ -28,10 +28,9 @@ func NewWebsocket(client interfaces.WebsocketClient, projectRepo repo.Project, p
 	}
 }
 
-// authorize checks action against the project's owning workspace. Fails closed.
-//
-// ResourceProject, not ResourceProjectDocument: Cerbos denies actions on resources
-// absent from its policy store, and projectDocument is not published there.
+// authorize checks action against the project's owning workspace and fails closed.
+// It uses ResourceProject because Cerbos denies resources absent from its policy
+// store, and projectDocument is not published there.
 func (i *Websocket) authorize(ctx context.Context, projectID string, action string) error {
 	_, err := i.authorizeProject(ctx, projectID, action)
 	return err
@@ -128,9 +127,8 @@ func (i *Websocket) Rollback(ctx context.Context, docID string, version int) (*w
 	return i.client.Rollback(ctx, docID, version)
 }
 
-// FlushToGCS backs the editor's save action. ActionAny, not ActionEdit, which
-// is maintainer/owner and would stop writers saving: ActionAny on
-// ResourceProject is writer/maintainer/owner, deliberately excluding reader.
+// FlushToGCS backs the editor's save action. It checks ActionAny, which on
+// ResourceProject is writer and above, because ActionEdit is maintainer and above.
 func (i *Websocket) FlushToGCS(ctx context.Context, docID string) error {
 	if err := i.authorize(ctx, docID, rbac.ActionAny); err != nil {
 		return err
@@ -173,9 +171,9 @@ func (i *Websocket) SaveVersion(ctx context.Context, docID, label string) (bool,
 	return i.client.SaveVersion(ctx, docID, label)
 }
 
-// SetProjectLock is called by UpdateProject, which already checked edit
-// permission; it is gated here like the other writes in case of other callers.
-// Not authorizeWorkflowChange: unlocking a locked project must get through.
+// SetProjectLock is gated like the other writes even though UpdateProject already
+// checked edit permission. It skips authorizeWorkflowChange so that unlocking a
+// locked project gets through.
 func (i *Websocket) SetProjectLock(ctx context.Context, docID string, locked bool, changedAt time.Time) error {
 	if err := i.authorize(ctx, docID, rbac.ActionEdit); err != nil {
 		return err

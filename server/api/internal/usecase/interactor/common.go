@@ -145,13 +145,9 @@ func checkPermission(ctx context.Context, permissionChecker gateway.PermissionCh
 }
 
 // alignToRequestedIDs reassembles a FindByIDs result into one slot per
-// requested id, in request order, nil for any id not returned. Callers must
-// not assume FindByIDs itself does this: Mongo's filterX helpers pad with nil,
-// but pgxx.OrderByIDs (used by the Postgres repos) silently drops not-found
-// ids and compacts the slice, and the in-memory fakes are inconsistent with
-// each other too. Anything that treats the result as positionally aligned
-// with the request - the GraphQL dataloaders consuming Fetch, and
-// authorizeFetchByWorkspace's in-place nil-ing below - needs this first.
+// requested id, in request order, nil for any id not returned. Repos differ
+// here (Mongo pads with nil, Postgres drops not-found ids), so anything that
+// treats the result as positional needs this first.
 func alignToRequestedIDs[ID comparable, T comparable](ids []ID, got []T, zero T, idOf func(T) ID) []T {
 	byID := make(map[ID]T, len(got))
 	for _, it := range got {
@@ -167,12 +163,9 @@ func alignToRequestedIDs[ID comparable, T comparable](ids []ID, got []T, zero T,
 	return aligned
 }
 
-// authorizeFetchByWorkspace authorizes an id-aligned batch fetch result (see
-// alignToRequestedIDs; nil marks an absent id) per item's own workspace,
-// zeroing out items whose workspace is denied instead of trusting one item's
-// workspace for the whole batch. checkPermission memoizes per workspace, so a
-// mixed-tenant batch costs one check per distinct workspace. An all-nil batch
-// falls back to a single no-workspace check.
+// authorizeFetchByWorkspace authorizes an id-aligned batch fetch result per
+// item's own workspace, zeroing items whose workspace is denied. An all-nil
+// batch falls back to a single no-workspace check.
 func authorizeFetchByWorkspace[T comparable](
 	ctx context.Context,
 	check func(ctx context.Context, action string, workspaceID ...accountsid.WorkspaceID) error,

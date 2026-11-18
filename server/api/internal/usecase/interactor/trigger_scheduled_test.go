@@ -160,7 +160,6 @@ func TestTrigger_ExecuteTimeDrivenTrigger_OneJobPerScheduledTime(t *testing.T) {
 	})
 }
 
-// submittingBatch accepts every submit.
 type submittingBatch struct{ gateway.Batch }
 
 func (submittingBatch) SubmitJob(context.Context, id.JobID, string, string, map[string]string, id.ProjectID, accountsid.WorkspaceID, *id.JobID, *uuid.UUID, time.Duration) (string, error) {
@@ -355,12 +354,10 @@ func (s *recordingScheduler) DeleteScheduledJob(context.Context, id.TriggerID) e
 	return s.record("delete")
 }
 
-// Cloud Scheduler is called only once an edit is saved, so a call that fails,
-// or whose answer is lost after Cloud Scheduler applied it, cannot roll back
-// the edit and leave the job on a schedule its trigger does not have. A
-// trigger made time-driven has its job updated too, which creates it, so a
-// job left behind when it stopped being time-driven is brought in line rather
-// than refusing the edit.
+// Cloud Scheduler is called only after the edit is saved, so a failed or lost
+// call cannot roll back the edit and strand the job on another schedule. A
+// trigger made time-driven has its job updated too, which creates it or brings
+// a leftover one in line.
 func TestTrigger_Update_CallsTheSchedulerAfterSaving(t *testing.T) {
 	t.Parallel()
 

@@ -7,14 +7,12 @@ import (
 )
 
 func TestReadConfig(t *testing.T) {
-	// Set environment variables for testing
 	t.Setenv("REEARTH_FLOW_HOST", "http://example.com")
 	t.Setenv("REEARTH_FLOW_HOST_WEB", "http://web.example.com")
 	t.Setenv("REEARTH_FLOW_DB", "mongodb://testdb")
 	t.Setenv("REEARTH_FLOW_AUTH_ISS", "http://auth.example.com")
 	t.Setenv("REEARTH_FLOW_AUTH_AUD", "audience1,audience2")
 
-	// Test with debug mode enabled
 	config, err := ReadConfig(true)
 	assert.NoError(t, err)
 	assert.NotNil(t, config)
@@ -25,7 +23,6 @@ func TestReadConfig(t *testing.T) {
 	assert.Equal(t, "http://auth.example.com", config.Auth_ISS)
 	assert.Equal(t, "audience1,audience2", config.Auth_AUD)
 
-	// Test with debug mode disabled
 	config, err = ReadConfig(false)
 	assert.NoError(t, err)
 	assert.NotNil(t, config)

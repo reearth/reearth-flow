@@ -25,8 +25,6 @@ func TestRetryPolicy_Window(t *testing.T) {
 	})
 }
 
-// Every retry of a run has to end before the next run is due, or the
-// scheduler may skip that run.
 func TestRetryPolicy_EndsBeforeTheNextRun(t *testing.T) {
 	t.Parallel()
 

@@ -82,19 +82,13 @@ type File interface {
 	// GetJobPreviewSchemaUploadURI returns the gs://-style write URI the worker
 	// writes the SchemaReport to (distinct from the https read URL above).
 	GetJobPreviewSchemaUploadURI(string) string
-	// CheckJobPreviewSchemaExists reports whether the SchemaReport for jobID exists.
 	CheckJobPreviewSchemaExists(context.Context, string) (bool, error)
 	GetIntermediateDataURL(context.Context, string, string) string
 	CheckIntermediateDataExists(context.Context, string, string) (bool, error)
-	// ResolveIntermediateDataURI returns the gs://-style read URI of the
-	// intermediate-data file fileID under jobID, and whether it exists. The
-	// renderer is handed gs:// rather than the public https URL because the
-	// engine's http storage backend is read-only and unauthenticated.
-	//
-	// It reports which extension the file actually carries: a run writes
-	// `.jsonl` or `.jsonl.zst` depending on WORKER_COMPRESS_INTERMEDIATE_DATA,
-	// and resolving it here means a missing input fails before a render is
-	// dispatched rather than inside one.
+	// ResolveIntermediateDataURI returns the gs:// read URI of fileID's
+	// intermediate data, with whichever extension the run wrote, and whether it
+	// exists. The renderer gets gs:// because the engine's http storage backend
+	// is read-only and unauthenticated.
 	ResolveIntermediateDataURI(ctx context.Context, jobID, fileID string) (string, bool, error)
 	// GetFeatureViewUploadURI returns the gs:// root a view's files are written
 	// under, which is the renderer's --output.
@@ -102,9 +96,9 @@ type File interface {
 	// GetFeatureViewReportUploadURI returns the gs:// URI the renderer writes a
 	// view's report to.
 	GetFeatureViewReportUploadURI(jobID, fileID, key string) string
-	// GetFeatureViewURL returns the public https URL of one file inside a view.
-	// name is relative to the view's own directory, and an empty name is that
-	// directory. Empty when storage serves nothing publicly.
+	// GetFeatureViewURL returns the public https URL of name, relative to the
+	// view's directory, or of the directory itself when name is empty. It
+	// returns "" when storage serves nothing publicly.
 	GetFeatureViewURL(jobID, fileID, name string) string
 	// ReadFeatureViewReport opens a view's report, and is also how an existing
 	// view is detected: rerror.ErrNotFound means it has not been rendered.
@@ -113,12 +107,9 @@ type File interface {
 	// only what a later render writes. A report that does not exist is not an
 	// error.
 	DeleteFeatureViewReport(ctx context.Context, jobID, fileID, key string) error
-	// CheckFeatureViewFileExists reports whether one file inside a view is
-	// still present. name is relative to the view's own directory, as
-	// EntryPointName builds it.
-	//
-	// A report and the view it describes are separate objects with separate
-	// lifetimes, so a report alone is not proof the view is still loadable.
+	// CheckFeatureViewFileExists reports whether one file inside a view, named
+	// relative to the view's directory, is still present. A report has its own
+	// lifetime, so it alone does not prove the view is still loadable.
 	CheckFeatureViewFileExists(ctx context.Context, jobID, fileID, name string) (bool, error)
 	IssueUploadAssetLink(context.Context, IssueUploadAssetParam) (*UploadAssetLink, error)
 	GetPublicAssetURL(string, string) (*url.URL, error)

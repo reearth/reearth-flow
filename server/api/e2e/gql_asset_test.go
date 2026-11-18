@@ -37,7 +37,6 @@ func TestQueryAssets(t *testing.T) {
 		},
 	}, true, true, mock)
 
-	// Query assets for the workspace
 	query := fmt.Sprintf(`query { assets(workspaceId: "%s", pagination: {page: 1, pageSize: 10}) { nodes { id fileName size contentType } totalCount } }`, wId1)
 	request := GraphQLRequest{
 		Query: query,
@@ -73,21 +72,17 @@ func TestCreateAsset(t *testing.T) {
 		},
 	}, true, true, mock)
 
-	// Create multipart form with file upload
 	body := &bytes.Buffer{}
 	writer := multipart.NewWriter(body)
 
-	// Add operations field
 	operations := fmt.Sprintf(`{
 		"query": "mutation CreateAsset($file: Upload!) { createAsset(input: {workspaceId: \"%s\", file: $file}) { asset { id fileName size contentType url } } }",
 		"variables": { "file": null }
 	}`, wId1)
 	_ = writer.WriteField("operations", operations)
 
-	// Add map field
 	_ = writer.WriteField("map", `{ "0": ["variables.file"] }`)
 
-	// Add file field with proper content type
 	h := make(textproto.MIMEHeader)
 	h.Set("Content-Disposition", `form-data; name="0"; filename="test.png"`)
 	h.Set("Content-Type", "image/png")
@@ -99,7 +94,6 @@ func TestCreateAsset(t *testing.T) {
 	err = writer.Close()
 	assert.NoError(t, err)
 
-	// Send request
 	o := e.POST("/api/graphql").
 		WithHeader("authorization", "Bearer test").
 		WithHeader("X-Reearth-Debug-User", uId1.String()).
@@ -135,7 +129,6 @@ func TestDeleteAsset(t *testing.T) {
 		},
 	}, true, true, mock)
 
-	// Create an asset first
 	body := &bytes.Buffer{}
 	writer := multipart.NewWriter(body)
 
@@ -168,7 +161,6 @@ func TestDeleteAsset(t *testing.T) {
 
 	assetID := o.Value("data").Object().Value("createAsset").Object().Value("asset").Object().Value("id").String().Raw()
 
-	// Delete the asset
 	deleteQuery := fmt.Sprintf(`mutation { deleteAsset(input: {assetId: "%s"}) { assetId } }`, assetID)
 	request := GraphQLRequest{
 		Query: deleteQuery,
@@ -182,10 +174,8 @@ func TestDeleteAsset(t *testing.T) {
 		WithHeader("X-Reearth-Debug-User", uId1.String()).
 		WithBytes(jsonData).Expect().Status(http.StatusOK).JSON().Object()
 
-	// The deletion should be successful now
 	o.Value("data").Object().Value("deleteAsset").Object().Value("assetId").String().IsEqual(assetID)
 
-	// Verify asset is removed by trying to query it again
 	queryAssets := fmt.Sprintf(`query { assets(workspaceId: "%s", pagination: {page: 1, pageSize: 10}) { nodes { id } totalCount } }`, wId1)
 	request = GraphQLRequest{
 		Query: queryAssets,
@@ -199,7 +189,6 @@ func TestDeleteAsset(t *testing.T) {
 		WithHeader("X-Reearth-Debug-User", uId1.String()).
 		WithBytes(jsonData).Expect().Status(http.StatusOK).JSON().Object()
 
-	// Should have 0 assets after deletion
 	o.Value("data").Object().Value("assets").Object().Value("totalCount").Number().IsEqual(0)
 }
 
@@ -221,7 +210,6 @@ func TestAssetSorting(t *testing.T) {
 		},
 	}, true, true, mock)
 
-	// Create multiple assets
 	fileNames := []string{"b.png", "a.png", "c.png"}
 	for _, fileName := range fileNames {
 		body := &bytes.Buffer{}
@@ -253,7 +241,6 @@ func TestAssetSorting(t *testing.T) {
 			Status(http.StatusOK)
 	}
 
-	// Query with NAME sort
 	query := fmt.Sprintf(`query { assets(workspaceId: "%s", sort: NAME, pagination: {page: 1, pageSize: 10}) { nodes { fileName } } }`, wId1)
 	request := GraphQLRequest{
 		Query: query,
@@ -269,7 +256,7 @@ func TestAssetSorting(t *testing.T) {
 
 	nodes := o.Value("data").Object().Value("assets").Object().Value("nodes").Array()
 	nodes.Length().IsEqual(3)
-	// Files should be sorted by name (note that name defaults to fileName)
+	// Name defaults to fileName.
 	nodes.Value(0).Object().Value("fileName").String().IsEqual("a.png")
 	nodes.Value(1).Object().Value("fileName").String().IsEqual("b.png")
 	nodes.Value(2).Object().Value("fileName").String().IsEqual("c.png")
@@ -293,7 +280,6 @@ func TestAssetKeywordSearch(t *testing.T) {
 		},
 	}, true, true, mock)
 
-	// Create assets with different names
 	fileNames := []string{"document.pdf", "image.png", "data.csv"}
 	for _, fileName := range fileNames {
 		body := &bytes.Buffer{}
@@ -325,7 +311,6 @@ func TestAssetKeywordSearch(t *testing.T) {
 			Status(http.StatusOK)
 	}
 
-	// Search with keyword "image"
 	query := fmt.Sprintf(`query { assets(workspaceId: "%s", keyword: "image", pagination: {page: 1, pageSize: 10}) { nodes { fileName } totalCount } }`, wId1)
 	request := GraphQLRequest{
 		Query: query,
@@ -370,7 +355,6 @@ func TestWorkspaceAssetsQuery(t *testing.T) {
 		},
 	}, true, true, mock)
 
-	// Query workspace with assets field - should return empty
 	query := fmt.Sprintf(`query { node(id: "%s", type: WORKSPACE) { ... on Workspace { id assets(pagination: {page: 1, pageSize: 10}) { nodes { id } totalCount } } } }`, wId1)
 	request := GraphQLRequest{
 		Query: query,
@@ -384,7 +368,7 @@ func TestWorkspaceAssetsQuery(t *testing.T) {
 		WithHeader("X-Reearth-Debug-User", uId1.String()).
 		WithBytes(jsonData).Expect().Status(http.StatusOK).JSON().Object()
 
-	// Assets on workspace should return empty (backward compatibility)
+	// Workspace.assets is kept for backward compatibility and always returns empty.
 	o.Value("data").Object().Value("node").Object().Value("assets").Object().Value("totalCount").Number().IsEqual(0)
 	o.Value("data").Object().Value("node").Object().Value("assets").Object().Value("nodes").Array().IsEmpty()
 }
@@ -414,7 +398,6 @@ func TestCreateAssetUpload(t *testing.T) {
 		},
 	}, true, true, mock)
 
-	// GraphQL: createAssetUpload
 	req := GraphQLRequest{
 		Query: `mutation ($input: CreateAssetUploadInput!) {
 		createAssetUpload(input: $input) {

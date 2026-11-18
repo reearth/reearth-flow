@@ -191,10 +191,6 @@ func filterAssets(ids []id.AssetID, rows []*asset.Asset) []*asset.Asset {
 	return res
 }
 
-// func (r *Asset) readFilter(filter any) any {
-// 	return applyWorkspaceFilter(filter, r.f.Readable)
-// }
-
 func (r *Asset) writeFilter(filter any) any {
 	return applyWorkspaceFilter(filter, r.f.Writable)
 }

@@ -24,9 +24,8 @@ const (
 )
 
 type Action struct {
-	// Parameter is the action's JSON Schema, forwarded verbatim to preserve
-	// property order — encoding/json sorts map keys, which would reorder the
-	// fields the UI renders. Guarded by TestGetActionDetailsPreservesParameterOrder.
+	// Parameter is the action's JSON Schema, kept raw to preserve property order.
+	// encoding/json sorts map keys, which would reorder the fields the UI renders.
 	Parameter   json.RawMessage `json:"parameter" swaggertype:"object"`
 	Name        string          `json:"name"`
 	Type        ActionType      `json:"type"`
@@ -98,10 +97,8 @@ var (
 	actionsDataMap = make(map[string]ActionsData)
 	mutex          sync.RWMutex
 	httpClient     = &http.Client{Timeout: 10 * time.Second}
-	// translatedLangs are the languages that have a translation overlay and thus
-	// a dedicated actions_{lang}.json. Everything else — empty lang, "en", and
-	// any unknown/region variant — resolves to the base actions.json, which is
-	// the English source of truth generated directly from the Rust factories.
+	// translatedLangs are the languages with their own actions_{lang}.json. Every
+	// other value, including "en", resolves to the base English actions.json.
 	translatedLangs = map[string]bool{
 		"es": true,
 		"fr": true,
@@ -125,9 +122,7 @@ var (
 )
 
 func loadActionsData(lang string) (ActionsData, error) {
-	// Only translated languages have their own schema file; every other value
-	// (including "en" and unknown langs) shares the base actions.json under the
-	// empty cache key so we don't cache duplicate copies of the same content.
+	// Untranslated languages share one cache key so the base file is cached once.
 	filename := "actions.json"
 	cacheKey := ""
 	if translatedLangs[lang] {
@@ -135,7 +130,6 @@ func loadActionsData(lang string) (ActionsData, error) {
 		cacheKey = lang
 	}
 
-	// Try to get from cache first using read lock
 	mutex.RLock()
 	if data, exists := actionsDataMap[cacheKey]; exists {
 		mutex.RUnlock()

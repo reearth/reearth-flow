@@ -19,7 +19,6 @@ func ToUserFacingLog(d *userfacinglog.UserFacingLog) *UserFacingLog {
 		}
 	}
 
-	// Map LogLevel to GraphQL enum
 	var level UserFacingLogLevel
 	switch d.Level() {
 	case userfacinglog.LogLevelInfo:
@@ -32,7 +31,6 @@ func ToUserFacingLog(d *userfacinglog.UserFacingLog) *UserFacingLog {
 		level = UserFacingLogLevelInfo
 	}
 
-	// Convert node ID and name
 	var nodeID *ID
 	if d.NodeID() != nil {
 		id := ID(*d.NodeID())

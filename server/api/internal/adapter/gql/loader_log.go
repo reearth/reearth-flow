@@ -65,11 +65,9 @@ func parseLogsBatchKey(key string) (jobID id.JobID, since time.Time, err error) 
 	return jobID, since, nil
 }
 
-// FetchByJobs is the batch fetch function for LogsByJobLoader. It groups keys
-// by their since value (almost always a single group, since the GraphQL argument
-// is shared across siblings) and issues one GetLogsBatch call per group. Every
-// key gets an entry (empty slice if not found or not visible), so dataloaden's
-// position-based matching stays correct.
+// FetchByJobs groups keys by their since value and issues one GetLogsBatch
+// call per group. Every key gets an entry, empty when not found or not visible,
+// so dataloaden's position-based matching stays correct.
 func (l *LogLoader) FetchByJobs(ctx context.Context, keys []string) ([][]*gqlmodel.Log, []error) {
 	type decoded struct {
 		since time.Time

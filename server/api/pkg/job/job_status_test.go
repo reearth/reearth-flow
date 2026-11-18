@@ -146,7 +146,6 @@ func TestJob_BatchStatusGetter(t *testing.T) {
 		t.Errorf("BatchStatus() = %v, want %v", *got, status)
 	}
 
-	// Test nil case
 	j2 := &Job{}
 	if j2.BatchStatus() != nil {
 		t.Error("BatchStatus() should return nil when not set")
@@ -166,7 +165,6 @@ func TestJob_WorkerStatusGetter(t *testing.T) {
 		t.Errorf("WorkerStatus() = %v, want %v", *got, status)
 	}
 
-	// Test nil case
 	j2 := &Job{}
 	if j2.WorkerStatus() != nil {
 		t.Error("WorkerStatus() should return nil when not set")
@@ -191,7 +189,6 @@ func TestNewJob_InitializesBatchStatus(t *testing.T) {
 	}
 }
 
-// Helper function to create pointer to Status
 func ptr(s Status) *Status {
 	return &s
 }

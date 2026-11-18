@@ -17,9 +17,8 @@ const (
 	StatusFailed    Status = "FAILED"
 )
 
-// Mode discriminates how a job was dispatched. Existing run/debug jobs are
-// ModeRun; the preview-schema pipeline tags its jobs ModePreviewSchema so they
-// can be excluded from normal run history listings.
+// Mode is how a job was dispatched. ModePreviewSchema jobs are excluded from
+// normal run history listings.
 type Mode string
 
 const (
@@ -108,7 +107,6 @@ func (j *Job) Status() Status {
 		return *j.workerStatus
 	}
 
-	// Both available - apply AND logic
 	if *j.batchStatus == StatusFailed || *j.workerStatus == StatusFailed {
 		return StatusFailed
 	}

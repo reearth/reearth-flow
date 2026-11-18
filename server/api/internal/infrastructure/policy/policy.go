@@ -1,8 +1,7 @@
-// Package policy implements gateway.PolicyChecker. The HTTP checker calls the
-// shared Re:Earth policy-check endpoint, which answers from the workspace's plan;
-// the permissive checker allows everything. Deployments without plans have no
-// checker at all, so callers skip the counting a limit needs; the permissive
-// one is for tests.
+// Package policy implements gateway.PolicyChecker with an HTTP checker, which asks
+// the shared Re:Earth policy-check endpoint, and a permissive one for tests.
+// Deployments without plans have no checker at all, so callers skip the counting
+// a limit needs.
 package policy
 
 import (

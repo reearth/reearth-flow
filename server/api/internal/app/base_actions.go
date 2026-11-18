@@ -1,33 +1,8 @@
 package app
 
-// baseActions is the curated set of actions exposed in the Re:Earth Flow SaaS UI palette.
-// All other actions in the schema are available for workflow execution but hidden from the UI.
-//
-// An action is listed here only if it BOTH runs in the shipped build (action-standard.md §7.1)
-// and has passed an engine-side review against that standard. Four reasons an action is absent,
-// each with the trigger that would bring it back. The full inventory, with preliminary findings
-// per action, is engine/dev-docs/action-review-findings.md.
-//
-//  1. Does not run in the shipped build. Its process/start exists only under
-//     #[cfg(not(feature = "new-geometry"))], so it hits the trait default and errors on every
-//     feature. Re-add as each port lands — tracked in Notion FLOW-DEV-182 "GEOM: Actions
-//     Migration".
-//
-//  2. Pending audit. Runs, but has never had an engine-side pass against the action standard,
-//     so its metadata is in whatever state it was authored in. Re-add per action as it is
-//     audited.
-//
-//  3. Flagged for removal. Horizontal Reprojector and Vertical Reprojector are absent
-//     permanently: the tracker marks both "To Be Removed", and their new-geometry impls are
-//     stubs that error with a pointer to Coordinate Frame Reprojector, which is exposed below
-//     and supersedes both. They owe an engine-side deletion, not a re-exposure.
-//
-//  4. Retired on design grounds, both unused in any workflow:
-//     Attribute File Path Info Extractor duplicates File Property Extractor exactly (same five
-//     output attributes, same values); the File one is documented and stays.
-//     Attribute Bulk Array Joiner joins every array attribute with a hard-coded comma and an
-//     opt-out list, and silently drops non-scalar elements. Its purpose looks to be CityGML
-//     attribute flattening; it needs a decision on scope before it is offered.
+// baseActions are the actions shown in the SaaS UI palette, which hides but still runs every other action.
+// An action is listed only once it runs in the shipped build and passes review against the action
+// standard (see engine/dev-docs/action-review-findings.md).
 var baseActions = map[string]bool{
 	// Input
 	"CityGML 2 Reader":    true,

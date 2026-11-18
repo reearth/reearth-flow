@@ -25,7 +25,8 @@ func NewWorkflow() *Workflow {
 
 func (r *Workflow) Filtered(f repo.WorkspaceFilter) repo.Workflow {
 	return &Workflow{
-		// note data is shared between the source repo and mutex cannot work well
+		// data is shared with the source repo but the lock is not, so the two do not
+		// serialise against each other.
 		data: r.data,
 		f:    r.f.Merge(f),
 	}

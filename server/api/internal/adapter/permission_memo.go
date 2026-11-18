@@ -46,10 +46,9 @@ func (m *PermissionVerdictMemo) Get(user, resource, action, workspace string) (a
 	return allowed, ok
 }
 
-// Set stores a verdict — allow or deny, either is a real answer from the
-// checker and safe to reuse within the operation. Callers must never call
-// this for an error result: the checker failing to reach a verdict is not
-// itself a verdict, and the next attempt might succeed.
+// Set stores an allow or deny verdict for reuse within the operation. Never
+// call it for an error result, since a failed check is not a verdict and a
+// retry might succeed.
 func (m *PermissionVerdictMemo) Set(user, resource, action, workspace string, allowed bool) {
 	if m == nil {
 		return

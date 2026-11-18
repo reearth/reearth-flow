@@ -27,12 +27,10 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-// planFixture is a workspace on the default Flow plan that already has a debug
-// run running, wired into interactors built the way NewContainer builds them.
-// Its file gateway fails the first file step of a run, so a run that gets past
-// the plan's checks fails with errUploadFailed, and one refused by them fails
-// before reaching any other gateway (websocket, batch): reaching them would
-// panic.
+// planFixture is a workspace on the default Flow plan with a debug run already
+// running, wired as NewContainer wires it. Its file gateway fails a run's first
+// file step, so a run past the plan's checks fails with errUploadFailed and a
+// refused run never reaches another gateway.
 type planFixture struct {
 	ctx  context.Context
 	job  interfaces.Job
@@ -242,10 +240,9 @@ func TestPlanLimits_RunsPerHourAndDay(t *testing.T) {
 	})
 }
 
-// A scheduled run is sent by Cloud Scheduler, so there is no signed-in user to
-// check; the handler authenticates the scheduler instead. Reaching the upload
-// that the fixture fails shows the run got past where a user permission check
-// would refuse it.
+// Cloud Scheduler sends scheduled runs, so the handler authenticates the
+// scheduler instead of a user. Reaching the upload the fixture fails shows no
+// user permission check refused the run.
 func TestTrigger_ExecuteTimeDrivenTrigger_NeedsNoSignedInUser(t *testing.T) {
 	t.Parallel()
 	f := newPlanFixture(t)

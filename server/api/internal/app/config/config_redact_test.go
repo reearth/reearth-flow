@@ -6,8 +6,7 @@ import (
 )
 
 // pp dumps every config field, so secrets() has to list each credential-bearing
-// one. DB_PG was missing, which put the Postgres DSN into Cloud Logging in
-// cleartext once DB_Driver was switched to postgres.
+// one.
 func TestConfig_Print_MasksCredentials(t *testing.T) {
 	c := &Config{}
 	c.DB = "mongodb+srv://muser:mpass@cluster.example.net/db"

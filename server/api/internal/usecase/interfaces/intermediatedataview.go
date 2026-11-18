@@ -10,24 +10,19 @@ import (
 
 var (
 	// ErrJobNotFinished is a view asked of a job that is still running. The
-	// intermediate-data file is written as the run goes, so rendering a partial
-	// one would produce a view that silently disagrees with the table.
+	// intermediate-data file is still being written, so a view of it would
+	// disagree with the table.
 	ErrJobNotFinished = errors.New("job has not finished")
 	// ErrViewsUnavailable is a view asked of a deployment with no worker
-	// service configured. Views are rendered on demand by the engine worker and
-	// have no second pipeline, so where that is absent they are simply not
-	// offered.
+	// service configured, since only the engine worker renders views.
 	ErrViewsUnavailable = errors.New("intermediate data views are not available")
 	// ErrRenderTimedOut is a render whose worker never answered within the
-	// request's wait. A render that is only slow does not end here: the worker
-	// stops it at its own, shorter limit and reports it as a failed view. When
-	// the request gives up, the worker stops the render too, so nothing is left
-	// running, and asking again renders again.
+	// request's wait. A merely slow render is stopped by the worker's own,
+	// shorter limit and reported as a failed view instead.
 	ErrRenderTimedOut = errors.New("the view did not finish rendering in time")
 	// ErrViewWorkersBusy is a render turned away because every worker that
-	// renders views was busy. Those workers also run the editor's debug runs and
-	// schema previews, so a full pool is not a fault. Nothing was rendered, and
-	// asking again once one is free renders the view.
+	// renders views was busy. The pool is shared with debug runs and schema
+	// previews, so this is not a fault.
 	ErrViewWorkersBusy = errors.New("no worker is free to render the view")
 	// ErrIntermediateDataNotFound is a view asked of an output port that left
 	// no intermediate data — a node that never ran, or a run with the feature
@@ -38,10 +33,8 @@ var (
 	ErrConcurrentRenderLimit = errors.New("this workspace already has as many views rendering as its plan allows")
 )
 
-// RenderIntermediateDataViewParam identifies the intermediate data to render
-// and how.
-// Fields are ordered for struct packing (govet fieldalignment), not by
-// meaning.
+// RenderIntermediateDataViewParam fields are ordered for struct packing
+// (govet fieldalignment), not by meaning.
 type RenderIntermediateDataViewParam struct {
 	// FileID is the engine's `[subgraphPrefix.]nodeID.port`, the same id the
 	// editor builds to fetch the table.
@@ -51,11 +44,8 @@ type RenderIntermediateDataViewParam struct {
 	JobID id.JobID
 }
 
-// IntermediateDataViewLayer is one entry point of a ready view, and what was
-// drawn into it.
-//
-// Fields are ordered for struct packing (govet fieldalignment), not by
-// meaning.
+// IntermediateDataViewLayer is one entry point of a ready view. Fields are
+// ordered for struct packing (govet fieldalignment), not by meaning.
 type IntermediateDataViewLayer struct {
 	// SizeLimitedFeatures and SizeLimitedTiles are nil for every format but
 	// vector tiles, which alone have a size limit.
@@ -67,25 +57,17 @@ type IntermediateDataViewLayer struct {
 	RenderedFeatures    int
 }
 
-// IntermediateDataViewResult is a view's current state.
-//
-// Layers are empty until a render has finished, because the engine chooses the
-// output formats from the geometry it finds: a tiles view becomes 3D Tiles for
-// its 3D geometry and vector tiles for its 2D geometry, and the server cannot
-// know which before the render runs.
-// Fields are ordered for struct packing (govet fieldalignment), not by
-// meaning.
+// IntermediateDataViewResult fields are ordered for struct packing (govet
+// fieldalignment), not by meaning.
 type IntermediateDataViewResult struct {
 	// SelectedFeatures and RenderedFeatures are set for any terminal status,
-	// including EMPTY: "0 of 900 selected" is the explanation, so withholding
-	// the counts exactly when the view is empty would withhold the reason. They
-	// are nil only when the render's report could not be read.
+	// including EMPTY, where they explain why. They are nil only when the
+	// render's report could not be read.
 	SelectedFeatures *int
 	RenderedFeatures *int
 	// SizeLimitedFeatures and SizeLimitedTiles say what the size limit left
-	// out of the view's vector tile layer; see featureview.Report. They are nil
-	// for a view with no vector tile layer, since no other format has a size
-	// limit, and when the report could not be read.
+	// out of the vector tile layer. They are nil when there is no such layer
+	// or the report could not be read.
 	SizeLimitedFeatures *int
 	SizeLimitedTiles    *int
 	Error               *string
@@ -95,8 +77,9 @@ type IntermediateDataViewResult struct {
 	FileID string
 	Shape  featureview.Shape
 	Status featureview.Status
-	// Layers are the view's entry points, 3D Tiles before vector tiles. Empty
-	// unless Status is ready.
+	// Layers are the view's entry points, 3D Tiles before vector tiles. The
+	// engine picks formats from the geometry, so Layers are empty unless
+	// Status is ready.
 	Layers []IntermediateDataViewLayer
 	JobID  id.JobID
 }
@@ -105,11 +88,7 @@ type IntermediateDataView interface {
 	// Render returns an existing view, or renders one and waits for it. Either
 	// way the result is terminal: there is no in-flight state to poll.
 	Render(context.Context, RenderIntermediateDataViewParam) (*IntermediateDataViewResult, error)
-	// Get reads an already-rendered view, without rendering. It is how a client
-	// recovers a view it has the key for — after a reload, say — and how it
-	// checks for one before offering to render.
-	//
-	// A nil result with a nil error means no view exists for the key. An unknown
-	// job or a malformed key is an error.
+	// Get reads an already-rendered view, without rendering. A nil result with
+	// a nil error means no view exists for the key.
 	Get(ctx context.Context, jobID id.JobID, fileID, key string) (*IntermediateDataViewResult, error)
 }

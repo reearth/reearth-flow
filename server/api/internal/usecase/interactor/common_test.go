@@ -120,11 +120,8 @@ func TestCheckPermission_MemoDeniedVerdict_AlsoMemoized(t *testing.T) {
 	assert.Equal(t, int32(1), atomic.LoadInt32(&checker.calls))
 }
 
-// TestCheckPermission_MemoDoesNotCrossRequests pins the security property that
-// makes the memo request-scoped: a role revocation must take effect on the very
-// next request. If the memo ever moved onto a long-lived struct, this test
-// would fail because the second request would observe the first request's
-// (now-stale) verdict instead of asking the checker again.
+// TestCheckPermission_MemoDoesNotCrossRequests: a role revocation must take
+// effect on the very next request, so the memo must stay request-scoped.
 func TestCheckPermission_MemoDoesNotCrossRequests(t *testing.T) {
 	setSkipPermissionCheck(false)
 	checker := &countingChecker{allow: true}
@@ -136,7 +133,6 @@ func TestCheckPermission_MemoDoesNotCrossRequests(t *testing.T) {
 	require.NoError(t, checkPermission(req1, checker, "project", "create", wsID))
 	assert.Equal(t, int32(1), atomic.LoadInt32(&checker.calls), "second identical check within request 1 must be memoized")
 
-	// same user, same resource/action/workspace, but a FRESH request context.
 	req2 := adapter.AttachPermissionVerdictMemo(adapter.AttachUser(context.Background(), u))
 	require.NoError(t, checkPermission(req2, checker, "project", "create", wsID))
 	assert.Equal(t, int32(2), atomic.LoadInt32(&checker.calls), "a new request must re-ask the checker, not reuse request 1's verdict")
@@ -156,33 +152,25 @@ func TestCheckPermission_MemoErrorNotCached(t *testing.T) {
 	assert.Equal(t, int32(2), atomic.LoadInt32(&checker.calls), "a checker error must never be memoized as a verdict")
 }
 
-// TestCheckPermission_MemoIsPerOperation_NotPerWebsocketConnection pins that
-// the memo is scoped to a single GraphQL operation, not to a websocket
-// connection. gqlgen's websocket transport derives every operation on a
-// connection from the ctx captured at the original upgrade request; the
-// server attaches a fresh memo per operation on top of that shared ctx (see
-// internal/app/graphql.go's AroundOperations hook) precisely so a long-lived
-// subscription connection cannot reuse a stale allow verdict across
-// operations.
+// gqlgen derives every operation on a websocket connection from the upgrade
+// request's ctx. AroundOperations in internal/app/graphql.go therefore attaches
+// a fresh memo per operation, so a long-lived connection cannot reuse a stale
+// verdict.
 func TestCheckPermission_MemoIsPerOperation_NotPerWebsocketConnection(t *testing.T) {
 	setSkipPermissionCheck(false)
 	checker := &countingChecker{allow: true}
 	u := accountsuser.New().NewID().Name("hoge").Email("abc@bb.cc").MustBuild()
 	wsID := accountsid.NewWorkspaceID()
 
-	// connCtx simulates the ctx captured once at websocket upgrade; it is
-	// never itself given a memo directly here (that's the whole point: any
-	// operation deriving from it must attach its own before checking).
+	// connCtx stands in for the ctx captured once at websocket upgrade, which
+	// has no memo of its own.
 	connCtx := adapter.AttachUser(context.Background(), u)
 
-	// Operation 1: two checks within it must be memoized (one Cerbos call).
 	op1Ctx := adapter.AttachPermissionVerdictMemo(connCtx)
 	require.NoError(t, checkPermission(op1Ctx, checker, "project", "create", wsID))
 	require.NoError(t, checkPermission(op1Ctx, checker, "project", "create", wsID))
 	assert.Equal(t, int32(1), atomic.LoadInt32(&checker.calls), "two checks within one operation must hit the checker once")
 
-	// Operation 2 on the SAME connection (same connCtx) with identical
-	// args must re-ask the checker rather than reuse operation 1's verdict.
 	op2Ctx := adapter.AttachPermissionVerdictMemo(connCtx)
 	require.NoError(t, checkPermission(op2Ctx, checker, "project", "create", wsID))
 	assert.Equal(t, int32(2), atomic.LoadInt32(&checker.calls), "a second operation on the same websocket connection must not reuse operation 1's cached verdict")
@@ -203,13 +191,9 @@ func TestCheckPermission_MemoDifferentiatesByKey(t *testing.T) {
 	assert.Equal(t, int32(4), atomic.LoadInt32(&checker.calls), "distinct resource/action/workspace combinations must not share a memo entry")
 }
 
-// TestAlignToRequestedIDs_CompactedResultIsReexpanded pins the fix for a repo
-// contract that doesn't hold everywhere: pgxx.OrderByIDs (used by the
-// Postgres repos) drops not-found ids and compacts the slice instead of
-// padding with a zero value like Mongo's filterX helpers do. A compacted
-// result must still come back aligned to the request, in request order, with
-// zero values at the dropped slots - regardless of what order the backend
-// happened to return the found rows in.
+// pgxx.OrderByIDs, used by the Postgres repos, drops not-found ids and compacts
+// the slice instead of nil-padding it. The result must still be re-aligned to
+// the requested ids.
 func TestAlignToRequestedIDs_CompactedResultIsReexpanded(t *testing.T) {
 	type item struct{ id int }
 	ids := []int{1, 2, 3, 4}
@@ -228,9 +212,8 @@ func TestAlignToRequestedIDs_CompactedResultIsReexpanded(t *testing.T) {
 	assert.Nil(t, got[3], "id 4 was dropped by the backend and must be nil")
 }
 
-// compactingProjectRepo wraps a real repo.Project and drops not-found ids
-// instead of padding them with nil, mirroring pgxx.OrderByIDs (the Postgres
-// repos) rather than Mongo's filterProjects.
+// compactingProjectRepo drops not-found ids instead of nil-padding them,
+// mirroring pgxx.OrderByIDs.
 type compactingProjectRepo struct {
 	repo.Project
 }
@@ -249,10 +232,6 @@ func (r *compactingProjectRepo) FindByIDs(ctx context.Context, ids id.ProjectIDL
 	return compacted, nil
 }
 
-// TestProject_Fetch_PostgresStyleCompactedRepo_StillAuthorizesAndAligns
-// proves Project.Fetch works correctly against a repo that compacts instead
-// of nil-pads (the Postgres backend's actual behavior), both for a missing id
-// and for a cross-workspace batch.
 func TestProject_Fetch_PostgresStyleCompactedRepo_StillAuthorizesAndAligns(t *testing.T) {
 	wsAllowed := accountsid.NewWorkspaceID()
 	wsDenied := accountsid.NewWorkspaceID()

@@ -34,7 +34,7 @@ type SignupInput struct {
 	Theme       *accountsuser.Theme     `json:"theme"`
 	Lang        *language.Tag           `json:"lang"`
 	Name        string                  `json:"name"`
-	Username    string                  `json:"username"` // ysername is an alias of Name
+	Username    string                  `json:"username"` // Username is an alias of Name
 	Email       string                  `json:"email"`
 	Password    string                  `json:"password"`
 }

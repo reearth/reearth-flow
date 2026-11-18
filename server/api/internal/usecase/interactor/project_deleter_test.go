@@ -41,7 +41,6 @@ func (r *retryableProjectRepo) Remove(ctx context.Context, pid id.ProjectID) err
 	return nil
 }
 
-// mockWebsocketClient implements interfaces.WebsocketClient for testing.
 type mockWebsocketClient struct {
 	deleteDocumentFunc func(ctx context.Context, docID string) error
 	deletedDocIDs      []string
@@ -142,15 +141,12 @@ func TestProjectDeleter_Delete_NilProject(t *testing.T) {
 		Project: memory.NewProject(),
 	}
 
-	// Should be a no-op
 	err := deleter.Delete(context.Background(), nil, true)
 	assert.NoError(t, err)
 }
 
-// A retried transaction must not destroy the collaborative document twice
-// (and, more importantly, must not destroy it if the row it justifies never
-// commits). ProjectDeleter no longer touches the websocket document at all;
-// that happens in Project.Delete's post-commit step, asserted below.
+// Project.Delete destroys the websocket document only after commit, so a
+// retried or uncommitted transaction never destroys it.
 
 func TestProject_Delete_DeletesWebsocketDocument(t *testing.T) {
 	ctx := context.Background()
@@ -194,11 +190,9 @@ func TestProject_Delete_SerializationRetryDeletesDocumentOnce(t *testing.T) {
 
 	assert.NoError(t, uc.Delete(ctx, prj.ID()))
 
-	// The closure really did run twice...
 	assert.Equal(t, 2, tx.runs)
 	assert.Equal(t, 2, projectRepo.removeCalls)
 
-	// ...but the document was only destroyed once.
 	assert.Equal(t, []string{prj.ID().String()}, wsClient.deletedDocIDs)
 }
 

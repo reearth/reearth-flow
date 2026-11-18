@@ -28,11 +28,9 @@ type WebsocketClient interface {
 	// with each change: the project's updatedAt after SetIsLocked does.
 	SetProjectLock(ctx context.Context, docID string, locked bool, changedAt time.Time) error
 	// SaveVersion asks the websocket server to save the document as a version
-	// labelled label, if users changed it since its last version; saved is
-	// false when nothing changed. The server tells the API about each version
-	// it saves (POST /auth/versions), which is what moves the project's
-	// updatedAt. It returns ErrVersionSaveBusy or ErrVersionsUnsupported when no
-	// version could be saved and none is missing; see IsVersionSaveSkipped.
+	// labelled label, and saved is false when nothing changed since the last
+	// one. The server reports each saved version to the API (POST
+	// /auth/versions), which is what moves the project's updatedAt.
 	SaveVersion(ctx context.Context, docID, label string) (saved bool, err error)
 
 	Close() error

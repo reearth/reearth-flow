@@ -84,11 +84,9 @@ func StartServerWithRepos(t *testing.T, cfg *config.Config, repos *repo.Containe
 		t.Fatalf("server failed to listen: %v", err)
 	}
 
-	// mockPermissionChecker
 	mockPermissionChecker := gateway.NewMockPermissionChecker()
 	mockPermissionChecker.Allow = allowPermission
 
-	// mockAccountGQLClient
 	var accountGQLClient *gqlclient.Client
 	if mock != nil {
 		accountGQLClient = gql.NewMockClient(&gql.MockClientParam{
@@ -159,11 +157,9 @@ func StartGQLServerWithRepos(t *testing.T, cfg *config.Config, repos *repo.Conta
 		t.Fatalf("server failed to listen: %v", err)
 	}
 
-	// mockPermissionChecker
 	mockPermissionChecker := gateway.NewMockPermissionChecker()
 	mockPermissionChecker.Allow = allowPermission
 
-	// mockAccountGQLClient
 	var accountGQLClient *gqlclient.Client
 	if mock != nil {
 		accountGQLClient = gql.NewMockClient(&gql.MockClientParam{

@@ -331,7 +331,8 @@ func TestNodeDiagnostics_GetFailedNodes(t *testing.T) {
 	})
 
 	t.Run("two fatal rows sharing a key still dedupe to one, preferring terminal", func(t *testing.T) {
-		// Unreachable in production; pins that same-key collisions resolve deterministically.
+		// Production cannot produce this, but same-key collisions must still
+		// resolve deterministically.
 		nodeID := "node-1"
 		fatal := fatalEffectiveDisposition
 
@@ -455,7 +456,7 @@ func TestDedupeDiagnostics(t *testing.T) {
 	})
 
 	t.Run("a failedNodes row and an aggregatedDiagnostics row sharing (nodeId, code) both survive", func(t *testing.T) {
-		// Regression guard: a (nodeID, code)-only key collapsed these two nondeterministically.
+		// A (nodeID, code)-only key would collapse these two nondeterministically.
 		fatal := fatalEffectiveDisposition
 		warnDrop := "warn_drop"
 

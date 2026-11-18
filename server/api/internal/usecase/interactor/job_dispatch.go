@@ -10,16 +10,9 @@ import (
 )
 
 // failJob marks an already-committed job row as failed after its Batch
-// submission could not be dispatched.
-//
-// Submission deliberately happens after the transaction commits, so without
-// this the row would sit in PENDING forever with no cloud job behind it. The
-// save is best-effort: the submission error is what the caller reports, and a
-// failure here only leaves the row for the operator to clean up.
-//
-// The dispatch failure is usually the caller's context expiring (e.g. a
-// trigger's HTTP deadline), so this detaches from cancellation while keeping
-// values like trace/request id, and bounds the write with its own timeout.
+// submission could not be dispatched, so it does not sit in PENDING with no
+// cloud job behind it. It detaches from cancellation, since the failure is
+// usually the caller's context expiring, and bounds the write with its own timeout.
 func failJob(ctx context.Context, jobRepo repo.Job, j *job.Job) {
 	ctx, cancel := context.WithTimeout(context.WithoutCancel(ctx), 10*time.Second)
 	defer cancel()

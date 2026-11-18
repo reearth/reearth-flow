@@ -15,7 +15,7 @@ import (
 )
 
 // countingWorkspaceGQLRepo counts writes so tests can assert a denied call
-// never reaches the accounts service. Embedding satisfies the full interface.
+// never reaches the accounts service.
 type countingWorkspaceGQLRepo struct {
 	gqlworkspace.WorkspaceRepo
 	writes int
@@ -71,11 +71,7 @@ func wsMutations() map[string]func(context.Context, interfaces.Workspace, accoun
 	}
 }
 
-// TestWorkspace_MutationsAreAuthorized is the regression this closes: workspace
-// membership changes reached the accounts service with no permission check at
-// all, so a workspace reader could promote themselves or anyone else. The call
-// count is the assertion that matters — an error that still wrote has denied
-// nothing.
+// A denied membership change must error and never reach the accounts service.
 func TestWorkspace_MutationsAreAuthorized(t *testing.T) {
 	for name, call := range wsMutations() {
 		t.Run(name, func(t *testing.T) {

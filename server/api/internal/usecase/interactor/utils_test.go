@@ -418,13 +418,13 @@ func TestNormalizeRequestVars(t *testing.T) {
 			assert.True(t, ok, "key %s should exist", k)
 			assert.Equal(t, ev.Type, av.Type, "type mismatch for key %s", k)
 
-			// For special types like Datetime and Array, just check the type roughly
+			// Datetime is checked by type only, and array and choice values only
+			// for presence.
 			switch ev.Type {
 			case parameter.TypeDatetime:
 				_, ok := av.Value.(time.Time)
 				assert.True(t, ok, "value for key %s should be time.Time", k)
 			case parameter.TypeArray, parameter.TypeChoice:
-				// Since these come from JSON, avoid deep equal like []any or map[string]any
 				assert.NotNil(t, av.Value, "value for key %s should not be nil", k)
 			default:
 				assert.Equal(t, ev.Value, av.Value, "value mismatch for key %s", k)

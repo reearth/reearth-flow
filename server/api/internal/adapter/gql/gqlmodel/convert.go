@@ -81,13 +81,6 @@ func OrderDirectionToString(dir *OrderDirection) *string {
 	return &s
 }
 
-// func intToInt64(i *int) *int64 {
-// 	if i == nil {
-// 		return nil
-// 	}
-// 	return lo.ToPtr(int64(*i))
-// }
-
 func FromPageInfo(p *PageInfo) *usecasex.PageInfo {
 	if p == nil {
 		return &usecasex.PageInfo{}

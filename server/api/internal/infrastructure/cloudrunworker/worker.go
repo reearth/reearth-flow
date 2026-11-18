@@ -65,9 +65,8 @@ type runResponse struct {
 	Error  string `json:"error,omitempty"`
 }
 
-// probeSchemaRequest is the body for the dedicated /probe-schema route. It is
-// deliberately separate from runRequest: probe-schema is a distinct worker
-// subcommand and must not be expressed as a flag on /run.
+// probeSchemaRequest is the body for the /probe-schema route, a distinct worker
+// subcommand rather than a flag on /run.
 type probeSchemaRequest struct {
 	Variables   map[string]string `json:"variables,omitempty"`
 	SampleSize  *int              `json:"sample_size,omitempty"`
@@ -76,11 +75,8 @@ type probeSchemaRequest struct {
 	ReportURL   string            `json:"report_url"`
 }
 
-// renderViewRequest is the body for the dedicated /render-view route. Flat like
-// probeSchemaRequest, and separate from it for the same reason: render-view is
-// its own worker subcommand and must not be expressed as a flag on another.
-//
-// Both option groups are always sent; see featureview.Options for why.
+// renderViewRequest is the body for the /render-view route, its own worker
+// subcommand. Both option groups are always sent (see featureview.Options).
 type renderViewRequest struct {
 	Row            *int    `json:"row,omitempty"`
 	Filter         *string `json:"filter,omitempty"`
@@ -172,11 +168,9 @@ func neverConnected(err error) bool {
 	return errors.As(err, &op) && op.Op == "dial"
 }
 
-// PreviewSchema POSTs to the Cloud Run Service /probe-schema endpoint and blocks
-// until the probe finishes. The service runs `reearth-flow-worker probe-schema`,
-// writes the SchemaReport JSON to the job's GCS output path, and responds with a
-// terminal status in the body. This intentionally mirrors RunJob's auth/error
-// handling but targets a dedicated route, not the /run path.
+// PreviewSchema POSTs to the Service's /probe-schema route and blocks until the
+// probe finishes. The service runs `reearth-flow-worker probe-schema`, writes the
+// SchemaReport JSON to the job's GCS output path and responds with a terminal status.
 func (w *Worker) PreviewSchema(ctx context.Context, p gateway.ProbeSchemaParam) (gateway.JobStatus, error) {
 	body := probeSchemaRequest{
 		JobID:       p.JobID.String(),
@@ -224,15 +218,9 @@ func (w *Worker) PreviewSchema(ctx context.Context, p gateway.ProbeSchemaParam) 
 	}
 }
 
-// RenderView POSTs to the Cloud Run Service /render-view endpoint and blocks
-// until the render finishes. The service runs `reearth-flow-worker
-// render-view`, writes the view and its report to the job's GCS artifact
-// prefix, and responds with a terminal status.
-//
-// A render that drew nothing is NOT a failure here: the renderer records
-// "empty" or "unsupported geometry" in the report and exits successfully, so
-// the reason reaches the user as a status instead of an exit code. Only a real
-// fault comes back as JobStatusFailed.
+// RenderView POSTs to the Service's /render-view route and blocks until the
+// render finishes. A render that drew nothing is not a failure: the renderer
+// records the reason in its report and exits successfully.
 func (w *Worker) RenderView(ctx context.Context, p gateway.RenderViewParam) (gateway.JobStatus, error) {
 	body := renderViewRequest{
 		InputURI:  p.InputURI,
@@ -317,18 +305,15 @@ const (
 	// is sized for an hour-long run, far too long for this.
 	defaultVersionLimit = 10 * time.Second
 	// versionTTL and versionFailureTTL are how long an answer is kept. A
-	// failure is retried sooner: a 404 is expected until the worker is
-	// redeployed with the route, and it should be noticed soon after.
+	// failure is retried sooner because a 404 is expected until the worker is
+	// redeployed with the route.
 	versionTTL        = 5 * time.Minute
 	versionFailureTTL = time.Minute
 )
 
-// EngineVersion asks the Service which engine it runs, at `GET /version`.
-//
-// The answer is cached. The Service takes one request per instance and is
-// given CPU only while a request is open, so asking on every render could
-// start an instance just to answer. A success is kept for five minutes and a
-// failure for one.
+// EngineVersion asks the Service which engine it runs, at `GET /version`, and
+// caches the answer. The Service takes one request per instance and gets CPU only
+// while one is open, so asking on every render could start an instance just to answer.
 func (w *Worker) EngineVersion(ctx context.Context) (string, error) {
 	w.versionMu.Lock()
 	defer w.versionMu.Unlock()

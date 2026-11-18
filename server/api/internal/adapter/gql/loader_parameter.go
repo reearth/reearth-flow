@@ -131,8 +131,8 @@ func (l *ordinaryParameterLoader) LoadAll(keys []gqlmodel.ID) ([]*gqlmodel.Param
 	return l.fetch(keys)
 }
 
-// ByProjectDataLoader batches projectResolver.Parameters (Project -> its Parameters),
-// keyed by project ID instead of parameter ID.
+// ParametersByProjectDataLoader batches projectResolver.Parameters, keyed by
+// project ID instead of parameter ID.
 type ParametersByProjectDataLoader interface {
 	Load(gqlmodel.ID) ([]*gqlmodel.Parameter, error)
 	LoadAll([]gqlmodel.ID) ([][]*gqlmodel.Parameter, []error)

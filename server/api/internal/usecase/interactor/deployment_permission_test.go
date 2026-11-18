@@ -11,12 +11,9 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-// recordingChecker captures the arguments passed to CheckPermission so tests can
-// assert that interactors forward the target workspace. `allow` controls whether
-// the call is permitted, letting a test short-circuit before later side effects.
-// `denyWorkspaces`, when set, overrides `allow` to false for those specific
-// workspaces only, so a test can simulate a batch that spans an authorized
-// workspace and an unauthorized one in the same call.
+// recordingChecker records each CheckPermission call so tests can assert the
+// target workspace is forwarded. denyWorkspaces overrides allow for those
+// workspaces, so a batch can span an authorized and an unauthorized one.
 type recordingChecker struct {
 	gotResource  string
 	gotAction    string

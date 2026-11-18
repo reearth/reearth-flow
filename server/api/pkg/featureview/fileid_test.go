@@ -18,8 +18,6 @@ func TestValidateFileIDAcceptsWhatTheEngineEmits(t *testing.T) {
 	}
 }
 
-// The port part is a name the workflow author chose, so it is held to no
-// character set: the table for these ports loads, and so must their views.
 func TestValidateFileIDAcceptsAuthorNamedPorts(t *testing.T) {
 	for _, id := range []string{
 		"7c9e6679-7425-40de-944b-e07fc1f90ae7.建物",
@@ -31,8 +29,6 @@ func TestValidateFileIDAcceptsAuthorNamedPorts(t *testing.T) {
 	}
 }
 
-// The file id is client-supplied and lands in an object name on the WRITE side,
-// where path.Clean on the read side is no protection.
 func TestValidateFileIDRefusesPathTricks(t *testing.T) {
 	for name, id := range map[string]string{
 		"empty":          "",

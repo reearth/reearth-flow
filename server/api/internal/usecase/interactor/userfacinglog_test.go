@@ -66,7 +66,6 @@ func TestUserFacingLogInteractor_GetUserFacingLogs(t *testing.T) {
 	jobID := id.NewJobID()
 	since := time.Now().Add(-1 * time.Hour)
 
-	// Setup auth info
 	u := accountsuser.New().NewID().Email("test@example.com").Name("test").MustBuild()
 	ctx = adapter.AttachUser(ctx, u)
 	ctx = adapter.AttachAuthInfo(ctx, &appx.AuthInfo{})
@@ -128,7 +127,6 @@ func TestUserFacingLogInteractor_Subscribe(t *testing.T) {
 	ctx := context.Background()
 	jobID := id.NewJobID()
 
-	// Setup auth info
 	u := accountsuser.New().NewID().Email("test@example.com").Name("test").MustBuild()
 	ctx = adapter.AttachUser(ctx, u)
 	ctx = adapter.AttachAuthInfo(ctx, &appx.AuthInfo{})
@@ -149,7 +147,6 @@ func TestUserFacingLogInteractor_Subscribe(t *testing.T) {
 		assert.NoError(t, err)
 		assert.NotNil(t, ch)
 
-		// Clean up
 		interactor.Unsubscribe(jobID, ch)
 	})
 
@@ -171,7 +168,6 @@ func TestUserFacingLogInteractor_Unsubscribe(t *testing.T) {
 	ctx := context.Background()
 	jobID := id.NewJobID()
 
-	// Setup auth info
 	u := accountsuser.New().NewID().Email("test@example.com").Name("test").MustBuild()
 	ctx = adapter.AttachUser(ctx, u)
 	ctx = adapter.AttachAuthInfo(ctx, &appx.AuthInfo{})
@@ -190,16 +186,12 @@ func TestUserFacingLogInteractor_Unsubscribe(t *testing.T) {
 	assert.NoError(t, err)
 	assert.NotNil(t, ch)
 
-	// Test unsubscribe
 	interactor.Unsubscribe(jobID, ch)
 
-	// Channel should be closed after unsubscribe
 	select {
 	case _, ok := <-ch:
 		assert.False(t, ok, "Channel should be closed after unsubscribe")
 	default:
-		// Channel is not closed immediately in our implementation
-		// This is acceptable behavior
 	}
 }
 

@@ -61,7 +61,6 @@ func TestWorkflow_Save_Upsert(t *testing.T) {
 
 	require.NoError(t, r.Save(ctx, wf))
 
-	// Update URL via a new workflow value with same ID.
 	wf2 := workflow.NewWorkflow(wfid, pid, wsid, "gs://bucket/workflow_v2.yaml")
 	require.NoError(t, r.Save(ctx, wf2))
 
@@ -126,7 +125,6 @@ func TestWorkflow_Filtered_CanRead(t *testing.T) {
 
 	require.NoError(t, r.Save(ctx, wf))
 
-	// Filter to a different workspace — FindByID should return ErrNotFound.
 	otherWS := accountsid.NewWorkspaceID()
 	filtered := r.Filtered(repo.WorkspaceFilter{
 		Readable: accountsid.WorkspaceIDList{otherWS},
@@ -136,7 +134,6 @@ func TestWorkflow_Filtered_CanRead(t *testing.T) {
 	assert.Nil(t, got)
 	assert.ErrorIs(t, err, rerror.ErrNotFound)
 
-	// Filter to correct workspace — FindByID should succeed.
 	filtered2 := r.Filtered(repo.WorkspaceFilter{
 		Readable: accountsid.WorkspaceIDList{wsid},
 		Writable: accountsid.WorkspaceIDList{wsid},
@@ -154,11 +151,9 @@ func TestWorkflow_Filtered_CanWrite(t *testing.T) {
 	wsid := accountsid.NewWorkspaceID()
 	wf := newWf(wfid, pid, wsid)
 
-	// Save without filter succeeds.
 	r := postgres.NewWorkflow(pgxx.NewClient(pool))
 	require.NoError(t, r.Save(ctx, wf))
 
-	// Save via filter with different writable workspace — must be denied.
 	otherWS := accountsid.NewWorkspaceID()
 	filtered := r.Filtered(repo.WorkspaceFilter{
 		Writable: accountsid.WorkspaceIDList{otherWS},

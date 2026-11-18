@@ -17,16 +17,14 @@ func init() {
 
 func Connect(t *testing.T) func(*testing.T) *pgxpool.Pool {
 	t.Helper()
-	// pgxtest.Connect skips the test (via runtime.Goexit) when REEARTH_FLOW_DB_PG
-	// is unset, so it never returns nil here — Connect always returns a usable
-	// function and callers can safely write pgtest.Connect(t)(t).
+	// pgxtest.Connect skips the test via runtime.Goexit when REEARTH_FLOW_DB_PG is
+	// unset, so it never returns nil and callers can write pgtest.Connect(t)(t).
 	base := pgxtest.Connect(t)
 	return func(t *testing.T) *pgxpool.Pool {
 		t.Helper()
 		pool := base(t)
-		// The embedded migrations are used rather than a path resolved from the
-		// test's working directory, which only worked while the schema sat inside
-		// this module.
+		// The embedded migrations keep the schema independent of the test's working
+		// directory.
 		if err := pgxtest.ApplyFS(context.Background(), pool, flowdb.MigrationsFS); err != nil {
 			t.Fatalf("pgtest: apply migrations: %v", err)
 		}

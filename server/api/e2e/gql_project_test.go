@@ -56,10 +56,8 @@ func TestProjectWorkflows(t *testing.T) {
 
 	projectId := testCreateProject(t, e, operatorID.String(), wid.String())
 
-	// Test update project
 	testUpdateProject(t, e, projectId, operatorID.String(), wid.String())
 
-	// Test delete project
 	testDeleteProject(t, e, projectId, operatorID.String())
 }
 
@@ -296,7 +294,6 @@ func TestListProjects(t *testing.T) {
 		},
 	}, true, true, mock)
 
-	// Create test projects
 	projectIDs := make([]string, 3)
 	for i := 0; i < 3; i++ {
 		query := `mutation($input: CreateProjectInput!) {
@@ -348,11 +345,9 @@ func TestListProjects(t *testing.T) {
 		assert.NotEmpty(t, result.Data.CreateProject.Project.ID, "Project creation failed")
 		projectIDs[i] = result.Data.CreateProject.Project.ID
 
-		// Add a small delay between project creations
 		time.Sleep(100 * time.Millisecond)
 	}
 
-	// Test listing projects with pagination
 	query := fmt.Sprintf(`{
 		projects(
 			workspaceId: "%s"

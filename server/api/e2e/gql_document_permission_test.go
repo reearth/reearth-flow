@@ -16,22 +16,8 @@ import (
 	"go.uber.org/mock/gomock"
 )
 
-// The document/websocket operations used to be the one GraphQL surface with no
-// authorization: interfaces.Container.Websocket held the bare HTTP client, so any
-// authenticated user could act on any project in any workspace. rollbackProject
-// was the worst of it, because it prunes a project's update log.
-//
-// These tests pin the WIRING, which the interactor unit tests cannot reach. Those
-// prove the interactor denies; only booting the real server proves
-// Container.Websocket actually points at the interactor and not the raw client.
-// Re-pointing it would leave every unit test green.
-//
-// Memory-backed on purpose (useMongo = false) so this runs anywhere rather than
-// only where a database is available.
-//
-// Note the pre-existing TestDocumentOperations is not comparable coverage: its
-// interceptor answers the GraphQL request itself with canned JSON, so it never
-// reaches the resolvers, the container, or the client.
+// These tests boot the real server to pin that Container.Websocket is the
+// authorizing interactor rather than the raw client, which unit tests cannot see.
 
 // startDocumentPermissionServer boots the real server with permissions either
 // enforced or granted, and returns the expect client plus the project repo.
@@ -58,10 +44,9 @@ func startDocumentPermissionServer(t *testing.T, allowPermission bool) (*httpexp
 	return exp, repos.Project
 }
 
-// assertDenied posts one operation and requires the SPECIFIC authorization
-// error. "an error occurred" is not enough: with the bare client wired in the
-// request reaches a websocket server that is not running and fails with
-// `server returned non-200 status: 404`, which passes that weaker check.
+// assertDenied requires the specific authorization error, because a raw-client
+// wiring fails with a 404 from the absent websocket server and would pass a
+// generic error check.
 func assertDenied(t *testing.T, e *httpexpect.Expect, name, query string, vars map[string]any) {
 	t.Helper()
 	res := e.POST("/api/graphql").
@@ -77,12 +62,6 @@ func assertDenied(t *testing.T, e *httpexpect.Expect, name, query string, vars m
 	msg.NotContains("server returned")
 }
 
-// TestDocumentOperations_DeniedWithoutPermission: with the permission checker
-// refusing, every operation must return a GraphQL error.
-//
-// This is what pins the authorizing wrapper in place. If Container.Websocket were
-// re-pointed at the raw client, the request would instead reach a websocket server
-// that is not running, which is a different failure and a real bypass.
 func TestDocumentOperations_DeniedWithoutPermission(t *testing.T) {
 	e, projectRepo := startDocumentPermissionServer(t, false)
 
@@ -125,10 +104,8 @@ func TestDocumentOperations_DeniedWithoutPermission(t *testing.T) {
 		map[string]any{"projectId": p, "source": o})
 }
 
-// TestDocumentOperations_UnknownProjectIsDenied: authorization resolves the
-// project to a workspace, so an id that does not resolve must fail closed rather
-// than skip the check. Permissions are GRANTED here, so the only thing that can
-// produce an error is the resolution step refusing.
+// Permissions are granted here, so an error can only come from project
+// resolution failing closed.
 func TestDocumentOperations_UnknownProjectIsDenied(t *testing.T) {
 	e, _ := startDocumentPermissionServer(t, true)
 
@@ -146,9 +123,7 @@ func TestDocumentOperations_UnknownProjectIsDenied(t *testing.T) {
 				Status(http.StatusOK).
 				JSON().Object()
 
-			// Same reasoning as above, via the negative: permissions are granted here,
-			// so the request must be stopped by project resolution BEFORE the client is
-			// reached. "server returned" in the message would mean it went through.
+			// "server returned" would mean the request reached the websocket client.
 			res.ContainsKey("errors")
 			msg := res.Value("errors").Array().Value(0).Object().Value("message").String()
 			msg.NotContains("server returned")

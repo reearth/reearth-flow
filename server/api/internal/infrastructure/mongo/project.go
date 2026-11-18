@@ -386,10 +386,6 @@ func filterProjects(ids []id.ProjectID, rows []*project.Project) []*project.Proj
 	return res
 }
 
-// func (r *Project) readFilter(filter interface{}) interface{} {
-// 	return applyWorkspaceFilter(filter, r.f.Readable)
-// }
-
 func (r *Project) writeFilter(filter interface{}) interface{} {
 	return applyWorkspaceFilter(filter, r.f.Writable)
 }

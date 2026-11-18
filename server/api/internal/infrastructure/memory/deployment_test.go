@@ -109,9 +109,8 @@ func TestDeployment_FindByWorkspace(t *testing.T) {
 	wsID := accountsid.NewWorkspaceID()
 	wsID2 := accountsid.NewWorkspaceID()
 
-	// Create test data. UpdatedAt defaults to the ID's ULID timestamp, which has
-	// millisecond resolution, so builds that straddle a millisecond boundary would
-	// otherwise reorder these under the default updatedAt DESC sort.
+	// UpdatedAt is set explicitly: the default, the ID's ULID timestamp, has millisecond
+	// resolution, so builds straddling a millisecond would reorder under updatedAt DESC.
 	now := time.Now()
 	d1 := deployment.New().NewID().Workspace(wsID).Version("v1").UpdatedAt(now).MustBuild()
 	d2 := deployment.New().NewID().Workspace(wsID).Version("v2").UpdatedAt(now.Add(-time.Minute)).MustBuild()

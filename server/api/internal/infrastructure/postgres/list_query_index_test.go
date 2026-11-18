@@ -41,7 +41,6 @@ func seedListQueryRows(t *testing.T, ctx context.Context, exec func(ctx context.
 	}
 }
 
-// explainPlan runs EXPLAIN (without ANALYZE) and returns the plan text.
 func explainPlan(t *testing.T, ctx context.Context, query func(ctx context.Context, sql string) (string, error), sql string) string {
 	t.Helper()
 	explain := "EXPLAIN " + sql

@@ -138,7 +138,6 @@ func CMSItemFrom(i *cms.Item) *CMSItem {
 		return nil
 	}
 
-	// Convert fields to JSON
 	return &CMSItem{
 		ID:        ID(i.ID),
 		Fields:    JSON(i.Fields),

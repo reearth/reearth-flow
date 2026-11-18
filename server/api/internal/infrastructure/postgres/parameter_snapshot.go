@@ -11,8 +11,8 @@ import (
 // parameterJSON is the wire format for parameter snapshots stored in JSONB on
 // jobs and deployments.
 type parameterJSON struct {
-	// Snapshots written before these were kept have none; the builder then
-	// stamps them as it does any new parameter.
+	// Absent from older snapshots, in which case the builder stamps them as it
+	// does for a new parameter.
 	CreatedAt    time.Time   `json:"created_at,omitzero"`
 	UpdatedAt    time.Time   `json:"updated_at,omitzero"`
 	DefaultValue interface{} `json:"default_value,omitempty"`

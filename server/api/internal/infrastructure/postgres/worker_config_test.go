@@ -76,7 +76,6 @@ func TestWorkerConfig_FindAll(t *testing.T) {
 	ctx := context.Background()
 	r := postgres.NewWorkerConfig(pgxx.NewClient(pool))
 
-	// Empty table returns nil, no error.
 	got, err := r.FindAll(ctx)
 	require.NoError(t, err)
 	assert.Nil(t, got)
@@ -96,7 +95,6 @@ func TestWorkerConfig_Save_Upsert(t *testing.T) {
 	cfg := newWorkerCfg(wid)
 	require.NoError(t, r.Save(ctx, cfg))
 
-	// Update: change machine type.
 	newType := "c2-standard-8"
 	cfg.SetMachineType(&newType)
 	require.NoError(t, r.Save(ctx, cfg))

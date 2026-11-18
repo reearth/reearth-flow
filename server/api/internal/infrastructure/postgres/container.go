@@ -11,9 +11,9 @@ import (
 	"github.com/reearth/reearthx/pgxx"
 )
 
-// New builds a repo.Container backed by Postgres. All flow-owned repos are
-// implemented; account-owned repos (User/Workspace/Role/Permittable) continue
-// to come from the account container.
+// New builds a repo.Container backed by Postgres for the flow-owned repos.
+// Account-owned repos (User/Workspace/Role/Permittable) still come from the
+// account container.
 func New(ctx context.Context, pool *pgxpool.Pool, account *accountrepo.Container) (*repo.Container, error) {
 	client := pgxx.NewClient(pool, pgxx.WithTxRetry(2)) // retry serialization failures, matching the Mongo path
 	lock := NewLock(pool)
