@@ -199,14 +199,15 @@ graphs:
               value: "3857"
 
       - id: 5e81a0a3-5bf6-45e1-9bbc-d8044c5b77c9
-        name: FloodingAreaSurfaceGenerator
+        name: MeshMergerByArea
         type: action
-        action: PLATEAU6.FloodingAreaSurfaceGenerator
+        action: Mesh Merger
         with:
           groupBy:
             - udxDirs
             - __rank_for_style
             - __scale
+          granularity: edgeConnectedPart
 
       # back to JGD2011 so the writer turns the elevations into ellipsoidal heights
       - id: e25081e4-1ee7-4f39-a899-a2d3f1319da2
