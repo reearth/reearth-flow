@@ -526,6 +526,16 @@ export type GetCmsModelExportUrlQueryVariables = Exact<{
 
 export type GetCmsModelExportUrlQuery = { cmsModelExportUrl: string };
 
+export type GetCmsAssetsQueryVariables = Exact<{
+  workspaceId: string;
+  projectId: string;
+  page?: number | null | undefined;
+  pageSize?: number | null | undefined;
+}>;
+
+
+export type GetCmsAssetsQuery = { cmsAssets: { totalCount: number, assets: Array<{ id: string, uuid: string, projectId: string, filename: string, size: number, previewType: string | null, url: string, archiveExtractionStatus: string | null, public: boolean, createdAt: any }> } };
+
 export type CreateDeploymentMutationVariables = Exact<{
   input: CreateDeploymentInput;
 }>;
@@ -1456,6 +1466,21 @@ export const GetCmsModelExportUrlDocument = gql`
   )
 }
     `;
+export const GetCmsAssetsDocument = gql`
+    query GetCmsAssets($workspaceId: ID!, $projectId: ID!, $page: Int, $pageSize: Int) {
+  cmsAssets(
+    workspaceId: $workspaceId
+    projectId: $projectId
+    page: $page
+    pageSize: $pageSize
+  ) {
+    assets {
+      ...CmsAsset
+    }
+    totalCount
+  }
+}
+    ${CmsAssetFragmentDoc}`;
 export const CreateDeploymentDocument = gql`
     mutation CreateDeployment($input: CreateDeploymentInput!) {
   createDeployment(input: $input) {
@@ -2087,6 +2112,9 @@ export function getSdk(client: GraphQLClient, withWrapper: SdkFunctionWrapper = 
     },
     GetCmsModelExportUrl(variables: GetCmsModelExportUrlQueryVariables, requestHeaders?: GraphQLClientRequestHeaders, signal?: RequestInit['signal']): Promise<GetCmsModelExportUrlQuery> {
       return withWrapper((wrappedRequestHeaders) => client.request<GetCmsModelExportUrlQuery>({ document: GetCmsModelExportUrlDocument, variables, requestHeaders: { ...requestHeaders, ...wrappedRequestHeaders }, signal }), 'GetCmsModelExportUrl', 'query', variables);
+    },
+    GetCmsAssets(variables: GetCmsAssetsQueryVariables, requestHeaders?: GraphQLClientRequestHeaders, signal?: RequestInit['signal']): Promise<GetCmsAssetsQuery> {
+      return withWrapper((wrappedRequestHeaders) => client.request<GetCmsAssetsQuery>({ document: GetCmsAssetsDocument, variables, requestHeaders: { ...requestHeaders, ...wrappedRequestHeaders }, signal }), 'GetCmsAssets', 'query', variables);
     },
     CreateDeployment(variables: CreateDeploymentMutationVariables, requestHeaders?: GraphQLClientRequestHeaders, signal?: RequestInit['signal']): Promise<CreateDeploymentMutation> {
       return withWrapper((wrappedRequestHeaders) => client.request<CreateDeploymentMutation>({ document: CreateDeploymentDocument, variables, requestHeaders: { ...requestHeaders, ...wrappedRequestHeaders }, signal }), 'CreateDeployment', 'mutation', variables);

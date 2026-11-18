@@ -447,6 +447,19 @@ export const typeDefs = `
     updatedAt: DateTime!
   }
 
+  type CMSAsset {
+    id: ID!
+    uuid: String!
+    projectId: ID!
+    filename: String!
+    size: Int!
+    previewType: String
+    url: String!
+    archiveExtractionStatus: String
+    public: Boolean!
+    createdAt: DateTime!
+  }
+
   # Connection Types
   type AssetConnection {
     nodes: [Asset]!
@@ -486,6 +499,17 @@ export const typeDefs = `
   type CMSItemsConnection {
     items: [CMSItem!]!
     totalCount: Int!
+  }
+
+  type CMSPageInfo {
+    page: Int!
+    pageSize: Int!
+  }
+
+  type CMSAssetsConnection {
+    assets: [CMSAsset!]!
+    totalCount: Int!
+    pageInfo: CMSPageInfo!
   }
 
   # Input Types - User
@@ -832,6 +856,8 @@ export const typeDefs = `
     cmsProjects(workspaceIds: [ID!]!, publicOnly: Boolean, page: Int, pageSize: Int): [CMSProject!]!
     cmsModels(workspaceId: ID!, projectId: ID!, page: Int, pageSize: Int): [CMSModelsConnection!]!
     cmsItems(workspaceId: ID!, projectId: ID!, modelId: ID!, keyword: String, page: Int, pageSize: Int): CMSItemsConnection!
+    cmsAsset(workspaceId: ID!, assetId: ID!): CMSAsset
+    cmsAssets(workspaceId: ID!, projectId: ID!, page: Int, pageSize: Int): CMSAssetsConnection!
     cmsModelExportUrl(workspaceId: ID!, projectId: ID!, modelId: ID!): String!
   }
 

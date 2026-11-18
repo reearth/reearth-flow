@@ -10,8 +10,7 @@ import {
   PresenceAvatar,
 } from "@flow/components";
 import { Button } from "@flow/components/buttons/BaseButton";
-import AssetsDialog from "@flow/features/AssetsDialog";
-import CmsIntegrationDialog from "@flow/features/CmsIntegrationDialog";
+import AssetPickerDialog from "@flow/features/AssetPickerDialog";
 import { useT } from "@flow/lib/i18n";
 import type { AwarenessUser, WorkflowVariable } from "@flow/types";
 
@@ -60,10 +59,9 @@ const VariableEditDialog: React.FC<Props> = ({
   const {
     localVariable,
     hasChanges,
-    showDialog,
+    showAssetPicker,
     assetUrl,
-    handleAssetDoubleClick,
-    handleCmsItemValue,
+    handleAssetSelect,
     handleDialogOpen,
     handleDialogClose,
     handleFieldUpdate,
@@ -200,16 +198,10 @@ const VariableEditDialog: React.FC<Props> = ({
           </Button>
         </DialogFooter>
       </DialogContent>
-      {showDialog === "assets" && (
-        <AssetsDialog
+      {showAssetPicker && (
+        <AssetPickerDialog
           onDialogClose={handleDialogClose}
-          onAssetSelect={handleAssetDoubleClick}
-        />
-      )}
-      {showDialog === "cms" && (
-        <CmsIntegrationDialog
-          onDialogClose={handleDialogClose}
-          onCmsItemValue={handleCmsItemValue}
+          onSelect={handleAssetSelect}
         />
       )}
     </Dialog>

@@ -8,6 +8,7 @@ import { AssetCard } from "./AssetCard";
 type Props = {
   assets?: Asset[];
   readonly?: boolean;
+  selectedAssetId?: string;
   isFetching: boolean;
   isDebouncingSearch?: boolean;
   isDeleting: boolean;
@@ -18,11 +19,13 @@ type Props = {
     e: React.MouseEvent<HTMLAnchorElement>,
     asset: Asset,
   ) => void;
+  onAssetClick?: (asset: Asset) => void;
   onAssetDoubleClick?: (asset: Asset) => void;
 };
 const AssetsGridView: React.FC<Props> = ({
   assets,
   readonly,
+  selectedAssetId,
   isFetching,
   isDebouncingSearch,
   isDeleting,
@@ -30,6 +33,7 @@ const AssetsGridView: React.FC<Props> = ({
   setAssetToBeEdited,
   onCopyUrlToClipBoard,
   onAssetDownload,
+  onAssetClick,
   onAssetDoubleClick,
 }) => {
   const t = useT();
@@ -46,11 +50,13 @@ const AssetsGridView: React.FC<Props> = ({
                 key={a.id}
                 asset={a}
                 readonly={readonly}
+                selected={a.id === selectedAssetId}
                 isDeleting={isDeleting}
                 onCopyUrlToClipBoard={onCopyUrlToClipBoard}
                 onAssetDownload={onAssetDownload}
                 setAssetToBeDeleted={setAssetToBeDeleted}
                 setAssetToBeEdited={setAssetToBeEdited}
+                onClick={onAssetClick}
                 onDoubleClick={onAssetDoubleClick}
               />
             ))}
