@@ -6,7 +6,7 @@ import {
 } from "@phosphor-icons/react";
 import { useId, useState } from "react";
 
-import { Button, Switch, UserAvatar } from "@flow/components";
+import { Badge, Button, Switch, UserAvatar } from "@flow/components";
 import { useT } from "@flow/lib/i18n";
 import type { JobStatus } from "@flow/types";
 import { openLinkInNewTab } from "@flow/utils";
@@ -19,6 +19,8 @@ export type DetailsBoxContent = {
   type?: "link" | "download" | "status" | "collapsible" | "user";
   // The photo of a "user" value's user, if they have one.
   photoURL?: string;
+  href?: string;
+  badge?: string;
   items?: DetailsBoxContent[];
 };
 
@@ -207,11 +209,26 @@ const DetailRow: React.FC<{ detail: DetailsBoxContent }> = ({ detail }) => {
     return (
       <div className="flex items-center">
         <p className="w-[150px] shrink-0">{detail.name}</p>
-        <DetailValue
-          value={detail.value}
-          type={detail.type}
-          photoURL={detail.photoURL}
-        />
+        {detail.badge && (
+          <Badge variant="secondary" className="mr-2 rounded px-1.5">
+            {detail.badge}
+          </Badge>
+        )}
+        {detail.href ? (
+          <a
+            className="font-light text-blue-400 underline-offset-2 hover:text-blue-300 hover:underline"
+            href={detail.href}
+            target="_blank"
+            rel="noopener noreferrer">
+            {detail.value}
+          </a>
+        ) : (
+          <DetailValue
+            value={detail.value}
+            type={detail.type}
+            photoURL={detail.photoURL}
+          />
+        )}
       </div>
     );
   }

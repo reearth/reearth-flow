@@ -194,6 +194,7 @@ export const toJob = (
   runById: job.runById ?? undefined,
   triggerId: job.triggerId ?? undefined,
   triggerDescription: job.trigger?.description,
+  origin: job.origin?.cmsItem ? { cmsItem: job.origin.cmsItem } : undefined,
 });
 
 export const toUserFacingLog = (log: UserFacingLogFragment): UserFacingLog => ({

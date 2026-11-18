@@ -121,7 +121,10 @@ const TriggerEditDialog: React.FC<Props> = ({
                 </SelectTrigger>
                 <SelectContent>
                   {Object.entries(eventSources).map(([value, label]) => (
-                    <SelectItem key={value} value={value}>
+                    <SelectItem
+                      key={value}
+                      value={value}
+                      disabled={value === "CMS"}>
                       {label}
                     </SelectItem>
                   ))}
@@ -136,6 +139,14 @@ const TriggerEditDialog: React.FC<Props> = ({
                     {t(
                       "An auth token is created for the trigger and shown once after you save.",
                     )}
+                  </p>
+                </DialogContentSection>
+              )}
+            {selectedTrigger.eventSource === "API_DRIVEN" &&
+              updatedEventSource !== "API_DRIVEN" && (
+                <DialogContentSection>
+                  <p className="text-xs text-warning">
+                    {t("Saving removes this trigger's auth token.")}
                   </p>
                 </DialogContentSection>
               )}

@@ -134,6 +134,17 @@ fragment Job on Job {
     id
     description
   }
+  origin {
+    cmsItem {
+      projectId
+      modelId
+      itemId
+      connectionId
+      projectName
+      modelName
+      itemTitle
+    }
+  }
 }
 
 fragment Asset on Asset {

@@ -689,6 +689,8 @@
   "Deployment ID": "ID du déploiement",
   "Deployment": "Déploiement",
   "Trigger": "Déclencheur",
+  "Started from": "Lancé depuis",
+  "CMS": "CMS",
   "Run by": "Exécuté par",
   "Started At": "Démarré le",
   "Completed At": "Terminé le",
@@ -864,6 +866,7 @@
   "Re-generate The Auth Token?": "Régénérer le jeton d'authentification ?",
   "If you re-generate the auth token, the previous token will become invalid, and this action cannot be undone. Are you sure you want to proceed?": "Si vous régénérez le jeton d'authentification, l'ancien jeton ne sera plus valide et cette action est irréversible. Voulez-vous vraiment continuer ?",
   "An auth token is created for the trigger and shown once after you save.": "Un jeton d'authentification est créé pour le déclencheur et affiché une seule fois après l'enregistrement.",
+  "Saving removes this trigger's auth token.": "L'enregistrement supprime le jeton d'authentification de ce déclencheur.",
   "Updating...": "Mise à jour...",
   "No longer in this deployment": "N'est plus dans ce déploiement",
   "Needs a value": "Valeur requise",
@@ -873,6 +876,7 @@
   "{{count}} required variables need a value_many": "",
   "{{count}} required variables need a value_other": "{{count}} variables obligatoires nécessitent une valeur",
   "Each API call must provide: {{names}}": "Chaque appel API doit fournir : {{names}}",
+  "Each CMS run must provide: {{names}}": "Chaque exécution depuis le CMS doit fournir : {{names}}",
   "Required variables need a value: {{names}}": "Les variables obligatoires nécessitent une valeur : {{names}}",
   "Delete Trigger": "Supprimer le déclencheur",
   "New Trigger": "Nouveau déclencheur",
@@ -1105,6 +1109,5 @@
   "Every Day": "Chaque jour",
   "Every Hour": "Chaque heure",
   "Every Week": "Chaque semaine",
-  "Every Month": "Chaque mois",
-  "CMS": "CMS"
+  "Every Month": "Chaque mois"
 }

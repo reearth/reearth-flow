@@ -28,6 +28,21 @@ export type Job = {
   // trigger has since been deleted.
   triggerId?: string;
   triggerDescription?: string;
+  origin?: JobOrigin;
+};
+
+export type CmsItemJobOrigin = {
+  projectId: string;
+  modelId: string;
+  itemId: string;
+  connectionId: string;
+  projectName: string;
+  modelName: string;
+  itemTitle: string;
+};
+
+export type JobOrigin = {
+  cmsItem?: CmsItemJobOrigin;
 };
 
 export type CancelJob = {

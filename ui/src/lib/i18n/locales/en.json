@@ -685,6 +685,8 @@
   "Deployment ID": "",
   "Deployment": "",
   "Trigger": "",
+  "Started from": "",
+  "CMS": "",
   "Run by": "",
   "Started At": "",
   "Completed At": "",
@@ -859,6 +861,7 @@
   "Re-generate The Auth Token?": "",
   "If you re-generate the auth token, the previous token will become invalid, and this action cannot be undone. Are you sure you want to proceed?": "",
   "An auth token is created for the trigger and shown once after you save.": "",
+  "Saving removes this trigger's auth token.": "",
   "Updating...": "",
   "No longer in this deployment": "",
   "Needs a value": "",
@@ -867,6 +870,7 @@
   "{{count}} required variables need a value_one": "{{count}} required variable needs a value",
   "{{count}} required variables need a value_other": "",
   "Each API call must provide: {{names}}": "",
+  "Each CMS run must provide: {{names}}": "",
   "Required variables need a value: {{names}}": "",
   "Delete Trigger": "",
   "New Trigger": "",
@@ -1099,6 +1103,5 @@
   "Every Day": "",
   "Every Hour": "",
   "Every Week": "",
-  "Every Month": "",
-  "CMS": ""
+  "Every Month": ""
 }

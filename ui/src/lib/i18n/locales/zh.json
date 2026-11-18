@@ -681,6 +681,8 @@
   "Deployment ID": "部署ID",
   "Deployment": "部署",
   "Trigger": "触发器",
+  "Started from": "启动来源",
+  "CMS": "CMS",
   "Run by": "运行者",
   "Started At": "开始时间",
   "Completed At": "完成时间",
@@ -854,6 +856,7 @@
   "Re-generate The Auth Token?": "重新生成认证令牌？",
   "If you re-generate the auth token, the previous token will become invalid, and this action cannot be undone. Are you sure you want to proceed?": "重新生成认证令牌后，之前的令牌将失效，且此操作无法撤销。确定要继续吗？",
   "An auth token is created for the trigger and shown once after you save.": "系统会为触发器创建认证令牌，并在保存后仅显示一次。",
+  "Saving removes this trigger's auth token.": "保存后将删除此触发器的认证令牌。",
   "Updating...": "更新中...",
   "No longer in this deployment": "已不在此部署中",
   "Needs a value": "需要填写值",
@@ -861,6 +864,7 @@
   "Reset to workflow default": "重置为工作流默认值",
   "{{count}} required variables need a value_other": "{{count}} 个必需变量需要填写值",
   "Each API call must provide: {{names}}": "每次 API 调用都必须提供：{{names}}",
+  "Each CMS run must provide: {{names}}": "每次 CMS 运行都必须提供：{{names}}",
   "Required variables need a value: {{names}}": "必需变量需要填写值：{{names}}",
   "Delete Trigger": "删除触发器",
   "New Trigger": "新触发器",
@@ -1093,6 +1097,5 @@
   "Every Day": "每天",
   "Every Hour": "每小时",
   "Every Week": "每周",
-  "Every Month": "每月",
-  "CMS": "CMS"
+  "Every Month": "每月"
 }

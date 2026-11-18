@@ -42,6 +42,7 @@ const jobFragment = (overrides: Partial<JobFragment> = {}): JobFragment => ({
   runById: null,
   triggerId: null,
   trigger: null,
+  origin: null,
   ...overrides,
 });
 
@@ -129,6 +130,29 @@ describe("toJob", () => {
     expect(converted.runById).toBeUndefined();
     expect(converted.triggerId).toBe("trigger-1");
     expect(converted.triggerDescription).toBeUndefined();
+  });
+
+  test("keeps the CMS item a job was started for", () => {
+    const cmsItem = {
+      projectId: "p1",
+      modelId: "m1",
+      itemId: "i1",
+      connectionId: "c1",
+      projectName: "Wayfarer",
+      modelName: "Buildings",
+      itemTitle: "Shinjuku 3-chome",
+    };
+
+    const converted = toJob(jobFragment({ origin: { cmsItem } }));
+
+    expect(converted.origin).toEqual({ cmsItem });
+  });
+
+  test("leaves the origin unset for a job started in Flow", () => {
+    expect(toJob(jobFragment()).origin).toBeUndefined();
+    expect(
+      toJob(jobFragment({ origin: { cmsItem: null } })).origin,
+    ).toBeUndefined();
   });
 });
 

@@ -1,15 +1,21 @@
 import type { EventSourceType, TimeInterval } from "@flow/types";
 
-// The event sources the trigger dialogs offer. CMS triggers are run from CMS
-// and are not offered until the dialogs support them.
-export type SelectableEventSource = Exclude<EventSourceType, "CMS">;
-
 export const getEventSourceLabels = (
   t: (key: string) => string,
-): Record<SelectableEventSource, string> => ({
+): Record<EventSourceType, string> => ({
   API_DRIVEN: t("API Driven"),
   TIME_DRIVEN: t("Time Driven"),
+  CMS: t("CMS"),
 });
+
+const eventSources: readonly EventSourceType[] = [
+  "API_DRIVEN",
+  "TIME_DRIVEN",
+  "CMS",
+];
+
+export const isEventSource = (value: string): value is EventSourceType =>
+  (eventSources as readonly string[]).includes(value);
 
 export const getTimeIntervalLabels = (
   t: (key: string) => string,
@@ -24,10 +30,7 @@ export const getEventSourceLabel = (
   eventSource: EventSourceType | undefined,
   t: (key: string) => string,
 ): string | undefined =>
-  eventSource &&
-  (eventSource === "CMS"
-    ? t("CMS")
-    : (getEventSourceLabels(t)[eventSource] ?? eventSource));
+  eventSource && (getEventSourceLabels(t)[eventSource] ?? eventSource);
 
 export const getTimeIntervalLabel = (
   timeInterval: TimeInterval | undefined,

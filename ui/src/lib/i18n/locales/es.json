@@ -689,6 +689,8 @@
   "Deployment ID": "ID del despliegue",
   "Deployment": "Despliegue",
   "Trigger": "Disparador",
+  "Started from": "Iniciado desde",
+  "CMS": "CMS",
   "Run by": "Ejecutado por",
   "Started At": "Comenzado a las",
   "Completed At": "Completado a las",
@@ -864,6 +866,7 @@
   "Re-generate The Auth Token?": "¿Regenerar el token de autenticación?",
   "If you re-generate the auth token, the previous token will become invalid, and this action cannot be undone. Are you sure you want to proceed?": "Si regenera el token de autenticación, el token anterior dejará de ser válido y esta acción no se puede deshacer. ¿Seguro que desea continuar?",
   "An auth token is created for the trigger and shown once after you save.": "Se crea un token de autenticación para el disparador y se muestra una sola vez después de guardar.",
+  "Saving removes this trigger's auth token.": "Al guardar se elimina el token de autenticación de este disparador.",
   "Updating...": "Actualizando...",
   "No longer in this deployment": "Ya no está en este despliegue",
   "Needs a value": "Necesita un valor",
@@ -873,6 +876,7 @@
   "{{count}} required variables need a value_many": "",
   "{{count}} required variables need a value_other": "{{count}} variables obligatorias necesitan un valor",
   "Each API call must provide: {{names}}": "Cada llamada a la API debe proporcionar: {{names}}",
+  "Each CMS run must provide: {{names}}": "Cada ejecución desde CMS debe proporcionar: {{names}}",
   "Required variables need a value: {{names}}": "Las variables obligatorias necesitan un valor: {{names}}",
   "Delete Trigger": "Eliminar disparador",
   "New Trigger": "Nuevo disparador",
@@ -1105,6 +1109,5 @@
   "Every Day": "Cada día",
   "Every Hour": "Cada hora",
   "Every Week": "Cada semana",
-  "Every Month": "Cada mes",
-  "CMS": "CMS"
+  "Every Month": "Cada mes"
 }

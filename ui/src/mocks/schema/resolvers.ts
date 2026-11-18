@@ -1140,6 +1140,7 @@ export const resolvers = {
         runById: getCurrentUser().id,
         triggerId: null,
         trigger: null,
+        origin: null,
       };
 
       jobs.push(newJob);
@@ -1204,6 +1205,7 @@ export const resolvers = {
         runById: getCurrentUser().id,
         triggerId: null,
         trigger: null,
+        origin: null,
       };
 
       jobs.push(newJob);
@@ -1422,6 +1424,7 @@ export const resolvers = {
         runById: getCurrentUser().id,
         triggerId: null,
         trigger: null,
+        origin: null,
       };
 
       jobs.push(newJob);

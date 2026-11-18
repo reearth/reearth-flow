@@ -681,6 +681,8 @@
   "Deployment ID": "デプロイメントID",
   "Deployment": "デプロイメント",
   "Trigger": "トリガー",
+  "Started from": "実行元",
+  "CMS": "CMS",
   "Run by": "実行者",
   "Started At": "開始日時",
   "Completed At": "終了日時",
@@ -854,6 +856,7 @@
   "Re-generate The Auth Token?": "authトークンを再生成しますか？",
   "If you re-generate the auth token, the previous token will become invalid, and this action cannot be undone. Are you sure you want to proceed?": "authトークンを再生成すると、以前のトークンは無効になり、この操作は元に戻せません。続行しますか？",
   "An auth token is created for the trigger and shown once after you save.": "トリガーにはauthトークンが作成され、保存後に一度だけ表示されます。",
+  "Saving removes this trigger's auth token.": "保存すると、このトリガーの認証トークンは削除されます。",
   "Updating...": "更新中...",
   "No longer in this deployment": "このデプロイメントには存在しません",
   "Needs a value": "値が必要です",
@@ -861,6 +864,7 @@
   "Reset to workflow default": "ワークフローデフォルトにリセット",
   "{{count}} required variables need a value_other": "{{count}} 件の必須変数に値が必要です",
   "Each API call must provide: {{names}}": "各APIリクエストで指定が必要です：{{names}}",
+  "Each CMS run must provide: {{names}}": "各CMS実行で指定が必要です：{{names}}",
   "Required variables need a value: {{names}}": "必須変数に値が必要です：{{names}}",
   "Delete Trigger": "トリガーを削除",
   "New Trigger": "新規トリガー",
@@ -1093,6 +1097,5 @@
   "Every Day": "毎日",
   "Every Hour": "毎時",
   "Every Week": "毎週",
-  "Every Month": "毎月",
-  "CMS": "CMS"
+  "Every Month": "毎月"
 }
