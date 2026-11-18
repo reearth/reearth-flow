@@ -81,6 +81,11 @@ const AssetPickerDialog: React.FC<Props> = ({ onDialogClose, onSelect }) => {
                 selectedAssetId={activeSelection?.id}
                 onAssetClick={handleClick("flowAssets")}
                 onAssetDoubleClick={handleDoubleClick}
+                onAssetDelete={(id) =>
+                  setSelection((s) =>
+                    s?.tab === "flowAssets" && s.id === id ? undefined : s,
+                  )
+                }
               />
             </TabsContent>
             <TabsContent value="cmsAssets">

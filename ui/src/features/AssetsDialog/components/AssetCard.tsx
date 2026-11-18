@@ -72,6 +72,15 @@ const AssetCard: React.FC<Props> = ({
     <Card
       className={`group relative cursor-pointer bg-card hover:border-border ${selected ? "border-primary ring-1 ring-primary" : "border-transparent"}`}
       key={id}
+      role="button"
+      tabIndex={0}
+      aria-pressed={selected}
+      onKeyDown={(e) => {
+        if (e.target !== e.currentTarget) return;
+        if (e.key !== "Enter" && e.key !== " ") return;
+        e.preventDefault();
+        onClick?.(asset);
+      }}
       onClick={() => onClick?.(asset)}
       onDoubleClick={readonly ? undefined : handleDoubleClick}>
       <CardContent className="flex items-start justify-center p-2">

@@ -31,6 +31,14 @@ const CmsAssetCard: React.FC<Props> = ({
     <Card
       className={`group relative cursor-pointer bg-card hover:border-border ${selected ? "border-primary ring-1 ring-primary" : "border-transparent"}`}
       title={asset.filename}
+      role="button"
+      tabIndex={0}
+      aria-pressed={selected}
+      onKeyDown={(e) => {
+        if (e.key !== "Enter" && e.key !== " ") return;
+        e.preventDefault();
+        onClick(asset);
+      }}
       onClick={() => onClick(asset)}
       onDoubleClick={() => onDoubleClick(asset)}>
       <CardContent className="relative flex items-start justify-center p-2">

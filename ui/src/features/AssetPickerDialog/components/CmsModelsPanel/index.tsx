@@ -69,7 +69,7 @@ const CmsModelsPanel: React.FC<Props> = ({ workspaceId, onSelect }) => {
             const displayValue =
               typeof value === "object"
                 ? JSON.stringify(value).substring(0, 50) + "..."
-                : String(value || "-");
+                : String(value ?? "-");
             return (
               <div className="max-w-[150px] truncate" title={displayValue}>
                 {displayValue}
@@ -125,7 +125,8 @@ const CmsModelsPanel: React.FC<Props> = ({ workspaceId, onSelect }) => {
                   ? handleBackToModels
                   : handleBackToItems
             }
-            variant="ghost">
+            variant="ghost"
+            aria-label={t("Back")}>
             <CaretLeftIcon />
           </Button>
         )}

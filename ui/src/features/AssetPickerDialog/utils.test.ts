@@ -45,6 +45,17 @@ describe("filterAndSortCmsAssets", () => {
     ]);
   });
 
+  it("orders RFC3339 timestamps with trimmed fractional seconds", () => {
+    const sorted = filterAndSortCmsAssets(
+      [
+        asset("later.gml", "2026-01-01T00:00:00.5Z"),
+        asset("earlier.gml", "2026-01-01T00:00:00Z"),
+      ],
+      { sort: "createdAtAsc" },
+    );
+    expect(sorted.map((a) => a.filename)).toEqual(["earlier.gml", "later.gml"]);
+  });
+
   it("filters by format and keyword together", () => {
     const filtered = filterAndSortCmsAssets(assets, {
       format: "citygml",

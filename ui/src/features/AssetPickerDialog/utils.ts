@@ -51,8 +51,8 @@ export type CmsAssetSort =
   | "sizeDesc";
 
 const compare: Record<CmsAssetSort, (a: CmsAsset, b: CmsAsset) => number> = {
-  createdAtDesc: (a, b) => b.createdAt.localeCompare(a.createdAt),
-  createdAtAsc: (a, b) => a.createdAt.localeCompare(b.createdAt),
+  createdAtDesc: (a, b) => Date.parse(b.createdAt) - Date.parse(a.createdAt),
+  createdAtAsc: (a, b) => Date.parse(a.createdAt) - Date.parse(b.createdAt),
   nameAsc: (a, b) => a.filename.localeCompare(b.filename),
   nameDesc: (a, b) => b.filename.localeCompare(a.filename),
   sizeAsc: (a, b) => a.size - b.size,

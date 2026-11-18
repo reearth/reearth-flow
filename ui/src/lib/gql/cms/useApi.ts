@@ -117,7 +117,11 @@ export const useCms = () => {
   ) => {
     const { data, ...rest } = useGetCmsAssetsAcrossProjectsQuery(projects);
     const pages = data?.pages ?? [];
-    const failedProjectIds = new Set(pages.flatMap((p) => p.failedProjectIds));
+    const failedProjectIds = new Set<string>();
+    for (const page of pages) {
+      Object.keys(page.loaded).forEach((id) => failedProjectIds.delete(id));
+      page.failedProjectIds.forEach((id) => failedProjectIds.add(id));
+    }
     return {
       cmsAssets: pages.flatMap((p) => p.assets),
       failedProjectCount: failedProjectIds.size,

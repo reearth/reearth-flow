@@ -215,6 +215,7 @@ const CmsAssetsPanel: React.FC<Props> = ({
               data={assets}
               showOrdering={false}
               onRowClick={onAssetClick}
+              isRowSelected={(a) => a.id === selectedAssetId}
               onRowDoubleClick={onAssetDoubleClick}
             />
           )}

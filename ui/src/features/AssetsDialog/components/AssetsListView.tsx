@@ -17,6 +17,7 @@ import { getIconFileType } from "./utils";
 type Props = {
   assets?: Asset[];
   readonly?: boolean;
+  selectedAssetId?: string;
   isFetching: boolean;
   isDebouncingSearch?: boolean;
   isDeleting: boolean;
@@ -37,6 +38,7 @@ type Props = {
 const AssetsListView: React.FC<Props> = ({
   assets,
   readonly,
+  selectedAssetId,
   currentPage,
   isFetching,
   isDebouncingSearch,
@@ -123,6 +125,9 @@ const AssetsListView: React.FC<Props> = ({
           totalPages={totalPages}
           resultsPerPage={resultsPerPage}
           onRowClick={onAssetClick}
+          isRowSelected={
+            selectedAssetId ? (a) => a.id === selectedAssetId : undefined
+          }
           onRowDoubleClick={readonly ? undefined : onAssetDoubleClick}
         />
       )}

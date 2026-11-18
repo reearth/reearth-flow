@@ -32,6 +32,7 @@ type Props = {
   selectedAssetId?: string;
   onAssetClick?: (asset: Asset) => void;
   onAssetDoubleClick?: (asset: Asset) => void;
+  onAssetDelete?: (id: string) => void;
 };
 
 const WorkspaceAssetsPanel: React.FC<Props> = ({
@@ -40,6 +41,7 @@ const WorkspaceAssetsPanel: React.FC<Props> = ({
   selectedAssetId,
   onAssetClick,
   onAssetDoubleClick,
+  onAssetDelete,
 }) => {
   const t = useT();
 
@@ -137,6 +139,7 @@ const WorkspaceAssetsPanel: React.FC<Props> = ({
             {layoutView === "list" ? (
               <AssetsListView
                 assets={assets}
+                selectedAssetId={selectedAssetId}
                 isFetching={isFetching}
                 isDebouncingSearch={isDebouncingSearch}
                 isDeleting={isDeleting}
@@ -185,7 +188,10 @@ const WorkspaceAssetsPanel: React.FC<Props> = ({
       <AssetDeletionDialog
         assetToBeDeleted={assetToBeDeleted}
         setAssetToBeDeleted={setAssetToBeDeleted}
-        onDeleteAsset={handleAssetDelete}
+        onDeleteAsset={(id) => {
+          onAssetDelete?.(id);
+          handleAssetDelete(id);
+        }}
       />
       {assetToBeEdited && (
         <AssetEditDialog
