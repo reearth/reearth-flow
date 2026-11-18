@@ -1,7 +1,7 @@
 {
   "13997_tokyo_udx-mlit_2026_citygml_1_sample-tokyoCG3_op_fld_pref_arakawa_kandagawa-zenpukujigawa-etc-2_3dtiles_l2_no_texture/1": {
-    "feature_type": "wtr:WaterBody",
     "city_code": "13997",
+    "feature_type": "wtr:WaterBody",
     "attributes": {
       "feature_type": "wtr:WaterBody",
       "gml:name": "荒川水系神田川流域（想定最大規模）",
@@ -45,8 +45,8 @@
     "urc:geometrySrcDescLod1": "その他のGISデータ"
   },
   "13997_tokyo_udx-mlit_2026_citygml_1_sample-tokyoCG3_op_fld_pref_arakawa_kandagawa-zenpukujigawa-etc-2_3dtiles_l2_no_texture/2": {
-    "feature_type": "wtr:WaterBody",
     "city_code": "13997",
+    "feature_type": "wtr:WaterBody",
     "attributes": {
       "feature_type": "wtr:WaterBody",
       "gml:name": "荒川水系神田川流域（想定最大規模）",

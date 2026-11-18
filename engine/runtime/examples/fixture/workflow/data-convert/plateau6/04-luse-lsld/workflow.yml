@@ -183,7 +183,7 @@ graphs:
           conditions:
             - expr:
                 type: flowExpr
-                value: attributes["lod"] == 1
+                value: attributes["__lod"] == 1
               outputPort: features
 
       - id: 3944e300-8e9a-4a1a-a9d2-f068cfe9827d
@@ -201,8 +201,8 @@ graphs:
           order: ascending
 
       # Builds the final attribute order from three groups, each kept in order on its own:
-      # base keys, lod, then __flat (AttributeTableExtractor). No earlier step can affect it.
-      # The writer does not expose "__" keys, so only __output_base is kept after them.
+      # base keys, __flat (AttributeTableExtractor). No earlier step can affect it.
+      # The writer does not expose "__" keys, so only __lod and __output_base are kept after them.
       - id: 6f2a8c4e-1d3b-4e5f-9a7c-0b1d3f5a7c92
         name: AttributeOrderMapper
         type: action
@@ -213,13 +213,14 @@ graphs:
                 type: flowExpr
                 value: |
                   out = {};
-                  for k in ["meshcode", "feature_type", "city_code", "city_name", "gml_id", "attributes"] {
+                  for k in ["meshcode", "city_code", "city_name", "feature_type", "gml_id", "attributes"] {
                     if k in attributes { out[k] = attributes[k]; }
                   }
-                  if "lod" in attributes { out["lod"] = attributes["lod"]; }
                   flat = attributes.get("__flat", {});
                   for k in flat.keys() { out[k] = flat[k]; }
                   out
+            - attribute: __lod
+              valueAttribute: __lod
             - attribute: __output_base
               valueAttribute: __output_base
 

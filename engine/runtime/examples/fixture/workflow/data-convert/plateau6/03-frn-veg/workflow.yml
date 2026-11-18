@@ -280,7 +280,7 @@ graphs:
           conditions:
             - expr:
                 type: flowExpr
-                value: attributes["__dm"] == null and attributes["lod"] in [0, 1, 2, 3]
+                value: attributes["__dm"] == null and attributes["__lod"] in [0, 1, 2, 3]
               outputPort: features
             - expr:
                 type: flowExpr
@@ -295,12 +295,12 @@ graphs:
           mappers:
             - attribute: meshcode
               valueAttribute: meshcode
-            - attribute: feature_type
-              valueAttribute: feature_type
             - attribute: city_code
               valueAttribute: city_code
             - attribute: city_name
               valueAttribute: city_name
+            - attribute: feature_type
+              valueAttribute: feature_type
             - attribute: gml_id
               valueAttribute: gml_id
             - attribute: attributes
@@ -312,7 +312,7 @@ graphs:
             - attribute: urc:lodType
               valueAttribute: urc:lodType
             - attribute: __lod
-              valueAttribute: lod
+              valueAttribute: __lod
             - attribute: __output_base
               valueAttribute: __output_base
 
@@ -343,12 +343,12 @@ graphs:
           mappers:
             - attribute: meshcode
               valueAttribute: meshcode
-            - attribute: feature_type
-              valueAttribute: feature_type
             - attribute: city_code
               valueAttribute: city_code
             - attribute: city_name
               valueAttribute: city_name
+            - attribute: feature_type
+              valueAttribute: feature_type
             - attribute: gml_id
               valueAttribute: gml_id
             - attribute: attributes
@@ -372,7 +372,7 @@ graphs:
             - attribute: urc:lodType
               valueAttribute: urc:lodType
             - attribute: __lod
-              valueAttribute: lod
+              valueAttribute: __lod
             - attribute: __output_base
               valueAttribute: __output_base
 
@@ -384,12 +384,12 @@ graphs:
           mappers:
             - attribute: meshcode
               valueAttribute: meshcode
-            - attribute: feature_type
-              valueAttribute: feature_type
             - attribute: city_code
               valueAttribute: city_code
             - attribute: city_name
               valueAttribute: city_name
+            - attribute: feature_type
+              valueAttribute: feature_type
             - attribute: gml_id
               valueAttribute: gml_id
             - attribute: attributes
@@ -405,7 +405,7 @@ graphs:
             - attribute: urc:lodType
               valueAttribute: urc:lodType
             - attribute: __lod
-              valueAttribute: lod
+              valueAttribute: __lod
             - attribute: __output_base
               valueAttribute: __output_base
 
@@ -501,12 +501,12 @@ graphs:
           mappers:
             - attribute: meshcode
               valueAttribute: meshcode
-            - attribute: feature_type
-              valueAttribute: feature_type
             - attribute: city_code
               valueAttribute: city_code
             - attribute: city_name
               valueAttribute: city_name
+            - attribute: feature_type
+              valueAttribute: feature_type
             - attribute: gml_id
               valueAttribute: gml_id
             - attribute: attributes
@@ -565,12 +565,12 @@ graphs:
           mappers:
             - attribute: meshcode
               valueAttribute: meshcode
-            - attribute: feature_type
-              valueAttribute: feature_type
             - attribute: city_code
               valueAttribute: city_code
             - attribute: city_name
               valueAttribute: city_name
+            - attribute: feature_type
+              valueAttribute: feature_type
             - attribute: gml_id
               valueAttribute: gml_id
             - attribute: attributes
@@ -622,12 +622,12 @@ graphs:
           mappers:
             - attribute: meshcode
               valueAttribute: meshcode
-            - attribute: feature_type
-              valueAttribute: feature_type
             - attribute: city_code
               valueAttribute: city_code
             - attribute: city_name
               valueAttribute: city_name
+            - attribute: feature_type
+              valueAttribute: feature_type
             - attribute: gml_id
               valueAttribute: gml_id
             - attribute: attributes

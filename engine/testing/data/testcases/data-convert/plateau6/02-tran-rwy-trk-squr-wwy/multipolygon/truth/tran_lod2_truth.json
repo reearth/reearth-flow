@@ -60,7 +60,6 @@
         }
       }
     ],
-    "lod": 2,
     "tran:function": "島"
   },
   "traf_aad39605-4836-42da-9c5a-d6c4817a7e57": {
@@ -124,7 +123,6 @@
         }
       }
     ],
-    "lod": 2,
     "tran:function": "歩道部"
   },
   "traf_bed931ec-cbff-4d64-ba25-5e8e760e7519": {
@@ -188,7 +186,6 @@
         }
       }
     ],
-    "lod": 2,
     "tran:function": "島"
   },
   "traf_e5ea50ce-7198-4879-a380-9d99f1c6491f": {
@@ -252,7 +249,6 @@
         }
       }
     ],
-    "lod": 2,
     "tran:function": "車道交差部"
   },
   "traf_f8f3ceeb-a7ec-447d-8a20-620b0b7bc413": {
@@ -316,7 +312,6 @@
         }
       }
     ],
-    "lod": 2,
     "tran:function": "島"
   }
 }

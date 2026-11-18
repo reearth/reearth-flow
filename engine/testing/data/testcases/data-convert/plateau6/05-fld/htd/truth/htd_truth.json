@@ -1,7 +1,7 @@
 {
   "13997_tokyo_udx-mlit_2026_citygml_1_sample-tokyoCG3_op_htd_13_2_3dtiles_no_texture/1": {
-    "feature_type": "wtr:WaterBody",
     "city_code": "13997",
+    "feature_type": "wtr:WaterBody",
     "attributes": {
       "feature_type": "wtr:WaterBody",
       "gml:name": "東京都高潮浸水想定区域図（令和6年12月19日）",
@@ -39,8 +39,8 @@
     "urc:geometrySrcDescLod1": "その他のGISデータ"
   },
   "13997_tokyo_udx-mlit_2026_citygml_1_sample-tokyoCG3_op_htd_13_2_3dtiles_no_texture/2": {
-    "feature_type": "wtr:WaterBody",
     "city_code": "13997",
+    "feature_type": "wtr:WaterBody",
     "attributes": {
       "feature_type": "wtr:WaterBody",
       "gml:name": "東京都高潮浸水想定区域図（令和6年12月19日）",
@@ -78,8 +78,8 @@
     "urc:geometrySrcDescLod1": "その他のGISデータ"
   },
   "13997_tokyo_udx-mlit_2026_citygml_1_sample-tokyoCG3_op_htd_13_2_3dtiles_no_texture/3": {
-    "feature_type": "wtr:WaterBody",
     "city_code": "13997",
+    "feature_type": "wtr:WaterBody",
     "attributes": {
       "feature_type": "wtr:WaterBody",
       "gml:name": "東京都高潮浸水想定区域図（令和6年12月19日）",

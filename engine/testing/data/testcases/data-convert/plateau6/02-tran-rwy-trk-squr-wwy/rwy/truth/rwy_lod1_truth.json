@@ -49,8 +49,7 @@
           }
         }
       }
-    ],
-    "lod": 1
+    ]
   },
   "TrafficArea_13ac4836-054c-4a5b-8c84-48e76ca7c0cb": {
     "meshcode": "55360728",
@@ -102,8 +101,7 @@
           }
         }
       }
-    ],
-    "lod": 1
+    ]
   },
   "TrafficArea_282273de-038d-4f06-b8fa-1cce8c95a58a": {
     "meshcode": "55360728",
@@ -155,8 +153,7 @@
           }
         }
       }
-    ],
-    "lod": 1
+    ]
   },
   "TrafficArea_28aa46bd-36cf-47a1-895d-54b318068c11": {
     "meshcode": "55360733",
@@ -208,8 +205,7 @@
           }
         }
       }
-    ],
-    "lod": 1
+    ]
   },
   "TrafficArea_377470ee-9895-4621-91d2-b0fa96f06b18": {
     "meshcode": "55360728",
@@ -261,8 +257,7 @@
           }
         }
       }
-    ],
-    "lod": 1
+    ]
   },
   "TrafficArea_c442ce8f-38de-4a66-b255-5abfcbd146d0": {
     "meshcode": "55360728",
@@ -314,8 +309,7 @@
           }
         }
       }
-    ],
-    "lod": 1
+    ]
   },
   "TrafficArea_ed057b58-c9bd-44ab-81ce-0cb830a2c45d": {
     "meshcode": "55360733",
@@ -367,7 +361,6 @@
           }
         }
       }
-    ],
-    "lod": 1
+    ]
   }
 }

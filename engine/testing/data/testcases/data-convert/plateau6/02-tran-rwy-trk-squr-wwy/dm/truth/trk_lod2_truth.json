@@ -77,8 +77,7 @@
         "tran:function": "徒歩道",
         "tran:function_code": "1"
       }
-    ],
-    "lod": 2
+    ]
   },
   "trk_98823040-65c2-4be4-97e1-62bf21bddf33": {
     "meshcode": "54401008",
@@ -161,7 +160,6 @@
         "tran:function_code": "1"
       }
     ],
-    "lod": 2,
     "tran:function": "歩道部"
   }
 }

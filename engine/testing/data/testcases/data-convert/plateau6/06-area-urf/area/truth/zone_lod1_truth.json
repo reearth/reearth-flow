@@ -24,7 +24,6 @@
       "urf:validFromType": "決定",
       "urf:validFromType_code": "1"
     },
-    "lod": 1,
     "core:creationDate": "2021-03-26T00:00:00",
     "urf:function": "海岸保全区域",
     "core:validFrom": "0001-01-01T00:00:00",
@@ -57,7 +56,6 @@
       "urf:validFromType": "決定",
       "urf:validFromType_code": "1"
     },
-    "lod": 1,
     "core:creationDate": "2021-03-26T00:00:00",
     "urf:function": "港湾隣接区域",
     "core:validFrom": "0001-01-01T00:00:00",

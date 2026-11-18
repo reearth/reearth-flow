@@ -241,12 +241,12 @@ graphs:
         action: Attribute Mapper
         with:
           mappers:
-            - attribute: feature_type
-              valueAttribute: feature_type
             - attribute: city_code
               valueAttribute: city_code
             - attribute: city_name
               valueAttribute: city_name
+            - attribute: feature_type
+              valueAttribute: feature_type
             - attribute: attributes
               valueAttribute: attributes
             - attribute: gml:name
@@ -282,12 +282,12 @@ graphs:
         action: Attribute Mapper
         with:
           mappers:
-            - attribute: feature_type
-              valueAttribute: feature_type
             - attribute: city_code
               valueAttribute: city_code
             - attribute: city_name
               valueAttribute: city_name
+            - attribute: feature_type
+              valueAttribute: feature_type
             - attribute: attributes
               valueAttribute: attributes
             - attribute: gml:name

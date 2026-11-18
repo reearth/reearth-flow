@@ -52,7 +52,6 @@
         "tran:function_code": "1"
       }
     ],
-    "lod": 3,
     "tran:function": "歩道部"
   },
   "tran_07b5a52b-877a-4e6a-bec8-a27fa836e5df": {
@@ -108,7 +107,6 @@
         "tran:function_code": "1"
       }
     ],
-    "lod": 3,
     "tran:function": "島"
   },
   "tran_1226d860-65a3-4425-9b29-89b972cefb2d": {
@@ -164,7 +162,6 @@
         "tran:function_code": "1"
       }
     ],
-    "lod": 3,
     "tran:function": "車道部"
   },
   "tran_17629f1a-0037-4c4a-9c26-66132c606fd1": {
@@ -220,7 +217,6 @@
         "tran:function_code": "1"
       }
     ],
-    "lod": 3,
     "tran:function": "車道部"
   },
   "tran_209618e2-ac66-4452-88ea-31bd0e8df171": {
@@ -276,7 +272,6 @@
         "tran:function_code": "1"
       }
     ],
-    "lod": 3,
     "tran:function": "車道部"
   },
   "tran_2b56055e-0b79-4d80-9d30-932755eb47c8": {
@@ -332,7 +327,6 @@
         "tran:function_code": "1"
       }
     ],
-    "lod": 3,
     "tran:function": "島"
   },
   "tran_34b9aa62-0a33-4c40-932e-467d25cbe4ec": {
@@ -388,7 +382,6 @@
         "tran:function_code": "1"
       }
     ],
-    "lod": 3,
     "tran:function": "車道部"
   },
   "tran_4de18195-5649-49ef-b0ab-4cd414e36bdf": {
@@ -444,7 +437,6 @@
         "tran:function_code": "1"
       }
     ],
-    "lod": 3,
     "tran:function": "歩道部"
   },
   "tran_573a5ed3-b2f4-4e37-a1a4-f85161651bf1": {
@@ -500,7 +492,6 @@
         "tran:function_code": "1"
       }
     ],
-    "lod": 3,
     "tran:function": "歩道部"
   },
   "tran_5eeac172-e6a0-482f-a25a-d589db9fd925": {
@@ -556,7 +547,6 @@
         "tran:function_code": "1"
       }
     ],
-    "lod": 3,
     "tran:function": "車道部"
   },
   "tran_62634208-cb21-46ae-8021-43fa38242c5d": {
@@ -612,7 +602,6 @@
         "tran:function_code": "1"
       }
     ],
-    "lod": 3,
     "tran:function": "歩道部"
   },
   "tran_677f7b97-91c4-4159-8205-17110e44c975": {
@@ -668,7 +657,6 @@
         "tran:function_code": "1"
       }
     ],
-    "lod": 3,
     "tran:function": "島"
   },
   "tran_6d1dc1e6-cff0-4b3b-a67e-bfeecbfdd188": {
@@ -724,7 +712,6 @@
         "tran:function_code": "1"
       }
     ],
-    "lod": 3,
     "tran:function": "島"
   },
   "tran_81c3d55b-3613-48fb-aae2-9dae330d6fee": {
@@ -780,7 +767,6 @@
         "tran:function_code": "1"
       }
     ],
-    "lod": 3,
     "tran:function": "島"
   },
   "tran_92941def-7b23-4817-b342-fcd6c0716092": {
@@ -836,7 +822,6 @@
         "tran:function_code": "1"
       }
     ],
-    "lod": 3,
     "tran:function": "歩道部"
   },
   "tran_939b293e-5f37-4284-b423-2f57bcbf84b6": {
@@ -892,7 +877,6 @@
         "tran:function_code": "1"
       }
     ],
-    "lod": 3,
     "tran:function": "島"
   },
   "tran_940a43bd-c12f-4dc9-9391-67eae6364c96": {
@@ -948,7 +932,6 @@
         "tran:function_code": "1"
       }
     ],
-    "lod": 3,
     "tran:function": "歩道部"
   },
   "tran_a61a1b41-52f6-4c08-8aa5-8caae921eda0": {
@@ -1004,7 +987,6 @@
         "tran:function_code": "1"
       }
     ],
-    "lod": 3,
     "tran:function": "車道部"
   },
   "tran_b22020be-6c23-4954-a4e8-b93369761865": {
@@ -1060,7 +1042,6 @@
         "tran:function_code": "1"
       }
     ],
-    "lod": 3,
     "tran:function": "車道部"
   },
   "tran_d1d6d923-a04c-4ae9-b3e2-129734394235": {
@@ -1116,7 +1097,6 @@
         "tran:function_code": "1"
       }
     ],
-    "lod": 3,
     "tran:function": "歩道部"
   },
   "tran_e3b05ef8-99f7-41b7-9a41-50f9a425b5fa": {
@@ -1172,7 +1152,6 @@
         "tran:function_code": "1"
       }
     ],
-    "lod": 3,
     "tran:function": "車道部"
   },
   "tran_fd1d49ae-941c-43e1-92d3-88b98854e696": {
@@ -1228,7 +1207,6 @@
         "tran:function_code": "1"
       }
     ],
-    "lod": 3,
     "tran:function": "島"
   }
 }

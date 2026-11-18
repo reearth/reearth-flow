@@ -279,7 +279,7 @@ graphs:
           conditions:
             - expr:
                 type: flowExpr
-                value: attributes["lod"] == 1
+                value: attributes["__lod"] == 1
               outputPort: features
 
       # the MVT Writer skips 3D geometry
@@ -298,8 +298,8 @@ graphs:
           order: ascending
 
       # Builds the final attribute order from three groups, each kept in order on its own:
-      # base keys, lod, then __flat (AttributeTableExtractor). No earlier step can affect it.
-      # The writer does not expose "__" keys, so only __output_base is kept after them.
+      # base keys, __flat (AttributeTableExtractor). No earlier step can affect it.
+      # The writer does not expose "__" keys, so only __lod and __output_base are kept after them.
       - id: 4d7b9e1a-3c5f-4a8d-b2e6-9f0a1c3e5b78
         name: AttributeOrderMapper
         type: action
@@ -313,10 +313,11 @@ graphs:
                   for k in ["meshcode", "feature_type", "city_code", "city_name", "gml_id", "attributes"] {
                     if k in attributes { out[k] = attributes[k]; }
                   }
-                  if "lod" in attributes { out["lod"] = attributes["lod"]; }
                   flat = attributes.get("__flat", {});
                   for k in flat.keys() { out[k] = flat[k]; }
                   out
+            - attribute: __lod
+              valueAttribute: __lod
             - attribute: __output_base
               valueAttribute: __output_base
 
@@ -338,7 +339,7 @@ graphs:
           keepAllAtMaxZoom: true
           output:
             type: flowExpr
-            value: attributes["__output_base"] + "_" + attributes["feature_type"].split(":")[1] + "_mvt_lod" + str(attributes["lod"]) + ".zip"
+            value: attributes["__output_base"] + "_" + attributes["feature_type"].split(":")[1] + "_mvt_lod" + str(attributes["__lod"]) + ".zip"
 
       # dictionary.json: Japanese names of the urf feature types, as in plateau4
       - id: 1e522803-774f-4189-a65c-67ba7509bdff

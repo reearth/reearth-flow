@@ -436,7 +436,7 @@ graphs:
                 value: '(attributes["_ymin"] + attributes["_ymax"]) * 0.5'
 
       # Builds the final attribute order from four groups, each kept in order on its own:
-      # base keys, geometry keys, __flat (AttributeTableExtractor) and __risk
+      # base keys, __flat (AttributeTableExtractor), __risk, then the geometry keys
       # (DisasterRiskAttributeMapper). Nothing is classified by key name, and no earlier
       # step can affect the order. The internal keys the later nodes read are kept after
       # them; the writers do not expose "__" keys.
@@ -453,13 +453,13 @@ graphs:
                   for k in ["meshcode", "feature_type", "city_code", "city_name", "gml_id", "attributes"] {
                     if k in attributes { out[k] = attributes[k]; }
                   }
-                  for k in ["_lod", "_x", "_y", "_xmin", "_xmax", "_ymin", "_ymax", "_zmin", "_zmax"] {
-                    if k in attributes { out[k] = attributes[k]; }
-                  }
                   flat = attributes.get("__flat", {});
                   for k in flat.keys() { out[k] = flat[k]; }
                   risk = attributes.get("__risk", {});
                   for k in risk.keys() { out[k] = risk[k]; }
+                  for k in ["_lod", "_x", "_y", "_xmin", "_xmax", "_ymin", "_ymax", "_zmin", "_zmax"] {
+                    if k in attributes { out[k] = attributes[k]; }
+                  }
                   out
             - attribute: __lod
               valueAttribute: __lod
