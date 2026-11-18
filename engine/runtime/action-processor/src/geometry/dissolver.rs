@@ -5,7 +5,6 @@ use std::fs::File;
 use std::io::{BufRead, BufReader, Write};
 use std::path::PathBuf;
 
-use indexmap::IndexMap;
 use reearth_flow_runtime::{
     cache::executor_cache_subdir,
     errors::BoxedError,
@@ -592,6 +591,7 @@ impl Dissolver {
 mod tests {
     use std::sync::Arc;
 
+    use indexmap::IndexMap;
     use pretty_assertions::assert_eq;
     use reearth_flow_runtime::forwarder::NoopChannelForwarder;
 
