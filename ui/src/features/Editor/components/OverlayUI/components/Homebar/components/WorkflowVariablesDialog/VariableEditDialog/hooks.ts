@@ -1,8 +1,6 @@
 import { useState, useEffect, useCallback, useRef } from "react";
 
-import type { Asset, WorkflowVariable } from "@flow/types";
-
-export type DialogOptions = "assets" | "cms" | undefined;
+import type { WorkflowVariable } from "@flow/types";
 
 export default ({
   variable,
@@ -15,10 +13,10 @@ export default ({
   onUpdate: (variable: WorkflowVariable) => void;
   onLiveUpdate?: (variable: WorkflowVariable) => void;
 }) => {
-  const [showDialog, setShowDialog] = useState<DialogOptions>(undefined);
+  const [showAssetPicker, setShowAssetPicker] = useState(false);
   const [assetUrl, setAssetUrl] = useState<string | null>(null);
-  const handleDialogOpen = (dialog: DialogOptions) => setShowDialog(dialog);
-  const handleDialogClose = () => setShowDialog(undefined);
+  const handleDialogOpen = () => setShowAssetPicker(true);
+  const handleDialogClose = () => setShowAssetPicker(false);
   const [localVariable, setLocalVariable] = useState<WorkflowVariable | null>(
     null,
   );
@@ -27,26 +25,14 @@ export default ({
   // Snapshot of the variable when this edit session opened — used to revert on cancel.
   const openedVariableRef = useRef<WorkflowVariable | null>(null);
 
-  const handleAssetDoubleClick = (asset: Asset) => {
+  const handleAssetSelect = (url: string) => {
     if (localVariable && variable) {
-      const updated = { ...localVariable, defaultValue: asset.url };
+      const updated = { ...localVariable, defaultValue: url };
       setLocalVariable(updated);
       setHasChanges(true);
       onLiveUpdate?.(updated);
     }
-    setAssetUrl(asset.url);
-    handleDialogClose();
-  };
-
-  const handleCmsItemValue = (cmsItemAssetUrl: string) => {
-    if (localVariable && variable) {
-      const updated = { ...localVariable, defaultValue: cmsItemAssetUrl };
-      setLocalVariable(updated);
-      setHasChanges(true);
-      onLiveUpdate?.(updated);
-    }
-    setAssetUrl(cmsItemAssetUrl);
-    handleDialogClose();
+    setAssetUrl(url);
   };
 
   // Sync from parent when no local edits in progress (passive viewer update).
@@ -108,10 +94,9 @@ export default ({
   return {
     localVariable,
     hasChanges,
-    showDialog,
+    showAssetPicker,
     assetUrl,
-    handleAssetDoubleClick,
-    handleCmsItemValue,
+    handleAssetSelect,
     handleFieldUpdate,
     handleSave,
     handleCancel,

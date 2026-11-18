@@ -8,6 +8,8 @@ import {
   CollapsibleTrigger,
   IconButton,
 } from "@flow/components";
+import { useEditorContext } from "@flow/features/Editor/editorContext";
+import { resolveNodeSchema } from "@flow/features/Editor/usePreviewSchema/schemaReport";
 import { useT } from "@flow/lib/i18n";
 import type { NodeData } from "@flow/types";
 
@@ -39,6 +41,7 @@ const Handles: React.FC<Props> = ({
   onCollapsedToggle,
 }) => {
   const t = useT();
+  const { schemaProbeOutcomes } = useEditorContext();
   const hasMoreThanFiveInputHandles =
     inputs && inputs.length >= MIN_HANDLES_FOR_COLLAPSE;
   const hasMoreThanFiveOutputHandles =
@@ -71,7 +74,12 @@ const Handles: React.FC<Props> = ({
     <Collapsible className="flex flex-col" open={!isCollapsed}>
       <div className="flex justify-between gap-0.5">
         {nodeType === "reader" && (
-          <SchemaIndicator schema={nodeData.nodeMetadata?.schema} />
+          <SchemaIndicator
+            schema={resolveNodeSchema(
+              nodeData.nodeMetadata?.schema,
+              schemaProbeOutcomes,
+            )}
+          />
         )}
         {nodeType !== "reader" &&
           hasMoreThanFiveInputHandles &&

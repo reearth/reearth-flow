@@ -1,6 +1,11 @@
-import { useQuery } from "@tanstack/react-query";
+import { useInfiniteQuery, useQuery } from "@tanstack/react-query";
 
-import type { CmsItem, CmsModel, CmsProject } from "@flow/types/cmsIntegration";
+import type {
+  CmsAsset,
+  CmsItem,
+  CmsModel,
+  CmsProject,
+} from "@flow/types/cmsIntegration";
 import { isDefined } from "@flow/utils";
 
 import type { CmsExportType } from "../__gen__/graphql";
@@ -13,11 +18,35 @@ export enum CmsQueryKeys {
   GetCmsModels = "getCmsModels",
   GetCmsItems = "getCmsItems",
   GetCmsAsset = "getCmsAsset",
+  GetCmsAssets = "getCmsAssets",
   GetCmsModelExportUrl = "getCmsModelExportUrl",
 }
 
 export const CMS_ITEMS_FETCH_RATE = 30;
 export const CMS_MODELS_FETCH_RATE = 15;
+export const CMS_ASSETS_FETCH_RATE = 50;
+
+type CmsAssetsPageParam = Record<string, number>;
+
+export type CmsAssetsPage = {
+  assets: CmsAsset[];
+  loaded: Record<string, { page: number; totalCount: number }>;
+  failedProjectIds: string[];
+};
+
+export const nextCmsAssetsPageParam = (
+  pages: CmsAssetsPage[],
+  pageSize: number,
+): CmsAssetsPageParam | undefined => {
+  const latest: CmsAssetsPage["loaded"] = {};
+  for (const page of pages) Object.assign(latest, page.loaded);
+  const next = Object.fromEntries(
+    Object.entries(latest)
+      .filter(([, l]) => l.page * pageSize < l.totalCount)
+      .map(([projectId, l]) => [projectId, l.page + 1]),
+  );
+  return Object.keys(next).length > 0 ? next : undefined;
+};
 export const useQueries = () => {
   const graphQLContext = useGraphQLContext();
 
@@ -184,12 +213,66 @@ export const useQueries = () => {
         return toCmsAsset(data.cmsAsset);
       },
     });
+  const useGetCmsAssetsAcrossProjectsQuery = (
+    projects: Pick<CmsProject, "id" | "workspaceId">[],
+    pageSize = CMS_ASSETS_FETCH_RATE,
+  ) =>
+    useInfiniteQuery({
+      queryKey: [
+        CmsQueryKeys.GetCmsAssets,
+        projects.map((p) => `${p.workspaceId}:${p.id}`),
+        pageSize,
+      ],
+      initialPageParam: Object.fromEntries(
+        projects.map((p) => [p.id, 1]),
+      ) as CmsAssetsPageParam,
+      queryFn: async ({ pageParam }): Promise<CmsAssetsPage> => {
+        const targets = projects.filter((p) => pageParam[p.id] !== undefined);
+        const results = await Promise.allSettled(
+          targets.map(async (p) => {
+            const data = await graphQLContext?.GetCmsAssets({
+              workspaceId: p.workspaceId,
+              projectId: p.id,
+              page: pageParam[p.id],
+              pageSize,
+            });
+            if (!data) throw new Error("CMS assets unavailable");
+            return data.cmsAssets;
+          }),
+        );
+        const page: CmsAssetsPage = {
+          assets: [],
+          loaded: {},
+          failedProjectIds: [],
+        };
+        results.forEach((result, i) => {
+          const projectId = targets[i].id;
+          if (result.status === "rejected") {
+            page.failedProjectIds.push(projectId);
+            return;
+          }
+          page.assets.push(
+            ...result.value.assets.filter(isDefined).map(toCmsAsset),
+          );
+          page.loaded[projectId] = {
+            page: pageParam[projectId],
+            totalCount: result.value.totalCount,
+          };
+        });
+        return page;
+      },
+      getNextPageParam: (_lastPage, allPages) =>
+        nextCmsAssetsPageParam(allPages, pageSize),
+      enabled: projects.length > 0,
+    });
+
   return {
     useGetCmsProjectsQuery,
     useGetCmsProjectByIdOrAliasQuery,
     useGetCmsModelsQuery,
     useGetCmsItemsQuery,
     useGetCmsAssetQuery,
+    useGetCmsAssetsAcrossProjectsQuery,
     useGetCmsModelExportUrlQuery,
   };
 };

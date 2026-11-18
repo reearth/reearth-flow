@@ -36,6 +36,7 @@ import {
   applyMergedPatch,
   changedFieldPath,
   nextSeq,
+  removeClientDraft,
 } from "./utils/paramsAwareness";
 import type {
   DraftPatch,
@@ -139,16 +140,7 @@ const ParamsDialog: React.FC<Props> = ({
 
   const removeMyDraft = useCallback(
     (nodeId: string) => {
-      const existingNodeDrafts = yDrafts?.get(nodeId) as NodeDrafts | undefined;
-      if (!existingNodeDrafts) return;
-
-      const { [clientId]: _removed, ...remainingDrafts } = existingNodeDrafts;
-
-      if (Object.keys(remainingDrafts).length === 0) {
-        yDrafts?.delete(nodeId);
-      } else {
-        yDrafts?.set(nodeId, remainingDrafts);
-      }
+      if (yDrafts) removeClientDraft(yDrafts, nodeId, clientId);
     },
     [yDrafts, clientId],
   );

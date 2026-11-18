@@ -8,7 +8,7 @@ import {
 } from "@flow/components";
 import { useLang, useT } from "@flow/lib/i18n";
 import type { Project } from "@flow/types";
-import { formatRelativeTime } from "@flow/utils";
+import { formatRelativeTime, isWithinLastMinute } from "@flow/utils";
 
 import useProjectAuthors from "../useProjectAuthors";
 import type { ProjectAuthor } from "../useProjectAuthors";
@@ -79,9 +79,11 @@ const ProjectAuthorInfo: React.FC<Props> = ({ project }) => {
         </>
       )}
       <span className="shrink-0 whitespace-nowrap">
-        {t("Updated {{time}}", {
-          time: formatRelativeTime(project.updatedAt, lang),
-        })}
+        {isWithinLastMinute(project.updatedAt)
+          ? t("Updated a few seconds ago")
+          : t("Updated {{time}}", {
+              time: formatRelativeTime(project.updatedAt, lang),
+            })}
       </span>
       <Separator />
       <Tooltip>

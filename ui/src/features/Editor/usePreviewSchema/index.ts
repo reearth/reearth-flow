@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useRef } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 
 import { useProject, useWorkflowVariables } from "@flow/lib/gql";
 import { useCurrentProject } from "@flow/stores";
@@ -7,11 +7,14 @@ import { createEngineReadyWorkflow } from "@flow/utils/toEngineWorkflow/engineRe
 
 import { buildReaderAttributeSuggestions } from "./readerAttributeSuggestions";
 import {
+  applySchemaPatch,
   fetchSchemaReport,
   findSchemaReportUrl,
   getNodeReportFailure,
+  resolveNodeSchema,
   toNodeSchemaMeta,
 } from "./schemaReport";
+import type { SchemaProbeOutcomes } from "./schemaReport";
 
 const PROBE_DEBOUNCE_MS = 600;
 
@@ -54,6 +57,55 @@ export default ({
 
   const lastProbedParams = useRef<Map<string, string>>(new Map());
 
+  // Probes this client started. Their outcome is part of the user's edit, so
+  // this client writes it. Every other client watches the same probe
+  // read-only and keeps the outcome locally: a client that merely has the
+  // project open must not write, or the server records it as an edit.
+  const startedJobIds = useRef<Set<string>>(new Set());
+  const [outcomes, setOutcomes] = useState<SchemaProbeOutcomes>({});
+
+  // The workflows with every locally worked-out outcome applied.
+  const resolvedWorkflows = useMemo(() => {
+    if (Object.keys(outcomes).length === 0) return rawWorkflows;
+    return rawWorkflows.map((workflow) => ({
+      ...workflow,
+      nodes: workflow.nodes?.map((node) => {
+        const schema = node.data?.nodeMetadata?.schema;
+        const resolved = resolveNodeSchema(schema, outcomes);
+        return resolved === schema
+          ? node
+          : {
+              ...node,
+              data: {
+                ...node.data,
+                nodeMetadata: { ...node.data.nodeMetadata, schema: resolved },
+              },
+            };
+      }),
+    }));
+  }, [rawWorkflows, outcomes]);
+  const resolvedWorkflowsRef = useRef(resolvedWorkflows);
+  resolvedWorkflowsRef.current = resolvedWorkflows;
+
+  // Records a probe's outcome: in the document if this client started it,
+  // otherwise only here.
+  const settleProbe = useCallback(
+    (nodeId: string, jobId: string, patch: Partial<NodeSchemaMeta>) => {
+      if (startedJobIds.current.delete(jobId)) {
+        onPersistSchema(nodeId, patch);
+        return;
+      }
+      const schema = rawWorkflowsRef.current
+        .flatMap((workflow) => workflow.nodes ?? [])
+        .find((n) => n.id === nodeId)?.data?.nodeMetadata?.schema;
+      if (schema?.jobId !== jobId) return;
+      const resolved = applySchemaPatch(schema, patch);
+      if (!resolved) return;
+      setOutcomes((prev) => ({ ...prev, [jobId]: resolved }));
+    },
+    [onPersistSchema],
+  );
+
   useEffect(() => {
     const timers = debounceTimers.current;
     return () => {
@@ -90,6 +142,7 @@ export default ({
         markFailed(nodeId);
         return;
       }
+      startedJobIds.current.add(data.job.id);
       onPersistSchema(nodeId, {
         status: "running",
         jobId: data.job.id,
@@ -107,7 +160,7 @@ export default ({
 
       const signature = JSON.stringify(node.data.params);
       const failed =
-        rawWorkflowsRef.current
+        resolvedWorkflowsRef.current
           .flatMap((workflow) => workflow.nodes ?? [])
           .find((n) => n.id === node.id)?.data?.nodeMetadata?.schema?.status ===
         "failed";
@@ -130,9 +183,11 @@ export default ({
 
   const handleProbeComplete = useCallback(
     async (nodeId: string, job: Job) => {
+      const fail = (note?: string) =>
+        settleProbe(nodeId, job.id, { status: "failed", note });
       const url = findSchemaReportUrl(job.outputURLs);
       if (!url) {
-        markFailed(nodeId);
+        fail();
         return;
       }
       try {
@@ -140,7 +195,7 @@ export default ({
         const nodeReport = report.nodes[nodeId];
         // The job produced a report but it doesn't cover this node.
         if (!nodeReport) {
-          markFailed(nodeId);
+          fail();
           return;
         }
         // The job completes even when the reader couldn't sample its data; the
@@ -148,11 +203,12 @@ export default ({
         // failure (surfacing the reason) rather than a hollow "complete".
         const failureNote = getNodeReportFailure(nodeReport);
         if (failureNote) {
-          markFailed(nodeId, failureNote);
+          fail(failureNote);
           return;
         }
-        onPersistSchema(
+        settleProbe(
           nodeId,
+          job.id,
           toNodeSchemaMeta(
             nodeReport,
             report.sampleSize,
@@ -160,20 +216,23 @@ export default ({
           ),
         );
       } catch {
-        markFailed(nodeId);
+        fail();
       }
     },
-    [markFailed, onPersistSchema],
+    [settleProbe],
   );
 
   const handleProbeError = useCallback(
-    (nodeId: string) => markFailed(nodeId),
-    [markFailed],
+    (nodeId: string, jobId: string) =>
+      settleProbe(nodeId, jobId, { status: "failed" }),
+    [settleProbe],
   );
 
+  // Every probe still running in the document, whoever started it, except the
+  // ones this client has already worked out.
   const schemaProbes = useMemo<RunningSchemaProbe[]>(() => {
     const probes: RunningSchemaProbe[] = [];
-    for (const workflow of rawWorkflows) {
+    for (const workflow of resolvedWorkflows) {
       for (const node of workflow.nodes ?? []) {
         const schema = node.data?.nodeMetadata?.schema;
         if (schema?.status === "running" && schema.jobId) {
@@ -182,7 +241,7 @@ export default ({
       }
     }
     return probes;
-  }, [rawWorkflows]);
+  }, [resolvedWorkflows]);
 
   // `rawWorkflows` is rebuilt from the yjs doc on every render, so this memo
   // always recomputes. Key on the resulting attribute list instead, so
@@ -190,8 +249,8 @@ export default ({
   // unchanged — otherwise every unrelated Editor render resets the FlowExpr
   // autocomplete.
   const computedAttributeSuggestions = useMemo(
-    () => buildReaderAttributeSuggestions(rawWorkflows, openNodeId),
-    [rawWorkflows, openNodeId],
+    () => buildReaderAttributeSuggestions(resolvedWorkflows, openNodeId),
+    [resolvedWorkflows, openNodeId],
   );
   const attributeSuggestionsKey = computedAttributeSuggestions
     .map((suggestion) => `${suggestion.label}:${suggestion.detail ?? ""}`)
@@ -204,6 +263,7 @@ export default ({
 
   return {
     schemaProbes,
+    schemaProbeOutcomes: outcomes,
     readerAttributeSuggestions,
     handleNodeParamsSaved,
     handleProbeComplete,

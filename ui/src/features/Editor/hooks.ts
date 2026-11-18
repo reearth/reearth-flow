@@ -264,6 +264,7 @@ export default ({
   const { staleNodeIds } = useGraphStaleness({ yWorkflows, undoManager });
   const {
     schemaProbes,
+    schemaProbeOutcomes,
     readerAttributeSuggestions,
     handleNodeParamsSaved,
     handleProbeComplete,
@@ -538,6 +539,7 @@ export default ({
     handleDebugRunStop,
     handleResetDebugRunWorkflowVariables,
     schemaProbes,
+    schemaProbeOutcomes,
     readerAttributeSuggestions,
     handleNodeParamsSaved,
     handleProbeComplete,

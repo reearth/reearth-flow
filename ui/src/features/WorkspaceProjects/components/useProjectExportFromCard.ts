@@ -6,9 +6,8 @@ import { config } from "@flow/config";
 import { DEFAULT_ENTRY_GRAPH_ID } from "@flow/global-constants";
 import { useProjectExport } from "@flow/hooks";
 import { useAuth } from "@flow/lib/auth";
-import { yWorkflowConstructor } from "@flow/lib/yjs/conversions";
-import type { YWorkflow } from "@flow/lib/yjs/types";
-import type { Project, YDocMetadataValue } from "@flow/types";
+import { initializeProjectDoc } from "@flow/lib/yjs/initializeProjectDoc";
+import type { Project } from "@flow/types";
 
 export default (project: Project) => {
   const { getAccessToken } = useAuth();
@@ -36,28 +35,16 @@ export default (project: Project) => {
           );
 
           yWebSocketProvider.once("sync", async () => {
-            const metadata = yDoc.getMap<YDocMetadataValue>("metadata");
-            if (!metadata.get("initialized")) {
-              yDoc.transact(() => {
-                const yWorkflows = yDoc.getMap<YWorkflow>("workflows");
-                if (yWorkflows.get(DEFAULT_ENTRY_GRAPH_ID)) return;
-                if (!metadata.get("initialized")) {
-                  const yWorkflow = yWorkflowConstructor(
-                    DEFAULT_ENTRY_GRAPH_ID,
-                    "Main Workflow",
-                  );
-                  yWorkflows.set(DEFAULT_ENTRY_GRAPH_ID, yWorkflow);
-                  metadata.set("initialized", true);
-                }
-              });
-            }
+            // Exporting reads the project. Disconnect before giving a project
+            // that was never opened its Main Workflow, so that only the
+            // exported copy gets it and nothing is sent back to the server.
+            yWebSocketProvider?.destroy();
+            initializeProjectDoc(yDoc);
             await handleProjectExport({
               yDoc,
               project,
             });
             setIsExporting(false);
-
-            yWebSocketProvider?.destroy();
           });
         })();
       }

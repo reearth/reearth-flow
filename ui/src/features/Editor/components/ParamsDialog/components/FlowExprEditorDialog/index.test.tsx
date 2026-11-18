@@ -22,17 +22,9 @@ vi.mock("@flow/lib/gql", () => ({
   }),
 }));
 
-vi.mock("@flow/features/AssetsDialog", () => ({
-  default: ({ onAssetSelect }: { onAssetSelect: (asset: any) => void }) => (
-    <button onClick={() => onAssetSelect({ url: ASSET_URL })}>
-      pick asset
-    </button>
-  ),
-}));
-
-vi.mock("@flow/features/CmsIntegrationDialog", () => ({
-  default: ({ onCmsItemValue }: { onCmsItemValue: (url: string) => void }) => (
-    <button onClick={() => onCmsItemValue(ASSET_URL)}>pick cms item</button>
+vi.mock("@flow/features/AssetPickerDialog", () => ({
+  default: ({ onSelect }: { onSelect: (url: string) => void }) => (
+    <button onClick={() => onSelect(ASSET_URL)}>pick asset</button>
   ),
 }));
 
@@ -61,7 +53,7 @@ const fieldContext = (value: CodeValue): EditorContext => ({
   fieldName: "dataset",
 });
 
-const submitted = (initial: CodeValue, pick: string) => {
+const submitted = (initial: CodeValue) => {
   const onValueSubmit = vi.fn();
   render(
     <FlowExprEditorDialog
@@ -71,34 +63,24 @@ const submitted = (initial: CodeValue, pick: string) => {
       onValueSubmit={onValueSubmit}
     />,
   );
-  fireEvent.click(
-    screen.getByText(pick === "asset" ? "Workspace Assets" : "CMS Integration"),
-  );
-  fireEvent.click(
-    screen.getByText(pick === "asset" ? "pick asset" : "pick cms item"),
-  );
+  fireEvent.click(screen.getByText("Assets"));
+  fireEvent.click(screen.getByText("pick asset"));
   fireEvent.click(screen.getByText("Apply"));
   return onValueSubmit.mock.calls[0][0] as CodeValue;
 };
 
 describe("FlowExprEditorDialog URL insertion", () => {
-  it.each(["asset", "cms"])(
-    "inserts a %s URL as a string literal on the Expression tab",
-    (pick) => {
-      expect(submitted({ type: "flowExpr", value: "" }, pick)).toEqual({
-        type: "flowExpr",
-        value: JSON.stringify(ASSET_URL),
-      });
-    },
-  );
+  it("inserts a picked URL as a string literal on the Expression tab", () => {
+    expect(submitted({ type: "flowExpr", value: "" })).toEqual({
+      type: "flowExpr",
+      value: JSON.stringify(ASSET_URL),
+    });
+  });
 
-  it.each(["asset", "cms"])(
-    "inserts a %s URL as-is on the Literal string tab",
-    (pick) => {
-      expect(submitted({ type: "string", value: "" }, pick)).toEqual({
-        type: "string",
-        value: ASSET_URL,
-      });
-    },
-  );
+  it("inserts a picked URL as-is on the Literal string tab", () => {
+    expect(submitted({ type: "string", value: "" })).toEqual({
+      type: "string",
+      value: ASSET_URL,
+    });
+  });
 });
