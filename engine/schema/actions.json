@@ -237,8 +237,8 @@
           },
           "attributeAccumulation": {
             "title": "Attribute Accumulation",
-            "description": "Which incoming attributes the aggregated feature keeps besides the group-by attributes and the result. Using one feature keeps the group's first feature to arrive. Defaults to dropping them.",
-            "default": "dropAttributes",
+            "description": "Which incoming attributes the aggregated feature keeps besides the group-by attributes and the result. Using one feature keeps the group's first feature to arrive; collecting leaves out the attributes the group values are read from. Defaults to keeping only the group attributes.",
+            "default": "groupAttributesOnly",
             "allOf": [
               {
                 "$ref": "#/definitions/AttributeAccumulationStrategy"
@@ -346,19 +346,19 @@
             "description": "Which attributes a merged feature keeps.",
             "oneOf": [
               {
-                "title": "Drop Incoming Attributes",
+                "title": "Keep Group Attributes Only",
                 "description": "Keeps only the grouping attributes, discarding everything else.",
                 "type": "string",
                 "enum": [
-                  "dropAttributes"
+                  "groupAttributesOnly"
                 ]
               },
               {
-                "title": "Merge Incoming Attributes",
-                "description": "Keeps every attribute from every feature in the group. Where features disagree on a value, all the differing values are collected into an array.",
+                "title": "Collect Attributes",
+                "description": "Keeps the grouping attributes and turns every other attribute into an array with one entry per merged feature, in arrival order, holding null where a feature lacks it.",
                 "type": "string",
                 "enum": [
-                  "mergeAttributes"
+                  "collectAttributes"
                 ]
               },
               {
@@ -4018,19 +4018,19 @@
             "description": "Which attributes a merged feature keeps.",
             "oneOf": [
               {
-                "title": "Drop Incoming Attributes",
+                "title": "Keep Group Attributes Only",
                 "description": "Keeps only the grouping attributes, discarding everything else.",
                 "type": "string",
                 "enum": [
-                  "dropAttributes"
+                  "groupAttributesOnly"
                 ]
               },
               {
-                "title": "Merge Incoming Attributes",
-                "description": "Keeps every attribute from every feature in the group. Where features disagree on a value, all the differing values are collected into an array.",
+                "title": "Collect Attributes",
+                "description": "Keeps the grouping attributes and turns every other attribute into an array with one entry per merged feature, in arrival order, holding null where a feature lacks it.",
                 "type": "string",
                 "enum": [
-                  "mergeAttributes"
+                  "collectAttributes"
                 ]
               },
               {
@@ -9974,6 +9974,90 @@
       "tags": [
         "vector",
         "tiling"
+      ]
+    },
+    {
+      "name": "Mesh Merger",
+      "type": "processor",
+      "description": "Merges the polygons and meshes of features that share the same grouping attribute values into one mesh per group, keeping every face as it is. The result is a triangular mesh when every input is one, and a polygon mesh otherwise.",
+      "parameter": {
+        "$schema": "http://json-schema.org/draft-07/schema#",
+        "title": "Mesh Merger Parameters",
+        "description": "Sets which features are merged together and which of their attributes the merged feature keeps.",
+        "type": "object",
+        "properties": {
+          "groupBy": {
+            "title": "Group By Attributes",
+            "description": "Attributes whose values decide which features merge together; features matching on all of them form one mesh. When omitted, every feature merges into a single mesh.",
+            "default": null,
+            "type": [
+              "array",
+              "null"
+            ],
+            "items": {
+              "$ref": "#/definitions/Attribute"
+            }
+          },
+          "attributeAccumulation": {
+            "title": "Attribute Accumulation",
+            "description": "Which attributes the merged feature keeps.",
+            "default": "useOneFeature",
+            "allOf": [
+              {
+                "$ref": "#/definitions/AttributeAccumulationStrategy"
+              }
+            ]
+          }
+        },
+        "definitions": {
+          "Attribute": {
+            "type": "string"
+          },
+          "AttributeAccumulationStrategy": {
+            "title": "Attribute Accumulation Strategy",
+            "description": "Which attributes a merged feature keeps.",
+            "oneOf": [
+              {
+                "title": "Keep Group Attributes Only",
+                "description": "Keeps only the grouping attributes, discarding everything else.",
+                "type": "string",
+                "enum": [
+                  "groupAttributesOnly"
+                ]
+              },
+              {
+                "title": "Collect Attributes",
+                "description": "Keeps the grouping attributes and turns every other attribute into an array with one entry per merged feature, in arrival order, holding null where a feature lacks it.",
+                "type": "string",
+                "enum": [
+                  "collectAttributes"
+                ]
+              },
+              {
+                "title": "Use Attributes From One Feature",
+                "description": "Keeps the attributes of a single feature from the group and discards the rest.",
+                "type": "string",
+                "enum": [
+                  "useOneFeature"
+                ]
+              }
+            ]
+          }
+        }
+      },
+      "builtin": true,
+      "inputPorts": [
+        "features"
+      ],
+      "outputPorts": [
+        "features",
+        "rejected"
+      ],
+      "categories": [
+        "Geometry"
+      ],
+      "tags": [
+        "aggregation"
       ]
     },
     {

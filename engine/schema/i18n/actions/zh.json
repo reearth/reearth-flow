@@ -74,7 +74,7 @@
         },
         "attributeAccumulation": {
           "title": "Attribute Accumulation",
-          "description": "Which incoming attributes the aggregated feature keeps besides the group-by attributes and the result. Using one feature keeps the group's first feature to arrive. Defaults to dropping them."
+          "description": "除分组属性和计算结果外，聚合后的要素保留哪些输入属性。使用单个要素时保留组内最先到达的要素的属性；收集时不包括读取组值的源属性。默认仅保留分组属性。"
         },
         "calculation": {
           "title": "Calculation to perform",
@@ -115,13 +115,13 @@
       },
       "enumI18n": {
         "AttributeAccumulationStrategy": {
-          "dropAttributes": {
-            "title": "Drop Incoming Attributes",
-            "description": "Keeps only the grouping attributes, discarding everything else."
+          "collectAttributes": {
+            "title": "收集属性",
+            "description": "保留分组属性，并将其他每个属性转为数组，每个被合并的要素对应一个元素，按到达顺序排列，要素缺少该属性时为 null。"
           },
-          "mergeAttributes": {
-            "title": "Merge Incoming Attributes",
-            "description": "Keeps every attribute from every feature in the group. Where features disagree on a value, all the differing values are collected into an array."
+          "groupAttributesOnly": {
+            "title": "仅保留分组属性",
+            "description": "仅保留分组属性，丢弃其他所有属性。"
           },
           "useOneFeature": {
             "title": "Use Attributes From One Feature",
@@ -1442,13 +1442,13 @@
       },
       "enumI18n": {
         "AttributeAccumulationStrategy": {
-          "dropAttributes": {
-            "title": "Drop Incoming Attributes",
-            "description": "No attributes from any incoming features will be preserved in the output (except group_by attributes if specified)"
+          "collectAttributes": {
+            "title": "收集属性",
+            "description": "保留分组属性，并将其他每个属性转为数组，每个被合并的要素对应一个元素，按到达顺序排列，要素缺少该属性时为 null。"
           },
-          "mergeAttributes": {
-            "title": "Merge Incoming Attributes",
-            "description": "The output feature will merge all input attributes. When multiple features have the same attribute with different values, all values are collected into an array"
+          "groupAttributesOnly": {
+            "title": "仅保留分组属性",
+            "description": "仅保留分组属性，丢弃其他所有属性。"
           },
           "useOneFeature": {
             "title": "Use Attributes From One Feature",
@@ -3352,6 +3352,40 @@
         "skipUnexposedAttributes": {
           "title": "Skip Unexposed Attributes",
           "description": "Skip attributes with double underscore prefix"
+        }
+      }
+    },
+    {
+      "name": "Mesh Merger",
+      "description": "将分组属性值相同的要素的多边形和网格合并为每组一个网格，保持每个面不变。所有输入都是三角网格时结果为三角网格，否则为多边形网格。",
+      "parameterI18n": {
+        "": {
+          "title": "网格合并参数",
+          "description": "设置哪些要素合并在一起，以及合并后的要素保留哪些属性。"
+        },
+        "attributeAccumulation": {
+          "title": "属性保留",
+          "description": "合并后的要素保留哪些属性。"
+        },
+        "groupBy": {
+          "title": "分组属性",
+          "description": "决定哪些要素合并在一起的属性；所有这些属性值都相同的要素构成一个网格。省略时，所有要素合并为一个网格。"
+        }
+      },
+      "enumI18n": {
+        "AttributeAccumulationStrategy": {
+          "collectAttributes": {
+            "title": "收集属性",
+            "description": "保留分组属性，并将其他每个属性转为数组，每个被合并的要素对应一个元素，按到达顺序排列，要素缺少该属性时为 null。"
+          },
+          "groupAttributesOnly": {
+            "title": "仅保留分组属性",
+            "description": "仅保留分组属性，丢弃其他所有属性。"
+          },
+          "useOneFeature": {
+            "title": "使用单个要素的属性",
+            "description": "保留组内单个要素的属性，丢弃其余属性。"
+          }
         }
       }
     },

@@ -41,6 +41,8 @@ pub(super) enum GeometryProcessorError {
     CoordinateFrameReprojector(String),
     #[error("CoordinateRounder Factory error: {0}")]
     CoordinateRounderFactory(String),
+    #[error("MeshMerger Factory error: {0}")]
+    MeshMergerFactory(String),
     #[error("TwoDimensionForcer Factory error: {0}")]
     TwoDimensionForcerFactory(String),
     #[error("TwoDimensionForcer error: {0}")]

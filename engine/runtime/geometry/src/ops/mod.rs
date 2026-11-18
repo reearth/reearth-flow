@@ -27,6 +27,8 @@ pub mod frame;
 #[cfg(feature = "new-geometry")]
 pub mod grid;
 pub mod hole;
+#[cfg(feature = "new-geometry")]
+pub mod merge;
 pub mod reproject;
 #[cfg(feature = "new-geometry")]
 pub mod round;

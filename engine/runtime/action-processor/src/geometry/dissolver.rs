@@ -14,7 +14,7 @@ use reearth_flow_runtime::{
     forwarder::ProcessorChannelForwarder,
     node::{FEATURES_PORT, Port, Processor, ProcessorFactory, REJECTED_PORT},
 };
-use reearth_flow_types::{Attribute, AttributeValue, Feature};
+use reearth_flow_types::{Attribute, AttributeValue, Attributes, Feature};
 use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
@@ -51,17 +51,58 @@ fn engine_cache_dir(executor_id: uuid::Uuid) -> PathBuf {
 #[derive(Debug, Clone, Serialize, Deserialize, JsonSchema, PartialEq, Default)]
 #[serde(rename_all = "camelCase")]
 pub enum AttributeAccumulationStrategy {
-    /// # Drop Incoming Attributes
+    /// # Keep Group Attributes Only
     /// Keeps only the grouping attributes, discarding everything else.
-    DropAttributes,
-    /// # Merge Incoming Attributes
-    /// Keeps every attribute from every feature in the group. Where features disagree on a
-    /// value, all the differing values are collected into an array.
-    MergeAttributes,
+    GroupAttributesOnly,
+    /// # Collect Attributes
+    /// Keeps the grouping attributes and turns every other attribute into an array with one
+    /// entry per merged feature, in arrival order, holding null where a feature lacks it.
+    CollectAttributes,
     /// # Use Attributes From One Feature
     /// Keeps the attributes of a single feature from the group and discards the rest.
     #[default]
     UseOneFeature,
+}
+
+/// Every attribute of `features` not in `exclude`, as an array with one entry per
+/// feature in order, null where a feature lacks it.
+pub(crate) fn collect_attributes<'a>(
+    features: impl IntoIterator<Item = &'a Attributes>,
+    exclude: &[Attribute],
+) -> Attributes {
+    let mut collected: IndexMap<Attribute, Vec<AttributeValue>> = IndexMap::new();
+    for (n, attributes) in features.into_iter().enumerate() {
+        push_collected(&mut collected, n, attributes, exclude);
+    }
+    collected
+        .into_iter()
+        .map(|(key, values)| (key, AttributeValue::Array(values)))
+        .collect()
+}
+
+/// Append the `n`th feature's `attributes` to `collected`, keeping every array
+/// `n + 1` long: a key first seen here is back-filled with null, and a key this
+/// feature lacks gets null.
+pub(crate) fn push_collected(
+    collected: &mut IndexMap<Attribute, Vec<AttributeValue>>,
+    n: usize,
+    attributes: &Attributes,
+    exclude: &[Attribute],
+) {
+    for (key, value) in attributes.iter() {
+        if exclude.contains(key) {
+            continue;
+        }
+        collected
+            .entry(key.clone())
+            .or_insert_with(|| vec![AttributeValue::Null; n])
+            .push(value.clone());
+    }
+    for values in collected.values_mut() {
+        if values.len() == n {
+            values.push(AttributeValue::Null);
+        }
+    }
 }
 
 #[derive(Debug, Clone, Default)]
@@ -375,52 +416,28 @@ impl Dissolver {
         features: &[Feature],
         representative: Option<&Feature>,
     ) -> IndexMap<Attribute, AttributeValue> {
-        match self.attribute_accumulation {
-            AttributeAccumulationStrategy::DropAttributes => {
-                // Only keep group_by attributes if specified
-                if let (Some(group_by), Some(representative)) = (&self.group_by, representative) {
-                    group_by
-                        .iter()
-                        .filter_map(|attr| {
-                            let value = representative.attributes.get(attr).cloned()?;
-                            Some((attr.clone(), value))
-                        })
-                        .collect()
-                } else {
-                    IndexMap::new()
-                }
-            }
-            AttributeAccumulationStrategy::MergeAttributes => {
-                // Merge all attributes from all features
-                let mut merged_attributes: IndexMap<Attribute, Vec<AttributeValue>> =
-                    IndexMap::new();
-
-                for feature in features {
-                    for (key, value) in feature.attributes.iter() {
-                        merged_attributes
-                            .entry(key.clone())
-                            .and_modify(|existing| {
-                                // Add value if it's not already in the list
-                                if !existing.contains(value) {
-                                    existing.push(value.clone());
-                                }
-                            })
-                            .or_insert_with(|| vec![value.clone()]);
-                    }
-                }
-
-                // Convert single-element vectors to single values
-                merged_attributes
-                    .into_iter()
-                    .map(|(key, values)| {
-                        let final_value = if values.len() == 1 {
-                            values.into_iter().next().unwrap()
-                        } else {
-                            AttributeValue::Array(values)
-                        };
-                        (key, final_value)
+        let group_attributes = || -> Attributes {
+            match (&self.group_by, representative) {
+                (Some(group_by), Some(representative)) => group_by
+                    .iter()
+                    .filter_map(|attr| {
+                        let value = representative.attributes.get(attr).cloned()?;
+                        Some((attr.clone(), value))
                     })
-                    .collect()
+                    .collect(),
+                _ => IndexMap::new(),
+            }
+        };
+        match self.attribute_accumulation {
+            AttributeAccumulationStrategy::GroupAttributesOnly => group_attributes(),
+            AttributeAccumulationStrategy::CollectAttributes => {
+                let exclude = self.group_by.as_deref().unwrap_or_default();
+                let mut attributes = group_attributes();
+                attributes.extend(collect_attributes(
+                    features.iter().map(|f| f.attributes.as_ref()),
+                    exclude,
+                ));
+                attributes
             }
             AttributeAccumulationStrategy::UseOneFeature => representative
                 .map(|feature| (*feature.attributes).clone())
@@ -867,32 +884,42 @@ mod tests {
     }
 
     #[test]
-    fn merge_attributes_collects_differing_values_into_an_array() {
+    fn collect_attributes_keeps_one_entry_per_feature() {
         let features = vec![
-            with_attributes(square([0.0, 0.0], 2.0), &[("name", "a"), ("kind", "road")]),
-            with_attributes(square([2.0, 0.0], 2.0), &[("name", "b"), ("kind", "road")]),
+            with_attributes(
+                square([0.0, 0.0], 2.0),
+                &[("side", "west"), ("name", "a"), ("kind", "road")],
+            ),
+            with_attributes(
+                square([2.0, 0.0], 2.0),
+                &[("side", "west"), ("kind", "road")],
+            ),
         ];
         let (area, _) = run(
-            dissolver(None, 0.0, AttributeAccumulationStrategy::MergeAttributes),
+            dissolver(
+                Some(vec![Attribute::new("side".to_string())]),
+                0.0,
+                AttributeAccumulationStrategy::CollectAttributes,
+            ),
             features,
         );
         assert_eq!(area.len(), 1);
+        let s = |v: &str| AttributeValue::String(v.to_string());
+        assert_eq!(attribute(&area[0], "side"), Some(s("west")));
+        // A feature lacking an attribute holds null in its slot.
         assert_eq!(
             attribute(&area[0], "name"),
-            Some(AttributeValue::Array(vec![
-                AttributeValue::String("a".to_string()),
-                AttributeValue::String("b".to_string()),
-            ]))
+            Some(AttributeValue::Array(vec![s("a"), AttributeValue::Null]))
         );
-        // A value the whole group agrees on stays a single value.
+        // Values the whole group agrees on are still one entry per feature.
         assert_eq!(
             attribute(&area[0], "kind"),
-            Some(AttributeValue::String("road".to_string()))
+            Some(AttributeValue::Array(vec![s("road"), s("road")]))
         );
     }
 
     #[test]
-    fn drop_attributes_keeps_only_the_group_by_attributes() {
+    fn group_attributes_only_keeps_only_the_group_by_attributes() {
         let feature = with_attributes(
             square([0.0, 0.0], 2.0),
             &[("side", "west"), ("name", "dropped")],
@@ -901,7 +928,7 @@ mod tests {
             dissolver(
                 Some(vec![Attribute::new("side".to_string())]),
                 0.0,
-                AttributeAccumulationStrategy::DropAttributes,
+                AttributeAccumulationStrategy::GroupAttributesOnly,
             ),
             vec![feature],
         );

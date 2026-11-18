@@ -74,7 +74,7 @@
         },
         "attributeAccumulation": {
           "title": "Attribute Accumulation",
-          "description": "Which incoming attributes the aggregated feature keeps besides the group-by attributes and the result. Using one feature keeps the group's first feature to arrive. Defaults to dropping them."
+          "description": "Atributos de entrada que conserva la entidad agregada además de los atributos de agrupación y el resultado. Usar una entidad conserva la primera entidad del grupo en llegar; recopilar excluye los atributos de los que se leen los valores de grupo. Por defecto solo se conservan los atributos de agrupación."
         },
         "calculation": {
           "title": "Calculation to perform",
@@ -115,13 +115,13 @@
       },
       "enumI18n": {
         "AttributeAccumulationStrategy": {
-          "dropAttributes": {
-            "title": "Drop Incoming Attributes",
-            "description": "Keeps only the grouping attributes, discarding everything else."
+          "collectAttributes": {
+            "title": "Recopilar atributos",
+            "description": "Conserva los atributos de agrupación y convierte cada otro atributo en un arreglo con una entrada por entidad fusionada, en orden de llegada, con null cuando una entidad carece de él."
           },
-          "mergeAttributes": {
-            "title": "Merge Incoming Attributes",
-            "description": "Keeps every attribute from every feature in the group. Where features disagree on a value, all the differing values are collected into an array."
+          "groupAttributesOnly": {
+            "title": "Conservar solo los atributos de agrupación",
+            "description": "Conserva solo los atributos de agrupación y descarta todo lo demás."
           },
           "useOneFeature": {
             "title": "Use Attributes From One Feature",
@@ -1442,13 +1442,13 @@
       },
       "enumI18n": {
         "AttributeAccumulationStrategy": {
-          "dropAttributes": {
-            "title": "Drop Incoming Attributes",
-            "description": "No attributes from any incoming features will be preserved in the output (except group_by attributes if specified)"
+          "collectAttributes": {
+            "title": "Recopilar atributos",
+            "description": "Conserva los atributos de agrupación y convierte cada otro atributo en un arreglo con una entrada por entidad fusionada, en orden de llegada, con null cuando una entidad carece de él."
           },
-          "mergeAttributes": {
-            "title": "Merge Incoming Attributes",
-            "description": "The output feature will merge all input attributes. When multiple features have the same attribute with different values, all values are collected into an array"
+          "groupAttributesOnly": {
+            "title": "Conservar solo los atributos de agrupación",
+            "description": "Conserva solo los atributos de agrupación y descarta todo lo demás."
           },
           "useOneFeature": {
             "title": "Use Attributes From One Feature",
@@ -3352,6 +3352,40 @@
         "skipUnexposedAttributes": {
           "title": "Skip Unexposed Attributes",
           "description": "Skip attributes with double underscore prefix"
+        }
+      }
+    },
+    {
+      "name": "Mesh Merger",
+      "description": "Fusiona los polígonos y mallas de las entidades que comparten los mismos valores de atributos de agrupación en una malla por grupo, conservando cada cara tal cual. El resultado es una malla triangular cuando todas las entradas lo son, y una malla poligonal en caso contrario.",
+      "parameterI18n": {
+        "": {
+          "title": "Parámetros del fusionador de mallas",
+          "description": "Define qué entidades se fusionan juntas y qué atributos conserva la entidad fusionada."
+        },
+        "attributeAccumulation": {
+          "title": "Acumulación de atributos",
+          "description": "Atributos que conserva la entidad fusionada."
+        },
+        "groupBy": {
+          "title": "Atributos de agrupación",
+          "description": "Atributos cuyos valores deciden qué entidades se fusionan juntas; las entidades que coinciden en todos ellos forman una malla. Si se omite, todas las entidades se fusionan en una sola malla."
+        }
+      },
+      "enumI18n": {
+        "AttributeAccumulationStrategy": {
+          "collectAttributes": {
+            "title": "Recopilar atributos",
+            "description": "Conserva los atributos de agrupación y convierte cada otro atributo en un arreglo con una entrada por entidad fusionada, en orden de llegada, con null cuando una entidad carece de él."
+          },
+          "groupAttributesOnly": {
+            "title": "Conservar solo los atributos de agrupación",
+            "description": "Conserva solo los atributos de agrupación y descarta todo lo demás."
+          },
+          "useOneFeature": {
+            "title": "Usar atributos de una entidad",
+            "description": "Conserva los atributos de una sola entidad del grupo y descarta el resto."
+          }
         }
       }
     },

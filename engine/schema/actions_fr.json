@@ -237,8 +237,8 @@
           },
           "attributeAccumulation": {
             "title": "Attribute Accumulation",
-            "description": "Which incoming attributes the aggregated feature keeps besides the group-by attributes and the result. Using one feature keeps the group's first feature to arrive. Defaults to dropping them.",
-            "default": "dropAttributes",
+            "description": "Attributs d'entrée que l'entité agrégée conserve en plus des attributs de regroupement et du résultat. L'utilisation d'une entité conserve la première entité arrivée dans le groupe ; la collecte exclut les attributs dont les valeurs de groupe sont lues. Par défaut, seuls les attributs de regroupement sont conservés.",
+            "default": "groupAttributesOnly",
             "allOf": [
               {
                 "$ref": "#/definitions/AttributeAccumulationStrategy"
@@ -346,19 +346,19 @@
             "description": "Which attributes a merged feature keeps.",
             "oneOf": [
               {
-                "title": "Drop Incoming Attributes",
-                "description": "Keeps only the grouping attributes, discarding everything else.",
+                "title": "Conserver uniquement les attributs de regroupement",
+                "description": "Conserve uniquement les attributs de regroupement et supprime tous les autres.",
                 "type": "string",
                 "enum": [
-                  "dropAttributes"
+                  "groupAttributesOnly"
                 ]
               },
               {
-                "title": "Merge Incoming Attributes",
-                "description": "Keeps every attribute from every feature in the group. Where features disagree on a value, all the differing values are collected into an array.",
+                "title": "Collecter les attributs",
+                "description": "Conserve les attributs de regroupement et transforme chaque autre attribut en tableau comportant une entrée par entité fusionnée, dans l'ordre d'arrivée, avec null lorsqu'une entité n'a pas l'attribut.",
                 "type": "string",
                 "enum": [
-                  "mergeAttributes"
+                  "collectAttributes"
                 ]
               },
               {
@@ -4018,19 +4018,19 @@
             "description": "Which attributes a merged feature keeps.",
             "oneOf": [
               {
-                "title": "Drop Incoming Attributes",
-                "description": "No attributes from any incoming features will be preserved in the output (except group_by attributes if specified)",
+                "title": "Conserver uniquement les attributs de regroupement",
+                "description": "Conserve uniquement les attributs de regroupement et supprime tous les autres.",
                 "type": "string",
                 "enum": [
-                  "dropAttributes"
+                  "groupAttributesOnly"
                 ]
               },
               {
-                "title": "Merge Incoming Attributes",
-                "description": "The output feature will merge all input attributes. When multiple features have the same attribute with different values, all values are collected into an array",
+                "title": "Collecter les attributs",
+                "description": "Conserve les attributs de regroupement et transforme chaque autre attribut en tableau comportant une entrée par entité fusionnée, dans l'ordre d'arrivée, avec null lorsqu'une entité n'a pas l'attribut.",
                 "type": "string",
                 "enum": [
-                  "mergeAttributes"
+                  "collectAttributes"
                 ]
               },
               {
@@ -9974,6 +9974,90 @@
       "tags": [
         "vector",
         "tiling"
+      ]
+    },
+    {
+      "name": "Mesh Merger",
+      "type": "processor",
+      "description": "Fusionne les polygones et maillages des entités partageant les mêmes valeurs d'attributs de regroupement en un maillage par groupe, en conservant chaque face telle quelle. Le résultat est un maillage triangulaire lorsque toutes les entrées en sont, et un maillage polygonal sinon.",
+      "parameter": {
+        "$schema": "http://json-schema.org/draft-07/schema#",
+        "title": "Paramètres du fusionneur de maillages",
+        "description": "Définit quelles entités sont fusionnées ensemble et quels attributs l'entité fusionnée conserve.",
+        "type": "object",
+        "properties": {
+          "groupBy": {
+            "title": "Attributs de regroupement",
+            "description": "Attributs dont les valeurs déterminent quelles entités sont fusionnées ensemble ; les entités concordant sur tous forment un maillage. Si omis, toutes les entités sont fusionnées en un seul maillage.",
+            "default": null,
+            "type": [
+              "array",
+              "null"
+            ],
+            "items": {
+              "$ref": "#/definitions/Attribute"
+            }
+          },
+          "attributeAccumulation": {
+            "title": "Accumulation des attributs",
+            "description": "Attributs que l'entité fusionnée conserve.",
+            "default": "useOneFeature",
+            "allOf": [
+              {
+                "$ref": "#/definitions/AttributeAccumulationStrategy"
+              }
+            ]
+          }
+        },
+        "definitions": {
+          "Attribute": {
+            "type": "string"
+          },
+          "AttributeAccumulationStrategy": {
+            "title": "Attribute Accumulation Strategy",
+            "description": "Which attributes a merged feature keeps.",
+            "oneOf": [
+              {
+                "title": "Conserver uniquement les attributs de regroupement",
+                "description": "Conserve uniquement les attributs de regroupement et supprime tous les autres.",
+                "type": "string",
+                "enum": [
+                  "groupAttributesOnly"
+                ]
+              },
+              {
+                "title": "Collecter les attributs",
+                "description": "Conserve les attributs de regroupement et transforme chaque autre attribut en tableau comportant une entrée par entité fusionnée, dans l'ordre d'arrivée, avec null lorsqu'une entité n'a pas l'attribut.",
+                "type": "string",
+                "enum": [
+                  "collectAttributes"
+                ]
+              },
+              {
+                "title": "Utiliser les attributs d'une entité",
+                "description": "Conserve les attributs d'une seule entité du groupe et supprime les autres.",
+                "type": "string",
+                "enum": [
+                  "useOneFeature"
+                ]
+              }
+            ]
+          }
+        }
+      },
+      "builtin": true,
+      "inputPorts": [
+        "features"
+      ],
+      "outputPorts": [
+        "features",
+        "rejected"
+      ],
+      "categories": [
+        "Geometry"
+      ],
+      "tags": [
+        "aggregation"
       ]
     },
     {

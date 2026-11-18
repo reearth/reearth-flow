@@ -237,8 +237,8 @@
           },
           "attributeAccumulation": {
             "title": "入力属性の保持",
-            "description": "グループ化属性と計算結果以外に、集計後の地物がどの入力属性を保持するか。1つの地物の属性を使用する場合は、グループに最初に到着した地物の属性を保持する。デフォルトでは破棄する",
-            "default": "dropAttributes",
+            "description": "グループ化属性と計算結果以外に、集計後の地物がどの入力属性を保持するか。1つの地物の属性を使用する場合は、グループに最初に到着した地物の属性を保持する。収集する場合は、グループ値の読み取り元の属性を除く。デフォルトではグループ化属性のみを保持する。",
+            "default": "groupAttributesOnly",
             "allOf": [
               {
                 "$ref": "#/definitions/AttributeAccumulationStrategy"
@@ -346,19 +346,19 @@
             "description": "Which attributes a merged feature keeps.",
             "oneOf": [
               {
-                "title": "入力属性を破棄",
-                "description": "グループ化属性のみを保持し、それ以外はすべて破棄する",
+                "title": "グループ化属性のみ保持",
+                "description": "グループ化属性のみを保持し、それ以外はすべて破棄する。",
                 "type": "string",
                 "enum": [
-                  "dropAttributes"
+                  "groupAttributesOnly"
                 ]
               },
               {
-                "title": "入力属性をマージ",
-                "description": "グループ内のすべての地物のすべての属性を保持する。地物間で値が異なる場合は、異なる値をすべて配列にまとめる",
+                "title": "属性を収集",
+                "description": "グループ化属性を保持し、それ以外の各属性を統合された地物ごとに1要素を持つ配列にする。要素は到着順で、属性を持たない地物の要素は null になる。",
                 "type": "string",
                 "enum": [
-                  "mergeAttributes"
+                  "collectAttributes"
                 ]
               },
               {
@@ -4018,19 +4018,19 @@
             "description": "Which attributes a merged feature keeps.",
             "oneOf": [
               {
-                "title": "入力属性を破棄",
-                "description": "入力フィーチャーの属性は出力に保持されない（group_by 属性を指定した場合はそれを除く）",
+                "title": "グループ化属性のみ保持",
+                "description": "グループ化属性のみを保持し、それ以外はすべて破棄する。",
                 "type": "string",
                 "enum": [
-                  "dropAttributes"
+                  "groupAttributesOnly"
                 ]
               },
               {
-                "title": "入力属性をマージ",
-                "description": "出力フィーチャーはすべての入力属性をマージする。複数のフィーチャーが同じ属性で異なる値を持つ場合、すべての値が配列に収集される",
+                "title": "属性を収集",
+                "description": "グループ化属性を保持し、それ以外の各属性を統合された地物ごとに1要素を持つ配列にする。要素は到着順で、属性を持たない地物の要素は null になる。",
                 "type": "string",
                 "enum": [
-                  "mergeAttributes"
+                  "collectAttributes"
                 ]
               },
               {
@@ -9974,6 +9974,90 @@
       "tags": [
         "vector",
         "tiling"
+      ]
+    },
+    {
+      "name": "Mesh Merger",
+      "type": "processor",
+      "description": "グループ化属性の値が同じ地物のポリゴンとメッシュを、各面をそのまま保ってグループごとに1つのメッシュへ統合する。すべての入力が三角形メッシュなら三角形メッシュ、それ以外はポリゴンメッシュになる。",
+      "parameter": {
+        "$schema": "http://json-schema.org/draft-07/schema#",
+        "title": "メッシュ統合のパラメータ",
+        "description": "どの地物をまとめて統合するか、統合後の地物がどの属性を保持するかを設定する。",
+        "type": "object",
+        "properties": {
+          "groupBy": {
+            "title": "グループ化属性",
+            "description": "まとめて統合する地物を決める属性。すべての属性値が一致する地物が1つのメッシュになる。省略した場合はすべての地物が1つのメッシュに統合される。",
+            "default": null,
+            "type": [
+              "array",
+              "null"
+            ],
+            "items": {
+              "$ref": "#/definitions/Attribute"
+            }
+          },
+          "attributeAccumulation": {
+            "title": "属性の保持",
+            "description": "統合後の地物が保持する属性。",
+            "default": "useOneFeature",
+            "allOf": [
+              {
+                "$ref": "#/definitions/AttributeAccumulationStrategy"
+              }
+            ]
+          }
+        },
+        "definitions": {
+          "Attribute": {
+            "type": "string"
+          },
+          "AttributeAccumulationStrategy": {
+            "title": "Attribute Accumulation Strategy",
+            "description": "Which attributes a merged feature keeps.",
+            "oneOf": [
+              {
+                "title": "グループ化属性のみ保持",
+                "description": "グループ化属性のみを保持し、それ以外はすべて破棄する。",
+                "type": "string",
+                "enum": [
+                  "groupAttributesOnly"
+                ]
+              },
+              {
+                "title": "属性を収集",
+                "description": "グループ化属性を保持し、それ以外の各属性を統合された地物ごとに1要素を持つ配列にする。要素は到着順で、属性を持たない地物の要素は null になる。",
+                "type": "string",
+                "enum": [
+                  "collectAttributes"
+                ]
+              },
+              {
+                "title": "1つの地物の属性を使用",
+                "description": "グループ内の1つの地物の属性だけを保持し、残りを破棄する。",
+                "type": "string",
+                "enum": [
+                  "useOneFeature"
+                ]
+              }
+            ]
+          }
+        }
+      },
+      "builtin": true,
+      "inputPorts": [
+        "features"
+      ],
+      "outputPorts": [
+        "features",
+        "rejected"
+      ],
+      "categories": [
+        "Geometry"
+      ],
+      "tags": [
+        "aggregation"
       ]
     },
     {
