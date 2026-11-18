@@ -43,6 +43,10 @@ func (c *countingWSClient) Rollback(context.Context, string, int) (*ws.Document,
 	return nil, nil
 }
 func (c *countingWSClient) FlushToGCS(context.Context, string) error { c.calls++; return nil }
+func (c *countingWSClient) SaveVersion(context.Context, string, string) (bool, error) {
+	c.calls++
+	return false, nil
+}
 func (c *countingWSClient) CreateSnapshot(context.Context, string, int, string) (*ws.Document, error) {
 	c.calls++
 	return nil, nil
@@ -143,6 +147,10 @@ func rollback(ctx context.Context, i *Websocket, d string) error {
 	return err
 }
 func flushToGCS(ctx context.Context, i *Websocket, d string) error { return i.FlushToGCS(ctx, d) }
+func saveVersion(ctx context.Context, i *Websocket, d string) error {
+	_, err := i.SaveVersion(ctx, d, "save")
+	return err
+}
 func importDocument(ctx context.Context, i *Websocket, d string) error {
 	return i.ImportDocument(ctx, d, []byte("x"))
 }
@@ -182,6 +190,7 @@ func TestWebsocket_DeniedOperationsNeverReachTheClient(t *testing.T) {
 	assertDenied(t, "SaveNamedSnapshot", saveNamedSnapshot)
 	assertDenied(t, "Rollback", rollback)
 	assertDenied(t, "FlushToGCS", flushToGCS)
+	assertDenied(t, "SaveVersion", saveVersion)
 	assertDenied(t, "ImportDocument", importDocument)
 	assertDenied(t, "DeleteDocument", deleteDocument)
 	assertDenied(t, "SetProjectLock", setProjectLock)
@@ -208,6 +217,7 @@ func TestWebsocket_ChecksTargetProjectWorkspace(t *testing.T) {
 	assertChecks(t, "SaveNamedSnapshot", rbac.ActionEdit, saveNamedSnapshot)
 	assertChecks(t, "Rollback", rbac.ActionEdit, rollback)
 	assertChecks(t, "FlushToGCS", rbac.ActionAny, flushToGCS)
+	assertChecks(t, "SaveVersion", rbac.ActionAny, saveVersion)
 	assertChecks(t, "ImportDocument", rbac.ActionEdit, importDocument)
 	assertChecks(t, "DeleteDocument", rbac.ActionDelete, deleteDocument)
 	assertChecks(t, "SetProjectLock", rbac.ActionEdit, setProjectLock)

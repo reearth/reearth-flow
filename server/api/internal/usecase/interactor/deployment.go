@@ -19,6 +19,7 @@ import (
 	"github.com/reearth/reearth-flow/api/pkg/job"
 	"github.com/reearth/reearth-flow/api/pkg/parameter"
 	"github.com/reearth/reearth-flow/api/pkg/variable"
+	ws "github.com/reearth/reearth-flow/api/pkg/websocket"
 	"github.com/reearth/reearthx/log"
 	"github.com/reearth/reearthx/rerror"
 	"github.com/reearth/reearthx/usecasex"
@@ -39,10 +40,11 @@ type Deployment struct {
 	file              gateway.File
 	job               interfaces.Job
 	permissionChecker gateway.PermissionChecker
+	websocket         interfaces.WebsocketClient
 	planLimits        planLimits
 }
 
-func NewDeployment(r *repo.Container, gr *gateway.Container, jobUsecase interfaces.Job, permissionChecker gateway.PermissionChecker) interfaces.Deployment {
+func NewDeployment(r *repo.Container, gr *gateway.Container, jobUsecase interfaces.Job, permissionChecker gateway.PermissionChecker, websocket interfaces.WebsocketClient) interfaces.Deployment {
 	return &Deployment{
 		deploymentRepo:    r.Deployment,
 		projectRepo:       r.Project,
@@ -56,6 +58,7 @@ func NewDeployment(r *repo.Container, gr *gateway.Container, jobUsecase interfac
 		file:              gr.File,
 		job:               jobUsecase,
 		permissionChecker: permissionChecker,
+		websocket:         websocket,
 		planLimits:        newPlanLimits(r, gr, jobUsecase),
 	}
 }
@@ -293,6 +296,9 @@ func (i *Deployment) Create(ctx context.Context, dp interfaces.CreateDeploymentP
 		}
 		return nil, err
 	}
+	if dp.Project != nil {
+		saveActionVersion(ctx, i.websocket, dp.Project.String(), ws.VersionLabelDeploy)
+	}
 	return result, nil
 }
 
@@ -378,6 +384,11 @@ func (i *Deployment) Update(ctx context.Context, dp interfaces.UpdateDeploymentP
 		return nil
 	}); err != nil {
 		return nil, err
+	}
+
+	// A new workflow file is a deployment of the project as it is now.
+	if dp.Workflow != nil && result.Project() != nil {
+		saveActionVersion(ctx, i.websocket, result.Project().String(), ws.VersionLabelDeploy)
 	}
 
 	// Only now is it safe to drop the old object: the row that stopped referencing

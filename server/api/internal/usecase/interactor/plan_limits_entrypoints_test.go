@@ -93,7 +93,7 @@ func TestPlanLimits_OnlyDebugRunsWaitForADebugRun(t *testing.T) {
 
 		f := newPlanFixture(t)
 		d := f.deployment(t)
-		i := NewDeployment(f.repo, f.gw, f.job, f.perm)
+		i := NewDeployment(f.repo, f.gw, f.job, f.perm, nil)
 
 		_, err := i.Execute(f.ctx, interfaces.ExecuteDeploymentParam{DeploymentID: d.ID()})
 
@@ -177,7 +177,7 @@ func TestPlanLimits_RunsPerHourAndDay(t *testing.T) {
 
 		f := newPlanFixture(t)
 		f.gw.UsageCounter = usedUpCounter{}
-		i := NewDeployment(f.repo, f.gw, f.job, f.perm)
+		i := NewDeployment(f.repo, f.gw, f.job, f.perm, nil)
 
 		_, err := i.Execute(f.ctx, interfaces.ExecuteDeploymentParam{DeploymentID: f.deployment(t).ID()})
 
@@ -218,7 +218,7 @@ func TestPlanLimits_RunsPerHourAndDay(t *testing.T) {
 
 		for name, run := range map[string]func(*testing.T, *planFixture) error{
 			"deployment": func(t *testing.T, f *planFixture) error {
-				_, err := NewDeployment(f.repo, f.gw, f.job, f.perm).Execute(f.ctx, interfaces.ExecuteDeploymentParam{DeploymentID: f.deployment(t).ID()})
+				_, err := NewDeployment(f.repo, f.gw, f.job, f.perm, nil).Execute(f.ctx, interfaces.ExecuteDeploymentParam{DeploymentID: f.deployment(t).ID()})
 				return err
 			},
 			"scheduled trigger": func(t *testing.T, f *planFixture) error {

@@ -27,7 +27,7 @@ func TestJobRunBy(t *testing.T) {
 		t.Parallel()
 		f := newParamFixture(t)
 		d := f.deployment(t)
-		i := NewDeployment(f.repo, f.gw, f.job, f.perm)
+		i := NewDeployment(f.repo, f.gw, f.job, f.perm, nil)
 
 		_, _ = i.Execute(f.ctx, interfaces.ExecuteDeploymentParam{DeploymentID: d.ID()})
 

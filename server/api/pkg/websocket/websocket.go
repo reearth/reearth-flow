@@ -2,6 +2,18 @@ package websocket
 
 import "time"
 
+// Labels of the versions the API asks the websocket server to save. They are
+// fixed codes, which the editor's version list shows as text of its own; the
+// websocket server bounds the versions saved on request whatever their label.
+const (
+	// VersionLabelSave is a version saved from the editor (Ctrl+S).
+	VersionLabelSave = "save"
+	// VersionLabelRun is a version saved when a debug run starts.
+	VersionLabelRun = "run"
+	// VersionLabelDeploy is a version saved when the project is deployed.
+	VersionLabelDeploy = "deploy"
+)
+
 type Document struct {
 	Timestamp time.Time
 	ID        string

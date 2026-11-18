@@ -7,9 +7,16 @@ export type ProjectSnapshotMeta = {
 
 // A labelled, named snapshot in a project's version history (distinct from
 // ProjectSnapshot, which is a raw update-vector snapshot keyed by version).
-// The label ygo stamps on an automatically captured version. Rows carrying it
-// are not user-named, so the UI shows their timestamp instead.
+// The label the websocket server gives a version it saves on its own (every 15
+// minutes while edited, and when the last editor leaves). Rows carrying it are
+// not user-named, so the UI shows "Autosaved" instead.
 export const AUTO_SNAPSHOT_LABEL = "auto";
+// The labels the API gives versions saved by an action: the editor's save
+// (Ctrl+S), a debug run and a deployment. They are codes, shown as text of
+// their own.
+export const SAVE_SNAPSHOT_LABEL = "save";
+export const RUN_SNAPSHOT_LABEL = "run";
+export const DEPLOY_SNAPSHOT_LABEL = "deploy";
 
 export type NamedSnapshot = {
   snapshotNumber: number;
