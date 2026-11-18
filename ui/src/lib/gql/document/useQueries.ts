@@ -32,6 +32,9 @@ export const useQueries = () => {
         return toProjectDocument(data.latestProjectSnapshot);
       },
       enabled: !!projectId,
+      // Read by the version dialogs, which mount on open: each open shows the
+      // document as it is now.
+      refetchOnMount: "always",
     });
 
   const useProjectSnapshotQuery = (projectId: string, version: number) =>
@@ -83,6 +86,10 @@ export const useQueries = () => {
         return data?.projectNamedSnapshots ?? [];
       },
       enabled: !!projectId,
+      // Versions are saved on the server (on save, run, deploy, after edits, and
+      // when everyone leaves), so the list can change without anything in this
+      // tab knowing. The dialog mounts on open: fetch on every open.
+      refetchOnMount: "always",
     });
     return { snapshots: data ?? [], ...rest };
   };
@@ -187,6 +194,15 @@ export const useQueries = () => {
       if (data?.saveSnapshot) {
         return data.saveSnapshot;
       }
+    },
+    onSuccess: (_data, { projectId }) => {
+      // Saving can create a version; an open version dialog must show it.
+      queryClient.invalidateQueries({
+        queryKey: [DocumentQueryKeys.GetProjectNamedSnapshots, projectId],
+      });
+      queryClient.invalidateQueries({
+        queryKey: [DocumentQueryKeys.GetLatestProjectSnapshot, projectId],
+      });
     },
   });
 
