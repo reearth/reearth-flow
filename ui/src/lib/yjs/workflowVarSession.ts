@@ -1,14 +1,19 @@
 import type { WorkflowVariable, VarType } from "@flow/types";
 
+/**
+ * The Workflow Variables dialog's shared editing session, kept in awareness by
+ * useWorkflowVarSession.
+ */
 export type WorkflowVarSession = {
   variables: WorkflowVariable[];
+  /** The saved variables the edits are diffed against. */
   base: WorkflowVariable[];
-  timestamp: number;
-  // Set to the saving client's ID after a successful create so that client
-  // reinitialises from fresh server data once TanStack Query refetches
-  // (resolves temp_ IDs). Other clients ignore it and receive the update
-  // reactively once the saving client writes back to Yjs.
-  pendingRefetch?: string;
+  /** Revision: the highest wins. */
+  rev: number;
+  // Set after a save that created variables: the session still holds their
+  // temp_ IDs, so it is replaced with server data once TanStack Query has
+  // refetched them.
+  pendingRefetch?: boolean;
 };
 
 export type SessionCreate = {

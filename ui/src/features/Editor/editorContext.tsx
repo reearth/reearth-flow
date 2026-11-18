@@ -1,5 +1,6 @@
 import type { FC, MouseEvent, PropsWithChildren } from "react";
 import { createContext, useContext } from "react";
+import type { Awareness } from "y-protocols/awareness";
 import type { Doc } from "yjs";
 
 import type { YWorkflow } from "@flow/lib/yjs/types";
@@ -31,6 +32,7 @@ export type EditorContextType = {
   ) => void;
   awarenessSelectionsMap?: AwarenessSelectionsMap;
   yDoc?: Doc | null;
+  yAwareness?: Awareness | null;
   workflowVarAwareness?: WorkflowVarAwareness;
   staleNodeIds?: Set<string>;
   /** Every node id across the project's workflows; diagnostics are per-node. */
