@@ -1,4 +1,4 @@
-import { formatDate, formatRelativeTime } from "./date";
+import { formatDate, formatRelativeTime, isWithinLastMinute } from "./date";
 
 describe("formatDate", () => {
   // Helper function to set a specific timezone for testing
@@ -74,5 +74,14 @@ describe("formatRelativeTime", () => {
     expect(formatRelativeTime("2026-07-10T12:05:00Z", "en", now)).toBe(
       "in 5 minutes",
     );
+  });
+});
+
+describe("isWithinLastMinute", () => {
+  const now = new Date("2026-07-10T12:00:00Z");
+
+  test("is true under a minute and false from a minute on", () => {
+    expect(isWithinLastMinute("2026-07-10T11:59:30Z", now)).toBe(true);
+    expect(isWithinLastMinute("2026-07-10T11:59:00Z", now)).toBe(false);
   });
 });

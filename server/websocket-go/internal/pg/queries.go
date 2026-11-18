@@ -139,10 +139,15 @@ RETURNING 1`
 // whose TTL lapsed mid-work would delete its successor's lock.
 const releaseLockSQL = `DELETE FROM ws_lock WHERE key = $1 AND owner = $2`
 
+// headSQL is the room's newest row id, 0 when it has none: what WaitCaughtUp
+// waits for the reader's cursor to reach.
+const headSQL = `SELECT coalesce(max(id), 0) FROM ws_stream WHERE doc_id = $1`
+
 // reapStreamSQL and reapInstancesSQL are the janitor, replacing Redis key TTLs.
 const (
 	reapStreamSQL    = `DELETE FROM ws_stream WHERE created_at < now() - make_interval(secs => $1)`
 	reapInstancesSQL = `DELETE FROM ws_instance WHERE seen_at < now() - make_interval(secs => $1)`
+	reapChangesSQL   = `DELETE FROM ws_version_change WHERE first_at < now() - make_interval(secs => $1)`
 	reapLocksSQL     = `DELETE FROM ws_lock WHERE expires_at < now() - make_interval(secs => $1)`
 )
 

@@ -157,8 +157,8 @@ github.com/pmezard/go-difflib v1.0.1-0.20181226105442-5d4384ee4fb2/go.mod h1:iKH
 github.com/prometheus/client_model v0.0.0-20190812154241-14fe0d1b01d4/go.mod h1:xMI15A0UPsDsEKsMN9yxemIoYk6Tm2C1GtYGdfGttqA=
 github.com/redis/go-redis/v9 v9.20.0 h1:WnQYxLkgO2xiXTCJY0ldIiI8dNqCDlQAG+AtaH7a2a0=
 github.com/redis/go-redis/v9 v9.20.0/go.mod h1:v/M13XI1PVCDcm01VtPFOADfZtHf8YW3baQf57KlIkA=
-github.com/reearth/ygo v1.55.0 h1:6jvc6gl9nb6hHyRbcJ3g0qwgdEhCLsYuk7Gjlx2WlNw=
-github.com/reearth/ygo v1.55.0/go.mod h1:LpzEyyGErwVVVLNB+8rZfVy/zbZbhWjdkONAobCIlYA=
+github.com/reearth/ygo v1.56.0 h1:DVPcokdh1AGvb7VjoQWHzQK0H3XY14YVz4KboLiIXfI=
+github.com/reearth/ygo v1.56.0/go.mod h1:LpzEyyGErwVVVLNB+8rZfVy/zbZbhWjdkONAobCIlYA=
 github.com/rs/xid v1.6.0 h1:fV591PaemRlL6JfRxGDEPl69wICngIQ3shQtzfy2gxU=
 github.com/rs/xid v1.6.0/go.mod h1:7XoLgs4eV+QndskICGsho+ADou8ySMSjJKDIan90Nz0=
 github.com/spiffe/go-spiffe/v2 v2.7.0 h1:uXe1MflJoHw58wAUvxVlcM7WpKtijWG7I1UidcGh6g4=

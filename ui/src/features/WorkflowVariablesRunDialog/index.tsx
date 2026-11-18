@@ -17,13 +17,12 @@ import {
   IconButton,
   VariableRow,
 } from "@flow/components";
-import AssetsDialog from "@flow/features/AssetsDialog";
-import CmsIntegrationDialog from "@flow/features/CmsIntegrationDialog";
+import AssetPickerDialog from "@flow/features/AssetPickerDialog";
 import { formatVariableValue } from "@flow/features/common/formatVariableValue";
 import { useWorkflowVars } from "@flow/hooks";
 import { useT } from "@flow/lib/i18n";
 import type { AppColumnDef } from "@flow/lib/table/features";
-import type { AnyWorkflowVariable, Asset } from "@flow/types";
+import type { AnyWorkflowVariable } from "@flow/types";
 import { missingRequiredVariables } from "@flow/utils";
 
 type Props = {
@@ -39,7 +38,6 @@ type Props = {
   onStart: (variables: AnyWorkflowVariable[]) => Promise<unknown>;
   onDialogClose: () => void;
 };
-type DialogOptions = "assets" | "cms" | undefined;
 
 // Lets the user change a run's workflow variables before it starts. The edits
 // are for that run only; nothing is saved back.
@@ -67,7 +65,7 @@ const WorkflowVariablesRunDialog: React.FC<Props> = ({
   }, [initialVariables]);
 
   const [starting, setStarting] = useState(false);
-  const [showDialog, setShowDialog] = useState<DialogOptions>(undefined);
+  const [showAssetPicker, setShowAssetPicker] = useState(false);
   const [activeVariableIndex, setActiveVariableIndex] = useState<number>(0);
   const [activeArrayItemIndex, setActiveArrayItemIndex] = useState<number>(0);
   const [showVariableDialog, setShowVariableDialog] = useState(false);
@@ -116,10 +114,8 @@ const WorkflowVariablesRunDialog: React.FC<Props> = ({
     [workflowVariableDefaults],
   );
 
-  const handleAssetDialogOpen = (dialog: DialogOptions) => {
-    setShowDialog(dialog);
-  };
-  const handleDialogClose = () => setShowDialog(undefined);
+  const handleAssetDialogOpen = () => setShowAssetPicker(true);
+  const handleDialogClose = () => setShowAssetPicker(false);
   const handleVariableDialogOpen = useCallback(
     (variableIndex: number, arrayItemIndex = 0) => {
       setActiveVariableIndex(variableIndex);
@@ -132,28 +128,15 @@ const WorkflowVariablesRunDialog: React.FC<Props> = ({
     () => setShowVariableDialog(false),
     [],
   );
-  const handleAssetDoubleClick = (asset: Asset) => {
+  const handleAssetSelect = (url: string) => {
     const variable = variables[activeVariableIndex];
     if (Array.isArray(variable?.defaultValue)) {
       const newArray = [...variable.defaultValue];
-      newArray[activeArrayItemIndex] = asset.url;
+      newArray[activeArrayItemIndex] = url;
       handleDefaultValueChange(activeVariableIndex, newArray);
     } else {
-      handleDefaultValueChange(activeVariableIndex, asset.url);
+      handleDefaultValueChange(activeVariableIndex, url);
     }
-    handleVariableDialogClose();
-  };
-
-  const handleCmsItemValue = (cmsItemAssetUrl: string) => {
-    const variable = variables[activeVariableIndex];
-    if (Array.isArray(variable?.defaultValue)) {
-      const newArray = [...variable.defaultValue];
-      newArray[activeArrayItemIndex] = cmsItemAssetUrl;
-      handleDefaultValueChange(activeVariableIndex, newArray);
-    } else {
-      handleDefaultValueChange(activeVariableIndex, cmsItemAssetUrl);
-    }
-    handleDialogClose();
     handleVariableDialogClose();
   };
 
@@ -325,16 +308,10 @@ const WorkflowVariablesRunDialog: React.FC<Props> = ({
           </DialogFooter>
         </div>
       </DialogContent>
-      {showDialog === "assets" && (
-        <AssetsDialog
+      {showAssetPicker && (
+        <AssetPickerDialog
           onDialogClose={handleDialogClose}
-          onAssetSelect={handleAssetDoubleClick}
-        />
-      )}
-      {showDialog === "cms" && (
-        <CmsIntegrationDialog
-          onDialogClose={handleDialogClose}
-          onCmsItemValue={handleCmsItemValue}
+          onSelect={handleAssetSelect}
         />
       )}
     </Dialog>

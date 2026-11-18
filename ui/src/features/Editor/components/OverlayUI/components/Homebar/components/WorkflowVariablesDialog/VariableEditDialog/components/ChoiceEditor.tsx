@@ -33,7 +33,6 @@ import {
   SelectTrigger,
   SelectValue,
   Button,
-  CmsLogo,
   CheckboxDefaultInput,
 } from "@flow/components";
 import { paramsAwarenessStyles } from "@flow/components/SchemaForm/utils/awarenessTemplateStyles";
@@ -50,7 +49,7 @@ type Props = {
   cmsItemAssetUrl?: string | null;
   fieldFocusMap?: Record<string, AwarenessUser[]>;
   onUpdate: (variable: AnyWorkflowVariable) => void;
-  onDialogOpen?: (dialog: "assets" | "cms") => void;
+  onDialogOpen?: () => void;
   onFieldFocus?: (field: string | null) => void;
   clearUrl: () => void;
 };
@@ -294,19 +293,9 @@ export const ChoiceEditor: React.FC<Props> = ({
           />
           {onDialogOpen && (
             <div className="flex gap-2">
-              <Button
-                onClick={() => onDialogOpen("assets")}
-                variant="outline"
-                size="sm">
+              <Button onClick={onDialogOpen} variant="outline" size="sm">
                 <FileIcon className="h-4 w-4" />
-                {t("Workspace Assets")}
-              </Button>
-              <Button
-                onClick={() => onDialogOpen("cms")}
-                variant="outline"
-                size="sm">
-                <CmsLogo className="h-4 w-4" />
-                {t("CMS Integration")}
+                {t("Assets")}
               </Button>
             </div>
           )}

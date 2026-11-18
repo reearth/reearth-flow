@@ -151,6 +151,39 @@ func streamIDMillis(id string) (int64, bool) {
 	return ms, true
 }
 
+// streamIDBefore reports whether stream id a sorts before b. An id that does
+// not parse (the reader's "0" before catch-up) sorts first.
+func streamIDBefore(a, b string) bool {
+	am, as, aok := parseStreamID(a)
+	bm, bs, bok := parseStreamID(b)
+	switch {
+	case !bok:
+		return false
+	case !aok:
+		return true
+	case am != bm:
+		return am < bm
+	default:
+		return as < bs
+	}
+}
+
+func parseStreamID(id string) (ms, seq uint64, ok bool) {
+	msPart, seqPart, found := strings.Cut(id, "-")
+	if !found {
+		return 0, 0, false
+	}
+	ms, err := strconv.ParseUint(msPart, 10, 64)
+	if err != nil {
+		return 0, 0, false
+	}
+	seq, err = strconv.ParseUint(seqPart, 10, 64)
+	if err != nil {
+		return 0, 0, false
+	}
+	return ms, seq, true
+}
+
 // nextStreamID returns the smallest stream id greater than id, for paging an
 // XRANGE without the exclusive "(" form.
 func nextStreamID(id string) (string, bool) {
