@@ -62,6 +62,40 @@ describe("VersionHistoryList", () => {
     expect(screen.getByText("before migration")).toBeInTheDocument();
   });
 
+  test("names the versions saved by an action, never by their code", () => {
+    render(
+      <VersionHistoryList
+        snapshots={[
+          {
+            snapshotNumber: 3,
+            label: "save",
+            timestamp: "2026-11-18T01:00:00Z",
+            size: 1,
+          },
+          {
+            snapshotNumber: 4,
+            label: "run",
+            timestamp: "2026-11-18T02:00:00Z",
+            size: 1,
+          },
+          {
+            snapshotNumber: 5,
+            label: "deploy",
+            timestamp: "2026-11-18T03:00:00Z",
+            size: 1,
+          },
+        ]}
+      />,
+    );
+
+    expect(screen.getByText("Saved")).toBeInTheDocument();
+    expect(screen.getByText("Debug run")).toBeInTheDocument();
+    expect(screen.getByText("Deployed")).toBeInTheDocument();
+    for (const code of ["save", "run", "deploy"]) {
+      expect(screen.queryByText(code)).not.toBeInTheDocument();
+    }
+  });
+
   test("selecting a row reports that row's snapshotNumber", () => {
     // The number passed here is fed to projectNamedSnapshot. Passing a row's
     // index, or the update-log version, would read an unrelated point in history.

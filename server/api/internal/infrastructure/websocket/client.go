@@ -22,8 +22,14 @@ type Config struct {
 
 type Client struct {
 	client *http.Client
-	config Config
+	// versionClient serves SaveVersion, which may wait for another save of the
+	// document: the websocket server waits up to a minute for it, and a save
+	// itself can take over ten seconds.
+	versionClient *http.Client
+	config        Config
 }
+
+const versionSaveTimeout = 90 * time.Second
 
 var _ interfaces.WebsocketClient = &Client{}
 
@@ -32,14 +38,11 @@ func NewClient(config Config) (*Client, error) {
 		config.ServerURL = "http://localhost:8000"
 	}
 
-	client := &http.Client{
-		Timeout:   30 * time.Second,
-		Transport: otelhttp.NewTransport(nil),
-	}
-
+	transport := otelhttp.NewTransport(nil)
 	return &Client{
-		config: config,
-		client: client,
+		config:        config,
+		client:        &http.Client{Timeout: 30 * time.Second, Transport: transport},
+		versionClient: &http.Client{Timeout: versionSaveTimeout, Transport: transport},
 	}, nil
 }
 
@@ -380,6 +383,60 @@ func (c *Client) SetProjectLock(ctx context.Context, docID string, locked bool, 
 		return fmt.Errorf("server returned non-200 status: %d %s", resp.StatusCode, body)
 	}
 	return nil
+}
+
+type saveVersionRequest struct {
+	Label string `json:"label"`
+}
+
+type saveVersionResponse struct {
+	Saved      bool  `json:"saved"`
+	SnapshotID int64 `json:"snapshotId,omitempty"`
+}
+
+func (c *Client) SaveVersion(ctx context.Context, docID, label string) (bool, error) {
+	url := fmt.Sprintf("%s/api/document/%s/versions", c.config.ServerURL, docID)
+
+	body, err := json.Marshal(saveVersionRequest{Label: label})
+	if err != nil {
+		return false, fmt.Errorf("failed to marshal request: %w", err)
+	}
+	req, err := http.NewRequestWithContext(ctx, http.MethodPost, url, bytes.NewReader(body))
+	if err != nil {
+		return false, fmt.Errorf("failed to create request: %w", err)
+	}
+	req.Header.Set("Content-Type", "application/json")
+	c.setCommonHeaders(req)
+
+	resp, err := c.versionClient.Do(req)
+	if err != nil {
+		return false, fmt.Errorf("failed to save version: %w", err)
+	}
+	defer func(Body io.ReadCloser) {
+		if err := Body.Close(); err != nil {
+			log.Warnf("failed to close response body: %v", err)
+		}
+	}(resp.Body)
+
+	switch {
+	case resp.StatusCode == http.StatusOK:
+	case resp.StatusCode == http.StatusConflict:
+		return false, interfaces.ErrVersionSaveBusy
+	case resp.StatusCode == http.StatusNotImplemented:
+		return false, interfaces.ErrVersionsUnsupported
+	case resp.StatusCode >= 400 && resp.StatusCode < 500:
+		body, _ := io.ReadAll(resp.Body)
+		return false, fmt.Errorf("%w: %d %s", interfaces.ErrWebsocketRequestRejected, resp.StatusCode, body)
+	default:
+		body, _ := io.ReadAll(resp.Body)
+		return false, fmt.Errorf("server returned non-200 status: %d %s", resp.StatusCode, body)
+	}
+
+	var saved saveVersionResponse
+	if err := json.NewDecoder(resp.Body).Decode(&saved); err != nil {
+		return false, fmt.Errorf("failed to decode response: %w", err)
+	}
+	return saved.Saved, nil
 }
 
 func (c *Client) CreateSnapshot(ctx context.Context, docID string, version int, name string) (*websocket.Document, error) {

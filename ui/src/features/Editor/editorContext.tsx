@@ -1,5 +1,6 @@
 import type { FC, MouseEvent, PropsWithChildren } from "react";
 import { createContext, useContext } from "react";
+import type { Awareness } from "y-protocols/awareness";
 import type { Doc } from "yjs";
 
 import type { YWorkflow } from "@flow/lib/yjs/types";
@@ -8,6 +9,8 @@ import type {
   AwarenessSelection,
   AwarenessSelectionsMap,
 } from "@flow/types";
+
+import type { SchemaProbeOutcomes } from "./usePreviewSchema/schemaReport";
 
 export type WorkflowVarAwareness = {
   onDialogOpen: () => void;
@@ -29,6 +32,7 @@ export type EditorContextType = {
   ) => void;
   awarenessSelectionsMap?: AwarenessSelectionsMap;
   yDoc?: Doc | null;
+  yAwareness?: Awareness | null;
   workflowVarAwareness?: WorkflowVarAwareness;
   staleNodeIds?: Set<string>;
   /** Every node id across the project's workflows; diagnostics are per-node. */
@@ -46,6 +50,10 @@ export type EditorContextType = {
    * reuse. A run that stopped at a selected action may not.
    */
   canDebugRunFromNode?: (nodeId: string) => boolean;
+  /* Outcomes of schema probes this client did not start, which it shows but
+   * never writes. See usePreviewSchema.
+   */
+  schemaProbeOutcomes?: SchemaProbeOutcomes;
 };
 
 const EditorContext = createContext<EditorContextType | undefined>(undefined);

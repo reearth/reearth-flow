@@ -17,6 +17,7 @@ import (
 	"github.com/reearth/reearth-flow/api/pkg/job"
 	"github.com/reearth/reearth-flow/api/pkg/parameter"
 	"github.com/reearth/reearth-flow/api/pkg/project"
+	ws "github.com/reearth/reearth-flow/api/pkg/websocket"
 	"github.com/reearth/reearthx/log"
 	"github.com/reearth/reearthx/rerror"
 	"github.com/reearth/reearthx/usecasex"
@@ -602,6 +603,8 @@ func (i *Project) Run(ctx context.Context, p interfaces.RunProjectParam) (_ *job
 	if err := i.websocket.FlushToGCS(ctx, p.ProjectID.String()); err != nil {
 		return nil, err
 	}
+	// The run's version records the workflow as it was run.
+	saveActionVersion(ctx, i.websocket, p.ProjectID.String(), ws.VersionLabelRun)
 
 	useCloudRun := i.cloudRunWorker != nil
 
