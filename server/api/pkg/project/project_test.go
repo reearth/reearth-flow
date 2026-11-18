@@ -85,6 +85,51 @@ func TestProject_SetIsLocked_OrdersAfterAClockThatRanAhead(t *testing.T) {
 	assert.True(t, p.UpdatedAt().Equal(ahead.Add(2*time.Millisecond)), "updatedAt = %v", p.UpdatedAt())
 }
 
+func TestProject_RecordEdit(t *testing.T) {
+	t.Parallel()
+
+	base := time.Date(2026, 11, 18, 3, 0, 0, 0, time.UTC)
+	metadataEditor := accountsid.NewUserID()
+	canvasEditor := accountsid.NewUserID()
+	newProject := func() *Project {
+		return New().NewID().Workspace(NewWorkspaceID()).UpdatedAt(base).UpdatedBy(&metadataEditor).MustBuild()
+	}
+
+	t.Run("a later edit moves updatedAt and updatedBy", func(t *testing.T) {
+		t.Parallel()
+		p := newProject()
+
+		assert.True(t, p.RecordEdit(base.Add(time.Second), &canvasEditor))
+		assert.True(t, p.UpdatedAt().Equal(base.Add(time.Second)))
+		assert.Equal(t, &canvasEditor, p.UpdatedBy())
+	})
+
+	t.Run("an older edit changes nothing", func(t *testing.T) {
+		t.Parallel()
+		p := newProject()
+
+		assert.False(t, p.RecordEdit(base.Add(-time.Second), &canvasEditor))
+		assert.True(t, p.UpdatedAt().Equal(base))
+		assert.Equal(t, &metadataEditor, p.UpdatedBy())
+	})
+
+	t.Run("an edit at the same time changes nothing", func(t *testing.T) {
+		t.Parallel()
+		p := newProject()
+
+		assert.False(t, p.RecordEdit(base, &canvasEditor))
+		assert.Equal(t, &metadataEditor, p.UpdatedBy())
+	})
+
+	t.Run("an unknown editor clears updatedBy", func(t *testing.T) {
+		t.Parallel()
+		p := newProject()
+
+		assert.True(t, p.RecordEdit(base.Add(time.Second), nil))
+		assert.Nil(t, p.UpdatedBy())
+	})
+}
+
 func TestProject_BasicAuthUsername(t *testing.T) {
 	t.Run("return basic auth username", func(t *testing.T) {
 		p := &Project{basicAuthUsername: "test1"}

@@ -179,13 +179,17 @@ func writeVerifyResponse(w http.ResponseWriter, status int, resp TokenVerifyResp
 }
 
 type Server struct {
-	handler *AuthHandler
+	handler  *AuthHandler
+	versions http.Handler
 }
 
-func NewServer(jwtProviders []appx.JWTProvider, projects ProjectAccessChecker) *Server {
+// NewServer serves the websocket server's calls. versions serves
+// POST /auth/versions; nil leaves that route unserved.
+func NewServer(jwtProviders []appx.JWTProvider, projects ProjectAccessChecker, versions http.Handler) *Server {
 	handler := NewAuthHandler(jwtProviders, projects)
 	return &Server{
-		handler: handler,
+		handler:  handler,
+		versions: versions,
 	}
 }
 
@@ -198,6 +202,8 @@ func (s *Server) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	switch {
 	case path == "/auth/verify":
 		s.handler.VerifyAPI(w, r)
+	case path == VersionsPath && s.versions != nil:
+		s.versions.ServeHTTP(w, r)
 	default:
 		http.NotFound(w, r)
 	}

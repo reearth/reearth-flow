@@ -6,6 +6,7 @@ import (
 
 	"github.com/reearth/reearth-flow/api/internal/adapter/gql/gqlmodel"
 	"github.com/reearth/reearth-flow/api/internal/usecase/interfaces"
+	"github.com/reearth/reearth-flow/api/pkg/websocket"
 )
 
 func (r *queryResolver) LatestProjectSnapshot(ctx context.Context, projectId gqlmodel.ID) (*gqlmodel.ProjectDocument, error) {
@@ -108,9 +109,15 @@ func (r *mutationResolver) RollbackProject(ctx context.Context, projectId gqlmod
 	}, nil
 }
 
+// SaveSnapshot backs the editor's save (Ctrl+S): it saves the workflow as a
+// version when users changed it since the last one. Nothing to save, or
+// another save of the project in progress, still answers true.
 func (r *mutationResolver) SaveSnapshot(ctx context.Context, projectId gqlmodel.ID) (bool, error) {
-	err := usecases(ctx).Websocket.FlushToGCS(ctx, string(projectId))
-	if err != nil {
+	uc := usecases(ctx).Websocket
+	if err := uc.FlushToGCS(ctx, string(projectId)); err != nil {
+		return false, err
+	}
+	if _, err := uc.SaveVersion(ctx, string(projectId), websocket.VersionLabelSave); err != nil && !interfaces.IsVersionSaveSkipped(err) {
 		return false, err
 	}
 	return true, nil

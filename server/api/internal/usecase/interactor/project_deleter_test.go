@@ -105,6 +105,9 @@ func (m *mockWebsocketClient) Rollback(context.Context, string, int) (*ws.Docume
 	return nil, nil
 }
 func (m *mockWebsocketClient) FlushToGCS(context.Context, string) error { return nil }
+func (m *mockWebsocketClient) SaveVersion(context.Context, string, string) (bool, error) {
+	return false, nil
+}
 func (m *mockWebsocketClient) CreateSnapshot(context.Context, string, int, string) (*ws.Document, error) {
 	return nil, nil
 }

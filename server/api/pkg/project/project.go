@@ -162,6 +162,20 @@ func (p *Project) SetUpdatedBy(uid *UserID) {
 	p.updatedBy = uid.CloneRef()
 }
 
+// RecordEdit records an edit made outside the project's own fields, such as a
+// saved version of its workflow: by edited the project at at. It applies only
+// when at is later than updatedAt, so updatedAt never moves backwards and an
+// older edit cannot replace a newer editor. A nil by records an unknown editor.
+// It reports whether the project changed.
+func (p *Project) RecordEdit(at time.Time, by *UserID) bool {
+	if !at.After(p.updatedAt) {
+		return false
+	}
+	p.updatedAt = at
+	p.updatedBy = by.CloneRef()
+	return true
+}
+
 func (p *Project) SetUpdateDescription(description string) {
 	p.description = description
 	p.updatedAt = time.Now()

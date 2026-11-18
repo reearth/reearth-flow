@@ -33,7 +33,11 @@ import (
 
 type fakeWebsocket struct {
 	latestDoc *websocket.Document
-	flushed   []string
+	// versionErr is what SaveVersion returns.
+	versionErr error
+	flushed    []string
+	// versions lists each SaveVersion call as "docID label".
+	versions []string
 }
 
 func (w *fakeWebsocket) GetLatest(_ context.Context, docID string) (*websocket.Document, error) {
@@ -48,6 +52,10 @@ func (w *fakeWebsocket) SetProjectLock(context.Context, string, bool, time.Time)
 func (w *fakeWebsocket) FlushToGCS(_ context.Context, id string) error {
 	w.flushed = append(w.flushed, id)
 	return nil
+}
+func (w *fakeWebsocket) SaveVersion(_ context.Context, id, label string) (bool, error) {
+	w.versions = append(w.versions, id+" "+label)
+	return w.versionErr == nil, w.versionErr
 }
 func (w *fakeWebsocket) GetHistory(context.Context, string) ([]*websocket.History, error) {
 	return nil, nil
