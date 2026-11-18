@@ -46,3 +46,35 @@ export const toNodeSchemaMeta = (
   sampledAt,
   note: nodeReport.note,
 });
+
+/**
+ * Applies a probe update to a node's schema metadata. `undefined` clears it.
+ * A patch without a job id drops the previous one: only a running probe has
+ * a job.
+ */
+export const applySchemaPatch = (
+  previous: NodeSchemaMeta | undefined,
+  patch: Partial<NodeSchemaMeta> | undefined,
+): NodeSchemaMeta | undefined => {
+  if (!patch) return undefined;
+  const schema: NodeSchemaMeta = { ports: {}, ...previous, ...patch };
+  if (!patch.jobId) delete schema.jobId;
+  return schema;
+};
+
+/**
+ * Probe outcomes this client worked out for itself, keyed by job id: probes
+ * still "running" in the document that another client started, or that were
+ * left behind when their client went away. Only the client that started a
+ * probe writes its outcome; every other client keeps it here.
+ */
+export type SchemaProbeOutcomes = Record<string, NodeSchemaMeta>;
+
+/** A node's schema metadata as this client should show it. */
+export const resolveNodeSchema = (
+  schema: NodeSchemaMeta | undefined,
+  outcomes: SchemaProbeOutcomes | undefined,
+): NodeSchemaMeta | undefined =>
+  schema?.status === "running" && schema.jobId
+    ? (outcomes?.[schema.jobId] ?? schema)
+    : schema;

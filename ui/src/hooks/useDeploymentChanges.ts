@@ -1,7 +1,7 @@
-import { useCallback, useEffect, useMemo, useRef } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useY } from "react-yjs";
 import { Map as YMap } from "yjs";
-import type { Doc, Transaction, UndoManager, YEvent, YMapEvent } from "yjs";
+import type { Doc, Transaction, UndoManager, YEvent } from "yjs";
 
 import {
   collectIgnoredNodeIds,
@@ -34,11 +34,17 @@ const isDeploymentTracking = (value: unknown): value is DeploymentTracking =>
 // A new deploy clears the flag without writing it, because the recorded
 // version no longer matches.
 //
+// Only the client that made an edit writes the flag. Every document write is
+// recorded as an edit by the user who sent it, so a client that merely watches
+// someone else's change must not write. It compares the graph itself instead
+// and keeps the answer locally: the editor's flag can lose to a concurrent
+// deploy, and a deploy record can arrive built without edits this client has.
+//
 // It is a latch. The first relevant local edit marks it changed, and after that
 // every edit returns after two map reads. The graph fingerprint is compared
 // again only while it reads unchanged: on undo/redo, which can restore the
-// deployed state, and when a remote graph change or deploy record arrives,
-// since the collaborator's own flag can be lost to a concurrent deploy.
+// deployed state, when a remote graph change arrives, and when the record or
+// flag changes (which includes opening the project).
 export default ({
   yDoc,
   yWorkflows,
@@ -58,7 +64,19 @@ export default ({
   const tracking = isDeploymentTracking(metadata?.[TRACKING_KEY])
     ? metadata[TRACKING_KEY]
     : undefined;
-  const isChanged = !!tracking && metadata?.[CHANGED_KEY] === tracking.version;
+  const isFlagged = !!tracking && metadata?.[CHANGED_KEY] === tracking.version;
+
+  // This client's own comparison while the flag reads unchanged, for the
+  // record it was made against. Never written to the document.
+  const [compared, setCompared] = useState<
+    (DeploymentTracking & { changed: boolean }) | undefined
+  >(undefined);
+  const isChanged =
+    isFlagged ||
+    (!!tracking &&
+      !!compared?.changed &&
+      compared.version === tracking.version &&
+      compared.fingerprint === tracking.fingerprint);
 
   // A record for another version means the project was deployed from outside
   // the editor, so there is nothing reliable to say.
@@ -85,20 +103,41 @@ export default ({
     [yMetadata],
   );
 
-  // Flags the record if the graph no longer matches the deployed fingerprint.
-  const reconcile = useCallback(
+  // Compares the graph with the deployed fingerprint without writing.
+  const compare = useCallback(
     (current: DeploymentTracking) => {
-      if (computeDeploymentFingerprint(yWorkflows) !== current.fingerprint) {
-        setChanged(current, true);
-      }
+      const changed =
+        computeDeploymentFingerprint(yWorkflows) !== current.fingerprint;
+      setCompared((prev) =>
+        prev?.version === current.version &&
+        prev.fingerprint === current.fingerprint &&
+        prev.changed === changed
+          ? prev
+          : { ...current, changed },
+      );
     },
-    [yWorkflows, setChanged],
+    [yWorkflows],
   );
+
+  // Opening the project, a deploy record from another client, or a change to
+  // the flag: compare while the flag reads unchanged.
+  const trackedVersion = tracking?.version;
+  const trackedFingerprint = tracking?.fingerprint;
+  useEffect(() => {
+    if (
+      trackedVersion === undefined ||
+      trackedFingerprint === undefined ||
+      isFlagged
+    ) {
+      return;
+    }
+    compare({ version: trackedVersion, fingerprint: trackedFingerprint });
+  }, [trackedVersion, trackedFingerprint, isFlagged, compare]);
 
   // Note and batch node IDs, needed to recognise their deletion. Only kept
   // while the record reads unchanged; dropped once it latches.
   const ignoredNodeIdsRef = useRef<Set<string> | null>(null);
-  const isClean = !!tracking && !isChanged;
+  const isClean = !!tracking && !isFlagged;
 
   useEffect(() => {
     ignoredNodeIdsRef.current = isClean
@@ -127,33 +166,15 @@ export default ({
       if (transaction.local) {
         setChanged(current, true);
       } else {
-        // The collaborator who made this edit flags it too, but that write can
-        // lose to a concurrent deploy, so check rather than trust it.
-        reconcile(current);
+        // The collaborator who made this edit flags it, but that write can
+        // lose to a concurrent deploy, so compare rather than trust it.
+        compare(current);
       }
     };
 
     yWorkflows.observeDeep(handleGraphChange);
     return () => yWorkflows.unobserveDeep(handleGraphChange);
-  }, [yWorkflows, undoManager, readCleanTracking, setChanged, reconcile]);
-
-  // A deploy record from another client may have been built without edits
-  // this client had not yet synced.
-  useEffect(() => {
-    if (!yMetadata) return;
-
-    const handleMetadataChange = (
-      event: YMapEvent<YDocMetadataValue>,
-      transaction: Transaction,
-    ) => {
-      if (transaction.local || !event.keysChanged.has(TRACKING_KEY)) return;
-      const current = readCleanTracking();
-      if (current) reconcile(current);
-    };
-
-    yMetadata.observe(handleMetadataChange);
-    return () => yMetadata.unobserve(handleMetadataChange);
-  }, [yMetadata, readCleanTracking, reconcile]);
+  }, [yWorkflows, undoManager, readCleanTracking, setChanged, compare]);
 
   useEffect(() => {
     if (!undoManager) return;
@@ -164,6 +185,9 @@ export default ({
       const changed =
         computeDeploymentFingerprint(yWorkflows) !== value.fingerprint;
       setChanged(value, changed);
+      // The flag may already read unchanged while this client's own
+      // comparison says changed, in which case the write above is skipped.
+      setCompared({ ...value, changed });
       // The graph observer skips undo/redo, so a note or batch it restored is
       // missing from the set. Rebuild it while the state stays unchanged.
       if (!changed)
