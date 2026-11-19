@@ -282,8 +282,10 @@ fn remove_keys_recursive(mut map: Attributes, is_removed: &impl Fn(&str) -> bool
         }
         match value {
             AttributeValue::Map(nested_map) => {
-                *value =
-                    AttributeValue::Map(remove_keys_recursive(std::mem::take(nested_map), is_removed));
+                *value = AttributeValue::Map(remove_keys_recursive(
+                    std::mem::take(nested_map),
+                    is_removed,
+                ));
             }
             AttributeValue::Array(arr) => {
                 *value = AttributeValue::Array(
