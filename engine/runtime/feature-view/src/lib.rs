@@ -174,6 +174,7 @@ impl ViewOptions {
             schema_key: None,
             skip_unexposed_attributes: false,
             array_map_separator: None,
+            column_order: None,
         }
     }
 

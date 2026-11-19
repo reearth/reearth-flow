@@ -4,6 +4,7 @@ import type { NamedSnapshot, ProjectSnapshotMeta } from "@flow/types";
 import { isDefined } from "@flow/utils";
 
 import {
+  toNamedSnapshot,
   toProjectDocument,
   toProjectSnapShot,
   toProjectSnapShotMeta,
@@ -83,7 +84,7 @@ export const useQueries = () => {
         const data = await graphQLContext?.GetProjectNamedSnapshots({
           projectId,
         });
-        return data?.projectNamedSnapshots ?? [];
+        return data?.projectNamedSnapshots.map(toNamedSnapshot) ?? [];
       },
       enabled: !!projectId,
       // Versions are saved on the server (on save, run, deploy, after edits, and

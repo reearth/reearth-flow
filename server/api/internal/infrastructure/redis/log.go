@@ -21,7 +21,7 @@ type redisLog struct {
 	client *redis.Client
 }
 
-func NewRedisLog(client *redis.Client) (gateway.Redis, error) {
+func NewRedisLog(client *redis.Client) (gateway.LiveStore, error) {
 	if client == nil {
 		return nil, errors.New("client is nil")
 	}

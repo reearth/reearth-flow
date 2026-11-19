@@ -7,5 +7,5 @@ import (
 )
 
 type JobStorage interface {
-	SaveToRedis(ctx context.Context, event *job.JobCompleteEvent) error
+	Save(ctx context.Context, event *job.JobCompleteEvent) error
 }

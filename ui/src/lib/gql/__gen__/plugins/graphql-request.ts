@@ -607,7 +607,7 @@ export type GetProjectNamedSnapshotsQueryVariables = Exact<{
 }>;
 
 
-export type GetProjectNamedSnapshotsQuery = { projectNamedSnapshots: Array<{ snapshotNumber: number, label: string, timestamp: any, size: any }> };
+export type GetProjectNamedSnapshotsQuery = { projectNamedSnapshots: Array<{ snapshotNumber: number, label: string, timestamp: any, size: any, contributorCount: number, lastEditorId: string | null, contributors: Array<{ id: string, name: string, metadata: { photoURL: string | null } }> }> };
 
 export type GetProjectNamedSnapshotQueryVariables = Exact<{
   projectId: string;
@@ -623,7 +623,7 @@ export type SaveNamedSnapshotMutationVariables = Exact<{
 }>;
 
 
-export type SaveNamedSnapshotMutation = { saveNamedSnapshot: { snapshotNumber: number, label: string, timestamp: any, size: any } };
+export type SaveNamedSnapshotMutation = { saveNamedSnapshot: { snapshotNumber: number, label: string, timestamp: any, size: any, contributorCount: number, lastEditorId: string | null, contributors: Array<{ id: string, name: string, metadata: { photoURL: string | null } }> } };
 
 export type PreviewSnapshotMutationVariables = Exact<{
   projectId: string;
@@ -685,6 +685,8 @@ export type CmsAssetFragment = { id: string, uuid: string, projectId: string, fi
 export type WorkerConfigFragment = { id: string, machineType: string | null, computeCpuMilli: number | null, computeMemoryMib: number | null, bootDiskSizeGB: number | null, taskCount: number | null, maxConcurrency: number | null, threadPoolSize: number | null, channelBufferSize: number | null, featureFlushThreshold: number | null, nodeStatusPropagationDelayMilli: number | null, createdAt: any, updatedAt: any };
 
 export type IntermediateDataViewFragment = { id: string, jobId: string, fileId: string, shape: IntermediateDataViewShape, status: IntermediateDataViewStatus, selectedFeatures: number | null, renderedFeatures: number | null, sizeLimitedFeatures: number | null, sizeLimitedTiles: number | null, error: string | null, layers: Array<{ format: IntermediateDataViewFormat, entryPointUrl: string, selectedFeatures: number, renderedFeatures: number, sizeLimitedFeatures: number | null, sizeLimitedTiles: number | null }> };
+
+export type NamedSnapshotFragment = { snapshotNumber: number, label: string, timestamp: any, size: any, contributorCount: number, lastEditorId: string | null, contributors: Array<{ id: string, name: string, metadata: { photoURL: string | null } }> };
 
 export type RenderIntermediateDataTilesViewMutationVariables = Exact<{
   input: RenderIntermediateDataTilesViewInput;
@@ -1345,6 +1347,23 @@ export const IntermediateDataViewFragmentDoc = gql`
   error
 }
     `;
+export const NamedSnapshotFragmentDoc = gql`
+    fragment NamedSnapshot on NamedSnapshot {
+  snapshotNumber
+  label
+  timestamp
+  size
+  contributors {
+    id
+    name
+    metadata {
+      photoURL
+    }
+  }
+  contributorCount
+  lastEditorId
+}
+    `;
 export const GetAssetsDocument = gql`
     query GetAssets($workspaceId: ID!, $keyword: String, $pagination: PageBasedPagination!) {
   assets(workspaceId: $workspaceId, keyword: $keyword, pagination: $pagination) {
@@ -1571,13 +1590,10 @@ export const GetProjectHistoryDocument = gql`
 export const GetProjectNamedSnapshotsDocument = gql`
     query GetProjectNamedSnapshots($projectId: ID!) {
   projectNamedSnapshots(projectId: $projectId) {
-    snapshotNumber
-    label
-    timestamp
-    size
+    ...NamedSnapshot
   }
 }
-    `;
+    ${NamedSnapshotFragmentDoc}`;
 export const GetProjectNamedSnapshotDocument = gql`
     query GetProjectNamedSnapshot($projectId: ID!, $snapshotNumber: Int!) {
   projectSnapshot(projectId: $projectId, snapshotNumber: $snapshotNumber) {
@@ -1589,13 +1605,10 @@ export const GetProjectNamedSnapshotDocument = gql`
 export const SaveNamedSnapshotDocument = gql`
     mutation SaveNamedSnapshot($projectId: ID!, $label: String!) {
   saveNamedSnapshot(projectId: $projectId, label: $label) {
-    snapshotNumber
-    label
-    timestamp
-    size
+    ...NamedSnapshot
   }
 }
-    `;
+    ${NamedSnapshotFragmentDoc}`;
 export const PreviewSnapshotDocument = gql`
     mutation PreviewSnapshot($projectId: ID!, $version: Int!) {
   previewSnapshot(projectId: $projectId, version: $version) {

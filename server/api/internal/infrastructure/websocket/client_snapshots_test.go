@@ -60,6 +60,63 @@ func TestClient_GetNamedSnapshots_UnparseableTimestampStaysZero(t *testing.T) {
 	assert.True(t, got[0].Timestamp.IsZero(), "timestamp must stay zero, not be fabricated from time.Now()")
 }
 
+func TestClient_GetNamedSnapshots_DecodesAttribution(t *testing.T) {
+	t.Parallel()
+
+	serve := func(t *testing.T, body string) *Client {
+		t.Helper()
+		server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			w.Header().Set("Content-Type", "application/json")
+			_, _ = w.Write([]byte(body))
+		}))
+		t.Cleanup(server.Close)
+
+		client, err := NewClient(Config{ServerURL: server.URL})
+		assert.NoError(t, err)
+		return client
+	}
+
+	t.Run("carries contributors, their count and the last editor", func(t *testing.T) {
+		t.Parallel()
+
+		client := serve(t, `[{"id":3,"label":"save","timestamp":"2026-11-18T10:00:00Z","size":9,
+		                      "contributors":["u1","u2"],"contributorCount":5,"lastEditor":"u2"}]`)
+
+		got, err := client.GetNamedSnapshots(context.Background(), "proj1")
+		assert.NoError(t, err)
+		assert.Len(t, got, 1)
+		assert.Equal(t, []string{"u1", "u2"}, got[0].Contributors)
+		assert.Equal(t, 5, got[0].ContributorCount)
+		assert.Equal(t, "u2", got[0].LastEditor)
+	})
+
+	t.Run("a snapshot without attribution has an empty list", func(t *testing.T) {
+		t.Parallel()
+
+		client := serve(t, `[{"id":1,"label":"Before restore","timestamp":"2026-11-18T10:00:00Z","size":9}]`)
+
+		got, err := client.GetNamedSnapshots(context.Background(), "proj1")
+		assert.NoError(t, err)
+		assert.Len(t, got, 1)
+		assert.NotNil(t, got[0].Contributors)
+		assert.Empty(t, got[0].Contributors)
+		assert.Zero(t, got[0].ContributorCount)
+		assert.Empty(t, got[0].LastEditor)
+	})
+
+	t.Run("the count is never below the list", func(t *testing.T) {
+		t.Parallel()
+
+		client := serve(t, `[{"id":2,"label":"save","timestamp":"2026-11-18T10:00:00Z","size":9,
+		                      "contributors":["u1","u2"],"contributorCount":0}]`)
+
+		got, err := client.GetNamedSnapshots(context.Background(), "proj1")
+		assert.NoError(t, err)
+		assert.Len(t, got, 1)
+		assert.Equal(t, 2, got[0].ContributorCount)
+	})
+}
+
 func TestClient_GetNamedSnapshots_SetsAPISecretHeader(t *testing.T) {
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		assert.Equal(t, "my-secret", r.Header.Get("X-API-Secret"))

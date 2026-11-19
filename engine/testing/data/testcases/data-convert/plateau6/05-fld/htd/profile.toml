@@ -16,6 +16,7 @@ generate_truth = true
 
 [convs.cesium_attributes.htd.casts]
 ".attributes" = "json"
+"" = "ordered_dict"
 
 [tests.json_attributes_v2.htd]
 path = "htd_truth.json"

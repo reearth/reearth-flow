@@ -7,5 +7,5 @@ import (
 )
 
 type UserFacingLogStorage interface {
-	SaveToRedis(ctx context.Context, event *userfacinglog.UserFacingLogEvent) error
+	Save(ctx context.Context, event *userfacinglog.UserFacingLogEvent) error
 }

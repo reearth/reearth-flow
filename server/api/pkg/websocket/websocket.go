@@ -33,10 +33,15 @@ type HistoryMetadata struct {
 }
 
 type SnapshotMetadata struct {
-	Timestamp time.Time
-	Label     string
-	ID        int64
-	Size      int64
+	Timestamp  time.Time
+	Label      string
+	LastEditor string
+	// Contributors can be cut short, so ContributorCount can exceed its length.
+	// Both are empty for snapshots saved without attribution.
+	Contributors     []string
+	ID               int64
+	Size             int64
+	ContributorCount int
 }
 
 // SnapshotState is one snapshot's document state, keyed by the per-room

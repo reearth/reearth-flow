@@ -23,12 +23,12 @@ import (
 type NodeDiagnostics struct {
 	diagnosticsRepo   repo.NodeDiagnostics
 	jobRepo           repo.Job
-	redisGateway      gateway.Redis
+	redisGateway      gateway.LiveStore
 	file              gateway.File
 	permissionChecker gateway.PermissionChecker
 }
 
-func NewNodeDiagnostics(diagnosticsRepo repo.NodeDiagnostics, jobRepo repo.Job, redisGateway gateway.Redis, file gateway.File, permissionChecker gateway.PermissionChecker) interfaces.NodeDiagnostics {
+func NewNodeDiagnostics(diagnosticsRepo repo.NodeDiagnostics, jobRepo repo.Job, redisGateway gateway.LiveStore, file gateway.File, permissionChecker gateway.PermissionChecker) interfaces.NodeDiagnostics {
 	return &NodeDiagnostics{
 		diagnosticsRepo:   diagnosticsRepo,
 		jobRepo:           jobRepo,
