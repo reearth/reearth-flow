@@ -8,6 +8,7 @@ generate_truth = true
 [convs.cesium_attributes.frn_lod1.casts]
 ".attributes" = "json"
 ".attributes.meshcode" = "string"
+"" = "ordered_dict"
 
 [tests.json_attributes_v2.frn_lod1]
 path = "frn_lod1_truth.json"
@@ -20,6 +21,7 @@ generate_truth = true
 [convs.cesium_attributes.frn_lod2.casts]
 ".attributes" = "json"
 ".attributes.meshcode" = "string"
+"" = "ordered_dict"
 
 [tests.json_attributes_v2.frn_lod2]
 path = "frn_lod2_truth.json"
@@ -32,6 +34,7 @@ generate_truth = true
 [convs.cesium_attributes.frn_lod3.casts]
 ".attributes" = "json"
 ".attributes.meshcode" = "string"
+"" = "ordered_dict"
 
 [tests.json_attributes_v2.frn_lod3]
 path = "frn_lod3_truth.json"
@@ -44,6 +47,7 @@ generate_truth = true
 [convs.mvt_attributes.dm.casts]
 ".attributes" = "json"
 ".attributes.meshcode" = "string"
+"" = "ordered_dict"
 
 [tests.json_attributes_v2.dm]
 path = "dm_truth.json"

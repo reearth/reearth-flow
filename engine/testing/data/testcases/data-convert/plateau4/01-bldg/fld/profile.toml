@@ -6,9 +6,6 @@ output_path = "3dtiles_lod1_tileset.json"
 generate_truth = false
 json_path = ".properties"
 
-[convs.json.tilesets_lod1.casts]
-"" = "ordered_dict"
-
 [tests.json_attributes_v2.tilesets_lod1]
 path = "3dtiles_lod1_tileset.json"
 

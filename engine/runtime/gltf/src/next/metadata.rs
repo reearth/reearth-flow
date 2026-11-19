@@ -4,7 +4,8 @@
 //! `EXT_structural_metadata`/`EXT_mesh_features` JSON shapes, via [`encode`],
 //! which attaches them to a `glb::Builder` directly.
 
-use std::collections::BTreeMap;
+use std::cmp::Reverse;
+use std::collections::{BinaryHeap, HashMap};
 
 use indexmap::{IndexMap, IndexSet};
 use reearth_flow_types::{AttributeValue, Feature};
@@ -24,6 +25,167 @@ pub struct MetadataOptions<'a> {
     pub schema_key: Option<&'a str>,
     pub skip_unexposed_attributes: bool,
     pub array_map_separator: Option<&'a str>,
+    /// Column order shared by every table built with these options. When
+    /// `None`, each table infers the order from its own features.
+    pub column_order: Option<&'a ColumnOrder>,
+}
+
+/// A total order over attribute paths, inferred from the order in which they
+/// appear in individual features.
+///
+/// Each feature's consecutive paths `a, b` are an edge `a -> b`, stamped with
+/// the order it was first seen in. The graph is flattened topologically, taking
+/// the earliest-seen path first wherever it leaves a choice. When no path is
+/// free because of a cycle, the cycle's latest-seen edge is dropped, so the
+/// earlier feature wins a conflict. So
+/// `{1,7}` then `{4,7}` yields `1,4,7`, never `1,7,4`; and `{1,3}` then `{2}`
+/// yields `1,3,2`, since no feature relates them.
+#[derive(Debug, Default, Clone)]
+pub struct ColumnOrder {
+    rank: HashMap<String, usize>,
+}
+
+impl ColumnOrder {
+    /// Infers the order from key sequences, one per feature, in feature order.
+    pub fn infer<I, S>(sequences: I) -> Self
+    where
+        I: IntoIterator,
+        I::Item: IntoIterator<Item = S>,
+        S: AsRef<str>,
+    {
+        let mut graph = OrderGraph::default();
+        for sequence in sequences {
+            graph.add_sequence(sequence);
+        }
+        graph.flatten()
+    }
+
+    /// Infers the order from the paths `features` would flatten to, without
+    /// copying any attribute value.
+    pub fn of_features(features: &[&Feature], options: MetadataOptions) -> Self {
+        Self::infer(features.iter().map(|feature| {
+            let mut paths = Vec::new();
+            walk_leaves(feature, options, &mut |path, _| paths.push(path));
+            paths
+        }))
+    }
+
+    /// Position of `path`; paths the order has not seen go last.
+    pub fn rank(&self, path: &str) -> usize {
+        self.rank.get(path).copied().unwrap_or(usize::MAX)
+    }
+}
+
+#[derive(Default)]
+struct OrderGraph {
+    /// Index = first-seen rank.
+    ids: IndexSet<String>,
+    /// Distinct edges; the index is the order each was first seen in.
+    edges: IndexSet<(usize, usize)>,
+    /// Sequence number each id was last seen in, to skip repeats within one.
+    stamp: Vec<usize>,
+    sequences: usize,
+}
+
+impl OrderGraph {
+    fn add_sequence<S: AsRef<str>>(&mut self, sequence: impl IntoIterator<Item = S>) {
+        self.sequences += 1;
+        let mut previous = None;
+        for path in sequence {
+            let id = match self.ids.get_index_of(path.as_ref()) {
+                Some(id) => id,
+                None => {
+                    self.ids.insert(path.as_ref().to_string());
+                    self.stamp.push(0);
+                    self.ids.len() - 1
+                }
+            };
+            if self.stamp[id] == self.sequences {
+                continue;
+            }
+            self.stamp[id] = self.sequences;
+            if let Some(previous) = previous {
+                // A repeat keeps its first-seen position.
+                self.edges.insert((previous, id));
+            }
+            previous = Some(id);
+        }
+    }
+
+    /// Kahn's algorithm, always taking the earliest-seen ready path. If a cycle
+    /// leaves none ready, its latest-seen edge is dropped and the sort goes on.
+    fn flatten(self) -> ColumnOrder {
+        let n = self.ids.len();
+        let edges = self.edges;
+        let mut outgoing = vec![Vec::new(); n];
+        let mut incoming = vec![Vec::new(); n];
+        for (edge, &(from, to)) in edges.iter().enumerate() {
+            outgoing[from].push(edge);
+            incoming[to].push(edge);
+        }
+        let mut live = vec![true; edges.len()];
+        let mut done = vec![false; n];
+        let mut indegree: Vec<usize> = incoming.iter().map(Vec::len).collect();
+        let mut ready: BinaryHeap<Reverse<usize>> = (0..n)
+            .filter(|&id| indegree[id] == 0)
+            .map(Reverse)
+            .collect();
+        let mut rank = HashMap::with_capacity(n);
+        while rank.len() < n {
+            let Some(Reverse(id)) = ready.pop() else {
+                // Every unfinished path still has an unfinished predecessor, so
+                // there is a cycle among them.
+                let start = done.iter().position(|&d| !d).expect("a path is left");
+                let victim = latest_edge_on_cycle(start, &edges, &incoming, &live, &done);
+                live[victim] = false;
+                let to = edges[victim].1;
+                indegree[to] -= 1;
+                if indegree[to] == 0 {
+                    ready.push(Reverse(to));
+                }
+                continue;
+            };
+            done[id] = true;
+            rank.insert(self.ids[id].clone(), rank.len());
+            for &edge in &outgoing[id] {
+                if !live[edge] {
+                    continue;
+                }
+                let next = edges[edge].1;
+                indegree[next] -= 1;
+                if indegree[next] == 0 {
+                    ready.push(Reverse(next));
+                }
+            }
+        }
+        ColumnOrder { rank }
+    }
+}
+
+/// Walks live edges backwards from `start` through unfinished paths until a
+/// path repeats, and returns the latest-seen edge of the cycle that closes.
+fn latest_edge_on_cycle(
+    start: usize,
+    edges: &IndexSet<(usize, usize)>,
+    incoming: &[Vec<usize>],
+    live: &[bool],
+    done: &[bool],
+) -> usize {
+    let mut walked: HashMap<usize, usize> = HashMap::new();
+    let mut path: Vec<usize> = Vec::new();
+    let mut node = start;
+    loop {
+        if let Some(&at) = walked.get(&node) {
+            return *path[at..].iter().max().expect("a cycle has edges");
+        }
+        walked.insert(node, path.len());
+        let edge = *incoming[node]
+            .iter()
+            .find(|&&edge| live[edge] && !done[edges[edge].0])
+            .expect("an unfinished path has an unfinished predecessor");
+        path.push(edge);
+        node = edges[edge].0;
+    }
 }
 
 // Decided per column from the values actually present (no schema here); `Bool` counts as numeric.
@@ -84,13 +246,23 @@ pub struct PropertyTable {
 }
 
 pub fn build_table(features: &[&Feature], options: MetadataOptions) -> PropertyTable {
-    let flattened: Vec<BTreeMap<String, AttributeValue>> = features
+    let flattened: Vec<IndexMap<String, AttributeValue>> = features
         .iter()
         .map(|feature| flatten_attributes(feature, options))
         .collect();
 
     // Property table keys are the raw attribute path, unsanitized.
-    let properties: Vec<(String, String, ColumnKind)> = column_kinds(&flattened)
+    let inferred;
+    let order = match options.column_order {
+        Some(order) => order,
+        None => {
+            inferred = ColumnOrder::infer(flattened.iter().map(|f| f.keys()));
+            &inferred
+        }
+    };
+    let mut kinds: Vec<(String, ColumnKind)> = column_kinds(&flattened).into_iter().collect();
+    kinds.sort_by_key(|(raw, _)| order.rank(raw));
+    let properties: Vec<(String, String, ColumnKind)> = kinds
         .into_iter()
         .map(|(raw, kind)| (raw.clone(), raw, kind))
         .collect();
@@ -137,7 +309,7 @@ fn value_kind(value: &AttributeValue) -> Option<ColumnKind> {
 
 /// Flattened features -> column name to column kind. A column holding only
 /// `Null` is kept, as a string column of no-data.
-fn column_kinds(flattened: &[BTreeMap<String, AttributeValue>]) -> IndexMap<String, ColumnKind> {
+fn column_kinds(flattened: &[IndexMap<String, AttributeValue>]) -> IndexMap<String, ColumnKind> {
     let mut kinds: IndexMap<String, Option<ColumnKind>> = IndexMap::new();
     for flattened in flattened {
         for (path, value) in flattened {
@@ -529,50 +701,64 @@ struct MetadataPropertyTableProperty {
     string_offsets: Option<usize>,
 }
 
+/// Flattens a feature's attributes in attribute order. The column order is
+/// inferred from these orders across features (see [`ColumnOrder`]).
 pub fn flatten_attributes(
     feature: &Feature,
     options: MetadataOptions,
-) -> BTreeMap<String, AttributeValue> {
-    let mut out = BTreeMap::new();
+) -> IndexMap<String, AttributeValue> {
+    let mut out = IndexMap::new();
+    walk_leaves(feature, options, &mut |path, leaf| {
+        insert_leaf(path, leaf, &mut out)
+    });
+    out
+}
+
+/// Calls `visit` with the path and value of every exposed leaf, in attribute
+/// order.
+fn walk_leaves(
+    feature: &Feature,
+    options: MetadataOptions,
+    visit: &mut impl FnMut(String, &AttributeValue),
+) {
     for (key, value) in feature.attributes.iter() {
         let key = key.inner();
         if is_excluded(&key, options) {
             continue;
         }
         match options.array_map_separator {
-            Some(sep) => flatten(key, value, sep, &mut out),
+            Some(sep) => flatten(key, value, sep, visit),
             None => {
                 if !matches!(value, AttributeValue::Map(_) | AttributeValue::Array(_)) {
-                    insert_leaf(key, value, &mut out);
+                    visit(key, value);
                 }
             }
         }
     }
-    out
 }
 
 fn flatten(
     path: String,
     value: &AttributeValue,
     sep: &str,
-    out: &mut BTreeMap<String, AttributeValue>,
+    visit: &mut impl FnMut(String, &AttributeValue),
 ) {
     match value {
         AttributeValue::Map(map) => {
             for (key, child) in map {
-                flatten(format!("{path}{sep}{key}"), child, sep, out);
+                flatten(format!("{path}{sep}{key}"), child, sep, visit);
             }
         }
         AttributeValue::Array(items) => {
             for (i, child) in items.iter().enumerate() {
-                flatten(format!("{path}{sep}{i}"), child, sep, out);
+                flatten(format!("{path}{sep}{i}"), child, sep, visit);
             }
         }
-        leaf => insert_leaf(path, leaf, out),
+        leaf => visit(path, leaf),
     }
 }
 
-fn insert_leaf(path: String, leaf: &AttributeValue, out: &mut BTreeMap<String, AttributeValue>) {
+fn insert_leaf(path: String, leaf: &AttributeValue, out: &mut IndexMap<String, AttributeValue>) {
     if out.insert(path.clone(), leaf.clone()).is_some() {
         tracing::warn!("Cesium3DTilesWriter: attribute path {path:?} collided; overwriting");
     }
@@ -642,7 +828,93 @@ mod tests {
         };
         let table = build_table(&[&feature], options);
 
-        assert_eq!(raw_paths(&table), vec!["addr.city", "heights.0", "name"]);
+        assert_eq!(raw_paths(&table), vec!["name", "addr.city", "heights.0"]);
+    }
+
+    #[test]
+    fn columns_keep_first_seen_order_across_features() {
+        let feature = |keys: &[&str]| {
+            let attrs: IndexMap<String, AttributeValue> = keys
+                .iter()
+                .map(|k| (k.to_string(), AttributeValue::String("v".to_string())))
+                .collect();
+            Feature::from(attrs)
+        };
+        let (f1, f2) = (feature(&["z", "a"]), feature(&["a", "m"]));
+        let table = build_table(&[&f1, &f2], MetadataOptions::default());
+
+        assert_eq!(raw_paths(&table), vec!["z", "a", "m"]);
+    }
+
+    fn inferred(sequences: &[&[&str]]) -> Vec<String> {
+        let order = ColumnOrder::infer(sequences.iter().map(|s| s.iter().copied()));
+        let mut paths: Vec<_> = order.rank.into_iter().collect();
+        paths.sort_by_key(|(_, rank)| *rank);
+        paths.into_iter().map(|(path, _)| path).collect()
+    }
+
+    #[test]
+    fn order_puts_a_shared_key_after_everything_that_precedes_it() {
+        assert_eq!(
+            inferred(&[&["1", "7"], &["4", "5", "7"]]),
+            ["1", "4", "5", "7"]
+        );
+    }
+
+    #[test]
+    fn order_keeps_the_first_feature_when_features_conflict() {
+        assert_eq!(inferred(&[&["a", "b"], &["b", "a"]]), ["a", "b"]);
+        assert_eq!(
+            inferred(&[&["1", "4", "7"], &["7", "5", "1"]]),
+            ["1", "4", "7", "5"]
+        );
+    }
+
+    #[test]
+    fn order_breaks_a_cycle_across_features_at_its_latest_edge() {
+        assert_eq!(
+            inferred(&[&["a", "b"], &["b", "c"], &["c", "a"]]),
+            ["a", "b", "c"]
+        );
+        // two overlapping cycles, each broken at its own latest edge
+        assert_eq!(
+            inferred(&[&["a", "b", "c"], &["c", "b"], &["c", "a"]]),
+            ["a", "b", "c"]
+        );
+    }
+
+    #[test]
+    fn order_breaks_ties_by_first_seen() {
+        assert_eq!(inferred(&[&["1", "3"], &["2"]]), ["1", "3", "2"]);
+        assert_eq!(inferred(&[&["z", "a"], &["a", "m"]]), ["z", "a", "m"]);
+    }
+
+    #[test]
+    fn order_ignores_a_key_repeated_within_a_sequence() {
+        assert_eq!(inferred(&[&["a", "b", "a", "c"]]), ["a", "b", "c"]);
+    }
+
+    #[test]
+    fn a_shared_order_overrides_the_tables_own() {
+        let feature = |keys: &[&str]| {
+            let attrs: IndexMap<String, AttributeValue> = keys
+                .iter()
+                .map(|k| (k.to_string(), AttributeValue::String("v".to_string())))
+                .collect();
+            Feature::from(attrs)
+        };
+        let (f1, f2) = (feature(&["1", "7"]), feature(&["4", "7"]));
+        let order = ColumnOrder::of_features(&[&f1, &f2], MetadataOptions::default());
+
+        // On its own this table would be `7, 1, 4`.
+        let (g1, g2) = (feature(&["7", "1"]), feature(&["7", "4"]));
+        let options = MetadataOptions {
+            column_order: Some(&order),
+            ..Default::default()
+        };
+        let table = build_table(&[&g1, &g2], options);
+
+        assert_eq!(raw_paths(&table), vec!["1", "4", "7"]);
     }
 
     fn number(n: f64) -> AttributeValue {
@@ -655,28 +927,28 @@ mod tests {
 
     #[test]
     fn column_kind_picks_narrowest_matching_type() {
-        let all_nonneg_ints = [BTreeMap::from([("k".to_string(), int_number(3))])];
+        let all_nonneg_ints = [IndexMap::from([("k".to_string(), int_number(3))])];
         assert_eq!(column_kinds(&all_nonneg_ints)["k"], ColumnKind::Int);
 
-        let has_negative = [BTreeMap::from([("k".to_string(), int_number(-3))])];
+        let has_negative = [IndexMap::from([("k".to_string(), int_number(-3))])];
         assert_eq!(column_kinds(&has_negative)["k"], ColumnKind::Int);
 
-        let is_f64_typed_even_though_whole = [BTreeMap::from([("k".to_string(), number(3.0))])];
+        let is_f64_typed_even_though_whole = [IndexMap::from([("k".to_string(), number(3.0))])];
         assert_eq!(
             column_kinds(&is_f64_typed_even_though_whole)["k"],
             ColumnKind::Float64
         );
 
-        let has_fraction = [BTreeMap::from([("k".to_string(), number(1.5))])];
+        let has_fraction = [IndexMap::from([("k".to_string(), number(1.5))])];
         assert_eq!(column_kinds(&has_fraction)["k"], ColumnKind::Float64);
 
-        let bool_only = [BTreeMap::from([(
+        let bool_only = [IndexMap::from([(
             "k".to_string(),
             AttributeValue::Bool(true),
         )])];
         assert_eq!(column_kinds(&bool_only)["k"], ColumnKind::Int);
 
-        let has_string = [BTreeMap::from([
+        let has_string = [IndexMap::from([
             ("k".to_string(), int_number(1)),
             ("k2".to_string(), AttributeValue::String("s".to_string())),
         ])];
@@ -686,12 +958,12 @@ mod tests {
     #[test]
     fn null_leaves_the_column_kind_to_the_other_values() {
         let int_and_null = [
-            BTreeMap::from([("k".to_string(), int_number(1))]),
-            BTreeMap::from([("k".to_string(), AttributeValue::Null)]),
+            IndexMap::from([("k".to_string(), int_number(1))]),
+            IndexMap::from([("k".to_string(), AttributeValue::Null)]),
         ];
         assert_eq!(column_kinds(&int_and_null)["k"], ColumnKind::Int);
 
-        let null_only = [BTreeMap::from([("k".to_string(), AttributeValue::Null)])];
+        let null_only = [IndexMap::from([("k".to_string(), AttributeValue::Null)])];
         assert_eq!(column_kinds(&null_only)["k"], ColumnKind::String);
     }
 
