@@ -1,68 +1,34 @@
-import { memo, useCallback, useMemo } from "react";
+import { CircleNotchIcon } from "@phosphor-icons/react";
+import { memo } from "react";
 
 import BasicBoiler from "@flow/components/BasicBoiler";
-import { VirtualizedTable } from "@flow/components/visualizations/VirtualizedTable";
-import type useDataColumnizer from "@flow/hooks/useDataColumnizer";
+import type { FeatureRows, FeatureTableRow } from "@flow/lib/featureRows";
 import { useLang, useT } from "@flow/lib/i18n";
 
+import FeatureRowsTable from "./FeatureRowsTable";
+
 type Props = {
-  fileContent: any | null;
-  selectedFeatureId: string | null;
-  onSingleClick?: (feature: any) => void;
-  onDoubleClick?: (feature: any) => void;
-  detectedGeometryType: string | null;
-  totalFeatures: number;
-  formattedData: ReturnType<typeof useDataColumnizer>;
+  rows: FeatureRows;
+  selectedRow: number | null;
+  onSingleClick?: (row: FeatureTableRow) => void;
+  onDoubleClick?: (row: FeatureTableRow) => void;
 };
 
 const TableViewer: React.FC<Props> = memo(
-  ({
-    fileContent,
-    selectedFeatureId,
-    onSingleClick,
-    onDoubleClick,
-    detectedGeometryType,
-    totalFeatures,
-    formattedData,
-  }) => {
+  ({ rows, selectedRow, onSingleClick, onDoubleClick }) => {
     const t = useT();
     // Counts are grouped for the UI language, not the browser's: `1.234` and
     // `1,234` are different numbers depending on where you read them.
     const lang = useLang();
-    // Handle row single click - select feature and show details
-    const handleRowSingleClick = useCallback(
-      (feature: any) => {
-        onSingleClick?.(feature);
-      },
-      [onSingleClick],
-    );
-    // Handle row double click
-    const handleRowDoubleClick = useCallback(
-      (feature: any) => {
-        onDoubleClick?.(feature);
-      },
-      [onDoubleClick],
-    );
+    const { status } = rows;
 
-    const selectedRowIndex = useMemo(() => {
-      if (!selectedFeatureId || !formattedData.tableData) return -1;
-      const normalizedSelectedId = String(selectedFeatureId).replace(
-        /[^a-zA-Z0-9]/g,
-        "",
-      );
-      return formattedData.tableData.findIndex(
-        (row: any) =>
-          String(row.id || "").replace(/[^a-zA-Z0-9]/g, "") ===
-          normalizedSelectedId,
-      );
-    }, [selectedFeatureId, formattedData.tableData]);
-
-    // Loading state
-    if (!fileContent || !formattedData.tableData) {
+    if (status?.error && status.rowCount === 0) {
+      return <BasicBoiler text={status.error} className="h-full" />;
+    }
+    if (!status || (!status.done && status.rowCount === 0)) {
       return <BasicBoiler text={t("Loading data...")} className="h-full" />;
     }
-    // No data state
-    if (!formattedData.tableData || formattedData.tableData.length === 0) {
+    if (status.rowCount === 0) {
       return (
         <BasicBoiler
           text={t("No data to display in table format")}
@@ -71,41 +37,35 @@ const TableViewer: React.FC<Props> = memo(
       );
     }
 
+    const busy = !status.done || status.searching;
+
     return (
       <div className="relative flex h-full flex-col">
         <div className="flex h-full flex-1 flex-col">
-          {/* Table */}
           <div className="flex-1 overflow-hidden">
-            <VirtualizedTable
-              columns={formattedData.tableColumns}
-              data={formattedData.tableData}
-              selectColumns={true}
-              showFiltering={true}
-              condensed={true}
-              selectedRowIndex={selectedRowIndex}
-              onRowClick={handleRowSingleClick}
-              onRowDoubleClick={handleRowDoubleClick}
+            <FeatureRowsTable
+              rows={rows}
+              selectedRow={selectedRow}
+              onRowClick={onSingleClick}
+              onRowDoubleClick={onDoubleClick}
             />
           </div>
 
-          {/* Status Display */}
           <div className="mt-1 flex items-center justify-between rounded-md px-2 text-xs text-muted-foreground">
             <div className="flex items-center gap-4">
-              <span>
-                {t("Rows")}:{" "}
-                {(formattedData.tableData || []).length.toLocaleString(lang)}
-                {totalFeatures !== undefined &&
-                  totalFeatures > 0 &&
-                  ` / ${totalFeatures.toLocaleString(lang)} ${t("total")}`}
+              <span className="flex items-center gap-1">
+                {t("Rows")}: {status.viewCount.toLocaleString(lang)}
+                {` / ${status.totalRows.toLocaleString(lang)} ${t("total")}`}
+                {busy && <CircleNotchIcon className="size-3 animate-spin" />}
               </span>
-              {detectedGeometryType && (
+              {status.geometryType && (
                 <span className="rounded px-2 text-xs">
-                  {detectedGeometryType}
+                  {status.geometryType}
                 </span>
               )}
               <span>
                 {t("Columns")}:{" "}
-                {(formattedData.tableColumns || []).length.toLocaleString(lang)}
+                {(status.columns.length + 1).toLocaleString(lang)}
               </span>
             </div>
           </div>

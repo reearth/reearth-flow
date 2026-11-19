@@ -54,8 +54,8 @@ const DebugPanel: React.FC = () => {
     dataURLs,
     outputDataForDownload,
     archiveName,
-    selectedOutputData,
-    selectedFeatureId,
+    rows,
+    selectedRow,
     selectedFeature,
     canOpenIn3D,
     modelViewRequest,
@@ -70,7 +70,6 @@ const DebugPanel: React.FC = () => {
     handlePickRow,
     pickedUnloadedRow,
     loadedRowCount,
-    formattedData,
     handleFullscreenExpand,
     handleFullscreenExit,
     handleExpand,
@@ -80,8 +79,6 @@ const DebugPanel: React.FC = () => {
     handleRemoveDataURL,
     handleRowSingleClick,
     handleRowDoubleClick,
-    detectedGeometryType,
-    totalFeatures,
   } = useHooks();
   const t = useT();
   const [tabValue, setTabValue] = useState("debug-logs");
@@ -99,6 +96,18 @@ const DebugPanel: React.FC = () => {
     },
     [mapControls],
   );
+  const flyOnLoadRow = useRef<number | null>(null);
+  useEffect(() => {
+    if (
+      selectedFeature &&
+      flyOnLoadRow.current !== null &&
+      flyOnLoadRow.current === selectedFeature._row
+    ) {
+      flyOnLoadRow.current = null;
+      flyToRow(selectedFeature);
+    }
+  }, [selectedFeature, flyToRow]);
+
   const showingRowOverMap = rowOverMap && !!selectedFeature;
   // Once nothing is selected, the next row starts on the map again.
   const [hadSelection, setHadSelection] = useState(!!selectedFeature);
@@ -318,16 +327,13 @@ const DebugPanel: React.FC = () => {
                   </div>
                   <div className="min-h-0 flex-1">
                     <TableViewer
-                      fileContent={selectedOutputData}
-                      selectedFeatureId={selectedFeatureId}
+                      rows={rows}
+                      selectedRow={selectedRow}
                       onSingleClick={handleRowSingleClick}
-                      onDoubleClick={(row: any) => {
+                      onDoubleClick={(row) => {
                         handleRowDoubleClick(row);
-                        if (mapViewRequest) flyToRow(row);
+                        flyOnLoadRow.current = mapViewRequest ? row._row : null;
                       }}
-                      detectedGeometryType={detectedGeometryType || undefined}
-                      totalFeatures={totalFeatures || undefined}
-                      formattedData={formattedData}
                     />
                   </div>
                 </ResizablePanel>

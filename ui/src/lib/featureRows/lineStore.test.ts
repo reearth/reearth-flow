@@ -1,0 +1,141 @@
+import { describe, expect, test } from "vitest";
+
+import { LineStore, RowFilter } from "./lineStore";
+
+const encoder = new TextEncoder();
+
+const line = (id: string, attributes: Record<string, unknown> = {}) =>
+  JSON.stringify({ id, attributes, geometry: "None" });
+
+function storeOf(text: string, pieces = 1, options = {}) {
+  const store = new LineStore(options);
+  const bytes = encoder.encode(text);
+  const size = Math.ceil(bytes.length / pieces);
+  for (let offset = 0; offset < bytes.length; offset += size) {
+    store.append(bytes.subarray(offset, offset + size));
+  }
+  store.finish();
+  return store;
+}
+
+const ids = (store: LineStore) =>
+  Array.from({ length: store.rowCount }, (_, row) => store.parseRow(row)?.id);
+
+describe("LineStore", () => {
+  test("indexes every line, wherever the chunks split them", () => {
+    const text = ["a", "b", "c", "d"].map((id) => line(id)).join("\n");
+    for (const pieces of [1, 3, 7, text.length]) {
+      expect(ids(storeOf(text, pieces))).toEqual(["a", "b", "c", "d"]);
+    }
+  });
+
+  test("keeps a multi-byte character split across chunks intact", () => {
+    const text = line("渋谷", { name: "新宿駅" }) + "\n";
+    const store = storeOf(text, text.length);
+    expect(store.parseRow(0)).toMatchObject({
+      id: "渋谷",
+      attributes: { name: "新宿駅" },
+    });
+  });
+
+  test("handles CRLF, blank lines, a missing final newline and bad lines", () => {
+    const text = `${line("a")}\r\n\r\n   \n{not json\n${line("b")}`;
+    const store = storeOf(text, 5);
+    expect(ids(store)).toEqual(["a", "b"]);
+    expect(store.skippedLines).toBe(1);
+    expect(store.totalRows).toBe(2);
+  });
+
+  test("columns are the union of attribute names, in first-seen order", () => {
+    const store = storeOf(
+      [line("a", { x: 1 }), line("b", { y: 2, x: 3 }), line("c")].join("\n"),
+    );
+    expect(store.columns).toEqual(["x", "y"]);
+  });
+
+  test("rolls lines into new chunks without losing any", () => {
+    const text = Array.from({ length: 50 }, (_, i) => line(`row-${i}`)).join(
+      "\n",
+    );
+    const store = storeOf(text, 13, { chunkBytes: 64 });
+    expect(ids(store)).toEqual(
+      Array.from({ length: 50 }, (_, i) => `row-${i}`),
+    );
+  });
+
+  test("keeps a line longer than a chunk", () => {
+    const long = line("long", { text: "x".repeat(500) });
+    const store = storeOf(`${line("a")}\n${long}\n${line("b")}`, 9, {
+      chunkBytes: 32,
+    });
+    expect(ids(store)).toEqual(["a", "long", "b"]);
+  });
+
+  test("past the budget, stops keeping rows but still counts them", () => {
+    const text = Array.from({ length: 100 }, (_, i) => line(`row-${i}`)).join(
+      "\n",
+    );
+    const store = storeOf(text, 20, { chunkBytes: 256, byteBudget: 1024 });
+    expect(store.truncated).toBe(true);
+    expect(store.rowCount).toBeGreaterThan(0);
+    expect(store.rowCount).toBeLessThan(100);
+    expect(store.totalRows).toBe(100);
+    expect(ids(store)).toEqual(
+      Array.from({ length: store.rowCount }, (_, i) => `row-${i}`),
+    );
+  });
+
+  test("keeps the parsed sample for geometry detection", () => {
+    const text = Array.from({ length: 20 }, (_, i) => line(`${i}`)).join("\n");
+    expect(storeOf(text).sample).toHaveLength(10);
+  });
+});
+
+describe("RowFilter", () => {
+  const store = storeOf(
+    [
+      JSON.stringify({ id: "a", attributes: { city: "Tokyo" } }),
+      JSON.stringify({
+        id: "b",
+        attributes: { city: "Osaka" },
+        geometry: { note: "tokyo only in geometry" },
+      }),
+      JSON.stringify({ id: "tokyo-3", attributes: { city: "Nagoya" } }),
+      JSON.stringify({ id: "d", attributes: { tags: ["TOKYO", "x"] } }),
+    ].join("\n"),
+  );
+
+  const matchesOf = (term: string) => {
+    const filter = new RowFilter(term);
+    filter.advance(store, () => false);
+    return Array.from(filter.matches.subarray(0, filter.count));
+  };
+
+  test("matches ids and attribute values, case-insensitively", () => {
+    expect(matchesOf("tokyo")).toEqual([0, 2, 3]);
+  });
+
+  test("never matches on geometry alone", () => {
+    expect(matchesOf("geometry")).toEqual([]);
+  });
+
+  test("resumes where it yielded, and maps rows back to view positions", () => {
+    const filter = new RowFilter("tokyo");
+    while (!filter.caughtUp(store)) filter.advance(store, () => true);
+    expect(filter.count).toBe(3);
+    expect(filter.rowAt(1)).toBe(2);
+    expect(filter.indexOf(3)).toBe(2);
+    expect(filter.indexOf(1)).toBe(-1);
+  });
+
+  test("filters rows that arrive after it started", () => {
+    const growing = new LineStore();
+    growing.append(encoder.encode(line("a", { v: "hit" }) + "\n"));
+    const filter = new RowFilter("hit");
+    filter.advance(growing, () => false);
+    growing.append(encoder.encode(line("b", { v: "hit" }) + "\n"));
+    growing.finish();
+    filter.advance(growing, () => false);
+    expect(filter.count).toBe(2);
+  });
+});
