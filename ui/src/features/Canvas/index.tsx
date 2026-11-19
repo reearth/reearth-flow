@@ -67,6 +67,10 @@ type Props = {
     node?: Node,
     nodes?: Node[],
   ) => Promise<void>;
+  onDebugRunStartToSelectedNode?: (
+    node?: Node,
+    nodes?: Node[],
+  ) => Promise<void>;
   onConnectStart?: OnConnectStart;
   onConnectEnd?: () => void;
   onPointerDown?: (e: MouseEvent) => void;
@@ -96,6 +100,7 @@ const Canvas: React.FC<Props> = ({
   onNodesDisable,
   onPaneClick,
   onDebugRunStartFromSelectedNode,
+  onDebugRunStartToSelectedNode,
   onConnectStart,
   onConnectEnd,
   onPointerDown,
@@ -219,6 +224,7 @@ const Canvas: React.FC<Props> = ({
           onClose={handleCloseContextmenu}
           onNodesDisable={onNodesDisable}
           onDebugRunStartFromSelectedNode={onDebugRunStartFromSelectedNode}
+          onDebugRunStartToSelectedNode={onDebugRunStartToSelectedNode}
         />
       )}
     </ReactFlow>

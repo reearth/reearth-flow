@@ -191,10 +191,9 @@ export const useQueries = () => {
       const data = await graphQLContext?.SaveSnapshot({
         projectId,
       });
-
-      if (data?.saveSnapshot) {
-        return data.saveSnapshot;
-      }
+      // false means there was nothing new to save, which is not a missing
+      // response, so it must survive as false.
+      return data?.saveSnapshot;
     },
     onSuccess: (_data, { projectId }) => {
       // Saving can create a version; an open version dialog must show it.
