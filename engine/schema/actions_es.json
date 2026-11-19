@@ -9988,7 +9988,7 @@
         "properties": {
           "groupBy": {
             "title": "Atributos de agrupación",
-            "description": "Atributos cuyos valores deciden qué entidades se fusionan juntas; las entidades que coinciden en todos ellos forman un grupo. Si se omiten, todas las entidades pertenecen a un único grupo.",
+            "description": "Atributos cuyos valores deciden qué entidades se fusionan juntas; las entidades que coinciden en todos ellos forman un grupo. Si se omiten, todas las entidades pertenecen a un único grupo. No puede incluir `__members` cuando se recopilan atributos, ya que ese atributo contiene los valores recopilados.",
             "default": null,
             "type": [
               "array",

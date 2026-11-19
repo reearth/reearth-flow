@@ -126,7 +126,8 @@ impl ProcessorFactory for MeshMergerFactory {
 pub struct MeshMergerParam {
     /// # Group By Attributes
     /// Attributes whose values decide which features merge together; features matching on all of
-    /// them form one group. When omitted, every feature belongs to a single group.
+    /// them form one group. When omitted, every feature belongs to a single group. Cannot include
+    /// `__members` when attributes are collected, since that attribute holds the collected values.
     #[serde(default)]
     group_by: Option<Vec<Attribute>>,
     /// # Attribute Accumulation
@@ -848,6 +849,41 @@ mod tests {
         );
         assert_eq!(merged.len(), 1);
         assert_eq!(rejected.len(), 1);
+    }
+
+    #[test]
+    fn a_non_finite_coordinate_is_rejected_before_spilling() {
+        let bad = triangle(
+            CoordinateFrame::Euclidean,
+            [[0., 0., 0.], [1., 0., f64::NAN], [0., 1., 0.]],
+            &[],
+        );
+        let mut merger = merger(&[], AttributeAccumulation::UseOneFeature);
+        merger.granularity = Granularity::EdgeConnectedPart;
+        let (merged, rejected) = run(merger, vec![bad.clone(), lower(&[])]);
+        assert_eq!(merged.len(), 1);
+        assert_eq!(rejected.len(), 1);
+        assert_eq!(rejected[0].id, bad.id);
+    }
+
+    #[test]
+    fn coordinates_survive_the_spill_exactly() {
+        let x = 0.9999999999999999;
+        let feature = triangle(
+            CoordinateFrame::Euclidean,
+            [[x, 0., 0.], [2., 0., 0.], [0., 1., 0.]],
+            &[],
+        );
+        let (merged, _) = run(
+            merger(&[], AttributeAccumulation::UseOneFeature),
+            vec![feature],
+        );
+        let Geometry::Euclidean3D(Euclidean3DGeometry::PolygonMesh(mesh)) =
+            merged[0].geometry.as_ref()
+        else {
+            panic!("expected a polygon mesh, got {:?}", merged[0].geometry);
+        };
+        assert_eq!(mesh.vertices()[0][0].to_bits(), x.to_bits());
     }
 
     #[test]

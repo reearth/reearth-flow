@@ -214,6 +214,7 @@ schemars = { version = "0.8.22", features = [
 serde = { version = "1.0.228", features = ["derive", "rc"] }
 serde_json = { version = "1.0.149", features = [
   "arbitrary_precision",
+  "float_roundtrip",
   "preserve_order",
 ] }
 serde_yaml = "0.9.34"

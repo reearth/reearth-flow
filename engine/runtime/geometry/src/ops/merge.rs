@@ -21,23 +21,43 @@ use crate::{Euclidean2DGeometry, Euclidean3DGeometry, Geometry};
 
 /// Whether [`merge`] takes at least one face from `geometry` on its own:
 /// polygons, polygon meshes and triangular meshes, possibly in collections, all
-/// in one dimension and one coordinate frame, and in 2D at one elevation.
+/// in one dimension and one coordinate frame, in 2D at one elevation, and with
+/// finite coordinates.
 pub fn is_mergeable(geometry: &Geometry) -> bool {
     let mut leaves = Leaves::default();
     if collect(geometry, &mut leaves).is_err() || check_leaves(&leaves).is_err() {
         return false;
     }
-    leaves.d2.iter().any(|leaf| match leaf {
-        Euclidean2DGeometry::Polygon(p) => !p.exterior().is_empty(),
-        Euclidean2DGeometry::PolygonMesh(m) => m.csr_buffers().0.len() > 0,
-        Euclidean2DGeometry::TriangularMesh(m) => m.triangles().next().is_some(),
+    let finite = |coords: &[[f64; 2]]| coords.iter().flatten().all(|v| v.is_finite());
+    let finite_3d = |coords: &[[f64; 3]]| coords.iter().flatten().all(|v| v.is_finite());
+    let all_finite = leaves.d2.iter().all(|leaf| {
+        frame_2d(leaf).1.is_none_or(f64::is_finite)
+            && match leaf {
+                Euclidean2DGeometry::Polygon(p) => {
+                    finite(p.exterior()) && p.interiors().all(finite)
+                }
+                Euclidean2DGeometry::PolygonMesh(m) => finite(m.vertices()),
+                Euclidean2DGeometry::TriangularMesh(m) => finite(m.vertices()),
+                _ => false,
+            }
+    }) && leaves.d3.iter().all(|leaf| match leaf {
+        Euclidean3DGeometry::Polygon(p) => finite_3d(p.exterior()) && p.interiors().all(finite_3d),
+        Euclidean3DGeometry::PolygonMesh(m) => finite_3d(m.vertices()),
+        Euclidean3DGeometry::TriangularMesh(m) => finite_3d(m.vertices()),
         _ => false,
-    }) || leaves.d3.iter().any(|leaf| match leaf {
-        Euclidean3DGeometry::Polygon(p) => !p.exterior().is_empty(),
-        Euclidean3DGeometry::PolygonMesh(m) => m.data().csr_buffers().0.len() > 0,
-        Euclidean3DGeometry::TriangularMesh(m) => m.triangles().next().is_some(),
-        _ => false,
-    })
+    });
+    all_finite
+        && (leaves.d2.iter().any(|leaf| match leaf {
+            Euclidean2DGeometry::Polygon(p) => !p.exterior().is_empty(),
+            Euclidean2DGeometry::PolygonMesh(m) => m.csr_buffers().0.len() > 0,
+            Euclidean2DGeometry::TriangularMesh(m) => m.triangles().next().is_some(),
+            _ => false,
+        }) || leaves.d3.iter().any(|leaf| match leaf {
+            Euclidean3DGeometry::Polygon(p) => !p.exterior().is_empty(),
+            Euclidean3DGeometry::PolygonMesh(m) => m.data().csr_buffers().0.len() > 0,
+            Euclidean3DGeometry::TriangularMesh(m) => m.triangles().next().is_some(),
+            _ => false,
+        }))
 }
 
 /// Merge every face of `meshes` into one mesh, also returning how many faces
@@ -607,7 +627,6 @@ impl<const N: usize> Builder<N> {
         appearance: Option<&Appearance>,
         lift: impl Fn([f64; N]) -> [f64; 3],
     ) -> Result<(), Error> {
-        self.all_triangular = false;
         let mut pushed = self.start();
         let mut source = 0usize;
         for (i, ring) in rings.enumerate() {
@@ -636,6 +655,7 @@ impl<const N: usize> Builder<N> {
         if self.face_indices.len() == pushed.corners_before {
             return Ok(());
         }
+        self.all_triangular = false;
         self.face_ends.push(self.face_indices.len() as u32);
         pushed.faces = 1;
         self.finish_input(pushed, appearance, lift)
@@ -1003,6 +1023,34 @@ mod tests {
     }
 
     #[test]
+    fn an_empty_polygon_keeps_the_output_triangular() {
+        let mesh = Euclidean3DGeometry::TriangularMesh(Box::new(
+            TriangularMesh3D::from_parts(
+                F,
+                vec![[0., 0., 0.], [1., 0., 0.], [0., 1., 0.]],
+                vec![0, 1, 2],
+            )
+            .unwrap(),
+        ));
+        let empty = Euclidean3DGeometry::Polygon(Box::new(Polygon3D::from_rings(
+            F,
+            Vec::<[f64; 3]>::new(),
+            Vec::<Vec<[f64; 3]>>::new(),
+        )));
+        let collection = g3(Euclidean3DGeometry::Collection(Collection3D::new([
+            mesh, empty,
+        ])));
+        let merged = merge_some(&[collection]).unwrap();
+        assert!(
+            matches!(
+                merged,
+                Geometry::Euclidean3D(Euclidean3DGeometry::TriangularMesh(_))
+            ),
+            "expected a triangular mesh, got {merged:?}"
+        );
+    }
+
+    #[test]
     fn a_hole_is_kept() {
         let outer = [[0., 0., 0.], [4., 0., 0.], [4., 4., 0.], [0., 4., 0.]];
         let hole = vec![[1., 1., 0.], [2., 1., 0.], [2., 2., 0.], [1., 2., 0.]];
@@ -1130,6 +1178,23 @@ mod tests {
             Collection3D::new([a, b])
         ))));
         assert!(!is_mergeable(&Geometry::None));
+    }
+
+    #[test]
+    fn a_geometry_with_a_non_finite_coordinate_is_not_mergeable() {
+        for bad in [f64::NAN, f64::INFINITY] {
+            let p = polygon(tri([[0., 0., 0.], [1., 0., bad], [0., 1., 0.]]));
+            assert!(!is_mergeable(&p));
+        }
+        let at_nan = Geometry::Euclidean2D(Euclidean2DGeometry::Polygon(Box::new(
+            Polygon2D::from_rings_at_elevation(
+                F,
+                [[0., 0.], [1., 0.], [0., 1.]],
+                Vec::<Vec<[f64; 2]>>::new(),
+                f64::NAN,
+            ),
+        )));
+        assert!(!is_mergeable(&at_nan));
     }
 
     #[test]

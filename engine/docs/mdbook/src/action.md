@@ -9735,7 +9735,7 @@ Merges the polygons and meshes of features that share the same grouping attribut
   "properties": {
     "groupBy": {
       "title": "Group By Attributes",
-      "description": "Attributes whose values decide which features merge together; features matching on all of them form one group. When omitted, every feature belongs to a single group.",
+      "description": "Attributes whose values decide which features merge together; features matching on all of them form one group. When omitted, every feature belongs to a single group. Cannot include `__members` when attributes are collected, since that attribute holds the collected values.",
       "default": null,
       "type": [
         "array",

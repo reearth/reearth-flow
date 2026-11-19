@@ -3373,7 +3373,7 @@
         },
         "groupBy": {
           "title": "Attributs de regroupement",
-          "description": "Attributs dont les valeurs déterminent quelles entités fusionnent ensemble ; les entités qui concordent sur tous forment un groupe. S'ils sont omis, toutes les entités appartiennent à un seul groupe."
+          "description": "Attributs dont les valeurs déterminent quelles entités fusionnent ensemble ; les entités qui concordent sur tous forment un groupe. S'ils sont omis, toutes les entités appartiennent à un seul groupe. Ne peut pas inclure `__members` lorsque les attributs sont collectés, car cet attribut contient les valeurs collectées."
         }
       },
       "enumI18n": {
