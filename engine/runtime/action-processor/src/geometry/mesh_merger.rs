@@ -656,7 +656,7 @@ impl MeshMerger {
                     .map(|ids| self.merge_component(group, ids))
                     .collect();
                 for (ids, result) in chunk.iter().zip(results) {
-                    let (rejected, reason) = match result {
+                    let rejected = match result {
                         Ok(merged) => {
                             for (geometry, members) in merged.parts {
                                 let attributes = self.accumulate(group, &members)?;
@@ -665,17 +665,10 @@ impl MeshMerger {
                                     &FEATURES_PORT,
                                 );
                             }
-                            (merged.faceless, "they have no faces".to_string())
+                            merged.faceless
                         }
-                        Err(e) => (ids.clone(), e.to_string()),
+                        Err(_) => ids.clone(),
                     };
-                    if rejected.is_empty() {
-                        continue;
-                    }
-                    ctx.event_hub.warn_log(
-                        None,
-                        format!("Mesh Merger rejected {} features: {reason}", rejected.len()),
-                    );
                     for id in rejected {
                         send(group.read_feature(id)?, &REJECTED_PORT);
                     }
