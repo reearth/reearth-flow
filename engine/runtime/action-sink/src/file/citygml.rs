@@ -469,15 +469,19 @@ pub fn write_citygml_documents(
             }
         }
 
-        // The source keys of the objects this document writes.
+        // The source keys of the objects this document writes, and every id
+        // its links name. Both come out of one pass: the envelope below and
+        // the link reservation further down must agree on what the document
+        // writes, so they read the same two sets rather than each building
+        // their own.
         #[cfg(feature = "new-geometry")]
-        let written_keys: HashSet<String> = {
+        let (written_keys, link_targets): (HashSet<String>, Vec<String>) = {
             let mut keys = HashSet::new();
             let mut targets = Vec::new();
             for object in &top {
                 collect_links(object, prefixes, &mut keys, &mut targets);
             }
-            keys
+            (keys, targets)
         };
 
         // Over the geometry the trees write, not each feature's own: a group's
@@ -536,12 +540,10 @@ pub fn write_citygml_documents(
             // not mean.
             #[cfg(feature = "new-geometry")]
             {
-                let mut keys = HashSet::new();
-                let mut targets = Vec::new();
-                for object in &top {
-                    collect_links(object, prefixes, &mut keys, &mut targets);
-                }
-                for target in targets.iter().filter(|target| !keys.contains(*target)) {
+                for target in link_targets
+                    .iter()
+                    .filter(|target| !written_keys.contains(*target))
+                {
                     xml_writer.reserve_link_target(target);
                 }
                 let claimed = xml_writer.claim_object_ids(&mut top);
@@ -751,13 +753,22 @@ fn for_each_property(object: &ObjectNode, f: &mut impl FnMut(usize, &XmlProperty
     }
 }
 
-/// Whether the document writes `entry`'s geometry.
+/// Whether the document writes `entry`'s owner.
 ///
 /// A member names the city object its geometry belongs to. When that object is
 /// not one this document writes, as a group's member filtered out upstream is,
 /// the geometry reaches no element, so it is left out of the envelope too.
 /// Geometry owned by something that is not a city object, such as an ADE data
 /// object, is written on the city object holding it, so it counts.
+///
+/// This answers for the owner, not for the entry. The envelope is folded
+/// before `settle_geometry` runs, and that is where an entry can still be
+/// dropped on its own: a `lod1MultiSurface` losing to a `lod1Solid` under the
+/// exclusive-shell rule, or an entry whose class declares no property for its
+/// LOD and type. Geometry dropped that way still widens the envelope. Closing
+/// that gap means folding the envelope over the settled trees, which the
+/// writer cannot do yet because `write_header` puts `gml:boundedBy` in the
+/// file before any tree is settled.
 #[cfg(feature = "new-geometry")]
 fn writes_entry(
     entry: &model::GeometryEntry,
@@ -848,6 +859,169 @@ fn fold_tree_envelope(
     }
     for nested in &object.children {
         fold_tree_envelope(&nested.object, writes, envelope);
+    }
+}
+
+/// The document envelope is folded here rather than per feature, so the
+/// extents it covers are pinned here too.
+#[cfg(all(test, feature = "new-geometry"))]
+mod envelope_tests {
+    use super::*;
+    use crate::file::citygml::classes::CityClass;
+    use crate::file::citygml::model::{
+        EntryOwner, GeometryEntry, GmlElement, GmlSolid, GmlSurface, NestedObject, ObjectNode,
+    };
+
+    fn ring(points: &[[f64; 3]]) -> GmlSurface {
+        GmlSurface {
+            id: None,
+            exterior: points.to_vec(),
+            interiors: Vec::new(),
+            material_idx: None,
+            texture_idx: None,
+            uv_exterior: Vec::new(),
+            uv_interiors: Vec::new(),
+        }
+    }
+
+    fn entry(owner_key: Option<&str>, element: GmlElement) -> GeometryEntry {
+        GeometryEntry {
+            lod: 2,
+            property: None,
+            element,
+            owner: EntryOwner {
+                key: owner_key.map(str::to_string),
+                feature_type: None,
+            },
+        }
+    }
+
+    fn object(geometries: Vec<GeometryEntry>) -> ObjectNode {
+        ObjectNode {
+            class: CityClass::generic(),
+            key: None,
+            gml_id: None,
+            geometries,
+            properties: Vec::new(),
+            children: Vec::new(),
+            source: 0,
+        }
+    }
+
+    fn folded(object: &ObjectNode) -> Option<BoundingEnvelope> {
+        let mut envelope = None;
+        fold_tree_envelope(object, &|_| true, &mut envelope);
+        envelope
+    }
+
+    /// Every emitted ordinate of a surface counts, interior rings included.
+    #[test]
+    fn the_envelope_covers_every_coordinate_of_a_multi_surface() {
+        let node = object(vec![entry(
+            None,
+            GmlElement::MultiSurface {
+                id: None,
+                surfaces: vec![
+                    ring(&[[35.0, 139.0, 0.0], [35.1, 139.1, 0.0]]),
+                    ring(&[[36.1, 140.1, 2.0]]),
+                ],
+            },
+        )]);
+
+        let envelope = folded(&node).unwrap();
+        assert_eq!(envelope.lower, [35.0, 139.0, 0.0]);
+        assert_eq!(envelope.upper, [36.1, 140.1, 2.0]);
+    }
+
+    /// A solid's void is written to the file, so its corners bound it too.
+    #[test]
+    fn a_solids_interior_shell_widens_the_envelope() {
+        let node = object(vec![entry(
+            None,
+            GmlElement::Solid(GmlSolid {
+                id: None,
+                exterior: vec![ring(&[[35.0, 139.0, 0.0]])],
+                interiors: vec![vec![ring(&[[35.1 + 0.01, 139.1 + 0.01, 0.0]])]],
+            }),
+        )]);
+
+        let envelope = folded(&node).unwrap();
+        assert_eq!(envelope.lower, [35.0, 139.0, 0.0]);
+        assert_eq!(envelope.upper, [35.1 + 0.01, 139.1 + 0.01, 0.0]);
+    }
+
+    /// Geometry nested objects carry is written under its parent, so it is
+    /// part of the same envelope.
+    #[test]
+    fn a_nested_objects_geometry_reaches_the_envelope() {
+        let mut node = object(Vec::new());
+        node.children.push(NestedObject {
+            slot: 0,
+            property: QName::new("ns", "boundedBy"),
+            object: object(vec![entry(
+                None,
+                GmlElement::MultiCurve {
+                    id: None,
+                    curves: vec![vec![[1.0, 2.0, 3.0]]],
+                },
+            )]),
+        });
+
+        assert_eq!(folded(&node).unwrap().upper, [1.0, 2.0, 3.0]);
+    }
+
+    /// The filter is the whole point of folding here: a group carries its
+    /// members' geometry, and a member the document leaves out must not widen
+    /// the envelope over a building that is not in the file.
+    #[test]
+    fn geometry_the_filter_rejects_is_left_out() {
+        let node = object(vec![
+            entry(
+                Some("kept"),
+                GmlElement::MultiCurve {
+                    id: None,
+                    curves: vec![vec![[1.0, 1.0, 1.0]]],
+                },
+            ),
+            entry(
+                Some("filtered"),
+                GmlElement::MultiCurve {
+                    id: None,
+                    curves: vec![vec![[99.0, 99.0, 99.0]]],
+                },
+            ),
+        ]);
+
+        let mut envelope = None;
+        fold_tree_envelope(
+            &node,
+            &|entry| entry.owner.key.as_deref() != Some("filtered"),
+            &mut envelope,
+        );
+
+        let envelope = envelope.unwrap();
+        assert_eq!(envelope.lower, [1.0, 1.0, 1.0]);
+        assert_eq!(
+            envelope.upper,
+            [1.0, 1.0, 1.0],
+            "the filtered member must not reach the envelope"
+        );
+    }
+
+    /// An object with nothing written leaves no `gml:boundedBy` at all.
+    #[test]
+    fn an_object_with_no_written_geometry_folds_to_nothing() {
+        let node = object(vec![entry(
+            Some("filtered"),
+            GmlElement::MultiCurve {
+                id: None,
+                curves: vec![vec![[1.0, 1.0, 1.0]]],
+            },
+        )]);
+
+        let mut envelope = None;
+        fold_tree_envelope(&node, &|_| false, &mut envelope);
+        assert!(envelope.is_none());
     }
 }
 

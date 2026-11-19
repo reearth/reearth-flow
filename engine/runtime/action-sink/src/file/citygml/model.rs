@@ -26,6 +26,13 @@ pub struct ConvertedCityObject {
     pub geometries: Vec<GeometryEntry>,
     pub appearance: AppearanceBundle,
     /// Folded over emitted coordinates only, so filtered geometry cannot widen it.
+    ///
+    /// Legacy only. Under `new-geometry` the document envelope is folded over
+    /// the trees the writer puts in the file, by `fold_tree_envelope`, because
+    /// a group's feature also carries its members' geometry and that geometry
+    /// belongs to the envelope only where the members are written. Nothing
+    /// reads a per-feature envelope there, so none is built.
+    #[cfg(not(feature = "new-geometry"))]
     pub envelope: Option<BoundingEnvelope>,
     /// Folded over the same leaves as the envelope; the shell turns it into `srsName`.
     pub crs: CrsCoverage,

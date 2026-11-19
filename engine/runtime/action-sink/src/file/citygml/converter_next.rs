@@ -73,8 +73,8 @@ use super::appearance_next::{
 };
 use super::attribute_keys::ResolvedKeys;
 use super::model::{
-    BoundingEnvelope, ConvertedCityObject, EntryOwner, GeometryEntry, GeometryOmission, GmlElement,
-    GmlSolid, GmlSurface, GmlTriangles,
+    ConvertedCityObject, EntryOwner, GeometryEntry, GeometryOmission, GmlElement, GmlSolid,
+    GmlSurface, GmlTriangles,
 };
 use super::writer::is_ncname;
 use crate::errors::SinkError;
@@ -174,7 +174,7 @@ pub fn srs_name(
 const DEFAULT_EPSG: u32 = 4326;
 
 /// Convert one feature's geometry into the shared CityGML model. Geometry the
-/// `lod_mask` filters out is skipped before the envelope or CRS coverage sees it.
+/// `lod_mask` filters out is skipped before any entry or the CRS coverage sees it.
 pub fn convert_city_object(
     feature: &Feature,
     lod_mask: &LodMask,
@@ -357,7 +357,6 @@ enum Piece {
 struct Conversion {
     context: FeatureContext,
     geometries: Vec<GeometryEntry>,
-    envelope: Option<BoundingEnvelope>,
     crs: CrsCoverage,
     /// One `app:Appearance` per feature; every leaf's bindings index into it.
     palette: Palette,
@@ -371,7 +370,6 @@ impl Conversion {
         ConvertedCityObject {
             geometries: self.geometries,
             appearance: self.palette.bundle,
-            envelope: self.envelope,
             crs: self.crs,
             textures: self.palette.textures,
             omissions: self.omissions,
@@ -458,8 +456,8 @@ impl Conversion {
                     .unwrap_or_else(|| inherited_lod.clone()),
             };
             match &lod {
-                // Before accumulation, so a filtered member reaches neither the
-                // envelope nor the CRS coverage.
+                // Before accumulation, so a filtered member reaches neither an
+                // entry nor the CRS coverage.
                 Ok(lod) if !lod_mask.has_lod(*lod) => continue,
                 // The mask needs a concrete LOD. A collection is not filtered
                 // at this level: its children decide, and any leaf that still
@@ -583,7 +581,6 @@ impl Conversion {
             Euclidean3DGeometry::LineString(line_string) => {
                 self.fold_frame(line_string.frame());
                 let coords = line_string.coords().to_vec();
-                self.fold_envelope(&coords);
                 out.push(Piece::Curve(coords));
             }
             Euclidean3DGeometry::Collection(collection) => {
@@ -609,9 +606,6 @@ impl Conversion {
                     positions: mesh.vertices().to_vec(),
                     triangles: mesh.triangles().collect(),
                 };
-                for corners in triangles.corners() {
-                    self.fold_envelope(&corners);
-                }
                 out.push(Piece::Triangles(triangles));
             }
             Euclidean3DGeometry::TriangularMesh(mesh) => {
@@ -693,8 +687,8 @@ impl Conversion {
         Ok(surfaces)
     }
 
-    /// Build one `gml:Polygon`: close each ring, fold it into the envelope, and
-    /// record where its texture coordinates live.
+    /// Build one `gml:Polygon`: close each ring and record where its texture
+    /// coordinates live.
     fn surface(&mut self, face: FaceRings) -> (GmlSurface, FaceCorners) {
         let (exterior, exterior_corners) = self.ring(face.exterior);
         let mut interiors = Vec::with_capacity(face.interiors.len());
@@ -722,14 +716,13 @@ impl Conversion {
         )
     }
 
-    /// Close one ring, fold it into the envelope, and locate its UV.
+    /// Close one ring and locate its UV.
     fn ring(
         &mut self,
         (mut ring, corners): (Vec<[f64; 3]>, Range<usize>),
     ) -> (Vec<[f64; 3]>, RingCorners) {
         // The closing corner duplicates the ring's first, at `corners.start`.
         let closure = close_ring(&mut ring).then_some(corners.start);
-        self.fold_envelope(&ring);
         let len = ring.len();
         (
             ring,
@@ -822,20 +815,6 @@ impl Conversion {
             CoordinateFrame::Euclidean | CoordinateFrame::Tangent(_) => CrsCoverage::outside(None),
         };
         self.crs = self.crs.and(coverage);
-    }
-
-    /// Grow the envelope to cover one emitted ring or curve.
-    fn fold_envelope(&mut self, coords: &[[f64; 3]]) {
-        for coord in coords {
-            let point = BoundingEnvelope {
-                lower: *coord,
-                upper: *coord,
-            };
-            match &mut self.envelope {
-                Some(envelope) => envelope.merge(&point),
-                None => self.envelope = Some(point),
-            }
-        }
     }
 
     /// Record one unwritable leaf, aggregated by kind.
@@ -1328,7 +1307,7 @@ mod tests {
     }
 
     /// The filter runs before accumulation, so a filtered-out member leaves no
-    /// trace at all — not in the entries, and not in the envelope.
+    /// trace at all.
     #[test]
     fn a_filtered_out_member_contributes_nothing() {
         let feature = feature(vec![
@@ -1341,11 +1320,6 @@ mod tests {
 
         assert_eq!(converted.geometries.len(), 1);
         assert_eq!(converted.geometries[0].lod, 1);
-        let envelope = converted.envelope.unwrap();
-        assert_eq!(
-            envelope.upper[0], 35.1,
-            "the LOD 2 member is 10 degrees away"
-        );
     }
 
     /// The default LOD is filtered like any other, so a `lodFilter` that excludes
@@ -1464,9 +1438,6 @@ mod tests {
         };
         assert_eq!(triangles.positions, mesh_vertices());
         assert_eq!(triangles.triangles, [[0, 1, 2], [1, 3, 2]]);
-        let envelope = converted.envelope.unwrap();
-        assert_eq!(envelope.lower, [35.0, 139.0, 0.0]);
-        assert_eq!(envelope.upper, [35.1, 139.1, 0.0]);
     }
 
     /// Beside a polygon in one member, a bare mesh joins it as closed
@@ -1575,21 +1546,16 @@ mod tests {
         assert_eq!(surfaces(&converted.geometries[1]).len(), 1);
     }
 
-    /// A solid's coordinates reach the file, so they have to reach the envelope
-    /// and the CRS coverage too.
+    /// A solid's coordinates reach the file, so they have to reach the CRS
+    /// coverage too. Their extent is the document envelope's business, and is
+    /// pinned on `fold_tree_envelope` in the shell.
     #[test]
-    fn a_solid_folds_its_coordinates_into_the_envelope_and_the_crs() {
+    fn a_solid_folds_its_coordinates_into_the_crs() {
         let feature = feature(vec![(member_attrs(Some(1), None), solid(crs(6697), 1))]);
 
         let converted =
             convert_city_object(&feature, &all_lods(), &ResolvedKeys::default(), None).unwrap();
 
-        let envelope = converted.envelope.unwrap();
-        assert_eq!(envelope.lower, [35.0, 139.0, 0.0]);
-        // The void's far corner, written as the arithmetic that produced it so
-        // the assertion does not depend on a decimal literal rounding the same
-        // way `139.1 + 0.01` does.
-        assert_eq!(envelope.upper, [35.1 + 0.01, 139.1 + 0.01, 0.0]);
         assert_eq!(converted.crs, CrsCoverage::Single(6697.into()));
     }
 
@@ -1811,10 +1777,6 @@ mod tests {
         let dropped =
             convert_city_object(&feature, &only_lod(2), &ResolvedKeys::default(), None).unwrap();
         assert!(dropped.geometries.is_empty());
-        assert!(
-            dropped.envelope.is_none(),
-            "a filtered leaf must not reach the envelope"
-        );
         assert_eq!(
             dropped.crs,
             CrsCoverage::NoCoordinates,
@@ -1913,14 +1875,13 @@ mod tests {
     /// An omitted leaf contributes neither coordinates nor a CRS, so a document
     /// made only of omissions writes nothing and declares nothing.
     #[test]
-    fn an_omitted_leaf_contributes_no_envelope_and_no_crs() {
+    fn an_omitted_leaf_contributes_no_geometry_and_no_crs() {
         let feature = feature(vec![(member_attrs(Some(0), None), point(crs(6697)))]);
 
         let converted =
             convert_city_object(&feature, &all_lods(), &ResolvedKeys::default(), None).unwrap();
 
         assert!(converted.geometries.is_empty());
-        assert!(converted.envelope.is_none());
         assert_eq!(converted.crs, CrsCoverage::NoCoordinates);
     }
 
@@ -1939,25 +1900,6 @@ mod tests {
         assert!(converted.geometries.is_empty());
         assert_eq!(converted.omissions.len(), 1);
         assert_eq!(converted.omissions[0].geometry, "Euclidean2D");
-    }
-
-    // Envelope
-
-    /// The envelope covers every emitted ordinate, holes included, and is folded
-    /// in the leaf's own axis order so it reads like the geometry it bounds.
-    #[test]
-    fn the_envelope_covers_every_emitted_coordinate() {
-        let feature = feature(vec![
-            (member_attrs(Some(0), None), triangle(crs(6697), 0.0)),
-            (member_attrs(Some(1), None), triangle(crs(6697), 1.0)),
-        ]);
-
-        let converted =
-            convert_city_object(&feature, &all_lods(), &ResolvedKeys::default(), None).unwrap();
-
-        let envelope = converted.envelope.unwrap();
-        assert_eq!(envelope.lower, [35.0, 139.0, 0.0]);
-        assert_eq!(envelope.upper, [36.1, 140.1, 0.0]);
     }
 
     // CRS coverage and srsName
