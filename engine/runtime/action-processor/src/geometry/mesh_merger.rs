@@ -197,12 +197,8 @@ struct Shell {
 }
 
 /// What one set of features merges into: each output part with the ids of the
-/// features that gave it faces, in id order, and the ids of the features that
-/// gave no face to any part.
-struct Merged {
-    parts: Vec<(Geometry, Vec<EntryId>)>,
-    faceless: Vec<EntryId>,
-}
+/// features that gave it faces, in id order.
+type Parts = Vec<(Geometry, Vec<EntryId>)>;
 
 /// A feature of a group, by its position among the group's entries.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
@@ -451,7 +447,7 @@ impl MeshMerger {
     /// Merge the features `ids` of `group` and decompose the result, reading
     /// geometry only. `Err` carries a read or merge error, for the features to
     /// be rejected.
-    fn merge_component(&self, group: &Group, ids: &[EntryId]) -> Result<Merged, BoxedError> {
+    fn merge_component(&self, group: &Group, ids: &[EntryId]) -> Result<Parts, BoxedError> {
         let mut read_error = None;
         let geometries = ids.iter().map_while(|&id| match group.read_geometry(id) {
             Ok(geometry) => Some(geometry),
@@ -464,20 +460,10 @@ impl MeshMerger {
         if let Some(e) = read_error {
             return Err(e);
         }
-        let Some((mesh, counts)) =
-            merged.map_err(|e| GeometryProcessorError::MeshMerger(e.to_string()))?
-        else {
-            return Ok(Merged {
-                parts: Vec::new(),
-                faceless: ids.to_vec(),
-            });
-        };
-        let faceless = ids
-            .iter()
-            .zip(&counts)
-            .filter(|&(_, &count)| count == 0)
-            .map(|(&id, _)| id)
-            .collect();
+        // Every admitted feature has a face, so the merge always has one.
+        let (mesh, counts) = merged
+            .map_err(|e| GeometryProcessorError::MeshMerger(e.to_string()))?
+            .ok_or_else(|| GeometryProcessorError::MeshMerger("no faces to merge".into()))?;
         // The end of each input's faces in the merged mesh.
         let ends: Vec<usize> = counts
             .iter()
@@ -487,23 +473,12 @@ impl MeshMerger {
             })
             .collect();
         let decomposed = match self.granularity {
-            Granularity::Group => {
-                let members = ids
-                    .iter()
-                    .zip(&counts)
-                    .filter(|&(_, &count)| count > 0)
-                    .map(|(&id, _)| id)
-                    .collect();
-                return Ok(Merged {
-                    parts: vec![(mesh, members)],
-                    faceless,
-                });
-            }
+            Granularity::Group => return Ok(vec![(mesh, ids.to_vec())]),
             Granularity::EdgeConnectedPart => mesh.decompose_into_edge_connected_parts(),
             Granularity::ManifoldPart => mesh.decompose_into_manifolds(),
         }
         .map_err(|e| GeometryProcessorError::MeshMerger(e.to_string()))?;
-        let parts = decomposed
+        Ok(decomposed
             .into_iter()
             .map(|(part, faces)| {
                 let mut members: Vec<EntryId> = faces
@@ -514,8 +489,7 @@ impl MeshMerger {
                 members.dedup();
                 (part, members)
             })
-            .collect();
-        Ok(Merged { parts, faceless })
+            .collect())
     }
 
     /// The attributes of a part made of the features `members` of `group`,
@@ -652,26 +626,26 @@ impl MeshMerger {
             // so only one chunk's geometries are held at a time. Attributes are
             // read part by part as each part is sent.
             for chunk in components.chunks(rayon::current_num_threads().max(1)) {
-                let results: Vec<Result<Merged, BoxedError>> = chunk
+                let results: Vec<Result<Parts, BoxedError>> = chunk
                     .par_iter()
                     .map(|ids| self.merge_component(group, ids))
                     .collect();
                 for (ids, result) in chunk.iter().zip(results) {
-                    let rejected = match result {
-                        Ok(merged) => {
-                            for (geometry, members) in merged.parts {
+                    match result {
+                        Ok(parts) => {
+                            for (geometry, members) in parts {
                                 let attributes = self.accumulate(group, &members)?;
                                 send(
                                     Feature::new_with_attributes_and_geometry(attributes, geometry),
                                     &FEATURES_PORT,
                                 );
                             }
-                            merged.faceless
                         }
-                        Err(_) => ids.clone(),
-                    };
-                    for id in rejected {
-                        send(group.read_feature(id)?, &REJECTED_PORT);
+                        Err(_) => {
+                            for &id in ids {
+                                send(group.read_feature(id)?, &REJECTED_PORT);
+                            }
+                        }
                     }
                 }
             }
