@@ -5,7 +5,7 @@
 //! which attaches them to a `glb::Builder` directly.
 
 use std::cmp::Reverse;
-use std::collections::{BinaryHeap, HashMap, HashSet};
+use std::collections::{BinaryHeap, HashMap};
 
 use indexmap::{IndexMap, IndexSet};
 use reearth_flow_types::{AttributeValue, Feature};
@@ -33,10 +33,11 @@ pub struct MetadataOptions<'a> {
 /// A total order over attribute paths, inferred from the order in which they
 /// appear in individual features.
 ///
-/// Each feature's consecutive paths `a, b` are an edge `a -> b`. Features are
-/// taken in order and an edge that would close a cycle is dropped, so the
-/// earlier feature wins a conflict. The graph is then flattened topologically,
-/// taking the earliest-seen path first wherever the graph leaves a choice. So
+/// Each feature's consecutive paths `a, b` are an edge `a -> b`, stamped with
+/// the order it was first seen in. The graph is flattened topologically, taking
+/// the earliest-seen path first wherever it leaves a choice. When no path is
+/// free because of a cycle, the cycle's latest-seen edge is dropped, so the
+/// earlier feature wins a conflict. So
 /// `{1,7}` then `{4,7}` yields `1,4,7`, never `1,7,4`; and `{1,3}` then `{2}`
 /// yields `1,3,2`, since no feature relates them.
 #[derive(Debug, Default, Clone)]
@@ -79,10 +80,8 @@ impl ColumnOrder {
 struct OrderGraph {
     /// Index = first-seen rank.
     ids: IndexSet<String>,
-    successors: Vec<Vec<usize>>,
-    /// Every pair already judged, accepted or not. A rejected edge stays
-    /// rejected because the graph only grows.
-    judged: HashSet<(usize, usize)>,
+    /// Distinct edges; the index is the order each was first seen in.
+    edges: IndexSet<(usize, usize)>,
     /// Sequence number each id was last seen in, to skip repeats within one.
     stamp: Vec<usize>,
     sequences: usize,
@@ -97,7 +96,6 @@ impl OrderGraph {
                 Some(id) => id,
                 None => {
                     self.ids.insert(path.as_ref().to_string());
-                    self.successors.push(Vec::new());
                     self.stamp.push(0);
                     self.ids.len() - 1
                 }
@@ -107,55 +105,86 @@ impl OrderGraph {
             }
             self.stamp[id] = self.sequences;
             if let Some(previous) = previous {
-                self.link(previous, id);
+                // A repeat keeps its first-seen position.
+                self.edges.insert((previous, id));
             }
             previous = Some(id);
         }
     }
 
-    fn link(&mut self, from: usize, to: usize) {
-        if self.judged.insert((from, to)) && !self.reaches(to, from) {
-            self.successors[from].push(to);
-        }
-    }
-
-    fn reaches(&self, from: usize, to: usize) -> bool {
-        let mut visited = vec![false; self.ids.len()];
-        let mut stack = vec![from];
-        while let Some(node) = stack.pop() {
-            if node == to {
-                return true;
-            }
-            if std::mem::replace(&mut visited[node], true) {
-                continue;
-            }
-            stack.extend(&self.successors[node]);
-        }
-        false
-    }
-
-    /// Kahn's algorithm, always taking the earliest-seen ready path.
+    /// Kahn's algorithm, always taking the earliest-seen ready path. If a cycle
+    /// leaves none ready, its latest-seen edge is dropped and the sort goes on.
     fn flatten(self) -> ColumnOrder {
-        let mut indegree = vec![0usize; self.ids.len()];
-        for &to in self.successors.iter().flatten() {
-            indegree[to] += 1;
+        let n = self.ids.len();
+        let edges = self.edges;
+        let mut outgoing = vec![Vec::new(); n];
+        let mut incoming = vec![Vec::new(); n];
+        for (edge, &(from, to)) in edges.iter().enumerate() {
+            outgoing[from].push(edge);
+            incoming[to].push(edge);
         }
-        let mut ready: BinaryHeap<Reverse<usize>> = (0..self.ids.len())
+        let mut live = vec![true; edges.len()];
+        let mut done = vec![false; n];
+        let mut indegree: Vec<usize> = incoming.iter().map(Vec::len).collect();
+        let mut ready: BinaryHeap<Reverse<usize>> = (0..n)
             .filter(|&id| indegree[id] == 0)
             .map(Reverse)
             .collect();
-        let mut rank = HashMap::with_capacity(self.ids.len());
-        while let Some(Reverse(id)) = ready.pop() {
+        let mut rank = HashMap::with_capacity(n);
+        while rank.len() < n {
+            let Some(Reverse(id)) = ready.pop() else {
+                // Every unfinished path still has an unfinished predecessor, so
+                // there is a cycle among them.
+                let start = done.iter().position(|&d| !d).expect("a path is left");
+                let victim = latest_edge_on_cycle(start, &edges, &incoming, &live, &done);
+                live[victim] = false;
+                let to = edges[victim].1;
+                indegree[to] -= 1;
+                if indegree[to] == 0 {
+                    ready.push(Reverse(to));
+                }
+                continue;
+            };
+            done[id] = true;
             rank.insert(self.ids[id].clone(), rank.len());
-            for &next in &self.successors[id] {
+            for &edge in &outgoing[id] {
+                if !live[edge] {
+                    continue;
+                }
+                let next = edges[edge].1;
                 indegree[next] -= 1;
                 if indegree[next] == 0 {
                     ready.push(Reverse(next));
                 }
             }
         }
-        debug_assert_eq!(rank.len(), self.ids.len(), "the graph is acyclic");
         ColumnOrder { rank }
+    }
+}
+
+/// Walks live edges backwards from `start` through unfinished paths until a
+/// path repeats, and returns the latest-seen edge of the cycle that closes.
+fn latest_edge_on_cycle(
+    start: usize,
+    edges: &IndexSet<(usize, usize)>,
+    incoming: &[Vec<usize>],
+    live: &[bool],
+    done: &[bool],
+) -> usize {
+    let mut walked: HashMap<usize, usize> = HashMap::new();
+    let mut path: Vec<usize> = Vec::new();
+    let mut node = start;
+    loop {
+        if let Some(&at) = walked.get(&node) {
+            return *path[at..].iter().max().expect("a cycle has edges");
+        }
+        walked.insert(node, path.len());
+        let edge = *incoming[node]
+            .iter()
+            .find(|&&edge| live[edge] && !done[edges[edge].0])
+            .expect("an unfinished path has an unfinished predecessor");
+        path.push(edge);
+        node = edges[edge].0;
     }
 }
 
@@ -838,6 +867,19 @@ mod tests {
         assert_eq!(
             inferred(&[&["1", "4", "7"], &["7", "5", "1"]]),
             ["1", "4", "7", "5"]
+        );
+    }
+
+    #[test]
+    fn order_breaks_a_cycle_across_features_at_its_latest_edge() {
+        assert_eq!(
+            inferred(&[&["a", "b"], &["b", "c"], &["c", "a"]]),
+            ["a", "b", "c"]
+        );
+        // two overlapping cycles, each broken at its own latest edge
+        assert_eq!(
+            inferred(&[&["a", "b", "c"], &["c", "b"], &["c", "a"]]),
+            ["a", "b", "c"]
         );
     }
 
