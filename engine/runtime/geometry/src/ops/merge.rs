@@ -635,6 +635,12 @@ impl<const N: usize> Builder<N> {
         })
     }
 
+    /// The merged index of input vertex `i`, welded on first use so that
+    /// vertices no face uses stay out of the merged pool.
+    fn weld_used(&mut self, vertices: &[[f64; N]], remap: &mut [Option<u32>], i: u32) -> u32 {
+        *remap[i as usize].get_or_insert_with(|| self.weld(vertices[i as usize]))
+    }
+
     fn start(&self) -> Pushed {
         Pushed {
             faces_before: self.face_ends.len(),
@@ -721,10 +727,12 @@ impl<const N: usize> Builder<N> {
         }
         self.all_triangular = false;
         let mut pushed = self.start();
-        let remap: Vec<u32> = vertices.iter().map(|&v| self.weld(v)).collect();
+        let mut remap = vec![None; vertices.len()];
         let base = self.face_indices.len() as u32;
-        self.face_indices
-            .extend(indices.iter_u32().map(|[i]| remap[i as usize]));
+        for [i] in indices.iter_u32() {
+            let index = self.weld_used(vertices, &mut remap, i);
+            self.face_indices.push(index);
+        }
         self.face_ends
             .extend(offsets.iter_u32().map(|[o]| base + o));
         self.face_ends.push(self.face_indices.len() as u32);
@@ -744,10 +752,12 @@ impl<const N: usize> Builder<N> {
         lift: impl Fn([f64; N]) -> [f64; 3],
     ) -> Result<(), Error> {
         let mut pushed = self.start();
-        let remap: Vec<u32> = vertices.iter().map(|&v| self.weld(v)).collect();
+        let mut remap = vec![None; vertices.len()];
         for triangle in triangles {
-            self.face_indices
-                .extend(triangle.map(|i| remap[i as usize]));
+            for i in triangle {
+                let index = self.weld_used(vertices, &mut remap, i);
+                self.face_indices.push(index);
+            }
             self.face_ends.push(self.face_indices.len() as u32);
             pushed.faces += 1;
         }
@@ -964,6 +974,27 @@ mod tests {
             .unwrap();
         assert_eq!(counts, vec![2, 0, 1]);
         assert_eq!(as_polygon_mesh(&mesh).num_faces(), 3);
+    }
+
+    #[test]
+    fn vertices_no_face_uses_are_left_out() {
+        let spare = trimesh(
+            vec![[0., 0., 0.], [1., 0., 0.], [0., 1., 0.], [9., 9., 9.]],
+            vec![0, 1, 2],
+        );
+        let faceless = trimesh(vec![[-9., -9., -9.]], Vec::new());
+        let merged = merge_some(&[spare, faceless]).unwrap();
+        let Geometry::Euclidean3D(Euclidean3DGeometry::TriangularMesh(mesh)) = &merged else {
+            panic!("expected a triangular mesh, got {merged:?}");
+        };
+        assert_eq!(mesh.vertices().len(), 3);
+        assert_eq!(
+            merged.bounding_box().unwrap(),
+            Aabb::D3 {
+                min: [0., 0., 0.],
+                max: [1., 1., 0.]
+            }
+        );
     }
 
     #[test]
