@@ -1,5 +1,5 @@
 use std::cell::RefCell;
-use std::collections::{BTreeMap, BTreeSet, HashMap, HashSet};
+use std::collections::HashMap;
 use std::io::Cursor;
 use std::path::Path;
 use std::str::FromStr;
@@ -8,8 +8,7 @@ use std::time::Instant;
 
 use fastxml::parser;
 use fastxml::schema::types::CompiledSchema;
-use fastxml::transform::{EditableNode, Transformer};
-use once_cell::sync::Lazy;
+use fastxml::transform::{EditableNodeRef, Transformer};
 use reearth_flow_common::uri::Uri;
 use reearth_flow_diagnostics::{DiagnosticDraft, ErrorCode};
 use reearth_flow_runtime::{
@@ -19,392 +18,30 @@ use reearth_flow_runtime::{
     forwarder::ProcessorChannelForwarder,
     node::{FEATURES_PORT, Port, Processor, ProcessorFactory, REJECTED_PORT},
 };
-use reearth_flow_storage::resolve::StorageResolver;
-use reearth_flow_storage::storage::Storage;
-use regex::Regex;
-use serde::{Deserialize, Serialize};
-
-use reearth_flow_types::{Attribute, AttributeValue, Attributes, Code, CompiledCode, Feature};
+use reearth_flow_types::{Attribute, AttributeValue, Code, CompiledCode, Feature};
 use schemars::JsonSchema;
-use serde_json::{Number, Value};
+use serde::{Deserialize, Serialize};
+use serde_json::Value;
 
-use super::PlateauProfile;
-use super::application_schema_conformance::{
-    CityObjectTypes, ConformanceRules, ElementName, PackageRules, Reason, Violation, element_name,
+use super::code_value::{CodeValueCheck, CodelistResolver, Codelists, create_codelist};
+use super::extents::{ExtentsCheck, stream_extract_envelope};
+use super::feature_type::{FeatureTypeCheck, valid_feature_types};
+use super::gml_id_format::GmlIdFormatCheck;
+use super::gml_id_uniqueness::{
+    DUPLICATE_GML_ID_STATS_PORT, GmlIdTable, GmlIdUniqueness, member_gml_ids, merge,
 };
-use super::errors::PlateauProcessorError;
-use super::object_list_extractor::OBJECT_LIST_DEFINITIONS_ATTRIBUTE;
-use crate::citygml::GML_DICTIONARY_NS;
+use super::lod_geometry_type::LodGeometryTypeCheck;
+use super::report::Reporter;
+use super::srs_name::SrsNameCheck;
+use super::traversal::collect_descendant_info;
+use super::xlink::XlinkCheck;
+use crate::common::PlateauProfile;
+use crate::common::application_schema_conformance::{
+    CityObjectTypes, ConformanceRules, ElementName, element_name,
+};
+use crate::common::errors::{PlateauProcessorError, Result};
+use crate::common::object_list_extractor::OBJECT_LIST_DEFINITIONS_ATTRIBUTE;
 use crate::object_list::ObjectListDefinitions;
-
-static VALID_SRS_NAME_6697: &str = "http://www.opengis.net/def/crs/EPSG/0/6697";
-static VALID_SRS_NAME_6668: &str = "http://www.opengis.net/def/crs/EPSG/0/6668";
-
-static GML_ID_GROUP_PATTERN: Lazy<Regex> =
-    Lazy::new(|| Regex::new(r"^[a-z]+_[\da-f]{8}(-[\da-f]{4}){3}-[\da-f]{12}$").unwrap());
-static GML_LINK_PATTERN: Lazy<Regex> = Lazy::new(|| Regex::new(r"(.+\.gml)#(.+)").unwrap());
-
-static VALID_SRS_NAME_FOR_UNF: Lazy<Vec<&'static str>> = Lazy::new(|| {
-    vec![
-        "http://www.opengis.net/def/crs/EPSG/0/10162",
-        "http://www.opengis.net/def/crs/EPSG/0/10163",
-        "http://www.opengis.net/def/crs/EPSG/0/10164",
-        "http://www.opengis.net/def/crs/EPSG/0/10165",
-        "http://www.opengis.net/def/crs/EPSG/0/10166",
-        "http://www.opengis.net/def/crs/EPSG/0/10167",
-        "http://www.opengis.net/def/crs/EPSG/0/10168",
-        "http://www.opengis.net/def/crs/EPSG/0/10169",
-        "http://www.opengis.net/def/crs/EPSG/0/10170",
-        "http://www.opengis.net/def/crs/EPSG/0/10171",
-        "http://www.opengis.net/def/crs/EPSG/0/10172",
-        "http://www.opengis.net/def/crs/EPSG/0/10173",
-        "http://www.opengis.net/def/crs/EPSG/0/10174",
-    ]
-});
-
-static DUPLICATE_GML_ID_STATS_PORT: Lazy<Port> = Lazy::new(|| Port::new("duplicateGmlIdStats"));
-
-// L03
-// Effective geo-feature types of the package, as `prefix:local` with the
-// standard prefix.
-fn valid_feature_types(profile: &PlateauProfile, package: &str) -> Vec<String> {
-    let qualified = |prefix: &str, local_names: &[&str]| -> Vec<String> {
-        local_names
-            .iter()
-            .map(|local| format!("{prefix}:{local}"))
-            .collect()
-    };
-    let with_group = |mut types: Vec<String>| {
-        types.push("grp:CityObjectGroup".to_string());
-        types
-    };
-    let citygml3 = profile.is_citygml3();
-    match package {
-        "app" => vec!["http://www.opengis.net/citygml/appearance/2.0".to_string()],
-        "area" => qualified(
-            "urf",
-            &["Zone", "UnclassifiedBlankArea", "UnclassifiedUseDistrict"],
-        ),
-        "bldg" => with_group(qualified("bldg", &["Building"])),
-        "brid" => qualified("brid", &["Bridge"]),
-        // CityGML 3.0 adds `OtherConstruction`, which i-UR 3.x defined.
-        "cons" if citygml3 => qualified("con", &["OtherConstruction"]),
-        "cons" => qualified("uro", &["OtherConstruction"]),
-        "dem" => qualified("dem", &["ReliefFeature"]),
-        "fld" | "htd" | "ifld" | "rfld" | "tnm" | "wtr" => qualified("wtr", &["WaterBody"]),
-        "frn" => qualified("frn", &["CityFurniture"]),
-        "gen" => qualified("gen", profile.generic_city_object_types()),
-        "lsld" => qualified("urf", &["SedimentDisasterProneArea"]),
-        "luse" => qualified("luse", &["LandUse"]),
-        "rwy" => qualified("tran", &["Railway"]),
-        "squr" => qualified("tran", &["Square"]),
-        "tran" => qualified("tran", &["Road"]),
-        "trk" => qualified("tran", &["Track"]),
-        "tun" => qualified("tun", &["Tunnel"]),
-        "ubld" => with_group(qualified("uro", &["UndergroundBuilding"])),
-        "veg" => qualified("veg", &["SolitaryVegetationObject", "PlantCover"]),
-        // CityGML 3.0 adds `Waterway`, which i-UR 3.x defined.
-        "wwy" if citygml3 => qualified("tran", &["Waterway"]),
-        "wwy" => qualified("uro", &["Waterway"]),
-        "unf" => qualified(
-            "uro",
-            &[
-                "WaterPipe",
-                "SewerPipe",
-                "ThermalPipe",
-                "OilGasChemicalsPipe",
-                "Pipe",
-                "TelecommunicationsCable",
-                "ElectricityCable",
-                "Cable",
-                "Duct",
-                "Appurtenance",
-                "Manhole",
-                "Handhole",
-            ],
-        ),
-        "urf" => qualified(
-            "urf",
-            &[
-                "UrbanPlanningArea",
-                "QuasiUrbanPlanningArea",
-                "AreaClassification",
-                "DistrictsAndZones",
-                "UseDistrict",
-                "SpecialUseDistrict",
-                "SpecialUseRestrictionDistrict",
-                "ExceptionalFloorAreaRateDistrict",
-                "HighRiseResidentialAttractionDistrict",
-                "HeightControlDistrict",
-                "HighLevelUseDistrict",
-                "SpecifiedBlock",
-                "SpecialUrbanRenaissanceDistrict",
-                "HousingControlArea",
-                "ResidentialEnvironmentImprovementDistrict",
-                "SpecialUseAttractionDistrict",
-                "FirePreventionDistrict",
-                "SpecifiedDisasterPreventionBlockImprovementZone",
-                "LandscapeZone",
-                "ScenicDistrict",
-                "ParkingPlaceDevelopmentZone",
-                "PortZone",
-                "SpecialZoneForPreservationOfHistoricalLandscape",
-                "ZoneForPreservationOfHistoricalLandscape",
-                "GreenSpaceConservationDistrict",
-                "SpecialGreenSpaceConservationDistrict",
-                "TreePlantingDistrict",
-                "DistributionBusinessZone",
-                "ProductiveGreenZone",
-                "ConservationZoneForClustersOfTraditionalStructures",
-                "AircraftNoiseControlZone",
-                "ProjectPromotionArea",
-                "UrbanRedevelopmentPromotionArea",
-                "LandReadjustmentPromotionArea",
-                "ResidentialBlockConstructionPromotionArea",
-                "LandReadjustmentPromotionAreasForCoreBusinessUrbanDevelopment",
-                "UnusedLandUsePromotionArea",
-                "UrbanDisasterRecoveryPromotionArea",
-                "UrbanFacility",
-                "TrafficFacility",
-                "OpenSpaceForPublicUse",
-                "SupplyFacility",
-                "TreatmentFacility",
-                "Waterway",
-                "EducationalAndCulturalFacility",
-                "MedicalFacility",
-                "SocialWelfareFacility",
-                "MarketsSlaughterhousesCrematoria",
-                "CollectiveHousingFacilities",
-                "CollectiveGovernmentAndPublicOfficeFacilities",
-                "DistributionBusinessPark",
-                "CollectiveFacilitiesForTsunamiDisasterPrevention",
-                "CollectiveFacilitiesForReconstructionAndRevitalization",
-                "CollectiveFacilitiesForReconstruction",
-                "CollectiveUrbanDisasterPreventionFacilities",
-                "UrbanFacilityStipulatedByCabinetOrder",
-                "TelecommunicationFacility",
-                "WindProtectionFacility",
-                "FireProtectionFacility",
-                "TideFacility",
-                "FloodPreventionFacility",
-                "SnowProtectionFacility",
-                "SandControlFacility",
-                "UrbanDevelopmentProject",
-                "LandReadjustmentProject",
-                "NewHousingAndUrbanDevelopmentProject",
-                "IndustrialParkDevelopmentProject",
-                "UrbanRedevelopmentProject",
-                "NewUrbanInfrastructureProject",
-                "ResidentialBlockConstructionProject",
-                "DisasterPreventionBlockImprovementProject",
-                "UrbanRenewalProject",
-                "ScheduledAreaForUrbanDevelopmentProject",
-                "ScheduledAreaForNewHousingAndUrbanDevelopmentProjects",
-                "ScheduledAreaForIndustrialParkDevelopmentProjects",
-                "ScheduledAreaForNewUrbanInfrastructureProjects",
-                "ScheduledAreaForCollectiveHousingFacilities",
-                "ScheduledAreaForCollectiveGovernmentAndPublicOfficeFacilities",
-                "ScheduledAreaForDistributionBusinessPark",
-                "DistrictPlan",
-                "RoadsideDistrictPlan",
-                "RuralDistrictPlan",
-                "HistoricSceneryMaintenanceAndImprovementDistrictPlan",
-                "DisasterPreventionBlockImprovementZonePlan",
-                "ResidenceAttractionArea",
-                "UrbanFunctionAttractionArea",
-            ],
-        ),
-        _ => Vec::new(),
-    }
-}
-
-// Valid geometry object types for xlink references.
-// Valid geometry objects shall be those listed in Standard Operating Procedure Annex B.3. v3. confirmed.
-static VALID_GEOMETRY_TYPES: Lazy<Vec<&'static str>> = Lazy::new(|| {
-    vec![
-        "gml:pos",
-        "gml:posList",
-        "gml:Point",
-        "gml:MultiPoint",
-        "gml:LineString",
-        "gml:LinearRing",
-        "gml:Polygon",
-        "gml:OrientableSurface",
-        "gml:MultiSurface",
-        "gml:CompositeSurface",
-        "gml:Solid",
-        "gml:Triangle",
-        "gml:TriangulatedSurface",
-        "gml:Tin",
-    ]
-});
-
-#[derive(Serialize, Deserialize, Debug, Default)]
-#[serde(rename_all = "camelCase")]
-struct ValidateResponse {
-    // L04
-    correct_code_values: u32,
-    code_value_errors: u32,
-    code_space_errors: u32,
-    // L05, L06
-    bounded_by: BoundedBy,
-    correct_extents: u32,
-    incorrect_extents: u32,
-    /// Reported in the summary as a note.
-    coordinate_errors: BTreeSet<CoordinateError>,
-    // L03 ({ feature type outside the package : number }, filled only without
-    // L03 objectlist conformance), ordered for a stable output.
-    invalid_feature_types: BTreeMap<String, u32>,
-    invalid_feature_types_num: u32,
-    // error counter
-    gml_id_not_well_formed_num: u32,
-    xlink_has_no_reference_num: u32,
-    xlink_invalid_object_type_num: u32,
-    invalid_lod_x_geometry_num: u32,
-    // xlink
-    external_file_to_gml_ids: HashMap<String, Vec<String>>,
-}
-
-/// An invalid coordinate value found in the file.
-#[derive(
-    thiserror::Error, Serialize, Deserialize, Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord,
-)]
-enum CoordinateError {
-    #[error("The gml:Envelope has a NaN or infinite coordinate.")]
-    NonFiniteEnvelope,
-    #[error("A geometry has a NaN or infinite coordinate.")]
-    NonFiniteGeometry,
-    #[error("A geometry has no coordinate on some axis.")]
-    MissingAxis,
-}
-
-/// The messages of `errors` without repeats, as a note; `None` when there are
-/// no errors.
-fn note(errors: impl IntoIterator<Item = CoordinateError>) -> Option<AttributeValue> {
-    let errors = errors.into_iter().collect::<BTreeSet<_>>();
-    (!errors.is_empty())
-        .then(|| AttributeValue::String(errors.iter().map(ToString::to_string).collect()))
-}
-
-/// The `gml:Envelope` in `gml:boundedBy` of the city model.
-#[derive(Serialize, Deserialize, Debug, Default)]
-#[serde(rename_all = "camelCase")]
-struct BoundedBy {
-    srs_name: String,
-    /// `None` when the corners are not all finite, in which case L06 checks no
-    /// geometry.
-    envelope: Option<Envelope>,
-}
-
-/// The `gml:Envelope` of the city model, finite on every axis.
-#[derive(Serialize, Deserialize, Debug, Clone, Copy, PartialEq)]
-struct Envelope(Bounds);
-
-impl Envelope {
-    /// `None` when a coordinate is NaN or infinite.
-    fn new(lower: [f64; 3], upper: [f64; 3]) -> Option<Self> {
-        let finite = lower.iter().chain(&upper).all(|v| v.is_finite());
-        finite.then(|| {
-            Self(Bounds([0, 1, 2].map(|i| {
-                Ok(AxisRange {
-                    min: lower[i],
-                    max: upper[i],
-                })
-            })))
-        })
-    }
-
-    /// Whether `extent` lies within this envelope, boundaries included. An
-    /// extent with an axis of unknown range does not.
-    fn contains(&self, extent: &Extent) -> bool {
-        self.0
-            .axes()
-            .iter()
-            .zip(extent.0.axes())
-            .all(|(envelope, extent)| {
-                matches!(
-                    (envelope, extent),
-                    (Ok(envelope), Ok(extent))
-                        if envelope.min <= extent.min && extent.max <= envelope.max
-                )
-            })
-    }
-}
-
-/// The minimum and maximum coordinates of a feature, per axis.
-#[derive(Debug, Clone, Copy, PartialEq)]
-struct Extent(Bounds);
-
-impl Extent {
-    /// The extent of the positions given as a flat list of (x, y, z).
-    fn from_positions(positions: &[f64]) -> Self {
-        Self(Bounds([0, 1, 2].map(|i| {
-            positions
-                .iter()
-                .skip(i)
-                .step_by(3)
-                .try_fold(None, |range: Option<AxisRange>, &v| {
-                    if !v.is_finite() {
-                        return Err(CoordinateError::NonFiniteGeometry);
-                    }
-                    Ok(Some(match range {
-                        None => AxisRange { min: v, max: v },
-                        Some(r) => AxisRange {
-                            min: r.min.min(v),
-                            max: r.max.max(v),
-                        },
-                    }))
-                })?
-                .ok_or(CoordinateError::MissingAxis)
-        })))
-    }
-
-    /// The reasons of the axes whose range is unknown.
-    fn errors(&self) -> impl Iterator<Item = CoordinateError> + '_ {
-        self.0.axes().iter().filter_map(|axis| axis.err())
-    }
-}
-
-/// The finite minimum and maximum of one axis.
-#[derive(Serialize, Deserialize, Debug, Clone, Copy, PartialEq)]
-struct AxisRange {
-    min: f64,
-    max: f64,
-}
-
-/// The ranges of (latitude, longitude, elevation), the common form of an
-/// [`Envelope`] and an [`Extent`]. An axis whose range is unknown holds the
-/// reason.
-#[derive(Serialize, Deserialize, Debug, Clone, Copy, PartialEq)]
-struct Bounds([Result<AxisRange, CoordinateError>; 3]);
-
-impl Bounds {
-    /// The ranges of (latitude, longitude, elevation).
-    fn axes(&self) -> &[Result<AxisRange, CoordinateError>; 3] {
-        &self.0
-    }
-
-    /// Inserts the axes as `{prefix}Latitude` / `Longitude` / `Elevation`, with
-    /// nulls for an axis of unknown range or when there are no bounds.
-    fn insert_into(
-        bounds: Option<&Self>,
-        feature: &mut Feature,
-        lower_prefix: &str,
-        upper_prefix: &str,
-    ) {
-        let mut insert = |prefix: &str, end: fn(&AxisRange) -> f64| {
-            for (i, axis) in ["Latitude", "Longitude", "Elevation"].iter().enumerate() {
-                let value = bounds
-                    .and_then(|b| b.axes()[i].as_ref().ok())
-                    .and_then(|range| Number::from_f64(end(range)))
-                    .map_or(AttributeValue::Null, AttributeValue::Number);
-                feature.insert(format!("{prefix}{axis}"), value);
-            }
-        };
-        insert(lower_prefix, |range| range.min);
-        insert(upper_prefix, |range| range.max);
-    }
-}
 
 /// # DomainOfDefinitionValidator Parameters
 ///
@@ -498,9 +135,8 @@ impl ProcessorFactory for DomainOfDefinitionValidatorFactory {
 
         let process = DomainOfDefinitionValidator {
             profile: self.profile,
-            feature_buffer: vec![],
+            gml_id_uniqueness: GmlIdUniqueness::default(),
             codelists: None,
-            filenames: HashSet::new(),
             codelists_path_expr,
             conformance_rules: None,
         };
@@ -508,14 +144,11 @@ impl ProcessorFactory for DomainOfDefinitionValidatorFactory {
     }
 }
 
-type FeatureBuffer = Vec<(Vec<Feature>, HashMap<String, Vec<HashMap<String, String>>>)>;
-
 #[derive(Debug, Clone)]
 pub struct DomainOfDefinitionValidator {
     profile: &'static PlateauProfile,
-    feature_buffer: FeatureBuffer,
-    codelists: Option<HashMap<String, HashMap<String, String>>>,
-    filenames: HashSet<String>,
+    gml_id_uniqueness: GmlIdUniqueness,
+    codelists: Option<Codelists>,
     codelists_path_expr: Option<CompiledCode>,
     /// L03 objectlist conformance rules, read from the first feature. `Some(None)` when it
     /// has no objectlist definitions and L03 checks feature types only.
@@ -531,13 +164,13 @@ impl Processor for DomainOfDefinitionValidator {
         &mut self,
         ctx: ExecutorContext,
         fw: &ProcessorChannelForwarder,
-    ) -> Result<(), BoxedError> {
+    ) -> std::result::Result<(), BoxedError> {
         let feature = &ctx.feature;
 
         // Collect file name for statistics output
         if let Some(AttributeValue::String(name)) = feature.attributes.get(&Attribute::new("name"))
         {
-            self.filenames.insert(name.clone());
+            self.gml_id_uniqueness.add_filename(name.clone());
         }
 
         // Evaluate fallback codelists path expression if provided
@@ -594,7 +227,7 @@ impl Processor for DomainOfDefinitionValidator {
         }
         let codelists = self.codelists.as_ref().unwrap();
         let conformance_rules = self.conformance_rules.as_ref().and_then(Option::as_ref);
-        let feature_results = process_feature(
+        let gml_ids = process_feature(
             self.profile,
             &ctx,
             fw,
@@ -603,7 +236,7 @@ impl Processor for DomainOfDefinitionValidator {
             feature,
             fallback_codelists_path.as_ref(),
         )?;
-        self.feature_buffer.push(feature_results);
+        self.gml_id_uniqueness.add_file_gml_ids(gml_ids);
         Ok(())
     }
 
@@ -611,79 +244,8 @@ impl Processor for DomainOfDefinitionValidator {
         &mut self,
         ctx: NodeContext,
         fw: &ProcessorChannelForwarder,
-    ) -> Result<(), BoxedError> {
-        let mut gml_ids = HashMap::<String, Vec<HashMap<String, String>>>::new();
-        for (_, gml_id) in self.feature_buffer.iter() {
-            for (k, v) in gml_id.iter() {
-                if let std::collections::hash_map::Entry::Vacant(e) = gml_ids.entry(k.to_string()) {
-                    e.insert(v.clone());
-                } else {
-                    gml_ids.get_mut(k).unwrap().extend(v.clone());
-                }
-            }
-        }
-
-        // Count duplicate gml:id occurrences per file
-        let mut duplicate_gml_id_count = HashMap::<String, usize>::new();
-
-        for attributes in gml_ids.values() {
-            if attributes.len() > 1 {
-                // Count each file containing duplicate gml:ids
-                for attribute in attributes.iter() {
-                    if let Some(name) = attribute.get("name") {
-                        *duplicate_gml_id_count.entry(name.clone()).or_insert(0) += 1;
-                    }
-                }
-            }
-        }
-
-        // Output statistics for all files (including those with 0 duplicates)
-        for filename in &self.filenames {
-            let duplicate_count = duplicate_gml_id_count.get(filename).unwrap_or(&0);
-
-            let mut result_feature = Feature::new_with_attributes(Attributes::new());
-            result_feature.insert("filename", AttributeValue::String(filename.clone()));
-            result_feature.insert(
-                "duplicateGmlIdCount",
-                AttributeValue::Number(Number::from(*duplicate_count)),
-            );
-
-            fw.send(ExecutorContext::new_with_node_context_feature_and_port(
-                &ctx,
-                result_feature,
-                DUPLICATE_GML_ID_STATS_PORT.clone(),
-            ));
-        }
-
-        // Output individual duplicate gml:id details
-        let mut dup_id = 0;
-        for (gml_id, attributes) in gml_ids {
-            if attributes.len() <= 1 {
-                continue;
-            }
-            for attribute in attributes.iter() {
-                let mut result_feature = Feature::new_with_attributes(Attributes::new());
-                result_feature.insert(
-                    "flag",
-                    AttributeValue::String("GMLID_NotUnique".to_string()),
-                );
-                result_feature.insert("gmlId", AttributeValue::String(gml_id.clone()));
-                result_feature.insert("duplicateId", AttributeValue::String(dup_id.to_string()));
-                result_feature.insert(
-                    "numDuplicates",
-                    AttributeValue::Number(Number::from(attributes.len())),
-                );
-                attribute.iter().for_each(|(k, v)| {
-                    result_feature.insert(k.clone(), AttributeValue::String(v.clone()));
-                });
-                fw.send(ExecutorContext::new_with_node_context_feature_and_port(
-                    &ctx,
-                    result_feature,
-                    FEATURES_PORT.clone(),
-                ));
-            }
-            dup_id += 1;
-        }
+    ) -> std::result::Result<(), BoxedError> {
+        self.gml_id_uniqueness.finish(&ctx, fw);
         Ok(())
     }
 
@@ -692,32 +254,24 @@ impl Processor for DomainOfDefinitionValidator {
     }
 }
 
-/// Read-only inputs shared across the domain-of-definition check call chain
-/// (`process_feature` -> `run_domain_of_definition_checks` -> `process_member_node`).
-struct DomainOfDefinitionContext<'a> {
+/// Read-only inputs of the checks of a file.
+struct FileContext<'a> {
     profile: &'a PlateauProfile,
     ctx: &'a ExecutorContext,
-    fw: &'a ProcessorChannelForwarder,
-    codelists: &'a HashMap<String, HashMap<String, String>>,
-    feature: &'a Feature,
-    fallback_codelists_path: Option<&'a Uri>,
-    valid_feature_types: &'a [String],
-    gml_id_pattern: &'a Regex,
-    /// L03 objectlist conformance rules of the package; `None` when not checked.
-    package_rules: Option<PackageRules<'a>>,
-    /// Whether L03 objectlist conformance runs, in which case each L03 error is
-    /// also sent as its own feature.
-    sends_violations: bool,
+    reporter: Reporter<'a>,
+    codelist_resolver: CodelistResolver<'a>,
 }
 
-/// Mutable state accumulated while running the per-`cityObjectMember`
-/// domain-of-definition checks.
-#[derive(Default)]
-struct DomainOfDefinitionAccumulator {
-    response: ValidateResponse,
-    gml_ids: HashMap<String, Vec<HashMap<String, String>>>,
-    result: Vec<Feature>,
-    city_object_groups: Vec<CityObjectGroupInfo>,
+/// The checks of a file, other than L03, and their state.
+struct FileChecks {
+    srs_name: SrsNameCheck,
+    gml_id_format: GmlIdFormatCheck,
+    code_value: CodeValueCheck,
+    extents: ExtentsCheck,
+    xlink: XlinkCheck,
+    lod_geometry_type: LodGeometryTypeCheck,
+    /// The gml:ids of the file.
+    gml_ids: GmlIdTable,
     member_count: usize,
 }
 
@@ -749,17 +303,17 @@ fn application_schema(
         .ok()
 }
 
-#[allow(clippy::type_complexity)]
+/// Checks the city GML of `feature`, sends its errors and summary, and
+/// returns its gml:ids.
 fn process_feature(
     profile: &PlateauProfile,
     ctx: &ExecutorContext,
     fw: &ProcessorChannelForwarder,
-    codelists: &HashMap<String, HashMap<String, String>>,
+    codelists: &Codelists,
     conformance_rules: Option<&ConformanceRules>,
     feature: &Feature,
     fallback_codelists_path: Option<&Uri>,
-) -> super::errors::Result<(Vec<Feature>, HashMap<String, Vec<HashMap<String, String>>>)> {
-    let storage_resolver = Arc::clone(&ctx.storage_resolver);
+) -> Result<GmlIdTable> {
     let package = feature.attributes.get(&Attribute::new("package")).ok_or(
         PlateauProcessorError::DomainOfDefinitionValidator("package key empty".to_string()),
     )?;
@@ -768,10 +322,7 @@ fn process_feature(
             "package value not string".to_string(),
         ));
     };
-    let mut pattern = "^".to_string();
-    pattern.push_str(package);
-    pattern.push_str(r"_[\da-f]{8}(-[\da-f]{4}){3}-[\da-f]{12}$");
-    let gml_id_pattern = Regex::new(pattern.as_str()).unwrap();
+    let gml_id_format = GmlIdFormatCheck::new(package);
     let valid_feature_types = valid_feature_types(profile, package);
 
     let city_gml_path = feature.attributes.get(&Attribute::new("path")).ok_or(
@@ -780,7 +331,8 @@ fn process_feature(
 
     let city_gml_uri = Uri::from_str(&city_gml_path.to_string())
         .map_err(|e| PlateauProcessorError::DomainOfDefinitionValidator(format!("{e:?}")))?;
-    let storage = storage_resolver
+    let storage = ctx
+        .storage_resolver
         .resolve(&city_gml_uri)
         .map_err(|e| PlateauProcessorError::DomainOfDefinitionValidator(format!("{e:?}")))?;
     let xml_content = storage
@@ -806,20 +358,33 @@ fn process_feature(
     // summary (01_共通.csv) and the error-count summary (summary_common.json).
     // The well-formedness problem itself is reported separately as L01 by the
     // upstream XMLValidator.
-    let context = DomainOfDefinitionContext {
+    let context = FileContext {
         profile,
         ctx,
-        fw,
-        codelists,
-        feature,
-        fallback_codelists_path,
-        valid_feature_types: &valid_feature_types,
-        gml_id_pattern: &gml_id_pattern,
-        package_rules: conformance_rules.and_then(|rules| rules.package(package, city_objects)),
-        sends_violations: conformance_rules.is_some(),
+        reporter: Reporter::new(ctx, fw, feature),
+        codelist_resolver: CodelistResolver {
+            codelists,
+            storage_resolver: &ctx.storage_resolver,
+            file: feature,
+            fallback_codelists_path,
+        },
     };
-    let mut accumulator = DomainOfDefinitionAccumulator::default();
-    let parse_outcome = run_domain_of_definition_checks(&context, &xml_str, &mut accumulator);
+    let feature_type = RefCell::new(FeatureTypeCheck::new(
+        valid_feature_types,
+        conformance_rules.and_then(|rules| rules.package(package, city_objects)),
+        conformance_rules.is_some(),
+    ));
+    let mut checks = FileChecks {
+        srs_name: SrsNameCheck::default(),
+        gml_id_format,
+        code_value: CodeValueCheck::default(),
+        extents: ExtentsCheck::default(),
+        xlink: XlinkCheck::default(),
+        lod_geometry_type: LodGeometryTypeCheck::default(),
+        gml_ids: GmlIdTable::new(),
+        member_count: 0,
+    };
+    let parse_outcome = run_checks(&context, &xml_str, &feature_type, &mut checks);
 
     let parse_failed = parse_outcome.is_err();
     if let Err(e) = parse_outcome {
@@ -834,133 +399,54 @@ fn process_feature(
     tracing::debug!(
         target: "perf",
         total_ms = %total_ms,
-        member_count = accumulator.member_count,
+        member_count = checks.member_count,
         "DomainOfDefinitionValidator::process_feature END"
     );
-    let mut result_feature = create_lightweight_feature(feature, &["index"]);
-    let response = &accumulator.response;
-    let srs_name = response.bounded_by.srs_name.as_str();
-    result_feature.insert("flag", AttributeValue::String("Summary".to_string()));
-    result_feature.insert("srsName", AttributeValue::String(srs_name.to_string()));
-    result_feature.insert(
-        "invalidFeatureTypesNum",
-        AttributeValue::Number(Number::from(response.invalid_feature_types_num)),
-    );
-    result_feature.insert(
-        "invalidFeatureTypesDetail",
-        AttributeValue::Map(
-            response
-                .invalid_feature_types
-                .iter()
-                .map(|(k, v)| {
-                    (
-                        Attribute::new(k.as_str()),
-                        AttributeValue::Number(Number::from(*v)),
-                    )
-                })
-                .collect::<Attributes>(),
-        ),
-    );
-    result_feature.insert(
-        "correctCodeValues",
-        AttributeValue::Number(Number::from(response.correct_code_values)),
-    );
-    result_feature.insert(
-        "incorrectCodeValue",
-        AttributeValue::Number(Number::from(response.code_value_errors)),
-    );
-    result_feature.insert(
-        "incorrectCodeSpace",
-        AttributeValue::Number(Number::from(response.code_space_errors)),
-    );
-    result_feature.insert(
-        "isCorrectSrsName",
-        AttributeValue::Bool(
-            // When the document could not be parsed (e.g. an L01 not-well-formed
-            // error), the CRS could not be read; do not raise a false L05 CRS
-            // error for it — the only finding is the upstream L01.
-            parse_failed
-                || srs_name == VALID_SRS_NAME_6697
-                || srs_name == VALID_SRS_NAME_6668
-                || (package == "unf" && VALID_SRS_NAME_FOR_UNF.contains(&srs_name)),
-        ),
-    );
-    result_feature.insert(
-        "correctExtents",
-        AttributeValue::Number(Number::from(response.correct_extents)),
-    );
-    result_feature.insert(
-        "incorrectExtents",
-        AttributeValue::Number(Number::from(response.incorrect_extents)),
-    );
-    Bounds::insert_into(
-        response.bounded_by.envelope.as_ref().map(|e| &e.0),
-        &mut result_feature,
-        "lower",
-        "upper",
-    );
-    if let Some(note) = note(response.coordinate_errors.iter().copied()) {
-        result_feature.insert("miscellaneous", note);
-    }
-    result_feature.insert(
-        "gmlIdNotWellformed",
-        AttributeValue::Number(Number::from(response.gml_id_not_well_formed_num)),
-    );
-    result_feature.insert(
-        "xlinkHasNoReference",
-        AttributeValue::Number(Number::from(response.xlink_has_no_reference_num)),
-    );
-    result_feature.insert(
-        "xlinkInvalidObjectType",
-        AttributeValue::Number(Number::from(response.xlink_invalid_object_type_num)),
-    );
-    result_feature.insert(
-        "invalidLodXGeometry",
-        AttributeValue::Number(Number::from(response.invalid_lod_x_geometry_num)),
-    );
-    fw.send(ctx.new_with_feature_and_port(result_feature.clone(), FEATURES_PORT.clone()));
-    accumulator.result.push(result_feature);
-    Ok((accumulator.result, accumulator.gml_ids))
+
+    let mut summary = context.reporter.file_feature(&["index"]);
+    summary.insert("flag", AttributeValue::String("Summary".to_string()));
+    checks.srs_name.write_srs_name(&mut summary);
+    feature_type.borrow().write_summary(&mut summary);
+    checks.code_value.write_summary(&mut summary);
+    checks
+        .srs_name
+        .write_validity(&mut summary, package, parse_failed);
+    checks.extents.write_summary(&mut summary);
+    checks.gml_id_format.write_summary(&mut summary);
+    checks.xlink.write_summary(&mut summary);
+    checks.lod_geometry_type.write_summary(&mut summary);
+    context.reporter.send(summary);
+    Ok(checks.gml_ids)
 }
 
-/// Parse the city GML and run the per-`cityObjectMember` domain-of-definition
-/// checks, accumulating findings into `response` / `gml_ids` / `result` /
-/// `city_object_groups` and bumping `member_count`. Returns `Err` if the
-/// document cannot be parsed (e.g. an L01 not-well-formed error) or a member
-/// cannot be processed; callers may log and continue so the file still appears
-/// in the summaries with zero domain-of-definition findings.
-fn run_domain_of_definition_checks(
-    context: &DomainOfDefinitionContext,
+/// Parses the city GML and runs the per-`cityObjectMember` checks. Returns
+/// `Err` if the document cannot be parsed (e.g. an L01 not-well-formed error)
+/// or a member cannot be processed, in which case the remaining members and
+/// the city object group xlinks are not checked.
+fn run_checks(
+    context: &FileContext,
     xml_str: &str,
-    accumulator: &mut DomainOfDefinitionAccumulator,
-) -> super::errors::Result<()> {
+    feature_type: &RefCell<FeatureTypeCheck>,
+    checks: &mut FileChecks,
+) -> Result<()> {
+    let citygml = context.profile.citygml;
+    let gml_ns = citygml.gml_ns;
     let envelope_xpath = format!(
         "//*[namespace-uri()='{}'][local-name()='Envelope']",
-        context.profile.citygml.gml_ns
+        citygml.gml_ns
     );
     let members_xpath = format!(
         "//*[namespace-uri()='{}'][local-name()='cityObjectMember']",
-        context.profile.citygml.core_ns
+        citygml.core_ns
     );
-
     let appearance_members_xpath = format!(
         "//*[namespace-uri()='{}'][local-name()='appearanceMember']",
-        context.profile.citygml.core_ns
+        citygml.core_ns
     );
-    let gml_ns = context.profile.citygml.gml_ns;
 
-    let mut stream_error: Option<PlateauProcessorError> = None;
-    // L03 violations of the city object and appearance members.
-    let violations = RefCell::new(Vec::<Violation>::new());
-    accumulator.response.bounded_by = stream_extract_envelope(xml_str, &envelope_xpath)?;
-    if accumulator.response.bounded_by.envelope.is_none() {
-        // L06 counts the file as one error, as no geometry can be checked.
-        accumulator.response.incorrect_extents += 1;
-        accumulator
-            .response
-            .coordinate_errors
-            .insert(CoordinateError::NonFiniteEnvelope);
-    }
+    let bounded_by = stream_extract_envelope(xml_str, &envelope_xpath)?;
+    checks.srs_name = SrsNameCheck::new(bounded_by.srs_name);
+    checks.extents = ExtentsCheck::new(bounded_by.envelope);
 
     let transformer = Transformer::from(xml_str)
         .with_root_namespaces()
@@ -970,1108 +456,124 @@ fn run_domain_of_definition_checks(
             ))
         })?;
 
+    let mut stream_error: Option<PlateauProcessorError> = None;
     transformer
         .on(members_xpath.as_str(), |node| {
-            accumulator.member_count += 1;
+            checks.member_count += 1;
             if stream_error.is_some() {
                 return;
             }
 
             let children = node.children();
-            let Some(member_ref) = children.first() else {
+            let Some(member) = children.first() else {
                 stream_error = Some(PlateauProcessorError::DomainOfDefinitionValidator(
                     "Failed to get cityObjectMember child".to_string(),
                 ));
                 return;
             };
 
-            let member_name = element_name(context.profile, member_ref);
+            let member_name = element_name(context.profile, member);
             let is_city_object_group = member_name.key == "grp:CityObjectGroup";
-            if is_city_object_group {
-                let gml_ns = context.profile.citygml.gml_ns;
-                let gml_id = member_ref
-                    .get_attribute_ns(gml_ns, "id")
-                    .unwrap_or_default();
-                accumulator.city_object_groups.push(CityObjectGroupInfo {
-                    feature_type: member_ref.name(),
-                    gml_id,
-                    xlinks: Vec::new(),
-                });
-            }
-
-            // L03. Counted before any error of `process_member_node`. A feature
-            // type outside the package is not checked further, and a city
-            // object group belongs to no package of the objectlist.
-            let out_of_package = !context.valid_feature_types.contains(&member_name.key);
-            if !context.sends_violations {
-                if out_of_package {
-                    let response = &mut accumulator.response;
-                    response.invalid_feature_types_num += 1;
-                    *response
-                        .invalid_feature_types
-                        .entry(member_ref.name())
-                        .or_insert(0) += 1;
-                }
-            } else if out_of_package {
-                violations.borrow_mut().push(Violation {
-                    feature_type: member_name.shown.clone(),
-                    gml_id: member_ref
-                        .get_attribute_ns(gml_ns, "id")
-                        .unwrap_or_default(),
-                    path: String::new(),
-                    reason: Reason::Undefined,
-                });
-            } else if let (Some(rules), false) = (context.package_rules, is_city_object_group) {
-                rules.check_feature(member_ref, gml_ns, &mut violations.borrow_mut());
-            }
-
-            match process_member_node(
-                context,
-                member_ref,
+            // L03 is counted before any error of the other checks.
+            feature_type.borrow_mut().check_member(
+                member,
                 &member_name,
-                accumulator,
                 is_city_object_group,
-            ) {
-                Ok((process_result, group_xlinks)) => {
-                    accumulator.result.extend(process_result);
-                    if is_city_object_group
-                        && let Some(group) = accumulator.city_object_groups.last_mut()
-                    {
-                        group.xlinks = group_xlinks;
-                    }
-                }
-                Err(e) => {
-                    stream_error = Some(e);
-                }
+                gml_ns,
+            );
+            if let Err(e) =
+                check_member(context, member, &member_name, is_city_object_group, checks)
+            {
+                stream_error = Some(e);
             }
         })
         .on(appearance_members_xpath.as_str(), |node| {
-            if let Some(rules) = context.package_rules {
-                for appearance in node.children() {
-                    rules.check_feature(&appearance, gml_ns, &mut violations.borrow_mut());
-                }
-            }
+            feature_type
+                .borrow_mut()
+                .check_appearance_member(node, gml_ns);
         })
         .for_each()
         .map_err(|e| PlateauProcessorError::DomainOfDefinitionValidator(format!("{e:?}")))?;
 
-    for violation in violations.into_inner() {
-        report_application_schema_violation(context, accumulator, violation);
-    }
+    feature_type
+        .borrow_mut()
+        .report_violations(&context.reporter);
 
     if let Some(err) = stream_error {
         return Err(err);
     }
 
-    // On the city object group model T03: Extracting unreferenced xlink:href
-    // CityObjectGroup xlinks are checked against the global gml_ids (all members),
-    // unlike non-CityObjectGroup xlinks which are checked against member-local gml_ids.
-    for member in accumulator.city_object_groups.iter() {
-        for xlink in member.xlinks.iter() {
-            let xlink_href = &xlink.href;
-            if !accumulator
-                .gml_ids
-                .contains_key(&xlink_href.chars().skip(1).collect::<String>())
-            {
-                let mut result_feature =
-                    create_lightweight_feature(context.feature, &["index", "udxDirs", "name"]);
-                result_feature.insert(
-                    "flag",
-                    AttributeValue::String("XLink_NoReference".to_string()),
-                );
-                result_feature.insert("tag", AttributeValue::String(xlink.tag.clone()));
-                result_feature.insert("xpath", AttributeValue::String(xlink.xpath.clone()));
-                result_feature.insert("xlinkHref", AttributeValue::String(xlink_href.clone()));
-                result_feature.insert(
-                    "featureType",
-                    AttributeValue::String(member.feature_type.clone()),
-                );
-                result_feature.insert("gmlId", AttributeValue::String(member.gml_id.clone()));
-                context.fw.send(
-                    context
-                        .ctx
-                        .new_with_feature_and_port(result_feature.clone(), FEATURES_PORT.clone()),
-                );
-                accumulator.result.push(result_feature);
-                accumulator.response.xlink_has_no_reference_num += 1;
-            }
-        }
-    }
+    checks
+        .xlink
+        .check_city_object_groups(&checks.gml_ids, &context.reporter);
     Ok(())
 }
 
-/// Counts an L03 violation and sends it as its own feature.
-fn report_application_schema_violation(
-    context: &DomainOfDefinitionContext,
-    accumulator: &mut DomainOfDefinitionAccumulator,
-    violation: Violation,
-) {
-    accumulator.response.invalid_feature_types_num += 1;
-
-    let mut feature = create_lightweight_feature(context.feature, &["index", "udxDirs", "name"]);
-    feature.insert(
-        "flag",
-        AttributeValue::String("ApplicationSchemaViolation".to_string()),
-    );
-    feature.insert(
-        "featureType",
-        AttributeValue::String(violation.feature_type),
-    );
-    feature.insert("gmlId", AttributeValue::String(violation.gml_id));
-    feature.insert("path", AttributeValue::String(violation.path));
-    feature.insert(
-        "reason",
-        AttributeValue::String(violation.reason.as_str().to_string()),
-    );
-    context.fw.send(
-        context
-            .ctx
-            .new_with_feature_and_port(feature, FEATURES_PORT.clone()),
-    );
-}
-
-/// Create a lightweight Feature by copying only the specified keys from the
-/// parent, instead of cloning the full (potentially large) parent Feature.
-fn create_lightweight_feature(parent: &Feature, keys: &[&str]) -> Feature {
-    let mut attrs = Attributes::new();
-    for key in keys {
-        if let Some(val) = parent.get(*key) {
-            attrs.insert(Attribute::new(*key), val.clone());
-        }
-    }
-    Feature::new_with_attributes(attrs)
-}
-
-/// Parses a whitespace-separated list of numbers such as `gml:posList`.
-fn parse_coordinates(content: &str) -> super::errors::Result<Vec<f64>> {
-    content
-        .split_whitespace()
-        .map(|v| {
-            v.parse()
-                .map_err(|e| PlateauProcessorError::DomainOfDefinitionValidator(format!("{e:?}")))
-        })
-        .collect()
-}
-
-fn parse_envelope_from_node(node: &EditableNode) -> super::errors::Result<BoundedBy> {
-    let srs_name = node.get_attribute("srsName").unwrap_or_default();
-
-    let mut lower_corner_value = None;
-    let mut upper_corner_value = None;
-    for child in node.children() {
-        match child.name().as_str() {
-            "lowerCorner" => lower_corner_value = child.get_content(),
-            "upperCorner" => upper_corner_value = child.get_content(),
-            _ => {}
-        }
-    }
-
-    let parse_corner = |value: Option<String>, name: &str| {
-        let value = value.ok_or_else(|| {
-            PlateauProcessorError::DomainOfDefinitionValidator(format!(
-                "Failed to get {name} corner node"
-            ))
-        })?;
-        match parse_coordinates(&value)?[..] {
-            [x, y, z, ..] => Ok([x, y, z]),
-            _ => Err(PlateauProcessorError::DomainOfDefinitionValidator(format!(
-                "Failed to parse {name} corner"
-            ))),
-        }
-    };
-    let lower = parse_corner(lower_corner_value, "lower")?;
-    let upper = parse_corner(upper_corner_value, "upper")?;
-
-    Ok(BoundedBy {
-        srs_name,
-        envelope: Envelope::new(lower, upper),
-    })
-}
-
-#[derive(Clone, Debug)]
-struct CityObjectGroupInfo {
-    feature_type: String,
-    gml_id: String,
-    xlinks: Vec<XlinkInfo>,
-}
-
-#[derive(Clone, Debug)]
-struct XlinkInfo {
-    href: String,
-    tag: String,
-    xpath: String,
-}
-
-fn stream_extract_envelope(raw_xml: &str, xpath: &str) -> super::errors::Result<BoundedBy> {
-    let envelope = RefCell::new(None);
-    let error = RefCell::new(None);
-
-    let transformer = Transformer::from(raw_xml)
-        .with_root_namespaces()
-        .map_err(|e| {
-            PlateauProcessorError::DomainOfDefinitionValidator(format!(
-                "Failed to parse root namespaces: {e:?}"
-            ))
-        })?;
-
-    transformer
-        .on(xpath, |node| {
-            if envelope.borrow().is_some() || error.borrow().is_some() {
-                return;
-            }
-            match parse_envelope_from_node(node) {
-                Ok(value) => {
-                    *envelope.borrow_mut() = Some(value);
-                }
-                Err(err) => {
-                    *error.borrow_mut() = Some(err);
-                }
-            }
-        })
-        .for_each()
-        .map_err(|e| PlateauProcessorError::DomainOfDefinitionValidator(format!("{e:?}")))?;
-
-    if let Some(err) = error.into_inner() {
-        return Err(err);
-    }
-
-    envelope.into_inner().ok_or_else(|| {
-        PlateauProcessorError::DomainOfDefinitionValidator(
-            "Failed to get envelope element".to_string(),
-        )
-    })
-}
-
-fn process_member_node(
-    context: &DomainOfDefinitionContext,
-    member: &fastxml::transform::EditableNodeRef,
+/// Runs the checks other than L03 on a member, in the order their errors are
+/// sent.
+fn check_member(
+    context: &FileContext,
+    member: &EditableNodeRef,
     member_name: &ElementName,
-    accumulator: &mut DomainOfDefinitionAccumulator,
     is_city_object_group: bool,
-) -> super::errors::Result<(Vec<Feature>, Vec<XlinkInfo>)> {
-    let mut result = Vec::<Feature>::new();
+    checks: &mut FileChecks,
+) -> Result<()> {
     let gml_ns = context.profile.citygml.gml_ns;
-    let xlink_ns = "http://www.w3.org/1999/xlink";
     let Some(gml_id) = member.get_attribute_ns(gml_ns, "id") else {
         return Err(PlateauProcessorError::DomainOfDefinitionValidator(
             "Failed to get gml id".to_string(),
         ));
     };
-    // Build a lightweight base_feature with only the attributes needed by
-    // downstream processors, instead of cloning the full (potentially large)
-    // parent Feature.
-    let mut base_attrs = Attributes::new();
-    for key in ["index", "udxDirs", "name", "path"] {
-        if let Some(val) = context.feature.get(key) {
-            base_attrs.insert(Attribute::new(key), val.clone());
-        }
-    }
-    base_attrs.insert(
-        Attribute::new("gmlId"),
-        AttributeValue::String(gml_id.clone()),
-    );
-    let mut base_feature = Feature::new_with_attributes(base_attrs);
     let feature_type = if member_name.is_standard {
         member.name()
     } else {
         "".to_string()
     };
-    base_feature.insert("featureType", AttributeValue::String(feature_type.clone()));
+    let report = context.reporter.member(&gml_id, &feature_type);
     let tag = member.qname();
 
-    // Verification of the format of gml:id of a geographical object instance
-    // grp:CityObjectGroup pattern should be {any prefix}_{UUID}.
-    if !(context.gml_id_pattern.is_match(gml_id.as_str())
-        || (is_city_object_group && GML_ID_GROUP_PATTERN.is_match(gml_id.as_str())))
-    {
-        let mut result_feature = base_feature.clone();
-        result_feature.insert(
-            "flag",
-            AttributeValue::String("GMLID_NotWellFormed".to_string()),
-        );
-        result_feature.insert("tag", AttributeValue::String(tag.clone()));
-        result.push(result_feature.clone());
-        context.fw.send(
-            context
-                .ctx
-                .new_with_feature_and_port(result_feature, FEATURES_PORT.clone()),
-        );
-        accumulator.response.gml_id_not_well_formed_num += 1;
-    }
+    checks
+        .gml_id_format
+        .check_member(&gml_id, is_city_object_group, &tag, &report);
 
-    // One-pass collection of all descendant information
-    let collected = collect_descendant_info(member, gml_ns, xlink_ns, &tag);
+    let collected = collect_descendant_info(member, gml_ns, &tag);
 
-    // C03: gml:id collection
-    // 1. gml:id record of geographic object instance
-    let mut gml_ids = HashMap::<String, Vec<HashMap<String, String>>>::new();
-    gml_ids.insert(
-        gml_id.clone(),
-        vec![HashMap::from([
-            ("tag".to_string(), tag.clone()),
-            ("xpath".to_string(), tag.clone()),
-            (
-                "index".to_string(),
-                context
-                    .feature
-                    .attributes
-                    .get(&Attribute::new("index"))
-                    .map(|v| v.to_string())
-                    .unwrap_or_default(),
-            ),
-            (
-                "udxDirs".to_string(),
-                context
-                    .feature
-                    .attributes
-                    .get(&Attribute::new("udxDirs"))
-                    .map(|v| v.to_string())
-                    .unwrap_or_default(),
-            ),
-            (
-                "name".to_string(),
-                context
-                    .feature
-                    .attributes
-                    .get(&Attribute::new("name"))
-                    .map(|v| v.to_string())
-                    .unwrap_or_default(),
-            ),
-        ])],
+    let member_gml_ids = member_gml_ids(
+        context.codelist_resolver.file,
+        &gml_id,
+        &tag,
+        &collected.gml_id_entries,
     );
-    // 2. gml:id collection of lower-level elements
-    for entry in &collected.gml_id_entries {
-        gml_ids.insert(
-            entry.gml_id.clone(),
-            vec![HashMap::from([
-                ("tag".to_string(), entry.tag.clone()),
-                ("xpath".to_string(), entry.xpath.clone()),
-                (
-                    "index".to_string(),
-                    context
-                        .feature
-                        .attributes
-                        .get(&Attribute::new("index"))
-                        .map(|v| v.to_string())
-                        .unwrap_or_default(),
-                ),
-                (
-                    "udxDirs".to_string(),
-                    context
-                        .feature
-                        .attributes
-                        .get(&Attribute::new("udxDirs"))
-                        .map(|v| v.to_string())
-                        .unwrap_or_default(),
-                ),
-                (
-                    "name".to_string(),
-                    context
-                        .feature
-                        .attributes
-                        .get(&Attribute::new("name"))
-                        .map(|v| v.to_string())
-                        .unwrap_or_default(),
-                ),
-            ])],
-        );
-    }
-    for (key, value) in gml_ids.iter() {
-        if accumulator.gml_ids.contains_key(key) {
-            accumulator
-                .gml_ids
-                .get_mut(key)
-                .unwrap()
-                .extend(value.clone());
-        } else {
-            accumulator.gml_ids.insert(key.clone(), value.clone());
-        }
-    }
-    // L04: code definition area verification
-    let city_gml_path = context
-        .feature
-        .attributes
-        .get(&Attribute::new("path"))
-        .ok_or(PlateauProcessorError::DomainOfDefinitionValidator(
-            "path key empty".to_string(),
-        ))?;
-    let city_gml_uri = Uri::from_str(&city_gml_path.to_string())
-        .map_err(|e| PlateauProcessorError::DomainOfDefinitionValidator(format!("{e:?}")))?;
-    let base_dir = city_gml_uri
-        .dir()
-        .ok_or(PlateauProcessorError::DomainOfDefinitionValidator(
-            "illegal city gml path".to_string(),
-        ))?;
-    for cs_entry in &collected.code_space_entries {
-        let code_space = &cs_entry.code_space;
+    merge(&mut checks.gml_ids, &member_gml_ids);
 
-        // First, try to resolve using dirCodelists if codeSpace contains "codelists/"
-        // This handles cases where GML files are extracted to a temp directory but codelists are elsewhere
-        let mut code = None;
-        let mut dynamically_loaded_codelist;
-        if let Some(codelists_relative) = extract_codelists_relative_path(code_space)
-            && let Some(dir_codelists) = get_dir_codelists(context.feature)
-        {
-            // Build the expected path by finding matching entry in codelists dictionary
-            // We search for entries ending with the relative path since URI formats may vary
-            let suffix = format!("/{}", codelists_relative);
-            code = context
-                .codelists
-                .iter()
-                .find(|(k, _)| k.ends_with(&suffix))
-                .map(|(_, v)| v);
+    checks.code_value.check_member(
+        &context.codelist_resolver,
+        &collected.code_space_entries,
+        &report,
+    )?;
 
-            // If not found by suffix, try direct join
-            if code.is_none()
-                && let Ok(resolved_path) = dir_codelists.join(&codelists_relative)
-            {
-                code = context.codelists.get(&resolved_path.to_string());
-            }
+    checks
+        .extents
+        .check_member(&collected.pos_contents, &report)?;
 
-            // If still not found in pre-loaded dictionary, try to load the codelist file dynamically
-            // This handles cases where the codelists dictionary was loaded from a different directory
-            if code.is_none()
-                && let Ok(resolved_path) = dir_codelists.join(&codelists_relative)
-                && let Ok(loaded) = try_load_codelist_file(
-                    Arc::clone(&context.ctx.storage_resolver),
-                    &resolved_path,
-                )
-            {
-                dynamically_loaded_codelist = loaded;
-                code = Some(&dynamically_loaded_codelist);
-            }
-        }
-
-        // Fallback: Try primary lookup (relative to GML file)
-        if code.is_none() {
-            let code_space_path = base_dir.join(Path::new(code_space.as_str())).map_err(|e| {
-                PlateauProcessorError::DomainOfDefinitionValidator(format!("{e:?}"))
-            })?;
-            code = context.codelists.get(&code_space_path.to_string());
-        }
-
-        // If still not found and fallback path is provided, try the fallback path
-        if code.is_none()
-            && let Some(fallback_path) = context.fallback_codelists_path
-        {
-            // Extract the filename from codeSpace (e.g., "../../codelists/Building_class.xml" -> "Building_class.xml")
-            if let Some(filename) = Path::new(code_space.as_str()).file_name() {
-                let fallback_code_space_path =
-                    fallback_path.join(Path::new(filename)).map_err(|e| {
-                        PlateauProcessorError::DomainOfDefinitionValidator(format!("{e:?}"))
-                    })?;
-                // First try dictionary lookup
-                code = context.codelists.get(&fallback_code_space_path.to_string());
-
-                // If not in dictionary, try dynamic loading
-                if code.is_none()
-                    && let Ok(loaded) = try_load_codelist_file(
-                        Arc::clone(&context.ctx.storage_resolver),
-                        &fallback_code_space_path,
-                    )
-                {
-                    dynamically_loaded_codelist = loaded;
-                    code = Some(&dynamically_loaded_codelist);
-                }
-            }
-        }
-
-        let code_value = &cs_entry.content;
-
-        if let Some(code) = code {
-            if code.contains_key(code_value.as_str()) {
-                accumulator.response.correct_code_values += 1;
-                continue;
-            }
-
-            accumulator.response.code_value_errors += 1;
-            handle_code_validation_failure(
-                context.ctx,
-                context.fw,
-                "CodeValidation",
-                &base_feature,
-                &cs_entry.tag,
-                &cs_entry.xpath,
-                code_space,
-                code_value,
-                &mut result,
-            );
-        } else {
-            accumulator.response.code_space_errors += 1;
-            handle_code_validation_failure(
-                context.ctx,
-                context.fw,
-                "incorrectCodeSpace",
-                &base_feature,
-                &cs_entry.tag,
-                &cs_entry.xpath,
-                code_space,
-                code_value,
-                &mut result,
-            );
-        }
-    }
-
-    // L06: Geographical coverage verification
-    if let Some(envelope) = accumulator.response.bounded_by.envelope {
-        let mut positions = Vec::<f64>::new();
-        for content in &collected.pos_contents {
-            positions.extend(parse_coordinates(content)?);
-        }
-        if !positions.is_empty() {
-            let extent = Extent::from_positions(&positions);
-            if envelope.contains(&extent) {
-                accumulator.response.correct_extents += 1;
-            } else {
-                accumulator.response.incorrect_extents += 1;
-                let mut result_feature = base_feature.clone();
-                result_feature.insert(
-                    "flag",
-                    AttributeValue::String("ExtentsValidation".to_string()),
-                );
-                result_feature.insert("isExtentsCorrect", AttributeValue::Bool(false));
-                Bounds::insert_into(Some(&envelope.0), &mut result_feature, "lower", "upper");
-                Bounds::insert_into(Some(&extent.0), &mut result_feature, "min", "max");
-                if let Some(note) = note(extent.errors()) {
-                    result_feature.insert("miscellaneous", note);
-                }
-                result.push(result_feature.clone());
-                context.fw.send(
-                    context
-                        .ctx
-                        .new_with_feature_and_port(result_feature, FEATURES_PORT.clone()),
-                );
-            }
-        }
-    }
-
-    // T03: Extraction of xlink:hrefs with no referent or whose referent is not a valid geometry object
-    // For CityObjectGroup members, xlink checking is deferred to the post-processing phase
-    // where they are checked against the global gml_ids (across all members).
-    let group_xlinks = if is_city_object_group {
-        collected
-            .xlink_entries
-            .into_iter()
-            .map(|e| XlinkInfo {
-                href: e.href,
-                tag: e.tag,
-                xpath: e.xpath,
-            })
-            .collect()
+    if is_city_object_group {
+        checks
+            .xlink
+            .add_city_object_group(member.name(), gml_id, collected.xlink_entries);
     } else {
-        for xlink_entry in collected.xlink_entries.iter() {
-            let xlink_href = &xlink_entry.href;
-            if let Some(caps) = GML_LINK_PATTERN.captures(xlink_href.as_str()) {
-                let gml_path = caps.get(1).map(|m| m.as_str()).unwrap_or_default();
-                let ext_gml_id = caps.get(2).map(|m| m.as_str()).unwrap_or_default();
-                if !accumulator
-                    .response
-                    .external_file_to_gml_ids
-                    .contains_key(gml_path)
-                {
-                    let gml_path_uri = Uri::from_str(gml_path).map_err(|e| {
-                        PlateauProcessorError::DomainOfDefinitionValidator(format!("{e:?}"))
-                    })?;
-                    let storage = context
-                        .ctx
-                        .storage_resolver
-                        .resolve(&gml_path_uri)
-                        .map_err(|e| {
-                            PlateauProcessorError::DomainOfDefinitionValidator(format!("{e:?}"))
-                        })?;
-                    let xml_content =
-                        storage
-                            .get_sync(gml_path_uri.path().as_path())
-                            .map_err(|e| {
-                                PlateauProcessorError::DomainOfDefinitionValidator(format!("{e:?}"))
-                            })?;
-                    let xml_content_str = String::from_utf8(xml_content.to_vec()).map_err(|e| {
-                        PlateauProcessorError::DomainOfDefinitionValidator(format!("{e:?}"))
-                    })?;
-                    let gml_path_owned = gml_path.to_string();
-                    let ext_transformer = Transformer::from(xml_content_str.as_str())
-                        .with_root_namespaces()
-                        .map_err(|e| {
-                            PlateauProcessorError::DomainOfDefinitionValidator(format!("{e:?}"))
-                        })?;
-                    ext_transformer
-                        .on(".//*", |node| {
-                            if let Some(id) = node.get_attribute_ns(gml_ns, "id") {
-                                accumulator
-                                    .response
-                                    .external_file_to_gml_ids
-                                    .entry(gml_path_owned.clone())
-                                    .or_default()
-                                    .push(id);
-                            }
-                        })
-                        .for_each()
-                        .map_err(|e| {
-                            PlateauProcessorError::DomainOfDefinitionValidator(format!("{e:?}"))
-                        })?;
-                }
-                if !accumulator
-                    .response
-                    .external_file_to_gml_ids
-                    .contains_key(gml_path)
-                    || !accumulator
-                        .response
-                        .external_file_to_gml_ids
-                        .get(gml_path)
-                        .unwrap()
-                        .contains(&ext_gml_id.to_string())
-                {
-                    let mut result_feature = base_feature.clone();
-                    result_feature.insert(
-                        "flag",
-                        AttributeValue::String("XLink_NoReference".to_string()),
-                    );
-                    result_feature.insert("tag", AttributeValue::String(xlink_entry.tag.clone()));
-                    result_feature
-                        .insert("xpath", AttributeValue::String(xlink_entry.xpath.clone()));
-                    result_feature.insert("xlinkHref", AttributeValue::String(xlink_href.clone()));
-                    result.push(result_feature.clone());
-                    context.fw.send(
-                        context
-                            .ctx
-                            .new_with_feature_and_port(result_feature, FEATURES_PORT.clone()),
-                    );
-                    accumulator.response.xlink_has_no_reference_num += 1;
-                }
-            } else if !gml_ids.contains_key(&xlink_href.chars().skip(1).collect::<String>()) {
-                let mut result_feature = base_feature.clone();
-                result_feature.insert(
-                    "flag",
-                    AttributeValue::String("XLink_NoReference".to_string()),
-                );
-                result_feature.insert("tag", AttributeValue::String(xlink_entry.tag.clone()));
-                result_feature.insert("xpath", AttributeValue::String(xlink_entry.xpath.clone()));
-                result_feature.insert("xlinkHref", AttributeValue::String(xlink_href.clone()));
-                result.push(result_feature.clone());
-                context.fw.send(
-                    context
-                        .ctx
-                        .new_with_feature_and_port(result_feature, FEATURES_PORT.clone()),
-                );
-                accumulator.response.xlink_has_no_reference_num += 1;
-            } else if let Some(gml_ids) =
-                gml_ids.get(&xlink_href.chars().skip(1).collect::<String>())
-            {
-                for item in gml_ids.iter().filter(|&item| {
-                    !VALID_GEOMETRY_TYPES
-                        .contains(&item.get("tag").map(|t| t.as_str()).unwrap_or_default())
-                }) {
-                    let mut result_feature = base_feature.clone();
-                    result_feature.insert(
-                        "flag",
-                        AttributeValue::String("XLink_InvalidObjectType".to_string()),
-                    );
-                    result_feature.insert("tag", AttributeValue::String(xlink_entry.tag.clone()));
-                    result_feature
-                        .insert("xpath", AttributeValue::String(xlink_entry.xpath.clone()));
-                    result_feature.insert("xlinkHref", AttributeValue::String(xlink_href.clone()));
-                    result_feature.insert(
-                        "refGmlId",
-                        AttributeValue::String(xlink_href.chars().skip(1).collect::<String>()),
-                    );
-                    result_feature.insert(
-                        "refGmlTag",
-                        AttributeValue::String(item.get("tag").cloned().unwrap_or_default()),
-                    );
-                    result_feature.insert(
-                        "refGmlXpath",
-                        AttributeValue::String(item.get("xpath").cloned().unwrap_or_default()),
-                    );
-                    result.push(result_feature.clone());
-                    context.fw.send(
-                        context
-                            .ctx
-                            .new_with_feature_and_port(result_feature, FEATURES_PORT.clone()),
-                    );
-                    accumulator.response.xlink_invalid_object_type_num += 1;
-                }
-            }
-        }
-        Vec::new()
-    };
-
-    // L-frn-01: Validation of geometric object types described as lod{0-3}Geometry.
-    for lod_entry in &collected.lod_entries {
-        let is_valid = {
-            if lod_entry.parent_tag == "gen:GenericCityObject" {
-                if lod_entry.lod_level == 0 {
-                    [
-                        "gml:Point",
-                        "gml:MultiPoint",
-                        "gml:MultiCurve",
-                        "gml:MultiSurface",
-                    ]
-                    .contains(&lod_entry.gml_child_tag.as_str())
-                } else {
-                    ["gml:MultiSurface", "gml:Solid"].contains(&lod_entry.gml_child_tag.as_str())
-                }
-            } else if lod_entry.parent_tag.contains(":DmG") {
-                // DmGeometricAttribute
-                [
-                    "gml:Point",
-                    "gml:MultiPoint",
-                    "gml:MultiCurve",
-                    "gml:MultiSurface",
-                ]
-                .contains(&lod_entry.gml_child_tag.as_str())
-            } else if lod_entry.parent_tag.contains(":DmA") {
-                // DmAnnoation
-                lod_entry.gml_child_tag == "gml:Point"
-            } else {
-                ["gml:MultiSurface", "gml:Solid"].contains(&lod_entry.gml_child_tag.as_str())
-            }
-        };
-        if !is_valid {
-            let mut result_feature = base_feature.clone();
-            result_feature.insert(
-                "flag",
-                AttributeValue::String("InvalidLodXGeometry".to_string()),
-            );
-            result_feature.insert(
-                "parentTag",
-                AttributeValue::String(lod_entry.parent_tag.clone()),
-            );
-            if lod_entry.parent_gml_id.is_empty() {
-                result_feature.insert("gmlId", AttributeValue::String("".to_string()));
-            } else {
-                result_feature.insert(
-                    "gmlId",
-                    AttributeValue::String(lod_entry.parent_gml_id.clone()),
-                );
-            }
-            result_feature.insert(
-                "invalidGeometry",
-                AttributeValue::String(lod_entry.gml_child_tag.clone()),
-            );
-            result.push(result_feature.clone());
-            context.fw.send(
-                context
-                    .ctx
-                    .new_with_feature_and_port(result_feature, FEATURES_PORT.clone()),
-            );
-            accumulator.response.invalid_lod_x_geometry_num += 1;
-        }
-    }
-    Ok((result, group_xlinks))
-}
-
-#[derive(Default)]
-struct CollectedDescendants {
-    gml_id_entries: Vec<GmlIdEntry>,
-    code_space_entries: Vec<CodeSpaceEntry>,
-    pos_contents: Vec<String>,
-    xlink_entries: Vec<CollectedXlinkEntry>,
-    lod_entries: Vec<LodEntry>,
-}
-
-struct GmlIdEntry {
-    gml_id: String,
-    tag: String,
-    xpath: String,
-}
-
-struct CodeSpaceEntry {
-    code_space: String,
-    content: String,
-    tag: String,
-    xpath: String,
-}
-
-struct CollectedXlinkEntry {
-    href: String,
-    tag: String,
-    xpath: String,
-}
-
-struct LodEntry {
-    lod_level: u8,
-    parent_tag: String,
-    parent_gml_id: String,
-    gml_child_tag: String,
-}
-
-fn collect_descendant_info(
-    member: &fastxml::transform::EditableNodeRef,
-    gml_ns: &str,
-    xlink_ns: &str,
-    member_tag: &str,
-) -> CollectedDescendants {
-    let mut result = CollectedDescendants::default();
-    let path = vec![member_tag.to_string()];
-    collect_recursive(member, gml_ns, xlink_ns, member_tag, "", &path, &mut result);
-    result
-}
-
-fn collect_recursive(
-    node: &fastxml::transform::EditableNodeRef,
-    gml_ns: &str,
-    xlink_ns: &str,
-    node_tag: &str,
-    node_gml_id: &str,
-    path: &[String],
-    result: &mut CollectedDescendants,
-) {
-    for child in node.children() {
-        let child_tag = child.qname();
-        let child_name = child.name();
-        let mut child_path = path.to_vec();
-        child_path.push(child_tag.clone());
-        let xpath_str = child_path.join("/");
-
-        // gml:id attribute check
-        let child_gml_id = child.get_attribute_ns(gml_ns, "id").unwrap_or_default();
-        if !child_gml_id.is_empty() {
-            result.gml_id_entries.push(GmlIdEntry {
-                gml_id: child_gml_id.clone(),
-                tag: child_tag.clone(),
-                xpath: xpath_str.clone(),
-            });
-        }
-
-        // codeSpace attribute check
-        if let Some(cs) = child.get_attribute("codeSpace") {
-            result.code_space_entries.push(CodeSpaceEntry {
-                code_space: cs,
-                content: child.get_content().unwrap_or_default(),
-                tag: child_tag.clone(),
-                xpath: xpath_str.clone(),
-            });
-        }
-
-        // gml:pos / gml:posList check
-        if child.namespace_uri().as_deref() == Some(gml_ns)
-            && (child_name == "pos" || child_name == "posList")
-            && let Some(content) = child.get_content()
-        {
-            result.pos_contents.push(content);
-        }
-
-        // xlink:href attribute check
-        if let Some(href) = child.get_attribute_ns(xlink_ns, "href") {
-            result.xlink_entries.push(CollectedXlinkEntry {
-                href,
-                tag: child_tag.clone(),
-                xpath: xpath_str.clone(),
-            });
-        }
-
-        // lod*Geometry check (parent = current node)
-        if let Some(level) = parse_lod_geometry_level(&child_name) {
-            let gml_child_tag = child
-                .children()
-                .iter()
-                .find(|c| c.namespace_uri().as_deref() == Some(gml_ns))
-                .map(|c| c.qname())
-                .unwrap_or_default();
-            result.lod_entries.push(LodEntry {
-                lod_level: level,
-                parent_tag: node_tag.to_string(),
-                parent_gml_id: node_gml_id.to_string(),
-                gml_child_tag,
-            });
-        }
-
-        // Recurse
-        collect_recursive(
-            &child,
+        checks.xlink.check_member(
+            &context.ctx.storage_resolver,
             gml_ns,
-            xlink_ns,
-            &child_tag,
-            &child_gml_id,
-            &child_path,
-            result,
-        );
-    }
-}
-
-fn parse_lod_geometry_level(name: &str) -> Option<u8> {
-    let rest = name.strip_prefix("lod")?.strip_suffix("Geometry")?;
-    let level: u8 = rest.parse().ok()?;
-    if level <= 3 { Some(level) } else { None }
-}
-
-/// Extract the relative path after "codelists/" from a codeSpace path
-/// e.g., "../../codelists/Building_class.xml" -> "Building_class.xml"
-fn extract_codelists_relative_path(code_space: &str) -> Option<String> {
-    const CODELISTS_DIR: &str = "codelists/";
-    code_space
-        .find(CODELISTS_DIR)
-        .map(|idx| code_space[idx + CODELISTS_DIR.len()..].to_string())
-}
-
-/// Get the dirCodelists attribute from a feature if it exists
-fn get_dir_codelists(feature: &Feature) -> Option<Uri> {
-    feature
-        .attributes
-        .get(&Attribute::new("dirCodelists"))
-        .and_then(|v| Uri::from_str(&v.to_string()).ok())
-}
-
-/// Try to load a single codelist file dynamically from storage
-/// Returns the codelist as a HashMap if successful, or an error if the file cannot be loaded
-fn try_load_codelist_file(
-    storage_resolver: Arc<StorageResolver>,
-    codelist_path: &Uri,
-) -> super::errors::Result<HashMap<String, String>> {
-    let storage = storage_resolver.resolve(codelist_path).map_err(|e| {
-        PlateauProcessorError::DomainOfDefinitionValidator(format!(
-            "Failed to resolve codelist path: {e:?}"
-        ))
-    })?;
-
-    if !storage
-        .exists_sync(codelist_path.path().as_path())
-        .unwrap_or(false)
-    {
-        return Err(PlateauProcessorError::DomainOfDefinitionValidator(format!(
-            "Codelist file not found: {}",
-            codelist_path
-        )));
+            &collected.xlink_entries,
+            &member_gml_ids,
+            &report,
+        )?;
     }
 
-    create_detail_codelist(storage, codelist_path)
-}
-
-fn create_codelist(
-    storage_resolver: Arc<StorageResolver>,
-    first: &Feature,
-    fallback_codelists_path: Option<&Uri>,
-) -> super::errors::Result<HashMap<String, HashMap<String, String>>> {
-    // Try to get dirCodelists from feature, fall back to provided path
-    let dir = first
-        .attributes
-        .get(&Attribute::new("dirCodelists"))
-        .and_then(|v| Uri::from_str(&v.to_string()).ok());
-
-    let dir = match dir {
-        Some(d) => {
-            let storage = storage_resolver.resolve(&d).map_err(|e| {
-                PlateauProcessorError::DomainOfDefinitionValidator(format!("{e:?}"))
-            })?;
-            let exist = storage.exists_sync(d.path().as_path()).map_err(|e| {
-                PlateauProcessorError::DomainOfDefinitionValidator(format!("{e:?}"))
-            })?;
-            if exist {
-                d
-            } else if let Some(fallback) = fallback_codelists_path {
-                fallback.clone()
-            } else {
-                return Err(PlateauProcessorError::DomainOfDefinitionValidator(
-                    "dirCodelists not found and no fallback provided".to_string(),
-                ));
-            }
-        }
-        None => {
-            if let Some(fallback) = fallback_codelists_path {
-                fallback.clone()
-            } else {
-                return Err(PlateauProcessorError::DomainOfDefinitionValidator(
-                    "dirCodelists key empty and no fallback provided".to_string(),
-                ));
-            }
-        }
-    };
-
-    let storage = storage_resolver
-        .resolve(&dir)
-        .map_err(|e| PlateauProcessorError::DomainOfDefinitionValidator(format!("{e:?}")))?;
-    let exist = storage
-        .exists_sync(dir.path().as_path())
-        .map_err(|e| PlateauProcessorError::DomainOfDefinitionValidator(format!("{e:?}")))?;
-    if !exist {
-        return Err(PlateauProcessorError::DomainOfDefinitionValidator(
-            "codelists directory not found".to_string(),
-        ));
-    }
-    let mut codelist = HashMap::new();
-    let lists = storage
-        .list_sync(Some(dir.path().as_path()), true)
-        .map_err(|e| PlateauProcessorError::DomainOfDefinitionValidator(format!("{e:?}")))?;
-    for file in lists
-        .iter()
-        .filter(|f| f.is_file() && f.path().extension() == Some("xml".as_ref()))
-    {
-        let result = create_detail_codelist(Arc::clone(&storage), file)
-            .map_err(|e| PlateauProcessorError::DomainOfDefinitionValidator(format!("{e:?}")))?;
-        codelist.insert(file.to_string(), result);
-    }
-    Ok(codelist)
-}
-
-fn create_detail_codelist(
-    storage: Arc<Storage>,
-    xml_path: &Uri,
-) -> super::errors::Result<HashMap<String, String>> {
-    let xml_content = storage
-        .get_sync(xml_path.path().as_path())
-        .map_err(|e| PlateauProcessorError::DomainOfDefinitionValidator(format!("{e:?}")))?;
-    let xml_str = String::from_utf8(xml_content.to_vec())
-        .map_err(|e| PlateauProcessorError::DomainOfDefinitionValidator(format!("{e:?}")))?;
-    let mut result = HashMap::new();
-    let transformer = Transformer::from(xml_str.as_str())
-        .with_root_namespaces()
-        .map_err(|e| {
-            PlateauProcessorError::DomainOfDefinitionValidator(format!(
-                "Failed to parse root namespaces: {e:?}"
-            ))
-        })?;
-    // Codelist dictionaries use the GML 3.1.1 SimpleDictionary profile namespace
-    // regardless of the CityGML version, so use the fixed value rather than the
-    // feature gml_ns.
-    let definition_xpath =
-        format!("//*[namespace-uri()='{GML_DICTIONARY_NS}'][local-name()='Definition']");
-    transformer
-        .on(definition_xpath.as_str(), |node| {
-            let mut name_val = None;
-            let mut desc_val = None;
-            for child in node.children() {
-                match child.qname().as_str() {
-                    "gml:name" => name_val = child.get_content(),
-                    "gml:description" => desc_val = child.get_content(),
-                    _ => {}
-                }
-            }
-            if let (Some(name), Some(desc)) = (name_val, desc_val) {
-                result.insert(name, desc);
-            }
-        })
-        .for_each()
-        .map_err(|e| {
-            PlateauProcessorError::DomainOfDefinitionValidator(format!(
-                "Failed to parse codelist: {e:?}"
-            ))
-        })?;
-    Ok(result)
-}
-
-#[allow(clippy::too_many_arguments)]
-fn handle_code_validation_failure(
-    ctx: &ExecutorContext,
-    fw: &ProcessorChannelForwarder,
-    flag: &str,
-    base_feature: &Feature,
-    tag: &str,
-    xpath: &str,
-    code_space: &str,
-    code_value: &str,
-    result: &mut Vec<Feature>,
-) {
-    let mut result_feature = base_feature.clone();
-    result_feature.insert("flag", AttributeValue::String(flag.to_string()));
-    result_feature.insert("tag", AttributeValue::String(tag.to_string()));
-    result_feature.insert("xpath", AttributeValue::String(xpath.to_string()));
-    result_feature.insert("codeSpace", AttributeValue::String(code_space.to_string()));
-    result_feature.insert(
-        "codeSpaceValue",
-        AttributeValue::String(code_value.to_string()),
-    );
-    result.push(result_feature.clone());
-    fw.send(ctx.new_with_feature_and_port(result_feature, FEATURES_PORT.clone()));
+    checks
+        .lod_geometry_type
+        .check_member(&collected.lod_entries, &report);
+    Ok(())
 }
 
 #[cfg(test)]
@@ -2080,6 +582,14 @@ mod tests {
     use serde_json::json;
 
     use super::*;
+    use std::collections::{BTreeMap, HashSet};
+
+    use reearth_flow_types::Attributes;
+    use serde_json::Number;
+
+    use super::super::extents::CoordinateError;
+    use super::super::srs_name::{VALID_SRS_NAME_6668, VALID_SRS_NAME_6697};
+    use crate::common::application_schema_conformance::Reason;
     use crate::object_list::FeatureTypeDefinition;
     use crate::tests::utils::{create_default_execute_context, create_default_node_context};
     use indexmap::IndexMap;
@@ -2351,58 +861,6 @@ mod tests {
         );
         assert_eq!(flagged("ApplicationSchemaViolation").len(), 1);
         Ok(())
-    }
-
-    #[test]
-    fn test_bounds_reject_non_finite_coordinates() {
-        for v in [f64::NAN, f64::INFINITY, f64::NEG_INFINITY] {
-            assert!(
-                Envelope::new([v, 0.0, 0.0], [1.0, 1.0, 1.0]).is_none(),
-                "lower corner with {v}"
-            );
-            assert!(
-                Envelope::new([0.0, 0.0, 0.0], [1.0, 1.0, v]).is_none(),
-                "upper corner with {v}"
-            );
-            // Only the elevation, which has the value, is unknown.
-            assert_eq!(
-                Extent::from_positions(&[0.0, 0.0, 0.0, 1.0, 1.0, v]),
-                Extent(Bounds([
-                    range(0.0, 1.0),
-                    range(0.0, 1.0),
-                    Err(CoordinateError::NonFiniteGeometry)
-                ])),
-                "position with {v}"
-            );
-        }
-        assert_eq!(
-            Extent::from_positions(&[0.0, 0.0]),
-            Extent(Bounds([
-                range(0.0, 0.0),
-                range(0.0, 0.0),
-                Err(CoordinateError::MissingAxis)
-            ]))
-        );
-    }
-
-    #[test]
-    fn test_extent_from_positions_and_envelope_contains() {
-        let extent = Extent::from_positions(&[1.0, 5.0, 3.0, 4.0, 2.0, 6.0]);
-        assert_eq!(
-            extent,
-            Extent(Bounds([range(1.0, 4.0), range(2.0, 5.0), range(3.0, 6.0)]))
-        );
-
-        let envelope = Envelope::new([1.0, 2.0, 3.0], [4.0, 5.0, 6.0]).unwrap();
-        assert!(envelope.contains(&extent));
-        let outside = Extent::from_positions(&[1.0, 2.0, 3.0, 4.0, 5.0, 6.5]);
-        assert!(!envelope.contains(&outside));
-        let unknown = Extent::from_positions(&[1.0, 2.0, 3.0, 4.0, 5.0, f64::NAN]);
-        assert!(!envelope.contains(&unknown));
-    }
-
-    fn range(min: f64, max: f64) -> Result<AxisRange, CoordinateError> {
-        Ok(AxisRange { min, max })
     }
 
     /// Processes one building file and returns every feature sent.
