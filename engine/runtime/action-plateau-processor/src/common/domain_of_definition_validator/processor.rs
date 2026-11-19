@@ -258,6 +258,8 @@ impl Processor for DomainOfDefinitionValidator {
 struct FileContext<'a> {
     profile: &'a PlateauProfile,
     ctx: &'a ExecutorContext,
+    /// The input feature of the city GML.
+    file: &'a Feature,
     reporter: Reporter<'a>,
     codelist_resolver: CodelistResolver<'a>,
 }
@@ -361,6 +363,7 @@ fn process_feature(
     let context = FileContext {
         profile,
         ctx,
+        file: feature,
         reporter: Reporter::new(ctx, fw, feature),
         codelist_resolver: CodelistResolver {
             codelists,
@@ -538,12 +541,7 @@ fn check_member(
 
     let collected = collect_descendant_info(member, gml_ns, &tag);
 
-    let member_gml_ids = member_gml_ids(
-        context.codelist_resolver.file,
-        &gml_id,
-        &tag,
-        &collected.gml_id_entries,
-    );
+    let member_gml_ids = member_gml_ids(context.file, &gml_id, &tag, &collected.gml_id_entries);
     merge(&mut checks.gml_ids, &member_gml_ids);
 
     checks.code_value.check_member(
@@ -564,10 +562,11 @@ fn check_member(
         checks.xlink.check_member(
             &context.ctx.storage_resolver,
             gml_ns,
+            context.file,
             &collected.xlink_entries,
             &member_gml_ids,
             &report,
-        )?;
+        );
     }
 
     checks

@@ -2,20 +2,22 @@
 //! geometry object.
 
 use std::collections::HashMap;
+use std::path::Path;
 use std::str::FromStr;
 
-use fastxml::transform::Transformer;
 use once_cell::sync::Lazy;
-use reearth_flow_common::uri::Uri;
+use quick_xml::{NsReader, events::Event};
+use reearth_flow_common::uri::{PROTOCOL_SEPARATOR, Uri};
 use reearth_flow_storage::resolve::StorageResolver;
 use reearth_flow_types::{AttributeValue, Feature};
 use regex::Regex;
 use serde_json::Number;
 
+use super::code_value::city_gml_dir;
 use super::gml_id_uniqueness::GmlIdTable;
 use super::report::{MemberReporter, Reporter};
 use super::traversal::CollectedXlinkEntry;
-use crate::common::errors::{PlateauProcessorError, Result};
+use crate::citygml::gml_id;
 
 static GML_LINK_PATTERN: Lazy<Regex> = Lazy::new(|| Regex::new(r"(.+\.gml)#(.+)").unwrap());
 
@@ -52,7 +54,8 @@ struct CityObjectGroupInfo {
 pub(super) struct XlinkCheck {
     no_reference: u32,
     invalid_object_type: u32,
-    /// The gml:ids of each external GML file referred to.
+    /// The gml:ids of each external GML file referred to, by the path the
+    /// xlinks write; none for a file that cannot be read.
     external_file_to_gml_ids: HashMap<String, Vec<String>>,
     city_object_groups: Vec<CityObjectGroupInfo>,
 }
@@ -75,22 +78,27 @@ impl XlinkCheck {
 
     /// Checks the xlinks of a member, other than a city object group, against
     /// the gml:ids of the member, `member_gml_ids`, or of the external GML file
-    /// the xlink names.
+    /// the xlink names, relative to the city GML of `file` unless absolute.
     pub(super) fn check_member(
         &mut self,
         storage_resolver: &StorageResolver,
         gml_ns: &str,
+        file: &Feature,
         xlinks: &[CollectedXlinkEntry],
         member_gml_ids: &GmlIdTable,
         report: &MemberReporter,
-    ) -> Result<()> {
+    ) {
         for xlink in xlinks {
             let href = &xlink.href;
             if let Some(caps) = GML_LINK_PATTERN.captures(href.as_str()) {
                 let gml_path = caps.get(1).map(|m| m.as_str()).unwrap_or_default();
                 let ext_gml_id = caps.get(2).map(|m| m.as_str()).unwrap_or_default();
                 if !self.external_file_to_gml_ids.contains_key(gml_path) {
-                    self.load_external_gml_ids(storage_resolver, gml_ns, gml_path)?;
+                    let gml_ids = external_gml_uri(file, gml_path)
+                        .and_then(|uri| read_gml_ids(storage_resolver, &uri, gml_ns))
+                        .unwrap_or_default();
+                    self.external_file_to_gml_ids
+                        .insert(gml_path.to_string(), gml_ids);
                 }
                 if !self
                     .external_file_to_gml_ids
@@ -126,7 +134,6 @@ impl XlinkCheck {
                 }
             }
         }
-        Ok(())
     }
 
     fn send_no_reference(&mut self, xlink: &CollectedXlinkEntry, report: &MemberReporter) {
@@ -139,40 +146,6 @@ impl XlinkCheck {
                 ("xlinkHref", xlink.href.clone()),
             ],
         );
-    }
-
-    /// Reads the gml:ids of the external GML file `gml_path`.
-    fn load_external_gml_ids(
-        &mut self,
-        storage_resolver: &StorageResolver,
-        gml_ns: &str,
-        gml_path: &str,
-    ) -> Result<()> {
-        let gml_path_uri = Uri::from_str(gml_path)
-            .map_err(|e| PlateauProcessorError::DomainOfDefinitionValidator(format!("{e:?}")))?;
-        let storage = storage_resolver
-            .resolve(&gml_path_uri)
-            .map_err(|e| PlateauProcessorError::DomainOfDefinitionValidator(format!("{e:?}")))?;
-        let xml_content = storage
-            .get_sync(gml_path_uri.path().as_path())
-            .map_err(|e| PlateauProcessorError::DomainOfDefinitionValidator(format!("{e:?}")))?;
-        let xml_content_str = String::from_utf8(xml_content.to_vec())
-            .map_err(|e| PlateauProcessorError::DomainOfDefinitionValidator(format!("{e:?}")))?;
-        let ext_transformer = Transformer::from(xml_content_str.as_str())
-            .with_root_namespaces()
-            .map_err(|e| PlateauProcessorError::DomainOfDefinitionValidator(format!("{e:?}")))?;
-        ext_transformer
-            .on(".//*", |node| {
-                if let Some(id) = node.get_attribute_ns(gml_ns, "id") {
-                    self.external_file_to_gml_ids
-                        .entry(gml_path.to_string())
-                        .or_default()
-                        .push(id);
-                }
-            })
-            .for_each()
-            .map_err(|e| PlateauProcessorError::DomainOfDefinitionValidator(format!("{e:?}")))?;
-        Ok(())
     }
 
     /// Checks the xlinks of the city object groups against the gml:ids of the
@@ -213,5 +186,38 @@ impl XlinkCheck {
             "xlinkInvalidObjectType",
             AttributeValue::Number(Number::from(self.invalid_object_type)),
         );
+    }
+}
+
+/// The URI of the GML file `gml_path` an xlink of the city GML of `file`
+/// names, or `None` when it cannot be resolved.
+fn external_gml_uri(file: &Feature, gml_path: &str) -> Option<Uri> {
+    if gml_path.contains(PROTOCOL_SEPARATOR) || Path::new(gml_path).is_absolute() {
+        return Uri::from_str(gml_path).ok();
+    }
+    city_gml_dir(file).ok()?.join(gml_path).ok()
+}
+
+/// The gml:ids of all elements of the GML file `uri`, or `None` when it cannot
+/// be read.
+fn read_gml_ids(
+    storage_resolver: &StorageResolver,
+    uri: &Uri,
+    gml_ns: &str,
+) -> Option<Vec<String>> {
+    let storage = storage_resolver.resolve(uri).ok()?;
+    let content = storage.get_sync(uri.path().as_path()).ok()?;
+    let mut reader = NsReader::from_reader(content.as_ref());
+    let mut buf = Vec::new();
+    let mut gml_ids = Vec::new();
+    loop {
+        match reader.read_event_into(&mut buf).ok()? {
+            Event::Start(element) | Event::Empty(element) => {
+                gml_ids.extend(gml_id(&reader, &element, gml_ns).ok()?);
+            }
+            Event::Eof => return Some(gml_ids),
+            _ => {}
+        }
+        buf.clear();
     }
 }

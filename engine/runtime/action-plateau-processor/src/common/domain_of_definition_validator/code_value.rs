@@ -30,21 +30,21 @@ pub(super) struct CodelistResolver<'a> {
     pub(super) fallback_codelists_path: Option<&'a Uri>,
 }
 
-impl CodelistResolver<'_> {
-    /// The directory of the city GML.
-    fn base_dir(&self) -> Result<Uri> {
-        let city_gml_path = self.file.attributes.get(&Attribute::new("path")).ok_or(
-            PlateauProcessorError::DomainOfDefinitionValidator("path key empty".to_string()),
-        )?;
-        let city_gml_uri = Uri::from_str(&city_gml_path.to_string())
-            .map_err(|e| PlateauProcessorError::DomainOfDefinitionValidator(format!("{e:?}")))?;
-        city_gml_uri
-            .dir()
-            .ok_or(PlateauProcessorError::DomainOfDefinitionValidator(
-                "illegal city gml path".to_string(),
-            ))
-    }
+/// The directory of the city GML of the input feature `file`.
+pub(super) fn city_gml_dir(file: &Feature) -> Result<Uri> {
+    let city_gml_path = file.attributes.get(&Attribute::new("path")).ok_or(
+        PlateauProcessorError::DomainOfDefinitionValidator("path key empty".to_string()),
+    )?;
+    let city_gml_uri = Uri::from_str(&city_gml_path.to_string())
+        .map_err(|e| PlateauProcessorError::DomainOfDefinitionValidator(format!("{e:?}")))?;
+    city_gml_uri
+        .dir()
+        .ok_or(PlateauProcessorError::DomainOfDefinitionValidator(
+            "illegal city gml path".to_string(),
+        ))
+}
 
+impl CodelistResolver<'_> {
     /// The codelist of `code_space`, or `None` when there is none.
     fn resolve(
         &self,
@@ -128,7 +128,7 @@ impl CodeValueCheck {
         entries: &[CodeSpaceEntry],
         report: &MemberReporter,
     ) -> Result<()> {
-        let base_dir = resolver.base_dir()?;
+        let base_dir = city_gml_dir(resolver.file)?;
         for entry in entries {
             let flag = match resolver.resolve(&base_dir, &entry.code_space)? {
                 Some(code) if code.contains_key(entry.content.as_str()) => {
