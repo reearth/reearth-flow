@@ -1,6 +1,6 @@
 import { describe, expect, test } from "vitest";
 
-import { LineStore, RowFilter } from "./lineStore";
+import { DEFAULT_CHUNK_BYTES, LineStore, RowFilter } from "./lineStore";
 
 const encoder = new TextEncoder();
 
@@ -71,6 +71,26 @@ describe("LineStore", () => {
     expect(ids(store)).toEqual(["a", "long", "b"]);
   });
 
+  test("a line longer than a default chunk keeps later rows", () => {
+    const long = line("long", { text: "x".repeat(DEFAULT_CHUNK_BYTES + 1024) });
+    const text = [line("a"), long, line("b"), line("c")].join("\n");
+    const store = storeOf(text, Math.ceil(text.length / (64 * 1024)));
+    expect(store.truncated).toBe(false);
+    expect(ids(store)).toEqual(["a", "long", "b", "c"]);
+    expect(store.bytes).toBeLessThan(DEFAULT_CHUNK_BYTES * 4);
+  });
+
+  test("a line growing across many appends stays within the budget", () => {
+    const long = line("long", { text: "x".repeat(4000) });
+    const text = [line("a"), long, line("b")].join("\n");
+    const store = storeOf(text, text.length / 10, {
+      chunkBytes: 64,
+      byteBudget: 64 * 1024,
+    });
+    expect(store.truncated).toBe(false);
+    expect(ids(store)).toEqual(["a", "long", "b"]);
+  });
+
   test("past the budget, stops keeping rows but still counts them", () => {
     const text = Array.from({ length: 100 }, (_, i) => line(`row-${i}`)).join(
       "\n",
@@ -113,6 +133,24 @@ describe("RowFilter", () => {
 
   test("matches ids and attribute values, case-insensitively", () => {
     expect(matchesOf("tokyo")).toEqual([0, 2, 3]);
+  });
+
+  test("matches values that differ from the raw line's text", () => {
+    const raw = storeOf(
+      [
+        '{"attributes":{"a":1}}',
+        '{"id":"x","attributes":{"name":"caf\\u00e9"}}',
+        '{"id":"y","attributes":{"size":1e3}}',
+      ].join("\n"),
+    );
+    const matches = (term: string) => {
+      const filter = new RowFilter(term);
+      filter.advance(raw, () => false);
+      return Array.from(filter.matches.subarray(0, filter.count));
+    };
+    expect(matches("0")).toContain(0);
+    expect(matches("café")).toEqual([1]);
+    expect(matches("1000")).toEqual([2]);
   });
 
   test("never matches on geometry alone", () => {

@@ -161,7 +161,9 @@ export default () => {
   }, [metadataUrl, readLine, selectedRow]);
 
   const selectedFeature =
-    selectedRow !== null && loadedFeature?.url === metadataUrl
+    selectedRow !== null &&
+    loadedFeature?.url === metadataUrl &&
+    loadedFeature.row === selectedRow
       ? loadedFeature.feature
       : null;
 

@@ -126,9 +126,15 @@ export class LineStore {
     const partial = current
       ? current.subarray(this.lineStart, this.writePos)
       : new Uint8Array(0);
-    const size = Math.max(this.chunkBytes, partial.length + incoming);
+    const needed = partial.length + incoming;
+    const size =
+      needed > this.chunkBytes
+        ? Math.max(needed, (current?.length ?? 0) * 2)
+        : this.chunkBytes;
+    const replacing = !!current && !this.chunkHasRows(this.chunks.length - 1);
+    const freed = replacing ? current.length : 0;
 
-    if (this.allocatedBytes + size > this.byteBudget) {
+    if (this.allocatedBytes - freed + size > this.byteBudget) {
       this.truncated = true;
       this.droppedLineHasContent = partial.some((byte) => !isWhitespace(byte));
       return false;
@@ -136,11 +142,16 @@ export class LineStore {
 
     const next = new Uint8Array(size);
     next.set(partial);
+    if (replacing) this.chunks.pop();
     this.chunks.push(next);
-    this.allocatedBytes += size;
+    this.allocatedBytes += size - freed;
     this.writePos = partial.length;
     this.lineStart = 0;
     return true;
+  }
+
+  private chunkHasRows(chunkIndex: number) {
+    return this.rowCount > 0 && this.rowChunk[this.rowCount - 1] === chunkIndex;
   }
 
   private countDropped(bytes: Uint8Array) {
@@ -211,8 +222,11 @@ export class RowFilter {
   count = 0;
   scanned = 0;
 
+  private readonly matchesNormalizedValues: boolean;
+
   constructor(term: string) {
     this.term = term.toLowerCase();
+    this.matchesNormalizedValues = /^[\d.eE+-]+$/.test(this.term);
   }
 
   caughtUp(store: LineStore) {
@@ -249,7 +263,14 @@ export class RowFilter {
 
   private rowMatches(store: LineStore, row: number): boolean {
     const line = store.readLine(row);
-    if (line === null || !line.toLowerCase().includes(this.term)) return false;
+    if (line === null) return false;
+    if (
+      !this.matchesNormalizedValues &&
+      !line.includes("\\") &&
+      !line.toLowerCase().includes(this.term)
+    ) {
+      return false;
+    }
 
     let parsed: ParsedRow;
     try {

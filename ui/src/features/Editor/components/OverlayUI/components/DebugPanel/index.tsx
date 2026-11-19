@@ -98,22 +98,25 @@ const DebugPanel: React.FC = () => {
   );
   const flyOnLoadRow = useRef<number | null>(null);
   useEffect(() => {
-    if (
-      selectedFeature &&
-      flyOnLoadRow.current !== null &&
-      flyOnLoadRow.current === selectedFeature._row
-    ) {
+    const pending = flyOnLoadRow.current;
+    if (pending === null) return;
+    if (pending !== selectedRow) {
+      flyOnLoadRow.current = null;
+      return;
+    }
+    if (selectedFeature?._row === pending) {
       flyOnLoadRow.current = null;
       flyToRow(selectedFeature);
     }
-  }, [selectedFeature, flyToRow]);
+  }, [selectedRow, selectedFeature, flyToRow]);
 
-  const showingRowOverMap = rowOverMap && !!selectedFeature;
+  const hasSelection = selectedRow !== null;
+  const showingRowOverMap = rowOverMap && hasSelection;
   // Once nothing is selected, the next row starts on the map again.
-  const [hadSelection, setHadSelection] = useState(!!selectedFeature);
-  if (hadSelection !== !!selectedFeature) {
-    setHadSelection(!!selectedFeature);
-    if (!selectedFeature) setRowOverMap(false);
+  const [hadSelection, setHadSelection] = useState(hasSelection);
+  if (hadSelection !== hasSelection) {
+    setHadSelection(hasSelection);
+    if (!hasSelection) setRowOverMap(false);
   }
 
   // The selected row, as its details or as a 3D model.
@@ -332,12 +335,19 @@ const DebugPanel: React.FC = () => {
                       onSingleClick={handleRowSingleClick}
                       onDoubleClick={(row) => {
                         handleRowDoubleClick(row);
-                        flyOnLoadRow.current = mapViewRequest ? row._row : null;
+                        if (!mapViewRequest) {
+                          flyOnLoadRow.current = null;
+                        } else if (selectedFeature?._row === row._row) {
+                          flyOnLoadRow.current = null;
+                          flyToRow(selectedFeature);
+                        } else {
+                          flyOnLoadRow.current = row._row;
+                        }
                       }}
                     />
                   </div>
                 </ResizablePanel>
-                {(mapViewRequest || selectedFeature) && (
+                {(mapViewRequest || hasSelection) && (
                   <>
                     {!minimized && (
                       <ResizableHandle className="mx-2 w-1" withHandle />

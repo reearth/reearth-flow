@@ -42,6 +42,13 @@ const TableViewer: React.FC<Props> = memo(
     return (
       <div className="relative flex h-full flex-col">
         <div className="flex h-full flex-1 flex-col">
+          {status.error && (
+            <div
+              role="alert"
+              className="mb-1 rounded-md border border-destructive/50 px-2 py-1 text-xs text-destructive">
+              {status.error}
+            </div>
+          )}
           <div className="flex-1 overflow-hidden">
             <FeatureRowsTable
               rows={rows}

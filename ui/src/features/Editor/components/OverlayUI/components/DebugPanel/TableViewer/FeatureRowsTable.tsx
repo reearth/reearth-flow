@@ -87,7 +87,10 @@ const FeatureRowsTable: React.FC<Props> = ({
     if (lastIndex >= firstIndex) ensureRange(firstIndex, lastIndex);
   }, [ensureRange, firstIndex, lastIndex]);
 
+  const navigation = useRef(0);
+
   useEffect(() => {
+    navigation.current++;
     if (parentRef.current) parentRef.current.scrollTop = 0;
   }, [searchTerm]);
 
@@ -130,11 +133,12 @@ const FeatureRowsTable: React.FC<Props> = ({
       if (!viewCount) return;
       const next = Math.max(0, Math.min(activeIndex + delta, viewCount - 1));
       if (next === activeIndex) return;
+      const token = ++navigation.current;
       setActiveIndex(next);
       virtualizer.scrollToIndex(next, { align: "auto" });
       requestAnimationFrame(() => rowRefs.current.get(next)?.focus());
       void ensureRow(next).then((row) => {
-        if (row) onRowClick?.(row);
+        if (row && token === navigation.current) onRowClick?.(row);
       });
     },
     [activeIndex, ensureRow, onRowClick, viewCount, virtualizer],
@@ -158,6 +162,10 @@ const FeatureRowsTable: React.FC<Props> = ({
   );
 
   const spacerHeight = Math.max(virtualizer.getTotalSize(), parentHeight);
+  const tabStop =
+    activeIndex >= firstIndex && activeIndex <= lastIndex
+      ? activeIndex
+      : firstIndex;
 
   return (
     <div className="flex h-full min-h-0 flex-col">
@@ -230,9 +238,12 @@ const FeatureRowsTable: React.FC<Props> = ({
                         if (element) rowRefs.current.set(item.index, element);
                         else rowRefs.current.delete(item.index);
                       }}
-                      tabIndex={item.index === activeIndex ? 0 : -1}
+                      tabIndex={item.index === tabStop ? 0 : -1}
                       onKeyDown={handleKeyDown}
-                      onFocus={() => setActiveIndex(item.index)}
+                      onFocus={() => {
+                        if (item.index !== activeIndex) navigation.current++;
+                        setActiveIndex(item.index);
+                      }}
                       className="after:border-line-200 relative cursor-pointer border-0 after:absolute after:top-0 after:left-0 after:z-10 after:w-full after:border-b focus-visible:outline-hidden"
                       style={{
                         height: item.size,
@@ -242,6 +253,7 @@ const FeatureRowsTable: React.FC<Props> = ({
                         row && row._row === selectedRow ? "selected" : undefined
                       }
                       onClick={() => {
+                        navigation.current++;
                         setActiveIndex(item.index);
                         if (row) onRowClick?.(row);
                       }}
