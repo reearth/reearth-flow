@@ -284,3 +284,19 @@ fragment IntermediateDataView on IntermediateDataView {
   sizeLimitedTiles
   error
 }
+
+fragment NamedSnapshot on NamedSnapshot {
+  snapshotNumber
+  label
+  timestamp
+  size
+  contributors {
+    id
+    name
+    metadata {
+      photoURL
+    }
+  }
+  contributorCount
+  lastEditorId
+}

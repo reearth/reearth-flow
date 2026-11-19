@@ -4,9 +4,12 @@ import (
 	"context"
 	"errors"
 
+	accountsid "github.com/reearth/reearth-accounts/server/pkg/id"
 	"github.com/reearth/reearth-flow/api/internal/adapter/gql/gqlmodel"
 	"github.com/reearth/reearth-flow/api/internal/usecase/interfaces"
 	"github.com/reearth/reearth-flow/api/pkg/websocket"
+	"github.com/reearth/reearthx/log"
+	"github.com/samber/lo"
 )
 
 func (r *queryResolver) LatestProjectSnapshot(ctx context.Context, projectId gqlmodel.ID) (*gqlmodel.ProjectDocument, error) {
@@ -84,15 +87,73 @@ func (r *queryResolver) ProjectNamedSnapshots(ctx context.Context, projectId gql
 
 	nodes := make([]*gqlmodel.NamedSnapshot, len(snaps))
 	for i, s := range snaps {
-		nodes[i] = &gqlmodel.NamedSnapshot{
-			SnapshotNumber: int(s.ID), // per-room counter; 32 bits is ample
-			Label:          s.Label,
-			Timestamp:      s.Timestamp,
-			Size:           s.Size,
-		}
+		nodes[i] = toNamedSnapshot(s)
 	}
 
 	return nodes, nil
+}
+
+func toNamedSnapshot(s *websocket.SnapshotMetadata) *gqlmodel.NamedSnapshot {
+	contributorIDs := make([]gqlmodel.ID, len(s.Contributors))
+	for i, c := range s.Contributors {
+		contributorIDs[i] = gqlmodel.ID(c)
+	}
+
+	var lastEditorID *gqlmodel.ID
+	if s.LastEditor != "" {
+		lastEditorID = lo.ToPtr(gqlmodel.ID(s.LastEditor))
+	}
+
+	return &gqlmodel.NamedSnapshot{
+		SnapshotNumber:   int(s.ID), // per-room counter; 32 bits is ample
+		Label:            s.Label,
+		Timestamp:        s.Timestamp,
+		Size:             s.Size,
+		ContributorIds:   contributorIDs,
+		ContributorCount: max(s.ContributorCount, len(contributorIDs)),
+		LastEditorID:     lastEditorID,
+	}
+}
+
+type namedSnapshotResolver struct{ *Resolver }
+
+// Contributors resolves the contributors that are still users. A failed lookup
+// gives an empty list rather than an error, so attribution never fails the history.
+func (r *namedSnapshotResolver) Contributors(ctx context.Context, obj *gqlmodel.NamedSnapshot) ([]*gqlmodel.User, error) {
+	ids := lo.Filter(obj.ContributorIds, func(id gqlmodel.ID, _ int) bool {
+		_, err := gqlmodel.ToID[accountsid.User](id)
+		return err == nil
+	})
+	if len(ids) == 0 {
+		return []*gqlmodel.User{}, nil
+	}
+
+	users, errs := dataloaders(ctx).User.LoadAll(ids)
+	for _, err := range errs {
+		if err != nil {
+			log.Warnfc(ctx, "failed to resolve contributors of snapshot %d: %v", obj.SnapshotNumber, err)
+			return []*gqlmodel.User{}, nil
+		}
+	}
+
+	return lo.Compact(users), nil
+}
+
+// LastEditor is nil when the last editor is unknown or cannot be resolved.
+func (r *namedSnapshotResolver) LastEditor(ctx context.Context, obj *gqlmodel.NamedSnapshot) (*gqlmodel.User, error) {
+	if obj.LastEditorID == nil {
+		return nil, nil
+	}
+	if _, err := gqlmodel.ToID[accountsid.User](*obj.LastEditorID); err != nil {
+		return nil, nil
+	}
+
+	u, err := dataloaders(ctx).User.Load(*obj.LastEditorID)
+	if err != nil {
+		log.Warnfc(ctx, "failed to resolve last editor of snapshot %d: %v", obj.SnapshotNumber, err)
+		return nil, nil
+	}
+	return u, nil
 }
 
 func (r *mutationResolver) RollbackProject(ctx context.Context, projectId gqlmodel.ID, version int) (*gqlmodel.ProjectDocument, error) {
@@ -174,12 +235,7 @@ func (r *mutationResolver) SaveNamedSnapshot(ctx context.Context, projectId gqlm
 		return nil, err
 	}
 
-	return &gqlmodel.NamedSnapshot{
-		SnapshotNumber: int(s.ID),
-		Label:          s.Label,
-		Timestamp:      s.Timestamp,
-		Size:           s.Size,
-	}, nil
+	return toNamedSnapshot(s), nil
 }
 
 type projectDocumentResolver struct{ *Resolver }

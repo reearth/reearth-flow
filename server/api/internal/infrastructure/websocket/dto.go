@@ -39,10 +39,13 @@ type importDocumentRequest struct {
 // snapshotItemResponse is one labelled snapshot; POST .../snapshots populates
 // only ID and Label.
 type snapshotItemResponse struct {
-	Label     string `json:"label"`
-	Timestamp string `json:"timestamp"`
-	ID        int64  `json:"id"`
-	Size      int64  `json:"size"`
+	Label            string   `json:"label"`
+	Timestamp        string   `json:"timestamp"`
+	LastEditor       string   `json:"lastEditor"`
+	Contributors     []string `json:"contributors"`
+	ID               int64    `json:"id"`
+	Size             int64    `json:"size"`
+	ContributorCount int      `json:"contributorCount"`
 }
 
 type saveSnapshotRequest struct {

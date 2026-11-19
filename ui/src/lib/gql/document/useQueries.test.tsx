@@ -21,6 +21,9 @@ const snapshot = (snapshotNumber: number) => ({
   label: "auto",
   timestamp: "2026-11-18T00:00:00Z",
   size: 1,
+  contributors: [],
+  contributorCount: 0,
+  lastEditorId: null,
 });
 
 const latest = (version: number) => ({
