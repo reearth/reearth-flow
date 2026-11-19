@@ -1,5 +1,6 @@
 //! C03: the gml:ids are unique across all files.
 
+use std::collections::hash_map::Entry;
 use std::collections::{HashMap, HashSet};
 use std::sync::Arc;
 
@@ -81,10 +82,13 @@ pub(super) fn member_gml_ids(
     gml_ids
 }
 
-/// Appends the occurrences of a member to those of its file.
+/// Appends the occurrences of a member to those of its file. Most gml:ids
+/// occur once, and a vector grown from empty holds room for several.
 pub(super) fn merge_member(into: &mut GmlIdTable, member: MemberGmlIds) {
     for (gml_id, occurrence) in member {
-        into.entry(gml_id).or_default().push(occurrence);
+        into.entry(gml_id)
+            .or_insert_with(|| Vec::with_capacity(1))
+            .push(occurrence);
     }
 }
 
@@ -111,7 +115,13 @@ impl GmlIdUniqueness {
         let mut gml_ids = GmlIdTable::new();
         for file_gml_ids in std::mem::take(&mut self.file_gml_ids) {
             for (gml_id, occurrences) in file_gml_ids {
-                gml_ids.entry(gml_id).or_default().extend(occurrences);
+                // A new gml:id keeps the vector of its file.
+                match gml_ids.entry(gml_id) {
+                    Entry::Occupied(mut entry) => entry.get_mut().extend(occurrences),
+                    Entry::Vacant(entry) => {
+                        entry.insert(occurrences);
+                    }
+                }
             }
         }
 
