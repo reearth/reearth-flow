@@ -80,26 +80,13 @@ struct Extent(Bounds);
 
 impl Extent {
     /// The extent of the positions given as a flat list of (x, y, z).
+    #[cfg(test)]
     fn from_positions(positions: &[f64]) -> Self {
-        Self(Bounds([0, 1, 2].map(|i| {
-            positions
-                .iter()
-                .skip(i)
-                .step_by(3)
-                .try_fold(None, |range: Option<AxisRange>, &v| {
-                    if !v.is_finite() {
-                        return Err(CoordinateError::NonFiniteGeometry);
-                    }
-                    Ok(Some(match range {
-                        None => AxisRange { min: v, max: v },
-                        Some(r) => AxisRange {
-                            min: r.min.min(v),
-                            max: r.max.max(v),
-                        },
-                    }))
-                })?
-                .ok_or(CoordinateError::MissingAxis)
-        })))
+        let mut accumulator = Positions::default();
+        for &v in positions {
+            accumulator.push(v);
+        }
+        accumulator.into_extent().unwrap().unwrap()
     }
 
     /// The reasons of the axes whose range is unknown.
@@ -146,6 +133,68 @@ impl Bounds {
         };
         insert(lower_prefix, |range| range.min);
         insert(upper_prefix, |range| range.max);
+    }
+}
+
+/// The extent of the coordinates of a member, updated as its `gml:pos` /
+/// `gml:posList` are read.
+#[derive(Debug, Default)]
+pub(super) struct Positions {
+    /// The number of coordinates so far; the axis of a coordinate is its index
+    /// modulo 3, across all the contents.
+    count: usize,
+    /// `None` for an axis without a coordinate yet. An axis with a NaN or
+    /// infinite coordinate stays unknown.
+    axes: [Option<std::result::Result<AxisRange, CoordinateError>>; 3],
+    /// The error of the first coordinate that is not a number, after which the
+    /// contents are not read.
+    error: Option<PlateauProcessorError>,
+}
+
+impl Positions {
+    /// Adds the whitespace-separated coordinates `content`.
+    pub(super) fn add_content(&mut self, content: &str) {
+        if self.error.is_some() {
+            return;
+        }
+        for v in content.split_whitespace() {
+            match v.parse() {
+                Ok(v) => self.push(v),
+                Err(e) => {
+                    self.error = Some(PlateauProcessorError::DomainOfDefinitionValidator(format!(
+                        "{e:?}"
+                    )));
+                    return;
+                }
+            }
+        }
+    }
+
+    fn push(&mut self, v: f64) {
+        let axis = &mut self.axes[self.count % 3];
+        self.count += 1;
+        *axis = match *axis {
+            Some(Err(e)) => Some(Err(e)),
+            _ if !v.is_finite() => Some(Err(CoordinateError::NonFiniteGeometry)),
+            None => Some(Ok(AxisRange { min: v, max: v })),
+            Some(Ok(r)) => Some(Ok(AxisRange {
+                min: r.min.min(v),
+                max: r.max.max(v),
+            })),
+        };
+    }
+
+    /// The extent, or `None` when there are no coordinates.
+    fn into_extent(self) -> Result<Option<Extent>> {
+        if let Some(e) = self.error {
+            return Err(e);
+        }
+        Ok((self.count > 0).then(|| {
+            Extent(Bounds(
+                self.axes
+                    .map(|axis| axis.unwrap_or(Err(CoordinateError::MissingAxis))),
+            ))
+        }))
     }
 }
 
@@ -264,23 +313,24 @@ impl ExtentsCheck {
         check
     }
 
-    /// Checks the contents of the `gml:pos` / `gml:posList` of a member.
+    /// A new accumulator of the positions of a member, or `None` when no
+    /// geometry is checked.
+    pub(super) fn positions(&self) -> Option<Positions> {
+        self.envelope.map(|_| Positions::default())
+    }
+
+    /// Checks the positions of a member, collected by [`Self::positions`].
     pub(super) fn check_member(
         &mut self,
-        pos_contents: &[String],
+        positions: Option<Positions>,
         report: &MemberReporter,
     ) -> Result<()> {
-        let Some(envelope) = self.envelope else {
+        let (Some(envelope), Some(positions)) = (self.envelope, positions) else {
             return Ok(());
         };
-        let mut positions = Vec::<f64>::new();
-        for content in pos_contents {
-            positions.extend(parse_coordinates(content)?);
-        }
-        if positions.is_empty() {
+        let Some(extent) = positions.into_extent()? else {
             return Ok(());
-        }
-        let extent = Extent::from_positions(&positions);
+        };
         if envelope.contains(&extent) {
             self.correct += 1;
             return Ok(());

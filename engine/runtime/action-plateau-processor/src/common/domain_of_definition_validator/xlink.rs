@@ -1,7 +1,7 @@
 //! T03: the xlink:hrefs with no referent, or whose referent is not a valid
 //! geometry object.
 
-use std::collections::HashMap;
+use std::collections::{HashMap, HashSet};
 use std::path::Path;
 use std::str::FromStr;
 
@@ -13,8 +13,7 @@ use reearth_flow_types::{AttributeValue, Feature};
 use regex::Regex;
 use serde_json::Number;
 
-use super::code_value::city_gml_dir;
-use super::gml_id_uniqueness::GmlIdTable;
+use super::gml_id_uniqueness::{GmlIdTable, MemberGmlIds};
 use super::report::{MemberReporter, Reporter};
 use super::traversal::CollectedXlinkEntry;
 use crate::citygml::gml_id;
@@ -49,18 +48,36 @@ struct CityObjectGroupInfo {
     xlinks: Vec<CollectedXlinkEntry>,
 }
 
+/// The gml:ids of each external GML file referred to, by its URI; none for a
+/// file that cannot be read.
+pub(super) type ExternalGmlIds = HashMap<String, HashSet<String>>;
+
+/// The gml:id an xlink:href `#{gml:id}` within the file names.
+fn local_gml_id(href: &str) -> &str {
+    let mut chars = href.chars();
+    chars.next();
+    chars.as_str()
+}
+
 /// The T03 check of a file.
-#[derive(Default)]
-pub(super) struct XlinkCheck {
+pub(super) struct XlinkCheck<'a> {
     no_reference: u32,
     invalid_object_type: u32,
-    /// The gml:ids of each external GML file referred to, by the path the
-    /// xlinks write; none for a file that cannot be read.
-    external_file_to_gml_ids: HashMap<String, Vec<String>>,
+    /// Shared by all files.
+    external_gml_ids: &'a mut ExternalGmlIds,
     city_object_groups: Vec<CityObjectGroupInfo>,
 }
 
-impl XlinkCheck {
+impl<'a> XlinkCheck<'a> {
+    pub(super) fn new(external_gml_ids: &'a mut ExternalGmlIds) -> Self {
+        Self {
+            no_reference: 0,
+            invalid_object_type: 0,
+            external_gml_ids,
+            city_object_groups: Vec::new(),
+        }
+    }
+
     /// Keeps the xlinks of a city object group, checked by
     /// [`Self::check_city_object_groups`].
     pub(super) fn add_city_object_group(
@@ -78,14 +95,14 @@ impl XlinkCheck {
 
     /// Checks the xlinks of a member, other than a city object group, against
     /// the gml:ids of the member, `member_gml_ids`, or of the external GML file
-    /// the xlink names, relative to the city GML of `file` unless absolute.
+    /// the xlink names, relative to `city_gml_dir` unless absolute.
     pub(super) fn check_member(
         &mut self,
         storage_resolver: &StorageResolver,
         gml_ns: &str,
-        file: &Feature,
+        city_gml_dir: Option<&Uri>,
         xlinks: &[CollectedXlinkEntry],
-        member_gml_ids: &GmlIdTable,
+        member_gml_ids: &MemberGmlIds,
         report: &MemberReporter,
     ) {
         for xlink in xlinks {
@@ -93,45 +110,37 @@ impl XlinkCheck {
             if let Some(caps) = GML_LINK_PATTERN.captures(href.as_str()) {
                 let gml_path = caps.get(1).map(|m| m.as_str()).unwrap_or_default();
                 let ext_gml_id = caps.get(2).map(|m| m.as_str()).unwrap_or_default();
-                if !self.external_file_to_gml_ids.contains_key(gml_path) {
-                    let gml_ids = external_gml_uri(file, gml_path)
-                        .and_then(|uri| read_gml_ids(storage_resolver, &uri, gml_ns))
-                        .unwrap_or_default();
-                    self.external_file_to_gml_ids
-                        .insert(gml_path.to_string(), gml_ids);
-                }
-                if !self
-                    .external_file_to_gml_ids
-                    .get(gml_path)
-                    .is_some_and(|ids| ids.contains(&ext_gml_id.to_string()))
-                {
+                let found = external_gml_uri(city_gml_dir, gml_path).is_some_and(|uri| {
+                    self.external_gml_ids
+                        .entry(uri.to_string())
+                        .or_insert_with(|| {
+                            read_gml_ids(storage_resolver, &uri, gml_ns).unwrap_or_default()
+                        })
+                        .contains(ext_gml_id)
+                });
+                if !found {
                     self.send_no_reference(xlink, report);
                 }
-            } else if !member_gml_ids.contains_key(&href.chars().skip(1).collect::<String>()) {
+                continue;
+            }
+            let gml_id = local_gml_id(href);
+            let Some(occurrence) = member_gml_ids.get(gml_id) else {
                 self.send_no_reference(xlink, report);
-            } else if let Some(occurrences) =
-                member_gml_ids.get(&href.chars().skip(1).collect::<String>())
-            {
-                for item in occurrences.iter().filter(|&item| {
-                    !VALID_GEOMETRY_TYPES
-                        .contains(&item.get("tag").map(|t| t.as_str()).unwrap_or_default())
-                }) {
-                    self.invalid_object_type += 1;
-                    report.send(
-                        "XLink_InvalidObjectType",
-                        [
-                            ("tag", xlink.tag.clone()),
-                            ("xpath", xlink.xpath.clone()),
-                            ("xlinkHref", href.clone()),
-                            ("refGmlId", href.chars().skip(1).collect::<String>()),
-                            ("refGmlTag", item.get("tag").cloned().unwrap_or_default()),
-                            (
-                                "refGmlXpath",
-                                item.get("xpath").cloned().unwrap_or_default(),
-                            ),
-                        ],
-                    );
-                }
+                continue;
+            };
+            if !VALID_GEOMETRY_TYPES.contains(&occurrence.tag.as_str()) {
+                self.invalid_object_type += 1;
+                report.send(
+                    "XLink_InvalidObjectType",
+                    [
+                        ("tag", xlink.tag.clone()),
+                        ("xpath", xlink.xpath.clone()),
+                        ("xlinkHref", href.clone()),
+                        ("refGmlId", gml_id.to_string()),
+                        ("refGmlTag", occurrence.tag.clone()),
+                        ("refGmlXpath", occurrence.xpath.clone()),
+                    ],
+                );
             }
         }
     }
@@ -157,7 +166,7 @@ impl XlinkCheck {
     ) {
         for group in &self.city_object_groups {
             for xlink in &group.xlinks {
-                if file_gml_ids.contains_key(&xlink.href.chars().skip(1).collect::<String>()) {
+                if file_gml_ids.contains_key(local_gml_id(&xlink.href)) {
                     continue;
                 }
                 self.no_reference += 1;
@@ -189,13 +198,14 @@ impl XlinkCheck {
     }
 }
 
-/// The URI of the GML file `gml_path` an xlink of the city GML of `file`
-/// names, or `None` when it cannot be resolved.
-fn external_gml_uri(file: &Feature, gml_path: &str) -> Option<Uri> {
+/// The URI of the GML file `gml_path` an xlink names, relative to the directory
+/// of the city GML `city_gml_dir` unless absolute, or `None` when it cannot be
+/// resolved.
+fn external_gml_uri(city_gml_dir: Option<&Uri>, gml_path: &str) -> Option<Uri> {
     if gml_path.contains(PROTOCOL_SEPARATOR) || Path::new(gml_path).is_absolute() {
         return Uri::from_str(gml_path).ok();
     }
-    city_gml_dir(file).ok()?.join(gml_path).ok()
+    city_gml_dir?.join(gml_path).ok()
 }
 
 /// The gml:ids of all elements of the GML file `uri`, or `None` when it cannot
@@ -204,12 +214,12 @@ fn read_gml_ids(
     storage_resolver: &StorageResolver,
     uri: &Uri,
     gml_ns: &str,
-) -> Option<Vec<String>> {
+) -> Option<HashSet<String>> {
     let storage = storage_resolver.resolve(uri).ok()?;
     let content = storage.get_sync(uri.path().as_path()).ok()?;
     let mut reader = NsReader::from_reader(content.as_ref());
     let mut buf = Vec::new();
-    let mut gml_ids = Vec::new();
+    let mut gml_ids = HashSet::new();
     loop {
         match reader.read_event_into(&mut buf).ok()? {
             Event::Start(element) | Event::Empty(element) => {

@@ -23,18 +23,22 @@ use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
 
-use super::code_value::{CodeValueCheck, CodelistResolver, Codelists, create_codelist};
+use super::code_value::{
+    CodeValueCheck, CodelistResolver, Codelists, LoadedCodelists, create_codelist,
+    get_dir_codelists,
+};
 use super::extents::{ExtentsCheck, stream_extract_envelope};
 use super::feature_type::{FeatureTypeCheck, valid_feature_types};
 use super::gml_id_format::GmlIdFormatCheck;
 use super::gml_id_uniqueness::{
-    DUPLICATE_GML_ID_STATS_PORT, GmlIdTable, GmlIdUniqueness, member_gml_ids, merge,
+    DUPLICATE_GML_ID_STATS_PORT, FileNames, GmlIdTable, GmlIdUniqueness, member_gml_ids,
+    merge_member,
 };
 use super::lod_geometry_type::LodGeometryTypeCheck;
 use super::report::Reporter;
 use super::srs_name::SrsNameCheck;
 use super::traversal::collect_descendant_info;
-use super::xlink::XlinkCheck;
+use super::xlink::{ExternalGmlIds, XlinkCheck};
 use crate::common::PlateauProfile;
 use crate::common::application_schema_conformance::{
     CityObjectTypes, ConformanceRules, ElementName, element_name,
@@ -137,6 +141,7 @@ impl ProcessorFactory for DomainOfDefinitionValidatorFactory {
             profile: self.profile,
             gml_id_uniqueness: GmlIdUniqueness::default(),
             codelists: None,
+            caches: SharedCaches::default(),
             codelists_path_expr,
             conformance_rules: None,
         };
@@ -149,6 +154,7 @@ pub struct DomainOfDefinitionValidator {
     profile: &'static PlateauProfile,
     gml_id_uniqueness: GmlIdUniqueness,
     codelists: Option<Codelists>,
+    caches: SharedCaches,
     codelists_path_expr: Option<CompiledCode>,
     /// L03 objectlist conformance rules, read from the first feature. `Some(None)` when it
     /// has no objectlist definitions and L03 checks feature types only.
@@ -227,14 +233,18 @@ impl Processor for DomainOfDefinitionValidator {
         }
         let codelists = self.codelists.as_ref().unwrap();
         let conformance_rules = self.conformance_rules.as_ref().and_then(Option::as_ref);
-        let gml_ids = process_feature(
-            self.profile,
-            &ctx,
-            fw,
+        let inputs = ProcessorInputs {
+            profile: self.profile,
             codelists,
             conformance_rules,
+        };
+        let gml_ids = process_feature(
+            &inputs,
+            &ctx,
+            fw,
             feature,
             fallback_codelists_path.as_ref(),
+            &mut self.caches,
         )?;
         self.gml_id_uniqueness.add_file_gml_ids(gml_ids);
         Ok(())
@@ -254,23 +264,41 @@ impl Processor for DomainOfDefinitionValidator {
     }
 }
 
+/// The inputs of the checks shared by all files.
+struct ProcessorInputs<'a> {
+    profile: &'a PlateauProfile,
+    codelists: &'a Codelists,
+    conformance_rules: Option<&'a ConformanceRules>,
+}
+
+/// What the checks of a file read from other files, kept for all files.
+#[derive(Debug, Clone, Default)]
+struct SharedCaches {
+    /// The codelists not in `codelists`, loaded when a file refers to them.
+    loaded_codelists: LoadedCodelists,
+    /// The gml:ids of the GML files the xlinks refer to.
+    external_gml_ids: ExternalGmlIds,
+}
+
 /// Read-only inputs of the checks of a file.
 struct FileContext<'a> {
     profile: &'a PlateauProfile,
     ctx: &'a ExecutorContext,
-    /// The input feature of the city GML.
-    file: &'a Feature,
+    /// The attributes of the input feature an occurrence of a gml:id reports.
+    file_names: Arc<FileNames>,
+    /// The directory of the city GML; `None` when it has none.
+    city_gml_dir: Option<&'a Uri>,
     reporter: Reporter<'a>,
     codelist_resolver: CodelistResolver<'a>,
 }
 
 /// The checks of a file, other than L03, and their state.
-struct FileChecks {
+struct FileChecks<'a> {
     srs_name: SrsNameCheck,
     gml_id_format: GmlIdFormatCheck,
-    code_value: CodeValueCheck,
+    code_value: CodeValueCheck<'a>,
     extents: ExtentsCheck,
-    xlink: XlinkCheck,
+    xlink: XlinkCheck<'a>,
     lod_geometry_type: LodGeometryTypeCheck,
     /// The gml:ids of the file.
     gml_ids: GmlIdTable,
@@ -308,14 +336,18 @@ fn application_schema(
 /// Checks the city GML of `feature`, sends its errors and summary, and
 /// returns its gml:ids.
 fn process_feature(
-    profile: &PlateauProfile,
+    inputs: &ProcessorInputs,
     ctx: &ExecutorContext,
     fw: &ProcessorChannelForwarder,
-    codelists: &Codelists,
-    conformance_rules: Option<&ConformanceRules>,
     feature: &Feature,
     fallback_codelists_path: Option<&Uri>,
+    caches: &mut SharedCaches,
 ) -> Result<GmlIdTable> {
+    let ProcessorInputs {
+        profile,
+        codelists,
+        conformance_rules,
+    } = *inputs;
     let package = feature.attributes.get(&Attribute::new("package")).ok_or(
         PlateauProcessorError::DomainOfDefinitionValidator("package key empty".to_string()),
     )?;
@@ -340,12 +372,13 @@ fn process_feature(
     let xml_content = storage
         .get_sync(city_gml_uri.path().as_path())
         .map_err(|e| PlateauProcessorError::DomainOfDefinitionValidator(format!("{e:?}")))?;
-    let xml_str = String::from_utf8(xml_content.to_vec())
+    let xml_str = std::str::from_utf8(&xml_content)
         .map_err(|e| PlateauProcessorError::DomainOfDefinitionValidator(format!("{e:?}")))?;
 
     let schema = conformance_rules
         .filter(|rules| rules.package(package, None).is_some())
         .and_then(|_| application_schema(ctx, &xml_content, &city_gml_uri.path()));
+    let city_gml_dir = city_gml_uri.dir();
     let city_objects = schema
         .as_deref()
         .map(|schema| CityObjectTypes::new(schema, profile.citygml.core_ns));
@@ -363,12 +396,14 @@ fn process_feature(
     let context = FileContext {
         profile,
         ctx,
-        file: feature,
+        file_names: FileNames::new(feature),
+        city_gml_dir: city_gml_dir.as_ref(),
         reporter: Reporter::new(ctx, fw, feature),
         codelist_resolver: CodelistResolver {
             codelists,
             storage_resolver: &ctx.storage_resolver,
-            file: feature,
+            dir_codelists: get_dir_codelists(feature),
+            city_gml_dir: city_gml_dir.as_ref(),
             fallback_codelists_path,
         },
     };
@@ -380,14 +415,14 @@ fn process_feature(
     let mut checks = FileChecks {
         srs_name: SrsNameCheck::default(),
         gml_id_format,
-        code_value: CodeValueCheck::default(),
+        code_value: CodeValueCheck::new(&mut caches.loaded_codelists),
         extents: ExtentsCheck::default(),
-        xlink: XlinkCheck::default(),
+        xlink: XlinkCheck::new(&mut caches.external_gml_ids),
         lod_geometry_type: LodGeometryTypeCheck::default(),
         gml_ids: GmlIdTable::new(),
         member_count: 0,
     };
-    let parse_outcome = run_checks(&context, &xml_str, &feature_type, &mut checks);
+    let parse_outcome = run_checks(&context, xml_str, &feature_type, &mut checks);
 
     let parse_failed = parse_outcome.is_err();
     if let Err(e) = parse_outcome {
@@ -539,40 +574,42 @@ fn check_member(
         .gml_id_format
         .check_member(&gml_id, is_city_object_group, &tag, &report);
 
-    let collected = collect_descendant_info(member, gml_ns, &tag);
+    let collected = collect_descendant_info(member, gml_ns, &tag, checks.extents.positions());
+    let member_gml_ids =
+        member_gml_ids(&context.file_names, &gml_id, &tag, collected.gml_id_entries);
 
-    let member_gml_ids = member_gml_ids(context.file, &gml_id, &tag, &collected.gml_id_entries);
-    merge(&mut checks.gml_ids, &member_gml_ids);
-
-    checks.code_value.check_member(
-        &context.codelist_resolver,
-        &collected.code_space_entries,
-        &report,
-    )?;
-
-    checks
-        .extents
-        .check_member(&collected.pos_contents, &report)?;
-
-    if is_city_object_group {
-        checks
-            .xlink
-            .add_city_object_group(member.name(), gml_id, collected.xlink_entries);
-    } else {
-        checks.xlink.check_member(
-            &context.ctx.storage_resolver,
-            gml_ns,
-            context.file,
-            &collected.xlink_entries,
-            &member_gml_ids,
+    let result = (|| {
+        checks.code_value.check_member(
+            &context.codelist_resolver,
+            &collected.code_space_entries,
             &report,
-        );
-    }
+        )?;
 
-    checks
-        .lod_geometry_type
-        .check_member(&collected.lod_entries, &report);
-    Ok(())
+        checks.extents.check_member(collected.positions, &report)?;
+
+        if is_city_object_group {
+            checks
+                .xlink
+                .add_city_object_group(member.name(), gml_id, collected.xlink_entries);
+        } else {
+            checks.xlink.check_member(
+                &context.ctx.storage_resolver,
+                gml_ns,
+                context.city_gml_dir,
+                &collected.xlink_entries,
+                &member_gml_ids,
+                &report,
+            );
+        }
+
+        checks
+            .lod_geometry_type
+            .check_member(&collected.lod_entries, &report);
+        Ok(())
+    })();
+    // The gml:ids are those of the file even when a check fails.
+    merge_member(&mut checks.gml_ids, member_gml_ids);
+    result
 }
 
 #[cfg(test)]

@@ -2,6 +2,7 @@
 
 use fastxml::transform::EditableNodeRef;
 
+use super::extents::Positions;
 use super::lod_geometry_type::parse_lod_geometry_level;
 
 const XLINK_NS: &str = "http://www.w3.org/1999/xlink";
@@ -11,7 +12,9 @@ const XLINK_NS: &str = "http://www.w3.org/1999/xlink";
 pub(super) struct CollectedDescendants {
     pub(super) gml_id_entries: Vec<GmlIdEntry>,
     pub(super) code_space_entries: Vec<CodeSpaceEntry>,
-    pub(super) pos_contents: Vec<String>,
+    /// The coordinates of the `gml:pos` / `gml:posList`; `None` when not
+    /// collected.
+    pub(super) positions: Option<Positions>,
     pub(super) xlink_entries: Vec<CollectedXlinkEntry>,
     pub(super) lod_entries: Vec<LodEntry>,
 }
@@ -42,72 +45,79 @@ pub(super) struct LodEntry {
     pub(super) gml_child_tag: String,
 }
 
+/// Collects the inputs of the checks under `member`, whose element is
+/// `member_tag`. The coordinates are added to `positions` unless it is `None`.
 pub(super) fn collect_descendant_info(
     member: &EditableNodeRef,
     gml_ns: &str,
     member_tag: &str,
+    positions: Option<Positions>,
 ) -> CollectedDescendants {
-    let mut result = CollectedDescendants::default();
-    let path = vec![member_tag.to_string()];
-    collect_recursive(member, gml_ns, XLINK_NS, member_tag, "", &path, &mut result);
+    let mut result = CollectedDescendants {
+        positions,
+        ..CollectedDescendants::default()
+    };
+    let mut path = vec![member_tag.to_string()];
+    collect_recursive(member, gml_ns, member_tag, "", &mut path, &mut result);
     result
 }
 
+/// Collects the inputs under `node`, whose element is `node_tag`, at the
+/// element path `path`.
 fn collect_recursive(
     node: &EditableNodeRef,
     gml_ns: &str,
-    xlink_ns: &str,
     node_tag: &str,
     node_gml_id: &str,
-    path: &[String],
+    path: &mut Vec<String>,
     result: &mut CollectedDescendants,
 ) {
     for child in node.children() {
         let child_tag = child.qname();
-        let child_name = child.name();
-        let mut child_path = path.to_vec();
-        child_path.push(child_tag.clone());
-        let xpath_str = child_path.join("/");
+        let local_name = child_tag
+            .split_once(':')
+            .map_or(child_tag.as_str(), |(_, local)| local);
+        path.push(child_tag.clone());
+        // Built only for an element that reports it.
+        let mut joined_path = None;
+        let mut xpath = || joined_path.get_or_insert_with(|| path.join("/")).clone();
 
-        // gml:id attribute check
         let child_gml_id = child.get_attribute_ns(gml_ns, "id").unwrap_or_default();
         if !child_gml_id.is_empty() {
             result.gml_id_entries.push(GmlIdEntry {
                 gml_id: child_gml_id.clone(),
                 tag: child_tag.clone(),
-                xpath: xpath_str.clone(),
+                xpath: xpath(),
             });
         }
 
-        // codeSpace attribute check
-        if let Some(cs) = child.get_attribute("codeSpace") {
+        if let Some(code_space) = child.get_attribute("codeSpace") {
             result.code_space_entries.push(CodeSpaceEntry {
-                code_space: cs,
+                code_space,
                 content: child.get_content().unwrap_or_default(),
                 tag: child_tag.clone(),
-                xpath: xpath_str.clone(),
+                xpath: xpath(),
             });
         }
 
-        // gml:pos / gml:posList check
-        if child.namespace_uri().as_deref() == Some(gml_ns)
-            && (child_name == "pos" || child_name == "posList")
+        if let Some(positions) = &mut result.positions
+            && (local_name == "pos" || local_name == "posList")
+            && child.namespace_uri().as_deref() == Some(gml_ns)
             && let Some(content) = child.get_content()
         {
-            result.pos_contents.push(content);
+            positions.add_content(&content);
         }
 
-        // xlink:href attribute check
-        if let Some(href) = child.get_attribute_ns(xlink_ns, "href") {
+        if let Some(href) = child.get_attribute_ns(XLINK_NS, "href") {
             result.xlink_entries.push(CollectedXlinkEntry {
                 href,
                 tag: child_tag.clone(),
-                xpath: xpath_str.clone(),
+                xpath: xpath(),
             });
         }
 
-        // lod*Geometry check (parent = current node)
-        if let Some(level) = parse_lod_geometry_level(&child_name) {
+        // The parent of a lod*Geometry is `node`.
+        if let Some(level) = parse_lod_geometry_level(local_name) {
             let gml_child_tag = child
                 .children()
                 .iter()
@@ -122,15 +132,7 @@ fn collect_recursive(
             });
         }
 
-        // Recurse
-        collect_recursive(
-            &child,
-            gml_ns,
-            xlink_ns,
-            &child_tag,
-            &child_gml_id,
-            &child_path,
-            result,
-        );
+        collect_recursive(&child, gml_ns, &child_tag, &child_gml_id, path, result);
+        path.pop();
     }
 }

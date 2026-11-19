@@ -1,6 +1,5 @@
 //! L04: the code values and their codeSpace.
 
-use std::borrow::Cow;
 use std::collections::HashMap;
 use std::path::Path;
 use std::str::FromStr;
@@ -18,65 +17,70 @@ use super::traversal::CodeSpaceEntry;
 use crate::citygml::GML_DICTIONARY_NS;
 use crate::common::errors::{PlateauProcessorError, Result};
 
-/// Each codelist file, by its URI, as { code: description }.
-pub(super) type Codelists = HashMap<String, HashMap<String, String>>;
+/// A codelist, as { code: description }.
+pub(super) type Codelist = HashMap<String, String>;
 
-/// Where the codelist of a codeSpace is looked for.
+/// Each codelist file, by its URI.
+pub(super) type Codelists = HashMap<String, Arc<Codelist>>;
+
+/// The codelist files loaded when not in [`Codelists`], by their URI; `None`
+/// for a file that cannot be loaded.
+pub(super) type LoadedCodelists = HashMap<String, Option<Arc<Codelist>>>;
+
+/// Where the codelist of a codeSpace in a city GML is looked for.
 pub(super) struct CodelistResolver<'a> {
     pub(super) codelists: &'a Codelists,
     pub(super) storage_resolver: &'a Arc<StorageResolver>,
-    /// The input feature of the city GML.
-    pub(super) file: &'a Feature,
+    /// The `dirCodelists` of the input feature.
+    pub(super) dir_codelists: Option<Uri>,
+    /// The directory of the city GML; `None` when it has none.
+    pub(super) city_gml_dir: Option<&'a Uri>,
     pub(super) fallback_codelists_path: Option<&'a Uri>,
 }
 
-/// The directory of the city GML of the input feature `file`.
-pub(super) fn city_gml_dir(file: &Feature) -> Result<Uri> {
-    let city_gml_path = file.attributes.get(&Attribute::new("path")).ok_or(
-        PlateauProcessorError::DomainOfDefinitionValidator("path key empty".to_string()),
-    )?;
-    let city_gml_uri = Uri::from_str(&city_gml_path.to_string())
-        .map_err(|e| PlateauProcessorError::DomainOfDefinitionValidator(format!("{e:?}")))?;
-    city_gml_uri
-        .dir()
-        .ok_or(PlateauProcessorError::DomainOfDefinitionValidator(
-            "illegal city gml path".to_string(),
-        ))
-}
-
 impl CodelistResolver<'_> {
-    /// The codelist of `code_space`, or `None` when there is none.
+    /// The codelist of `code_space`, or `None` when there is none. A codelist
+    /// not in [`Codelists`] is loaded once into `loaded`.
     fn resolve(
         &self,
         base_dir: &Uri,
         code_space: &str,
-    ) -> Result<Option<Cow<'_, HashMap<String, String>>>> {
+        loaded: &mut LoadedCodelists,
+    ) -> Result<Option<Arc<Codelist>>> {
+        let mut load = |uri: &Uri| {
+            loaded
+                .entry(uri.to_string())
+                .or_insert_with(|| {
+                    try_load_codelist_file(Arc::clone(self.storage_resolver), uri)
+                        .ok()
+                        .map(Arc::new)
+                })
+                .clone()
+        };
+
         // First, try to resolve using dirCodelists if codeSpace contains "codelists/"
         // This handles cases where GML files are extracted to a temp directory but codelists are elsewhere
         if let Some(codelists_relative) = extract_codelists_relative_path(code_space)
-            && let Some(dir_codelists) = get_dir_codelists(self.file)
+            && let Some(dir_codelists) = &self.dir_codelists
         {
             // Build the expected path by finding matching entry in codelists dictionary
             // We search for entries ending with the relative path since URI formats may vary
             let suffix = format!("/{}", codelists_relative);
             if let Some((_, code)) = self.codelists.iter().find(|(k, _)| k.ends_with(&suffix)) {
-                return Ok(Some(Cow::Borrowed(code)));
+                return Ok(Some(Arc::clone(code)));
             }
 
-            // If not found by suffix, try direct join
-            if let Ok(resolved_path) = dir_codelists.join(&codelists_relative)
-                && let Some(code) = self.codelists.get(&resolved_path.to_string())
-            {
-                return Ok(Some(Cow::Borrowed(code)));
-            }
+            if let Ok(resolved_path) = dir_codelists.join(&codelists_relative) {
+                // If not found by suffix, try direct join
+                if let Some(code) = self.codelists.get(&resolved_path.to_string()) {
+                    return Ok(Some(Arc::clone(code)));
+                }
 
-            // If still not found in pre-loaded dictionary, try to load the codelist file dynamically
-            // This handles cases where the codelists dictionary was loaded from a different directory
-            if let Ok(resolved_path) = dir_codelists.join(&codelists_relative)
-                && let Ok(loaded) =
-                    try_load_codelist_file(Arc::clone(self.storage_resolver), &resolved_path)
-            {
-                return Ok(Some(Cow::Owned(loaded)));
+                // If still not found in pre-loaded dictionary, try to load the codelist file dynamically
+                // This handles cases where the codelists dictionary was loaded from a different directory
+                if let Some(code) = load(&resolved_path) {
+                    return Ok(Some(code));
+                }
             }
         }
 
@@ -85,7 +89,7 @@ impl CodelistResolver<'_> {
             .join(Path::new(code_space))
             .map_err(|e| PlateauProcessorError::DomainOfDefinitionValidator(format!("{e:?}")))?;
         if let Some(code) = self.codelists.get(&code_space_path.to_string()) {
-            return Ok(Some(Cow::Borrowed(code)));
+            return Ok(Some(Arc::clone(code)));
         }
 
         // If still not found and fallback path is provided, try the fallback path
@@ -99,14 +103,12 @@ impl CodelistResolver<'_> {
                 })?;
             // First try dictionary lookup
             if let Some(code) = self.codelists.get(&fallback_code_space_path.to_string()) {
-                return Ok(Some(Cow::Borrowed(code)));
+                return Ok(Some(Arc::clone(code)));
             }
 
             // If not in dictionary, try dynamic loading
-            if let Ok(loaded) =
-                try_load_codelist_file(Arc::clone(self.storage_resolver), &fallback_code_space_path)
-            {
-                return Ok(Some(Cow::Owned(loaded)));
+            if let Some(code) = load(&fallback_code_space_path) {
+                return Ok(Some(code));
             }
         }
         Ok(None)
@@ -114,23 +116,49 @@ impl CodelistResolver<'_> {
 }
 
 /// The L04 check of a file.
-#[derive(Debug, Default)]
-pub(super) struct CodeValueCheck {
+pub(super) struct CodeValueCheck<'a> {
     correct_code_values: u32,
     code_value_errors: u32,
     code_space_errors: u32,
+    /// The codelist of each codeSpace of the file, as resolved.
+    resolved: HashMap<String, Option<Arc<Codelist>>>,
+    /// Shared by all files.
+    loaded: &'a mut LoadedCodelists,
 }
 
-impl CodeValueCheck {
+impl<'a> CodeValueCheck<'a> {
+    pub(super) fn new(loaded: &'a mut LoadedCodelists) -> Self {
+        Self {
+            correct_code_values: 0,
+            code_value_errors: 0,
+            code_space_errors: 0,
+            resolved: HashMap::new(),
+            loaded,
+        }
+    }
+
     pub(super) fn check_member(
         &mut self,
         resolver: &CodelistResolver,
         entries: &[CodeSpaceEntry],
         report: &MemberReporter,
     ) -> Result<()> {
-        let base_dir = city_gml_dir(resolver.file)?;
+        let base_dir =
+            resolver
+                .city_gml_dir
+                .ok_or(PlateauProcessorError::DomainOfDefinitionValidator(
+                    "illegal city gml path".to_string(),
+                ))?;
         for entry in entries {
-            let flag = match resolver.resolve(&base_dir, &entry.code_space)? {
+            let code = match self.resolved.get(&entry.code_space) {
+                Some(code) => code.clone(),
+                None => {
+                    let code = resolver.resolve(base_dir, &entry.code_space, self.loaded)?;
+                    self.resolved.insert(entry.code_space.clone(), code.clone());
+                    code
+                }
+            };
+            let flag = match code {
                 Some(code) if code.contains_key(entry.content.as_str()) => {
                     self.correct_code_values += 1;
                     continue;
@@ -183,7 +211,7 @@ fn extract_codelists_relative_path(code_space: &str) -> Option<String> {
 }
 
 /// Get the dirCodelists attribute from a feature if it exists
-fn get_dir_codelists(feature: &Feature) -> Option<Uri> {
+pub(super) fn get_dir_codelists(feature: &Feature) -> Option<Uri> {
     feature
         .attributes
         .get(&Attribute::new("dirCodelists"))
@@ -195,7 +223,7 @@ fn get_dir_codelists(feature: &Feature) -> Option<Uri> {
 fn try_load_codelist_file(
     storage_resolver: Arc<StorageResolver>,
     codelist_path: &Uri,
-) -> Result<HashMap<String, String>> {
+) -> Result<Codelist> {
     let storage = storage_resolver.resolve(codelist_path).map_err(|e| {
         PlateauProcessorError::DomainOfDefinitionValidator(format!(
             "Failed to resolve codelist path: {e:?}"
@@ -276,15 +304,12 @@ pub(super) fn create_codelist(
     {
         let result = create_detail_codelist(Arc::clone(&storage), file)
             .map_err(|e| PlateauProcessorError::DomainOfDefinitionValidator(format!("{e:?}")))?;
-        codelist.insert(file.to_string(), result);
+        codelist.insert(file.to_string(), Arc::new(result));
     }
     Ok(codelist)
 }
 
-fn create_detail_codelist(
-    storage: Arc<Storage>,
-    xml_path: &Uri,
-) -> Result<HashMap<String, String>> {
+fn create_detail_codelist(storage: Arc<Storage>, xml_path: &Uri) -> Result<Codelist> {
     let xml_content = storage
         .get_sync(xml_path.path().as_path())
         .map_err(|e| PlateauProcessorError::DomainOfDefinitionValidator(format!("{e:?}")))?;
