@@ -3,7 +3,9 @@ package server
 import (
 	"context"
 	"errors"
+	"math"
 	"net/http/httptest"
+	"sync"
 	"testing"
 	"time"
 
@@ -264,6 +266,60 @@ func TestSignalLock_NewestChangeWinsAcrossInstances(t *testing.T) {
 			return ok && got == want && s.locks.locked(lockRoom, s.WSProvider().GetDoc(lockRoom))
 		})
 	}
+}
+
+func TestSignalLock_WritesItsChangeAgainWhenAnOlderOneLandsBeforeItsObserver(t *testing.T) {
+	t.Parallel()
+
+	srv := New(testConfig())
+	// An older change another instance wrote concurrently lands between the
+	// write and the lock observer, which then reads the older change.
+	var older []byte
+	var once sync.Once
+	watch := srv.ws.OnLoadDocument
+	srv.ws.OnLoadDocument = func(ctx context.Context, room string, doc *crdt.Doc) error {
+		doc.GetMap(metadataMapName).Observe(func(ev crdt.YMapEvent) {
+			if _, ok := ev.Keys[projectLockKey]; !ok || !ev.Txn.Local {
+				return
+			}
+			once.Do(func() {
+				if err := crdt.ApplyUpdateV1(doc, older, nil); err != nil {
+					t.Errorf("apply the older change: %v", err)
+				}
+			})
+		})
+		return watch(ctx, room, doc)
+	}
+	ts := httptest.NewServer(srv.Handler())
+	defer ts.Close()
+	a := dialE2E(t, ts, lockRoom, 101)
+	defer a.close()
+	a.completeHandshake()
+	// Locking before the server has read a's handshake would refuse it.
+	a.insertText("1")
+	waitFor(t, "the edit before the lock", func() bool { return serverText(srv, lockRoom) == "1" })
+
+	// Server client IDs are 32-bit, so this concurrent entry is the one the
+	// document keeps.
+	other := crdt.New(crdt.WithClientID(crdt.ClientID(math.MaxUint32 + 1)))
+	if err := crdt.ApplyUpdateV1(other, crdt.EncodeStateAsUpdateV1(srv.WSProvider().GetDoc(lockRoom), nil), nil); err != nil {
+		t.Fatal(err)
+	}
+	before := other.StateVector()
+	m := other.GetMap(metadataMapName)
+	other.Transact(func(txn *crdt.Transaction) {
+		m.Set(txn, projectLockKey, lockEntry(srv, lockRoom, projectLock{Locked: false, At: 1000}))
+	})
+	older = crdt.EncodeStateAsUpdateV1(other, before)
+
+	if err := srv.SignalLock(context.Background(), lockRoom, true, time.UnixMilli(2000)); err != nil {
+		t.Fatalf("SignalLock: %v", err)
+	}
+	want := projectLock{Locked: true, At: 2000}
+	waitFor(t, "the newer lock change", func() bool {
+		got, ok := storedLock(srv, lockRoom)
+		return ok && got == want && srv.locks.locked(lockRoom, srv.WSProvider().GetDoc(lockRoom))
+	})
 }
 
 func TestSignalLock_IgnoresAnEntryAPeerWrote(t *testing.T) {

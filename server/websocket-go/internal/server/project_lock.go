@@ -136,6 +136,19 @@ func (l *projectLocks) observe(rl *roomLock, cur projectLock) (newest projectLoc
 	return projectLock{}, false
 }
 
+// wrote records a change this instance is about to write to doc. Observers run
+// after the write lets go of the document and can read a concurrent older change
+// instead, so the observer must already know the newer one to write it again.
+func (l *projectLocks) wrote(room string, doc *crdt.Doc, c projectLock) {
+	l.mu.Lock()
+	defer l.mu.Unlock()
+	for _, rl := range l.rooms[room] {
+		if rl.doc == doc && c.At > rl.latest.At {
+			rl.latest = c
+		}
+	}
+}
+
 // enableProjectLock installs the hooks that keep a locked project's document
 // read-only for peers connected before the lock.
 func (s *Server) enableProjectLock() {
@@ -229,6 +242,7 @@ func (s *Server) applyProjectLock(ctx context.Context, room string, l projectLoc
 				return // a retried call: the document already holds this change
 			}
 		}
+		s.locks.wrote(room, doc, l)
 		transact(func(txn *crdt.Transaction) {
 			// at is stored as a float64 so a JS client reads it as a number.
 			m.Set(txn, projectLockKey, map[string]any{"locked": l.Locked, "at": float64(l.At), "sig": sig})
