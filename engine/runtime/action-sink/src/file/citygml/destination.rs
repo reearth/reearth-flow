@@ -363,9 +363,18 @@ impl ArchiveWriter {
                     ))
                 })?;
                 // `persist` renames the file; the rename itself is durable only
-                // once the folder holding it is synchronized.
+                // once the folder holding it is synchronized. The archive is
+                // already complete and at its final path by now, so a folder
+                // that cannot be synchronized (some network and FUSE mounts
+                // refuse it) costs durability, not the run.
                 #[cfg(unix)]
-                sync_parent_dir(target).map_err(|e| failed(&e))?;
+                if let Err(e) = sync_parent_dir(target) {
+                    tracing::warn!(
+                        "the zip archive {} was written, but {e}; it may not \
+                         survive a crash of the host",
+                        target.display()
+                    );
+                }
                 Ok(Some(FinishedArchive::InPlace))
             }
             _ => {
