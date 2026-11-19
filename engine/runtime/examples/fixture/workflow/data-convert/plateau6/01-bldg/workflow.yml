@@ -93,16 +93,11 @@ graphs:
         with:
           inline: !include ../../../../config/plateau6_bldg_flat_attributes.json
 
-      # Flattens PLATEAU disaster-risk (fld/tnm/htd/ifld/rfld/lsld) attributes into
-      # dynamically-named keys, e.g. "利根川水系利根川（国管理区間）_L1（計画規模）_浸水ランク".
-      # Attribute names are data-dependent (built from each risk record's description/
-      # adminType/scale fields), so this uses AttributeMapper's multipleExpr rather than
-      # a static AttributeTableExtractor mapping.
-      # The keys come out as one ordered group, __risk, so nothing downstream can reorder
-      # them. Categories keep a fixed order (river, tsunami, high tide, inland, reservoir,
-      # landslide); inside a category the records are sorted by their codelist codes
-      # (river: description, adminType, scale), so the order does not depend on the
-      # order of the records in the file.
+      # Risk records -> one group, __risk. Key names come from the data (multipleExpr).
+      # - categories in order: river, tsunami, high tide, inland, reservoir, landslide
+      # - within a category, sorted by codelist codes (river: description, adminType, scale; others: description)
+      # - river sort key = description*10000 + adminType*100 + scale (adminType, scale are 1..2 in the standard)
+      # - requires resolved codes, and a unique sort-code tuple per record within a category
       - id: 32eed03e-18e6-497b-b588-1afb84492ee1
         name: DisasterRiskAttributeMapper
         type: action
@@ -435,11 +430,9 @@ graphs:
                 type: flowExpr
                 value: '(attributes["_ymin"] + attributes["_ymax"]) * 0.5'
 
-      # Builds the final attribute order from four groups, each kept in order on its own:
-      # base keys, __flat (AttributeTableExtractor), __risk, then the geometry keys
-      # (DisasterRiskAttributeMapper). Nothing is classified by key name, and no earlier
-      # step can affect the order. The internal keys the later nodes read are kept after
-      # them; the writers do not expose "__" keys.
+      # Final attribute order, rebuilt from groups (earlier steps cannot affect it):
+      # - base keys, __flat (AttributeTableExtractor), __risk (DisasterRiskAttributeMapper), geometry keys
+      # - "__" keys read by later nodes are kept after them; writers do not expose "__" keys
       - id: 5b8d1f3a-2c4e-4a6b-9d0f-7e1a3c5b9d24
         name: AttributeOrderMapper
         type: action
