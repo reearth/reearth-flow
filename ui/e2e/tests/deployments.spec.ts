@@ -216,7 +216,7 @@ test.describe("Deployment lifecycle", { tag: "@regression" }, () => {
       page.getByText(deploymentDescription, { exact: true }),
     ).toBeVisible({ timeout: 15_000 });
     await expect(
-      page.getByText(/^(queued|running|completed|failed|cancelled)$/).first(),
+      page.getByText(/^(queued|running|completed|failed|cancelled)$/i).first(),
     ).toBeVisible({ timeout: 15_000 });
 
     // Cancel the job so it does not keep consuming the shared dev engine.
@@ -228,6 +228,10 @@ test.describe("Deployment lifecycle", { tag: "@regression" }, () => {
       .catch(() => false);
     if (canCancel) {
       await cancelJob.click();
+      await page
+        .getByRole("alertdialog")
+        .getByRole("button", { name: "Cancel Job" })
+        .click();
       await expect(
         page.getByText("Job Cancelled", { exact: true }),
       ).toBeVisible({ timeout: 15_000 });
