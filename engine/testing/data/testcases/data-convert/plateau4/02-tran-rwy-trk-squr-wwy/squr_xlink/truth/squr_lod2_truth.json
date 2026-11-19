@@ -57,7 +57,21 @@
     "tran_Square_tran_function": "駅前広場",
     "tran_function": "車道部",
     "uro_geometrySrcDescLod1": "未作成",
-    "uro_lodType": "道路の横断方向の高さは一律とし、車道の高さとする。車道、車道交差部、分離帯及び歩道を区分する。"
+    "uro_lodType": "道路の横断方向の高さは一律とし、車道の高さとする。車道、車道交差部、分離帯及び歩道を区分する。",
+    "__key_order": [
+      "meshcode",
+      "feature_type",
+      "city_code",
+      "city_name",
+      "gml_id",
+      "attributes",
+      "core_creationDate",
+      "tran_class",
+      "tran_Square_tran_function",
+      "tran_function",
+      "uro_geometrySrcDescLod1",
+      "uro_lodType"
+    ]
   },
   "tran_ad12e6ea-7648-4c70-9d3b-693e2395ec3d": {
     "meshcode": "53396570",
@@ -117,7 +131,21 @@
     "tran_Square_tran_function": "駅前広場",
     "tran_function": "車道部",
     "uro_geometrySrcDescLod1": "未作成",
-    "uro_lodType": "道路の横断方向の高さは一律とし、車道の高さとする。車道、車道交差部、分離帯及び歩道を区分する。"
+    "uro_lodType": "道路の横断方向の高さは一律とし、車道の高さとする。車道、車道交差部、分離帯及び歩道を区分する。",
+    "__key_order": [
+      "meshcode",
+      "feature_type",
+      "city_code",
+      "city_name",
+      "gml_id",
+      "attributes",
+      "core_creationDate",
+      "tran_class",
+      "tran_Square_tran_function",
+      "tran_function",
+      "uro_geometrySrcDescLod1",
+      "uro_lodType"
+    ]
   },
   "tran_bc9171be-ceca-40f4-8f43-93f06e0f694f": {
     "meshcode": "53396570",
@@ -177,7 +205,21 @@
     "tran_Square_tran_function": "駅前広場",
     "tran_function": "車道部",
     "uro_geometrySrcDescLod1": "未作成",
-    "uro_lodType": "道路の横断方向の高さは一律とし、車道の高さとする。車道、車道交差部、分離帯及び歩道を区分する。"
+    "uro_lodType": "道路の横断方向の高さは一律とし、車道の高さとする。車道、車道交差部、分離帯及び歩道を区分する。",
+    "__key_order": [
+      "meshcode",
+      "feature_type",
+      "city_code",
+      "city_name",
+      "gml_id",
+      "attributes",
+      "core_creationDate",
+      "tran_class",
+      "tran_Square_tran_function",
+      "tran_function",
+      "uro_geometrySrcDescLod1",
+      "uro_lodType"
+    ]
   },
   "tran_6a93c89c-d64a-458a-af66-354cde38e1dc": {
     "meshcode": "53396570",
@@ -237,7 +279,21 @@
     "tran_Square_tran_function": "駅前広場",
     "tran_function": "歩道部",
     "uro_geometrySrcDescLod1": "未作成",
-    "uro_lodType": "道路の横断方向の高さは一律とし、車道の高さとする。車道、車道交差部、分離帯及び歩道を区分する。"
+    "uro_lodType": "道路の横断方向の高さは一律とし、車道の高さとする。車道、車道交差部、分離帯及び歩道を区分する。",
+    "__key_order": [
+      "meshcode",
+      "feature_type",
+      "city_code",
+      "city_name",
+      "gml_id",
+      "attributes",
+      "core_creationDate",
+      "tran_class",
+      "tran_Square_tran_function",
+      "tran_function",
+      "uro_geometrySrcDescLod1",
+      "uro_lodType"
+    ]
   },
   "tran_6cbfcab9-67ad-4ed6-aa95-2aef4abb0d26": {
     "meshcode": "53396570",
@@ -297,7 +353,21 @@
     "tran_Square_tran_function": "駅前広場",
     "tran_function": "車道部",
     "uro_geometrySrcDescLod1": "未作成",
-    "uro_lodType": "道路の横断方向の高さは一律とし、車道の高さとする。車道、車道交差部、分離帯及び歩道を区分する。"
+    "uro_lodType": "道路の横断方向の高さは一律とし、車道の高さとする。車道、車道交差部、分離帯及び歩道を区分する。",
+    "__key_order": [
+      "meshcode",
+      "feature_type",
+      "city_code",
+      "city_name",
+      "gml_id",
+      "attributes",
+      "core_creationDate",
+      "tran_class",
+      "tran_Square_tran_function",
+      "tran_function",
+      "uro_geometrySrcDescLod1",
+      "uro_lodType"
+    ]
   },
   "tran_0e22d1a2-809c-4bb7-8c81-72d6a063b9e4": {
     "meshcode": "53396570",
@@ -357,7 +427,21 @@
     "tran_Square_tran_function": "駅前広場",
     "tran_function": "島",
     "uro_geometrySrcDescLod1": "未作成",
-    "uro_lodType": "道路の横断方向の高さは一律とし、車道の高さとする。車道、車道交差部、分離帯及び歩道を区分する。"
+    "uro_lodType": "道路の横断方向の高さは一律とし、車道の高さとする。車道、車道交差部、分離帯及び歩道を区分する。",
+    "__key_order": [
+      "meshcode",
+      "feature_type",
+      "city_code",
+      "city_name",
+      "gml_id",
+      "attributes",
+      "core_creationDate",
+      "tran_class",
+      "tran_Square_tran_function",
+      "tran_function",
+      "uro_geometrySrcDescLod1",
+      "uro_lodType"
+    ]
   },
   "tran_d7f9b4fb-6422-4dbe-97a5-74ed56dfd405": {
     "meshcode": "53396570",
@@ -417,7 +501,21 @@
     "tran_Square_tran_function": "駅前広場",
     "tran_function": "島",
     "uro_geometrySrcDescLod1": "未作成",
-    "uro_lodType": "道路の横断方向の高さは一律とし、車道の高さとする。車道、車道交差部、分離帯及び歩道を区分する。"
+    "uro_lodType": "道路の横断方向の高さは一律とし、車道の高さとする。車道、車道交差部、分離帯及び歩道を区分する。",
+    "__key_order": [
+      "meshcode",
+      "feature_type",
+      "city_code",
+      "city_name",
+      "gml_id",
+      "attributes",
+      "core_creationDate",
+      "tran_class",
+      "tran_Square_tran_function",
+      "tran_function",
+      "uro_geometrySrcDescLod1",
+      "uro_lodType"
+    ]
   },
   "tran_5bfccadd-3f75-4457-a9dd-fd138e414192": {
     "meshcode": "53396570",
@@ -477,7 +575,21 @@
     "tran_Square_tran_function": "駅前広場",
     "tran_function": "車道部",
     "uro_geometrySrcDescLod1": "未作成",
-    "uro_lodType": "道路の横断方向の高さは一律とし、車道の高さとする。車道、車道交差部、分離帯及び歩道を区分する。"
+    "uro_lodType": "道路の横断方向の高さは一律とし、車道の高さとする。車道、車道交差部、分離帯及び歩道を区分する。",
+    "__key_order": [
+      "meshcode",
+      "feature_type",
+      "city_code",
+      "city_name",
+      "gml_id",
+      "attributes",
+      "core_creationDate",
+      "tran_class",
+      "tran_Square_tran_function",
+      "tran_function",
+      "uro_geometrySrcDescLod1",
+      "uro_lodType"
+    ]
   },
   "tran_08f6f268-4246-450e-a1ad-38c371dcf9a7": {
     "meshcode": "53396570",
@@ -537,7 +649,21 @@
     "tran_Square_tran_function": "駅前広場",
     "tran_function": "島",
     "uro_geometrySrcDescLod1": "未作成",
-    "uro_lodType": "道路の横断方向の高さは一律とし、車道の高さとする。車道、車道交差部、分離帯及び歩道を区分する。"
+    "uro_lodType": "道路の横断方向の高さは一律とし、車道の高さとする。車道、車道交差部、分離帯及び歩道を区分する。",
+    "__key_order": [
+      "meshcode",
+      "feature_type",
+      "city_code",
+      "city_name",
+      "gml_id",
+      "attributes",
+      "core_creationDate",
+      "tran_class",
+      "tran_Square_tran_function",
+      "tran_function",
+      "uro_geometrySrcDescLod1",
+      "uro_lodType"
+    ]
   },
   "tran_279cce40-ac64-4124-8fdd-2a3e77ffa111": {
     "meshcode": "53396570",
@@ -597,7 +723,21 @@
     "tran_Square_tran_function": "駅前広場",
     "tran_function": "島",
     "uro_geometrySrcDescLod1": "未作成",
-    "uro_lodType": "道路の横断方向の高さは一律とし、車道の高さとする。車道、車道交差部、分離帯及び歩道を区分する。"
+    "uro_lodType": "道路の横断方向の高さは一律とし、車道の高さとする。車道、車道交差部、分離帯及び歩道を区分する。",
+    "__key_order": [
+      "meshcode",
+      "feature_type",
+      "city_code",
+      "city_name",
+      "gml_id",
+      "attributes",
+      "core_creationDate",
+      "tran_class",
+      "tran_Square_tran_function",
+      "tran_function",
+      "uro_geometrySrcDescLod1",
+      "uro_lodType"
+    ]
   },
   "tran_7d63f74a-aa62-429c-9f32-799f034eb2c0": {
     "meshcode": "53396570",
@@ -657,7 +797,21 @@
     "tran_Square_tran_function": "駅前広場",
     "tran_function": "車道部",
     "uro_geometrySrcDescLod1": "未作成",
-    "uro_lodType": "道路の横断方向の高さは一律とし、車道の高さとする。車道、車道交差部、分離帯及び歩道を区分する。"
+    "uro_lodType": "道路の横断方向の高さは一律とし、車道の高さとする。車道、車道交差部、分離帯及び歩道を区分する。",
+    "__key_order": [
+      "meshcode",
+      "feature_type",
+      "city_code",
+      "city_name",
+      "gml_id",
+      "attributes",
+      "core_creationDate",
+      "tran_class",
+      "tran_Square_tran_function",
+      "tran_function",
+      "uro_geometrySrcDescLod1",
+      "uro_lodType"
+    ]
   },
   "tran_c2542e62-cef6-4b93-bc97-5cb7bd223b78": {
     "meshcode": "53396570",
@@ -717,7 +871,21 @@
     "tran_Square_tran_function": "駅前広場",
     "tran_function": "歩道部",
     "uro_geometrySrcDescLod1": "未作成",
-    "uro_lodType": "道路の横断方向の高さは一律とし、車道の高さとする。車道、車道交差部、分離帯及び歩道を区分する。"
+    "uro_lodType": "道路の横断方向の高さは一律とし、車道の高さとする。車道、車道交差部、分離帯及び歩道を区分する。",
+    "__key_order": [
+      "meshcode",
+      "feature_type",
+      "city_code",
+      "city_name",
+      "gml_id",
+      "attributes",
+      "core_creationDate",
+      "tran_class",
+      "tran_Square_tran_function",
+      "tran_function",
+      "uro_geometrySrcDescLod1",
+      "uro_lodType"
+    ]
   },
   "tran_5afc3528-9b62-4d9d-8197-ec022a9e250f": {
     "meshcode": "53396570",
@@ -777,7 +945,21 @@
     "tran_Square_tran_function": "駅前広場",
     "tran_function": "歩道部",
     "uro_geometrySrcDescLod1": "未作成",
-    "uro_lodType": "道路の横断方向の高さは一律とし、車道の高さとする。車道、車道交差部、分離帯及び歩道を区分する。"
+    "uro_lodType": "道路の横断方向の高さは一律とし、車道の高さとする。車道、車道交差部、分離帯及び歩道を区分する。",
+    "__key_order": [
+      "meshcode",
+      "feature_type",
+      "city_code",
+      "city_name",
+      "gml_id",
+      "attributes",
+      "core_creationDate",
+      "tran_class",
+      "tran_Square_tran_function",
+      "tran_function",
+      "uro_geometrySrcDescLod1",
+      "uro_lodType"
+    ]
   },
   "tran_77299789-2af2-406f-b9ff-db102da7bf6a": {
     "meshcode": "53396570",
@@ -837,7 +1019,21 @@
     "tran_Square_tran_function": "駅前広場",
     "tran_function": "島",
     "uro_geometrySrcDescLod1": "未作成",
-    "uro_lodType": "道路の横断方向の高さは一律とし、車道の高さとする。車道、車道交差部、分離帯及び歩道を区分する。"
+    "uro_lodType": "道路の横断方向の高さは一律とし、車道の高さとする。車道、車道交差部、分離帯及び歩道を区分する。",
+    "__key_order": [
+      "meshcode",
+      "feature_type",
+      "city_code",
+      "city_name",
+      "gml_id",
+      "attributes",
+      "core_creationDate",
+      "tran_class",
+      "tran_Square_tran_function",
+      "tran_function",
+      "uro_geometrySrcDescLod1",
+      "uro_lodType"
+    ]
   },
   "tran_be206d71-cee3-450e-8288-be1eff7716c6": {
     "meshcode": "53396570",
@@ -897,7 +1093,21 @@
     "tran_Square_tran_function": "駅前広場",
     "tran_function": "車道部",
     "uro_geometrySrcDescLod1": "未作成",
-    "uro_lodType": "道路の横断方向の高さは一律とし、車道の高さとする。車道、車道交差部、分離帯及び歩道を区分する。"
+    "uro_lodType": "道路の横断方向の高さは一律とし、車道の高さとする。車道、車道交差部、分離帯及び歩道を区分する。",
+    "__key_order": [
+      "meshcode",
+      "feature_type",
+      "city_code",
+      "city_name",
+      "gml_id",
+      "attributes",
+      "core_creationDate",
+      "tran_class",
+      "tran_Square_tran_function",
+      "tran_function",
+      "uro_geometrySrcDescLod1",
+      "uro_lodType"
+    ]
   },
   "tran_7863206f-c19c-4630-a904-2f9b66eccb72": {
     "meshcode": "53396570",
@@ -957,7 +1167,21 @@
     "tran_Square_tran_function": "駅前広場",
     "tran_function": "車道部",
     "uro_geometrySrcDescLod1": "未作成",
-    "uro_lodType": "道路の横断方向の高さは一律とし、車道の高さとする。車道、車道交差部、分離帯及び歩道を区分する。"
+    "uro_lodType": "道路の横断方向の高さは一律とし、車道の高さとする。車道、車道交差部、分離帯及び歩道を区分する。",
+    "__key_order": [
+      "meshcode",
+      "feature_type",
+      "city_code",
+      "city_name",
+      "gml_id",
+      "attributes",
+      "core_creationDate",
+      "tran_class",
+      "tran_Square_tran_function",
+      "tran_function",
+      "uro_geometrySrcDescLod1",
+      "uro_lodType"
+    ]
   },
   "tran_e26d59df-301f-4e82-bf1a-8e2d1b2edc24": {
     "meshcode": "53396570",
@@ -1017,7 +1241,21 @@
     "tran_Square_tran_function": "駅前広場",
     "tran_function": "歩道部",
     "uro_geometrySrcDescLod1": "未作成",
-    "uro_lodType": "道路の横断方向の高さは一律とし、車道の高さとする。車道、車道交差部、分離帯及び歩道を区分する。"
+    "uro_lodType": "道路の横断方向の高さは一律とし、車道の高さとする。車道、車道交差部、分離帯及び歩道を区分する。",
+    "__key_order": [
+      "meshcode",
+      "feature_type",
+      "city_code",
+      "city_name",
+      "gml_id",
+      "attributes",
+      "core_creationDate",
+      "tran_class",
+      "tran_Square_tran_function",
+      "tran_function",
+      "uro_geometrySrcDescLod1",
+      "uro_lodType"
+    ]
   },
   "tran_6af68814-26ed-4df5-a765-f7b9fb559255": {
     "meshcode": "53396570",
@@ -1077,7 +1315,21 @@
     "tran_Square_tran_function": "駅前広場",
     "tran_function": "歩道部",
     "uro_geometrySrcDescLod1": "未作成",
-    "uro_lodType": "道路の横断方向の高さは一律とし、車道の高さとする。車道、車道交差部、分離帯及び歩道を区分する。"
+    "uro_lodType": "道路の横断方向の高さは一律とし、車道の高さとする。車道、車道交差部、分離帯及び歩道を区分する。",
+    "__key_order": [
+      "meshcode",
+      "feature_type",
+      "city_code",
+      "city_name",
+      "gml_id",
+      "attributes",
+      "core_creationDate",
+      "tran_class",
+      "tran_Square_tran_function",
+      "tran_function",
+      "uro_geometrySrcDescLod1",
+      "uro_lodType"
+    ]
   },
   "tran_ec86a474-43a2-4fd7-ae2e-e145a188b499": {
     "meshcode": "53396570",
@@ -1137,7 +1389,21 @@
     "tran_Square_tran_function": "駅前広場",
     "tran_function": "島",
     "uro_geometrySrcDescLod1": "未作成",
-    "uro_lodType": "道路の横断方向の高さは一律とし、車道の高さとする。車道、車道交差部、分離帯及び歩道を区分する。"
+    "uro_lodType": "道路の横断方向の高さは一律とし、車道の高さとする。車道、車道交差部、分離帯及び歩道を区分する。",
+    "__key_order": [
+      "meshcode",
+      "feature_type",
+      "city_code",
+      "city_name",
+      "gml_id",
+      "attributes",
+      "core_creationDate",
+      "tran_class",
+      "tran_Square_tran_function",
+      "tran_function",
+      "uro_geometrySrcDescLod1",
+      "uro_lodType"
+    ]
   },
   "tran_fbc48f58-8281-4818-bc91-f0c3129a200e": {
     "meshcode": "53396570",
@@ -1197,7 +1463,21 @@
     "tran_Square_tran_function": "駅前広場",
     "tran_function": "歩道部",
     "uro_geometrySrcDescLod1": "未作成",
-    "uro_lodType": "道路の横断方向の高さは一律とし、車道の高さとする。車道、車道交差部、分離帯及び歩道を区分する。"
+    "uro_lodType": "道路の横断方向の高さは一律とし、車道の高さとする。車道、車道交差部、分離帯及び歩道を区分する。",
+    "__key_order": [
+      "meshcode",
+      "feature_type",
+      "city_code",
+      "city_name",
+      "gml_id",
+      "attributes",
+      "core_creationDate",
+      "tran_class",
+      "tran_Square_tran_function",
+      "tran_function",
+      "uro_geometrySrcDescLod1",
+      "uro_lodType"
+    ]
   },
   "tran_538c013e-156a-438c-ab59-805ce2cf61de": {
     "meshcode": "53396570",
@@ -1257,7 +1537,21 @@
     "tran_Square_tran_function": "駅前広場",
     "tran_function": "歩道部",
     "uro_geometrySrcDescLod1": "未作成",
-    "uro_lodType": "道路の横断方向の高さは一律とし、車道の高さとする。車道、車道交差部、分離帯及び歩道を区分する。"
+    "uro_lodType": "道路の横断方向の高さは一律とし、車道の高さとする。車道、車道交差部、分離帯及び歩道を区分する。",
+    "__key_order": [
+      "meshcode",
+      "feature_type",
+      "city_code",
+      "city_name",
+      "gml_id",
+      "attributes",
+      "core_creationDate",
+      "tran_class",
+      "tran_Square_tran_function",
+      "tran_function",
+      "uro_geometrySrcDescLod1",
+      "uro_lodType"
+    ]
   },
   "tran_a427cffe-35ec-4bfe-b6d0-89065567967a": {
     "meshcode": "53396570",
@@ -1317,6 +1611,20 @@
     "tran_Square_tran_function": "駅前広場",
     "tran_function": "島",
     "uro_geometrySrcDescLod1": "未作成",
-    "uro_lodType": "道路の横断方向の高さは一律とし、車道の高さとする。車道、車道交差部、分離帯及び歩道を区分する。"
+    "uro_lodType": "道路の横断方向の高さは一律とし、車道の高さとする。車道、車道交差部、分離帯及び歩道を区分する。",
+    "__key_order": [
+      "meshcode",
+      "feature_type",
+      "city_code",
+      "city_name",
+      "gml_id",
+      "attributes",
+      "core_creationDate",
+      "tran_class",
+      "tran_Square_tran_function",
+      "tran_function",
+      "uro_geometrySrcDescLod1",
+      "uro_lodType"
+    ]
   }
 }
