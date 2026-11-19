@@ -26,6 +26,10 @@ func (r *Resolver) Mutation() MutationResolver {
 	return &mutationResolver{r}
 }
 
+func (r *Resolver) NamedSnapshot() NamedSnapshotResolver {
+	return &namedSnapshotResolver{r}
+}
+
 func (r *Resolver) Project() ProjectResolver {
 	return &projectResolver{r}
 }

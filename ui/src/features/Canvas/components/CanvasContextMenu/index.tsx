@@ -16,7 +16,10 @@ import { useCallback, useMemo } from "react";
 
 import type { ContextMenuItemType, ContextMenuMeta } from "@flow/components";
 import { ContextMenu, ContextMenuShortcut } from "@flow/components";
-import { useIsReadOnly } from "@flow/features/Editor/editorContext";
+import {
+  useEditorContext,
+  useIsReadOnly,
+} from "@flow/features/Editor/editorContext";
 import { useT } from "@flow/lib/i18n";
 import { useIndexedDB } from "@flow/lib/indexedDB";
 import { useCurrentProject } from "@flow/stores";
@@ -44,6 +47,10 @@ type Props = {
     node?: Node,
     nodes?: Node[],
   ) => Promise<void>;
+  onDebugRunStartToSelectedNode?: (
+    node?: Node,
+    nodes?: Node[],
+  ) => Promise<void>;
 };
 
 const CanvasContextMenu: React.FC<Props> = ({
@@ -65,11 +72,13 @@ const CanvasContextMenu: React.FC<Props> = ({
   onNodesDisable,
   onClose,
   onDebugRunStartFromSelectedNode,
+  onDebugRunStartToSelectedNode,
 }) => {
   const t = useT();
   const { value } = useIndexedDB("general");
   const [currentProject] = useCurrentProject();
   const disabled = useIsReadOnly();
+  const { canDebugRunFromNode } = useEditorContext();
 
   const { value: debugRunState } = useIndexedDB("debugRun");
 
@@ -174,7 +183,37 @@ const CanvasContextMenu: React.FC<Props> = ({
                   node?.type === "batch" ||
                   node?.type === "writer" ||
                   node?.type === "note" ||
-                  node?.type === "subworkflow",
+                  node?.type === "subworkflow" ||
+                  canDebugRunFromNode?.(node.id) === false,
+              },
+            },
+            {
+              type: "action" as const,
+              props: {
+                label: t("Run To Selected Action"),
+                icon: (
+                  <div className="relative flex items-center">
+                    <ArrowRightIcon
+                      weight="bold"
+                      className="scale-75 transform"
+                    />
+                    <CircleIcon
+                      weight="fill"
+                      className="absolute left-1.25 scale-75 transform"
+                    />
+                  </div>
+                ),
+                onCallback: wrapWithClose(() =>
+                  onDebugRunStartToSelectedNode?.(node, nodes),
+                ),
+                disabled:
+                  (nodes?.length ?? 0) > 1 ||
+                  !node ||
+                  node.type === "batch" ||
+                  node.type === "note" ||
+                  !!node.data.isDisabled ||
+                  debugRunJob?.status === "running" ||
+                  debugRunJob?.status === "queued",
               },
             },
           ]
@@ -352,6 +391,8 @@ const CanvasContextMenu: React.FC<Props> = ({
     onEdgesChange,
     onNodesDisable,
     onDebugRunStartFromSelectedNode,
+    onDebugRunStartToSelectedNode,
+    canDebugRunFromNode,
     contextMenu.mousePosition,
     value,
     handleNodeDelete,

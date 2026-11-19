@@ -479,10 +479,15 @@ type Mutation struct {
 }
 
 type NamedSnapshot struct {
-	SnapshotNumber int       `json:"snapshotNumber"`
-	Label          string    `json:"label"`
-	Timestamp      time.Time `json:"timestamp"`
-	Size           int64     `json:"size"`
+	SnapshotNumber   int       `json:"snapshotNumber"`
+	Label            string    `json:"label"`
+	Timestamp        time.Time `json:"timestamp"`
+	Size             int64     `json:"size"`
+	ContributorIds   []ID      `json:"contributorIds"`
+	Contributors     []*User   `json:"contributors"`
+	ContributorCount int       `json:"contributorCount"`
+	LastEditorID     *ID       `json:"lastEditorId,omitempty"`
+	LastEditor       *User     `json:"lastEditor,omitempty"`
 }
 
 type PageBasedPagination struct {

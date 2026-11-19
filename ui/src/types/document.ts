@@ -1,4 +1,5 @@
 import type { ApiResponse } from "./api";
+import type { User } from "./user";
 
 export type ProjectSnapshotMeta = {
   timestamp: string;
@@ -18,11 +19,21 @@ export const SAVE_SNAPSHOT_LABEL = "save";
 export const RUN_SNAPSHOT_LABEL = "run";
 export const DEPLOY_SNAPSHOT_LABEL = "deploy";
 
+// Someone whose edits a version holds.
+export type SnapshotContributor = Pick<User, "id" | "name" | "photoURL">;
+
 export type NamedSnapshot = {
   snapshotNumber: number;
   label: string;
   timestamp: string;
   size: number;
+  // The contributors that resolve to a user. Empty for versions saved without
+  // attribution, and possibly shorter than contributorCount: the stored list is
+  // capped, and users that no longer exist are left out.
+  contributors: SnapshotContributor[];
+  // How many contributors the version has, shown or not.
+  contributorCount: number;
+  lastEditorId?: string;
 };
 export type ProjectSnapshot = {
   timestamp: string;

@@ -594,11 +594,19 @@ func (c *Client) GetNamedSnapshots(ctx context.Context, docID string) ([]*websoc
 			log.Warnf("snapshot %d of doc %s has an unparseable timestamp %q: %v", item.ID, docID, item.Timestamp, err)
 		}
 
+		contributors := item.Contributors
+		if contributors == nil {
+			contributors = []string{}
+		}
+
 		snapshots[i] = &websocket.SnapshotMetadata{
-			ID:        item.ID,
-			Label:     item.Label,
-			Timestamp: timestamp,
-			Size:      item.Size,
+			ID:               item.ID,
+			Label:            item.Label,
+			Timestamp:        timestamp,
+			Size:             item.Size,
+			Contributors:     contributors,
+			ContributorCount: max(item.ContributorCount, len(contributors)),
+			LastEditor:       item.LastEditor,
 		}
 	}
 
