@@ -1,10 +1,34 @@
 citygml_zip_name = "36201_tokushima-shi_city_2023_citygml_2_op_urf.zip"
 
-[tests.mvt_attributes.casts]
+[convs.mvt_attributes.urf_DistrictDevelopmentPlan_mvt_lod1]
+path = "36201_tokushima-shi_city_2023_citygml_2_op_urf_DistrictDevelopmentPlan_mvt_lod1"
+truth_path = "mvt_urf_DistrictDevelopmentPlan_mvt_lod1_truth.json"
+generate_truth = true
+
+[convs.mvt_attributes.urf_DistrictDevelopmentPlan_mvt_lod1.casts]
+"" = "ordered_dict"
 ".attributes" = "json"
 ".attributes.meshcode" = "string"
 ".attributes.urf:notificationNumber" = "string"
 ".attributes.urf:finalNotificationNumber" = "string"
+
+[tests.json_attributes_v2.mvt_urf_DistrictDevelopmentPlan_mvt_lod1]
+path = "mvt_urf_DistrictDevelopmentPlan_mvt_lod1_truth.json"
+
+[convs.mvt_attributes.urf_DistrictPlan_mvt_lod1]
+path = "36201_tokushima-shi_city_2023_citygml_2_op_urf_DistrictPlan_mvt_lod1"
+truth_path = "mvt_urf_DistrictPlan_mvt_lod1_truth.json"
+generate_truth = true
+
+[convs.mvt_attributes.urf_DistrictPlan_mvt_lod1.casts]
+"" = "ordered_dict"
+".attributes" = "json"
+".attributes.meshcode" = "string"
+".attributes.urf:notificationNumber" = "string"
+".attributes.urf:finalNotificationNumber" = "string"
+
+[tests.json_attributes_v2.mvt_urf_DistrictPlan_mvt_lod1]
+path = "mvt_urf_DistrictPlan_mvt_lod1_truth.json"
 
 [tests.mvt_polygons]
 threshold = 0.005

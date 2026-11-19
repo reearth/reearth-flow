@@ -1,0 +1,134 @@
+{
+  "urf_3b2bd689-d608-4c8d-8e75-ef7bc8b07a25": {
+    "meshcode": "513404",
+    "feature_type": "urf:DistrictDevelopmentPlan",
+    "city_code": "36201",
+    "city_name": "徳島県徳島市",
+    "gml_id": "urf_3b2bd689-d608-4c8d-8e75-ef7bc8b07a25",
+    "attributes": {
+      "meshcode": "513404",
+      "feature_type": "urf:DistrictDevelopmentPlan",
+      "gml:id": "urf_3b2bd689-d608-4c8d-8e75-ef7bc8b07a25",
+      "gml:name": "徳島市東大工町・紺屋町地区等地区計画",
+      "core:creationDate": "2024-03-29",
+      "urf:function": "地区整備計画",
+      "urf:function_code": "1",
+      "uro:DataQualityAttribute": [
+        {
+          "uro:geometrySrcDescLod1": "都市計画図書",
+          "uro:geometrySrcDescLod1_code": "202",
+          "uro:thematicSrcDesc": "都市計画図書",
+          "uro:thematicSrcDesc_code": "202"
+        }
+      ],
+      "urf:districtFacilitiesAllocation": "Null",
+      "urf:buildingRestrictions": "建築物の延べ面積の敷地面積に対する割合の最高限度"
+    },
+    "core_creationDate": "2024-03-29",
+    "urf_function": "地区整備計画",
+    "urf_districtFacilitiesAllocation": "Null",
+    "urf_buildingRestrictions": "建築物の延べ面積の敷地面積に対する割合の最高限度",
+    "uro_geometrySrcDescLod1": "都市計画図書",
+    "__key_order": [
+      "meshcode",
+      "feature_type",
+      "city_code",
+      "city_name",
+      "gml_id",
+      "attributes",
+      "core_creationDate",
+      "urf_function",
+      "urf_districtFacilitiesAllocation",
+      "urf_buildingRestrictions",
+      "uro_geometrySrcDescLod1"
+    ]
+  },
+  "urf_59cf1e6f-710b-498f-9f4c-4f888cb24329": {
+    "meshcode": "513404",
+    "feature_type": "urf:DistrictDevelopmentPlan",
+    "city_code": "36201",
+    "city_name": "徳島県徳島市",
+    "gml_id": "urf_59cf1e6f-710b-498f-9f4c-4f888cb24329",
+    "attributes": {
+      "meshcode": "513404",
+      "feature_type": "urf:DistrictDevelopmentPlan",
+      "gml:id": "urf_59cf1e6f-710b-498f-9f4c-4f888cb24329",
+      "gml:name": "徳島市徳島本町地区等地区計画",
+      "core:creationDate": "2024-03-29",
+      "urf:function": "地区整備計画",
+      "urf:function_code": "1",
+      "uro:DataQualityAttribute": [
+        {
+          "uro:geometrySrcDescLod1": "都市計画図書",
+          "uro:geometrySrcDescLod1_code": "202",
+          "uro:thematicSrcDesc": "都市計画図書",
+          "uro:thematicSrcDesc_code": "202"
+        }
+      ],
+      "urf:districtFacilitiesAllocation": "Null",
+      "urf:buildingRestrictions": "建築物の延べ面積の敷地面積に対する割合の最高限度"
+    },
+    "core_creationDate": "2024-03-29",
+    "urf_function": "地区整備計画",
+    "urf_districtFacilitiesAllocation": "Null",
+    "urf_buildingRestrictions": "建築物の延べ面積の敷地面積に対する割合の最高限度",
+    "uro_geometrySrcDescLod1": "都市計画図書",
+    "__key_order": [
+      "meshcode",
+      "feature_type",
+      "city_code",
+      "city_name",
+      "gml_id",
+      "attributes",
+      "core_creationDate",
+      "urf_function",
+      "urf_districtFacilitiesAllocation",
+      "urf_buildingRestrictions",
+      "uro_geometrySrcDescLod1"
+    ]
+  },
+  "urf_a7819724-8031-4b36-9e36-a3128fe94c01": {
+    "meshcode": "513404",
+    "feature_type": "urf:DistrictDevelopmentPlan",
+    "city_code": "36201",
+    "city_name": "徳島県徳島市",
+    "gml_id": "urf_a7819724-8031-4b36-9e36-a3128fe94c01",
+    "attributes": {
+      "meshcode": "513404",
+      "feature_type": "urf:DistrictDevelopmentPlan",
+      "gml:id": "urf_a7819724-8031-4b36-9e36-a3128fe94c01",
+      "gml:name": "八万町大坪地区地区計画",
+      "core:creationDate": "2024-03-29",
+      "urf:function": "地区整備計画",
+      "urf:function_code": "1",
+      "uro:DataQualityAttribute": [
+        {
+          "uro:geometrySrcDescLod1": "都市計画図書",
+          "uro:geometrySrcDescLod1_code": "202",
+          "uro:thematicSrcDesc": "都市計画図書",
+          "uro:thematicSrcDesc_code": "202"
+        }
+      ],
+      "urf:districtFacilitiesAllocation": "Null",
+      "urf:buildingRestrictions": "建築物の高さの最高限度、建築物等の形態又は色彩その他の意匠の制限\n、垣又はさくの構造の制限"
+    },
+    "core_creationDate": "2024-03-29",
+    "urf_function": "地区整備計画",
+    "urf_districtFacilitiesAllocation": "Null",
+    "urf_buildingRestrictions": "建築物の高さの最高限度、建築物等の形態又は色彩その他の意匠の制限\n、垣又はさくの構造の制限",
+    "uro_geometrySrcDescLod1": "都市計画図書",
+    "__key_order": [
+      "meshcode",
+      "feature_type",
+      "city_code",
+      "city_name",
+      "gml_id",
+      "attributes",
+      "core_creationDate",
+      "urf_function",
+      "urf_districtFacilitiesAllocation",
+      "urf_buildingRestrictions",
+      "uro_geometrySrcDescLod1"
+    ]
+  }
+}

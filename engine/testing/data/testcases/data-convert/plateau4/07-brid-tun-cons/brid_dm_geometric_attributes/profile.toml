@@ -1,14 +1,61 @@
 # test brid dm geometric attributes
 citygml_zip_name = "08220_tsukuba-shi_city_2023_citygml_2_op_brid.zip"
 
-[tests.cesium.geometry_tests]
-# FIXME: there is a nondeterministic bug causing texture presence test to fail, likely inside atlas packing
-texture_presence = false
+[convs.cesium_attributes.brid_3dtiles_lod1_jgd2024]
+path = "08220_tsukuba-shi_city_2023_citygml_2_op_brid_3dtiles_lod1_jgd2024"
+truth_path = "cesium_brid_3dtiles_lod1_jgd2024_truth.json"
+generate_truth = true
 
-[tests.cesium.casts]
+[convs.cesium_attributes.brid_3dtiles_lod1_jgd2024.casts]
+"" = "ordered_dict"
 ".attributes" = "json"
 ".attributes.meshcode" = "string"
 ".dm_attributes" = "json"
+
+[tests.json_attributes_v2.cesium_brid_3dtiles_lod1_jgd2024]
+path = "cesium_brid_3dtiles_lod1_jgd2024_truth.json"
+
+[convs.cesium_attributes.brid_3dtiles_lod2_jgd2024]
+path = "08220_tsukuba-shi_city_2023_citygml_2_op_brid_3dtiles_lod2_jgd2024"
+truth_path = "cesium_brid_3dtiles_lod2_jgd2024_truth.json"
+generate_truth = true
+
+[convs.cesium_attributes.brid_3dtiles_lod2_jgd2024.casts]
+"" = "ordered_dict"
+".attributes" = "json"
+".attributes.meshcode" = "string"
+".dm_attributes" = "json"
+
+[tests.json_attributes_v2.cesium_brid_3dtiles_lod2_jgd2024]
+path = "cesium_brid_3dtiles_lod2_jgd2024_truth.json"
+
+[convs.cesium_attributes.brid_3dtiles_lod3_jgd2024]
+path = "08220_tsukuba-shi_city_2023_citygml_2_op_brid_3dtiles_lod3_jgd2024"
+truth_path = "cesium_brid_3dtiles_lod3_jgd2024_truth.json"
+generate_truth = true
+
+[convs.cesium_attributes.brid_3dtiles_lod3_jgd2024.casts]
+"" = "ordered_dict"
+".attributes" = "json"
+".attributes.meshcode" = "string"
+".dm_attributes" = "json"
+
+[tests.json_attributes_v2.cesium_brid_3dtiles_lod3_jgd2024]
+path = "cesium_brid_3dtiles_lod3_jgd2024_truth.json"
+
+[convs.mvt_attributes.brid_dm_geometric_attributes]
+path = "08220_tsukuba-shi_city_2023_citygml_2_op_brid_dm_geometric_attributes"
+truth_path = "mvt_brid_dm_geometric_attributes_truth.json"
+generate_truth = true
+
+[convs.mvt_attributes.brid_dm_geometric_attributes.casts]
+"" = "ordered_dict"
+".attributes" = "json"
+".attributes.meshcode" = "string"
+".dm_attributes" = "json"
+
+[tests.json_attributes_v2.mvt_brid_dm_geometric_attributes]
+path = "mvt_brid_dm_geometric_attributes_truth.json"
 
 [tests.mvt_lines]
 zoom = [12, 16]
@@ -17,11 +64,6 @@ threshold = 0.01
 [tests.mvt_polygons]
 zoom = [12, 16]
 threshold = 0.01
-
-[tests.mvt_attributes.casts]
-".attributes" = "json"
-".attributes.meshcode" = "string"
-".dm_attributes" = "json"
 
 [tests.json_attributes.tilesets_lod1]
 path = "08220_tsukuba-shi_city_2023_citygml_2_op_brid_3dtiles_lod1_jgd2024/tileset.json"

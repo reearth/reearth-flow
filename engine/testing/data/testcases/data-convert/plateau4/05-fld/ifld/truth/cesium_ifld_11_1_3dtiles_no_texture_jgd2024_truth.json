@@ -1,0 +1,54 @@
+{
+  "": {
+    "city_code": "11100",
+    "city_name": "埼玉県さいたま市",
+    "feature_type": "wtr:WaterBody",
+    "attributes": {
+      "feature_type": "wtr:WaterBody",
+      "gml:name": "さいたま市内水浸水想定区域",
+      "core:creationDate": "2024-02-29",
+      "wtr:class": "flooded land（浸水域）",
+      "wtr:class_code": "1140",
+      "wtr:function": "内水浸水想定区域",
+      "wtr:function_code": "4",
+      "uro:InlandFloodingRiskAttribute": [
+        {
+          "uro:description": "さいたま市内水ハザードマップ",
+          "uro:description_code": "1",
+          "uro:rankOrg": "0.2m以上0.3m未満",
+          "uro:rankOrg_code": "1"
+        }
+      ],
+      "uro:DataQualityAttribute": [
+        {
+          "uro:geometrySrcDescLod1": "その他のGISデータ",
+          "uro:geometrySrcDescLod1_code": "400",
+          "uro:thematicSrcDesc": "その他のGISデータ",
+          "uro:thematicSrcDesc_code": "400"
+        }
+      ]
+    },
+    "gml:name": "さいたま市内水浸水想定区域",
+    "core:creationDate": "2024-02-29",
+    "wtr:class": "flooded land（浸水域）",
+    "wtr:function": "内水浸水想定区域",
+    "uro:description": "さいたま市内水ハザードマップ",
+    "uro:rankOrg": "0.2m以上0.3m未満",
+    "uro:rankOrg_code": 1,
+    "uro:geometrySrcDescLod1": "その他のGISデータ",
+    "__key_order": [
+      "city_code",
+      "city_name",
+      "feature_type",
+      "attributes",
+      "gml:name",
+      "core:creationDate",
+      "wtr:class",
+      "wtr:function",
+      "uro:description",
+      "uro:rankOrg",
+      "uro:rankOrg_code",
+      "uro:geometrySrcDescLod1"
+    ]
+  }
+}

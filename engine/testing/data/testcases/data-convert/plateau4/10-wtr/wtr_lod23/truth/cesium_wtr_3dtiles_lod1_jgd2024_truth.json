@@ -1,0 +1,81 @@
+{
+  "wtr_fc66e711-bcdd-11ee-96d9-088e90e0d0d4": {
+    "meshcode": "533936",
+    "city_code": "13999",
+    "city_name": "東京都帰属未定地",
+    "feature_type": "wtr:WaterBody",
+    "gml_id": "wtr_fc66e711-bcdd-11ee-96d9-088e90e0d0d4",
+    "attributes": {
+      "meshcode": "533936",
+      "feature_type": "wtr:WaterBody",
+      "gml:id": "wtr_fc66e711-bcdd-11ee-96d9-088e90e0d0d4",
+      "core:creationDate": "2024-03-22",
+      "wtr:class": "river / stream（河川/小川）",
+      "wtr:class_code": "1030",
+      "uro:WaterBodyDetailAttribute": [
+        {
+          "uro:area": 39386.13,
+          "uro:area_uom": "m2",
+          "uro:prefecture": "東京都",
+          "uro:prefecture_code": "13",
+          "uro:city": "東京都港区",
+          "uro:city_code": "13103"
+        }
+      ],
+      "uro:DataQualityAttribute": [
+        {
+          "uro:geometrySrcDescLod0": [
+            "都市計画図書",
+            "BIMモデル、CADデータ、設計図、完成図、一般図（平面図、配置図、断面図等）"
+          ],
+          "uro:geometrySrcDescLod0_code": [
+            "202",
+            "500"
+          ],
+          "uro:geometrySrcDescLod1": [
+            "都市計画図書",
+            "BIMモデル、CADデータ、設計図、完成図、一般図（平面図、配置図、断面図等）"
+          ],
+          "uro:geometrySrcDescLod1_code": [
+            "202",
+            "500"
+          ],
+          "uro:geometrySrcDescLod2": [
+            "都市計画図書",
+            "BIMモデル、CADデータ、設計図、完成図、一般図（平面図、配置図、断面図等）"
+          ],
+          "uro:geometrySrcDescLod2_code": [
+            "202",
+            "500"
+          ],
+          "uro:geometrySrcDescLod3": [
+            "都市計画図書",
+            "BIMモデル、CADデータ、設計図、完成図、一般図（平面図、配置図、断面図等）"
+          ],
+          "uro:geometrySrcDescLod3_code": [
+            "202",
+            "500"
+          ],
+          "uro:thematicSrcDesc": "その他の資料",
+          "uro:thematicSrcDesc_code": "700",
+          "uro:appearanceSrcDescLod2": "疑似テクスチャ",
+          "uro:appearanceSrcDescLod2_code": "5",
+          "uro:appearanceSrcDescLod3": "疑似テクスチャ",
+          "uro:appearanceSrcDescLod3_code": "5"
+        }
+      ]
+    },
+    "core:creationDate": "2024-03-22",
+    "uro:geometrySrcDescLod1": "都市計画図書",
+    "__key_order": [
+      "meshcode",
+      "city_code",
+      "city_name",
+      "feature_type",
+      "gml_id",
+      "attributes",
+      "core:creationDate",
+      "uro:geometrySrcDescLod1"
+    ]
+  }
+}

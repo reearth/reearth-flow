@@ -4,7 +4,6 @@ use plateau_tiles_test::conv::mvt_png;
 use plateau_tiles_test::file::{extract_dir, zip_dir};
 use plateau_tiles_test::profile_config::Convs;
 use plateau_tiles_test::runner;
-use plateau_tiles_test::tester::cesium::{self, CesiumConfig};
 use plateau_tiles_test::tester::cesium_statistics;
 use plateau_tiles_test::tester::json_attributes::{self, JsonFileConfig};
 use plateau_tiles_test::tester::json_attributes_v2::{self, JsonFileV2Config};
@@ -64,8 +63,6 @@ struct Tests {
     mvt_lines: Option<MvtLinesConfig>,
     #[serde(default)]
     mvt_points: Option<MvtPointsConfig>,
-    #[serde(default)]
-    cesium: Option<CesiumConfig>,
     #[serde(default)]
     json_object_key_order: Option<KeyOrderConfig>,
     #[serde(default)]
@@ -393,12 +390,6 @@ fn run_testcase(testcases_dir: &Path, results_dir: &Path, name: &str, stages: &s
         if let Some(cfg) = &tests.mvt_points {
             run_test("mvt_points", &relative_path_display, || {
                 mvt_points::test_mvt_points(&truth_extracted_dir, &flow_extracted_dir, cfg)
-            });
-        }
-
-        if let Some(cfg) = &tests.cesium {
-            run_test("cesium", &relative_path_display, || {
-                cesium::test_cesium(&truth_extracted_dir, &flow_extracted_dir, cfg)
             });
         }
 

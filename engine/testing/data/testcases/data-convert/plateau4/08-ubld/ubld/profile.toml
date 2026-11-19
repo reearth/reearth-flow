@@ -1,10 +1,34 @@
 citygml_zip_name = "13102_chuo-ku_pref_2023_citygml_2_op_ubld.zip"
 
-[tests.cesium.casts]
+[convs.cesium_attributes.ubld_3dtiles_lod1_jgd2024]
+path = "13102_chuo-ku_pref_2023_citygml_2_op_ubld_3dtiles_lod1_jgd2024"
+truth_path = "cesium_ubld_3dtiles_lod1_jgd2024_truth.json"
+generate_truth = true
+
+[convs.cesium_attributes.ubld_3dtiles_lod1_jgd2024.casts]
+"" = "ordered_dict"
 ".attributes" = "json"
 ".attributes.meshcode" = "string"
 ".attributes.ancestors[0].meshcode" = "string"
 ".attributes.ancestors[1].meshcode" = "string"
+
+[tests.json_attributes_v2.cesium_ubld_3dtiles_lod1_jgd2024]
+path = "cesium_ubld_3dtiles_lod1_jgd2024_truth.json"
+
+[convs.cesium_attributes.ubld_3dtiles_lod4_jgd2024]
+path = "13102_chuo-ku_pref_2023_citygml_2_op_ubld_3dtiles_lod4_jgd2024"
+truth_path = "cesium_ubld_3dtiles_lod4_jgd2024_truth.json"
+generate_truth = true
+
+[convs.cesium_attributes.ubld_3dtiles_lod4_jgd2024.casts]
+"" = "ordered_dict"
+".attributes" = "json"
+".attributes.meshcode" = "string"
+".attributes.ancestors[0].meshcode" = "string"
+".attributes.ancestors[1].meshcode" = "string"
+
+[tests.json_attributes_v2.cesium_ubld_3dtiles_lod4_jgd2024]
+path = "cesium_ubld_3dtiles_lod4_jgd2024_truth.json"
 
 [tests.json_attributes.tilesets_lod1]
 path = "13102_chuo-ku_pref_2023_citygml_2_op_ubld_3dtiles_lod1_jgd2024/tileset.json"

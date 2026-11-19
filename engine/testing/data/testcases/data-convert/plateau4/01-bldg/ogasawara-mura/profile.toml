@@ -1,5 +1,20 @@
 citygml_zip_name = "13421_ogasawara-mura_pref_2025_citygml_1_op_bldg.zip"
 
+[convs.cesium_attributes.bldg_3dtiles_lod1_jgd2024_full]
+path = "13421_ogasawara-mura_pref_2025_citygml_1_op_bldg_3dtiles_lod1_jgd2024_full"
+truth_path = "cesium_bldg_3dtiles_lod1_jgd2024_full_truth.json"
+generate_truth = true
+
+[convs.cesium_attributes.bldg_3dtiles_lod1_jgd2024_full.casts]
+"" = "ordered_dict"
+".attributes" = "json"
+".attributes.meshcode" = "string"
+".uro:BuildingDetailAttribute_uro:surveyYear" = "int"
+".attributes.uro:BuildingDetailAttribute[0].uro:buildingRoofEdgeArea" = "float"
+
+[tests.json_attributes_v2.cesium_bldg_3dtiles_lod1_jgd2024_full]
+path = "cesium_bldg_3dtiles_lod1_jgd2024_full_truth.json"
+
 [convs.json.tilesets_lod1]
 flow_path = "13421_ogasawara-mura_pref_2025_citygml_1_op_bldg_3dtiles_lod1_jgd2024_full/tileset.json"
 output_path = "3dtiles_lod1_tileset.json"
@@ -8,12 +23,6 @@ json_path = ".properties"
 
 [tests.json_attributes_v2.tilesets_lod1]
 path = "3dtiles_lod1_tileset.json"
-
-[tests.cesium.casts]
-".attributes" = "json"
-".attributes.meshcode" = "string"
-".uro:BuildingDetailAttribute_uro:surveyYear" = "int"
-".attributes.uro:BuildingDetailAttribute[0].uro:buildingRoofEdgeArea" = "float"
 
 [filter.tree]
 "udx/bldg" = ["40425105_bldg_6697_op.gml"]

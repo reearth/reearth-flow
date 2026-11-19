@@ -1,0 +1,56 @@
+{
+  "unf_wp_001": {
+    "meshcode": "53393680",
+    "city_code": "13999",
+    "city_name": "東京都帰属未定地",
+    "feature_type": "uro:WaterPipe",
+    "gml_id": "unf_wp_001",
+    "attributes": {
+      "meshcode": "53393680",
+      "feature_type": "uro:WaterPipe",
+      "gml:id": "unf_wp_001",
+      "core:creationDate": "2024-03-22",
+      "frn:class": "上水道",
+      "frn:class_code": "1",
+      "uro:occupierType": "上水道",
+      "uro:occupierType_code": "1",
+      "uro:occupierName": "値1",
+      "uro:occupierName_code": "1",
+      "uro:year": 2020,
+      "uro:yearType": "値1",
+      "uro:yearType_code": "1",
+      "uro:administrator": "値1",
+      "uro:administrator_code": "1",
+      "uro:depth": 4,
+      "uro:depth_uom": "m",
+      "uro:minDepth": 3,
+      "uro:minDepth_uom": "m",
+      "uro:maxDepth": 5,
+      "uro:maxDepth_uom": "m",
+      "uro:maxWidth": 0.3,
+      "uro:maxWidth_uom": "m",
+      "uro:material": "値1",
+      "uro:material_code": "1",
+      "uro:DataQualityAttribute": [
+        {
+          "uro:geometrySrcDesc": "その他",
+          "uro:geometrySrcDesc_code": "5",
+          "uro:thematicSrcDesc": "その他",
+          "uro:thematicSrcDesc_code": "5",
+          "uro:appearanceSrcDesc": "その他",
+          "uro:appearanceSrcDesc_code": "5"
+        }
+      ]
+    },
+    "core:creationDate": "2024-03-22",
+    "__key_order": [
+      "meshcode",
+      "city_code",
+      "city_name",
+      "feature_type",
+      "gml_id",
+      "attributes",
+      "core:creationDate"
+    ]
+  }
+}

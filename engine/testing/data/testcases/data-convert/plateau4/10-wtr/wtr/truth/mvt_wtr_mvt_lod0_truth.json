@@ -1,0 +1,292 @@
+{
+  "wtr_e6d396ca-e5ef-4f69-a92a-206bb3fd23a7": {
+    "meshcode": "533945",
+    "city_code": "13105",
+    "city_name": "東京都文京区",
+    "feature_type": "wtr:WaterBody",
+    "gml_id": "wtr_e6d396ca-e5ef-4f69-a92a-206bb3fd23a7",
+    "attributes": {
+      "meshcode": "533945",
+      "feature_type": "wtr:WaterBody",
+      "gml:id": "wtr_e6d396ca-e5ef-4f69-a92a-206bb3fd23a7",
+      "gml:name": "神田川",
+      "core:creationDate": "2026-03-13",
+      "wtr:class": "river / stream（河川/小川）",
+      "wtr:class_code": "1030",
+      "uro:DataQualityAttribute": [
+        {
+          "uro:geometrySrcDescLod0": [
+            "公共測量成果",
+            "その他の資料"
+          ],
+          "uro:geometrySrcDescLod0_code": [
+            "000",
+            "700"
+          ],
+          "uro:geometrySrcDescLod1": [
+            "公共測量成果",
+            "その他の資料"
+          ],
+          "uro:geometrySrcDescLod1_code": [
+            "000",
+            "700"
+          ],
+          "uro:thematicSrcDesc": [
+            "公共測量成果又は基本測量成果",
+            "数値地形図データ",
+            "その他の資料"
+          ],
+          "uro:thematicSrcDesc_code": [
+            "000",
+            "023",
+            "700"
+          ]
+        }
+      ]
+    },
+    "core_creationDate": "2026-03-13",
+    "uro_geometrySrcDescLod1": "公共測量成果",
+    "__key_order": [
+      "meshcode",
+      "city_code",
+      "city_name",
+      "feature_type",
+      "gml_id",
+      "attributes",
+      "core_creationDate",
+      "uro_geometrySrcDescLod1"
+    ]
+  },
+  "wtr_cf749647-701f-4488-a176-5f6205859103": {
+    "meshcode": "533945",
+    "city_code": "13105",
+    "city_name": "東京都文京区",
+    "feature_type": "wtr:WaterBody",
+    "gml_id": "wtr_cf749647-701f-4488-a176-5f6205859103",
+    "attributes": {
+      "meshcode": "533945",
+      "feature_type": "wtr:WaterBody",
+      "gml:id": "wtr_cf749647-701f-4488-a176-5f6205859103",
+      "gml:name": "桜田濠",
+      "core:creationDate": "2026-03-13",
+      "wtr:class": "river / stream（河川/小川）",
+      "wtr:class_code": "1030",
+      "uro:DataQualityAttribute": [
+        {
+          "uro:geometrySrcDescLod0": [
+            "公共測量成果",
+            "その他の資料"
+          ],
+          "uro:geometrySrcDescLod0_code": [
+            "000",
+            "700"
+          ],
+          "uro:geometrySrcDescLod1": [
+            "公共測量成果",
+            "その他の資料"
+          ],
+          "uro:geometrySrcDescLod1_code": [
+            "000",
+            "700"
+          ],
+          "uro:thematicSrcDesc": [
+            "公共測量成果又は基本測量成果",
+            "数値地形図データ",
+            "その他の資料"
+          ],
+          "uro:thematicSrcDesc_code": [
+            "000",
+            "023",
+            "700"
+          ]
+        }
+      ]
+    },
+    "core_creationDate": "2026-03-13",
+    "uro_geometrySrcDescLod1": "公共測量成果",
+    "__key_order": [
+      "meshcode",
+      "city_code",
+      "city_name",
+      "feature_type",
+      "gml_id",
+      "attributes",
+      "core_creationDate",
+      "uro_geometrySrcDescLod1"
+    ]
+  },
+  "wtr_8ab5b5ac-57f2-4ede-bd97-5ab595fe415b": {
+    "meshcode": "533945",
+    "city_code": "13105",
+    "city_name": "東京都文京区",
+    "feature_type": "wtr:WaterBody",
+    "gml_id": "wtr_8ab5b5ac-57f2-4ede-bd97-5ab595fe415b",
+    "attributes": {
+      "meshcode": "533945",
+      "feature_type": "wtr:WaterBody",
+      "gml:id": "wtr_8ab5b5ac-57f2-4ede-bd97-5ab595fe415b",
+      "gml:name": "Null",
+      "core:creationDate": "2026-03-13",
+      "wtr:class": "river / stream（河川/小川）",
+      "wtr:class_code": "1030",
+      "uro:DataQualityAttribute": [
+        {
+          "uro:geometrySrcDescLod0": [
+            "公共測量成果",
+            "その他の資料"
+          ],
+          "uro:geometrySrcDescLod0_code": [
+            "000",
+            "700"
+          ],
+          "uro:geometrySrcDescLod1": [
+            "公共測量成果",
+            "その他の資料"
+          ],
+          "uro:geometrySrcDescLod1_code": [
+            "000",
+            "700"
+          ],
+          "uro:thematicSrcDesc": [
+            "公共測量成果又は基本測量成果",
+            "数値地形図データ",
+            "その他の資料"
+          ],
+          "uro:thematicSrcDesc_code": [
+            "000",
+            "023",
+            "700"
+          ]
+        }
+      ]
+    },
+    "core_creationDate": "2026-03-13",
+    "uro_geometrySrcDescLod1": "公共測量成果",
+    "__key_order": [
+      "meshcode",
+      "city_code",
+      "city_name",
+      "feature_type",
+      "gml_id",
+      "attributes",
+      "core_creationDate",
+      "uro_geometrySrcDescLod1"
+    ]
+  },
+  "wtr_7b617d5b-5790-411c-b44d-45da3adce6ab": {
+    "meshcode": "533945",
+    "city_code": "13105",
+    "city_name": "東京都文京区",
+    "feature_type": "wtr:WaterBody",
+    "gml_id": "wtr_7b617d5b-5790-411c-b44d-45da3adce6ab",
+    "attributes": {
+      "meshcode": "533945",
+      "feature_type": "wtr:WaterBody",
+      "gml:id": "wtr_7b617d5b-5790-411c-b44d-45da3adce6ab",
+      "gml:name": "妙正寺川",
+      "core:creationDate": "2026-03-13",
+      "wtr:class": "river / stream（河川/小川）",
+      "wtr:class_code": "1030",
+      "uro:DataQualityAttribute": [
+        {
+          "uro:geometrySrcDescLod0": [
+            "公共測量成果",
+            "その他の資料"
+          ],
+          "uro:geometrySrcDescLod0_code": [
+            "000",
+            "700"
+          ],
+          "uro:geometrySrcDescLod1": [
+            "公共測量成果",
+            "その他の資料"
+          ],
+          "uro:geometrySrcDescLod1_code": [
+            "000",
+            "700"
+          ],
+          "uro:thematicSrcDesc": [
+            "公共測量成果又は基本測量成果",
+            "数値地形図データ",
+            "その他の資料"
+          ],
+          "uro:thematicSrcDesc_code": [
+            "000",
+            "023",
+            "700"
+          ]
+        }
+      ]
+    },
+    "core_creationDate": "2026-03-13",
+    "uro_geometrySrcDescLod1": "公共測量成果",
+    "__key_order": [
+      "meshcode",
+      "city_code",
+      "city_name",
+      "feature_type",
+      "gml_id",
+      "attributes",
+      "core_creationDate",
+      "uro_geometrySrcDescLod1"
+    ]
+  },
+  "wtr_7644a3aa-a7f9-472a-aba5-4fac0c95e6fe": {
+    "meshcode": "533945",
+    "city_code": "13105",
+    "city_name": "東京都文京区",
+    "feature_type": "wtr:WaterBody",
+    "gml_id": "wtr_7644a3aa-a7f9-472a-aba5-4fac0c95e6fe",
+    "attributes": {
+      "meshcode": "533945",
+      "feature_type": "wtr:WaterBody",
+      "gml:id": "wtr_7644a3aa-a7f9-472a-aba5-4fac0c95e6fe",
+      "gml:name": "千鳥ヶ淵",
+      "core:creationDate": "2026-03-13",
+      "wtr:class": "river / stream（河川/小川）",
+      "wtr:class_code": "1030",
+      "uro:DataQualityAttribute": [
+        {
+          "uro:geometrySrcDescLod0": [
+            "公共測量成果",
+            "その他の資料"
+          ],
+          "uro:geometrySrcDescLod0_code": [
+            "000",
+            "700"
+          ],
+          "uro:geometrySrcDescLod1": [
+            "公共測量成果",
+            "その他の資料"
+          ],
+          "uro:geometrySrcDescLod1_code": [
+            "000",
+            "700"
+          ],
+          "uro:thematicSrcDesc": [
+            "公共測量成果又は基本測量成果",
+            "数値地形図データ",
+            "その他の資料"
+          ],
+          "uro:thematicSrcDesc_code": [
+            "000",
+            "023",
+            "700"
+          ]
+        }
+      ]
+    },
+    "core_creationDate": "2026-03-13",
+    "uro_geometrySrcDescLod1": "公共測量成果",
+    "__key_order": [
+      "meshcode",
+      "city_code",
+      "city_name",
+      "feature_type",
+      "gml_id",
+      "attributes",
+      "core_creationDate",
+      "uro_geometrySrcDescLod1"
+    ]
+  }
+}

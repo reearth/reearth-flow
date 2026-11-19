@@ -1,0 +1,218 @@
+{
+  "brid_ca4b3e03-01b0-4dec-b0b4-9f6b0d6a867e": {
+    "meshcode": "54400098",
+    "feature_type": "brid:Bridge",
+    "city_code": "08220",
+    "city_name": "茨城県つくば市",
+    "gml_id": "brid_ca4b3e03-01b0-4dec-b0b4-9f6b0d6a867e",
+    "attributes": {
+      "meshcode": "54400098",
+      "feature_type": "brid:Bridge",
+      "gml:id": "brid_ca4b3e03-01b0-4dec-b0b4-9f6b0d6a867e",
+      "core:creationDate": "2024-03-19",
+      "brid:function": "横断歩道橋",
+      "brid:function_code": "07",
+      "uro:DmGeometricAttribute": [
+        {
+          "uro:dmCode": "横断歩道橋",
+          "uro:dmCode_code": "2211",
+          "uro:geometryType": "面",
+          "uro:geometryType_code": "E1",
+          "uro:mapLevel": "地図情報レベル2500",
+          "uro:mapLevel_code": "2500",
+          "uro:shapeType": "非区分（下記に該当しない全データ）",
+          "uro:shapeType_code": "0"
+        },
+        {
+          "uro:dmCode": "横断歩道橋",
+          "uro:dmCode_code": "2211",
+          "uro:geometryType": "線",
+          "uro:geometryType_code": "E2",
+          "uro:mapLevel": "地図情報レベル2500",
+          "uro:mapLevel_code": "2500",
+          "uro:shapeType": "非区分（下記に該当しない全データ）",
+          "uro:shapeType_code": "0"
+        }
+      ],
+      "uro:DataQualityAttribute": [
+        {
+          "uro:geometrySrcDescLod0": [
+            "公共測量成果又は基本測量成果",
+            "（公共測量又は基本測量ではない）地上レーザ測量の測量成果"
+          ],
+          "uro:geometrySrcDescLod0_code": [
+            "000",
+            "108"
+          ],
+          "uro:geometrySrcDescLod1": [
+            "公共測量成果又は基本測量成果",
+            "（公共測量又は基本測量ではない）地上レーザ測量の測量成果"
+          ],
+          "uro:geometrySrcDescLod1_code": [
+            "000",
+            "108"
+          ],
+          "uro:geometrySrcDescLod2": [
+            "公共測量成果又は基本測量成果",
+            "（公共測量又は基本測量ではない）地上レーザ測量の測量成果"
+          ],
+          "uro:geometrySrcDescLod2_code": [
+            "000",
+            "108"
+          ],
+          "uro:geometrySrcDescLod3": [
+            "公共測量成果又は基本測量成果",
+            "（公共測量又は基本測量ではない）地上レーザ測量の測量成果"
+          ],
+          "uro:geometrySrcDescLod3_code": [
+            "000",
+            "108"
+          ],
+          "uro:thematicSrcDesc": "公共測量成果又は基本測量成果",
+          "uro:thematicSrcDesc_code": "000",
+          "uro:appearanceSrcDescLod2": "車載写真レーザ測量システムにより撮影した写真",
+          "uro:appearanceSrcDescLod2_code": "3",
+          "uro:appearanceSrcDescLod3": "車載写真レーザ測量システムにより撮影した写真",
+          "uro:appearanceSrcDescLod3_code": "3",
+          "uro:lodType": "不明",
+          "uro:lodType_code": "8",
+          "uro:lod1HeightType": "不明",
+          "uro:lod1HeightType_code": "98"
+        }
+      ]
+    },
+    "core:creationDate": "2024-03-19",
+    "brid:function": "横断歩道橋",
+    "uro:geometrySrcDescLod1": "公共測量成果又は基本測量成果",
+    "uro:lodType": "不明",
+    "__key_order": [
+      "meshcode",
+      "feature_type",
+      "city_code",
+      "city_name",
+      "gml_id",
+      "attributes",
+      "core:creationDate",
+      "brid:function",
+      "uro:geometrySrcDescLod1",
+      "uro:lodType"
+    ]
+  },
+  "brid_d737c356-4b51-4002-a7cd-db61417e90d2": {
+    "meshcode": "54400098",
+    "feature_type": "brid:Bridge",
+    "city_code": "08220",
+    "city_name": "茨城県つくば市",
+    "gml_id": "brid_d737c356-4b51-4002-a7cd-db61417e90d2",
+    "attributes": {
+      "meshcode": "54400098",
+      "feature_type": "brid:Bridge",
+      "gml:id": "brid_d737c356-4b51-4002-a7cd-db61417e90d2",
+      "core:creationDate": "2024-03-19",
+      "brid:function": "横断歩道橋",
+      "brid:function_code": "07",
+      "brid:BridgeConstructionElement": [
+        {
+          "brid:function": "橋脚",
+          "brid:function_code": "01"
+        },
+        {
+          "brid:function": "橋台",
+          "brid:function_code": "02"
+        },
+        {
+          "brid:function": "橋台",
+          "brid:function_code": "02"
+        },
+        {
+          "brid:function": "橋脚",
+          "brid:function_code": "01"
+        }
+      ],
+      "uro:DmGeometricAttribute": [
+        {
+          "uro:dmCode": "横断歩道橋",
+          "uro:dmCode_code": "2211",
+          "uro:geometryType": "面",
+          "uro:geometryType_code": "E1",
+          "uro:mapLevel": "地図情報レベル2500",
+          "uro:mapLevel_code": "2500",
+          "uro:shapeType": "非区分（下記に該当しない全データ）",
+          "uro:shapeType_code": "0"
+        },
+        {
+          "uro:dmCode": "横断歩道橋",
+          "uro:dmCode_code": "2211",
+          "uro:geometryType": "線",
+          "uro:geometryType_code": "E2",
+          "uro:mapLevel": "地図情報レベル2500",
+          "uro:mapLevel_code": "2500",
+          "uro:shapeType": "非区分（下記に該当しない全データ）",
+          "uro:shapeType_code": "0"
+        }
+      ],
+      "uro:DataQualityAttribute": [
+        {
+          "uro:geometrySrcDescLod0": [
+            "公共測量成果又は基本測量成果",
+            "（公共測量又は基本測量ではない）地上レーザ測量の測量成果"
+          ],
+          "uro:geometrySrcDescLod0_code": [
+            "000",
+            "108"
+          ],
+          "uro:geometrySrcDescLod1": [
+            "公共測量成果又は基本測量成果",
+            "（公共測量又は基本測量ではない）地上レーザ測量の測量成果"
+          ],
+          "uro:geometrySrcDescLod1_code": [
+            "000",
+            "108"
+          ],
+          "uro:geometrySrcDescLod2": [
+            "公共測量成果又は基本測量成果",
+            "（公共測量又は基本測量ではない）地上レーザ測量の測量成果"
+          ],
+          "uro:geometrySrcDescLod2_code": [
+            "000",
+            "108"
+          ],
+          "uro:geometrySrcDescLod3": [
+            "公共測量成果又は基本測量成果",
+            "（公共測量又は基本測量ではない）地上レーザ測量の測量成果"
+          ],
+          "uro:geometrySrcDescLod3_code": [
+            "000",
+            "108"
+          ],
+          "uro:thematicSrcDesc": "公共測量成果又は基本測量成果",
+          "uro:thematicSrcDesc_code": "000",
+          "uro:appearanceSrcDescLod2": "車載写真レーザ測量システムにより撮影した写真",
+          "uro:appearanceSrcDescLod2_code": "3",
+          "uro:appearanceSrcDescLod3": "車載写真レーザ測量システムにより撮影した写真",
+          "uro:appearanceSrcDescLod3_code": "3",
+          "uro:lodType": "不明",
+          "uro:lodType_code": "8",
+          "uro:lod1HeightType": "不明",
+          "uro:lod1HeightType_code": "98"
+        }
+      ]
+    },
+    "core:creationDate": "2024-03-19",
+    "brid:function": "横断歩道橋",
+    "uro:geometrySrcDescLod1": "公共測量成果又は基本測量成果",
+    "uro:lodType": "不明",
+    "__key_order": [
+      "meshcode",
+      "feature_type",
+      "city_code",
+      "city_name",
+      "gml_id",
+      "attributes",
+      "core:creationDate",
+      "brid:function",
+      "uro:geometrySrcDescLod1",
+      "uro:lodType"
+    ]
+  }
+}

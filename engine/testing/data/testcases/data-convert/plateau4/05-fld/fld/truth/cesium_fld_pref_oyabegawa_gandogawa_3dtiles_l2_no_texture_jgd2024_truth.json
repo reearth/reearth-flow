@@ -1,0 +1,62 @@
+{
+  "": {
+    "city_code": "16202",
+    "city_name": "富山県高岡市",
+    "feature_type": "wtr:WaterBody",
+    "attributes": {
+      "feature_type": "wtr:WaterBody",
+      "gml:name": "小矢部川水系岸渡川洪水浸水想定区域（想定最大規模）",
+      "core:creationDate": "2025-03-14",
+      "wtr:class": "flooded land（浸水域）",
+      "wtr:class_code": "1140",
+      "wtr:function": "洪水浸水想定区域",
+      "wtr:function_code": "1",
+      "uro:RiverFloodingRiskAttribute": [
+        {
+          "uro:description": "小矢部川水系岸渡川",
+          "uro:description_code": "8",
+          "uro:rank": "0.5m未満",
+          "uro:rank_code": "1",
+          "uro:adminType": "都道府県",
+          "uro:adminType_code": "2",
+          "uro:scale": "L2（想定最大規模）",
+          "uro:scale_code": "2"
+        }
+      ],
+      "uro:DataQualityAttribute": [
+        {
+          "uro:geometrySrcDescLod1": "その他のGISデータ",
+          "uro:geometrySrcDescLod1_code": "400",
+          "uro:thematicSrcDesc": "その他のGISデータ",
+          "uro:thematicSrcDesc_code": "400"
+        }
+      ]
+    },
+    "gml:name": "小矢部川水系岸渡川洪水浸水想定区域（想定最大規模）",
+    "core:creationDate": "2025-03-14",
+    "wtr:class": "flooded land（浸水域）",
+    "wtr:function": "洪水浸水想定区域",
+    "uro:description": "小矢部川水系岸渡川",
+    "uro:rank": "0.5m未満",
+    "uro:rank_code": 1,
+    "uro:adminType": "都道府県",
+    "uro:scale": "L2（想定最大規模）",
+    "uro:geometrySrcDescLod1": "その他のGISデータ",
+    "__key_order": [
+      "city_code",
+      "city_name",
+      "feature_type",
+      "attributes",
+      "gml:name",
+      "core:creationDate",
+      "wtr:class",
+      "wtr:function",
+      "uro:description",
+      "uro:rank",
+      "uro:rank_code",
+      "uro:adminType",
+      "uro:scale",
+      "uro:geometrySrcDescLod1"
+    ]
+  }
+}

@@ -1,0 +1,70 @@
+{
+  "ubld_8182a1f3-d55c-4971-83cc-82a5826faf30": {
+    "meshcode": "53394611",
+    "feature_type": "uro:UndergroundBuilding",
+    "city_code": "13102",
+    "city_name": "東京都中央区",
+    "gml_id": "ubld_8182a1f3-d55c-4971-83cc-82a5826faf30",
+    "attributes": {
+      "meshcode": "53394611",
+      "feature_type": "uro:UndergroundBuilding",
+      "gml:id": "ubld_8182a1f3-d55c-4971-83cc-82a5826faf30",
+      "core:creationDate": "2024-03-15",
+      "uro:BuildingIDAttribute": [
+        {
+          "uro:buildingID": "13101-ubld-1",
+          "uro:prefecture": "東京都",
+          "uro:prefecture_code": "13",
+          "uro:city": "東京都千代田区",
+          "uro:city_code": "13101"
+        }
+      ],
+      "uro:DataQualityAttribute": [
+        {
+          "uro:geometrySrcDescLod1": "公共測量成果又は基本測量成果",
+          "uro:geometrySrcDescLod1_code": "000",
+          "uro:geometrySrcDescLod4": "公共測量成果又は基本測量成果",
+          "uro:geometrySrcDescLod4_code": "000",
+          "uro:thematicSrcDesc": "公共測量成果又は基本測量成果",
+          "uro:thematicSrcDesc_code": "000",
+          "uro:lodType": "LOD4.1",
+          "uro:lodType_code": "4.1",
+          "uro:lod1HeightType": "階高3m×都市計画基礎調査（建物利用現況）の「階数・地上（階）」による推定値",
+          "uro:lod1HeightType_code": "9",
+          "uro:PublicSurveyDataQualityAttribute": [
+            {
+              "uro:srcScaleLod1": "地図情報レベル500",
+              "uro:srcScaleLod1_code": "3",
+              "uro:srcScaleLod4": "地図情報レベル500",
+              "uro:srcScaleLod4_code": "3",
+              "uro:publicSurveySrcDescLod1": "LidarSLAM計測の測量成果",
+              "uro:publicSurveySrcDescLod1_code": "018",
+              "uro:publicSurveySrcDescLod4": "LidarSLAM計測の測量成果",
+              "uro:publicSurveySrcDescLod4_code": "018"
+            }
+          ]
+        }
+      ]
+    },
+    "core:creationDate": "2024-03-15",
+    "uro:buildingID": "13101-ubld-1",
+    "uro:prefecture": "東京都",
+    "uro:city": "東京都千代田区",
+    "uro:geometrySrcDescLod1": "公共測量成果又は基本測量成果",
+    "uro:lodType": "LOD4.1",
+    "__key_order": [
+      "meshcode",
+      "feature_type",
+      "city_code",
+      "city_name",
+      "gml_id",
+      "attributes",
+      "core:creationDate",
+      "uro:buildingID",
+      "uro:prefecture",
+      "uro:city",
+      "uro:geometrySrcDescLod1",
+      "uro:lodType"
+    ]
+  }
+}

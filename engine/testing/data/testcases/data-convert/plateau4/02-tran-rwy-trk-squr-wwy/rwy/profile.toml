@@ -1,15 +1,24 @@
 citygml_zip_name = "16202_takaoka-shi_city_2024_citygml_1_op_rwy.zip"
 
+[convs.mvt_attributes.rwy_mvt_lod1]
+path = "16202_takaoka-shi_city_2024_citygml_1_op_rwy_mvt_lod1"
+truth_path = "mvt_rwy_mvt_lod1_truth.json"
+generate_truth = true
+
+[convs.mvt_attributes.rwy_mvt_lod1.casts]
+"" = "ordered_dict"
+".attributes" = "json"
+".attributes.meshcode" = "string"
+
+[tests.json_attributes_v2.mvt_rwy_mvt_lod1]
+path = "mvt_rwy_mvt_lod1_truth.json"
+
 [tests.mvt_lines]
 threshold = 0.01
 zoom = [13, 16] # test from 13 to avoid thin polygons excluded by flow
 
 [tests.mvt_polygons]
 threshold = 0.001
-
-[tests.mvt_attributes.casts]
-".attributes" = "json"
-".attributes.meshcode" = "string"
 
 [filter.tree]
 "udx/rwy/" = [

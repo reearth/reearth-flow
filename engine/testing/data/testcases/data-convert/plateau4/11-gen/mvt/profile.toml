@@ -3,6 +3,20 @@
 # 2. layer names to be pkg + gml_name_code
 citygml_zip_name = "40223_koga-shi_city_2024_citygml_1_op_gen.zip"
 
+[convs.mvt_attributes.gen_20_mvt_lod1]
+path = "40223_koga-shi_city_2024_citygml_1_op_gen_20_mvt_lod1"
+truth_path = "mvt_gen_20_mvt_lod1_truth.json"
+generate_truth = true
+
+[convs.mvt_attributes.gen_20_mvt_lod1.casts]
+"" = "ordered_dict"
+".attributes" = "json"
+".attributes.meshcode" = "string"
+".attributes.gen:genericAttribute" = { comparator = "list_to_dict", key = ".name" }
+
+[tests.json_attributes_v2.mvt_gen_20_mvt_lod1]
+path = "mvt_gen_20_mvt_lod1_truth.json"
+
 [convs.json.tilejson_lod1]
 flow_path = "40223_koga-shi_city_2024_citygml_1_op_gen_20_mvt_lod1/tilejson.json"
 output_path = "mvt_lod1_tilejson.json"
@@ -15,11 +29,6 @@ key = ".id"
 
 [tests.json_attributes_v2.tilejson_lod1]
 path = "mvt_lod1_tilejson.json"
-
-[tests.mvt_attributes.casts]
-".attributes" = "json"
-".attributes.meshcode" = "string"
-".attributes.gen:genericAttribute" = { comparator = "list_to_dict", key = ".name" }
 
 [tests.mvt_lines]
 zoom = [12, 16]
