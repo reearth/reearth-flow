@@ -3357,7 +3357,7 @@
     },
     {
       "name": "Mesh Merger",
-      "description": "Fusionne en maillages les polygones et maillages des entités partageant les mêmes valeurs d'attributs de regroupement, en conservant chaque face telle quelle, et émet une entité par groupe ou par partie connexe de celui-ci. Le résultat est un maillage triangulaire lorsque toutes les entrées en sont, et un maillage polygonal sinon.",
+      "description": "Fusionne en maillages les polygones et maillages des entités partageant les mêmes valeurs d'attributs de regroupement, en conservant chaque face telle quelle, et émet une entité par groupe ou par partie connexe de celui-ci. Le résultat est un maillage triangulaire lorsque tous les polygones et maillages qui y sont fusionnés, y compris ceux des collections, sont des maillages triangulaires, et un maillage polygonal sinon.",
       "parameterI18n": {
         "": {
           "title": "Paramètres du fusionneur de maillages",

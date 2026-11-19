@@ -9724,7 +9724,7 @@ Writes features to Mapbox Vector Tiles (MVT) format.
 ### Type
 * processor
 ### Description
-Merges the polygons and meshes of features that share the same grouping attribute values into meshes, keeping every face as it is, and emits one feature per group or per connected part of it. The result is a triangular mesh when every input is one, and a polygon mesh otherwise.
+Merges the polygons and meshes of features that share the same grouping attribute values into meshes, keeping every face as it is, and emits one feature per group or per connected part of it. The result is a triangular mesh when every polygon and mesh merged into it is a triangular mesh, including those inside collections, and a polygon mesh otherwise.
 ### Parameters
 ```json
 {

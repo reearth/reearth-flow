@@ -9979,7 +9979,7 @@
     {
       "name": "Mesh Merger",
       "type": "processor",
-      "description": "Fusiona en mallas los polígonos y mallas de las entidades que comparten los mismos valores de atributos de agrupación, conservando cada cara tal cual, y emite una entidad por grupo o por cada parte conectada de este. El resultado es una malla triangular cuando todas las entradas lo son, y una malla poligonal en caso contrario.",
+      "description": "Fusiona en mallas los polígonos y mallas de las entidades que comparten los mismos valores de atributos de agrupación, conservando cada cara tal cual, y emite una entidad por grupo o por cada parte conectada de este. El resultado es una malla triangular cuando todos los polígonos y mallas fusionados en ella, incluidos los de las colecciones, son mallas triangulares, y una malla poligonal en caso contrario.",
       "parameter": {
         "$schema": "http://json-schema.org/draft-07/schema#",
         "title": "Parámetros del fusionador de mallas",

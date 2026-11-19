@@ -1,12 +1,11 @@
-//! Merging polygons and meshes into one mesh, and testing whether two of them
-//! share an edge.
+//! Merging polygons and meshes into one mesh, and listing their edges.
 //!
 //! Faces are copied as they are, with no re-triangulation. Vertices with the
 //! same coordinates (exact `f64` bits) are welded into one shared pool, and two
 //! edges are equal when their endpoints are, by the same comparison.
 
 use std::borrow::Borrow;
-use std::collections::{HashMap, HashSet};
+use std::collections::HashMap;
 use std::ops::Range;
 
 use crate::appearance::{
@@ -16,40 +15,43 @@ use crate::appearance::{
 use crate::coordinate::CoordinateFrame;
 use crate::error::Error;
 use crate::index::IndexBuffer;
-use crate::ops::{Aabb, BoundingBox};
 use crate::polygon_mesh::{PolygonMesh2D, PolygonMesh3D, bake};
 use crate::triangular_mesh::{TriangularMesh2D, TriangularMesh3D};
 use crate::{Euclidean2DGeometry, Euclidean3DGeometry, Geometry};
 
-/// Whether [`merge`] accepts `geometry` on its own: polygons, polygon meshes
-/// and triangular meshes, possibly in collections, all in one dimension and one
-/// coordinate frame, and in 2D at one elevation.
+/// Whether [`merge`] takes at least one face from `geometry` on its own:
+/// polygons, polygon meshes and triangular meshes, possibly in collections, all
+/// in one dimension and one coordinate frame, and in 2D at one elevation.
 pub fn is_mergeable(geometry: &Geometry) -> bool {
     let mut leaves = Leaves::default();
-    collect(geometry, &mut leaves).is_ok()
-        && !(leaves.d2.is_empty() && leaves.d3.is_empty())
-        && check_leaves(&leaves).is_ok()
+    if collect(geometry, &mut leaves).is_err() || check_leaves(&leaves).is_err() {
+        return false;
+    }
+    leaves.d2.iter().any(|leaf| match leaf {
+        Euclidean2DGeometry::Polygon(p) => !p.exterior().is_empty(),
+        Euclidean2DGeometry::PolygonMesh(m) => m.csr_buffers().0.len() > 0,
+        Euclidean2DGeometry::TriangularMesh(m) => m.triangles().next().is_some(),
+        _ => false,
+    }) || leaves.d3.iter().any(|leaf| match leaf {
+        Euclidean3DGeometry::Polygon(p) => !p.exterior().is_empty(),
+        Euclidean3DGeometry::PolygonMesh(m) => m.data().csr_buffers().0.len() > 0,
+        Euclidean3DGeometry::TriangularMesh(m) => m.triangles().next().is_some(),
+        _ => false,
+    })
 }
 
-/// Merge every face of `meshes` into one mesh.
+/// Merge every face of `meshes` into one mesh, also returning how many faces
+/// each input added, in input order.
 ///
 /// The result is a triangular mesh when every input is a triangular mesh, and a
-/// polygon mesh otherwise. Faces keep their input order. Appearance is carried
-/// over: palettes concatenate, themes union, and each theme's UV is rebuilt per
-/// corner. Each input is read once, so an iterator can stream them. `None` when
-/// no input has a face. Errors when an input is not [mergeable](is_mergeable),
-/// or when the inputs differ in dimension, frame, or 2D elevation.
+/// polygon mesh otherwise. Faces keep their input order, so input `k` holds the
+/// faces from the sum of the counts before it, up to that sum plus its own
+/// count. Appearance is carried over: palettes concatenate, themes union, and
+/// each theme's UV is rebuilt per corner. Each input is read once, so an
+/// iterator can stream them. `None` when no input has a face. Errors when an
+/// input holds anything but polygons and meshes, or when the inputs differ in
+/// dimension, frame, or 2D elevation.
 pub fn merge<G: Borrow<Geometry>>(
-    meshes: impl IntoIterator<Item = G>,
-) -> Result<Option<Geometry>, Error> {
-    Ok(merge_counting_faces(meshes)?.map(|(mesh, _)| mesh))
-}
-
-/// [`merge`], also returning how many faces each input added, in input order.
-/// Since faces keep their input order, input `k` holds the faces from the sum
-/// of the counts before it, up to that sum plus its own count. `None` when no
-/// input has a face.
-pub fn merge_counting_faces<G: Borrow<Geometry>>(
     meshes: impl IntoIterator<Item = G>,
 ) -> Result<Option<(Geometry, Vec<usize>)>, Error> {
     let mut merger = Merger::Empty;
@@ -64,110 +66,37 @@ pub fn merge_counting_faces<G: Borrow<Geometry>>(
     Ok(merger.finish()?.map(|mesh| (mesh, counts)))
 }
 
-/// Whether `a` and `b` share an edge: two corners of `a` adjacent in a ring
-/// whose coordinates equal, as exact `f64` bits, two adjacent corners of `b`,
-/// in either direction. Sharing a vertex alone does not count. False when
-/// either is not [mergeable](is_mergeable) or they differ in dimension.
-pub fn are_edge_connected(a: &Geometry, b: &Geometry) -> bool {
-    let (mut la, mut lb) = (Leaves::default(), Leaves::default());
-    if collect(a, &mut la).is_err() || collect(b, &mut lb).is_err() {
-        return false;
+/// An edge as the exact `f64` bits of its two ends, the smaller first. A 2D
+/// end has zero bits for its third coordinate.
+pub type EdgeKey = ([u64; 3], [u64; 3]);
+
+/// The distinct edges of the faces of `geometry`, sorted, closing open rings.
+/// Two geometries of one dimension share an edge when their edge lists have a
+/// key in common; sharing a vertex alone does not count. Empty when `geometry`
+/// is not [mergeable](is_mergeable).
+pub fn edge_keys(geometry: &Geometry) -> Vec<EdgeKey> {
+    let mut leaves = Leaves::default();
+    if collect(geometry, &mut leaves).is_err() || check_leaves(&leaves).is_err() {
+        return Vec::new();
     }
-    let (Ok(box_a), Ok(box_b)) = (a.bounding_box(), b.bounding_box()) else {
-        return false;
+    let mut keys = Vec::new();
+    let mut push = |p: [u64; 3], q: [u64; 3]| match p.cmp(&q) {
+        std::cmp::Ordering::Less => keys.push((p, q)),
+        std::cmp::Ordering::Greater => keys.push((q, p)),
+        std::cmp::Ordering::Equal => {}
     };
-    match (box_a, box_b) {
-        (
-            Aabb::D2 {
-                min: amin,
-                max: amax,
-            },
-            Aabb::D2 {
-                min: bmin,
-                max: bmax,
-            },
-        ) => {
-            let Some(overlap) = overlap(amin, amax, bmin, bmax) else {
-                return false;
-            };
-            share_edge(
-                &overlap,
-                |f| la.d2.iter().for_each(|l| edges_2d(l, f)),
-                |f| lb.d2.iter().for_each(|l| edges_2d(l, f)),
-            )
-        }
-        (
-            Aabb::D3 {
-                min: amin,
-                max: amax,
-            },
-            Aabb::D3 {
-                min: bmin,
-                max: bmax,
-            },
-        ) => {
-            let Some(overlap) = overlap(amin, amax, bmin, bmax) else {
-                return false;
-            };
-            share_edge(
-                &overlap,
-                |f| la.d3.iter().for_each(|l| edges_3d(l, f)),
-                |f| lb.d3.iter().for_each(|l| edges_3d(l, f)),
-            )
-        }
-        _ => false,
+    let lift = |p: [f64; 2]| [p[0].to_bits(), p[1].to_bits(), 0];
+    for leaf in &leaves.d2 {
+        edges_2d(leaf, &mut |p, q| push(lift(p), lift(q)));
     }
-}
-
-/// The box two boxes share, boundary included, or `None` when they are apart.
-fn overlap<const N: usize>(
-    amin: [f64; N],
-    amax: [f64; N],
-    bmin: [f64; N],
-    bmax: [f64; N],
-) -> Option<([f64; N], [f64; N])> {
-    let min: [f64; N] = std::array::from_fn(|i| amin[i].max(bmin[i]));
-    let max: [f64; N] = std::array::from_fn(|i| amax[i].min(bmax[i]));
-    (0..N).all(|i| min[i] <= max[i]).then_some((min, max))
-}
-
-type EdgeKey<const N: usize> = ([u64; N], [u64; N]);
-
-/// Whether an edge visited by `a` is also visited by `b`. Only edges with both
-/// ends inside `overlap` can be shared, so only those are compared.
-fn share_edge<const N: usize>(
-    overlap: &([f64; N], [f64; N]),
-    a: impl FnOnce(&mut dyn FnMut([f64; N], [f64; N])),
-    b: impl FnOnce(&mut dyn FnMut([f64; N], [f64; N])),
-) -> bool {
-    let inside = |p: &[f64; N]| (0..N).all(|i| overlap.0[i] <= p[i] && p[i] <= overlap.1[i]);
-    let key = |p: [f64; N], q: [f64; N]| -> Option<EdgeKey<N>> {
-        if !inside(&p) || !inside(&q) {
-            return None;
-        }
-        let (p, q) = (p.map(f64::to_bits), q.map(f64::to_bits));
-        match p.cmp(&q) {
-            std::cmp::Ordering::Less => Some((p, q)),
-            std::cmp::Ordering::Greater => Some((q, p)),
-            std::cmp::Ordering::Equal => None,
-        }
-    };
-    let mut edges: HashSet<EdgeKey<N>> = HashSet::new();
-    a(&mut |p, q| {
-        if let Some(k) = key(p, q) {
-            edges.insert(k);
-        }
-    });
-    if edges.is_empty() {
-        return false;
+    for leaf in &leaves.d3 {
+        edges_3d(leaf, &mut |p, q| {
+            push(p.map(f64::to_bits), q.map(f64::to_bits))
+        });
     }
-    let mut found = false;
-    b(&mut |p, q| {
-        if !found && key(p, q).is_some_and(|k| edges.contains(&k)) {
-            found = true;
-        }
-    });
-    found
+    keys.sort_unstable();
+    keys.dedup();
+    keys
 }
 
 /// Visit every edge of a ring of coordinates, closing it when it is open.
@@ -915,14 +844,16 @@ mod tests {
     use crate::appearance::FaceBinding;
     use crate::collection::Collection3D;
     use crate::coordinate::EpsgCode;
+    use crate::ops::{Aabb, BoundingBox};
     use crate::point::Point3D;
     use crate::polygon::{Polygon2D, Polygon3D};
     use crate::test_support::*;
+    use pretty_assertions::assert_eq;
 
     const F: CoordinateFrame = CoordinateFrame::Euclidean;
 
     fn merge_some(geometries: &[Geometry]) -> Result<Geometry, Error> {
-        Ok(merge(geometries)?.unwrap_or_default())
+        Ok(merge(geometries)?.map(|(mesh, _)| mesh).unwrap_or_default())
     }
 
     fn tri(corners: [[f64; 3]; 3]) -> Polygon3D {
@@ -969,9 +900,7 @@ mod tests {
         );
         let no_triangles = trimesh(vec![[9., 9., 9.]], Vec::new());
         let one = polygon(tri([[0., 0., 0.], [1., 0., 0.], [0., 1., 0.]]));
-        let (mesh, counts) = merge_counting_faces([two_triangles, no_triangles, one])
-            .unwrap()
-            .unwrap();
+        let (mesh, counts) = merge([two_triangles, no_triangles, one]).unwrap().unwrap();
         assert_eq!(counts, vec![2, 0, 1]);
         assert_eq!(as_polygon_mesh(&mesh).num_faces(), 3);
     }
@@ -998,9 +927,22 @@ mod tests {
     }
 
     #[test]
+    fn a_geometry_without_faces_is_not_mergeable() {
+        assert!(is_mergeable(&polygon(tri([
+            [0., 0., 0.],
+            [1., 0., 0.],
+            [0., 1., 0.]
+        ]))));
+        assert!(!is_mergeable(&trimesh(vec![[0., 0., 0.]], Vec::new())));
+        assert!(!is_mergeable(&Geometry::None));
+        let point = g3(Euclidean3DGeometry::Point(Point3D::new(F, [0., 0., 0.])));
+        assert!(!is_mergeable(&point));
+    }
+
+    #[test]
     fn no_faces_count_as_no_mesh() {
         assert_eq!(
-            merge_counting_faces([trimesh(vec![[0., 0., 0.]], Vec::new())]).unwrap(),
+            merge([trimesh(vec![[0., 0., 0.]], Vec::new())]).unwrap(),
             None
         );
     }
@@ -1011,7 +953,7 @@ mod tests {
             polygon(tri([[0., 0., 0.], [1., 0., 0.], [0., 1., 0.]])),
             polygon(tri([[1., 0., 0.], [1., 1., 0.], [0., 1., 0.]])),
         ];
-        let merged = merge(inputs).unwrap().unwrap();
+        let (merged, _) = merge(inputs).unwrap().unwrap();
         assert_eq!(as_polygon_mesh(&merged).num_faces(), 2);
     }
 
@@ -1217,19 +1159,24 @@ mod tests {
         assert_eq!(merge(Vec::<Geometry>::new()).unwrap(), None);
     }
 
+    fn share_an_edge(a: &Geometry, b: &Geometry) -> bool {
+        let b = edge_keys(b);
+        edge_keys(a).iter().any(|k| b.binary_search(k).is_ok())
+    }
+
     #[test]
     fn a_shared_edge_connects() {
         let a = polygon(tri([[0., 0., 0.], [1., 0., 0.], [0., 1., 0.]]));
         let b = polygon(tri([[1., 0., 0.], [1., 1., 0.], [0., 1., 0.]]));
-        assert!(are_edge_connected(&a, &b));
-        assert!(are_edge_connected(&b, &a));
+        assert!(share_an_edge(&a, &b));
+        assert!(share_an_edge(&b, &a));
     }
 
     #[test]
     fn a_shared_vertex_does_not_connect() {
         let a = polygon(tri([[0., 0., 0.], [1., 0., 0.], [1., 1., 0.]]));
         let b = polygon(tri([[1., 1., 0.], [2., 1., 0.], [2., 2., 0.]]));
-        assert!(!are_edge_connected(&a, &b));
+        assert!(!share_an_edge(&a, &b));
     }
 
     #[test]
@@ -1239,28 +1186,38 @@ mod tests {
             vec![0, 1, 2],
         );
         let b = polygon(tri([[1., 0., 0.], [1., 1., 0.], [0., 1., 0.]]));
-        assert!(are_edge_connected(&mesh, &b));
+        assert!(share_an_edge(&mesh, &b));
         let apart = polygon(tri([[5., 0., 0.], [6., 0., 0.], [5., 1., 0.]]));
-        assert!(!are_edge_connected(&mesh, &apart));
+        assert!(!share_an_edge(&mesh, &apart));
     }
 
     #[test]
     fn edges_compare_exactly() {
         let a = polygon(tri([[0., 0., 0.], [1., 0., 0.], [0., 1., 0.]]));
         let b = polygon(tri([[1., 0., 0.], [1., 1., 0.], [0., 1. + 1e-12, 0.]]));
-        assert!(!are_edge_connected(&a, &b));
+        assert!(!share_an_edge(&a, &b));
     }
 
     #[test]
-    fn different_dimensions_do_not_connect() {
-        let a = polygon(tri([[0., 0., 0.], [1., 0., 0.], [0., 1., 0.]]));
-        let flat = Geometry::Euclidean2D(Euclidean2DGeometry::Polygon(Box::new(
-            Polygon2D::from_rings(
-                F,
-                [[1., 0.], [1., 1.], [0., 1.]],
-                Vec::<Vec<[f64; 2]>>::new(),
-            ),
-        )));
-        assert!(!are_edge_connected(&a, &flat));
+    fn edges_are_listed_once_each_including_the_closing_edge() {
+        // Two triangles of one mesh share the edge (1,0)-(0,1).
+        let mesh = trimesh(
+            vec![[0., 0., 0.], [1., 0., 0.], [0., 1., 0.], [1., 1., 0.]],
+            vec![0, 1, 2, 1, 3, 2],
+        );
+        let keys = edge_keys(&mesh);
+        assert_eq!(keys.len(), 5);
+        assert!(keys.is_sorted());
+        // An open ring still has its closing edge.
+        assert_eq!(
+            edge_keys(&polygon(tri([[0., 0., 0.], [1., 0., 0.], [0., 1., 0.]]))).len(),
+            3
+        );
+    }
+
+    #[test]
+    fn an_unmergeable_geometry_has_no_edges() {
+        let point = g3(Euclidean3DGeometry::Point(Point3D::new(F, [0., 0., 0.])));
+        assert!(edge_keys(&point).is_empty());
     }
 }

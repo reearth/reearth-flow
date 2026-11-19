@@ -1,18 +1,20 @@
 //! Mesh Merger: merges the faces of grouped features into meshes.
 //!
 //! Features are spilled to one file per group as they arrive, as two lines:
-//! the geometry, and the rest of the feature. Only each feature's bounding box
-//! and line positions stay in memory. At the end, each group is merged on its
-//! own. For the part granularities, an R-tree of the boxes yields candidate
-//! pairs, the pairs sharing an edge are joined, and each connected set of
-//! features is merged and then decomposed.
+//! the geometry, and the rest of the feature. Only each feature's line
+//! positions stay in memory. At the end, each group is merged on its own. For
+//! the part granularities, the features are read once more, each edge is mapped
+//! to the first feature having it, a later feature having the same edge is
+//! joined to that one, and each connected set of features is merged and then
+//! decomposed.
 //!
 //! Merging and decomposing read geometry only, and keep for each output part
 //! the ids of the features that gave it faces. A part's attributes are built
 //! from those features alone, read back one at a time just before the part is
 //! sent.
 
-use std::collections::{HashMap, HashSet};
+use std::collections::HashMap;
+use std::collections::hash_map::Entry as MapEntry;
 use std::fs::{File, OpenOptions};
 use std::io::{Read, Seek, SeekFrom, Write};
 use std::path::PathBuf;
@@ -20,7 +22,7 @@ use std::path::PathBuf;
 use rayon::prelude::*;
 use reearth_flow_geometry::Geometry;
 use reearth_flow_geometry::coordinate::CoordinateFrame;
-use reearth_flow_geometry::ops::merge::{are_edge_connected, is_mergeable, merge_counting_faces};
+use reearth_flow_geometry::ops::merge::{EdgeKey, edge_keys, is_mergeable, merge};
 use reearth_flow_geometry::ops::{
     Aabb, BoundingBox, DecomposeIntoEdgeConnectedParts, DecomposeIntoManifolds, Elevation,
     common_frame,
@@ -34,17 +36,17 @@ use reearth_flow_runtime::{
     node::{FEATURES_PORT, Port, Processor, ProcessorFactory, REJECTED_PORT},
 };
 use reearth_flow_types::{Attribute, AttributeValue, Attributes, Feature};
-use rstar::{AABB, RTree, RTreeObject};
 use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
 
 use super::errors::GeometryProcessorError;
 use crate::ACCUMULATOR_BUFFER_BYTE_THRESHOLD;
-use crate::accumulation::{AttributeAccumulation, AttributeAccumulator};
+use crate::accumulation::{AttributeAccumulation, AttributeAccumulator, MEMBERS_ATTRIBUTE};
 
-/// How many bytes of stored features one batch of candidate pairs may load.
-const PAIR_BATCH_BYTES: u64 = 64 * 1024 * 1024;
+/// How many features are read and listed in parallel while their edges are
+/// mapped.
+const EDGE_CHUNK_LEN: usize = 4096;
 
 #[derive(Debug, Clone, Default)]
 pub struct MeshMergerFactory;
@@ -55,7 +57,7 @@ impl ProcessorFactory for MeshMergerFactory {
     }
 
     fn description(&self) -> &str {
-        "Merges the polygons and meshes of features that share the same grouping attribute values into meshes, keeping every face as it is, and emits one feature per group or per connected part of it. The result is a triangular mesh when every input is one, and a polygon mesh otherwise."
+        "Merges the polygons and meshes of features that share the same grouping attribute values into meshes, keeping every face as it is, and emits one feature per group or per connected part of it. The result is a triangular mesh when every polygon and mesh merged into it is a triangular mesh, including those inside collections, and a polygon mesh otherwise."
     }
 
     fn parameter_schema(&self) -> Option<schemars::schema::RootSchema> {
@@ -100,8 +102,17 @@ impl ProcessorFactory for MeshMergerFactory {
             }
             None => MeshMergerParam::default(),
         };
+        let group_by = param.group_by.unwrap_or_default();
+        if param.attribute_accumulation == AttributeAccumulation::CollectAttributes
+            && group_by.contains(&Attribute::new(MEMBERS_ATTRIBUTE))
+        {
+            return Err(GeometryProcessorError::MeshMergerFactory(format!(
+                "`groupBy` cannot include `{MEMBERS_ATTRIBUTE}` with `collectAttributes`, which writes the member attributes there"
+            ))
+            .into());
+        }
         Ok(Box::new(MeshMerger::new(
-            param.group_by.unwrap_or_default(),
+            group_by,
             param.attribute_accumulation,
             param.granularity,
         )))
@@ -162,11 +173,10 @@ struct Span {
     len: u64,
 }
 
-/// A stored feature: its box, and where its geometry line and its shell line
-/// sit in the group's file.
+/// A stored feature: where its geometry line and its shell line sit in the
+/// group's file.
 #[derive(Debug, Clone, Copy)]
 struct Entry {
-    aabb: [f64; 6],
     geometry: Span,
     shell: Span,
 }
@@ -197,23 +207,6 @@ struct Merged {
 #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
 struct EntryId(usize);
 
-impl RTreeObject for IndexedEntry {
-    type Envelope = AABB<[f64; 3]>;
-
-    fn envelope(&self) -> Self::Envelope {
-        self.envelope
-    }
-}
-
-struct IndexedEntry {
-    id: EntryId,
-    envelope: AABB<[f64; 3]>,
-}
-
-fn envelope(aabb: &[f64; 6]) -> AABB<[f64; 3]> {
-    AABB::from_corners([aabb[0], aabb[1], aabb[2]], [aabb[3], aabb[4], aabb[5]])
-}
-
 /// One group's spill file and the in-memory index into it.
 #[derive(Debug)]
 struct Group {
@@ -231,13 +224,17 @@ impl Group {
         if self.pending.is_empty() {
             return Ok(());
         }
+        // Write at `written` rather than appending, so a retry after a partial
+        // write overwrites the partial bytes.
         let mut file = OpenOptions::new()
             .create(true)
-            .append(true)
+            .truncate(false)
+            .write(true)
             .open(&self.path)?;
+        file.seek(SeekFrom::Start(self.written))?;
         file.write_all(&self.pending)?;
         self.written += self.pending.len() as u64;
-        self.pending.clear();
+        self.pending = Vec::new();
         Ok(())
     }
 
@@ -368,13 +365,13 @@ impl MeshMerger {
     }
 
     /// Store `feature` in its group. `false` when it cannot merge, on its own
-    /// or with the group's features.
+    /// or with the group's features, or has no faces to give.
     fn admit(&mut self, feature: &Feature) -> Result<bool, BoxedError> {
         let geometry = feature.geometry.as_ref();
         if !is_mergeable(geometry) {
             return Ok(false);
         }
-        let Some((signature, aabb)) = signature_and_box(geometry) else {
+        let Some(signature) = signature(geometry) else {
             return Ok(false);
         };
         let key = self.key(feature);
@@ -408,11 +405,7 @@ impl MeshMerger {
         let group = &mut self.groups[index];
         let geometry = group.push_line(&geometry_line);
         let shell = group.push_line(&shell_line);
-        group.entries.push(Entry {
-            aabb,
-            geometry,
-            shell,
-        });
+        group.entries.push(Entry { geometry, shell });
         self.pending_bytes += geometry_line.len() + shell_line.len() + 2;
         if self.pending_bytes >= self.buffer_threshold {
             self.flush_all()?;
@@ -426,40 +419,31 @@ impl MeshMerger {
         if self.granularity == Granularity::Group {
             return Ok(vec![group.ids().collect()]);
         }
-        let tree = RTree::bulk_load(
-            group
-                .ids()
-                .map(|id| IndexedEntry {
-                    id,
-                    envelope: envelope(&group.entry(id).aabb),
-                })
-                .collect(),
-        );
         let mut parent: Vec<EntryId> = group.ids().collect();
-        let mut batch: Vec<(EntryId, EntryId)> = Vec::new();
-        let mut batch_ids: HashSet<EntryId> = HashSet::new();
-        let mut batch_bytes = 0u64;
-        for i in group.ids() {
-            for candidate in tree.locate_in_envelope_intersecting(&envelope(&group.entry(i).aabb)) {
-                let j = candidate.id;
-                if j <= i || find(&mut parent, i) == find(&mut parent, j) {
-                    continue;
-                }
-                for id in [i, j] {
-                    if batch_ids.insert(id) {
-                        batch_bytes += group.entry(id).geometry.len;
+        let mut owner: HashMap<EdgeKey, EntryId, ahash::RandomState> = HashMap::default();
+        let ids: Vec<EntryId> = group.ids().collect();
+        for chunk in ids.chunks(EDGE_CHUNK_LEN) {
+            let edges: Vec<Vec<EdgeKey>> = chunk
+                .par_iter()
+                .map(|&id| {
+                    group
+                        .read_geometry(id)
+                        .map(|geometry| edge_keys(&geometry))
+                        .map_err(|e| e.to_string())
+                })
+                .collect::<Result<_, String>>()
+                .map_err(GeometryProcessorError::MeshMerger)?;
+            for (&id, edges) in chunk.iter().zip(edges) {
+                for edge in edges {
+                    match owner.entry(edge) {
+                        MapEntry::Occupied(first) => union(&mut parent, id, *first.get()),
+                        MapEntry::Vacant(slot) => {
+                            slot.insert(id);
+                        }
                     }
-                }
-                batch.push((i, j));
-                if batch_bytes >= PAIR_BATCH_BYTES {
-                    join_batch(group, &mut parent, &batch, &batch_ids)?;
-                    batch.clear();
-                    batch_ids.clear();
-                    batch_bytes = 0;
                 }
             }
         }
-        join_batch(group, &mut parent, &batch, &batch_ids)?;
         Ok(components(&mut parent))
     }
 
@@ -475,7 +459,7 @@ impl MeshMerger {
                 None
             }
         });
-        let merged = merge_counting_faces(geometries);
+        let merged = merge(geometries);
         if let Some(e) = read_error {
             return Err(e);
         }
@@ -547,41 +531,12 @@ impl MeshMerger {
     }
 }
 
-/// Test the pairs of `batch` for a shared edge and join those that share one.
-/// The features are loaded once each, the tests run in parallel, and the joins
-/// are applied in pair order.
-fn join_batch(
-    group: &Group,
-    parent: &mut [EntryId],
-    batch: &[(EntryId, EntryId)],
-    ids: &HashSet<EntryId>,
-) -> Result<(), BoxedError> {
-    if batch.is_empty() {
-        return Ok(());
+/// Join the sets of `a` and `b`, keeping the smaller root.
+fn union(parent: &mut [EntryId], a: EntryId, b: EntryId) {
+    let (a, b) = (find(parent, a), find(parent, b));
+    if a != b {
+        parent[a.max(b).0] = a.min(b);
     }
-    let loaded: HashMap<EntryId, Geometry> = ids
-        .par_iter()
-        .map(|&id| {
-            group
-                .read_geometry(id)
-                .map(|geometry| (id, geometry))
-                .map_err(|e| e.to_string())
-        })
-        .collect::<Result<_, String>>()
-        .map_err(GeometryProcessorError::MeshMerger)?;
-    let connected: Vec<bool> = batch
-        .par_iter()
-        .map(|(i, j)| are_edge_connected(&loaded[i], &loaded[j]))
-        .collect();
-    for (&(i, j), connected) in batch.iter().zip(connected) {
-        if connected {
-            let (a, b) = (find(parent, i), find(parent, j));
-            if a != b {
-                parent[a.max(b).0] = a.min(b);
-            }
-        }
-    }
-    Ok(())
 }
 
 /// Union-find root of `id`, compressing the path.
@@ -608,32 +563,21 @@ fn components(parent: &mut [EntryId]) -> Vec<Vec<EntryId>> {
     sets
 }
 
-/// What a mergeable geometry must share with its group, and its box in 3D. A
-/// 2D box is lifted to the elevation, or to 0 without one.
-fn signature_and_box(geometry: &Geometry) -> Option<(Signature, [f64; 6])> {
+/// What a mergeable geometry must share with its group.
+fn signature(geometry: &Geometry) -> Option<Signature> {
     let frame = common_frame(geometry).ok()?;
-    match geometry.bounding_box().ok()? {
-        Aabb::D2 { min, max } => {
-            let elevation = geometry.elevation();
-            let z = elevation.unwrap_or(0.0);
-            Some((
-                Signature {
-                    three_dimensional: false,
-                    frame,
-                    elevation: elevation.map(f64::to_bits),
-                },
-                [min[0], min[1], z, max[0], max[1], z],
-            ))
-        }
-        Aabb::D3 { min, max } => Some((
-            Signature {
-                three_dimensional: true,
-                frame,
-                elevation: None,
-            },
-            [min[0], min[1], min[2], max[0], max[1], max[2]],
-        )),
-    }
+    Some(match geometry.bounding_box().ok()? {
+        Aabb::D2 { .. } => Signature {
+            three_dimensional: false,
+            frame,
+            elevation: geometry.elevation().map(f64::to_bits),
+        },
+        Aabb::D3 { .. } => Signature {
+            three_dimensional: true,
+            frame,
+            elevation: None,
+        },
+    })
 }
 
 impl Processor for MeshMerger {
@@ -925,18 +869,68 @@ mod tests {
                 .unwrap(),
             ),
         )));
-        // It is admitted, and rejected only when its group merges to nothing.
+        // It is rejected on arrival, before it is spilled.
         assert!(
-            merger(&[], AttributeAccumulation::UseOneFeature)
+            !merger(&[], AttributeAccumulation::UseOneFeature)
                 .admit(&empty)
                 .unwrap()
         );
         let (merged, rejected) = run(
             merger(&[], AttributeAccumulation::UseOneFeature),
-            vec![empty],
+            vec![empty.clone()],
         );
         assert!(merged.is_empty());
         assert_eq!(rejected.len(), 1);
+        // The rejected geometry keeps the vertices no triangle uses.
+        assert_eq!(rejected[0].geometry, empty.geometry);
+    }
+
+    #[test]
+    fn a_feature_without_faces_does_not_decide_its_group_frame() {
+        let empty = Feature::from(Geometry::Euclidean3D(Euclidean3DGeometry::TriangularMesh(
+            Box::new(
+                TriangularMesh3D::from_parts(
+                    CoordinateFrame::Euclidean,
+                    vec![[0., 0., 0.]],
+                    Vec::new(),
+                )
+                .unwrap(),
+            ),
+        )));
+        let other_frame = triangle(
+            CoordinateFrame::Crs(EpsgCode::new(4326)),
+            [[0., 0., 0.], [1., 0., 0.], [0., 1., 0.]],
+            &[],
+        );
+        let (merged, rejected) = run(
+            merger(&[], AttributeAccumulation::UseOneFeature),
+            vec![empty.clone(), other_frame],
+        );
+        assert_eq!(merged.len(), 1);
+        assert_eq!(rejected.len(), 1);
+        assert_eq!(rejected[0].id, empty.id);
+    }
+
+    #[test]
+    fn grouping_by_the_members_attribute_is_refused_when_collecting() {
+        let build = |strategy: &str| {
+            let with = serde_json::from_value(serde_json::json!({
+                "groupBy": ["__members"],
+                "attributeAccumulation": strategy,
+            }))
+            .unwrap();
+            MeshMergerFactory.build(
+                NodeContext::default(),
+                EventHub::new(1),
+                "Mesh Merger".to_string(),
+                Some(with),
+            )
+        };
+        let Err(err) = build("collectAttributes") else {
+            panic!("must be refused");
+        };
+        assert!(err.to_string().contains("__members"), "{err}");
+        assert!(build("useOneFeature").is_ok());
     }
 
     #[test]
@@ -1004,6 +998,24 @@ mod tests {
         };
         assert_eq!(ids(&merged[0]), vec![string("a"), string("c")]);
         assert_eq!(ids(&merged[1]), vec![string("b")]);
+    }
+
+    #[test]
+    fn a_later_feature_joins_two_that_share_no_edge() {
+        // `beside` touches `lower` at a vertex only; `upper`, last to arrive,
+        // shares an edge with each.
+        let beside = triangle(
+            CoordinateFrame::Euclidean,
+            [[1., 0., 0.], [2., 0., 0.], [1., 1., 0.]],
+            &[],
+        );
+        for granularity in [Granularity::EdgeConnectedPart, Granularity::ManifoldPart] {
+            let mut merger = merger(&[], AttributeAccumulation::UseOneFeature);
+            merger.granularity = granularity;
+            let (merged, rejected) = run(merger, vec![lower(&[]), beside.clone(), upper(&[])]);
+            assert!(rejected.is_empty());
+            assert_eq!(merged.iter().map(face_count).collect::<Vec<_>>(), vec![3]);
+        }
     }
 
     #[test]
@@ -1171,6 +1183,7 @@ mod tests {
         assert_eq!(rejected.len(), 1);
         assert_eq!(rejected[0].id, empty.id);
         assert_eq!(rejected[0].attributes, empty.attributes);
+        assert_eq!(rejected[0].geometry, empty.geometry);
     }
 
     #[test]

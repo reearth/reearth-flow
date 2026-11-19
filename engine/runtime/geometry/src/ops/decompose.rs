@@ -63,9 +63,8 @@ impl<T: DecomposeIntoEdgeConnectedParts + ?Sized> DecomposeIntoEdgeConnectedPart
 pub trait DecomposeIntoManifolds {
     /// Meshes whose every edge borders one or two of their faces, ordered by
     /// first face, each with the faces of `self` it holds in increasing order.
-    /// Faces join in face order, and a join is refused when an edge would
-    /// border three or more faces of the result, so where more faces meet at
-    /// one edge the first two stay together. Each part is edge-connected. A
+    /// Faces join in face order, and a join is refused when any edge would
+    /// border three or more faces of the result. Each part is edge-connected. A
     /// mesh that is one part comes back unchanged; one with no faces yields
     /// none. The default body reports the type as unsupported.
     fn decompose_into_manifolds(&self) -> Result<DecomposedParts, UnsupportedOperation> {
@@ -303,6 +302,7 @@ mod tests {
     use crate::test_support::*;
     use crate::triangular_mesh::TriangularMesh3D;
     use crate::{Euclidean3DGeometry, Geometry};
+    use pretty_assertions::assert_eq;
 
     const F: CoordinateFrame = CoordinateFrame::Euclidean;
 
@@ -315,7 +315,7 @@ mod tests {
     }
 
     fn merged(polygons: Vec<Polygon3D>) -> Geometry {
-        merge(polygons.into_iter().map(polygon)).unwrap().unwrap()
+        merge(polygons.into_iter().map(polygon)).unwrap().unwrap().0
     }
 
     fn as_polygon_mesh(g: &Geometry) -> &PolygonMesh3D {
