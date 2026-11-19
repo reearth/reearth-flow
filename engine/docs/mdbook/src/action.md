@@ -7858,6 +7858,14 @@ Flatten attributes for building feature
         "null"
       ]
     },
+    "excludeNestedAttributes": {
+      "description": "Keys removed at any depth from the nested `attributes` output, together with their `_code` and `_uom` companions. Flattened columns are not affected.",
+      "default": [],
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
+    },
     "existingFlattenAttributes": {
       "description": "When true, only include attributes that were actually used during processing in the schema output. When false (default), include all defined attributes in the schema regardless of usage.",
       "default": false,

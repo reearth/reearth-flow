@@ -58,9 +58,20 @@ graphs:
               outputPort: default
 
       - id: 3820b7e2-a1ca-436b-acb0-72b907c8b246
-        name: AttributeFlattener
+        name: AttributeFlattenerLsld
         type: action
         action: PLATEAU4.AttributeFlattener
+
+      - id: 58ddef60-b0d0-4cbd-b6a4-c9326373ae08
+        name: AttributeFlattenerLuse
+        type: action
+        action: PLATEAU4.AttributeFlattener
+        with:
+          excludeNestedAttributes:
+            - gml:id
+            - uro:areaInSquareMeter
+            - uro:areaInHa
+            - uro:nominalArea
 
       - id: a7c3e1d2-5f8b-4a6c-9e0d-1b2c3d4e5f60
         name: TwoDimensionForcer
@@ -96,8 +107,6 @@ graphs:
               valueAttribute: cityName
             - attribute: feature_type
               valueAttribute: featureType
-            - attribute: gml_id
-              valueAttribute: gmlId
             - attribute: luse_class
               expr: |
                 env.get("__value")["luse:class"]
@@ -119,9 +128,6 @@ graphs:
             - attribute: uro_surveyYear
               expr: |
                 env.get("__value")["uro:LandUseDetailAttribute_uro:surveyYear"]
-            - attribute: uro_areaInSquareMeter
-              expr: |
-                env.get("__value")["uro:LandUseDetailAttribute_uro:areaInSquareMeter"]
             - attribute: uro_orgLandUse
               expr: |
                 env.get("__value")["uro:LandUseDetailAttribute_uro:orgLandUse"]
@@ -130,15 +136,6 @@ graphs:
                 env.get("__value")["uro:DataQualityAttribute_uro:geometrySrcDescLod1"]
             - attribute: attributes
               valueAttribute: attributes
-
-      - id: b7d5c0f8-8c0f-446e-94de-f44074a8f6df
-        name: AttributeManagerLuseRemoveNestedAttributes
-        type: action
-        action: AttributeManager
-        with:
-          operations:
-            - attribute: attributes
-              method: remove
 
       - id: b4862d31-4bb2-49b1-8f0d-6d58dd4cb385
         name: MVTWriterLuse
@@ -161,28 +158,6 @@ graphs:
               city_gml = city_gml.sub_string(0, city_gml.len() - 5);
             }
             file::join_path(artifact, city_gml + "_luse_mvt.zip")
-
-      - id: 741a0d00-ffef-4e5f-838e-9d197d57e882
-        name: MVTWriterLuseFullAttributes
-        type: action
-        action: MVTWriter
-        with:
-          layerName: |
-            "luse"
-          minZoom: 8
-          maxZoom: 16
-          extent: 4096
-          extentAtMaxZoom: 65536
-          keepAllAtMaxZoom: true
-          output: |
-            file::join_path(env.get("workerArtifactPath"), "luse_full")
-          compressOutput: |
-            let artifact = env.get("workerArtifactPath");
-            let city_gml = file::extract_filename_without_ext(env.get("cityGmlPath"));
-            if city_gml.ends_with("_luse") {
-              city_gml = city_gml.sub_string(0, city_gml.len() - 5);
-            }
-            file::join_path(artifact, city_gml + "_luse_mvt_full.zip")
 
       # LSLD processing branch
       - id: 7a1b2c3d-4e5f-6a7b-8c9d-0e1f2a3b4c5d
@@ -262,15 +237,6 @@ graphs:
             - attribute: sort_order
               method: remove
 
-      - id: 697ac579-ecee-43cb-b25e-9f84851677c9
-        name: AttributeManagerLsldRemoveNestedAttributes
-        type: action
-        action: AttributeManager
-        with:
-          operations:
-            - attribute: attributes
-              method: remove
-
       - id: 0d4e5f6a-7b8c-9d0e-1f2a-3b4c5d6e7f8a
         name: MVTWriterLsld
         type: action
@@ -293,28 +259,6 @@ graphs:
             }
             file::join_path(artifact, city_gml + "_lsld_mvt.zip")
 
-      - id: aad4ede7-e295-4338-bb49-4bae7374b976
-        name: MVTWriterLsldFullAttributes
-        type: action
-        action: MVTWriter
-        with:
-          layerName: |
-            "lsld"
-          minZoom: 8
-          maxZoom: 16
-          extent: 4096
-          extentAtMaxZoom: 65536
-          keepAllAtMaxZoom: true
-          output: |
-            file::join_path(env.get("workerArtifactPath"), "lsld_full")
-          compressOutput: |
-            let artifact = env.get("workerArtifactPath");
-            let city_gml = file::extract_filename_without_ext(env.get("cityGmlPath"));
-            if city_gml.ends_with("_lsld") {
-              city_gml = city_gml.sub_string(0, city_gml.len() - 5);
-            }
-            file::join_path(artifact, city_gml + "_lsld_mvt_full.zip")
-
     edges:
       - id: 5ebf24ab-1d98-49d5-8f58-eb7c18d27244
         from: 90f40a3e-61d3-48e2-a328-e7226c2ad1ae
@@ -333,34 +277,34 @@ graphs:
         toPort: default
       - id: 1076a29a-9d4c-4205-b3bb-d95072400253
         from: 62a743b1-ac32-4fe1-a0d2-f13b41c37aa6
-        to: 3820b7e2-a1ca-436b-acb0-72b907c8b246
-        fromPort: default
-        toPort: default
-      - id: c1d2e3f4-a5b6-7c8d-9e0f-1a2b3c4d5e6f
-        from: 3820b7e2-a1ca-436b-acb0-72b907c8b246
         to: a7c3e1d2-5f8b-4a6c-9e0d-1b2c3d4e5f60
         fromPort: default
         toPort: default
-      - id: 1e29f24a-620b-472c-805f-8295bf5920c2
+      - id: c1d2e3f4-a5b6-7c8d-9e0f-1a2b3c4d5e6f
         from: a7c3e1d2-5f8b-4a6c-9e0d-1b2c3d4e5f60
         to: 8510992d-2546-4e89-a09b-f31ff435bbb7
         fromPort: default
         toPort: default
+      - id: 1e29f24a-620b-472c-805f-8295bf5920c2
+        from: 3820b7e2-a1ca-436b-acb0-72b907c8b246
+        to: 7a1b2c3d-4e5f-6a7b-8c9d-0e1f2a3b4c5d
+        fromPort: default
+        toPort: default
       - id: 28abe7a9-8bdc-414d-b15e-90cb2a451a70
         from: 8510992d-2546-4e89-a09b-f31ff435bbb7
-        to: 6e5ed9fc-006e-4dbe-8699-4663dba795cb
+        to: 58ddef60-b0d0-4cbd-b6a4-c9326373ae08
         fromPort: luse
         toPort: default
-      - id: e862f11a-88a6-4c1b-a743-ba80253039df
-        from: 6e5ed9fc-006e-4dbe-8699-4663dba795cb
-        to: b7d5c0f8-8c0f-446e-94de-f44074a8f6df
+      - id: d9e43249-5a9b-4969-a595-4394bff76a83
+        from: 58ddef60-b0d0-4cbd-b6a4-c9326373ae08
+        to: 6e5ed9fc-006e-4dbe-8699-4663dba795cb
         fromPort: default
         toPort: default
 
       # LSLD branch edges
       - id: 1e2f3a4b-5c6d-7e8f-9a0b-1c2d3e4f5a6b
         from: 8510992d-2546-4e89-a09b-f31ff435bbb7
-        to: 7a1b2c3d-4e5f-6a7b-8c9d-0e1f2a3b4c5d
+        to: 3820b7e2-a1ca-436b-acb0-72b907c8b246
         fromPort: lsld
         toPort: default
       - id: 2f3a4b5c-6d7e-8f9a-0b1c-2d3e4f5a6b7c
@@ -373,28 +317,13 @@ graphs:
         to: 4b5c6d7e-8f9a-0b1c-2d3e-4f5a6b7c8d9e
         fromPort: default
         toPort: default
-      - id: 5c6d7e8f-9a0b-1c2d-3e4f-5a6b7c8d9e0f
-        from: 4b5c6d7e-8f9a-0b1c-2d3e-4f5a6b7c8d9e
-        to: 697ac579-ecee-43cb-b25e-9f84851677c9
-        fromPort: default
-        toPort: default
-      - id: 72fa6915-8445-4afb-870b-061ca1bf8544
-        from: 6e5ed9fc-006e-4dbe-8699-4663dba795cb
-        to: 741a0d00-ffef-4e5f-838e-9d197d57e882
-        fromPort: default
-        toPort: default
       - id: 1ae3a0df-c558-43da-9e92-c34290d1d085
-        from: b7d5c0f8-8c0f-446e-94de-f44074a8f6df
+        from: 6e5ed9fc-006e-4dbe-8699-4663dba795cb
         to: b4862d31-4bb2-49b1-8f0d-6d58dd4cb385
         fromPort: default
         toPort: default
-      - id: 28f61e8b-2227-44a8-8c6f-2c0ef0e7c534
-        from: 4b5c6d7e-8f9a-0b1c-2d3e-4f5a6b7c8d9e
-        to: aad4ede7-e295-4338-bb49-4bae7374b976
-        fromPort: default
-        toPort: default
       - id: 201eebbc-e7d7-4b43-99c7-47812e92ae88
-        from: 697ac579-ecee-43cb-b25e-9f84851677c9
+        from: 4b5c6d7e-8f9a-0b1c-2d3e-4f5a6b7c8d9e
         to: 0d4e5f6a-7b8c-9d0e-1f2a-3b4c5d6e7f8a
         fromPort: default
         toPort: default

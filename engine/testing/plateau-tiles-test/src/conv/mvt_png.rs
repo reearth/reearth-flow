@@ -170,7 +170,11 @@ pub fn truth_png_path(truth_dir: &Path, rel_tile_path: &str, ident: &str) -> std
     truth_dir.join(rel).join(format!("{}.png", safe_ident))
 }
 
+/// File stem for a feature ident; an empty ident (features without `gml_id`) maps to `_`.
 fn sanitize_filename(s: &str) -> String {
+    if s.is_empty() {
+        return "_".to_string();
+    }
     s.chars()
         .map(|c| match c {
             '/' | '\\' | ':' | '*' | '?' | '"' | '<' | '>' | '|' => '_',

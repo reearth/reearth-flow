@@ -113,6 +113,10 @@ pub(crate) struct AttributeFlattenerParam {
     /// Parent/child relationships and cross-file references must not span chunks.
     #[serde(default)]
     chunk_by_attribute: Option<String>,
+    /// Keys removed at any depth from the nested `attributes` output, together with
+    /// their `_code` and `_uom` companions. Flattened columns are not affected.
+    #[serde(default)]
+    exclude_nested_attributes: Vec<String>,
 }
 
 #[derive(Debug, Clone, Default)]
@@ -171,6 +175,11 @@ impl ProcessorFactory for AttributeFlattenerFactory {
         let process = AttributeFlattener {
             filter_existing_flatten_attributes: params.existing_flatten_attributes,
             chunk_by_attribute: params.chunk_by_attribute,
+            nested_excluded_keys: params
+                .exclude_nested_attributes
+                .iter()
+                .flat_map(|key| [key.clone(), format!("{key}_code"), format!("{key}_uom")])
+                .collect(),
             ..Default::default()
         };
         Ok(Box::new(process))
@@ -204,6 +213,8 @@ pub(super) struct AttributeFlattener {
     // last seen value of chunk_by_attribute; a change means the previous chunk is
     // complete and its ancestor-lookup caches can be dropped
     current_chunk: Option<AttributeValue>,
+    // keys removed from the nested `attributes` output (see AttributeFlattenerParam::exclude_nested_attributes)
+    nested_excluded_keys: HashSet<String>,
 }
 
 // remove parentId and parentType created by FeatureCitygmlReader's FlattenTreeTransform
@@ -258,35 +269,40 @@ fn convert_gyear_value(key: &str, value: AttributeValue) -> AttributeValue {
 /// Recursively filters skippable keys from citygml attributes.
 /// Skippable keys are PLATEAU-specific sub-features and geometry boundaries
 /// that shouldn't be included as simple attributes.
-fn filter_skippable_keys(mut map: Attributes) -> Attributes {
+fn filter_skippable_keys(map: Attributes) -> Attributes {
+    remove_keys_recursive(map, &|key| SKIPPABLE_KEYS.contains(key))
+}
+
+/// Removes every key matching `is_removed` from `map`, descending into nested maps
+/// and maps held in arrays.
+fn remove_keys_recursive(mut map: Attributes, is_removed: &impl Fn(&str) -> bool) -> Attributes {
     map.retain(|key, value| {
-        // Skip known skippable keys
-        if SKIPPABLE_KEYS.contains(key.as_str()) {
+        if is_removed(key.as_str()) {
             return false;
         }
-
-        // Recursively filter nested structures
         match value {
             AttributeValue::Map(nested_map) => {
-                let filtered = filter_skippable_keys(std::mem::take(nested_map));
-                *value = AttributeValue::Map(filtered);
-                true
+                *value = AttributeValue::Map(remove_keys_recursive(
+                    std::mem::take(nested_map),
+                    is_removed,
+                ));
             }
             AttributeValue::Array(arr) => {
-                let filtered_arr: Vec<AttributeValue> = std::mem::take(arr)
-                    .into_iter()
-                    .map(|item| match item {
-                        AttributeValue::Map(nested_map) => {
-                            AttributeValue::Map(filter_skippable_keys(nested_map))
-                        }
-                        other => other,
-                    })
-                    .collect();
-                *value = AttributeValue::Array(filtered_arr);
-                true
+                *value = AttributeValue::Array(
+                    std::mem::take(arr)
+                        .into_iter()
+                        .map(|item| match item {
+                            AttributeValue::Map(nested_map) => {
+                                AttributeValue::Map(remove_keys_recursive(nested_map, is_removed))
+                            }
+                            other => other,
+                        })
+                        .collect(),
+                );
             }
-            _ => true,
+            _ => {}
         }
+        true
     });
     map
 }
@@ -451,8 +467,7 @@ impl AttributeFlattener {
                 attrs.insert(Attribute::new("gml:id"), v);
             }
             let attrs = convert_gyear_fields(attrs);
-            let json = serde_json::to_string(&serde_json::Value::from(AttributeValue::Map(attrs)))
-                .unwrap();
+            let json = self.nested_attributes_json(attrs);
             feature.insert("attributes".to_string(), AttributeValue::String(json));
         }
 
@@ -501,6 +516,16 @@ impl AttributeFlattener {
                 }
             }
         }
+    }
+
+    /// Serializes `attrs` as the JSON of the nested `attributes` output, without the excluded keys.
+    fn nested_attributes_json(&self, attrs: Attributes) -> String {
+        let attrs = if self.nested_excluded_keys.is_empty() {
+            attrs
+        } else {
+            remove_keys_recursive(attrs, &|key| self.nested_excluded_keys.contains(key))
+        };
+        serde_json::to_string(&serde_json::Value::from(AttributeValue::Map(attrs))).unwrap()
     }
 
     fn insert_common_attributes(feature: &Feature, citygml_attributes: &mut Attributes) {
@@ -677,10 +702,7 @@ impl AttributeFlattener {
         }
 
         // save the whole `citygml_attributes` values as `attributes`
-        let citygml_attributes_json = serde_json::to_string(&serde_json::Value::from(
-            AttributeValue::Map(citygml_attributes),
-        ))
-        .unwrap();
+        let citygml_attributes_json = self.nested_attributes_json(citygml_attributes);
 
         feature.insert(
             "attributes".to_string(),
@@ -2362,5 +2384,73 @@ mod tests {
         let flat = schema_keys(&flattener.generate_flat_schema_feature("tran/tran:Road"));
         full.retain(|k| k != "attributes");
         assert_eq!(full, flat);
+    }
+
+    /// Excluded keys and their `_code`/`_uom` companions are dropped from the nested
+    /// `attributes` at any depth, while flattened columns and key order are kept.
+    #[test]
+    fn test_exclude_nested_attributes() {
+        let citygml_attrs = citygml_attrs_from_json(
+            r#"{
+                "core:creationDate": "2024-03-22",
+                "luse:class": "田（水田）",
+                "luse:class_code": "201",
+                "uro:LandUseDetailAttribute": [{
+                    "uro:orgLandUse": "田",
+                    "uro:nominalArea": 6000.0,
+                    "uro:nominalArea_uom": "m2",
+                    "uro:areaInSquareMeter": 6271.48,
+                    "uro:areaInSquareMeter_uom": "m2",
+                    "uro:areaInHa": 0.62,
+                    "uro:areaInHa_uom": "ha",
+                    "uro:city": "熊本県玉名市"
+                }]
+            }"#,
+        );
+        let feature = create_test_feature(
+            "luse_test-001",
+            "luse:LandUse",
+            "luse",
+            citygml_attrs,
+            "493033_luse_6697_op.gml",
+        );
+
+        let mut flattener = AttributeFlattener {
+            nested_excluded_keys: [
+                "gml:id",
+                "uro:areaInSquareMeter",
+                "uro:areaInHa",
+                "uro:nominalArea",
+            ]
+            .iter()
+            .flat_map(|key| [key.to_string(), format!("{key}_code"), format!("{key}_uom")])
+            .collect(),
+            ..Default::default()
+        };
+        let result = flattener.flatten_feature(feature).unwrap();
+
+        let Some(AttributeValue::String(json_str)) = result.get("attributes") else {
+            panic!("attributes should be a JSON string");
+        };
+        let parsed: serde_json::Value = serde_json::from_str(json_str).unwrap();
+        let top_keys: Vec<&str> = parsed
+            .as_object()
+            .unwrap()
+            .keys()
+            .map(String::as_str)
+            .collect();
+        assert!(!top_keys.contains(&"gml:id"));
+        assert!(top_keys.contains(&"luse:class_code"));
+        let detail_keys: Vec<&str> = parsed["uro:LandUseDetailAttribute"][0]
+            .as_object()
+            .unwrap()
+            .keys()
+            .map(String::as_str)
+            .collect();
+        assert_eq!(detail_keys, vec!["uro:orgLandUse", "uro:city"]);
+
+        assert!(result
+            .get("uro:LandUseDetailAttribute_uro:areaInSquareMeter")
+            .is_some());
     }
 }
