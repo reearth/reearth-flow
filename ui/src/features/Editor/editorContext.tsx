@@ -46,7 +46,11 @@ export type EditorContextType = {
    */
   onNodeNavigate?: (nodeId: string) => void;
   /**
-   * Outcomes of schema probes this client did not start, which it shows but
+   * Whether the last debug run holds every result a run from this action would
+   * reuse. A run that stopped at a selected action may not.
+   */
+  canDebugRunFromNode?: (nodeId: string) => boolean;
+  /* Outcomes of schema probes this client did not start, which it shows but
    * never writes. See usePreviewSchema.
    */
   schemaProbeOutcomes?: SchemaProbeOutcomes;

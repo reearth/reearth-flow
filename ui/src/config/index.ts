@@ -17,6 +17,7 @@ export type Config = {
   mockEnabled?: boolean;
   tosUrl?: string;
   documentationUrl?: string;
+  feedbackUrl?: string;
   reearthHomeUrl?: string;
   reearthDashboardUrl?: string;
   reearthVisualizerUrl?: string;

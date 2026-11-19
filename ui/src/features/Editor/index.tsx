@@ -87,6 +87,8 @@ export default function Editor({
     handleWorkflowAddFromSelection,
     handleDebugRunStart,
     handleFromSelectedNodeDebugRunStart,
+    handleToSelectedNodeDebugRunStart,
+    canDebugRunFromNode,
     handleDebugRunStop,
     handleResetDebugRunWorkflowVariables,
     schemaProbes,
@@ -173,6 +175,7 @@ export default function Editor({
       workflowNodeIds,
       diagnosticSeverityByNodeId,
       onNodeNavigate: handleNodeNavigate,
+      canDebugRunFromNode,
       schemaProbeOutcomes,
     }),
     [
@@ -190,6 +193,7 @@ export default function Editor({
       workflowNodeIds,
       diagnosticSeverityByNodeId,
       handleNodeNavigate,
+      canDebugRunFromNode,
       schemaProbeOutcomes,
     ],
   );
@@ -244,6 +248,7 @@ export default function Editor({
             onDebugRunStartFromSelectedNode={
               handleFromSelectedNodeDebugRunStart
             }
+            onDebugRunStartToSelectedNode={handleToSelectedNodeDebugRunStart}
             onDebugRunStop={handleDebugRunStop}
             onResetDebugRunWorkflowVariables={
               handleResetDebugRunWorkflowVariables
@@ -283,6 +288,7 @@ export default function Editor({
               onDebugRunStartFromSelectedNode={
                 handleFromSelectedNodeDebugRunStart
               }
+              onDebugRunStartToSelectedNode={handleToSelectedNodeDebugRunStart}
               onConnectStart={handleConnectStart}
               onConnectEnd={handleConnectEnd}
               onPointerDown={handlePointerDown}
