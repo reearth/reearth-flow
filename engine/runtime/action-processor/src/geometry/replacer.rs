@@ -10,7 +10,7 @@ use reearth_flow_runtime::{
     event::EventHub,
     executor_operation::{ExecutorContext, NodeContext},
     forwarder::ProcessorChannelForwarder,
-    node::{Port, Processor, ProcessorFactory, FEATURES_PORT, REJECTED_PORT},
+    node::{FEATURES_PORT, Port, Processor, ProcessorFactory, REJECTED_PORT},
 };
 #[cfg(feature = "new-geometry")]
 use reearth_flow_types::Feature;
@@ -207,9 +207,9 @@ mod tests {
     use super::*;
     use pretty_assertions::assert_eq;
     use reearth_flow_common::compress::compress;
+    use reearth_flow_geometry::Euclidean3DGeometry;
     use reearth_flow_geometry::coordinate::CoordinateFrame;
     use reearth_flow_geometry::line_string::LineString3D;
-    use reearth_flow_geometry::Euclidean3DGeometry;
 
     const SOURCE: &str = "geom";
 

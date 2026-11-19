@@ -62,10 +62,10 @@ func TestUserAccess_ReaderIsReadOnly(t *testing.T) {
 	a, p, checker := newAccessFixture(t)
 	checker.allow[rbac.ActionRead] = true
 
-	read, edit, err := a.UserAccess(context.Background(), p.ID().String())
+	acc, err := a.UserAccess(context.Background(), p.ID().String())
 	require.NoError(t, err)
-	assert.True(t, read)
-	assert.False(t, edit, "a workspace reader must not get write access to the document")
+	assert.True(t, acc.Read)
+	assert.False(t, acc.Edit, "a workspace reader must not get write access to the document")
 	assert.True(t, checker.sawUser, "the user must be attached so the workspace-role guard runs")
 }
 
@@ -76,19 +76,32 @@ func TestUserAccess_WriterCanEdit(t *testing.T) {
 	// not be what gates live editing.
 	checker.allow[rbac.ActionAny] = true
 
-	read, edit, err := a.UserAccess(context.Background(), p.ID().String())
+	acc, err := a.UserAccess(context.Background(), p.ID().String())
 	require.NoError(t, err)
-	assert.True(t, read)
-	assert.True(t, edit)
+	assert.True(t, acc.Read)
+	assert.True(t, acc.Edit)
+}
+
+func TestUserAccess_NamesTheUser(t *testing.T) {
+	t.Parallel()
+
+	a, p, checker := newAccessFixture(t)
+	checker.allow[rbac.ActionRead] = true
+	me, err := a.Users.FindMe(context.Background())
+	require.NoError(t, err)
+
+	acc, err := a.UserAccess(context.Background(), p.ID().String())
+	require.NoError(t, err)
+	assert.Equal(t, me.ID().String(), acc.UserID)
 }
 
 func TestUserAccess_NonMemberDenied(t *testing.T) {
 	a, p, _ := newAccessFixture(t)
 
-	read, edit, err := a.UserAccess(context.Background(), p.ID().String())
+	acc, err := a.UserAccess(context.Background(), p.ID().String())
 	require.NoError(t, err)
-	assert.False(t, read)
-	assert.False(t, edit)
+	assert.False(t, acc.Read)
+	assert.False(t, acc.Edit)
 }
 
 func TestUserAccess_UnknownOrMalformedProjectDenied(t *testing.T) {
@@ -97,9 +110,9 @@ func TestUserAccess_UnknownOrMalformedProjectDenied(t *testing.T) {
 	checker.allow[rbac.ActionAny] = true
 
 	for _, pid := range []string{id.NewProjectID().String(), "not-a-project-id", ""} {
-		read, _, err := a.UserAccess(context.Background(), pid)
+		acc, err := a.UserAccess(context.Background(), pid)
 		require.NoError(t, err, pid)
-		assert.False(t, read, pid)
+		assert.False(t, acc.Read, pid)
 	}
 }
 
@@ -108,28 +121,73 @@ func TestUserAccess_UnresolvableUserDenied(t *testing.T) {
 	checker.allow[rbac.ActionRead] = true
 
 	a.Users = fakeUsers{}
-	read, _, err := a.UserAccess(context.Background(), p.ID().String())
+	acc, err := a.UserAccess(context.Background(), p.ID().String())
 	require.NoError(t, err)
-	assert.False(t, read)
+	assert.False(t, acc.Read)
 
 	a.Users = fakeUsers{err: errors.New("accounts down")}
-	read, _, err = a.UserAccess(context.Background(), p.ID().String())
+	acc, err = a.UserAccess(context.Background(), p.ID().String())
 	assert.Error(t, err)
-	assert.False(t, read)
+	assert.False(t, acc.Read)
 }
 
 func TestUserAccess_SkipPermissionCheckStillNeedsUserAndProject(t *testing.T) {
 	a, p, _ := newAccessFixture(t)
 	a.SkipPermissionCheck = true
 
-	read, edit, err := a.UserAccess(context.Background(), p.ID().String())
+	acc, err := a.UserAccess(context.Background(), p.ID().String())
 	require.NoError(t, err)
-	assert.True(t, read)
-	assert.True(t, edit)
+	assert.True(t, acc.Read)
+	assert.True(t, acc.Edit)
 
-	read, _, err = a.UserAccess(context.Background(), id.NewProjectID().String())
+	acc, err = a.UserAccess(context.Background(), id.NewProjectID().String())
 	require.NoError(t, err)
-	assert.False(t, read)
+	assert.False(t, acc.Read)
+}
+
+func lockProject(t *testing.T, a *ProjectDocumentAccess, p *project.Project) {
+	t.Helper()
+	p.SetIsLocked(true)
+	require.NoError(t, a.Projects.Save(context.Background(), p))
+}
+
+func TestUserAccess_LockedProjectIsReadOnlyForWriters(t *testing.T) {
+	t.Parallel()
+
+	a, p, checker := newAccessFixture(t)
+	checker.allow[rbac.ActionRead] = true
+	checker.allow[rbac.ActionAny] = true
+	lockProject(t, a, p)
+
+	acc, err := a.UserAccess(context.Background(), p.ID().String())
+	require.NoError(t, err)
+	assert.True(t, acc.Read, "locking must not take away read access")
+	assert.False(t, acc.Edit, "nobody may edit a locked project's document")
+}
+
+func TestUserAccess_LockedProjectIsReadOnlyWithoutPermissionCheck(t *testing.T) {
+	t.Parallel()
+
+	a, p, _ := newAccessFixture(t)
+	a.SkipPermissionCheck = true
+	lockProject(t, a, p)
+
+	acc, err := a.UserAccess(context.Background(), p.ID().String())
+	require.NoError(t, err)
+	assert.True(t, acc.Read)
+	assert.False(t, acc.Edit)
+}
+
+func TestUserAccess_LockedProjectStillDeniesNonMembers(t *testing.T) {
+	t.Parallel()
+
+	a, p, _ := newAccessFixture(t)
+	lockProject(t, a, p)
+
+	acc, err := a.UserAccess(context.Background(), p.ID().String())
+	require.NoError(t, err)
+	assert.False(t, acc.Read)
+	assert.False(t, acc.Edit)
 }
 
 func saveAccess(t *testing.T, a *ProjectDocumentAccess, pid id.ProjectID, public bool) string {

@@ -16,12 +16,12 @@
 //! Every other pair is a surface/curve point-set test. `Csg` and `PointCloud`
 //! leaves are [`Unsupported`](super::PredicateError::Unsupported).
 
-use rstar::{RTree, AABB};
+use rstar::{AABB, RTree};
 
+use crate::Euclidean3DGeometry;
 use crate::ops::triangulation::Cache;
 use crate::ops::{Aabb, BoundingBox};
 use crate::solid::Solid;
-use crate::Euclidean3DGeometry;
 
 use super::kernel::CoordPos;
 use super::kernel3d::{
@@ -29,7 +29,7 @@ use super::kernel3d::{
     triangles_intersect_3d,
 };
 use super::position3d::{on_chain_3d, solid_position_indexed};
-use super::view3d::{flatten_3d, require_common_frame_3d, Leaf3D, TriBox, TriangleSet};
+use super::view3d::{Leaf3D, TriBox, TriangleSet, flatten_3d, require_common_frame_3d};
 use super::{PredicateError, Result};
 
 /// [`intersects`](super::intersects()) over two 3D geometries.
@@ -311,7 +311,7 @@ mod tests {
     use crate::point::Point3D;
     use crate::polygon::Polygon3D;
     use crate::predicates::intersects;
-    use crate::predicates::test3d::{box_solid, box_solid_with_void, e, g3, solid_geometry, Rng};
+    use crate::predicates::test3d::{Rng, box_solid, box_solid_with_void, e, g3, solid_geometry};
     use crate::triangular_mesh::TriangularMesh3D;
     use pretty_assertions::assert_eq;
 

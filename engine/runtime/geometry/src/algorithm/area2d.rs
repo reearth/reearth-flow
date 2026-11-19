@@ -127,11 +127,7 @@ where
             total - get_linestring_area2d(next).abs()
         });
 
-        if is_negative {
-            -area
-        } else {
-            area
-        }
+        if is_negative { -area } else { area }
     }
 
     fn unsigned_area2d(&self) -> T {

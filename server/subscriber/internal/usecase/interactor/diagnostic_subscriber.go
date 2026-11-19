@@ -36,8 +36,8 @@ func (u *diagnosticSubscriberUseCase) ProcessDiagnosticEvent(ctx context.Context
 		return fmt.Errorf("invalid event: missing job ID")
 	}
 
-	if err := u.storage.SaveToRedis(ctx, event); err != nil {
-		return fmt.Errorf("failed to write diagnostic event to Redis: %w", err)
+	if err := u.storage.Save(ctx, event); err != nil {
+		return fmt.Errorf("failed to write diagnostic event to live store: %w", err)
 	}
 
 	// A Mongo failure is logged and swallowed; the message is still Acked.

@@ -12,10 +12,19 @@ export type DeploymentTracking = {
   fingerprint: string;
 };
 
+// A project lock change the websocket server writes into the document, signed
+// with `sig`. Clients cannot check the signature, so they treat a change of it
+// only as a cue to fetch the Project (see lib/yjs/projectLock).
+export type ProjectLockSignal = {
+  locked: boolean;
+  at: number;
+  sig: string;
+};
+
 export type YDocMetadata = {
   initialized?: boolean;
   rollbackInProgress?: boolean;
-  isLocked?: boolean;
+  projectLock?: ProjectLockSignal;
   sharingToken?: string | null;
   layoutDirection?: Direction;
   layoutApplyToAll?: boolean;

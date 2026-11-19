@@ -79,6 +79,23 @@ type Flusher interface {
 	FlushRoom(ctx context.Context, room string) error
 }
 
+// LastInstanceFlusher is a Flusher with more to do when the last instance lets
+// a room go than when the relay only needs a durable checkpoint of a live room:
+// the relay calls FlushLastInstance instead of FlushRoom on that path. The same
+// CONTRACT applies.
+type LastInstanceFlusher interface {
+	Flusher
+	FlushLastInstance(ctx context.Context, room string) error
+}
+
+// flushLastInstance persists a room the last instance is letting go.
+func flushLastInstance(ctx context.Context, f Flusher, room string) error {
+	if lf, ok := f.(LastInstanceFlusher); ok {
+		return lf.FlushLastInstance(ctx, room)
+	}
+	return f.FlushRoom(ctx, room)
+}
+
 type noopFlusher struct{}
 
 func (noopFlusher) FlushRoom(context.Context, string) error { return nil }
@@ -151,6 +168,11 @@ type roomState struct {
 	// wake nudges the reader out of its wait when a notification arrives. Capacity
 	// 1 and sent non-blockingly, so wakeups coalesce rather than queue.
 	wake chan struct{}
+
+	// caughtUp is closed once the reader has replayed the rows the room had
+	// when it was activated; done when the reader stops.
+	caughtUp chan struct{}
+	done     chan struct{}
 }
 
 type writeItem struct {
@@ -289,6 +311,69 @@ func (r *Relay) Publish(_ context.Context, out cluster.Outbound) error {
 // DroppedWrites returns the cumulative count of updates dropped on a full queue.
 func (r *Relay) DroppedWrites() uint64 { return r.droppedWrites.Load() }
 
+// ErrRoomNotActive is what WaitCaughtUp returns for a room this instance does
+// not hold, or stops holding while waiting.
+var ErrRoomNotActive = errors.New("pg: room not active on this instance")
+
+// caughtUpPoll is how often WaitCaughtUp checks the reader's cursor.
+const caughtUpPoll = 5 * time.Millisecond
+
+// caughtUpRewake is how often WaitCaughtUp wakes the reader while it waits.
+const caughtUpRewake = 100 * time.Millisecond
+
+// WaitCaughtUp waits until this instance's reader has applied every row the
+// room had when it was called, so the room's document holds every update
+// other instances had written by then.
+func (r *Relay) WaitCaughtUp(ctx context.Context, room string) error {
+	r.mu.Lock()
+	rs, ok := r.rooms[room]
+	active := ok && !rs.evicting
+	r.mu.Unlock()
+	if !active {
+		return ErrRoomNotActive
+	}
+	var target int64
+	if err := r.q.QueryRow(ctx, headSQL, room).Scan(&target); err != nil {
+		return err
+	}
+	select {
+	case <-rs.caughtUp:
+	case <-rs.done:
+		return ErrRoomNotActive
+	case <-ctx.Done():
+		return ctx.Err()
+	}
+	// Read now rather than at the next poll, and again while the target is
+	// outstanding: with ReadLag a row can still be too young when the commit
+	// notice wakes the reader, and a notify-only reader gets no other wake.
+	r.wakeRoom(room)
+	woke := time.Now()
+	for {
+		r.mu.Lock()
+		cur := rs.cursor
+		r.mu.Unlock()
+		if cur >= target {
+			return nil
+		}
+		if time.Since(woke) >= caughtUpRewake {
+			r.wakeRoom(room)
+			woke = time.Now()
+		}
+		select {
+		case <-rs.done:
+			return ErrRoomNotActive
+		case <-ctx.Done():
+			return ctx.Err()
+		case <-time.After(caughtUpPoll):
+		}
+	}
+}
+
+// ActiveInstances counts the instances holding room, by their heartbeats.
+func (r *Relay) ActiveInstances(ctx context.Context, room string) (int, error) {
+	return r.activeInstances(ctx, room)
+}
+
 // RoomActivated starts the room's reader, heartbeat and writer, and registers this
 // instance as live. Idempotent.
 //
@@ -309,9 +394,11 @@ func (r *Relay) RoomActivated(room string) {
 	}
 	ctx, cancel := context.WithCancel(r.ctx)
 	rs := &roomState{
-		cancel:  cancel,
-		writeCh: make(chan writeItem, writeQueueCap),
-		wake:    make(chan struct{}, 1),
+		cancel:   cancel,
+		writeCh:  make(chan writeItem, writeQueueCap),
+		wake:     make(chan struct{}, 1),
+		caughtUp: make(chan struct{}),
+		done:     make(chan struct{}),
 	}
 	r.rooms[room] = rs
 	sink := r.sink
@@ -464,7 +551,7 @@ func (r *Relay) evict(room string) {
 	}
 
 	// Last instance: flush to GCS first, then safe-delete.
-	if err := r.flusher.FlushRoom(ctx, room); err != nil {
+	if err := flushLastInstance(ctx, r.flusher, room); err != nil {
 		r.log.Debug("relay GCS flush failed", "room", room, "err", err)
 		// Do NOT delete the rows on flush failure — un-persisted updates would be
 		// lost; a reconnect re-replays them.
@@ -544,6 +631,7 @@ func (r *Relay) heartbeatLoop(ctx context.Context, room string, rs *roomState) {
 // activation callback re-entrancy-free.
 func (r *Relay) readLoop(ctx context.Context, room string, rs *roomState, sink cluster.Sink) {
 	defer rs.wg.Done()
+	defer close(rs.done)
 
 	// A nil channel blocks forever in a select, which is exactly the behaviour the
 	// notify-only fan-out wants: no ticker at all, wake only on notification.
@@ -573,6 +661,9 @@ func (r *Relay) readLoop(ctx context.Context, room string, rs *roomState, sink c
 			case <-time.After(200 * time.Millisecond):
 			}
 			continue
+		}
+		if !live {
+			close(rs.caughtUp)
 		}
 		live = true
 		select {

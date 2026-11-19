@@ -26,13 +26,13 @@
 //! constructed (f64-rounded) coordinates; classification at them inherits that
 //! rounding. Collections mixing 2D and 3D members error, as elsewhere.
 
-use super::edge_set::{operand_edges, operand_segment_count, Edge2, EdgeSet};
-use super::kernel::{segment_intersection, CoordPos, SegmentIntersection};
-use super::position::{areal_union_position, face_interior_point, union_position};
-use super::view::{flatten_2d, require_common_frame, Leaf2D, Operand2D};
 use super::Result;
-use crate::ops::Aabb;
+use super::edge_set::{Edge2, EdgeSet, operand_edges, operand_segment_count};
+use super::kernel::{CoordPos, SegmentIntersection, segment_intersection};
+use super::position::{areal_union_position, face_interior_point, union_position};
+use super::view::{Leaf2D, Operand2D, flatten_2d, require_common_frame};
 use crate::Geometry;
+use crate::ops::Aabb;
 
 /// Whether `a` contains `b`: `b` lies in `a`'s closure and their interiors
 /// intersect. Nothing contains an absent or empty geometry.

@@ -17,13 +17,13 @@ use super::{
     lod_filter::FeatureLodFilterFactory,
     merger::FeatureMergerFactory,
     reader::{
-        citygml::processor::FeatureCityGmlReaderFactory, citygml2::FeatureCityGml2ReaderFactory,
-        citygml3::FeatureCityGml3ReaderFactory, FeatureReaderFactory,
+        FeatureReaderFactory, citygml::processor::FeatureCityGmlReaderFactory,
+        citygml2::FeatureCityGml2ReaderFactory, citygml3::FeatureCityGml3ReaderFactory,
     },
     sorter::FeatureSorterFactory,
     transformer::FeatureTransformerFactory,
     type_filter::FeatureTypeFilterFactory,
-    writer::{geojson::FeatureGeoJsonWriterFactory, FeatureWriterFactory},
+    writer::{FeatureWriterFactory, geojson::FeatureGeoJsonWriterFactory},
 };
 
 pub(crate) static ACTION_FACTORY_MAPPINGS: Lazy<HashMap<String, NodeKind>> = Lazy::new(|| {

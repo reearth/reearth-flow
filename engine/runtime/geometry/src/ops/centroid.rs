@@ -137,10 +137,10 @@ impl Acc {
                 ],
             );
         }
-        if length <= 0.0 {
-            if let Some(&first) = coords.first() {
-                self.point(first);
-            }
+        if length <= 0.0
+            && let Some(&first) = coords.first()
+        {
+            self.point(first);
         }
     }
 

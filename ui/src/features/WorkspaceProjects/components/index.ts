@@ -3,4 +3,5 @@ export { ProjectEditDialog } from "./ProjectEditDialog";
 export { ProjectAddDialog } from "./ProjectAddDialog";
 export { ProjectCard } from "./ProjectCard";
 export { CreatorFilter } from "./CreatorFilter";
+export { EarlyAccessBanner } from "./EarlyAccessBanner";
 export * from "./WorkflowImport";

@@ -20,19 +20,16 @@ import {
   DropdownMenuTrigger,
   IconButton,
   TextArea,
-  CmsLogo,
   Tabs,
   TabsList,
   TabsTrigger,
   TabsContent,
 } from "@flow/components";
 import type { EditorContext as FieldContext } from "@flow/components/SchemaForm";
-import AssetsDialog from "@flow/features/AssetsDialog";
-import CmsIntegrationDialog from "@flow/features/CmsIntegrationDialog";
+import AssetPickerDialog from "@flow/features/AssetPickerDialog";
 import { useWorkflowVariables } from "@flow/lib/gql";
 import { useT } from "@flow/lib/i18n";
 import { useCurrentProject } from "@flow/stores";
-import type { Asset } from "@flow/types";
 
 import FlowExprCodeEditor from "../ValueEditorDialog/components/FlowExprCodeEditor";
 import type { FlowExprCodeEditorRef } from "../ValueEditorDialog/components/FlowExprCodeEditor";
@@ -43,8 +40,6 @@ export type CodeValue = {
   type: "flowExpr" | "string";
   value: string;
 };
-
-type DialogMode = "assets" | "cms" | undefined;
 
 type Props = {
   open: boolean;
@@ -82,7 +77,7 @@ const FlowExprEditorDialog: React.FC<Props> = ({
   );
   const [codeValue, setCodeValue] = useState(initialCode?.value ?? "");
   const [isFullscreen, setIsFullscreen] = useState(false);
-  const [showDialog, setShowDialog] = useState<DialogMode>(undefined);
+  const [showAssetPicker, setShowAssetPicker] = useState(false);
 
   const editorRef = useRef<FlowExprCodeEditorRef>(null);
 
@@ -108,14 +103,9 @@ const FlowExprEditorDialog: React.FC<Props> = ({
   const insertUrl = useCallback(
     (url: string) => {
       insertAtCursor(codeType === "flowExpr" ? JSON.stringify(url) : url);
-      setShowDialog(undefined);
+      setShowAssetPicker(false);
     },
     [codeType, insertAtCursor],
-  );
-
-  const handleAssetSelect = useCallback(
-    (asset: Asset) => insertUrl(asset.url),
-    [insertUrl],
   );
 
   const handleVariableSelect = useCallback(
@@ -153,16 +143,9 @@ const FlowExprEditorDialog: React.FC<Props> = ({
                   <Button
                     variant="outline"
                     size="sm"
-                    onClick={() => setShowDialog("assets")}>
+                    onClick={() => setShowAssetPicker(true)}>
                     <FileIcon className="h-4 w-4" />
-                    {t("Workspace Assets")}
-                  </Button>
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    onClick={() => setShowDialog("cms")}>
-                    <CmsLogo className="h-4 w-4" />
-                    {t("CMS Integration")}
+                    {t("Assets")}
                   </Button>
                   {workflowVariables &&
                     workflowVariables.length > 0 &&
@@ -285,16 +268,10 @@ const FlowExprEditorDialog: React.FC<Props> = ({
         </DialogContent>
       </Dialog>
 
-      {showDialog === "assets" && (
-        <AssetsDialog
-          onDialogClose={() => setShowDialog(undefined)}
-          onAssetSelect={handleAssetSelect}
-        />
-      )}
-      {showDialog === "cms" && (
-        <CmsIntegrationDialog
-          onDialogClose={() => setShowDialog(undefined)}
-          onCmsItemValue={insertUrl}
+      {showAssetPicker && (
+        <AssetPickerDialog
+          onDialogClose={() => setShowAssetPicker(false)}
+          onSelect={insertUrl}
         />
       )}
     </>

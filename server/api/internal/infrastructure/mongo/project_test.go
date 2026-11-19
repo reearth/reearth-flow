@@ -162,3 +162,45 @@ func TestProject_FindByWorkspace_CreatedBy(t *testing.T) {
 	assert.NoError(t, err)
 	assert.Len(t, got, 3)
 }
+
+func TestProject_RecordEdit(t *testing.T) {
+	t.Parallel()
+	c := mongotest.Connect(t)(t)
+	ctx := context.Background()
+	r := NewProject(mongox.NewClientWithDatabase(c))
+	wid := accountsid.NewWorkspaceID()
+	base := time.Date(2026, 11, 18, 3, 0, 0, 0, time.UTC)
+	metadataEditor, canvasEditor := accountsid.NewUserID(), accountsid.NewUserID()
+	p := project.New().NewID().Workspace(wid).Name("p").
+		UpdatedAt(base).UpdatedBy(&metadataEditor).MustBuild()
+	require.NoError(t, r.Save(ctx, p))
+
+	// Older and equal edits change nothing.
+	require.NoError(t, r.RecordEdit(ctx, p.ID(), base.Add(-time.Minute), &canvasEditor))
+	require.NoError(t, r.RecordEdit(ctx, p.ID(), base, &canvasEditor))
+	got, err := r.FindByID(ctx, p.ID())
+	require.NoError(t, err)
+	assert.True(t, got.UpdatedAt().Equal(base), "updatedAt = %v", got.UpdatedAt())
+	assert.Equal(t, &metadataEditor, got.UpdatedBy())
+
+	// A later edit moves both, and leaves the other fields alone.
+	later := base.Add(time.Minute)
+	require.NoError(t, r.RecordEdit(ctx, p.ID(), later, &canvasEditor))
+	got, err = r.FindByID(ctx, p.ID())
+	require.NoError(t, err)
+	assert.True(t, got.UpdatedAt().Equal(later), "updatedAt = %v", got.UpdatedAt())
+	assert.Equal(t, &canvasEditor, got.UpdatedBy())
+	assert.Equal(t, "p", got.Name())
+
+	// An unknown editor clears updatedBy.
+	latest := later.Add(time.Minute)
+	require.NoError(t, r.RecordEdit(ctx, p.ID(), latest, nil))
+	got, err = r.FindByID(ctx, p.ID())
+	require.NoError(t, err)
+	assert.True(t, got.UpdatedAt().Equal(latest), "updatedAt = %v", got.UpdatedAt())
+	assert.Nil(t, got.UpdatedBy())
+
+	assert.ErrorIs(t, r.RecordEdit(ctx, id.NewProjectID(), latest, nil), rerror.ErrNotFound)
+	filtered := r.Filtered(repo.WorkspaceFilter{Writable: accountsid.WorkspaceIDList{accountsid.NewWorkspaceID()}})
+	assert.ErrorIs(t, filtered.RecordEdit(ctx, p.ID(), latest.Add(time.Minute), nil), rerror.ErrNotFound)
+}

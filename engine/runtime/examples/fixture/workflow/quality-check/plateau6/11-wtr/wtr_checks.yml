@@ -170,13 +170,15 @@ nodes:
       filterType: detailedGeometryType
 
   # --- Face checks ---
+  # L11 (planarity): LOD1 faces are checked against a tighter thickness than the
+  # higher LODs.
   - id: dc000000-0000-4000-8000-00000000000e
     name: SurfaceChecksLod1
     type: subGraph
     subGraphId: c4000000-0000-4000-8000-000000000000
     with:
       planarityThreshold:
-        maxHeight: 0.03
+        maxHeight: 0.001
 
   # The faces of a solid also take the face checks, as the original does.
   - id: dc000000-0000-4000-8000-00000000000f
@@ -576,13 +578,6 @@ nodes:
         value: |
           "error_geometry/" + variables["packagePrefixes"][attributes["folder"]] + "_LOD2-3境界面のエラー位置.geojson"
       writeCrs: true
-
-  # The original workspace has no orientation check, so the port is consumed
-  # rather than left dangling.
-  - id: dc000000-0000-4000-8000-00000000001c
-    name: IncorrectOrientationSink
-    type: action
-    action: Noop Sink
 
   # --- Solid boundary checks ---
   - id: dc000000-0000-4000-8000-00000000001d
@@ -1613,11 +1608,6 @@ edges:
     to: dc000000-0000-4000-8000-000000000015
     fromPort: features
     toPort: features
-  - id: dc000000-0000-4000-8000-00010000001b
-    from: dc000000-0000-4000-8000-00000000000e
-    to: dc000000-0000-4000-8000-00000000001c
-    fromPort: incorrectOrientation
-    toPort: features
 
   # LOD2 and LOD3 face checks
   - id: dc000000-0000-4000-8000-00010000001c
@@ -1654,11 +1644,6 @@ edges:
     from: dc000000-0000-4000-8000-00000000001a
     to: dc000000-0000-4000-8000-00000000001b
     fromPort: features
-    toPort: features
-  - id: dc000000-0000-4000-8000-000100000023
-    from: dc000000-0000-4000-8000-00000000000f
-    to: dc000000-0000-4000-8000-00000000001c
-    fromPort: incorrectOrientation
     toPort: features
 
   # Solid checks

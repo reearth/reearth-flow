@@ -6,6 +6,7 @@ import (
 	"sort"
 	"strings"
 	"sync"
+	"time"
 
 	accountsid "github.com/reearth/reearth-accounts/server/pkg/id"
 	"github.com/reearth/reearth-flow/api/internal/usecase/interfaces"
@@ -236,6 +237,18 @@ func (r *Project) SetStar(_ context.Context, pid id.ProjectID, uid accountsid.Us
 	} else {
 		p.Unstar(uid)
 	}
+	return nil
+}
+
+func (r *Project) RecordEdit(_ context.Context, pid id.ProjectID, at time.Time, by *accountsid.UserID) error {
+	r.lock.Lock()
+	defer r.lock.Unlock()
+
+	p, ok := r.data[pid]
+	if !ok || !r.f.CanWrite(p.Workspace()) {
+		return rerror.ErrNotFound
+	}
+	p.RecordEdit(at, by)
 	return nil
 }
 

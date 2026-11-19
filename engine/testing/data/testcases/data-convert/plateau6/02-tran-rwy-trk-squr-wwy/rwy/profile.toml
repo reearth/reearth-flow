@@ -8,6 +8,7 @@ generate_truth = true
 [convs.mvt_attributes.rwy_lod1.casts]
 ".attributes" = "json"
 ".attributes.meshcode" = "string"
+"" = "ordered_dict"
 
 [tests.json_attributes_v2.rwy_lod1]
 path = "rwy_lod1_truth.json"

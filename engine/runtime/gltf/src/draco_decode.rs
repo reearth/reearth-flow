@@ -5,9 +5,9 @@ use std::borrow::Cow;
 use std::collections::HashSet;
 use std::fmt::Display;
 
+use draco_oxide::Mesh;
 use draco_oxide::core::attribute::{Attribute, ComponentDataType};
 use draco_oxide::core::types::PointIdx;
-use draco_oxide::Mesh;
 use gltf::json;
 use gltf::json::accessor::{ComponentType, GenericComponentType, Type};
 use gltf::json::buffer::Target;

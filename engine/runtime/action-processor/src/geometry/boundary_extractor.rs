@@ -22,7 +22,7 @@ use reearth_flow_runtime::{
     event::EventHub,
     executor_operation::{ExecutorContext, NodeContext},
     forwarder::ProcessorChannelForwarder,
-    node::{Port, Processor, ProcessorFactory, FEATURES_PORT},
+    node::{FEATURES_PORT, Port, Processor, ProcessorFactory},
 };
 #[cfg(not(feature = "new-geometry"))]
 use reearth_flow_types::{Geometry, GeometryValue};
@@ -678,6 +678,8 @@ mod tests {
     use super::*;
     use crate::tests::utils::create_default_execute_context;
     use pretty_assertions::assert_eq;
+    use reearth_flow_geometry::Euclidean3DGeometry;
+    use reearth_flow_geometry::Geometry as NextGeometry;
     use reearth_flow_geometry::coordinate::CoordinateFrame;
     use reearth_flow_geometry::csg::Csg;
     use reearth_flow_geometry::line_string::LineString3D;
@@ -686,8 +688,6 @@ mod tests {
     use reearth_flow_geometry::polygon_mesh::PolygonMesh3DData;
     use reearth_flow_geometry::solid::Solid;
     use reearth_flow_geometry::triangular_mesh::TriangularMesh3D;
-    use reearth_flow_geometry::Euclidean3DGeometry;
-    use reearth_flow_geometry::Geometry as NextGeometry;
     use reearth_flow_runtime::forwarder::NoopChannelForwarder;
     use reearth_flow_types::{Attribute, AttributeValue, Feature};
 

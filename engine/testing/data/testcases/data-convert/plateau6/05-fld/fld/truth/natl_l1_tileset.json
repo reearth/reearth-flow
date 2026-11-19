@@ -1,21 +1,39 @@
 {
-  "attributes": {},
   "city_code": {},
   "city_name": {},
-  "core:creationDate": {},
   "feature_type": {},
+  "attributes": {},
   "gml:name": {},
-  "urc:adminType": {},
+  "core:creationDate": {},
+  "wtr:class": {},
+  "wtr:function": {},
   "urc:description": {},
-  "urc:geometrySrcDescLod1": {},
   "urc:rank": {},
-  "urc:rankOrg": {},
-  "urc:rankOrg_code": {},
   "urc:rank_code": {
     "minimum": 1,
     "maximum": 4
   },
+  "urc:rankOrg": {},
+  "urc:rankOrg_code": {},
+  "urc:adminType": {},
   "urc:scale": {},
-  "wtr:class": {},
-  "wtr:function": {}
+  "urc:geometrySrcDescLod1": {},
+  "__key_order": [
+    "city_code",
+    "city_name",
+    "feature_type",
+    "attributes",
+    "gml:name",
+    "core:creationDate",
+    "wtr:class",
+    "wtr:function",
+    "urc:description",
+    "urc:rank",
+    "urc:rank_code",
+    "urc:rankOrg",
+    "urc:rankOrg_code",
+    "urc:adminType",
+    "urc:scale",
+    "urc:geometrySrcDescLod1"
+  ]
 }

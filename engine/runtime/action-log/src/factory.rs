@@ -1,6 +1,6 @@
 use std::path::PathBuf;
 
-use slog::{o, Logger};
+use slog::{Logger, o};
 
 use crate::action::action_logger;
 use crate::split::split_logger;

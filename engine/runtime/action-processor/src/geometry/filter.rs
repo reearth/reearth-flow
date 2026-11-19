@@ -12,7 +12,7 @@ use reearth_flow_runtime::{
     event::EventHub,
     executor_operation::{ExecutorContext, NodeContext},
     forwarder::ProcessorChannelForwarder,
-    node::{Port, Processor, ProcessorFactory, FEATURES_PORT},
+    node::{FEATURES_PORT, Port, Processor, ProcessorFactory},
 };
 #[cfg(not(feature = "new-geometry"))]
 use reearth_flow_types::{Feature, Geometry, GeometryType, GeometryValue};
@@ -716,6 +716,7 @@ mod tests {
 #[cfg(all(test, feature = "new-geometry"))]
 mod new_geometry_tests {
     use pretty_assertions::assert_eq;
+    use reearth_flow_geometry::GeometryCollection;
     use reearth_flow_geometry::collection::{Collection2D, Collection3D};
     use reearth_flow_geometry::coordinate::CoordinateFrame;
     use reearth_flow_geometry::csg::Csg;
@@ -728,7 +729,6 @@ mod new_geometry_tests {
     use reearth_flow_geometry::triangular_mesh::{
         TriangularMesh2D, TriangularMesh3D, TriangularMesh3DData,
     };
-    use reearth_flow_geometry::GeometryCollection;
     use reearth_flow_runtime::forwarder::NoopChannelForwarder;
     use reearth_flow_types::Feature;
 

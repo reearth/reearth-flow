@@ -73,7 +73,7 @@ const ProjectFormFields: React.FC<Props> = ({ form, projectId }) => {
         </DialogContentSection>
         <DialogContentSection>
           <Label htmlFor="project-alias">
-            {projectId ? t("Alias") : t("Alias (optional)")}
+            {projectId ? t("Alias") : t("Alias")}
           </Label>
           <Input
             id="project-alias"

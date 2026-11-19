@@ -23,7 +23,7 @@ where
             Err(e) => {
                 return Err(crate::Error::zip(format!(
                     "Failed to strip prefix with err: {e:?}"
-                )))
+                )));
             }
         };
         let path_as_string = relative_path.to_string_lossy().replace('\\', "/");

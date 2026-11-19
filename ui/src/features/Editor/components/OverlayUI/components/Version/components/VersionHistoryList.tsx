@@ -1,8 +1,36 @@
 import { ScrollArea } from "@flow/components";
 import { useT } from "@flow/lib/i18n";
-import { AUTO_SNAPSHOT_LABEL } from "@flow/types";
+import {
+  AUTO_SNAPSHOT_LABEL,
+  DEPLOY_SNAPSHOT_LABEL,
+  RUN_SNAPSHOT_LABEL,
+  SAVE_SNAPSHOT_LABEL,
+} from "@flow/types";
 import type { NamedSnapshot, ProjectDocument } from "@flow/types";
 import { formatDate } from "@flow/utils";
+
+import ContributorStack from "./ContributorStack";
+
+// What a version row shows as its name. Labels set by the system are codes, so
+// they are translated; any other label was named by a user and is shown as is.
+const snapshotLabel = (
+  label: string,
+  t: ReturnType<typeof useT>,
+): React.ReactNode => {
+  switch (label) {
+    case SAVE_SNAPSHOT_LABEL:
+      return t("Saved");
+    case RUN_SNAPSHOT_LABEL:
+      return t("Debug run");
+    case DEPLOY_SNAPSHOT_LABEL:
+      return t("Deployed");
+    case "":
+    case AUTO_SNAPSHOT_LABEL:
+      return <span className="opacity-70">{t("Autosaved")}</span>;
+    default:
+      return label;
+  }
+};
 
 type Props = {
   latestProjectSnapshotVersion?: ProjectDocument;
@@ -66,16 +94,18 @@ const VersionHistoryList: React.FC<Props> = ({
                   }}>
                   <div className="flex flex-col gap-1">
                     <p className="flex-2 self-start text-xs font-light dark:font-thin">
-                      {snapshot.label &&
-                      snapshot.label !== AUTO_SNAPSHOT_LABEL ? (
-                        snapshot.label
-                      ) : (
-                        <span className="opacity-70">{t("Autosaved")}</span>
-                      )}
+                      {snapshotLabel(snapshot.label, t)}
                     </p>
-                    <p className="text-xs font-thin">
-                      {formatDate(snapshot.timestamp)}
-                    </p>
+                    <div className="flex items-center gap-3">
+                      <p className="text-xs font-thin">
+                        {formatDate(snapshot.timestamp)}
+                      </p>
+                      <ContributorStack
+                        contributors={snapshot.contributors}
+                        contributorCount={snapshot.contributorCount}
+                        lastEditorId={snapshot.lastEditorId}
+                      />
+                    </div>
                   </div>
                   <div className="flex justify-end">
                     <p className="h-fit rounded border bg-border/15 p-1 text-xs font-thin dark:bg-primary/30">

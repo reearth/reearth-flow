@@ -26,16 +26,16 @@
 //! with an epsilon. Shells are assumed closed and non-self-intersecting (the
 //! `Validate` contract); parity over an open shell is meaningless.
 
-use rstar::{RTree, AABB};
+use rstar::{AABB, RTree};
 
+use crate::Euclidean3DGeometry;
 use crate::ops::triangulation::Cache;
 use crate::solid::Solid;
-use crate::Euclidean3DGeometry;
 
-use super::kernel::{orient3d, CoordPos, Orientation};
+use super::kernel::{CoordPos, Orientation, orient3d};
 use super::kernel3d::{point_in_triangle_3d, point_on_segment_3d};
 use super::view3d::{
-    flatten_3d, require_common_frame_3d, Leaf3D, SlabSelection, TriBox, TriangleSet,
+    Leaf3D, SlabSelection, TriBox, TriangleSet, flatten_3d, require_common_frame_3d,
 };
 use super::{PredicateError, Result};
 
@@ -441,11 +441,7 @@ fn max_pos(a: CoordPos, b: CoordPos) -> CoordPos {
             CoordPos::Inside => 2,
         }
     }
-    if rank(a) >= rank(b) {
-        a
-    } else {
-        b
-    }
+    if rank(a) >= rank(b) { a } else { b }
 }
 
 #[cfg(test)]
@@ -457,7 +453,7 @@ mod tests {
     use crate::point::Point3D;
     use crate::polygon::Polygon3D;
     use crate::predicates::test3d::{
-        box_solid, box_solid_with_void, e, solid_geometry, subdivided_box_solid, tetra_solid, Rng,
+        Rng, box_solid, box_solid_with_void, e, solid_geometry, subdivided_box_solid, tetra_solid,
     };
     use pretty_assertions::assert_eq;
 

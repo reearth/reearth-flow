@@ -1,4 +1,4 @@
-use crate::core::error::{eval_error, Result};
+use crate::core::error::{Result, eval_error};
 use crate::core::value::{Module, NativeFn, Value};
 use crate::expect_arity;
 

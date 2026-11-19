@@ -1,0 +1,16 @@
+﻿<?xml version="1.0" encoding="UTF-8"?>
+<gml:Dictionary xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xmlns:gml="http://www.opengis.net/gml" xsi:schemaLocation="http://www.opengis.net/gml http://schemas.opengis.net/gml/3.1.1/profiles/SimpleDictionary/1.0.0/gmlSimpleDictionaryProfile.xsd" gml:id="cl_ae159472-38ec-431e-9da0-c112d0221a87">
+<gml:name>Relief_lodType</gml:name>
+<gml:dictionaryEntry>
+<gml:Definition gml:id="Relief_lodType_1">
+<gml:description>点密度0.25点/m2以上又は標高点格子間隔2m以内で表現</gml:description>
+<gml:name>2.0</gml:name>
+</gml:Definition>
+</gml:dictionaryEntry>
+<gml:dictionaryEntry>
+<gml:Definition gml:id="Relief_lodType_2">
+<gml:description>点密度1点/m2以上又は標高点格子間隔1m以内で表現</gml:description>
+<gml:name>2.1</gml:name>
+</gml:Definition>
+</gml:dictionaryEntry>
+</gml:Dictionary>

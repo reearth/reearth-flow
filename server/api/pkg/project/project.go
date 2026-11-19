@@ -117,9 +117,18 @@ func (p *Project) SetIsBasicAuthActive(isBasicAuthActive bool) {
 	p.updatedAt = time.Now()
 }
 
+// SetIsLocked also moves updatedAt at least a millisecond past its previous
+// value, even when this replica's clock reads earlier than the one that saved
+// it. A lock change's updatedAt orders it against the project's earlier lock
+// changes (see Project.UpdateProject), which may have been saved by other
+// replicas.
 func (p *Project) SetIsLocked(isLocked bool) {
 	p.isLocked = isLocked
-	p.updatedAt = time.Now()
+	now := time.Now()
+	if prev := p.updatedAt.UnixMilli(); now.UnixMilli() <= prev {
+		now = time.UnixMilli(prev + 1)
+	}
+	p.updatedAt = now
 }
 
 func (p *Project) SetLicense(license string) {
@@ -151,6 +160,20 @@ func (p *Project) SetTopics(topics []string) error {
 // the setter for the edited field already did.
 func (p *Project) SetUpdatedBy(uid *UserID) {
 	p.updatedBy = uid.CloneRef()
+}
+
+// RecordEdit records an edit made outside the project's own fields, such as a
+// saved version of its workflow: by edited the project at at. It applies only
+// when at is later than updatedAt, so updatedAt never moves backwards and an
+// older edit cannot replace a newer editor. A nil by records an unknown editor.
+// It reports whether the project changed.
+func (p *Project) RecordEdit(at time.Time, by *UserID) bool {
+	if !at.After(p.updatedAt) {
+		return false
+	}
+	p.updatedAt = at
+	p.updatedBy = by.CloneRef()
+	return true
 }
 
 func (p *Project) SetUpdateDescription(description string) {

@@ -13,7 +13,7 @@
 use draco_oxide::encode::NormalEncoding;
 use draco_oxide::io::gltf::transcoder::{Error, GltfTranscoder, TranscoderConfig};
 
-use crate::draco::{draco_config, DracoCompression};
+use crate::draco::{DracoCompression, draco_config};
 
 /// Transcode an uncompressed GLB into a Draco-compressed GLB, predicting
 /// per-face normals rather than storing them (see the module docs). `draco`

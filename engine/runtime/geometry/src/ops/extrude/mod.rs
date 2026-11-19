@@ -16,7 +16,7 @@ mod surface;
 mod weld;
 
 pub(crate) use line::{sweep_line, sweep_point};
-pub(crate) use surface::{sweep_surface, CapFace};
+pub(crate) use surface::{CapFace, sweep_surface};
 
 use crate::collection::Collection3D;
 use crate::ops::{BoundingBox, UnsupportedOperation};
@@ -269,7 +269,7 @@ impl Extrude for Collection3D {
 #[cfg(test)]
 pub(crate) mod test_util {
     use super::*;
-    use crate::validation_next::{validate, ValidationResult};
+    use crate::validation_next::{ValidationResult, validate};
 
     pub(crate) fn vertical(base: BaseMode, top: TopMode) -> ExtrudeSpec {
         ExtrudeSpec {

@@ -1,74 +1,63 @@
-import { useCallback, useEffect, useMemo } from "react";
-import { useY } from "react-yjs";
-import type { Doc } from "yjs";
-import { Map as YMap } from "yjs";
+import { useCallback, useEffect, useState } from "react";
 
-import { useSharedProject } from "@flow/lib/gql";
-import type { Project, YDocMetadataValue } from "@flow/types";
+import { useProject, useSharedProject } from "@flow/lib/gql";
+import type { Project } from "@flow/types";
 
-const emptyMetadata = new YMap<YDocMetadataValue>();
-
-export default ({
-  currentProject,
-  yDoc,
-}: {
-  currentProject?: Project | undefined;
-  yDoc: Doc | null;
-}) => {
+// The sharing token lives on the Project, not in the shared document, so
+// sharing never counts as a workflow edit.
+export default ({ currentProject }: { currentProject?: Project }) => {
   const { shareProject, unshareProject } = useSharedProject();
+  const { refetchProject } = useProject();
 
-  const yMetadata = useMemo(
-    () => yDoc?.getMap<YDocMetadataValue>("metadata"),
-    [yDoc],
-  );
-  const metadata = useY(yMetadata ?? emptyMetadata);
+  const projectToken = currentProject?.sharedToken ?? null;
 
-  // Keep ydoc in sync with server
+  // The token this user just set (null when unsharing), shown until the
+  // project is fetched again and agrees.
+  const [requestedToken, setRequestedToken] = useState<string | null>();
+
   useEffect(() => {
-    if (!yMetadata) return;
-    yMetadata.set("sharingToken", currentProject?.sharedToken ?? null);
-  }, [yMetadata, currentProject?.sharedToken]);
+    if (requestedToken !== undefined && requestedToken === projectToken) {
+      setRequestedToken(undefined);
+    }
+  }, [requestedToken, projectToken]);
 
-  const sharingToken: string | undefined =
-    "sharingToken" in (metadata ?? {})
-      ? ((metadata.sharingToken as string | null) ?? undefined)
-      : currentProject?.sharedToken;
+  const sharingToken =
+    requestedToken !== undefined ? requestedToken : projectToken;
 
   const sharingUrl = sharingToken
     ? `${window.location.origin}/shared/${sharingToken}`
     : undefined;
 
+  const projectId = currentProject?.id;
+
+  // Another member may have shared or unshared since the project was fetched.
+  const handleProjectShareOpen = useCallback(() => {
+    if (projectId) refetchProject(projectId);
+  }, [projectId, refetchProject]);
+
   const handleProjectShare = useCallback(
     async (share: boolean) => {
       if (!currentProject) return;
+      const input = {
+        projectId: currentProject.id,
+        workspaceId: currentProject.workspaceId,
+      };
       if (share) {
-        const result = await shareProject({
-          projectId: currentProject.id,
-          workspaceId: currentProject.workspaceId,
-        });
-        if (result.sharingUrl) {
-          const token = result.sharingUrl.split("/shared/").pop();
-          if (token) {
-            yMetadata?.set("sharingToken", token);
-          }
-        }
+        const result = await shareProject(input);
+        const token = result.sharingUrl?.split("/shared/").pop();
+        if (token) setRequestedToken(token);
       } else {
-        yMetadata?.set("sharingToken", null);
-        const result = await unshareProject({
-          projectId: currentProject.id,
-          workspaceId: currentProject.workspaceId,
-        });
-        if (!result.projectId) {
-          // Revert on failure
-          yMetadata?.set("sharingToken", currentProject.sharedToken ?? null);
-        }
+        setRequestedToken(null);
+        const result = await unshareProject(input);
+        if (!result.projectId) setRequestedToken(undefined);
       }
     },
-    [currentProject, shareProject, unshareProject, yMetadata],
+    [currentProject, shareProject, unshareProject],
   );
 
   return {
     sharingUrl,
     handleProjectShare,
+    handleProjectShareOpen,
   };
 };

@@ -43,20 +43,20 @@ macro_rules! no_area {
 
 #[macro_export]
 macro_rules! point {
-    ( $($tag:tt : $val:expr),* $(,)? ) => {
+    ( $($tag:tt : $val:expr_2021),* $(,)? ) => {
         $crate::point! ( $crate::coord! { $( $tag: $val , )* } )
     };
-    ( $coord:expr $(,)? ) => {
+    ( $coord:expr_2021 $(,)? ) => {
         $crate::types::point::Point::from($coord)
     };
 }
 
 #[macro_export]
 macro_rules! coord {
-    (x: $x:expr, y: $y:expr $(,)* ) => {
+    (x: $x:expr_2021, y: $y:expr_2021 $(,)* ) => {
         $crate::types::coordinate::Coordinate::new_($x, $y)
     };
-    (x: $x:expr, y: $y:expr, z: $z:expr $(,)* ) => {
+    (x: $x:expr_2021, y: $y:expr_2021, z: $z:expr_2021 $(,)* ) => {
         $crate::types::coordinate::Coordinate::new__($x, $y, $z)
     };
 }
@@ -65,7 +65,7 @@ macro_rules! coord {
 macro_rules! line_string {
     () => { $crate::types::line_string::LineString::new(vec![]) };
     (
-        $(( $($tag:tt : $val:expr),* $(,)? )),*
+        $(( $($tag:tt : $val:expr_2021),* $(,)? )),*
         $(,)?
     ) => {
         line_string![
@@ -75,7 +75,7 @@ macro_rules! line_string {
         ]
     };
     (
-        $($coord:expr),*
+        $($coord:expr_2021),*
         $(,)?
     ) => {
         $crate::types::line_string::LineString::new(
@@ -93,12 +93,12 @@ macro_rules! polygon {
     () => { $crate::types::polygon::Polygon::new(line_string![], vec![]) };
     (
         exterior: [
-            $(( $($exterior_tag:tt : $exterior_val:expr),* $(,)? )),*
+            $(( $($exterior_tag:tt : $exterior_val:expr_2021),* $(,)? )),*
             $(,)?
         ],
         interiors: [
             $([
-                $(( $($interior_tag:tt : $interior_val:expr),* $(,)? )),*
+                $(( $($interior_tag:tt : $interior_val:expr_2021),* $(,)? )),*
                 $(,)?
             ]),*
             $(,)?
@@ -120,12 +120,12 @@ macro_rules! polygon {
     };
     (
         exterior: [
-            $($exterior_coord:expr),*
+            $($exterior_coord:expr_2021),*
             $(,)?
         ],
         interiors: [
             $([
-                $($interior_coord:expr),*
+                $($interior_coord:expr_2021),*
                 $(,)?
             ]),*
             $(,)?
@@ -148,7 +148,7 @@ macro_rules! polygon {
         )
     };
     (
-        $(( $($tag:tt : $val:expr),* $(,)? )),*
+        $(( $($tag:tt : $val:expr_2021),* $(,)? )),*
         $(,)?
     ) => {
         polygon![
@@ -156,7 +156,7 @@ macro_rules! polygon {
         ]
     };
     (
-        $($coord:expr),*
+        $($coord:expr_2021),*
         $(,)?
     ) => {
         $crate::types::polygon::Polygon::new(

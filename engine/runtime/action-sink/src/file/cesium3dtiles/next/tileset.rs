@@ -1,7 +1,7 @@
 use indexmap::IndexMap;
-use serde_json::{json, Value};
+use serde_json::{Value, json};
 
-use super::quadtree::{ground_diagonal_m, GeoBox};
+use super::quadtree::{GeoBox, ground_diagonal_m};
 use reearth_flow_gltf::next::metadata::ColumnStats;
 
 const CONTENT_URI_TEMPLATE: &str = "content/{level}/{x}/{y}.glb";
