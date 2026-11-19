@@ -1,5 +1,5 @@
 import { useReactFlow } from "@xyflow/react";
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import type { Awareness } from "y-protocols/awareness";
 
 import { useProject, useWorkflowVariables } from "@flow/lib/gql";
@@ -17,6 +17,13 @@ import {
 } from "@flow/utils";
 import type { VariableDefaults } from "@flow/utils";
 import { createEngineReadyWorkflow } from "@flow/utils/toEngineWorkflow/engineReadyWorkflow";
+import { pickIncrementalStart } from "@flow/utils/toEngineWorkflow/pickIncrementalStart";
+import {
+  buildRunGraph,
+  lastRunCovers,
+  runnableNodeIds,
+  trimWorkflowsToNode,
+} from "@flow/utils/toEngineWorkflow/trimToNode";
 
 import { toast } from "../NotificationSystem/useToast";
 
@@ -58,6 +65,7 @@ export default ({
   );
 
   const restoredProjectIdRef = useRef<string | undefined>(undefined);
+  const isStartingRef = useRef(false);
 
   useEffect(() => {
     if (!workflowVariables || debugRunState === null) return;
@@ -95,117 +103,146 @@ export default ({
   ]);
 
   const runDebugWorkflow = useCallback(
-    async (
-      jobId?: string,
-      selectedNodeId?: string,
-      overrideVariables?: AnyWorkflowVariable[],
-    ) => {
-      if (!currentProject) return;
-      // The per-run copy is built once both the project's variables and the
-      // saved debug state load; fall back to the project's variables so a
-      // failed IndexedDB read doesn't block runs for good.
-      const variablesForRun =
-        overrideVariables ??
-        customDebugRunWorkflowVariables ??
-        workflowVariables;
+    async ({
+      previousJobId,
+      startNodeId,
+      endNodeId,
+      overrideVariables,
+    }: {
+      previousJobId?: string;
+      startNodeId?: string;
+      endNodeId?: string;
+      overrideVariables?: AnyWorkflowVariable[];
+    } = {}) => {
+      if (isStartingRef.current) return;
+      isStartingRef.current = true;
+      try {
+        if (!currentProject) return;
+        // The per-run copy is built once both the project's variables and the
+        // saved debug state load; fall back to the project's variables so a
+        // failed IndexedDB read doesn't block runs for good.
+        const variablesForRun =
+          overrideVariables ??
+          customDebugRunWorkflowVariables ??
+          workflowVariables;
 
-      // Without the variables there is nothing to check required ones against,
-      // and the run would go out with none set.
-      if (!variablesForRun) {
-        toast({
-          title: t("Debug run not started"),
-          description: t(
-            "Workflow variables are still loading. Try again in a moment.",
-          ),
-          variant: "warning",
-        });
-        return;
-      }
+        // Without the variables there is nothing to check required ones against,
+        // and the run would go out with none set.
+        if (!variablesForRun) {
+          toast({
+            title: t("Debug run not started"),
+            description: t(
+              "Workflow variables are still loading. Try again in a moment.",
+            ),
+            variant: "warning",
+          });
+          return;
+        }
 
-      // The variables dialog blocks this too, but every start path (including
-      // re-running from a selected node) goes through here.
-      const missing = missingRequiredVariables(variablesForRun);
-      if (missing.length > 0) {
-        toast({
-          title: t("Debug run not started"),
-          description: t(
-            "These required workflow variables have no value: {{names}}",
-            { names: missing.join(", ") },
-          ),
-          variant: "warning",
-        });
-        return;
-      }
-      const engineReadyWorkflow = createEngineReadyWorkflow(
-        currentProject.name,
-        variablesForRun,
-        rawWorkflows,
-      );
+        // The variables dialog blocks this too, but every start path (including
+        // re-running from a selected node) goes through here.
+        const missing = missingRequiredVariables(variablesForRun);
+        if (missing.length > 0) {
+          toast({
+            title: t("Debug run not started"),
+            description: t(
+              "These required workflow variables have no value: {{names}}",
+              { names: missing.join(", ") },
+            ),
+            variant: "warning",
+          });
+          return;
+        }
+        let workflowsForRun = rawWorkflows;
+        let reuse =
+          previousJobId && startNodeId
+            ? { previousJobId, startNodeId }
+            : undefined;
 
-      if (!engineReadyWorkflow) return;
-
-      const data = await runProject(
-        currentProject.id,
-        currentProject.workspaceId,
-        engineReadyWorkflow,
-        jobId,
-        selectedNodeId,
-        // Recorded on the job, so the run summary can show them to anyone
-        // viewing the run.
-        variablesForRun,
-      );
-
-      if (data.job) {
-        // What the run's values are measured against. Without the project's
-        // variables loaded the run used them as they were, so there is
-        // nothing the user changed.
-        const variableDefaults = toVariableDefaults(
-          workflowVariables ?? variablesForRun,
-        );
-        if (overrideVariables) {
-          setCustomDebugRun({
-            variables: overrideVariables,
-            defaults: variableDefaults,
+        if (endNodeId) {
+          const trimmed = trimWorkflowsToNode(rawWorkflows, endNodeId);
+          if (!trimmed) return;
+          workflowsForRun = trimmed.workflows;
+          reuse = pickIncrementalStart({
+            trimmedWorkflows: trimmed.workflows,
+            selectedNodeId: endNodeId,
+            lastRun: debugJob,
+            variables: variablesForRun,
           });
         }
 
-        let jobs: JobState[] = debugRunState?.jobs || [];
+        const engineReadyWorkflow = createEngineReadyWorkflow(
+          currentProject.name,
+          variablesForRun,
+          workflowsForRun,
+        );
 
-        if (!data.job.id) {
-          jobs =
-            debugRunState?.jobs?.filter(
-              (job) => job.projectId !== currentProject.id,
-            ) || [];
-        } else if (
-          debugRunState?.jobs?.some(
-            (job) => job.projectId === currentProject.id,
-          )
-        ) {
-          jobs = debugRunState.jobs.map((job) => {
-            if (job.projectId === currentProject.id && data.job) {
-              return {
-                projectId: currentProject.id,
-                jobId: data.job.id,
-                status: data.job.status,
-                variables: variablesForRun,
-                variableDefaults,
-                startNodeId: selectedNodeId,
-              };
-            }
-            return job;
-          });
-        } else {
-          jobs.push({
+        if (!engineReadyWorkflow) return;
+
+        const ranNodeIds = runnableNodeIds(workflowsForRun);
+
+        const data = await runProject(
+          currentProject.id,
+          currentProject.workspaceId,
+          engineReadyWorkflow,
+          reuse?.previousJobId,
+          reuse?.startNodeId,
+          // Recorded on the job, so the run summary can show them to anyone
+          // viewing the run.
+          variablesForRun,
+        );
+
+        if (data.job) {
+          // What the run's values are measured against. Without the project's
+          // variables loaded the run used them as they were, so there is
+          // nothing the user changed.
+          const variableDefaults = toVariableDefaults(
+            workflowVariables ?? variablesForRun,
+          );
+          if (overrideVariables) {
+            setCustomDebugRun({
+              variables: overrideVariables,
+              defaults: variableDefaults,
+            });
+          }
+
+          let jobs: JobState[] = debugRunState?.jobs || [];
+
+          const jobState = (jobId: string, status: JobState["status"]) => ({
             projectId: currentProject.id,
-            jobId: data.job.id,
-            status: data.job.status,
+            jobId,
+            status,
             variables: variablesForRun,
             variableDefaults,
-            startNodeId: selectedNodeId,
+            startNodeId: reuse?.startNodeId,
+            endNodeId,
+            ranNodeIds,
           });
+
+          if (!data.job.id) {
+            jobs =
+              debugRunState?.jobs?.filter(
+                (job) => job.projectId !== currentProject.id,
+              ) || [];
+          } else if (
+            debugRunState?.jobs?.some(
+              (job) => job.projectId === currentProject.id,
+            )
+          ) {
+            jobs = debugRunState.jobs.map((job) => {
+              if (job.projectId === currentProject.id && data.job) {
+                return jobState(data.job.id, data.job.status);
+              }
+              return job;
+            });
+          } else {
+            jobs.push(jobState(data.job.id, data.job.status));
+          }
+          await updateValue({ jobs });
+          fitView({ duration: 400, padding: 0.5 });
         }
-        await updateValue({ jobs });
-        fitView({ duration: 400, padding: 0.5 });
+      } finally {
+        isStartingRef.current = false;
       }
     },
     [
@@ -214,6 +251,7 @@ export default ({
       customDebugRunWorkflowVariables,
       workflowVariables,
       rawWorkflows,
+      debugJob,
       debugRunState?.jobs,
       fitView,
       updateValue,
@@ -223,7 +261,7 @@ export default ({
 
   const handleDebugRunStart = useCallback(
     async (overrideVariables?: AnyWorkflowVariable[]) => {
-      await runDebugWorkflow(undefined, undefined, overrideVariables);
+      await runDebugWorkflow({ overrideVariables });
     },
     [runDebugWorkflow],
   );
@@ -232,9 +270,30 @@ export default ({
     async (node?: Node, nodes?: Node[]) => {
       const selectedNode = node ?? nodes?.[0];
       if (!selectedNode || !debugJob?.jobId) return;
-      await runDebugWorkflow(debugJob.jobId, selectedNode.id);
+      await runDebugWorkflow({
+        previousJobId: debugJob.jobId,
+        startNodeId: selectedNode.id,
+      });
     },
     [runDebugWorkflow, debugJob?.jobId],
+  );
+
+  const handleToSelectedNodeDebugRunStart = useCallback(
+    async (node?: Node, nodes?: Node[]) => {
+      const selectedNode = node ?? nodes?.[0];
+      if (!selectedNode) return;
+      await runDebugWorkflow({ endNodeId: selectedNode.id });
+    },
+    [runDebugWorkflow],
+  );
+
+  const runGraph = useMemo(() => buildRunGraph(rawWorkflows), [rawWorkflows]);
+
+  const canDebugRunFromNode = useCallback(
+    (nodeId: string) =>
+      !debugJob?.ranNodeIds ||
+      lastRunCovers(runGraph, debugJob.ranNodeIds, nodeId),
+    [runGraph, debugJob?.ranNodeIds],
   );
 
   const handleResetDebugRunWorkflowVariables = useCallback(() => {
@@ -327,6 +386,8 @@ export default ({
     refetchWorkflowVariables,
     handleDebugRunStart,
     handleFromSelectedNodeDebugRunStart,
+    handleToSelectedNodeDebugRunStart,
+    canDebugRunFromNode,
     handleDebugRunStop,
     handleResetDebugRunWorkflowVariables,
     loadExternalDebugJob,

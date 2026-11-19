@@ -96,6 +96,10 @@ type OverlayUIProps = {
     node?: Node,
     nodes?: Node[],
   ) => Promise<void>;
+  onDebugRunStartToSelectedNode?: (
+    node?: Node,
+    nodes?: Node[],
+  ) => Promise<void>;
   onDebugRunStop: () => Promise<void>;
   onResetDebugRunWorkflowVariables: () => void;
   onDebugRunJoin?: (jobId: string, userName: string) => Promise<void>;
@@ -153,6 +157,7 @@ const OverlayUI: React.FC<OverlayUIProps> = ({
   onProjectShareOpen,
   onDebugRunStart,
   onDebugRunStartFromSelectedNode,
+  onDebugRunStartToSelectedNode,
   onDebugRunStop,
   onResetDebugRunWorkflowVariables,
   onDebugRunJoin,
@@ -254,6 +259,7 @@ const OverlayUI: React.FC<OverlayUIProps> = ({
               onDebugRunJoin={onDebugRunJoin}
               onDebugRunStart={onDebugRunStart}
               onDebugRunStartFromSelectedNode={onDebugRunStartFromSelectedNode}
+              onDebugRunStartToSelectedNode={onDebugRunStartToSelectedNode}
               onDebugRunStop={onDebugRunStop}
               onResetDebugRunWorkflowVariables={
                 onResetDebugRunWorkflowVariables
