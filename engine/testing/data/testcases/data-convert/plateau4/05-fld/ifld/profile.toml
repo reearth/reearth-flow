@@ -1,6 +1,11 @@
 # test ifld (inland flood risk)
 citygml_zip_name = "11100_saitama-shi_city_2024_citygml_1_op_ifld.zip"
 
+[convs.cesium_statistics.ifld_11_1_3dtiles_no_texture_jgd2024]
+path = "11100_saitama-shi_city_2024_citygml_1_op_ifld_11_1_3dtiles_no_texture_jgd2024"
+truth_path = "cesium_statistics_ifld_11_1_3dtiles_no_texture_jgd2024_truth.json"
+generate_truth = true
+
 [convs.cesium_attributes.ifld_11_1_3dtiles_no_texture_jgd2024]
 path = "11100_saitama-shi_city_2024_citygml_1_op_ifld_11_1_3dtiles_no_texture_jgd2024"
 truth_path = "cesium_ifld_11_1_3dtiles_no_texture_jgd2024_truth.json"

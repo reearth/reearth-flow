@@ -1,5 +1,15 @@
 citygml_zip_name = "13102_chuo-ku_pref_2023_citygml_2_op_ubld.zip"
 
+[convs.cesium_statistics.ubld_3dtiles_lod1_jgd2024]
+path = "13102_chuo-ku_pref_2023_citygml_2_op_ubld_3dtiles_lod1_jgd2024"
+truth_path = "cesium_statistics_ubld_3dtiles_lod1_jgd2024_truth.json"
+generate_truth = true
+
+[convs.cesium_statistics.ubld_3dtiles_lod4_jgd2024]
+path = "13102_chuo-ku_pref_2023_citygml_2_op_ubld_3dtiles_lod4_jgd2024"
+truth_path = "cesium_statistics_ubld_3dtiles_lod4_jgd2024_truth.json"
+generate_truth = true
+
 [convs.cesium_attributes.ubld_3dtiles_lod1_jgd2024]
 path = "13102_chuo-ku_pref_2023_citygml_2_op_ubld_3dtiles_lod1_jgd2024"
 truth_path = "cesium_ubld_3dtiles_lod1_jgd2024_truth.json"

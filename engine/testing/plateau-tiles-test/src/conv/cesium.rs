@@ -1,6 +1,6 @@
 use crate::align_cesium::load_tileset;
 use crate::cast_config::{convert_casts, CastConfigValue};
-use crate::compare_attributes::{apply_casts_to_value, make_feature_key};
+use crate::compare_attributes::{apply_casts_to_value, make_feature_key, normalize_numbers};
 use crate::tileset::collect_tile_contents;
 use indexmap::IndexMap;
 use reearth_flow_gltf::{extract_feature_properties, parse_gltf};
@@ -8,25 +8,6 @@ use serde_json::Value;
 use std::collections::HashMap;
 use std::fs;
 use std::path::{Path, PathBuf};
-
-/// Whether two copies of a feature's properties (from different tiles) agree.
-/// A tile whose values for a column are all integral may store it as an integer
-/// column while another tile stores the same column as float, so numbers compare
-/// by value (`53` equals `53.0`).
-fn same_properties(a: &Value, b: &Value) -> bool {
-    match (a, b) {
-        (Value::Number(x), Value::Number(y)) => x == y || x.as_f64() == y.as_f64(),
-        (Value::Object(x), Value::Object(y)) => {
-            x.len() == y.len()
-                && x.iter()
-                    .all(|(k, v)| y.get(k).is_some_and(|w| same_properties(v, w)))
-        }
-        (Value::Array(x), Value::Array(y)) => {
-            x.len() == y.len() && x.iter().zip(y).all(|(v, w)| same_properties(v, w))
-        }
-        _ => a == b,
-    }
-}
 
 /// Loads all Cesium 3D Tiles feature attributes from a tileset directory,
 /// keyed by feature identifier (via `make_feature_key`).
@@ -57,11 +38,11 @@ pub fn load_cesium_attr(tileset_dir: &Path) -> Result<IndexMap<String, Value>, S
             .map_err(|e| format!("Failed to extract features from {:?}: {}", glb_path, e))?;
 
         for props in features {
-            let props_value = Value::Object(props);
+            let props_value = normalize_numbers(Value::Object(props));
             let feature_key = make_feature_key(&props_value, dir_name);
 
             if let Some(existing) = ret.get(&feature_key) {
-                if !same_properties(existing, &props_value) {
+                if existing != &props_value {
                     let existing_path = rel.get(&feature_key).unwrap();
                     let differing: Vec<String> = match (existing, &props_value) {
                         (Value::Object(a), Value::Object(b)) => {
@@ -109,7 +90,7 @@ pub fn write_cesium_json(
     let normalized: serde_json::Map<String, Value> = raw
         .into_iter()
         .map(|(feature_key, props)| {
-            let props = apply_casts_to_value(props, "", &casts);
+            let props = normalize_numbers(apply_casts_to_value(props, "", &casts));
             (feature_key, props)
         })
         .collect();

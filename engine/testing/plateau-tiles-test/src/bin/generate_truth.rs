@@ -2,7 +2,7 @@ use plateau_tiles_test::conv::cesium as conv_cesium;
 use plateau_tiles_test::conv::cesium_statistics;
 use plateau_tiles_test::conv::mvt;
 use plateau_tiles_test::conv::mvt_png;
-use plateau_tiles_test::file::{extract_zip_to_tmp, zip_dir};
+use plateau_tiles_test::file::{extract_zip_to_tmp, remove_extracted, zip_dir};
 use plateau_tiles_test::profile_config::Convs;
 use serde::Deserialize;
 use std::fs;
@@ -49,7 +49,7 @@ fn run(profile_path: &Path) -> Result<(), String> {
         let tmp_dir = extract_zip_to_tmp(&zip_path)?;
         let output_path = truth_dir.join(&entry.truth_path);
         let result = mvt::write_mvt_json(&tmp_dir, &output_path, entry.casts.as_ref());
-        fs::remove_dir_all(&tmp_dir).ok();
+        remove_extracted(&tmp_dir);
         result?;
         println!("wrote mvt_attributes/{} -> {}", id, output_path.display());
     }
@@ -79,7 +79,7 @@ fn run(profile_path: &Path) -> Result<(), String> {
             h,
             entry.stroke,
         );
-        fs::remove_dir_all(&tmp_mvt_dir).ok();
+        remove_extracted(&tmp_mvt_dir);
 
         if let Err(e) = result {
             fs::remove_dir_all(&tmp_png_dir).ok();
@@ -105,7 +105,7 @@ fn run(profile_path: &Path) -> Result<(), String> {
         let tmp_dir = extract_zip_to_tmp(&zip_path)?;
         let output_path = truth_dir.join(&entry.truth_path);
         let result = conv_cesium::write_cesium_json(&tmp_dir, &output_path, entry.casts.as_ref());
-        fs::remove_dir_all(&tmp_dir).ok();
+        remove_extracted(&tmp_dir);
         result?;
         println!(
             "wrote cesium_attributes/{} -> {}",
@@ -125,7 +125,7 @@ fn run(profile_path: &Path) -> Result<(), String> {
         let tmp_dir = extract_zip_to_tmp(&zip_path)?;
         let output_path = truth_dir.join(&entry.truth_path);
         let result = cesium_statistics::write_cesium_statistics(&tmp_dir, &output_path);
-        fs::remove_dir_all(&tmp_dir).ok();
+        remove_extracted(&tmp_dir);
         result?;
         println!(
             "wrote cesium_statistics/{} -> {}",

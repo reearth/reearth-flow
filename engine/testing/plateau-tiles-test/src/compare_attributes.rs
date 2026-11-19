@@ -226,9 +226,16 @@ pub fn apply_cast(cast: &CastConfig, value: Value) -> Value {
         CastConfig::IgnoreBoth => Value::Null,
         // Records the key order as a "__key_order" entry so that the unordered comparison
         // also catches a reorder. Conversion-only: nested paths are left unchanged.
+        // Keys with a null value are left out: the comparison treats a null value and a
+        // missing key as equal, and writers differ in whether they emit the key at all
+        // (a tile table can carry a no-data row for a column that another writer omits).
         CastConfig::OrderedDict => match value {
             Value::Object(mut map) => {
-                let order = map.keys().cloned().map(Value::String).collect();
+                let order = map
+                    .iter()
+                    .filter(|(_, v)| !v.is_null())
+                    .map(|(k, _)| Value::String(k.clone()))
+                    .collect();
                 assert!(
                     map.insert("__key_order".to_string(), Value::Array(order))
                         .is_none(),
@@ -241,6 +248,26 @@ pub fn apply_cast(cast: &CastConfig, value: Value) -> Value {
     }
 }
 
+/// Canonicalizes numbers: an integral float becomes an integer (`53.0` -> `53`).
+/// Tiles of one tileset (and FME vs flow) can store the same column as integer
+/// or float; this is the single place where that difference is erased, so the
+/// duplicate-feature check and the later comparison can both stay exact.
+pub fn normalize_numbers(value: Value) -> Value {
+    match value {
+        Value::Number(n) => match n.as_f64() {
+            Some(f) if n.is_f64() && f.fract() == 0.0 && f.abs() < 9.0e15 => Value::from(f as i64),
+            _ => Value::Number(n),
+        },
+        Value::Object(map) => Value::Object(
+            map.into_iter()
+                .map(|(k, v)| (k, normalize_numbers(v)))
+                .collect(),
+        ),
+        Value::Array(arr) => Value::Array(arr.into_iter().map(normalize_numbers).collect()),
+        other => other,
+    }
+}
+
 /// Recursively applies casts to a value tree, producing a normalized form.
 /// Used by generate-truth (FME artifacts → truth JSON) and the convs step
 /// (flow MVT → comparison JSON), so both sides are normalized before comparison.
@@ -250,14 +277,17 @@ pub fn apply_casts_to_value(
     path: &str,
     casts: &HashMap<String, CastConfig>,
 ) -> Value {
+    // `ordered_dict` records the order of the keys that remain after the casts below
+    // (a child cast such as `ignore_both` can null a key), so it runs after the recursion.
+    let ordered = matches!(casts.get(path), Some(CastConfig::OrderedDict));
+
     // Apply cast at current path first, then recurse into the result
-    let value = if let Some(cast) = casts.get(path) {
-        apply_cast(cast, value)
-    } else {
-        value
+    let value = match casts.get(path) {
+        Some(cast) if !ordered => apply_cast(cast, value),
+        _ => value,
     };
 
-    match value {
+    let value = match value {
         Value::Object(map) => Value::Object(
             map.into_iter()
                 .map(|(k, v)| {
@@ -280,6 +310,12 @@ pub fn apply_casts_to_value(
                 .collect(),
         ),
         _ => value,
+    };
+
+    if ordered {
+        apply_cast(&CastConfig::OrderedDict, value)
+    } else {
+        value
     }
 }
 
@@ -531,6 +567,34 @@ mod tests {
         // the plain comparison now sees the reorder
         assert!(analyze_attributes("test", &a, &b, HashMap::new(), HashMap::new()).is_err());
         assert!(analyze_attributes("test", &a, &a, HashMap::new(), HashMap::new()).is_ok());
+    }
+
+    #[test]
+    fn test_ordered_dict_cast_ignores_null_valued_keys() {
+        let mut casts = HashMap::new();
+        casts.insert("".to_string(), CastConfig::OrderedDict);
+        let convert = |v: Value| apply_casts_to_value(v, "", &casts);
+
+        // a key that is null in one writer's output and absent in the other's is not an order difference
+        let with_null = convert(json!({"a": 1, "b": null, "c": 3}));
+        let without = convert(json!({"a": 1, "c": 3}));
+        assert_eq!(with_null["__key_order"], json!(["a", "c"]));
+        assert!(
+            analyze_attributes("test", &without, &with_null, HashMap::new(), HashMap::new())
+                .is_ok()
+        );
+    }
+
+    #[test]
+    fn test_ordered_dict_order_follows_the_casts_of_the_keys() {
+        let mut casts = HashMap::new();
+        casts.insert("".to_string(), CastConfig::OrderedDict);
+        casts.insert(".b".to_string(), CastConfig::IgnoreBoth);
+
+        // `ignore_both` nulls `b`, so it is not part of the recorded order
+        let converted = apply_casts_to_value(json!({"a": 1, "b": 2, "c": 3}), "", &casts);
+        assert_eq!(converted["b"], Value::Null);
+        assert_eq!(converted["__key_order"], json!(["a", "c"]));
     }
 
     #[test]

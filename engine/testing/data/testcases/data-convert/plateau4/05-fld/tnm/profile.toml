@@ -1,6 +1,11 @@
 # test tnm (tsunami risk)
 citygml_zip_name = "12206_kisarazu-shi_city_2024_citygml_1_op_tnm.zip"
 
+[convs.cesium_statistics.tnm_12_1_3dtiles_no_texture_jgd2024]
+path = "12206_kisarazu-shi_city_2024_citygml_1_op_tnm_12_1_3dtiles_no_texture_jgd2024"
+truth_path = "cesium_statistics_tnm_12_1_3dtiles_no_texture_jgd2024_truth.json"
+generate_truth = true
+
 [convs.cesium_attributes.tnm_12_1_3dtiles_no_texture_jgd2024]
 path = "12206_kisarazu-shi_city_2024_citygml_1_op_tnm_12_1_3dtiles_no_texture_jgd2024"
 truth_path = "cesium_tnm_12_1_3dtiles_no_texture_jgd2024_truth.json"

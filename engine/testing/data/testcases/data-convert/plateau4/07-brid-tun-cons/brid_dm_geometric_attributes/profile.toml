@@ -1,6 +1,30 @@
 # test brid dm geometric attributes
 citygml_zip_name = "08220_tsukuba-shi_city_2023_citygml_2_op_brid.zip"
 
+[convs.cesium_statistics.brid_3dtiles_lod1_jgd2024]
+path = "08220_tsukuba-shi_city_2023_citygml_2_op_brid_3dtiles_lod1_jgd2024"
+truth_path = "cesium_statistics_brid_3dtiles_lod1_jgd2024_truth.json"
+generate_truth = true
+
+[convs.cesium_statistics.brid_3dtiles_lod1_jgd2024.geometry_tests]
+texture_presence = false
+
+[convs.cesium_statistics.brid_3dtiles_lod2_jgd2024]
+path = "08220_tsukuba-shi_city_2023_citygml_2_op_brid_3dtiles_lod2_jgd2024"
+truth_path = "cesium_statistics_brid_3dtiles_lod2_jgd2024_truth.json"
+generate_truth = true
+
+[convs.cesium_statistics.brid_3dtiles_lod2_jgd2024.geometry_tests]
+texture_presence = false
+
+[convs.cesium_statistics.brid_3dtiles_lod3_jgd2024]
+path = "08220_tsukuba-shi_city_2023_citygml_2_op_brid_3dtiles_lod3_jgd2024"
+truth_path = "cesium_statistics_brid_3dtiles_lod3_jgd2024_truth.json"
+generate_truth = true
+
+[convs.cesium_statistics.brid_3dtiles_lod3_jgd2024.geometry_tests]
+texture_presence = false
+
 [convs.cesium_attributes.brid_3dtiles_lod1_jgd2024]
 path = "08220_tsukuba-shi_city_2023_citygml_2_op_brid_3dtiles_lod1_jgd2024"
 truth_path = "cesium_brid_3dtiles_lod1_jgd2024_truth.json"

@@ -1,6 +1,11 @@
 # test dm geometric attributes
 citygml_zip_name = "08220_tsukuba-shi_city_2023_citygml_2_op_trk.zip"
 
+[convs.cesium_statistics.trk_3dtiles_lod3_jgd2024]
+path = "08220_tsukuba-shi_city_2023_citygml_2_op_trk_3dtiles_lod3_jgd2024"
+truth_path = "cesium_statistics_trk_3dtiles_lod3_jgd2024_truth.json"
+generate_truth = true
+
 [convs.cesium_attributes.trk_3dtiles_lod3_jgd2024]
 path = "08220_tsukuba-shi_city_2023_citygml_2_op_trk_3dtiles_lod3_jgd2024"
 truth_path = "cesium_trk_3dtiles_lod3_jgd2024_truth.json"

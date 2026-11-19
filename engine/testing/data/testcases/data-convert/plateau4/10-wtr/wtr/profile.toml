@@ -1,6 +1,11 @@
 # lod0+lod1 wtr general test
 citygml_zip_name = "13105_bunkyo-ku_pref_2025_citygml_1_op_wtr.zip"
 
+[convs.cesium_statistics.wtr_3dtiles_lod1_jgd2024]
+path = "13105_bunkyo-ku_pref_2025_citygml_1_op_wtr_3dtiles_lod1_jgd2024"
+truth_path = "cesium_statistics_wtr_3dtiles_lod1_jgd2024_truth.json"
+generate_truth = true
+
 [convs.cesium_attributes.wtr_3dtiles_lod1_jgd2024]
 path = "13105_bunkyo-ku_pref_2025_citygml_1_op_wtr_3dtiles_lod1_jgd2024"
 truth_path = "cesium_wtr_3dtiles_lod1_jgd2024_truth.json"

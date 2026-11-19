@@ -51,6 +51,24 @@ pub struct ConvCesiumEntry {
     pub casts: Option<HashMap<String, CastConfigValue>>,
 }
 
+/// A geometry check of the cesium statistics test.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Deserialize)]
+#[serde(rename_all = "snake_case")]
+pub enum GeometryTest {
+    TexturePresence,
+    MonotonicGeometricError,
+    BoundingBox,
+    MassCenter,
+    AverageColor,
+    AverageWinding,
+}
+
+impl GeometryTest {
+    pub fn enabled_by_default(self) -> bool {
+        !matches!(self, GeometryTest::AverageWinding)
+    }
+}
+
 #[derive(Debug, Deserialize)]
 pub struct ConvCesiumStatisticsEntry {
     /// Path to 3DTiles directory, relative to output_dir
@@ -58,6 +76,18 @@ pub struct ConvCesiumStatisticsEntry {
     /// Path to truth JSON file, relative to testcase dir
     pub truth_path: String,
     pub generate_truth: bool,
+    /// Per-check overrides of the default enabled geometry checks.
+    #[serde(default)]
+    pub geometry_tests: HashMap<GeometryTest, bool>,
+}
+
+impl ConvCesiumStatisticsEntry {
+    pub fn enabled(&self, test: GeometryTest) -> bool {
+        self.geometry_tests
+            .get(&test)
+            .copied()
+            .unwrap_or(test.enabled_by_default())
+    }
 }
 
 #[derive(Debug, Deserialize, Default)]

@@ -152,8 +152,8 @@
           "uro:landUseType_code": "214",
           "uro:detailedUsage": "文化施設",
           "uro:detailedUsage_code": "1122",
-          "uro:specifiedBuildingCoverageRate": 60.0,
-          "uro:specifiedFloorAreaRate": 200.0,
+          "uro:specifiedBuildingCoverageRate": 60,
+          "uro:specifiedFloorAreaRate": 200,
           "uro:surveyYear": 2021
         }
       ],
@@ -183,8 +183,8 @@
     "uro:BuildingDetailAttribute_uro:areaClassificationType": "市街化区域",
     "uro:BuildingDetailAttribute_uro:districtsAndZonesType": "第2種中高層住居専用地域",
     "uro:BuildingDetailAttribute_uro:landUseType": "公益施設用地（官公庁施設、文教厚生施設、供給処理施設）",
-    "uro:BuildingDetailAttribute_uro:specifiedBuildingCoverageRate": 60.0,
-    "uro:BuildingDetailAttribute_uro:specifiedFloorAreaRate": 200.0,
+    "uro:BuildingDetailAttribute_uro:specifiedBuildingCoverageRate": 60,
+    "uro:BuildingDetailAttribute_uro:specifiedFloorAreaRate": 200,
     "uro:BuildingDetailAttribute_uro:surveyYear": 2021,
     "uro:geometrySrcDescLod1": "公共測量成果",
     "uro:lodType": "LOD2.0",

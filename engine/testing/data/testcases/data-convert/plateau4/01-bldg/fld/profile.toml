@@ -1,5 +1,10 @@
 citygml_zip_name = "11222_koshigaya-shi_pref_2023_citygml_2_op_bldg.zip"
 
+[convs.cesium_statistics.bldg_3dtiles_lod1_jgd2024_full]
+path = "11222_koshigaya-shi_pref_2023_citygml_2_op_bldg_3dtiles_lod1_jgd2024_full"
+truth_path = "cesium_statistics_bldg_3dtiles_lod1_jgd2024_full_truth.json"
+generate_truth = true
+
 [convs.cesium_attributes.bldg_3dtiles_lod1_jgd2024_full]
 path = "11222_koshigaya-shi_pref_2023_citygml_2_op_bldg_3dtiles_lod1_jgd2024_full"
 truth_path = "cesium_bldg_3dtiles_lod1_jgd2024_full_truth.json"

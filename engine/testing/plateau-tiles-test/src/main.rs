@@ -363,6 +363,7 @@ fn run_testcase(testcases_dir: &Path, results_dir: &Path, name: &str, stages: &s
             run_test("cesium_statistics", &relative_path_display, || {
                 cesium_statistics::test_cesium_statistics(
                     &truth_dir,
+                    &truth_extracted_dir,
                     &flow_extracted_dir,
                     &profile.convs.cesium_statistics,
                 )

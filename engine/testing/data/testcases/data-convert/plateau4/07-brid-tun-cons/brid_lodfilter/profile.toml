@@ -4,6 +4,16 @@
 #   (brid_67b209ad has LoD3, brid_77a17601 has LoD2 only; FME's LoD3 tileset contains only brid_67b209ad)
 citygml_zip_name = "13102_chuo-ku_pref_2025_citygml_1_op_brid.zip"
 
+[convs.cesium_statistics.brid_3dtiles_lod2_jgd2024]
+path = "13102_chuo-ku_pref_2025_citygml_1_op_brid_3dtiles_lod2_jgd2024"
+truth_path = "cesium_statistics_brid_3dtiles_lod2_jgd2024_truth.json"
+generate_truth = true
+
+[convs.cesium_statistics.brid_3dtiles_lod3_jgd2024]
+path = "13102_chuo-ku_pref_2025_citygml_1_op_brid_3dtiles_lod3_jgd2024"
+truth_path = "cesium_statistics_brid_3dtiles_lod3_jgd2024_truth.json"
+generate_truth = true
+
 [convs.cesium_attributes.brid_3dtiles_lod2_jgd2024]
 path = "13102_chuo-ku_pref_2025_citygml_1_op_brid_3dtiles_lod2_jgd2024"
 truth_path = "cesium_brid_3dtiles_lod2_jgd2024_truth.json"
