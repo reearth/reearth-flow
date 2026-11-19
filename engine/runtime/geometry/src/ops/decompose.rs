@@ -5,25 +5,46 @@
 //! every edge of a part borders at most two of its faces. Each part keeps the
 //! mesh's type and frame, has a vertex pool of its own, and carries the slice of
 //! the appearance that covers its faces. Two faces share an edge when they use
-//! the same two vertices of the pool. [`decompose_with_faces`] also tells which
-//! faces of the mesh each part holds.
+//! the same two vertices of the pool. Each part comes with the [`FaceIndex`]es
+//! of the faces of the mesh it holds.
 
 use std::collections::HashMap;
 use std::ops::Range;
 
+use crate::Geometry;
 use crate::appearance::{Appearance, faces_appearance};
 use crate::ops::UnsupportedOperation;
 use crate::ops::merge::face_rings;
-use crate::{Euclidean2DGeometry, Euclidean3DGeometry, Geometry};
+
+/// A face of a mesh, by its position among the faces. A face of a triangular
+/// mesh is one triangle.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
+pub struct FaceIndex(usize);
+
+impl FaceIndex {
+    pub(crate) fn new(index: usize) -> Self {
+        Self(index)
+    }
+
+    /// The position of the face among the faces of the mesh.
+    pub fn get(self) -> usize {
+        self.0
+    }
+}
+
+/// The parts a mesh splits into, each paired with the faces of the mesh it
+/// holds.
+pub type DecomposedParts = Vec<(Geometry, Vec<FaceIndex>)>;
 
 /// Split a mesh into its edge-connected parts.
 #[enum_dispatch::enum_dispatch]
 pub trait DecomposeIntoEdgeConnectedParts {
     /// One mesh per set of faces joined through shared edges, ordered by first
-    /// face. Faces meeting at a vertex alone fall into different parts. A mesh
-    /// that is one part comes back unchanged; one with no faces yields none.
-    /// The default body reports the type as unsupported.
-    fn decompose_into_edge_connected_parts(&self) -> Result<Vec<Geometry>, UnsupportedOperation> {
+    /// face, each with the faces of `self` it holds in increasing order. Faces
+    /// meeting at a vertex alone fall into different parts. A mesh that is one
+    /// part comes back unchanged; one with no faces yields none. The default
+    /// body reports the type as unsupported.
+    fn decompose_into_edge_connected_parts(&self) -> Result<DecomposedParts, UnsupportedOperation> {
         Err(UnsupportedOperation {
             geometry: core::any::type_name::<Self>(),
             operation: "decompose_into_edge_connected_parts",
@@ -32,7 +53,7 @@ pub trait DecomposeIntoEdgeConnectedParts {
 }
 
 impl<T: DecomposeIntoEdgeConnectedParts + ?Sized> DecomposeIntoEdgeConnectedParts for Box<T> {
-    fn decompose_into_edge_connected_parts(&self) -> Result<Vec<Geometry>, UnsupportedOperation> {
+    fn decompose_into_edge_connected_parts(&self) -> Result<DecomposedParts, UnsupportedOperation> {
         (**self).decompose_into_edge_connected_parts()
     }
 }
@@ -41,12 +62,13 @@ impl<T: DecomposeIntoEdgeConnectedParts + ?Sized> DecomposeIntoEdgeConnectedPart
 #[enum_dispatch::enum_dispatch]
 pub trait DecomposeIntoManifolds {
     /// Meshes whose every edge borders one or two of their faces, ordered by
-    /// first face. Faces join in face order, and a join is refused when an edge
-    /// would border three or more faces of the result, so where more faces meet
-    /// at one edge the first two stay together. Each part is edge-connected. A
+    /// first face, each with the faces of `self` it holds in increasing order.
+    /// Faces join in face order, and a join is refused when an edge would
+    /// border three or more faces of the result, so where more faces meet at
+    /// one edge the first two stay together. Each part is edge-connected. A
     /// mesh that is one part comes back unchanged; one with no faces yields
     /// none. The default body reports the type as unsupported.
-    fn decompose_into_manifolds(&self) -> Result<Vec<Geometry>, UnsupportedOperation> {
+    fn decompose_into_manifolds(&self) -> Result<DecomposedParts, UnsupportedOperation> {
         Err(UnsupportedOperation {
             geometry: core::any::type_name::<Self>(),
             operation: "decompose_into_manifolds",
@@ -55,62 +77,20 @@ pub trait DecomposeIntoManifolds {
 }
 
 impl<T: DecomposeIntoManifolds + ?Sized> DecomposeIntoManifolds for Box<T> {
-    fn decompose_into_manifolds(&self) -> Result<Vec<Geometry>, UnsupportedOperation> {
+    fn decompose_into_manifolds(&self) -> Result<DecomposedParts, UnsupportedOperation> {
         (**self).decompose_into_manifolds()
     }
 }
 
-/// The meshes of parts paired with their faces.
-pub(crate) fn geometries(parts: Vec<(Geometry, Vec<usize>)>) -> Vec<Geometry> {
-    parts.into_iter().map(|(geometry, _)| geometry).collect()
-}
-
 /// How faces are grouped into parts.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
-pub enum Partition {
+pub(crate) enum Partition {
     /// Sets of faces joined through shared edges, as
     /// [`DecomposeIntoEdgeConnectedParts`] splits them.
     EdgeConnected,
     /// Parts whose every edge borders at most two of their faces, as
     /// [`DecomposeIntoManifolds`] splits them.
     Manifold,
-}
-
-impl Partition {
-    fn operation(self) -> &'static str {
-        match self {
-            Partition::EdgeConnected => "decompose_into_edge_connected_parts",
-            Partition::Manifold => "decompose_into_manifolds",
-        }
-    }
-}
-
-/// The parts of a polygon mesh or triangular mesh under `partition`, as the
-/// matching decompose trait returns them, each paired with the indices of the
-/// faces of `geometry` it holds, in increasing order. A face of a triangular
-/// mesh is one triangle. Other geometries are unsupported.
-pub fn decompose_with_faces(
-    geometry: &Geometry,
-    partition: Partition,
-) -> Result<Vec<(Geometry, Vec<usize>)>, UnsupportedOperation> {
-    match geometry {
-        Geometry::Euclidean2D(Euclidean2DGeometry::PolygonMesh(m)) => {
-            Ok(m.decompose_parts(partition))
-        }
-        Geometry::Euclidean2D(Euclidean2DGeometry::TriangularMesh(m)) => {
-            Ok(m.decompose_parts(partition))
-        }
-        Geometry::Euclidean3D(Euclidean3DGeometry::PolygonMesh(m)) => {
-            Ok(m.decompose_parts(partition))
-        }
-        Geometry::Euclidean3D(Euclidean3DGeometry::TriangularMesh(m)) => {
-            Ok(m.decompose_parts(partition))
-        }
-        _ => Err(UnsupportedOperation {
-            geometry: core::any::type_name::<Geometry>(),
-            operation: partition.operation(),
-        }),
-    }
 }
 
 /// A mesh's faces as flat buffers: every corner's vertex, the end of every
@@ -345,10 +325,17 @@ mod tests {
         m
     }
 
-    fn face_counts(meshes: &[Geometry]) -> Vec<usize> {
-        meshes
+    fn face_counts(parts: &[(Geometry, Vec<FaceIndex>)]) -> Vec<usize> {
+        parts
             .iter()
-            .map(|m| as_polygon_mesh(m).num_faces())
+            .map(|(m, _)| as_polygon_mesh(m).num_faces())
+            .collect()
+    }
+
+    fn faces(parts: &[(Geometry, Vec<FaceIndex>)]) -> Vec<Vec<usize>> {
+        parts
+            .iter()
+            .map(|(_, f)| f.iter().copied().map(FaceIndex::get).collect())
             .collect()
     }
 
@@ -374,21 +361,23 @@ mod tests {
 
     #[test]
     fn edge_connected_parts_split_at_a_vertex() {
-        let parts = merged(bow_tie())
-            .decompose_into_edge_connected_parts()
-            .unwrap();
+        let mesh = merged(bow_tie());
+        let parts = mesh.decompose_into_edge_connected_parts().unwrap();
         assert_eq!(face_counts(&parts), vec![2, 1]);
         // Each part has a vertex pool of its own.
-        assert_eq!(as_polygon_mesh(&parts[0]).vertices().len(), 4);
-        assert_eq!(as_polygon_mesh(&parts[1]).vertices().len(), 3);
+        assert_eq!(as_polygon_mesh(&parts[0].0).vertices().len(), 4);
+        assert_eq!(as_polygon_mesh(&parts[1].0).vertices().len(), 3);
     }
 
     #[test]
     fn a_connected_mesh_comes_back_unchanged() {
         let mesh = merged(bow_tie()[..2].to_vec());
         let parts = mesh.decompose_into_edge_connected_parts().unwrap();
-        assert_eq!(parts, vec![mesh.clone()]);
-        assert_eq!(mesh.decompose_into_manifolds().unwrap(), vec![mesh]);
+        assert_eq!(parts[0].0, mesh);
+        assert_eq!(faces(&parts), vec![vec![0, 1]]);
+        let parts = mesh.decompose_into_manifolds().unwrap();
+        assert_eq!(parts[0].0, mesh);
+        assert_eq!(faces(&parts), vec![vec![0, 1]]);
     }
 
     #[test]
@@ -402,7 +391,8 @@ mod tests {
 
     #[test]
     fn manifold_parts_are_edge_connected() {
-        let parts = merged(bow_tie()).decompose_into_manifolds().unwrap();
+        let mesh = merged(bow_tie());
+        let parts = mesh.decompose_into_manifolds().unwrap();
         assert_eq!(face_counts(&parts), vec![2, 1]);
     }
 
@@ -416,17 +406,16 @@ mod tests {
         )
         .unwrap();
         let b = tri([[5., 0., 0.], [6., 0., 0.], [5., 1., 0.]]);
-        let parts = merged(vec![a, b])
-            .decompose_into_edge_connected_parts()
-            .unwrap();
+        let mesh = merged(vec![a, b]);
+        let parts = mesh.decompose_into_edge_connected_parts().unwrap();
         assert_eq!(parts.len(), 2);
-        let app = as_polygon_mesh(&parts[0]).appearance().clone().unwrap();
+        let app = as_polygon_mesh(&parts[0].0).appearance().clone().unwrap();
         let crate::appearance::UvSource::Explicit(uv) = &app.themes()[0].uv_sets[0].uv else {
             panic!("expected explicit UV");
         };
         assert_eq!(uv.to_vec(), vec![[0., 0.], [1., 0.], [0., 1.], [0., 0.]]);
         // The bare triangle binds no material.
-        assert!(as_polygon_mesh(&parts[1]).appearance().is_none());
+        assert!(as_polygon_mesh(&parts[1].0).appearance().is_none());
     }
 
     #[test]
@@ -448,7 +437,8 @@ mod tests {
         )));
         let parts = mesh.decompose_into_edge_connected_parts().unwrap();
         assert_eq!(parts.len(), 2);
-        for part in &parts {
+        assert_eq!(faces(&parts), vec![vec![0], vec![1]]);
+        for (part, _) in &parts {
             assert!(matches!(
                 part,
                 Geometry::Euclidean3D(Euclidean3DGeometry::TriangularMesh(_))
@@ -461,25 +451,14 @@ mod tests {
         let mut polygons = bow_tie();
         // Put the lone triangle between the two that share an edge.
         polygons.swap(1, 2);
-        let parts = decompose_with_faces(&merged(polygons), Partition::EdgeConnected).unwrap();
-        let faces: Vec<Vec<usize>> = parts.iter().map(|(_, f)| f.clone()).collect();
-        assert_eq!(faces, vec![vec![0, 2], vec![1]]);
-        assert_eq!(
-            face_counts(&parts.into_iter().map(|(g, _)| g).collect::<Vec<_>>()),
-            vec![2, 1]
-        );
-    }
-
-    #[test]
-    fn a_single_part_holds_every_face() {
-        let mesh = merged(bow_tie()[..2].to_vec());
-        let parts = decompose_with_faces(&mesh, Partition::Manifold).unwrap();
-        assert_eq!(parts, vec![(mesh, vec![0, 1])]);
+        let mesh = merged(polygons);
+        let parts = mesh.decompose_into_edge_connected_parts().unwrap();
+        assert_eq!(faces(&parts), vec![vec![0, 2], vec![1]]);
+        assert_eq!(face_counts(&parts), vec![2, 1]);
     }
 
     #[test]
     fn other_geometries_are_unsupported() {
-        assert!(decompose_with_faces(&polygon(bow_tie().remove(0)), Partition::Manifold).is_err());
         assert!(
             polygon(bow_tie().remove(0))
                 .decompose_into_edge_connected_parts()

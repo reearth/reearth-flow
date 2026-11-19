@@ -51,7 +51,7 @@ pub(crate) use boundary::{
 pub use coerce::{Coerce, CoercionTarget, rings_as_faces_2d};
 #[cfg(feature = "new-geometry")]
 pub use decompose::{
-    DecomposeIntoEdgeConnectedParts, DecomposeIntoManifolds, Partition, decompose_with_faces,
+    DecomposeIntoEdgeConnectedParts, DecomposeIntoManifolds, DecomposedParts, FaceIndex,
 };
 #[cfg(feature = "new-geometry")]
 pub use elevation::{Elevation, SetElevation};

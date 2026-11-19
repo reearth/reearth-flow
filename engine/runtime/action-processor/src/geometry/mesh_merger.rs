@@ -22,7 +22,8 @@ use reearth_flow_geometry::Geometry;
 use reearth_flow_geometry::coordinate::CoordinateFrame;
 use reearth_flow_geometry::ops::merge::{are_edge_connected, is_mergeable, merge_counting_faces};
 use reearth_flow_geometry::ops::{
-    Aabb, BoundingBox, Elevation, Partition, common_frame, decompose_with_faces,
+    Aabb, BoundingBox, DecomposeIntoEdgeConnectedParts, DecomposeIntoManifolds, Elevation,
+    common_frame,
 };
 use reearth_flow_runtime::{
     cache::executor_cache_subdir,
@@ -188,9 +189,13 @@ struct Shell {
 /// features that gave it faces, in id order, and the ids of the features that
 /// gave no face to any part.
 struct Merged {
-    parts: Vec<(Geometry, Vec<usize>)>,
-    faceless: Vec<usize>,
+    parts: Vec<(Geometry, Vec<EntryId>)>,
+    faceless: Vec<EntryId>,
 }
+
+/// A feature of a group, by its position among the group's entries.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
+struct EntryId(usize);
 
 impl RTreeObject for IndexedEntry {
     type Envelope = AABB<[f64; 3]>;
@@ -201,7 +206,7 @@ impl RTreeObject for IndexedEntry {
 }
 
 struct IndexedEntry {
-    id: usize,
+    id: EntryId,
     envelope: AABB<[f64; 3]>,
 }
 
@@ -247,14 +252,23 @@ impl Group {
         span
     }
 
-    fn read_geometry(&self, id: usize) -> Result<Geometry, BoxedError> {
-        read_span(&mut File::open(&self.path)?, self.entries[id].geometry)
+    fn entry(&self, id: EntryId) -> &Entry {
+        &self.entries[id.0]
+    }
+
+    /// Every feature of the group, in id order.
+    fn ids(&self) -> impl Iterator<Item = EntryId> + use<> {
+        (0..self.entries.len()).map(EntryId)
+    }
+
+    fn read_geometry(&self, id: EntryId) -> Result<Geometry, BoxedError> {
+        read_span(&mut File::open(&self.path)?, self.entry(id).geometry)
     }
 
     /// The whole feature, rebuilt from its two lines.
-    fn read_feature(&self, id: usize) -> Result<Feature, BoxedError> {
+    fn read_feature(&self, id: EntryId) -> Result<Feature, BoxedError> {
         let mut file = File::open(&self.path)?;
-        let entry = &self.entries[id];
+        let entry = self.entry(id);
         let shell: Shell = read_span(&mut file, entry.shell)?;
         let geometry: Geometry = read_span(&mut file, entry.geometry)?;
         Ok(Feature {
@@ -408,36 +422,32 @@ impl MeshMerger {
 
     /// The features of `group`, as sets of ids to merge together, each in id
     /// order and the sets ordered by their first id.
-    fn components(&self, group: &Group) -> Result<Vec<Vec<usize>>, BoxedError> {
-        let n = group.entries.len();
+    fn components(&self, group: &Group) -> Result<Vec<Vec<EntryId>>, BoxedError> {
         if self.granularity == Granularity::Group {
-            return Ok(vec![(0..n).collect()]);
+            return Ok(vec![group.ids().collect()]);
         }
         let tree = RTree::bulk_load(
             group
-                .entries
-                .iter()
-                .enumerate()
-                .map(|(id, entry)| IndexedEntry {
+                .ids()
+                .map(|id| IndexedEntry {
                     id,
-                    envelope: envelope(&entry.aabb),
+                    envelope: envelope(&group.entry(id).aabb),
                 })
                 .collect(),
         );
-        let mut parent: Vec<usize> = (0..n).collect();
-        let mut batch: Vec<(usize, usize)> = Vec::new();
-        let mut batch_ids: HashSet<usize> = HashSet::new();
+        let mut parent: Vec<EntryId> = group.ids().collect();
+        let mut batch: Vec<(EntryId, EntryId)> = Vec::new();
+        let mut batch_ids: HashSet<EntryId> = HashSet::new();
         let mut batch_bytes = 0u64;
-        for i in 0..n {
-            for candidate in tree.locate_in_envelope_intersecting(&envelope(&group.entries[i].aabb))
-            {
+        for i in group.ids() {
+            for candidate in tree.locate_in_envelope_intersecting(&envelope(&group.entry(i).aabb)) {
                 let j = candidate.id;
                 if j <= i || find(&mut parent, i) == find(&mut parent, j) {
                     continue;
                 }
                 for id in [i, j] {
                     if batch_ids.insert(id) {
-                        batch_bytes += group.entries[id].geometry.len;
+                        batch_bytes += group.entry(id).geometry.len;
                     }
                 }
                 batch.push((i, j));
@@ -456,7 +466,7 @@ impl MeshMerger {
     /// Merge the features `ids` of `group` and decompose the result, reading
     /// geometry only. `Err` carries a read or merge error, for the features to
     /// be rejected.
-    fn merge_component(&self, group: &Group, ids: &[usize]) -> Result<Merged, BoxedError> {
+    fn merge_component(&self, group: &Group, ids: &[EntryId]) -> Result<Merged, BoxedError> {
         let mut read_error = None;
         let geometries = ids.iter().map_while(|&id| match group.read_geometry(id) {
             Ok(geometry) => Some(geometry),
@@ -483,7 +493,15 @@ impl MeshMerger {
             .filter(|&(_, &count)| count == 0)
             .map(|(&id, _)| id)
             .collect();
-        let partition = match self.granularity {
+        // The end of each input's faces in the merged mesh.
+        let ends: Vec<usize> = counts
+            .iter()
+            .scan(0, |end, &count| {
+                *end += count;
+                Some(*end)
+            })
+            .collect();
+        let decomposed = match self.granularity {
             Granularity::Group => {
                 let members = ids
                     .iter()
@@ -496,24 +514,16 @@ impl MeshMerger {
                     faceless,
                 });
             }
-            Granularity::EdgeConnectedPart => Partition::EdgeConnected,
-            Granularity::ManifoldPart => Partition::Manifold,
-        };
-        // The end of each input's faces in the merged mesh.
-        let ends: Vec<usize> = counts
-            .iter()
-            .scan(0, |end, &count| {
-                *end += count;
-                Some(*end)
-            })
-            .collect();
-        let parts = decompose_with_faces(&mesh, partition)
-            .map_err(|e| GeometryProcessorError::MeshMerger(e.to_string()))?
+            Granularity::EdgeConnectedPart => mesh.decompose_into_edge_connected_parts(),
+            Granularity::ManifoldPart => mesh.decompose_into_manifolds(),
+        }
+        .map_err(|e| GeometryProcessorError::MeshMerger(e.to_string()))?;
+        let parts = decomposed
             .into_iter()
             .map(|(part, faces)| {
-                let mut members: Vec<usize> = faces
+                let mut members: Vec<EntryId> = faces
                     .iter()
-                    .map(|&face| ids[ends.partition_point(|&end| end <= face)])
+                    .map(|face| ids[ends.partition_point(|&end| end <= face.get())])
                     .collect();
                 members.sort_unstable();
                 members.dedup();
@@ -525,12 +535,12 @@ impl MeshMerger {
 
     /// The attributes of a part made of the features `members` of `group`,
     /// reading their shells one at a time.
-    fn accumulate(&self, group: &Group, members: &[usize]) -> Result<Attributes, BoxedError> {
+    fn accumulate(&self, group: &Group, members: &[EntryId]) -> Result<Attributes, BoxedError> {
         let mut accumulator =
             AttributeAccumulator::new(&self.attribute_accumulation, &self.group_by);
         let mut file = File::open(&group.path)?;
         for &id in members {
-            let shell: Shell = read_span(&mut file, group.entries[id].shell)?;
+            let shell: Shell = read_span(&mut file, group.entry(id).shell)?;
             accumulator.push(&shell.attributes);
         }
         Ok(accumulator.finish())
@@ -542,14 +552,14 @@ impl MeshMerger {
 /// are applied in pair order.
 fn join_batch(
     group: &Group,
-    parent: &mut [usize],
-    batch: &[(usize, usize)],
-    ids: &HashSet<usize>,
+    parent: &mut [EntryId],
+    batch: &[(EntryId, EntryId)],
+    ids: &HashSet<EntryId>,
 ) -> Result<(), BoxedError> {
     if batch.is_empty() {
         return Ok(());
     }
-    let loaded: HashMap<usize, Geometry> = ids
+    let loaded: HashMap<EntryId, Geometry> = ids
         .par_iter()
         .map(|&id| {
             group
@@ -567,27 +577,27 @@ fn join_batch(
         if connected {
             let (a, b) = (find(parent, i), find(parent, j));
             if a != b {
-                parent[a.max(b)] = a.min(b);
+                parent[a.max(b).0] = a.min(b);
             }
         }
     }
     Ok(())
 }
 
-/// Union-find root of `i`, compressing the path.
-fn find(parent: &mut [usize], mut i: usize) -> usize {
-    while parent[i] != i {
-        parent[i] = parent[parent[i]];
-        i = parent[i];
+/// Union-find root of `id`, compressing the path.
+fn find(parent: &mut [EntryId], mut id: EntryId) -> EntryId {
+    while parent[id.0] != id {
+        parent[id.0] = parent[parent[id.0].0];
+        id = parent[id.0];
     }
-    i
+    id
 }
 
 /// The ids of each set, given each id's root, ordered by first id.
-fn components(parent: &mut [usize]) -> Vec<Vec<usize>> {
-    let mut index_of_root: HashMap<usize, usize> = HashMap::new();
-    let mut sets: Vec<Vec<usize>> = Vec::new();
-    for id in 0..parent.len() {
+fn components(parent: &mut [EntryId]) -> Vec<Vec<EntryId>> {
+    let mut index_of_root: HashMap<EntryId, usize> = HashMap::new();
+    let mut sets: Vec<Vec<EntryId>> = Vec::new();
+    for id in (0..parent.len()).map(EntryId) {
         let root = find(parent, id);
         let index = *index_of_root.entry(root).or_insert_with(|| {
             sets.push(Vec::new());

@@ -1644,7 +1644,9 @@ mod tests {
 mod decompose {
     use super::{PolygonMesh2D, PolygonMesh3D};
     use crate::index::IndexBuffer;
-    use crate::ops::decompose::{MeshFaces, Part, Partition, decompose, geometries};
+    use crate::ops::decompose::{
+        DecomposedParts, FaceIndex, MeshFaces, Part, Partition, decompose,
+    };
     use crate::ops::merge::internal_boundaries;
     use crate::ops::{
         DecomposeIntoEdgeConnectedParts, DecomposeIntoManifolds, UnsupportedOperation,
@@ -1674,7 +1676,7 @@ mod decompose {
 
     impl PolygonMesh2D {
         /// The parts under `partition`, each with the faces it holds.
-        pub(crate) fn decompose_parts(&self, partition: Partition) -> Vec<(Geometry, Vec<usize>)> {
+        pub(crate) fn decompose_parts(&self, partition: Partition) -> DecomposedParts {
             let mesh = faces(self.vertices(), self.csr_buffers(), self.appearance());
             if mesh.face_ends.is_empty() {
                 return Vec::new();
@@ -1682,7 +1684,7 @@ mod decompose {
             let Some(parts) = decompose(&mesh, partition) else {
                 return vec![(
                     Geometry::Euclidean2D(Euclidean2DGeometry::PolygonMesh(Box::new(self.clone()))),
-                    (0..mesh.face_ends.len()).collect(),
+                    (0..mesh.face_ends.len()).map(FaceIndex::new).collect(),
                 )];
             };
             parts
@@ -1700,7 +1702,7 @@ mod decompose {
                     *mesh.appearance_mut() = part.appearance;
                     (
                         Geometry::Euclidean2D(Euclidean2DGeometry::PolygonMesh(Box::new(mesh))),
-                        part.faces,
+                        part.faces.into_iter().map(FaceIndex::new).collect(),
                     )
                 })
                 .collect()
@@ -1709,7 +1711,7 @@ mod decompose {
 
     impl PolygonMesh3D {
         /// The parts under `partition`, each with the faces it holds.
-        pub(crate) fn decompose_parts(&self, partition: Partition) -> Vec<(Geometry, Vec<usize>)> {
+        pub(crate) fn decompose_parts(&self, partition: Partition) -> DecomposedParts {
             let mesh = faces(
                 self.vertices(),
                 self.data().csr_buffers(),
@@ -1721,7 +1723,7 @@ mod decompose {
             let Some(parts) = decompose(&mesh, partition) else {
                 return vec![(
                     Geometry::Euclidean3D(Euclidean3DGeometry::PolygonMesh(Box::new(self.clone()))),
-                    (0..mesh.face_ends.len()).collect(),
+                    (0..mesh.face_ends.len()).map(FaceIndex::new).collect(),
                 )];
             };
             parts
@@ -1738,7 +1740,7 @@ mod decompose {
                     *mesh.appearance_mut() = part.appearance;
                     (
                         Geometry::Euclidean3D(Euclidean3DGeometry::PolygonMesh(Box::new(mesh))),
-                        part.faces,
+                        part.faces.into_iter().map(FaceIndex::new).collect(),
                     )
                 })
                 .collect()
@@ -1748,28 +1750,28 @@ mod decompose {
     impl DecomposeIntoEdgeConnectedParts for PolygonMesh2D {
         fn decompose_into_edge_connected_parts(
             &self,
-        ) -> Result<Vec<Geometry>, UnsupportedOperation> {
-            Ok(geometries(self.decompose_parts(Partition::EdgeConnected)))
+        ) -> Result<DecomposedParts, UnsupportedOperation> {
+            Ok(self.decompose_parts(Partition::EdgeConnected))
         }
     }
 
     impl DecomposeIntoEdgeConnectedParts for PolygonMesh3D {
         fn decompose_into_edge_connected_parts(
             &self,
-        ) -> Result<Vec<Geometry>, UnsupportedOperation> {
-            Ok(geometries(self.decompose_parts(Partition::EdgeConnected)))
+        ) -> Result<DecomposedParts, UnsupportedOperation> {
+            Ok(self.decompose_parts(Partition::EdgeConnected))
         }
     }
 
     impl DecomposeIntoManifolds for PolygonMesh2D {
-        fn decompose_into_manifolds(&self) -> Result<Vec<Geometry>, UnsupportedOperation> {
-            Ok(geometries(self.decompose_parts(Partition::Manifold)))
+        fn decompose_into_manifolds(&self) -> Result<DecomposedParts, UnsupportedOperation> {
+            Ok(self.decompose_parts(Partition::Manifold))
         }
     }
 
     impl DecomposeIntoManifolds for PolygonMesh3D {
-        fn decompose_into_manifolds(&self) -> Result<Vec<Geometry>, UnsupportedOperation> {
-            Ok(geometries(self.decompose_parts(Partition::Manifold)))
+        fn decompose_into_manifolds(&self) -> Result<DecomposedParts, UnsupportedOperation> {
+            Ok(self.decompose_parts(Partition::Manifold))
         }
     }
 }

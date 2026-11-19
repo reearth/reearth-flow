@@ -1158,7 +1158,9 @@ mod tests {
 #[cfg(feature = "new-geometry")]
 mod decompose {
     use super::{TriangularMesh2D, TriangularMesh3D};
-    use crate::ops::decompose::{MeshFaces, Part, Partition, decompose, geometries};
+    use crate::ops::decompose::{
+        DecomposedParts, FaceIndex, MeshFaces, Part, Partition, decompose,
+    };
     use crate::ops::{
         DecomposeIntoEdgeConnectedParts, DecomposeIntoManifolds, UnsupportedOperation,
     };
@@ -1182,7 +1184,7 @@ mod decompose {
 
     impl TriangularMesh2D {
         /// The parts under `partition`, each with the faces it holds.
-        pub(crate) fn decompose_parts(&self, partition: Partition) -> Vec<(Geometry, Vec<usize>)> {
+        pub(crate) fn decompose_parts(&self, partition: Partition) -> DecomposedParts {
             let mesh = faces(self.vertices(), self.triangles(), self.appearance());
             if mesh.face_ends.is_empty() {
                 return Vec::new();
@@ -1192,7 +1194,7 @@ mod decompose {
                     Geometry::Euclidean2D(Euclidean2DGeometry::TriangularMesh(Box::new(
                         self.clone(),
                     ))),
-                    (0..mesh.face_ends.len()).collect(),
+                    (0..mesh.face_ends.len()).map(FaceIndex::new).collect(),
                 )];
             };
             parts
@@ -1208,7 +1210,7 @@ mod decompose {
                     mesh.set_raw_appearance(part.appearance);
                     (
                         Geometry::Euclidean2D(Euclidean2DGeometry::TriangularMesh(Box::new(mesh))),
-                        part.faces,
+                        part.faces.into_iter().map(FaceIndex::new).collect(),
                     )
                 })
                 .collect()
@@ -1217,7 +1219,7 @@ mod decompose {
 
     impl TriangularMesh3D {
         /// The parts under `partition`, each with the faces it holds.
-        pub(crate) fn decompose_parts(&self, partition: Partition) -> Vec<(Geometry, Vec<usize>)> {
+        pub(crate) fn decompose_parts(&self, partition: Partition) -> DecomposedParts {
             let mesh = faces(self.vertices(), self.triangles(), self.appearance());
             if mesh.face_ends.is_empty() {
                 return Vec::new();
@@ -1227,7 +1229,7 @@ mod decompose {
                     Geometry::Euclidean3D(Euclidean3DGeometry::TriangularMesh(Box::new(
                         self.clone(),
                     ))),
-                    (0..mesh.face_ends.len()).collect(),
+                    (0..mesh.face_ends.len()).map(FaceIndex::new).collect(),
                 )];
             };
             parts
@@ -1242,7 +1244,7 @@ mod decompose {
                     mesh.set_raw_appearance(part.appearance);
                     (
                         Geometry::Euclidean3D(Euclidean3DGeometry::TriangularMesh(Box::new(mesh))),
-                        part.faces,
+                        part.faces.into_iter().map(FaceIndex::new).collect(),
                     )
                 })
                 .collect()
@@ -1252,28 +1254,28 @@ mod decompose {
     impl DecomposeIntoEdgeConnectedParts for TriangularMesh2D {
         fn decompose_into_edge_connected_parts(
             &self,
-        ) -> Result<Vec<Geometry>, UnsupportedOperation> {
-            Ok(geometries(self.decompose_parts(Partition::EdgeConnected)))
+        ) -> Result<DecomposedParts, UnsupportedOperation> {
+            Ok(self.decompose_parts(Partition::EdgeConnected))
         }
     }
 
     impl DecomposeIntoEdgeConnectedParts for TriangularMesh3D {
         fn decompose_into_edge_connected_parts(
             &self,
-        ) -> Result<Vec<Geometry>, UnsupportedOperation> {
-            Ok(geometries(self.decompose_parts(Partition::EdgeConnected)))
+        ) -> Result<DecomposedParts, UnsupportedOperation> {
+            Ok(self.decompose_parts(Partition::EdgeConnected))
         }
     }
 
     impl DecomposeIntoManifolds for TriangularMesh2D {
-        fn decompose_into_manifolds(&self) -> Result<Vec<Geometry>, UnsupportedOperation> {
-            Ok(geometries(self.decompose_parts(Partition::Manifold)))
+        fn decompose_into_manifolds(&self) -> Result<DecomposedParts, UnsupportedOperation> {
+            Ok(self.decompose_parts(Partition::Manifold))
         }
     }
 
     impl DecomposeIntoManifolds for TriangularMesh3D {
-        fn decompose_into_manifolds(&self) -> Result<Vec<Geometry>, UnsupportedOperation> {
-            Ok(geometries(self.decompose_parts(Partition::Manifold)))
+        fn decompose_into_manifolds(&self) -> Result<DecomposedParts, UnsupportedOperation> {
+            Ok(self.decompose_parts(Partition::Manifold))
         }
     }
 }
