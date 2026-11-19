@@ -348,12 +348,15 @@ impl ArchiveWriter {
         let mut file = zip.finish().map_err(|e| failed(&e))?;
         match (&self.in_place, temp_path) {
             (Some(target), Some(temp_path)) => {
+                // An archive that replaces one already there keeps that file's
+                // permissions, which the temporary file does not carry. Set
+                // before the sync, not after: `fsync` commits the metadata as
+                // it stands when it is called, so a mode changed afterwards is
+                // not part of what survives a crash.
+                #[cfg(unix)]
+                inherit_mode(&file, target).map_err(|e| failed(&e))?;
                 file.sync_all().map_err(|e| failed(&e))?;
                 drop(file);
-                // An archive that replaces one already there keeps that file's
-                // permissions, which the temporary file does not carry.
-                #[cfg(unix)]
-                inherit_mode(&temp_path, target).map_err(|e| failed(&e))?;
                 // On failure the error owns the temporary path and removes it.
                 temp_path.persist(target).map_err(|e| {
                     failed(&format_args!(
@@ -367,9 +370,15 @@ impl ArchiveWriter {
                 // already complete and at its final path by now, so a folder
                 // that cannot be synchronized (some network and FUSE mounts
                 // refuse it) costs durability, not the run.
+                // Logged, not reported: the archive is complete and correct,
+                // so there is nothing about the user's data to warn them about.
+                // What is left is a durability property of the host's
+                // filesystem, which belongs in the operator's log. Actions must
+                // keep the warn and error lanes for diagnostics
+                // (check-action-tracing).
                 #[cfg(unix)]
                 if let Err(e) = sync_parent_dir(target) {
-                    tracing::warn!(
+                    tracing::info!(
                         "the zip archive {} was written, but {e}; it may not \
                          survive a crash of the host",
                         target.display()
@@ -387,18 +396,19 @@ impl ArchiveWriter {
     }
 }
 
-/// Give `temp_path` the permissions of the file already at `target`, so that
-/// replacing an archive does not widen or narrow who may read it. Does nothing
-/// when nothing is there yet, or when its permissions cannot be read.
+/// Give the temporary file the permissions of the file already at `target`, so
+/// that replacing an archive does not widen or narrow who may read it. Does
+/// nothing when nothing is there yet, or when its permissions cannot be read.
+/// Takes the open handle so the change lands before the file is synchronized.
 #[cfg(unix)]
-fn inherit_mode(temp_path: &Path, target: &Path) -> Result<(), String> {
+fn inherit_mode(file: &File, target: &Path) -> Result<(), String> {
     let Ok(existing) = std::fs::metadata(target) else {
         return Ok(());
     };
     if !existing.is_file() {
         return Ok(());
     }
-    std::fs::set_permissions(temp_path, existing.permissions()).map_err(|e| {
+    file.set_permissions(existing.permissions()).map_err(|e| {
         format!(
             "failed to carry the permissions of {} onto the new archive: {e}",
             target.display()
@@ -428,11 +438,20 @@ fn temp_file_beside(target: &Path) -> Result<NamedTempFile, String> {
         .ok_or_else(|| format!("the zip archive {} has no folder", target.display()))?;
     std::fs::create_dir_all(dir)
         .map_err(|e| format!("failed to create the folder {}: {e}", dir.display()))?;
+    // `tempfile` appends six random characters and the suffix without trimming
+    // the prefix, so a long output name could push the temporary name past the
+    // filesystem's limit and fail a write the old path completed. The name is
+    // only carried to say which output a leftover file belongs to, so bound it.
+    const NAME_BUDGET: usize = 64;
     let name = target
         .file_name()
         .map(|name| name.to_string_lossy().into_owned())
         .unwrap_or_default();
-    let prefix = format!(".{name}.");
+    let mut end = NAME_BUDGET.min(name.len());
+    while end > 0 && !name.is_char_boundary(end) {
+        end -= 1;
+    }
+    let prefix = format!(".{}.", &name[..end]);
     let mut builder = tempfile::Builder::new();
     builder.prefix(&prefix).suffix(".tmp");
     // A temporary file is private by default; the archive it becomes gets the
@@ -646,6 +665,40 @@ mod tests {
         let archive = ArchiveWriter::for_output(&local(&dir.path().join("out/x.zip")));
         assert!(archive.finish().unwrap().is_none());
         assert!(files_in(dir.path()).is_empty());
+    }
+
+    /// The temporary name borrows the output's, and `tempfile` does not trim a
+    /// prefix, so an unbounded borrow would fail a write the old path made.
+    #[test]
+    fn a_local_archive_with_a_long_name_is_still_written() {
+        let dir = tempfile::tempdir().unwrap();
+        // Comfortably past NAME_MAX once six random characters and `.tmp` are
+        // appended to an untrimmed `.{name}.` prefix.
+        let target = dir.path().join(format!("{}.zip", "n".repeat(240)));
+
+        let archive = ArchiveWriter::for_output(&local(&target));
+        archive.add("x.gml", b"<gml/>").unwrap();
+        archive.finish().unwrap();
+
+        assert!(target.is_file(), "{}", target.display());
+        assert_eq!(files_in(dir.path()).len(), 1, "a temporary file was left");
+    }
+
+    /// A name that is multi-byte where the budget falls must not be cut through
+    /// a character.
+    #[test]
+    fn a_long_multi_byte_name_is_trimmed_on_a_character_boundary() {
+        let dir = tempfile::tempdir().unwrap();
+        // 30 characters is 90 bytes, so the 64-byte budget falls inside one of
+        // them. The whole name stays well under NAME_MAX, which Linux counts
+        // in bytes, so the case is about the trim and nothing else.
+        let target = dir.path().join(format!("{}.zip", "あ".repeat(30)));
+
+        let archive = ArchiveWriter::for_output(&local(&target));
+        archive.add("x.gml", b"<gml/>").unwrap();
+        archive.finish().unwrap();
+
+        assert!(target.is_file(), "{}", target.display());
     }
 
     #[cfg(unix)]
