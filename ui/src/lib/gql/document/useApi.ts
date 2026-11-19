@@ -112,27 +112,33 @@ export const useDocument = () => {
 
   const useSaveSnapshot = async (projectId: string): Promise<SaveSnapshot> => {
     const { mutateAsync, ...rest } = snapshotSaveMutation;
+    let saved: boolean | undefined;
     try {
-      const saveSnapshot = await mutateAsync({
-        projectId,
-      });
-      toast({
-        title: t("Project Saved Successfully"),
-        description: t("Project has been successfully saved."),
-      });
-
-      if (!saveSnapshot) return { saveSnapshot: false, ...rest };
-
-      return { saveSnapshot, ...rest };
+      saved = await mutateAsync({ projectId });
     } catch (_err) {
+      saved = undefined;
+    }
+
+    // true: a version now holds the edits. false: the latest version already
+    // did. No answer at all means the save failed.
+    if (saved === undefined) {
       toast({
         title: t("Project failed to save"),
         description: t("There was an error saving the project."),
         variant: "destructive",
       });
-
       return { saveSnapshot: false, ...rest };
     }
+
+    toast(
+      saved
+        ? { title: t("Saved as a new version") }
+        : {
+            title: t("No changes to save"),
+            description: t("Everything is already in the latest version."),
+          },
+    );
+    return { saveSnapshot: saved, ...rest };
   };
 
   return {

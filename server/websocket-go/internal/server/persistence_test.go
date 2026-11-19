@@ -7,7 +7,6 @@ import (
 
 	"github.com/reearth/ygo/crdt"
 	"github.com/reearth/ygo/persistence"
-	ygws "github.com/reearth/ygo/provider/websocket"
 
 	"github.com/reearth/reearth-flow/websocket-go/internal/config"
 )
@@ -36,31 +35,16 @@ func TestNewWithPersistenceReplicatesDoSCaps(t *testing.T) {
 	}
 }
 
-func TestNewWithPersistence_WiresAutoVersioning(t *testing.T) {
-	cfg := &config.Config{
-		AutoVersionEvery: 15 * time.Minute,
-		KeepSnapshots:    50,
-	}
-	s := NewWithPersistence(context.Background(), cfg, persistence.NewMemoryPersistence())
-	if got := s.ws.AutoVersionEvery; got != 15*time.Minute {
-		t.Fatalf("AutoVersionEvery = %v, want 15m", got)
-	}
-	// Assert the retention bound too. Without this, deleting the
-	// `adapter.KeepSnapshots = cfg.KeepSnapshots` line leaves every test passing
-	// while retention silently reverts to keep-all — the config would advertise a
-	// bound that nothing enforces.
-	if s.adapter == nil {
-		t.Fatal("adapter reference not retained; cannot verify retention wiring")
-	}
-	if got := s.adapter.KeepSnapshots; got != 50 {
-		t.Fatalf("adapter.KeepSnapshots = %d, want 50 (config value must reach the adapter)", got)
-	}
-}
+// TestNewWithPersistence_KeepsYgoAutoVersioningOff: ygo's auto-versioning
+// counts every persisted update as a change, so it stays off whatever the
+// configured interval; EnableVersions drives versions instead.
+func TestNewWithPersistence_KeepsYgoAutoVersioningOff(t *testing.T) {
+	t.Parallel()
 
-func TestNewWithPersistence_ZeroConfigDisablesAutoVersioning(t *testing.T) {
-	s := NewWithPersistence(context.Background(), &config.Config{}, persistence.NewMemoryPersistence())
+	cfg := &config.Config{AutoVersionEvery: 15 * time.Minute, KeepSnapshots: 50}
+	s := NewWithPersistence(context.Background(), cfg, persistence.NewMemoryPersistence())
 	if got := s.ws.AutoVersionEvery; got != 0 {
-		t.Fatalf("AutoVersionEvery = %v, want 0 (off)", got)
+		t.Fatalf("ygo AutoVersionEvery = %v, want 0", got)
 	}
 }
 
@@ -81,51 +65,28 @@ func applyOneChange(t *testing.T, s *Server, room string) {
 	}
 }
 
-// TestNewWithPersistence_AutoVersionSavesSnapshotOnClose proves the wiring works:
-// a real change plus a forced CloseRoom must yield one auto-labelled snapshot.
-func TestNewWithPersistence_AutoVersionSavesSnapshotOnClose(t *testing.T) {
+// TestNewWithPersistence_ServerWriteSavesNoVersion: a change the server makes
+// itself (a project lock, a rollback signal) is no user edit, so closing the
+// room afterwards saves no version. ygo's auto-versioning saved one here.
+func TestNewWithPersistence_ServerWriteSavesNoVersion(t *testing.T) {
+	t.Parallel()
+
 	const room = "550e8400-e29b-41d4-a716-446655440099"
 	ctx := context.Background()
+	mem := persistence.NewMemoryPersistence()
+	cfg := &config.Config{AutoVersionEvery: time.Minute, KeepSnapshots: 50}
+	s := NewWithPersistence(ctx, cfg, mem)
 
-	t.Run("enabled", func(t *testing.T) {
-		mem := persistence.NewMemoryPersistence()
-		cfg := &config.Config{AutoVersionEvery: time.Minute, KeepSnapshots: 50}
-		s := NewWithPersistence(ctx, cfg, mem)
+	applyOneChange(t, s, room)
+	if err := s.ws.CloseRoom(room, true); err != nil {
+		t.Fatalf("CloseRoom: %v", err)
+	}
 
-		applyOneChange(t, s, room)
-
-		if err := s.ws.CloseRoom(room, true); err != nil {
-			t.Fatalf("CloseRoom: %v", err)
-		}
-
-		snaps, err := mem.ListSnapshots(ctx, room)
-		if err != nil {
-			t.Fatalf("ListSnapshots: %v", err)
-		}
-		if len(snaps) != 1 {
-			t.Fatalf("len(snapshots) = %d, want 1 (auto-version on unload of a dirty room)", len(snaps))
-		}
-		if snaps[0].Label != ygws.AutoVersionLabel {
-			t.Errorf("snapshot label = %q, want %q", snaps[0].Label, ygws.AutoVersionLabel)
-		}
-	})
-
-	t.Run("disabled", func(t *testing.T) {
-		mem := persistence.NewMemoryPersistence()
-		s := NewWithPersistence(ctx, &config.Config{}, mem) // AutoVersionEvery unset (0)
-
-		applyOneChange(t, s, room)
-
-		if err := s.ws.CloseRoom(room, true); err != nil {
-			t.Fatalf("CloseRoom: %v", err)
-		}
-
-		snaps, err := mem.ListSnapshots(ctx, room)
-		if err != nil {
-			t.Fatalf("ListSnapshots: %v", err)
-		}
-		if len(snaps) != 0 {
-			t.Fatalf("len(snapshots) = %d, want 0: auto-versioning must stay off when AutoVersionEvery is unset", len(snaps))
-		}
-	})
+	snaps, err := mem.ListSnapshots(ctx, room)
+	if err != nil {
+		t.Fatalf("ListSnapshots: %v", err)
+	}
+	if len(snaps) != 0 {
+		t.Fatalf("len(snapshots) = %d, want 0: a server write is not a user edit", len(snaps))
+	}
 }

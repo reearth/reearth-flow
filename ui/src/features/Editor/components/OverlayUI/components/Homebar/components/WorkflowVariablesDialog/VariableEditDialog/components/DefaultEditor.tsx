@@ -6,7 +6,7 @@ type Props = {
   variable: WorkflowVariable;
   fieldFocusMap?: Record<string, AwarenessUser[]>;
   onUpdate: (variable: WorkflowVariable) => void;
-  onDialogOpen: (dialog: "assets" | "cms") => void;
+  onDialogOpen: () => void;
   onFieldFocus?: (field: string | null) => void;
 };
 

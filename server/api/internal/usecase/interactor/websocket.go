@@ -164,6 +164,15 @@ func (i *Websocket) ImportDocument(ctx context.Context, docID string, data []byt
 	return i.client.ImportDocument(ctx, docID, data)
 }
 
+// SaveVersion is gated like FlushToGCS: it backs the same save action, and
+// every role that can edit the workflow may save it.
+func (i *Websocket) SaveVersion(ctx context.Context, docID, label string) (bool, error) {
+	if err := i.authorize(ctx, docID, rbac.ActionAny); err != nil {
+		return false, err
+	}
+	return i.client.SaveVersion(ctx, docID, label)
+}
+
 // SetProjectLock is called by UpdateProject, which already checked edit
 // permission; it is gated here like the other writes in case of other callers.
 // Not authorizeWorkflowChange: unlocking a locked project must get through.

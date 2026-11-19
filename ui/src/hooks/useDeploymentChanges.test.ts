@@ -71,6 +71,16 @@ const setup = (deploymentVersion = "v1") => {
   return { doc, yWorkflows, yNodes, undoManager, hook, edit, deploy, data };
 };
 
+// Document updates this client produced itself, which the server would record
+// as edits by this user. Updates applied from collaborators are not counted.
+const watchLocalWrites = (doc: Y.Doc) => {
+  const writes = vi.fn();
+  doc.on("update", (_update, _origin, _doc, transaction) => {
+    if (transaction.local) writes();
+  });
+  return writes;
+};
+
 describe("useDeploymentChanges", () => {
   test("says nothing until the editor has recorded a deployment", () => {
     const { hook } = setup();
@@ -168,7 +178,7 @@ describe("useDeploymentChanges", () => {
     expect(hook.result.current.deploymentChangeStatus).toBe("changed");
   });
 
-  test("flags a remote edit even when its author did not", () => {
+  test("flags a remote edit its author did not flag, without writing", () => {
     const { doc, hook, deploy } = setup();
     deploy();
 
@@ -185,6 +195,7 @@ describe("useDeploymentChanges", () => {
       ?.get("data") as Y.Map<unknown>;
     remote.transact(() => remoteData.set("params", { v: 9 }));
 
+    const localWrites = watchLocalWrites(doc);
     act(() => {
       Y.applyUpdate(
         doc,
@@ -192,6 +203,8 @@ describe("useDeploymentChanges", () => {
       );
     });
     expect(hook.result.current.deploymentChangeStatus).toBe("changed");
+    // Someone else's edit is not this client's to record.
+    expect(localWrites).not.toHaveBeenCalled();
   });
 
   test("an edit made while the deploy is in flight still counts", () => {
@@ -294,6 +307,34 @@ describe("useDeploymentChanges with collaborators", () => {
       expect(editor.status()).toBe("changed");
     },
   );
+
+  test("an edit whose flag lost to a concurrent deploy is shown without writing", () => {
+    const deployer = createClient(1);
+    deployer.deploy("v3");
+    const editor = createClient(2, deployer.doc);
+
+    editor.setParams({ v: 1 });
+    deployer.deploy("v4");
+    deployer.setVersion("v4");
+    editor.setVersion("v4");
+    const deployerWrites = watchLocalWrites(deployer.doc);
+    const editorWrites = watchLocalWrites(editor.doc);
+    sync(deployer, editor);
+
+    expect(deployer.status()).toBe("changed");
+    expect(editor.status()).toBe("changed");
+    expect(deployerWrites).not.toHaveBeenCalled();
+    expect(editorWrites).not.toHaveBeenCalled();
+
+    // Opening the project afterwards shows it too, still without writing.
+    const opener = createClient(3, deployer.doc);
+    opener.setVersion("v4");
+    expect(opener.status()).toBe("changed");
+    // A write while opening would add this client to the document's state.
+    expect(Y.decodeStateVector(Y.encodeStateVector(opener.doc)).has(3)).toBe(
+      false,
+    );
+  });
 
   test("catching up on edits that were deployed does not flag them", () => {
     const deployer = createClient(1);

@@ -24,16 +24,28 @@ type TokenVerifyRequest struct {
 	ShareToken string `json:"shareToken,omitempty"`
 }
 
+// TokenVerifyResponse is the verdict. UserID names the user a token
+// connection belongs to, so the websocket server can record who edited the
+// document; a share-token connection has none.
 type TokenVerifyResponse struct {
-	Authorized bool `json:"authorized"`
-	ReadOnly   bool `json:"readOnly,omitempty"`
+	UserID     string `json:"userId,omitempty"`
+	Authorized bool   `json:"authorized"`
+	ReadOnly   bool   `json:"readOnly,omitempty"`
+}
+
+// DocumentAccess is a user's access to a project's live document.
+type DocumentAccess struct {
+	// UserID is the user the access was resolved for; empty when access is
+	// denied.
+	UserID     string
+	Read, Edit bool
 }
 
 // ProjectAccessChecker decides access to a project's live document.
 type ProjectAccessChecker interface {
 	// UserAccess reports whether the user whose JWT is in ctx may read and edit
-	// the project's document. edit is false while the project is locked.
-	UserAccess(ctx context.Context, projectID string) (read, edit bool, err error)
+	// the project's document. Edit is false while the project is locked.
+	UserAccess(ctx context.Context, projectID string) (DocumentAccess, error)
 	// SharedAccess reports whether shareToken is the project's live public
 	// share token.
 	SharedAccess(ctx context.Context, shareToken, projectID string) (bool, error)
@@ -98,15 +110,15 @@ func (h *AuthHandler) verifyRoom(ctx context.Context, req TokenVerifyRequest) (i
 		if err := h.validate(ctx, token); err != nil {
 			return http.StatusUnauthorized, denied
 		}
-		read, edit, err := h.projects.UserAccess(adapter.AttachJWT(ctx, token), projectID)
+		access, err := h.projects.UserAccess(adapter.AttachJWT(ctx, token), projectID)
 		if err != nil {
 			log.Printf("websocket project access check failed for project %s: %v", projectID, err)
 			return http.StatusInternalServerError, denied
 		}
-		if !read {
+		if !access.Read {
 			return http.StatusForbidden, denied
 		}
-		return http.StatusOK, TokenVerifyResponse{Authorized: true, ReadOnly: !edit}
+		return http.StatusOK, TokenVerifyResponse{Authorized: true, ReadOnly: !access.Edit, UserID: access.UserID}
 
 	case req.ShareToken != "":
 		ok, err := h.projects.SharedAccess(ctx, req.ShareToken, projectID)
@@ -167,13 +179,17 @@ func writeVerifyResponse(w http.ResponseWriter, status int, resp TokenVerifyResp
 }
 
 type Server struct {
-	handler *AuthHandler
+	handler  *AuthHandler
+	versions http.Handler
 }
 
-func NewServer(jwtProviders []appx.JWTProvider, projects ProjectAccessChecker) *Server {
+// NewServer serves the websocket server's calls. versions serves
+// POST /auth/versions; nil leaves that route unserved.
+func NewServer(jwtProviders []appx.JWTProvider, projects ProjectAccessChecker, versions http.Handler) *Server {
 	handler := NewAuthHandler(jwtProviders, projects)
 	return &Server{
-		handler: handler,
+		handler:  handler,
+		versions: versions,
 	}
 }
 
@@ -186,6 +202,8 @@ func (s *Server) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	switch {
 	case path == "/auth/verify":
 		s.handler.VerifyAPI(w, r)
+	case path == VersionsPath && s.versions != nil:
+		s.versions.ServeHTTP(w, r)
 	default:
 		http.NotFound(w, r)
 	}

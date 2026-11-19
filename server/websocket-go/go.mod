@@ -11,7 +11,7 @@ require (
 	github.com/gorilla/websocket v1.5.3
 	github.com/jackc/pgx/v5 v5.11.0
 	github.com/redis/go-redis/v9 v9.20.0
-	github.com/reearth/ygo v1.55.0
+	github.com/reearth/ygo v1.57.1
 	go.opentelemetry.io/contrib/detectors/gcp v1.44.0
 	go.opentelemetry.io/contrib/instrumentation/net/http/otelhttp v0.63.0
 	go.opentelemetry.io/otel v1.45.0

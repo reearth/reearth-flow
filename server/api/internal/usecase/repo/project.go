@@ -2,6 +2,7 @@ package repo
 
 import (
 	"context"
+	"time"
 
 	accountsid "github.com/reearth/reearth-accounts/server/pkg/id"
 	"github.com/reearth/reearth-flow/api/internal/usecase/interfaces"
@@ -30,6 +31,13 @@ type Project interface {
 	// SetStar adds or removes the user's star in a single atomic write, and
 	// returns rerror.ErrNotFound when the project does not exist or is not readable.
 	SetStar(ctx context.Context, pid id.ProjectID, uid accountsid.UserID, starred bool) error
+	// RecordEdit is project.Project.RecordEdit as a single atomic write: the
+	// project's updatedAt becomes at and its updatedBy becomes by (nil for an
+	// unknown editor), only when at is later than the stored updatedAt. It never
+	// moves updatedAt backwards and never overwrites another field, so it is
+	// safe against concurrent edits of the project. It returns
+	// rerror.ErrNotFound when the project does not exist or is not writable.
+	RecordEdit(ctx context.Context, pid id.ProjectID, at time.Time, by *accountsid.UserID) error
 }
 
 func IterateProjectsByWorkspace(repo Project, ctx context.Context, tid accountsid.WorkspaceID, batch int64, callback func([]*project.Project) error) error {

@@ -1,6 +1,6 @@
 import { FileIcon } from "@phosphor-icons/react";
 
-import { Button, CmsLogo, Input, Label } from "@flow/components";
+import { Button, Input, Label } from "@flow/components";
 import { useT } from "@flow/lib/i18n";
 import type { AwarenessUser, WorkflowVariable } from "@flow/types";
 
@@ -10,7 +10,7 @@ type Props = {
   id?: string;
   variable: Pick<WorkflowVariable, "defaultValue" | "config">;
   fieldFocusMap?: Record<string, AwarenessUser[]>;
-  onDialogOpen: (dialog: "assets" | "cms") => void;
+  onDialogOpen: () => void;
   onDefaultValueChange: (newValue: string) => void;
   onFieldFocus?: (field: string | null) => void;
 };
@@ -31,19 +31,9 @@ export const AssetDefaultSelectionInput: React.FC<Props> = ({
           {t("Default Value")}
         </Label>
         <div className="flex gap-2">
-          <Button
-            onClick={() => onDialogOpen("assets")}
-            variant="outline"
-            size="sm">
+          <Button onClick={onDialogOpen} variant="outline" size="sm">
             <FileIcon className="h-4 w-4" />
-            {t("Workspace Assets")}
-          </Button>
-          <Button
-            onClick={() => onDialogOpen("cms")}
-            variant="outline"
-            size="sm">
-            <CmsLogo className="h-4 w-4" />
-            {t("CMS Integration")}
+            {t("Assets")}
           </Button>
         </div>
       </div>

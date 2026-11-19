@@ -169,9 +169,12 @@ func TestMigrateBaselinesAPreAtlasDatabase(t *testing.T) {
 	pool := newPool(t)
 	ctx := context.Background()
 
-	// Simulate the old world: tables present, revision tracking absent.
-	if _, err := pool.Exec(ctx, `DROP TABLE IF EXISTS ws_schema_migrations`); err != nil {
-		t.Fatalf("drop revision table: %v", err)
+	// Simulate the old world: the initial tables present, revision tracking and
+	// every table a later migration added absent.
+	for _, table := range []string{"ws_schema_migrations", "ws_version_change"} {
+		if _, err := pool.Exec(ctx, `DROP TABLE IF EXISTS `+table); err != nil {
+			t.Fatalf("drop %s: %v", table, err)
+		}
 	}
 
 	if err := Migrate(ctx, pool); err != nil {
@@ -184,6 +187,9 @@ func TestMigrateBaselinesAPreAtlasDatabase(t *testing.T) {
 	}
 	if n == 0 {
 		t.Error("nothing was recorded; the next startup would try to create the tables again")
+	}
+	if err := pool.QueryRow(ctx, `SELECT count(*) FROM ws_version_change`).Scan(&n); err != nil {
+		t.Errorf("the migrations after the baseline were not applied: %v", err)
 	}
 
 	// And it stays idempotent afterwards.
