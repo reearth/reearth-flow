@@ -2,6 +2,10 @@ module github.com/reearth/reearth-flow/subscriber
 
 go 1.26.2
 
+// The Postgres schema (for the live-data tables the tests write to) is shared
+// with the API, so it lives in its own module.
+replace github.com/reearth/reearth-flow/db => ../db
+
 require (
 	cloud.google.com/go/pubsub/v2 v2.0.0
 	github.com/GoogleCloudPlatform/opentelemetry-operations-go/exporter/trace v1.30.0
@@ -11,6 +15,7 @@ require (
 	github.com/k0kubun/pp/v3 v3.5.0
 	github.com/kelseyhightower/envconfig v1.4.0
 	github.com/redis/go-redis/v9 v9.14.0
+	github.com/reearth/reearth-flow/db v0.0.0-00010101000000-000000000000
 	github.com/reearth/reearthx v0.0.0-20260618134917-663d9623c331
 	github.com/stretchr/testify v1.11.1
 	go.mongodb.org/mongo-driver v1.17.6

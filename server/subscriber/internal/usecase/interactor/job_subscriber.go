@@ -29,8 +29,8 @@ func (uc *jobSubscriber) ProcessJobCompleteEvent(ctx context.Context, event *job
 		return fmt.Errorf("unknown result: %s (expected 'success' or 'failed')", event.Result)
 	}
 
-	if err := uc.storage.SaveToRedis(ctx, event); err != nil {
-		return fmt.Errorf("failed to write to Redis: %w", err)
+	if err := uc.storage.Save(ctx, event); err != nil {
+		return fmt.Errorf("failed to write job complete event to live store: %w", err)
 	}
 
 	return nil

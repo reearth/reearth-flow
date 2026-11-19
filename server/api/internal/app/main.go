@@ -67,7 +67,7 @@ func Start(debug bool, version string) {
 	go reconcileScheduledJobs(repos, gateways)
 
 	// Health checker
-	healthChecker := NewHealthChecker(conf, version, gateways.File, gateways.Redis)
+	healthChecker := NewHealthChecker(conf, version, gateways.File, gateways.LiveStore)
 
 	if conf.AccountsApiHost == "" {
 		log.Error("accounts host configuration is required")
