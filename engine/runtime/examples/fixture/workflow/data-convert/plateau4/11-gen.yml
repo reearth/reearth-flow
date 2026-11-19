@@ -147,14 +147,24 @@ graphs:
             while len(stack) > 0 {
               node = stack.pop();
               if type(node) == dict {
+                rebuilt = {};
                 for k in node.keys() {
+                  v = node[k];
                   if k.ends_with("@uom") {
                     base = k.remove_suffix("@uom");
-                    v = node.get(base);
-                    if type(v) == list { node[base] = itertools.map(v, to_number); } else if v != null { node[base] = to_number(v); }
-                    node[base + "_uom"] = node.pop(k);
+                    if node.get(base) == null { rebuilt[base + "_uom"] = v; }
+                  } else {
+                    uom = node.get(k + "@uom");
+                    if uom == null {
+                      rebuilt[k] = v;
+                    } else {
+                      if type(v) == list { rebuilt[k] = itertools.map(v, to_number); } else if v != null { rebuilt[k] = to_number(v); } else { rebuilt[k] = v; }
+                      rebuilt[k + "_uom"] = uom;
+                    }
                   }
                 }
+                for k in node.keys() { node.pop(k); }
+                for k in rebuilt.keys() { node[k] = rebuilt[k]; }
                 for v in node.values() {
                   if type(v) == dict or type(v) == list { stack.append(v); }
                 }
