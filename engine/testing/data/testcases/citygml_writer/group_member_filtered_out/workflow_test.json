@@ -6,6 +6,14 @@
     {
       "name": "cityGmlPath",
       "value": "../../quality-check/plateau4/01-01-common/Z-common-01_xlink_01/udx/ubld/53394611_ubld_6697_op.gml"
+    },
+    {
+      "name": "uroSchemaPath",
+      "value": "../../../fixtures/plateau-citymodel/11100_saitama-shi_city_2025_citygml_1_op/schemas/iur/uro/3.2/urbanObject.xsd"
+    },
+    {
+      "name": "urfSchemaPath",
+      "value": "../../../fixtures/plateau-citymodel/11100_saitama-shi_city_2025_citygml_1_op/schemas/iur/urf/3.2/urbanFunction.xsd"
     }
   ],
   "expectedOutput": {

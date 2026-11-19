@@ -1,7 +1,8 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <!-- Validation driver for this case: the modules tools/citygml-schema/citygml-2.0.xsd
-     imports, the CityObjectGroup module, plus i-UR 3.2 by its published URL, which the catalog maps to the
-     copy the writer embeds. check-citygml-schema uses it in place of the global driver. -->
+     imports, the CityObjectGroup module, plus i-UR 3.2 Urban Object and Urban
+     Function, read from PLATEAU fixtures.
+     check-citygml-schema uses it in place of the global driver. -->
 <xs:schema xmlns:xs="http://www.w3.org/2001/XMLSchema"
            elementFormDefault="qualified">
   <xs:import namespace="http://www.opengis.net/citygml/2.0"                schemaLocation="http://schemas.opengis.net/citygml/2.0/cityGMLBase.xsd"/>
@@ -17,6 +18,6 @@
   <xs:import namespace="http://www.opengis.net/citygml/generics/2.0"       schemaLocation="http://schemas.opengis.net/citygml/generics/2.0/generics.xsd"/>
   <xs:import namespace="http://www.opengis.net/citygml/appearance/2.0"     schemaLocation="http://schemas.opengis.net/citygml/appearance/2.0/appearance.xsd"/>
   <xs:import namespace="http://www.opengis.net/citygml/cityobjectgroup/2.0" schemaLocation="http://schemas.opengis.net/citygml/cityobjectgroup/2.0/cityObjectGroup.xsd"/>
-  <xs:import namespace="https://www.geospatial.jp/iur/uro/3.2"             schemaLocation="https://www.geospatial.jp/iur/schemas/uro/3.2/urbanObject.xsd"/>
-  <xs:import namespace="https://www.geospatial.jp/iur/urf/3.2"             schemaLocation="https://www.geospatial.jp/iur/schemas/urf/3.2/urbanFunction.xsd"/>
+  <xs:import namespace="https://www.geospatial.jp/iur/uro/3.2"             schemaLocation="../../../fixtures/plateau-citymodel/11100_saitama-shi_city_2025_citygml_1_op/schemas/iur/uro/3.2/urbanObject.xsd"/>
+  <xs:import namespace="https://www.geospatial.jp/iur/urf/3.2"             schemaLocation="../../../fixtures/plateau-citymodel/11100_saitama-shi_city_2025_citygml_1_op/schemas/iur/urf/3.2/urbanFunction.xsd"/>
 </xs:schema>
