@@ -2077,6 +2077,7 @@ fn handle_code_validation_failure(
 #[cfg(test)]
 mod tests {
     use pretty_assertions::assert_eq;
+    use serde_json::json;
 
     use super::*;
     use crate::object_list::FeatureTypeDefinition;
@@ -2539,6 +2540,1375 @@ mod tests {
             Some(&AttributeValue::Number(Number::from(1)))
         );
         assert_eq!(summary[0].get("miscellaneous"), None);
+        Ok(())
+    }
+
+    /// Exceeds the envelope of [`city_model`] in elevation only.
+    const OUTSIDE_POS_LIST: &str = "36.61 137.01 1 36.62 137.01 20 36.62 137.02 1 36.61 137.01 1";
+
+    /// A gml:id of the form `{prefix}_{UUID}`, distinct for each `n`.
+    fn gml_id(prefix: &str, n: u32) -> String {
+        format!("{prefix}_00000000-0000-4000-8000-{n:012}")
+    }
+
+    /// A CityGML 3.0 city model whose envelope spans (36.6, 137.0, 0) to
+    /// (36.7, 137.1, 10).
+    fn city_model(srs_name: &str, members: &str) -> String {
+        format!(
+            r#"<?xml version="1.0" encoding="UTF-8"?>
+<core:CityModel xmlns:core="http://www.opengis.net/citygml/3.0" xmlns:gml="http://www.opengis.net/gml/3.2" xmlns:xlink="http://www.w3.org/1999/xlink" xmlns:bldg="http://www.opengis.net/citygml/building/3.0" xmlns:con="http://www.opengis.net/citygml/construction/3.0" xmlns:frn="http://www.opengis.net/citygml/cityfurniture/3.0" xmlns:grp="http://www.opengis.net/citygml/cityobjectgroup/3.0" xmlns:veg="http://www.opengis.net/citygml/vegetation/3.0" xmlns:urc="https://www.geospatial.jp/iur/urc/4.0" xmlns:foo="http://example.com/foo">
+    <gml:boundedBy>
+        <gml:Envelope srsName="{srs_name}" srsDimension="3">
+            <gml:lowerCorner>36.6 137.0 0</gml:lowerCorner>
+            <gml:upperCorner>36.7 137.1 10</gml:upperCorner>
+        </gml:Envelope>
+    </gml:boundedBy>
+{members}
+</core:CityModel>"#
+        )
+    }
+
+    /// A building `gml:id` with an LoD0 surface of `pos_list`.
+    fn building(gml_id: &str, pos_list: &str) -> String {
+        format!(
+            r#"    <core:cityObjectMember>
+        <bldg:Building gml:id="{gml_id}">
+            <core:lod0MultiSurface>
+                <gml:MultiSurface>
+                    <gml:surfaceMember>
+                        <gml:Polygon>
+                            <gml:exterior>
+                                <gml:LinearRing>
+                                    <gml:posList>{pos_list}</gml:posList>
+                                </gml:LinearRing>
+                            </gml:exterior>
+                        </gml:Polygon>
+                    </gml:surfaceMember>
+                </gml:MultiSurface>
+            </core:lod0MultiSurface>
+        </bldg:Building>
+    </core:cityObjectMember>"#
+        )
+    }
+
+    /// A city object group `gml_id` whose members are the xlink:hrefs `hrefs`,
+    /// each in a role `{role_prefix}_{UUID}`.
+    fn city_object_group(gml_id: &str, hrefs: &[String]) -> String {
+        let members: String = hrefs
+            .iter()
+            .enumerate()
+            .map(|(i, href)| {
+                format!(
+                    r#"
+            <grp:groupMember>
+                <grp:Role gml:id="{}">
+                    <grp:groupMember xlink:href="{href}"/>
+                </grp:Role>
+            </grp:groupMember>"#,
+                    gml_id.replacen("grp_", &format!("role{i}_"), 1)
+                )
+            })
+            .collect();
+        format!(
+            r#"    <core:cityObjectMember>
+        <grp:CityObjectGroup gml:id="{gml_id}">{members}
+        </grp:CityObjectGroup>
+    </core:cityObjectMember>"#
+        )
+    }
+
+    /// The xpath of the xlink:hrefs of [`city_object_group`].
+    const GROUP_MEMBER_XPATH: &str = "grp:CityObjectGroup/grp:groupMember/grp:Role/grp:groupMember";
+
+    /// The DM geometric attribute of a city object, whose LoD0 geometry is
+    /// `geometry`.
+    fn dm_geometric_attribute(geometry: &str) -> String {
+        format!(
+            r#"
+            <core:adeOfAbstractCityObject>
+                <urc:DmGeometricAttribute>
+                    <urc:dmCode>4265</urc:dmCode>
+                    <urc:geometryType>E2</urc:geometryType>
+                    <urc:mapLevel>2500</urc:mapLevel>
+                    <urc:shapeType>0</urc:shapeType>
+                    <urc:lod0Geometry>
+                        {geometry}
+                    </urc:lod0Geometry>
+                </urc:DmGeometricAttribute>
+            </core:adeOfAbstractCityObject>"#
+        )
+    }
+
+    /// A codelist defining each of `codes`.
+    fn codelist(codes: &[&str]) -> String {
+        let definitions: String = codes
+            .iter()
+            .map(|code| {
+                format!(
+                    r#"
+    <gml:dictionaryEntry>
+        <gml:Definition gml:id="id{code}">
+            <gml:description>{code}</gml:description>
+            <gml:name>{code}</gml:name>
+        </gml:Definition>
+    </gml:dictionaryEntry>"#
+                )
+            })
+            .collect();
+        format!(
+            r#"<?xml version="1.0" encoding="UTF-8"?>
+<gml:Dictionary xmlns:gml="http://www.opengis.net/gml" gml:id="codelist">
+    <gml:name>codelist</gml:name>{definitions}
+</gml:Dictionary>"#
+        )
+    }
+
+    fn write_file(path: &Path, content: &str) -> std::io::Result<()> {
+        fs::create_dir_all(path.parent().unwrap())?;
+        fs::write(path, content)
+    }
+
+    fn file_uri(path: &Path) -> String {
+        format!("file://{}", path.display())
+    }
+
+    /// An input feature for the city GML at `path`.
+    fn input(
+        name: &str,
+        package: &str,
+        index: u64,
+        path: &Path,
+        dir_codelists: Option<&Path>,
+    ) -> Feature {
+        let mut feature = Feature::new_with_attributes(Attributes::new());
+        feature.insert("index", AttributeValue::Number(Number::from(index)));
+        feature.insert("udxDirs", AttributeValue::String(package.to_string()));
+        feature.insert("name", AttributeValue::String(name.to_string()));
+        feature.insert("package", AttributeValue::String(package.to_string()));
+        feature.insert("path", AttributeValue::String(file_uri(path)));
+        if let Some(dir) = dir_codelists {
+            feature.insert("dirCodelists", AttributeValue::String(file_uri(dir)));
+        }
+        feature
+    }
+
+    /// A sent feature as (port, attributes).
+    type Output = (String, Value);
+
+    /// Processes `inputs` in order with the PLATEAU6 profile, then finishes, and
+    /// returns every feature sent.
+    fn run(
+        inputs: Vec<Feature>,
+        with: Option<HashMap<String, Value>>,
+    ) -> Result<Vec<Output>, BoxedError> {
+        let factory = DomainOfDefinitionValidatorFactory::new(&crate::plateau6::PLATEAU6);
+        let mut processor: Box<dyn Processor> = factory.build(
+            create_default_node_context(),
+            EventHub::new(1024),
+            "test".to_string(),
+            with,
+        )?;
+        let fw = ProcessorChannelForwarder::Noop(NoopChannelForwarder::default());
+        for input in inputs {
+            processor.process(create_default_execute_context(input), &fw)?;
+        }
+        processor.finish(create_default_node_context(), &fw)?;
+
+        let ProcessorChannelForwarder::Noop(noop_fw) = &fw else {
+            unreachable!();
+        };
+        let ports = noop_fw.send_ports.lock().unwrap();
+        let features = noop_fw.send_features.lock().unwrap();
+        Ok(ports
+            .iter()
+            .zip(features.iter())
+            .map(|(port, feature)| {
+                let attributes = AttributeValue::Map((*feature.attributes).clone());
+                (port.as_ref().to_string(), Value::from(attributes))
+            })
+            .collect())
+    }
+
+    /// Orders the outputs of `finish`, which follow hash map order: the
+    /// statistics by file name, and the duplicate gml:ids by gml:id, with
+    /// their keys sorted and `duplicateId` renumbered in that order.
+    fn normalize_finish(mut outputs: Vec<Output>) -> Vec<Output> {
+        let start = outputs
+            .iter()
+            .position(|(port, feature)| {
+                port == "duplicateGmlIdStats" || feature["flag"] == "GMLID_NotUnique"
+            })
+            .unwrap_or(outputs.len());
+        let (mut stats, mut duplicates): (Vec<_>, Vec<_>) = outputs
+            .split_off(start)
+            .into_iter()
+            .partition(|(port, _)| port == "duplicateGmlIdStats");
+        stats.sort_by(|a, b| a.1["filename"].as_str().cmp(&b.1["filename"].as_str()));
+        duplicates.sort_by(|a, b| a.1["gmlId"].as_str().cmp(&b.1["gmlId"].as_str()));
+
+        // One `duplicateId` per gml:id, distinct across gml:ids.
+        let mut ids = Vec::<(Value, Value)>::new();
+        for (_, feature) in &duplicates {
+            assert_eq!(feature["flag"], "GMLID_NotUnique", "{feature}");
+            let id = (feature["gmlId"].clone(), feature["duplicateId"].clone());
+            if !ids.contains(&id) {
+                ids.push(id);
+            }
+        }
+        let gml_ids = ids
+            .iter()
+            .map(|(g, _)| g.to_string())
+            .collect::<HashSet<_>>();
+        let duplicate_ids = ids
+            .iter()
+            .map(|(_, d)| d.to_string())
+            .collect::<HashSet<_>>();
+        assert_eq!(gml_ids.len(), ids.len(), "{ids:?}");
+        assert_eq!(duplicate_ids.len(), ids.len(), "{ids:?}");
+
+        for (_, feature) in &mut duplicates {
+            let rank = ids
+                .iter()
+                .position(|(g, _)| *g == feature["gmlId"])
+                .unwrap();
+            feature["duplicateId"] = Value::String(rank.to_string());
+            let sorted = feature
+                .as_object()
+                .unwrap()
+                .clone()
+                .into_iter()
+                .collect::<BTreeMap<_, _>>();
+            *feature = Value::Object(sorted.into_iter().collect());
+        }
+        outputs.extend(stats);
+        outputs.extend(duplicates);
+        outputs
+    }
+
+    /// Compares the outputs, attribute order included.
+    fn assert_outputs(actual: Vec<Output>, expected: Vec<Output>) {
+        let pretty = |outputs| serde_json::to_string_pretty(&normalize_finish(outputs)).unwrap();
+        assert_eq!(pretty(actual), pretty(expected));
+    }
+
+    /// `base` followed by the entries of `rest`; an entry of `rest` already in
+    /// `base` replaces the value in place.
+    fn concat(base: &Value, rest: Value) -> Value {
+        let mut map = base.as_object().unwrap().clone();
+        map.extend(rest.as_object().unwrap().clone());
+        Value::Object(map)
+    }
+
+    fn feature_output(value: Value) -> Output {
+        ("features".to_string(), value)
+    }
+
+    fn stats_output(filename: &str, count: u64) -> Output {
+        (
+            "duplicateGmlIdStats".to_string(),
+            json!({"filename": filename, "duplicateGmlIdCount": count}),
+        )
+    }
+
+    /// The attributes of the features sent with `flag`.
+    fn with_flag<'a>(outputs: &'a [Output], flag: &str) -> Vec<&'a Value> {
+        outputs
+            .iter()
+            .map(|(_, feature)| feature)
+            .filter(|feature| feature["flag"] == flag)
+            .collect()
+    }
+
+    /// The values of `keys` in each feature sent with `flag`.
+    fn fields(outputs: &[Output], flag: &str, keys: &[&str]) -> Vec<Vec<Value>> {
+        with_flag(outputs, flag)
+            .into_iter()
+            .map(|feature| keys.iter().map(|key| feature[*key].clone()).collect())
+            .collect()
+    }
+
+    #[test]
+    // Every check finds an error once, across two files and a city object group.
+    fn test_all_outputs_in_send_order() -> Result<(), BoxedError> {
+        let temp_dir = TempDir::with_prefix("domain_of_definition_validator_test_")?;
+        let root = temp_dir.path();
+        let codelists = root.join("codelists");
+        write_file(&codelists.join("Building_class.xml"), &codelist(&["3001"]))?;
+        write_file(&codelists.join("Building_usage.xml"), &codelist(&["411"]))?;
+
+        let b1 = gml_id("bldg", 1);
+        let b3 = gml_id("bldg", 3);
+        let addr = gml_id("addr", 31);
+        let poly = gml_id("poly", 32);
+        let missing = gml_id("bldg", 99);
+        let f4 = gml_id("frn", 4);
+        let grp = gml_id("grp", 5);
+        let missing_in_group = gml_id("bldg", 98);
+        let f1 = root.join("udx/bldg/f1.gml");
+        write_file(
+            &f1,
+            &city_model(
+                VALID_SRS_NAME_6697,
+                &format!(
+                    r##"    <core:cityObjectMember>
+        <bldg:Building gml:id="{b1}">
+            <core:lod0MultiSurface>
+                <gml:MultiSurface>
+                    <gml:surfaceMember>
+                        <gml:Polygon>
+                            <gml:exterior>
+                                <gml:LinearRing>
+                                    <gml:posList>{VALID_POS_LIST}</gml:posList>
+                                </gml:LinearRing>
+                            </gml:exterior>
+                        </gml:Polygon>
+                    </gml:surfaceMember>
+                </gml:MultiSurface>
+            </core:lod0MultiSurface>
+            <bldg:class codeSpace="../../codelists/Building_class.xml">3001</bldg:class>
+            <bldg:usage codeSpace="../../codelists/Building_usage.xml">9999</bldg:usage>
+            <bldg:roofType codeSpace="../../codelists/Building_roofType.xml">1</bldg:roofType>
+        </bldg:Building>
+    </core:cityObjectMember>
+{building_outside}
+    <core:cityObjectMember>
+        <bldg:Building gml:id="{b3}">
+            <core:lod1Solid>
+                <gml:Solid>
+                    <gml:exterior>
+                        <gml:Shell>
+                            <gml:surfaceMember xlink:href="#{poly}"/>
+                            <gml:surfaceMember xlink:href="#{missing}"/>
+                            <gml:surfaceMember xlink:href="#{addr}"/>
+                        </gml:Shell>
+                    </gml:exterior>
+                </gml:Solid>
+            </core:lod1Solid>
+            <core:lod2MultiSurface>
+                <gml:MultiSurface>
+                    <gml:surfaceMember>
+                        <gml:Polygon gml:id="{poly}">
+                            <gml:exterior>
+                                <gml:LinearRing>
+                                    <gml:posList>{VALID_POS_LIST}</gml:posList>
+                                </gml:LinearRing>
+                            </gml:exterior>
+                        </gml:Polygon>
+                    </gml:surfaceMember>
+                </gml:MultiSurface>
+            </core:lod2MultiSurface>
+            <bldg:address>
+                <core:Address gml:id="{addr}"/>
+            </bldg:address>
+        </bldg:Building>
+    </core:cityObjectMember>
+    <core:cityObjectMember>
+        <frn:CityFurniture gml:id="{f4}">{dm_solid}
+        </frn:CityFurniture>
+    </core:cityObjectMember>
+{group}"##,
+                    building_outside = building("bldg_not-a-uuid", OUTSIDE_POS_LIST),
+                    dm_solid = dm_geometric_attribute("<gml:Solid/>"),
+                    group = city_object_group(
+                        &grp,
+                        &[format!("#{poly}"), format!("#{missing_in_group}")]
+                    ),
+                ),
+            ),
+        )?;
+        let f2 = root.join("udx/bldg/f2.gml");
+        let srs_4326 = "http://www.opengis.net/def/crs/EPSG/0/4326";
+        write_file(&f2, &city_model(srs_4326, &building(&b1, VALID_POS_LIST)))?;
+
+        let outputs = run(
+            vec![
+                input("f1.gml", "bldg", 0, &f1, Some(&codelists)),
+                input("f2.gml", "bldg", 1, &f2, Some(&codelists)),
+            ],
+            None,
+        )?;
+
+        let file1 = json!({"index": 0, "udxDirs": "bldg", "name": "f1.gml", "path": file_uri(&f1)});
+        let member = |gml_id: &str, feature_type: &str| {
+            concat(
+                &file1,
+                json!({"gmlId": gml_id, "featureType": feature_type}),
+            )
+        };
+        let envelope = json!({
+            "lowerLatitude": 36.6, "lowerLongitude": 137.0, "lowerElevation": 0.0,
+            "upperLatitude": 36.7, "upperLongitude": 137.1, "upperElevation": 10.0,
+        });
+        let shell_surface_member =
+            "bldg:Building/core:lod1Solid/gml:Solid/gml:exterior/gml:Shell/gml:surfaceMember";
+        let expected = vec![
+            feature_output(concat(
+                &member(&b1, "Building"),
+                json!({
+                    "flag": "CodeValidation",
+                    "tag": "bldg:usage",
+                    "xpath": "bldg:Building/bldg:usage",
+                    "codeSpace": "../../codelists/Building_usage.xml",
+                    "codeSpaceValue": "9999",
+                }),
+            )),
+            feature_output(concat(
+                &member(&b1, "Building"),
+                json!({
+                    "flag": "incorrectCodeSpace",
+                    "tag": "bldg:roofType",
+                    "xpath": "bldg:Building/bldg:roofType",
+                    "codeSpace": "../../codelists/Building_roofType.xml",
+                    "codeSpaceValue": "1",
+                }),
+            )),
+            feature_output(concat(
+                &member("bldg_not-a-uuid", "Building"),
+                json!({"flag": "GMLID_NotWellFormed", "tag": "bldg:Building"}),
+            )),
+            feature_output(concat(
+                &concat(
+                    &concat(
+                        &member("bldg_not-a-uuid", "Building"),
+                        json!({"flag": "ExtentsValidation", "isExtentsCorrect": false}),
+                    ),
+                    envelope.clone(),
+                ),
+                json!({
+                    "minLatitude": 36.61, "minLongitude": 137.01, "minElevation": 1.0,
+                    "maxLatitude": 36.62, "maxLongitude": 137.02, "maxElevation": 20.0,
+                }),
+            )),
+            feature_output(concat(
+                &member(&b3, "Building"),
+                json!({
+                    "flag": "XLink_NoReference",
+                    "tag": "gml:surfaceMember",
+                    "xpath": shell_surface_member,
+                    "xlinkHref": format!("#{missing}"),
+                }),
+            )),
+            feature_output(concat(
+                &member(&b3, "Building"),
+                json!({
+                    "flag": "XLink_InvalidObjectType",
+                    "tag": "gml:surfaceMember",
+                    "xpath": shell_surface_member,
+                    "xlinkHref": format!("#{addr}"),
+                    "refGmlId": addr,
+                    "refGmlTag": "core:Address",
+                    "refGmlXpath": "bldg:Building/bldg:address/core:Address",
+                }),
+            )),
+            feature_output(concat(
+                &member(&f4, "CityFurniture"),
+                json!({"flag": "GMLID_NotWellFormed", "tag": "frn:CityFurniture"}),
+            )),
+            // The DM geometric attribute has no gml:id.
+            feature_output(concat(
+                &member("", "CityFurniture"),
+                json!({
+                    "flag": "InvalidLodXGeometry",
+                    "parentTag": "urc:DmGeometricAttribute",
+                    "invalidGeometry": "gml:Solid",
+                }),
+            )),
+            feature_output(json!({
+                "index": 0,
+                "udxDirs": "bldg",
+                "name": "f1.gml",
+                "flag": "XLink_NoReference",
+                "tag": "grp:groupMember",
+                "xpath": GROUP_MEMBER_XPATH,
+                "xlinkHref": format!("#{missing_in_group}"),
+                "featureType": "CityObjectGroup",
+                "gmlId": grp,
+            })),
+            feature_output(concat(
+                &concat(
+                    &json!({
+                        "index": 0,
+                        "flag": "Summary",
+                        "srsName": VALID_SRS_NAME_6697,
+                        "invalidFeatureTypesNum": 1,
+                        "invalidFeatureTypesDetail": {"CityFurniture": 1},
+                        "correctCodeValues": 1,
+                        "incorrectCodeValue": 1,
+                        "incorrectCodeSpace": 1,
+                        "isCorrectSrsName": true,
+                        "correctExtents": 2,
+                        "incorrectExtents": 1,
+                    }),
+                    envelope.clone(),
+                ),
+                json!({
+                    "gmlIdNotWellformed": 2,
+                    "xlinkHasNoReference": 2,
+                    "xlinkInvalidObjectType": 1,
+                    "invalidLodXGeometry": 1,
+                }),
+            )),
+            feature_output(concat(
+                &concat(
+                    &json!({
+                        "index": 1,
+                        "flag": "Summary",
+                        "srsName": srs_4326,
+                        "invalidFeatureTypesNum": 0,
+                        "invalidFeatureTypesDetail": {},
+                        "correctCodeValues": 0,
+                        "incorrectCodeValue": 0,
+                        "incorrectCodeSpace": 0,
+                        "isCorrectSrsName": false,
+                        "correctExtents": 1,
+                        "incorrectExtents": 0,
+                    }),
+                    envelope,
+                ),
+                json!({
+                    "gmlIdNotWellformed": 0,
+                    "xlinkHasNoReference": 0,
+                    "xlinkInvalidObjectType": 0,
+                    "invalidLodXGeometry": 0,
+                }),
+            )),
+            stats_output("f1.gml", 1),
+            stats_output("f2.gml", 1),
+            feature_output(json!({
+                "flag": "GMLID_NotUnique",
+                "gmlId": b1,
+                "duplicateId": "0",
+                "numDuplicates": 2,
+                "tag": "bldg:Building",
+                "xpath": "bldg:Building",
+                "index": "0",
+                "udxDirs": "bldg",
+                "name": "f1.gml",
+            })),
+            feature_output(json!({
+                "flag": "GMLID_NotUnique",
+                "gmlId": b1,
+                "duplicateId": "0",
+                "numDuplicates": 2,
+                "tag": "bldg:Building",
+                "xpath": "bldg:Building",
+                "index": "1",
+                "udxDirs": "bldg",
+                "name": "f2.gml",
+            })),
+        ];
+        assert_outputs(outputs, expected);
+        Ok(())
+    }
+
+    #[test]
+    // With an objectlist, the L03 errors of a file follow the errors of its
+    // members, and precede the city object group xlink errors and the summary.
+    fn test_all_outputs_with_objectlist_in_send_order() -> Result<(), BoxedError> {
+        let temp_dir = TempDir::with_prefix("domain_of_definition_validator_test_")?;
+        let root = temp_dir.path();
+        let codelists = root.join("codelists");
+        fs::create_dir_all(&codelists)?;
+        let veg = gml_id("veg", 2);
+        let grp = gml_id("grp", 3);
+        let missing = gml_id("bldg", 99);
+        let f1 = root.join("udx/bldg/f1.gml");
+        write_file(
+            &f1,
+            &city_model(
+                VALID_SRS_NAME_6697,
+                &format!(
+                    r#"    <core:cityObjectMember>
+        <bldg:Building gml:id="bldg_not-a-uuid"/>
+    </core:cityObjectMember>
+    <core:cityObjectMember>
+        <veg:PlantCover gml:id="{veg}"/>
+    </core:cityObjectMember>
+{group}"#,
+                    group = city_object_group(&grp, &[format!("#{missing}")]),
+                ),
+            ),
+        )?;
+        let mut feature = input("f1.gml", "bldg", 0, &f1, Some(&codelists));
+        let building = FeatureTypeDefinition {
+            usable: true,
+            paths: HashMap::new(),
+        };
+        let definitions = ObjectListDefinitions::new(HashMap::from([(
+            "bldg".to_string(),
+            HashMap::from([("bldg:Building".to_string(), building)]),
+        )]));
+        feature.insert(OBJECT_LIST_DEFINITIONS_ATTRIBUTE, definitions.into());
+
+        let outputs = run(vec![feature], None)?;
+
+        let file1 = json!({"index": 0, "udxDirs": "bldg", "name": "f1.gml"});
+        let file1_path = concat(&file1, json!({"path": file_uri(&f1)}));
+        let expected = vec![
+            feature_output(concat(
+                &file1_path,
+                json!({
+                    "gmlId": "bldg_not-a-uuid",
+                    "featureType": "Building",
+                    "flag": "GMLID_NotWellFormed",
+                    "tag": "bldg:Building",
+                }),
+            )),
+            feature_output(concat(
+                &file1_path,
+                json!({
+                    "gmlId": veg,
+                    "featureType": "PlantCover",
+                    "flag": "GMLID_NotWellFormed",
+                    "tag": "veg:PlantCover",
+                }),
+            )),
+            feature_output(concat(
+                &file1,
+                json!({
+                    "flag": "ApplicationSchemaViolation",
+                    "featureType": "veg:PlantCover",
+                    "gmlId": veg,
+                    "path": "",
+                    "reason": Reason::Undefined.as_str(),
+                }),
+            )),
+            feature_output(concat(
+                &file1,
+                json!({
+                    "flag": "XLink_NoReference",
+                    "tag": "grp:groupMember",
+                    "xpath": GROUP_MEMBER_XPATH,
+                    "xlinkHref": format!("#{missing}"),
+                    "featureType": "CityObjectGroup",
+                    "gmlId": grp,
+                }),
+            )),
+            feature_output(json!({
+                "index": 0,
+                "flag": "Summary",
+                "srsName": VALID_SRS_NAME_6697,
+                "invalidFeatureTypesNum": 1,
+                "invalidFeatureTypesDetail": {},
+                "correctCodeValues": 0,
+                "incorrectCodeValue": 0,
+                "incorrectCodeSpace": 0,
+                "isCorrectSrsName": true,
+                "correctExtents": 0,
+                "incorrectExtents": 0,
+                "lowerLatitude": 36.6, "lowerLongitude": 137.0, "lowerElevation": 0.0,
+                "upperLatitude": 36.7, "upperLongitude": 137.1, "upperElevation": 10.0,
+                "gmlIdNotWellformed": 2,
+                "xlinkHasNoReference": 1,
+                "xlinkInvalidObjectType": 0,
+                "invalidLodXGeometry": 0,
+            })),
+            stats_output("f1.gml", 0),
+        ];
+        assert_outputs(outputs, expected);
+        Ok(())
+    }
+
+    #[test]
+    // Each of the five ways to find the codelist of a codeSpace, and a codeSpace
+    // found in none of them.
+    fn test_code_value_codelist_resolution() -> Result<(), BoxedError> {
+        let temp_dir = TempDir::with_prefix("domain_of_definition_validator_test_")?;
+        let root = temp_dir.path();
+        let codelists = root.join("codelists");
+        for name in ["A", "B", "D", "E"] {
+            write_file(&codelists.join(format!("{name}.xml")), &codelist(&["1"]))?;
+        }
+        let other_codelists = root.join("other");
+        write_file(&other_codelists.join("C.xml"), &codelist(&["1"]))?;
+        let fallback = root.join("fallback");
+        write_file(&fallback.join("F.xml"), &codelist(&["1"]))?;
+        let no_fallback = root.join("none");
+
+        // (file, codeSpace, dirCodelists, codelistsPath). A codeSpace starting
+        // with `../` does not lead to the codelist from the city GML.
+        let cases = [
+            // In the preloaded codelists, by the part after `codelists/`.
+            ("a", "../codelists/A.xml", Some(&codelists), &no_fallback),
+            // In the preloaded codelists, by joining the part after
+            // `codelists/` to dirCodelists.
+            (
+                "b",
+                "../codelists/sub/../B.xml",
+                Some(&codelists),
+                &no_fallback,
+            ),
+            // Loaded from dirCodelists, which differs from the one preloaded.
+            (
+                "c",
+                "../codelists/C.xml",
+                Some(&other_codelists),
+                &no_fallback,
+            ),
+            // In the preloaded codelists, relative to the city GML.
+            ("d", "../../codelists/D.xml", None, &no_fallback),
+            // In the preloaded codelists, by the file name in codelistsPath.
+            ("e", "../../elsewhere/E.xml", Some(&codelists), &codelists),
+            // Loaded by the file name from codelistsPath.
+            ("f", "../../elsewhere/F.xml", Some(&codelists), &fallback),
+            // Nowhere.
+            ("g", "../../codelists/G.xml", Some(&codelists), &codelists),
+        ];
+        let mut inputs = Vec::new();
+        for (index, (name, code_space, dir_codelists, codelists_path)) in cases.iter().enumerate() {
+            let path = root.join(format!("udx/bldg/{name}.gml"));
+            write_file(
+                &path,
+                &city_model(
+                    VALID_SRS_NAME_6697,
+                    &format!(
+                        r#"    <core:cityObjectMember>
+        <bldg:Building gml:id="{}">
+            <bldg:class codeSpace="{code_space}">1</bldg:class>
+            <bldg:usage codeSpace="{code_space}">2</bldg:usage>
+        </bldg:Building>
+    </core:cityObjectMember>"#,
+                        gml_id("bldg", index as u32)
+                    ),
+                ),
+            )?;
+            let mut feature = input(
+                &format!("{name}.gml"),
+                "bldg",
+                index as u64,
+                &path,
+                dir_codelists.map(|dir| dir.as_path()),
+            );
+            feature.insert(
+                "codelistsPath",
+                AttributeValue::String(file_uri(codelists_path)),
+            );
+            inputs.push(feature);
+        }
+        let with = HashMap::from([(
+            "codelistsPath".to_string(),
+            json!({"type": "flowExpr", "value": r#"attributes["codelistsPath"]"#}),
+        )]);
+
+        let outputs = run(inputs, Some(with))?;
+
+        // (index, correctCodeValues, incorrectCodeValue, incorrectCodeSpace)
+        let counts = fields(
+            &outputs,
+            "Summary",
+            &[
+                "index",
+                "correctCodeValues",
+                "incorrectCodeValue",
+                "incorrectCodeSpace",
+            ],
+        );
+        assert_eq!(
+            counts,
+            [
+                [0, 1, 1, 0],
+                [1, 1, 1, 0],
+                [2, 1, 1, 0],
+                [3, 1, 1, 0],
+                [4, 1, 1, 0],
+                [5, 1, 1, 0],
+                [6, 0, 0, 2],
+            ]
+            .map(|row| row.map(|v| json!(v)).to_vec())
+            .to_vec()
+        );
+        assert_eq!(
+            fields(&outputs, "CodeValidation", &["name", "codeSpaceValue"]).len(),
+            6
+        );
+        Ok(())
+    }
+
+    #[test]
+    // L05 accepts EPSG:6697 and EPSG:6668, and the CRSs of unf for unf only. A
+    // file that cannot be parsed is not an L05 error.
+    fn test_srs_name() -> Result<(), BoxedError> {
+        let temp_dir = TempDir::with_prefix("domain_of_definition_validator_test_")?;
+        let root = temp_dir.path();
+        let codelists = root.join("codelists");
+        fs::create_dir_all(&codelists)?;
+        let srs_10169 = "http://www.opengis.net/def/crs/EPSG/0/10169";
+        let srs_4326 = "http://www.opengis.net/def/crs/EPSG/0/4326";
+        let not_well_formed = r#"<?xml version="1.0" encoding="UTF-8"?>
+<core:CityModel xmlns:core="http://www.opengis.net/citygml/3.0" xmlns:gml="http://www.opengis.net/gml/3.2">
+    <gml:boundedBy>
+</core:CityModel>"#;
+        let no_envelope = r#"<?xml version="1.0" encoding="UTF-8"?>
+<core:CityModel xmlns:core="http://www.opengis.net/citygml/3.0" xmlns:gml="http://www.opengis.net/gml/3.2">
+</core:CityModel>"#;
+        let cases = [
+            ("bldg", city_model(VALID_SRS_NAME_6697, "")),
+            ("bldg", city_model(VALID_SRS_NAME_6668, "")),
+            ("bldg", city_model(srs_4326, "")),
+            ("unf", city_model(srs_10169, "")),
+            ("bldg", city_model(srs_10169, "")),
+            ("bldg", not_well_formed.to_string()),
+            ("bldg", no_envelope.to_string()),
+        ];
+        let mut inputs = Vec::new();
+        for (index, (package, content)) in cases.iter().enumerate() {
+            let path = root.join(format!("udx/{package}/{index}.gml"));
+            write_file(&path, content)?;
+            inputs.push(input(
+                &format!("{index}.gml"),
+                package,
+                index as u64,
+                &path,
+                Some(&codelists),
+            ));
+        }
+
+        let outputs = run(inputs, None)?;
+
+        assert_eq!(
+            fields(&outputs, "Summary", &["srsName", "isCorrectSrsName"]),
+            [
+                (VALID_SRS_NAME_6697, true),
+                (VALID_SRS_NAME_6668, true),
+                (srs_4326, false),
+                (srs_10169, true),
+                (srs_10169, false),
+                ("", true),
+                ("", true),
+            ]
+            .map(|(srs_name, correct)| vec![json!(srs_name), json!(correct)])
+            .to_vec()
+        );
+        Ok(())
+    }
+
+    #[test]
+    // The gml:id of a member has the package prefix, and that of a city object
+    // group any lowercase prefix. The gml:ids within a member are not checked.
+    fn test_gml_id_format() -> Result<(), BoxedError> {
+        let temp_dir = TempDir::with_prefix("domain_of_definition_validator_test_")?;
+        let root = temp_dir.path();
+        let codelists = root.join("codelists");
+        fs::create_dir_all(&codelists)?;
+        let upper_case = "bldg_ABCDEF00-0000-4000-8000-000000000003".to_string();
+        let members = [
+            ("bldg:Building", gml_id("bldg", 1)),
+            ("bldg:Building", gml_id("frn", 2)),
+            ("bldg:Building", upper_case.clone()),
+            ("bldg:Building", "bldg_not-a-uuid".to_string()),
+            ("grp:CityObjectGroup", gml_id("grp", 5)),
+            ("grp:CityObjectGroup", gml_id("abc", 6)),
+            ("grp:CityObjectGroup", "grp_not-a-uuid".to_string()),
+        ]
+        .map(|(tag, id)| {
+            format!(
+                r#"    <core:cityObjectMember>
+        <{tag} gml:id="{id}">
+            <core:lod0MultiSurface>
+                <gml:MultiSurface gml:id="not-a-uuid"/>
+            </core:lod0MultiSurface>
+        </{tag}>
+    </core:cityObjectMember>"#
+            )
+        })
+        .join("\n");
+        let f1 = root.join("udx/bldg/f1.gml");
+        write_file(&f1, &city_model(VALID_SRS_NAME_6697, &members))?;
+
+        let outputs = run(
+            vec![input("f1.gml", "bldg", 0, &f1, Some(&codelists))],
+            None,
+        )?;
+
+        assert_eq!(
+            fields(&outputs, "GMLID_NotWellFormed", &["gmlId", "tag"]),
+            [
+                (gml_id("frn", 2), "bldg:Building"),
+                (upper_case, "bldg:Building"),
+                ("bldg_not-a-uuid".to_string(), "bldg:Building"),
+                ("grp_not-a-uuid".to_string(), "grp:CityObjectGroup"),
+            ]
+            .map(|(id, tag)| vec![json!(id), json!(tag)])
+            .to_vec()
+        );
+        assert_eq!(
+            fields(&outputs, "Summary", &["gmlIdNotWellformed"]),
+            [[json!(4)]]
+        );
+        Ok(())
+    }
+
+    #[test]
+    // A gml:id is counted once per member, by its last occurrence there, and
+    // the duplicates are found within a file as well as across files.
+    fn test_gml_id_uniqueness() -> Result<(), BoxedError> {
+        let temp_dir = TempDir::with_prefix("domain_of_definition_validator_test_")?;
+        let root = temp_dir.path();
+        let codelists = root.join("codelists");
+        fs::create_dir_all(&codelists)?;
+        let b1 = gml_id("bldg", 1);
+        let b3 = gml_id("bldg", 3);
+        let b4 = gml_id("bldg", 4);
+        let b5 = gml_id("bldg", 5);
+        let poly = gml_id("poly", 6);
+        let polygon = |gml_id: &str| {
+            format!(
+                r#"<gml:MultiSurface>
+                    <gml:surfaceMember>
+                        <gml:Polygon gml:id="{gml_id}"/>
+                    </gml:surfaceMember>
+                </gml:MultiSurface>"#
+            )
+        };
+        let f1 = root.join("udx/bldg/f1.gml");
+        write_file(
+            &f1,
+            &city_model(
+                VALID_SRS_NAME_6697,
+                &format!(
+                    r#"    <core:cityObjectMember>
+        <bldg:Building gml:id="{b1}"/>
+    </core:cityObjectMember>
+    <core:cityObjectMember>
+        <bldg:Building gml:id="{b1}"/>
+    </core:cityObjectMember>
+    <core:cityObjectMember>
+        <bldg:Building gml:id="{b3}">
+            <core:lod2MultiSurface>
+                {poly_in_lod2}
+            </core:lod2MultiSurface>
+            <core:lod3MultiSurface>
+                {poly_in_lod3}
+            </core:lod3MultiSurface>
+        </bldg:Building>
+    </core:cityObjectMember>
+    <core:cityObjectMember>
+        <bldg:Building gml:id="{b4}">
+            <core:lod2MultiSurface>
+                {poly_in_lod2}
+            </core:lod2MultiSurface>
+        </bldg:Building>
+    </core:cityObjectMember>
+    <core:cityObjectMember>
+        <bldg:Building gml:id="{b5}">
+            <core:lod2MultiSurface>
+                {b5_in_lod2}
+            </core:lod2MultiSurface>
+        </bldg:Building>
+    </core:cityObjectMember>"#,
+                    poly_in_lod2 = polygon(&poly),
+                    poly_in_lod3 = polygon(&poly),
+                    b5_in_lod2 = polygon(&b5),
+                ),
+            ),
+        )?;
+        let f2 = root.join("udx/bldg/f2.gml");
+        write_file(
+            &f2,
+            &city_model(
+                VALID_SRS_NAME_6697,
+                &format!(
+                    r#"    <core:cityObjectMember>
+        <bldg:Building gml:id="{b5}"/>
+    </core:cityObjectMember>
+    <core:cityObjectMember>
+        <bldg:Building gml:id="{}"/>
+    </core:cityObjectMember>"#,
+                    gml_id("bldg", 21)
+                ),
+            ),
+        )?;
+        let f3 = root.join("udx/bldg/f3.gml");
+        write_file(
+            &f3,
+            &city_model(VALID_SRS_NAME_6697, &building(&gml_id("bldg", 31), "")),
+        )?;
+
+        let outputs = run(
+            vec![
+                input("f1.gml", "bldg", 0, &f1, Some(&codelists)),
+                input("f2.gml", "bldg", 1, &f2, Some(&codelists)),
+                input("f3.gml", "bldg", 2, &f3, Some(&codelists)),
+            ],
+            None,
+        )?;
+
+        let start = outputs
+            .iter()
+            .position(|(port, _)| port == "duplicateGmlIdStats")
+            .unwrap();
+        let lod2_polygon =
+            "bldg:Building/core:lod2MultiSurface/gml:MultiSurface/gml:surfaceMember/gml:Polygon";
+        let lod3_polygon =
+            "bldg:Building/core:lod3MultiSurface/gml:MultiSurface/gml:surfaceMember/gml:Polygon";
+        let duplicate =
+            |gml_id: &str, id: &str, num: u64, tag: &str, xpath: &str, file: (u64, &str)| {
+                feature_output(json!({
+                    "flag": "GMLID_NotUnique",
+                    "gmlId": gml_id,
+                    "duplicateId": id,
+                    "numDuplicates": num,
+                    "tag": tag,
+                    "xpath": xpath,
+                    "index": file.0.to_string(),
+                    "udxDirs": "bldg",
+                    "name": file.1,
+                }))
+            };
+        assert_outputs(
+            outputs[start..].to_vec(),
+            vec![
+                stats_output("f1.gml", 5),
+                stats_output("f2.gml", 1),
+                stats_output("f3.gml", 0),
+                duplicate(&b1, "0", 2, "bldg:Building", "bldg:Building", (0, "f1.gml")),
+                duplicate(&b1, "0", 2, "bldg:Building", "bldg:Building", (0, "f1.gml")),
+                // The member's own gml:id is replaced by the polygon's.
+                duplicate(&b5, "1", 2, "gml:Polygon", lod2_polygon, (0, "f1.gml")),
+                duplicate(&b5, "1", 2, "bldg:Building", "bldg:Building", (1, "f2.gml")),
+                // Only the last of the two in the same member.
+                duplicate(&poly, "2", 2, "gml:Polygon", lod3_polygon, (0, "f1.gml")),
+                duplicate(&poly, "2", 2, "gml:Polygon", lod2_polygon, (0, "f1.gml")),
+            ],
+        );
+        Ok(())
+    }
+
+    #[test]
+    // A member's xlink refers to a gml:id within the member, and that of a city
+    // object group to one anywhere in the file.
+    fn test_xlink_reference() -> Result<(), BoxedError> {
+        let temp_dir = TempDir::with_prefix("domain_of_definition_validator_test_")?;
+        let root = temp_dir.path();
+        let codelists = root.join("codelists");
+        fs::create_dir_all(&codelists)?;
+
+        let grp = gml_id("grp", 1);
+        let b2 = gml_id("bldg", 2);
+        let b3 = gml_id("bldg", 3);
+        let addr2 = gml_id("addr", 21);
+        let poly2 = gml_id("poly", 22);
+        let poly3 = gml_id("poly", 31);
+        let missing = gml_id("bldg", 99);
+        let f1 = root.join("udx/bldg/f1.gml");
+        write_file(
+            &f1,
+            &city_model(
+                VALID_SRS_NAME_6697,
+                &format!(
+                    r##"{group}
+    <core:cityObjectMember>
+        <bldg:Building gml:id="{b2}">
+            <core:lod1Solid>
+                <gml:Solid>
+                    <gml:exterior>
+                        <gml:Shell>
+                            <gml:surfaceMember xlink:href="#{poly2}"/>
+                            <gml:surfaceMember xlink:href="#{addr2}"/>
+                            <gml:surfaceMember xlink:href="#{poly3}"/>
+                            <gml:surfaceMember xlink:href="#{missing}"/>
+                        </gml:Shell>
+                    </gml:exterior>
+                </gml:Solid>
+            </core:lod1Solid>
+            <core:lod2MultiSurface>
+                <gml:MultiSurface>
+                    <gml:surfaceMember>
+                        <gml:Polygon gml:id="{poly2}"/>
+                    </gml:surfaceMember>
+                </gml:MultiSurface>
+            </core:lod2MultiSurface>
+            <bldg:address>
+                <core:Address gml:id="{addr2}"/>
+            </bldg:address>
+        </bldg:Building>
+    </core:cityObjectMember>
+    <core:cityObjectMember>
+        <bldg:Building gml:id="{b3}">
+            <core:lod2MultiSurface>
+                <gml:MultiSurface>
+                    <gml:surfaceMember>
+                        <gml:Polygon gml:id="{poly3}"/>
+                    </gml:surfaceMember>
+                </gml:MultiSurface>
+            </core:lod2MultiSurface>
+        </bldg:Building>
+    </core:cityObjectMember>"##,
+                    group = city_object_group(
+                        &grp,
+                        &[format!("#{b3}"), format!("#{poly3}"), format!("#{missing}"),]
+                    ),
+                ),
+            ),
+        )?;
+
+        let outputs = run(
+            vec![input("f1.gml", "bldg", 0, &f1, Some(&codelists))],
+            None,
+        )?;
+
+        let keys = ["flag", "gmlId", "xlinkHref"];
+        let xlink_errors = fields(&outputs, "XLink_InvalidObjectType", &keys)
+            .into_iter()
+            .chain(fields(&outputs, "XLink_NoReference", &keys))
+            .collect::<Vec<_>>();
+        assert_eq!(
+            xlink_errors,
+            [
+                ("XLink_InvalidObjectType", &b2, format!("#{addr2}")),
+                // Another member's gml:id.
+                ("XLink_NoReference", &b2, format!("#{poly3}")),
+                ("XLink_NoReference", &b2, format!("#{missing}")),
+                ("XLink_NoReference", &grp, format!("#{missing}")),
+            ]
+            .map(|(flag, id, href)| vec![json!(flag), json!(id), json!(href)])
+            .to_vec()
+        );
+        assert_eq!(
+            fields(
+                &outputs,
+                "Summary",
+                &["xlinkHasNoReference", "xlinkInvalidObjectType"]
+            ),
+            [[json!(3), json!(1)]]
+        );
+        Ok(())
+    }
+
+    #[test]
+    // The geometry types allowed in the LoD0 geometry of a DM geometric
+    // attribute.
+    fn test_lod_geometry_type() -> Result<(), BoxedError> {
+        let temp_dir = TempDir::with_prefix("domain_of_definition_validator_test_")?;
+        let root = temp_dir.path();
+        let codelists = root.join("codelists");
+        fs::create_dir_all(&codelists)?;
+        let frn1 = gml_id("frn", 1);
+        let veg2 = gml_id("veg", 2);
+        let dm = |geometries: &[&str]| -> String {
+            geometries
+                .iter()
+                .map(|geometry| dm_geometric_attribute(geometry))
+                .collect()
+        };
+        let f1 = root.join("udx/frn/f1.gml");
+        write_file(
+            &f1,
+            &city_model(
+                VALID_SRS_NAME_6697,
+                &format!(
+                    r#"    <core:cityObjectMember>
+        <frn:CityFurniture gml:id="{frn1}">{frn_dm}
+        </frn:CityFurniture>
+    </core:cityObjectMember>
+    <core:cityObjectMember>
+        <veg:PlantCover gml:id="{veg2}">{veg_dm}
+        </veg:PlantCover>
+    </core:cityObjectMember>"#,
+                    frn_dm = dm(&[
+                        "<gml:Point/>",
+                        "<gml:MultiPoint/>",
+                        "<gml:MultiCurve/>",
+                        "<gml:MultiSurface/>",
+                        "<gml:Solid/>",
+                        "<gml:CompositeSurface/>",
+                    ]),
+                    veg_dm = dm(&["<gml:LineString/>"]),
+                ),
+            ),
+        )?;
+
+        let outputs = run(vec![input("f1.gml", "frn", 0, &f1, Some(&codelists))], None)?;
+
+        assert_eq!(
+            fields(
+                &outputs,
+                "InvalidLodXGeometry",
+                &["featureType", "gmlId", "parentTag", "invalidGeometry"]
+            ),
+            [
+                ("CityFurniture", "", "urc:DmGeometricAttribute", "gml:Solid"),
+                (
+                    "CityFurniture",
+                    "",
+                    "urc:DmGeometricAttribute",
+                    "gml:CompositeSurface"
+                ),
+                (
+                    "PlantCover",
+                    "",
+                    "urc:DmGeometricAttribute",
+                    "gml:LineString"
+                ),
+            ]
+            .map(|row| <[&str; 4]>::from(row).map(|v| json!(v)).to_vec())
+            .to_vec()
+        );
+        assert_eq!(
+            fields(&outputs, "Summary", &["invalidLodXGeometry"]),
+            [[json!(3)]]
+        );
+        Ok(())
+    }
+
+    #[test]
+    // Without an objectlist, L03 counts the members of types outside the
+    // package by local name.
+    fn test_feature_types_outside_package() -> Result<(), BoxedError> {
+        let temp_dir = TempDir::with_prefix("domain_of_definition_validator_test_")?;
+        let root = temp_dir.path();
+        let codelists = root.join("codelists");
+        fs::create_dir_all(&codelists)?;
+        let members = [
+            "bldg:Building",
+            "veg:PlantCover",
+            "veg:PlantCover",
+            "frn:CityFurniture",
+            "con:OtherConstruction",
+            "foo:Bar",
+            "grp:CityObjectGroup",
+        ]
+        .iter()
+        .enumerate()
+        .map(|(i, tag)| {
+            format!(
+                r#"    <core:cityObjectMember>
+        <{tag} gml:id="{}"/>
+    </core:cityObjectMember>"#,
+                gml_id("bldg", i as u32)
+            )
+        })
+        .collect::<Vec<_>>()
+        .join("\n");
+        let f1 = root.join("udx/bldg/f1.gml");
+        write_file(&f1, &city_model(VALID_SRS_NAME_6697, &members))?;
+
+        let outputs = run(
+            vec![input("f1.gml", "bldg", 0, &f1, Some(&codelists))],
+            None,
+        )?;
+
+        assert_eq!(
+            fields(
+                &outputs,
+                "Summary",
+                &["invalidFeatureTypesNum", "invalidFeatureTypesDetail"]
+            ),
+            [[
+                json!(5),
+                json!({
+                    "Bar": 1,
+                    "CityFurniture": 1,
+                    "OtherConstruction": 1,
+                    "PlantCover": 2,
+                })
+            ]]
+        );
+        assert!(with_flag(&outputs, "ApplicationSchemaViolation").is_empty());
+        Ok(())
+    }
+
+    #[test]
+    // A file that cannot be parsed, and one whose member has no gml:id, still
+    // have a summary. The members after the one without gml:id are not
+    // checked, nor the xlinks of a city object group.
+    fn test_summary_of_unprocessable_files() -> Result<(), BoxedError> {
+        let temp_dir = TempDir::with_prefix("domain_of_definition_validator_test_")?;
+        let root = temp_dir.path();
+        let codelists = root.join("codelists");
+        fs::create_dir_all(&codelists)?;
+        let f1 = root.join("udx/bldg/f1.gml");
+        write_file(
+            &f1,
+            r#"<?xml version="1.0" encoding="UTF-8"?>
+<core:CityModel xmlns:core="http://www.opengis.net/citygml/3.0" xmlns:gml="http://www.opengis.net/gml/3.2">
+    <gml:boundedBy>
+</core:CityModel>"#,
+        )?;
+        let grp = gml_id("grp", 1);
+        let missing = gml_id("bldg", 99);
+        let f2 = root.join("udx/bldg/f2.gml");
+        write_file(
+            &f2,
+            &city_model(
+                VALID_SRS_NAME_6697,
+                &format!(
+                    r#"{group}
+    <core:cityObjectMember>
+        <bldg:Building gml:id="bldg_not-a-uuid"/>
+    </core:cityObjectMember>
+    <core:cityObjectMember>
+        <veg:PlantCover/>
+    </core:cityObjectMember>
+    <core:cityObjectMember>
+        <bldg:Building gml:id="bldg_not-a-uuid-either"/>
+    </core:cityObjectMember>"#,
+                    group = city_object_group(&grp, &[format!("#{missing}")]),
+                ),
+            ),
+        )?;
+
+        let outputs = run(
+            vec![
+                input("f1.gml", "bldg", 0, &f1, Some(&codelists)),
+                input("f2.gml", "bldg", 1, &f2, Some(&codelists)),
+            ],
+            None,
+        )?;
+
+        let expected = vec![
+            feature_output(json!({
+                "index": 0,
+                "flag": "Summary",
+                "srsName": "",
+                "invalidFeatureTypesNum": 0,
+                "invalidFeatureTypesDetail": {},
+                "correctCodeValues": 0,
+                "incorrectCodeValue": 0,
+                "incorrectCodeSpace": 0,
+                "isCorrectSrsName": true,
+                "correctExtents": 0,
+                "incorrectExtents": 0,
+                "lowerLatitude": null, "lowerLongitude": null, "lowerElevation": null,
+                "upperLatitude": null, "upperLongitude": null, "upperElevation": null,
+                "gmlIdNotWellformed": 0,
+                "xlinkHasNoReference": 0,
+                "xlinkInvalidObjectType": 0,
+                "invalidLodXGeometry": 0,
+            })),
+            feature_output(json!({
+                "index": 1,
+                "udxDirs": "bldg",
+                "name": "f2.gml",
+                "path": file_uri(&f2),
+                "gmlId": "bldg_not-a-uuid",
+                "featureType": "Building",
+                "flag": "GMLID_NotWellFormed",
+                "tag": "bldg:Building",
+            })),
+            feature_output(json!({
+                "index": 1,
+                "flag": "Summary",
+                "srsName": VALID_SRS_NAME_6697,
+                "invalidFeatureTypesNum": 1,
+                "invalidFeatureTypesDetail": {"PlantCover": 1},
+                "correctCodeValues": 0,
+                "incorrectCodeValue": 0,
+                "incorrectCodeSpace": 0,
+                "isCorrectSrsName": true,
+                "correctExtents": 0,
+                "incorrectExtents": 0,
+                "lowerLatitude": 36.6, "lowerLongitude": 137.0, "lowerElevation": 0.0,
+                "upperLatitude": 36.7, "upperLongitude": 137.1, "upperElevation": 10.0,
+                "gmlIdNotWellformed": 1,
+                "xlinkHasNoReference": 0,
+                "xlinkInvalidObjectType": 0,
+                "invalidLodXGeometry": 0,
+            })),
+            stats_output("f1.gml", 0),
+            stats_output("f2.gml", 0),
+        ];
+        assert_outputs(outputs, expected);
         Ok(())
     }
 }
