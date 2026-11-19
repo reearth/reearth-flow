@@ -3,7 +3,7 @@
 # - geometry splitter with group_key lift the group_key to feature attribute
 # - gml containing other districts should be properly filtered (non-政令指定都市 case) (TODO)
 # - empty string in value is preserved (not filtered by NODATA) (TODO)
-# - synthetic `_uom` key placing order: `{name}_uom` stays right after `{name}` (json_attributes_v2 compares key order)
+# - synthetic `_uom` key placing order: `{name}_uom` stays right after `{name}`
 
 citygml_zip_name = "13104_shinjuku-ku_pref_2025_citygml_1_op_bldg.zip"
 
