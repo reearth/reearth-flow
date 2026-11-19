@@ -40,6 +40,11 @@ export type JobState = {
   variableDefaults?: Record<string, unknown>;
   // Set when the run was started from a selected action rather than the start.
   startNodeId?: string;
+  // Set when the run stopped at a selected action rather than running everything.
+  endNodeId?: string;
+  // The actions this run's workflow included, so a later run knows which of
+  // its results it can reuse. Absent for runs started elsewhere.
+  ranNodeIds?: string[];
   // Set when this is another user's run being viewed, to the name they go by.
   joinedUserName?: string;
   focusedIntermediateData?: string;

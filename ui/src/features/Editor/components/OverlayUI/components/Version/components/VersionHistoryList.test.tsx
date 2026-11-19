@@ -12,12 +12,16 @@ describe("VersionHistoryList", () => {
       label: "auto",
       timestamp: "2026-07-30T09:00:00Z",
       size: 100,
+      contributors: [],
+      contributorCount: 0,
     },
     {
       snapshotNumber: 2,
       label: "before migration",
       timestamp: "2026-07-30T10:00:00Z",
       size: 120,
+      contributors: [],
+      contributorCount: 0,
     },
   ];
 
@@ -71,18 +75,24 @@ describe("VersionHistoryList", () => {
             label: "save",
             timestamp: "2026-11-18T01:00:00Z",
             size: 1,
+            contributors: [],
+            contributorCount: 0,
           },
           {
             snapshotNumber: 4,
             label: "run",
             timestamp: "2026-11-18T02:00:00Z",
             size: 1,
+            contributors: [],
+            contributorCount: 0,
           },
           {
             snapshotNumber: 5,
             label: "deploy",
             timestamp: "2026-11-18T03:00:00Z",
             size: 1,
+            contributors: [],
+            contributorCount: 0,
           },
         ]}
       />,

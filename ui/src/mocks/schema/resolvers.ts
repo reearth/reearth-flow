@@ -65,6 +65,20 @@ const toMockUserMetadata = (metadata: MockUser["metadata"]) => ({
   lang: metadata?.lang ?? "en",
 });
 
+// A version's attribution as the API gives it. count can exceed the list, as
+// it does when the stored list was capped.
+const mockAttribution = (
+  contributors: MockUser[],
+  count: number,
+  lastEditorId?: string,
+) => ({
+  contributorIds: contributors.map((u) => u.id),
+  contributors,
+  contributorCount: count,
+  lastEditorId: lastEditorId ?? null,
+  lastEditor: users.find((u) => u.id === lastEditorId) ?? null,
+});
+
 // Mirrors the CMS internal API: a project only resolves inside the workspace
 // that owns it, by id or alias.
 const findCmsProject = (workspaceId: string, projectIdOrAlias: string) =>
@@ -640,24 +654,37 @@ export const resolvers = {
     projectNamedSnapshots: (_: any, _args: { projectId: string }) => {
       // Several distinct, labelled snapshots so local dev reflects real
       // behaviour: auto-versioning keeps appending entries, not just one.
+      // Attribution covers each case the panel shows: more contributors than
+      // fit, a capped list (count above the list), a single editor, and a
+      // version saved without attribution.
       return [
+        {
+          snapshotNumber: 4,
+          label: "save",
+          timestamp: "2024-02-02T15:00:00Z",
+          size: 5120,
+          ...mockAttribution(users, 7, users[1]?.id),
+        },
         {
           snapshotNumber: 3,
           label: "before migration",
           timestamp: "2024-01-28T12:00:00Z",
           size: 4096,
+          ...mockAttribution(users.slice(0, 2), 2, users[0]?.id),
         },
         {
           snapshotNumber: 2,
           label: "auto",
           timestamp: "2024-01-15T09:30:00Z",
           size: 3072,
+          ...mockAttribution(users.slice(2, 3), 1, users[2]?.id),
         },
         {
           snapshotNumber: 1,
           label: "initial import",
           timestamp: "2024-01-01T10:00:00Z",
           size: 2048,
+          ...mockAttribution([], 0),
         },
       ];
     },
@@ -816,10 +843,11 @@ export const resolvers = {
       _: any,
       args: { projectId: string; label: string },
     ) => ({
-      snapshotNumber: 4,
+      snapshotNumber: 5,
       label: args.label,
       timestamp: new Date().toISOString(),
       size: 5120,
+      ...mockAttribution([], 0),
     }),
 
     // User mutations

@@ -5,6 +5,8 @@ import (
 	"errors"
 	"math"
 	"net/http/httptest"
+	"strconv"
+	"strings"
 	"sync"
 	"testing"
 	"time"
@@ -245,6 +247,10 @@ func TestSignalLock_NewestChangeWinsAcrossInstances(t *testing.T) {
 		c := dialE2E(t, ts, lockRoom, uint64(101+i))
 		defer c.close()
 		c.completeHandshake()
+		// Locking before the server has read c's handshake would refuse it.
+		edit := strconv.Itoa(i)
+		c.insertText(edit)
+		waitFor(t, "the edit before the lock", func() bool { return strings.Contains(serverText(s, lockRoom), edit) })
 	}
 
 	// Both instances write without waiting for each other, so the document may
@@ -410,6 +416,9 @@ func TestSignalLock_ARepeatedChangeIsWrittenOnce(t *testing.T) {
 	a := dialE2E(t, ts, lockRoom, 101)
 	defer a.close()
 	a.completeHandshake()
+	// Locking before the server has read a's handshake would refuse it.
+	a.insertText("1")
+	waitFor(t, "the edit before the lock", func() bool { return serverText(srv, lockRoom) == "1" })
 
 	ctx := context.Background()
 	at := time.UnixMilli(1000)
