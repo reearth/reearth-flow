@@ -31,7 +31,7 @@ type Props = {
   ) => void;
   onVariableDialogClose?: () => void;
   onDefaultValueChange: (index: number, newValue: any) => void;
-  onAssetDialogOpen: (dialog: "assets" | "cms") => void;
+  onAssetDialogOpen: () => void;
 };
 
 const VariableRow: React.FC<Props> = ({

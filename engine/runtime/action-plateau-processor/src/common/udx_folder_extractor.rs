@@ -1,6 +1,6 @@
 use std::{
     collections::HashMap,
-    path::{PathBuf, MAIN_SEPARATOR, MAIN_SEPARATOR_STR},
+    path::{MAIN_SEPARATOR, MAIN_SEPARATOR_STR, PathBuf},
     str::FromStr,
     sync::Arc,
 };
@@ -12,7 +12,7 @@ use reearth_flow_runtime::{
     event::EventHub,
     executor_operation::{ExecutorContext, NodeContext},
     forwarder::ProcessorChannelForwarder,
-    node::{Port, Processor, ProcessorFactory, FEATURES_PORT, REJECTED_PORT},
+    node::{FEATURES_PORT, Port, Processor, ProcessorFactory, REJECTED_PORT},
 };
 use reearth_flow_storage::resolve::StorageResolver;
 
@@ -21,8 +21,8 @@ use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
 
-use super::errors::PlateauProcessorError;
 use super::PlateauProfile;
+use super::errors::PlateauProcessorError;
 
 const PKG_FOLDERS: &[&str] = &[
     "area", "bldg", "brid", "cons", "dem", "fld", "frn", "gen", "htd", "ifld", "lsld", "luse",
@@ -245,9 +245,15 @@ fn process_feature(
             dirs = format!("{pkg}{MAIN_SEPARATOR_STR}{area}");
             rtdir = PathBuf::from(folders[..folders.len() - 4].join(MAIN_SEPARATOR_STR));
         }
-        [.., sixth_last, fifth_last, fourth_last, third_last, second_last, _last]
-            if PKG_FOLDERS.contains(&fourth_last.as_str()) =>
-        {
+        [
+            ..,
+            sixth_last,
+            fifth_last,
+            fourth_last,
+            third_last,
+            second_last,
+            _last,
+        ] if PKG_FOLDERS.contains(&fourth_last.as_str()) => {
             root = sixth_last.to_string();
             udx = fifth_last.to_string();
             pkg = fourth_last.to_string();

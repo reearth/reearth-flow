@@ -54,6 +54,35 @@ func (s kv) putWithMeta(ctx context.Context, name string, data []byte, meta map[
 	return w.Close()
 }
 
+// updateMeta rewrites an object's custom metadata through edit, which gets a
+// copy of the current metadata. errNotFound when the object does not exist.
+// The rewrite is conditional on the metadata generation it read, and retried
+// once if another writer got in between.
+func (s kv) updateMeta(ctx context.Context, name string, edit func(map[string]string)) error {
+	obj := s.bucket.Object(name)
+	for attempt := 0; ; attempt++ {
+		attrs, err := obj.Attrs(ctx)
+		if errors.Is(err, storage.ErrObjectNotExist) {
+			return errNotFound
+		}
+		if err != nil {
+			return err
+		}
+		meta := make(map[string]string, len(attrs.Metadata))
+		for k, v := range attrs.Metadata {
+			meta[k] = v
+		}
+		edit(meta)
+		_, err = obj.If(storage.Conditions{MetagenerationMatch: attrs.Metageneration}).
+			Update(ctx, storage.ObjectAttrsToUpdate{Metadata: meta})
+		var gerr *googleapi.Error
+		if err != nil && errors.As(err, &gerr) && gerr.Code == http.StatusPreconditionFailed && attempt == 0 {
+			continue
+		}
+		return err
+	}
+}
+
 // errObjectExists reports that a create-only write lost to an existing object.
 var errObjectExists = errors.New("gcs: object already exists")
 

@@ -65,6 +65,7 @@ export default function Editor({
     handleWorkflowDeployment,
     sharingUrl,
     handleProjectShare,
+    handleProjectShareOpen,
     handleCurrentProjectExport,
     handleWorkflowOpen,
     handleWorkflowClose,
@@ -86,9 +87,12 @@ export default function Editor({
     handleWorkflowAddFromSelection,
     handleDebugRunStart,
     handleFromSelectedNodeDebugRunStart,
+    handleToSelectedNodeDebugRunStart,
+    canDebugRunFromNode,
     handleDebugRunStop,
     handleResetDebugRunWorkflowVariables,
     schemaProbes,
+    schemaProbeOutcomes,
     readerAttributeSuggestions,
     handleNodeParamsSaved,
     handleProbeComplete,
@@ -165,11 +169,14 @@ export default function Editor({
       undoTrackerActionWrapper,
       awarenessSelectionsMap,
       yDoc,
+      yAwareness,
       workflowVarAwareness,
       staleNodeIds,
       workflowNodeIds,
       diagnosticSeverityByNodeId,
       onNodeNavigate: handleNodeNavigate,
+      canDebugRunFromNode,
+      schemaProbeOutcomes,
     }),
     [
       isLocked,
@@ -180,11 +187,14 @@ export default function Editor({
       undoTrackerActionWrapper,
       awarenessSelectionsMap,
       yDoc,
+      yAwareness,
       workflowVarAwareness,
       staleNodeIds,
       workflowNodeIds,
       diagnosticSeverityByNodeId,
       handleNodeNavigate,
+      canDebugRunFromNode,
+      schemaProbeOutcomes,
     ],
   );
 
@@ -231,12 +241,14 @@ export default function Editor({
             onWorkflowUndo={handleWorkflowUndo}
             sharingUrl={sharingUrl}
             onProjectShare={handleProjectShare}
+            onProjectShareOpen={handleProjectShareOpen}
             onProjectExport={handleCurrentProjectExport}
             onWorkflowDeployment={handleWorkflowDeployment}
             onDebugRunStart={handleDebugRunStart}
             onDebugRunStartFromSelectedNode={
               handleFromSelectedNodeDebugRunStart
             }
+            onDebugRunStartToSelectedNode={handleToSelectedNodeDebugRunStart}
             onDebugRunStop={handleDebugRunStop}
             onResetDebugRunWorkflowVariables={
               handleResetDebugRunWorkflowVariables
@@ -276,6 +288,7 @@ export default function Editor({
               onDebugRunStartFromSelectedNode={
                 handleFromSelectedNodeDebugRunStart
               }
+              onDebugRunStartToSelectedNode={handleToSelectedNodeDebugRunStart}
               onConnectStart={handleConnectStart}
               onConnectEnd={handleConnectEnd}
               onPointerDown={handlePointerDown}

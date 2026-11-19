@@ -82,6 +82,12 @@ models:
         resolver: true
       deployment:
         resolver: true
+  NamedSnapshot:
+    fields:
+      contributors:
+        resolver: true
+      lastEditor:
+        resolver: true
   ProjectDocument:
     fields:
       updates:

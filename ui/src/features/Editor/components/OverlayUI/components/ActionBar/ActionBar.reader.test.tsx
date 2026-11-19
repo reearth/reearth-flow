@@ -39,6 +39,7 @@ const renderBar = ({
         onDialogClose={vi.fn()}
         onWorkflowDeployment={vi.fn()}
         onProjectShare={vi.fn()}
+        onProjectShareOpen={vi.fn()}
         onProjectExport={vi.fn()}
         onProjectSnapshotSave={vi.fn()}
         onProjectLockChange={vi.fn()}

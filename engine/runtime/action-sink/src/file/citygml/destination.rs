@@ -197,12 +197,12 @@ pub fn validate_entry_path(path: &str) -> Result<(), String> {
             ".." => {
                 return Err(format!(
                     "`{path}` contains `..`; a path must stay inside the archive"
-                ))
+                ));
             }
             "" | "." => {
                 return Err(format!(
                     "`{path}` has an empty or `.` folder; give a path such as `udx/bldg/city.gml`"
-                ))
+                ));
             }
             _ => {}
         }

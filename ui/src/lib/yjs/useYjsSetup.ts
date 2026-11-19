@@ -4,14 +4,15 @@ import { WebsocketProvider } from "y-websocket";
 import * as Y from "yjs";
 
 import { config } from "@flow/config";
-import { CURSOR_COLORS, DEFAULT_ENTRY_GRAPH_ID } from "@flow/global-constants";
+import { CURSOR_COLORS } from "@flow/global-constants";
 import type { YDocMetadataMap, YDocMetadataValue } from "@flow/types";
 
 import { useAuth } from "../auth";
 import { useUser } from "../gql";
 
 import { connectionParams } from "./connectionParams";
-import { yWorkflowConstructor } from "./conversions";
+import { initializeProjectDoc } from "./initializeProjectDoc";
+import { reconnectOnProjectLockChange } from "./projectLock";
 import type { YWorkflow } from "./types";
 
 export default ({
@@ -39,6 +40,7 @@ export default ({
     const yDoc = new Y.Doc();
     const { websocket } = config();
     let yWebSocketProvider: WebsocketProvider | null = null;
+    let stopLockReconnect: (() => void) | undefined;
 
     if (workflowId && websocket && projectId) {
       (async () => {
@@ -81,23 +83,7 @@ export default ({
           yDoc.getMap<YDocMetadataValue>("metadata");
 
         yWebSocketProvider.on("sync", () => {
-          if (!docMetadata.get("initialized")) {
-            // Within a transaction, set the flag and perform initialization.
-            yDoc.transact(() => {
-              const yWorkflows = yDoc.getMap<YWorkflow>("workflows");
-              // This check is only necessary to avoid duplicate workflows on older projects.
-              if (yWorkflows.get(DEFAULT_ENTRY_GRAPH_ID)) return;
-              // Only one client should set this flag.
-              if (!docMetadata.get("initialized")) {
-                const yWorkflow = yWorkflowConstructor(
-                  DEFAULT_ENTRY_GRAPH_ID,
-                  "Main Workflow",
-                );
-                yWorkflows.set(DEFAULT_ENTRY_GRAPH_ID, yWorkflow);
-                docMetadata.set("initialized", true);
-              }
-            });
-          }
+          initializeProjectDoc(yDoc);
           setIsSynced(true); // Mark as synced
         });
 
@@ -115,6 +101,13 @@ export default ({
         };
 
         docMetadata.observe(handleRollbackInProgress);
+
+        // A lock change changes what this connection may do, which the server
+        // decides when the connection opens.
+        stopLockReconnect = reconnectOnProjectLockChange(
+          docMetadata,
+          yWebSocketProvider,
+        );
 
         yDoc.on("destroy", () => {
           docMetadata.unobserve(handleRollbackInProgress);
@@ -137,6 +130,7 @@ export default ({
     });
 
     return () => {
+      stopLockReconnect?.();
       setIsSynced(false);
       // Clear awareness state before destroying
       if (yWebSocketProvider?.awareness) {

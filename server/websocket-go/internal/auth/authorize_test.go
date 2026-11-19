@@ -105,3 +105,68 @@ func TestAuthorizeForbiddenDenies(t *testing.T) {
 		t.Fatal("403 must deny")
 	}
 }
+
+// identityServer answers /auth/verify with an accepted verdict naming userID.
+func identityServer(t *testing.T, userID string) *httptest.Server {
+	t.Helper()
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		_ = json.NewEncoder(w).Encode(map[string]any{"authorized": true, "userId": userID})
+	}))
+	t.Cleanup(srv.Close)
+	return srv
+}
+
+func TestAuthorizeAttachesTheTokenUser(t *testing.T) {
+	t.Parallel()
+
+	fn := NewAuthorize(Config{AuthURL: identityServer(t, "user-1").URL})
+
+	cfg, ok := fn(roomReq("proj-1:main", map[string]string{"token": "tok"}))
+	if !ok {
+		t.Fatal("expected accept")
+	}
+	if got := UserIDOf(cfg.Identity); got != "user-1" {
+		t.Fatalf("identity user = %q, want user-1", got)
+	}
+}
+
+func TestAuthorizeShareTokenCarriesNoUser(t *testing.T) {
+	t.Parallel()
+
+	// The API names no user for a share token; a user ID in the verdict anyway
+	// must not be attached to a connection that presented no user token.
+	fn := NewAuthorize(Config{AuthURL: identityServer(t, "user-1").URL})
+
+	cfg, ok := fn(roomReq("proj-1:main", map[string]string{"shareToken": "s1"}))
+	if !ok {
+		t.Fatal("expected accept")
+	}
+	if cfg.Identity != nil {
+		t.Fatalf("identity = %#v, want none", cfg.Identity)
+	}
+}
+
+func TestAuthorizeWithoutUserIDCarriesNoIdentity(t *testing.T) {
+	t.Parallel()
+
+	fn := NewAuthorize(Config{AuthURL: identityServer(t, "").URL})
+
+	cfg, ok := fn(roomReq("proj-1:main", map[string]string{"token": "tok"}))
+	if !ok {
+		t.Fatal("expected accept")
+	}
+	if cfg.Identity != nil {
+		t.Fatalf("identity = %#v, want none", cfg.Identity)
+	}
+}
+
+func TestUserIDOfIgnoresForeignIdentities(t *testing.T) {
+	t.Parallel()
+
+	if got := UserIDOf(nil); got != "" {
+		t.Fatalf("UserIDOf(nil) = %q", got)
+	}
+	if got := UserIDOf("user-1"); got != "" {
+		t.Fatalf("UserIDOf(string) = %q, want empty: only an Identity names a user", got)
+	}
+}

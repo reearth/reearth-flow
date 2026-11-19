@@ -3,6 +3,7 @@ package interactor
 import (
 	"context"
 	"testing"
+	"time"
 
 	accountsid "github.com/reearth/reearth-accounts/server/pkg/id"
 	"github.com/reearth/reearth-flow/api/internal/infrastructure/memory"
@@ -42,6 +43,10 @@ func (c *countingWSClient) Rollback(context.Context, string, int) (*ws.Document,
 	return nil, nil
 }
 func (c *countingWSClient) FlushToGCS(context.Context, string) error { c.calls++; return nil }
+func (c *countingWSClient) SaveVersion(context.Context, string, string) (bool, error) {
+	c.calls++
+	return false, nil
+}
 func (c *countingWSClient) CreateSnapshot(context.Context, string, int, string) (*ws.Document, error) {
 	c.calls++
 	return nil, nil
@@ -67,7 +72,11 @@ func (c *countingWSClient) GetSnapshotState(context.Context, string, int) (*ws.S
 	return nil, nil
 }
 func (c *countingWSClient) DeleteDocument(context.Context, string) error { c.calls++; return nil }
-func (c *countingWSClient) Close() error                                 { c.calls++; return nil }
+func (c *countingWSClient) SetProjectLock(context.Context, string, bool, time.Time) error {
+	c.calls++
+	return nil
+}
+func (c *countingWSClient) Close() error { c.calls++; return nil }
 
 var (
 	_ interfaces.WebsocketClient = (*countingWSClient)(nil)
@@ -138,6 +147,10 @@ func rollback(ctx context.Context, i *Websocket, d string) error {
 	return err
 }
 func flushToGCS(ctx context.Context, i *Websocket, d string) error { return i.FlushToGCS(ctx, d) }
+func saveVersion(ctx context.Context, i *Websocket, d string) error {
+	_, err := i.SaveVersion(ctx, d, "save")
+	return err
+}
 func importDocument(ctx context.Context, i *Websocket, d string) error {
 	return i.ImportDocument(ctx, d, []byte("x"))
 }
@@ -155,6 +168,9 @@ func getSnapshotState(ctx context.Context, i *Websocket, d string) error {
 }
 func deleteDocument(ctx context.Context, i *Websocket, d string) error {
 	return i.DeleteDocument(ctx, d)
+}
+func setProjectLock(ctx context.Context, i *Websocket, d string) error {
+	return i.SetProjectLock(ctx, d, true, time.UnixMilli(1))
 }
 
 // TestWebsocket_DeniedOperationsNeverReachTheClient is the security assertion:
@@ -174,8 +190,10 @@ func TestWebsocket_DeniedOperationsNeverReachTheClient(t *testing.T) {
 	assertDenied(t, "SaveNamedSnapshot", saveNamedSnapshot)
 	assertDenied(t, "Rollback", rollback)
 	assertDenied(t, "FlushToGCS", flushToGCS)
+	assertDenied(t, "SaveVersion", saveVersion)
 	assertDenied(t, "ImportDocument", importDocument)
 	assertDenied(t, "DeleteDocument", deleteDocument)
+	assertDenied(t, "SetProjectLock", setProjectLock)
 }
 
 // TestWebsocket_ChecksTargetProjectWorkspace pins the action each operation
@@ -199,8 +217,10 @@ func TestWebsocket_ChecksTargetProjectWorkspace(t *testing.T) {
 	assertChecks(t, "SaveNamedSnapshot", rbac.ActionEdit, saveNamedSnapshot)
 	assertChecks(t, "Rollback", rbac.ActionEdit, rollback)
 	assertChecks(t, "FlushToGCS", rbac.ActionAny, flushToGCS)
+	assertChecks(t, "SaveVersion", rbac.ActionAny, saveVersion)
 	assertChecks(t, "ImportDocument", rbac.ActionEdit, importDocument)
 	assertChecks(t, "DeleteDocument", rbac.ActionDelete, deleteDocument)
+	assertChecks(t, "SetProjectLock", rbac.ActionEdit, setProjectLock)
 }
 
 // TestWebsocket_ReaderCannotFlushToGCS is the exact regression this fix
@@ -294,4 +314,93 @@ func TestWebsocket_CloseNeedsNoPermission(t *testing.T) {
 	i, client, _, _, _ := wsFixture(t, false) // deny everything
 	require.NoError(t, i.Close())
 	assert.Equal(t, 1, client.calls)
+}
+
+// lockedWSFixture is wsFixture over a locked project, with every permission
+// granted, so a refusal can only come from the lock.
+func lockedWSFixture(t *testing.T) (*Websocket, *countingWSClient, string) {
+	t.Helper()
+	ctx := context.Background()
+	projectRepo := memory.NewProject()
+	prj := project.New().NewID().Workspace(project.NewWorkspaceID()).IsLocked(true).MustBuild()
+	require.NoError(t, projectRepo.Save(ctx, prj))
+	client := &countingWSClient{}
+	return NewWebsocket(client, projectRepo, &recordingChecker{allow: true}), client, prj.ID().String()
+}
+
+func TestWebsocket_LockedProjectRefusesWorkflowChanges(t *testing.T) {
+	t.Parallel()
+
+	t.Run("Rollback", func(t *testing.T) {
+		t.Parallel()
+
+		i, client, docID := lockedWSFixture(t)
+		assert.ErrorIs(t, rollback(context.Background(), i, docID), interfaces.ErrProjectLocked)
+		assert.Zero(t, client.calls)
+	})
+
+	t.Run("ImportDocument", func(t *testing.T) {
+		t.Parallel()
+
+		i, client, docID := lockedWSFixture(t)
+		assert.ErrorIs(t, importDocument(context.Background(), i, docID), interfaces.ErrProjectLocked)
+		assert.Zero(t, client.calls)
+	})
+
+	t.Run("CopyDocument into the locked project", func(t *testing.T) {
+		t.Parallel()
+
+		i, client, docID := lockedWSFixture(t)
+		src := project.New().NewID().Workspace(project.NewWorkspaceID()).MustBuild()
+		require.NoError(t, i.projectRepo.Save(context.Background(), src))
+
+		assert.ErrorIs(t, i.CopyDocument(context.Background(), docID, src.ID().String()), interfaces.ErrProjectLocked)
+		assert.Zero(t, client.calls)
+	})
+}
+
+func TestWebsocket_LockedProjectKeepsReadsAndSaves(t *testing.T) {
+	t.Parallel()
+
+	i, client, docID := lockedWSFixture(t)
+	ctx := context.Background()
+	require.NoError(t, getLatest(ctx, i, docID))
+	require.NoError(t, flushToGCS(ctx, i, docID))
+	require.NoError(t, saveNamedSnapshot(ctx, i, docID))
+	assert.Equal(t, 3, client.calls)
+}
+
+// TestWebsocket_LockedProjectCanBeUnlocked: the lock entry is not a workflow
+// change, so a locked project must still accept it or it could never be unlocked.
+func TestWebsocket_LockedProjectCanBeUnlocked(t *testing.T) {
+	t.Parallel()
+
+	i, client, docID := lockedWSFixture(t)
+	require.NoError(t, i.SetProjectLock(context.Background(), docID, false, time.UnixMilli(1)))
+	assert.Equal(t, 1, client.calls)
+}
+
+func TestWebsocket_LockedProjectCanBeCopiedFrom(t *testing.T) {
+	t.Parallel()
+
+	i, client, src := lockedWSFixture(t)
+	dst := project.New().NewID().Workspace(project.NewWorkspaceID()).MustBuild()
+	require.NoError(t, i.projectRepo.Save(context.Background(), dst))
+
+	require.NoError(t, i.CopyDocument(context.Background(), dst.ID().String(), src))
+	assert.Equal(t, 1, client.calls)
+}
+
+func TestWebsocket_LockIsNotRevealedWithoutPermission(t *testing.T) {
+	t.Parallel()
+
+	ctx := context.Background()
+	projectRepo := memory.NewProject()
+	prj := project.New().NewID().Workspace(project.NewWorkspaceID()).IsLocked(true).MustBuild()
+	require.NoError(t, projectRepo.Save(ctx, prj))
+	i := NewWebsocket(&countingWSClient{}, projectRepo, &recordingChecker{allow: false})
+
+	err := rollback(ctx, i, prj.ID().String())
+	assert.ErrorIs(t, err, interfaces.ErrOperationDenied)
+	assert.NotErrorIs(t, err, interfaces.ErrProjectLocked)
 }

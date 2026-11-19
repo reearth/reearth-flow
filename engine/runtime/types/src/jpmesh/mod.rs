@@ -386,7 +386,7 @@ mod tests {
 
     #[macro_export]
     macro_rules! assert_approx_eq {
-        ($a:expr, $b:expr) => {
+        ($a:expr_2021, $b:expr_2021) => {
             assert!(
                 ($a - $b).abs() < EPSILON,
                 "assertion failed: `(left ≈ right)`\n  left: `{}`\n right: `{}`\n",
@@ -398,7 +398,7 @@ mod tests {
 
     #[macro_export]
     macro_rules! assert_mesh_size_correct {
-        ($bounds:expr, $lng_interval_seconds:expr, $lat_interval_seconds:expr) => {
+        ($bounds:expr_2021, $lng_interval_seconds:expr_2021, $lat_interval_seconds:expr_2021) => {
             let min_coord = $bounds.min();
             let max_coord = $bounds.max();
             assert_approx_eq!(max_coord.x - min_coord.x, $lng_interval_seconds / 3600.0);
@@ -408,7 +408,7 @@ mod tests {
 
     #[macro_export]
     macro_rules! assert_rect_includes {
-        ($rect:expr, $point:expr) => {
+        ($rect:expr_2021, $point:expr_2021) => {
             assert!(
                 $rect.min().x <= $point.x
                     && $rect.min().y <= $point.y
@@ -420,7 +420,7 @@ mod tests {
 
     #[macro_export]
     macro_rules! assert_rect_not_includes {
-        ($rect:expr, $point:expr) => {
+        ($rect:expr_2021, $point:expr_2021) => {
             assert!(
                 $rect.min().x > $point.x
                     || $rect.min().y > $point.y

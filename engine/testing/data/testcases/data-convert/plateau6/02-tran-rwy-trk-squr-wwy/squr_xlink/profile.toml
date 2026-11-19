@@ -10,6 +10,7 @@ generate_truth = true
 
 [convs.cesium_attributes.squr_lod3.casts]
 ".attributes" = "json"
+"" = "ordered_dict"
 
 [tests.json_attributes_v2.squr_lod3]
 path = "squr_lod3_truth.json"

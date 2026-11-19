@@ -75,18 +75,18 @@ pub mod view3d;
 pub use contains::{contains, covers};
 pub use distance::distance;
 #[cfg(feature = "new-geometry")]
-pub use equal::{is_comparable, Equal};
+pub use equal::{Equal, is_comparable};
 pub use intersects::intersects;
 pub use intersects3d::intersects_3d;
 pub use kernel::CoordPos;
 pub use position::point_position_2d;
 pub use position3d::point_position_3d;
 pub use projection::{relate_coplanar, relate_xy};
-pub use ray::{closest_ray_hit, ray_cast, Ray3D, RayCaster, RayHit};
-pub use relate::{relate, Dimensions, IntersectionMatrix};
+pub use ray::{Ray3D, RayCaster, RayHit, closest_ray_hit, ray_cast};
+pub use relate::{Dimensions, IntersectionMatrix, relate};
 
-use crate::coordinate::CoordinateFrame;
 use crate::Geometry;
+use crate::coordinate::CoordinateFrame;
 use view::Leaf2D;
 
 /// Why a binary predicate or overlay could not be evaluated.
@@ -275,8 +275,10 @@ mod tests {
 
     #[test]
     fn the_refusal_names_the_tolerance() {
-        assert!(PredicateError::InvalidTolerance
-            .to_string()
-            .contains("tolerance"));
+        assert!(
+            PredicateError::InvalidTolerance
+                .to_string()
+                .contains("tolerance")
+        );
     }
 }

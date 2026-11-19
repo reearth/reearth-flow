@@ -1,5 +1,5 @@
-use super::skyline::SkylinePacker;
 use super::Rect;
+use super::skyline::SkylinePacker;
 
 pub(crate) fn estimate_atlas_size_from_dims(dims: &[(u32, u32)]) -> u32 {
     const EXTRUSION: u32 = 1;

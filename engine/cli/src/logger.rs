@@ -6,9 +6,9 @@ use opentelemetry_sdk::{
     trace::{SdkTracerProvider, Tracer},
 };
 use tracing::Level;
+use tracing_subscriber::EnvFilter;
 use tracing_subscriber::fmt::time::UtcTime;
 use tracing_subscriber::prelude::*;
-use tracing_subscriber::EnvFilter;
 
 static ENABLE_JSON_LOG: Lazy<bool> = Lazy::new(|| {
     env::var("FLOW_CLI_ENABLE_JSON_LOG")

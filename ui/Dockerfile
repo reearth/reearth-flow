@@ -26,7 +26,7 @@ RUN --mount=type=bind,source=package.json,target=package.json \
     --mount=type=cache,target=/root/.yarn,sharing=locked \
     yarn build
 
-FROM nginx:1.27-alpine
+FROM nginx:1.31-alpine
 
 # Quite the Nginx startup logs.
 ENV NGINX_ENTRYPOINT_QUIET_LOGS=true
@@ -48,6 +48,7 @@ ENV FLOW_BRAND_LOGO_URL=
 ENV FLOW_BRAND_NAME=
 ENV FLOW_DEV_MODE=
 ENV FLOW_DOCUMENTATION_URL=
+ENV FLOW_FEEDBACK_URL=
 ENV FLOW_TOS_URL=
 ENV FLOW_REEARTH_HOME_URL=
 ENV FLOW_REEARTH_DASHBOARD_URL=

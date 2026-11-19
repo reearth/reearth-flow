@@ -1,6 +1,6 @@
 use std::{
     borrow::Cow,
-    sync::{atomic::AtomicBool, Arc},
+    sync::{Arc, atomic::AtomicBool},
 };
 
 use crossbeam::channel::{Receiver, Select};

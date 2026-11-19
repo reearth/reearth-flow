@@ -24,7 +24,7 @@ nodes:
       aggregateAttributes:
         - newAttribute: __citygml_gml_id
           attribute: __citygml_gml_id
-        - newAttribute: lod
+        - newAttribute: __lod
           attributeValue:
             type: flowExpr
             value: attributes.get("lod")

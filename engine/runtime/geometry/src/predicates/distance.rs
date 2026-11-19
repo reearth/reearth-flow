@@ -29,16 +29,16 @@
 //! [`Unsupported`](super::PredicateError::Unsupported). The optional
 //! elevation of 2D leaves is ignored, as everywhere in the predicates.
 
-use rstar::{Point, RTree, RTreeObject, AABB};
+use rstar::{AABB, Point, RTree, RTreeObject};
 
-use crate::ops::triangulation::Cache;
 use crate::Geometry;
+use crate::ops::triangulation::Cache;
 
 use super::contains::flatten_geometry;
 use super::intersects::intersects;
 use super::kernel::segment_intersection;
 use super::view::Leaf2D;
-use super::view3d::{flatten_geometry_3d, Leaf3D, TriangleSet};
+use super::view3d::{Leaf3D, TriangleSet, flatten_geometry_3d};
 use super::{PredicateError, Result};
 
 /// The minimum Euclidean distance between two geometries' point sets, or
@@ -443,7 +443,7 @@ mod tests {
     use crate::point::{Point2D, Point3D};
     use crate::polygon::Polygon2D;
     use crate::predicates::test3d::{
-        box_solid, box_solid_with_void, e, g3, solid_geometry, tetra_solid, Rng,
+        Rng, box_solid, box_solid_with_void, e, g3, solid_geometry, tetra_solid,
     };
     use crate::triangular_mesh::TriangularMesh3D;
     use crate::{Euclidean2DGeometry, Euclidean3DGeometry};
@@ -604,7 +604,7 @@ mod tests {
                     rng.grid_point(-4, 4),
                 ];
                 let v: [[f64; 3]; 4] = v.map(|p| [p[0] + offset, p[1], p[2]]);
-                use crate::predicates::kernel::{orient3d, Orientation};
+                use crate::predicates::kernel::{Orientation, orient3d};
                 if orient3d(v[0], v[1], v[2], v[3]) != Orientation::Collinear {
                     return v;
                 }

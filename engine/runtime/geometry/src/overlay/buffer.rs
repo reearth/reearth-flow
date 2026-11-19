@@ -26,16 +26,16 @@ use i_overlay::mesh::float::outline::offset::OutlineOffset;
 use i_overlay::mesh::float::stroke::offset::StrokeOffset;
 use i_overlay::mesh::float::style::{LineCap, LineJoin, OutlineStyle, StrokeStyle};
 
-use super::shapes::{self, close_path, dissolve, frame_sign, reverse_shape, Path, Shape};
+use super::shapes::{self, Path, Shape, close_path, dissolve, frame_sign, reverse_shape};
 use super::{common_frame, is_areal, is_line};
 use crate::collection::{Collection2D, Collection3D};
 use crate::coordinate::{BaseFrame, TangentPlane};
 use crate::ops::triangulation::normal;
-use crate::polygon::{signed_area_2d, Polygon2D, Polygon3D};
-use crate::predicates::view::{flatten_2d, polygon3d_rings, require_common_frame_leaves, Leaf2D};
+use crate::polygon::{Polygon2D, Polygon3D, signed_area_2d};
+use crate::predicates::view::{Leaf2D, flatten_2d, polygon3d_rings, require_common_frame_leaves};
 use crate::predicates::{PredicateError, Result};
 use crate::validation_next::{
-    check_face_orientation_3d, check_planarity_3d, open_ring, PlanarityThreshold, ValidationReport,
+    PlanarityThreshold, ValidationReport, check_face_orientation_3d, check_planarity_3d, open_ring,
 };
 use crate::{Euclidean2DGeometry, Euclidean3DGeometry, Geometry, GeometryCollection};
 

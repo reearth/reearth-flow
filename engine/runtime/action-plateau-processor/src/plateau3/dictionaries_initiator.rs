@@ -6,7 +6,7 @@ use reearth_flow_runtime::{
     event::EventHub,
     executor_operation::{ExecutorContext, NodeContext},
     forwarder::ProcessorChannelForwarder,
-    node::{Port, Processor, ProcessorFactory, FEATURES_PORT, REJECTED_PORT},
+    node::{FEATURES_PORT, Port, Processor, ProcessorFactory, REJECTED_PORT},
 };
 use reearth_flow_types::{Attribute, AttributeValue};
 use serde::{Deserialize, Serialize};
@@ -136,7 +136,7 @@ impl Processor for DictionariesInitiator {
                 return Err(PlateauProcessorError::DictionariesInitiator(format!(
                     "No dirCodelists value with {v:?}"
                 ))
-                .into())
+                .into());
             }
         };
         if !self.codelists_map.contains_key(dir_codelists) {
@@ -155,21 +155,19 @@ impl Processor for DictionariesInitiator {
         }
         let mut result_value = feature.clone();
         // Municipality name acquisition
-        if let Some(file) = self.codelists_map.get(dir_codelists) {
-            if let Some(city_code) = &self.params.city_code {
-                if let Some(name) = file.get(ADMIN_CODE_LIST) {
-                    if let Some(city_name) = name.get(city_code) {
-                        result_value.insert(
-                            Attribute::new("cityName"),
-                            AttributeValue::String(city_name.clone()),
-                        );
-                        result_value.insert(
-                            Attribute::new("cityCode"),
-                            AttributeValue::String(city_code.clone()),
-                        );
-                    }
-                }
-            }
+        if let Some(file) = self.codelists_map.get(dir_codelists)
+            && let Some(city_code) = &self.params.city_code
+            && let Some(name) = file.get(ADMIN_CODE_LIST)
+            && let Some(city_name) = name.get(city_code)
+        {
+            result_value.insert(
+                Attribute::new("cityName"),
+                AttributeValue::String(city_name.clone()),
+            );
+            result_value.insert(
+                Attribute::new("cityCode"),
+                AttributeValue::String(city_code.clone()),
+            );
         }
 
         result_value.insert(

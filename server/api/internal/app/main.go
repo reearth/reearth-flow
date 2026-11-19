@@ -67,7 +67,7 @@ func Start(debug bool, version string) {
 	go reconcileScheduledJobs(repos, gateways)
 
 	// Health checker
-	healthChecker := NewHealthChecker(conf, version, gateways.File, gateways.Redis)
+	healthChecker := NewHealthChecker(conf, version, gateways.File, gateways.LiveStore)
 
 	if conf.AccountsApiHost == "" {
 		log.Error("accounts host configuration is required")
@@ -104,7 +104,10 @@ func Start(debug bool, version string) {
 		Users:               accountGQLClient.UserRepo,
 		Checker:             permissionChecker,
 		SkipPermissionCheck: conf.SkipPermissionCheck,
-	})
+	}, authserver.NewVersionHandler(conf.WebsocketAPISecret, repos.Project))
+	if conf.WebsocketAPISecret == "" {
+		log.Warn("REEARTH_FLOW_WEBSOCKET_API_SECRET is not set: saved workflow versions will not update projects")
+	}
 
 	mainHandler := http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		if strings.HasPrefix(r.URL.Path, "/auth") {

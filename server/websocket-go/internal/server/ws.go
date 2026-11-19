@@ -6,14 +6,15 @@ import (
 	"context"
 	"log/slog"
 	"net/http"
+	"sync"
 	"time"
 
 	"github.com/reearth/ygo/crdt"
-	"github.com/reearth/ygo/persistence"
 	ygws "github.com/reearth/ygo/provider/websocket"
 
 	"github.com/reearth/reearth-flow/websocket-go/internal/config"
 	"github.com/reearth/reearth-flow/websocket-go/internal/docid"
+	"github.com/reearth/reearth-flow/websocket-go/internal/versions"
 )
 
 // defaultResyncInterval is the period of the server-side re-sync loop.
@@ -25,12 +26,24 @@ type Server struct {
 	ws  *ygws.Server
 	log *slog.Logger
 
-	// adapter is the persistence adapter when built via NewWithPersistence, kept
-	// only so retention wiring can be asserted in tests (nil for New()).
-	adapter *persistence.LegacyAdapter
-
 	// onPeriodicSync, if set, is invoked once per re-sync tick (tests only).
 	onPeriodicSync func()
+
+	// locks and presence back the project lock: see project_lock.go.
+	locks    *projectLocks
+	presence Presence
+
+	// Versioning: see versions.go. Nil until EnableVersions.
+	changes      versions.Store
+	tracker      *versions.Tracker
+	versions     *versions.Saver
+	stored       func(ctx context.Context, room string) ([]byte, error)
+	catchUp      CatchUp
+	versionEvery time.Duration
+	// leaveSaves counts the versions lastPeerLeft is saving; see WaitVersions.
+	leaveMu    sync.Mutex
+	leaveSaves int
+	leaveIdle  chan struct{}
 
 	health healthDeps
 }
@@ -52,6 +65,7 @@ func New(cfg *config.Config) *Server {
 	if cfg.SlowPeerResync {
 		s.ws.SlowPeerPolicy = ygws.SlowPeerResync
 	}
+	s.enableProjectLock()
 	return s
 }
 

@@ -107,8 +107,10 @@ mod tests {
             .read()
             .expect("the records are expected to be readable");
         assert_eq!(shapes.len(), 3);
-        assert!(shapes
-            .iter()
-            .all(|s| matches!(s, shapefile::Shape::NullShape)));
+        assert!(
+            shapes
+                .iter()
+                .all(|s| matches!(s, shapefile::Shape::NullShape))
+        );
     }
 }

@@ -18,7 +18,6 @@ import {
   PlusIcon,
   DotsSixIcon,
   TrashIcon,
-  DatabaseIcon,
   FileIcon,
 } from "@phosphor-icons/react";
 import { useState, useEffect, useCallback, useRef } from "react";
@@ -52,7 +51,7 @@ type Props = {
   onFieldFocus?: (field: string | null) => void;
 
   onUpdate: (variable: AnyWorkflowVariable) => void;
-  onDialogOpen: (dialog: "assets" | "cms") => void;
+  onDialogOpen: () => void;
   clearUrl: () => void;
 };
 
@@ -381,19 +380,9 @@ export const ArrayEditor: React.FC<Props> = ({
           )}
           {arrayConfig.itemType === "string" && (
             <div className="flex gap-2">
-              <Button
-                onClick={() => onDialogOpen("assets")}
-                variant="outline"
-                size="sm">
+              <Button onClick={onDialogOpen} variant="outline" size="sm">
                 <FileIcon className="h-4 w-4" />
-                {t("Workspace Assets")}
-              </Button>
-              <Button
-                onClick={() => onDialogOpen("cms")}
-                variant="outline"
-                size="sm">
-                <DatabaseIcon className="h-4 w-4" />
-                {t("CMS Integration")}
+                {t("Assets")}
               </Button>
             </div>
           )}

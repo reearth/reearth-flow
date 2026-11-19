@@ -86,10 +86,10 @@ fn effective(
         });
     }
     let mut out = Vec::new();
-    if ct.derivation == Some(DerivationMethod::Extension) {
-        if let Some(TypeDef::Complex(base)) = schema.complex_base_def(ct) {
-            out.extend(effective(schema, base, depth + 1)?);
-        }
+    if ct.derivation == Some(DerivationMethod::Extension)
+        && let Some(TypeDef::Complex(base)) = schema.complex_base_def(ct)
+    {
+        out.extend(effective(schema, base, depth + 1)?);
     }
     if let Some(particle) = &ct.particle {
         out.push((**particle).clone());

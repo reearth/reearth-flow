@@ -3,9 +3,9 @@ use std::collections::HashMap;
 use std::sync::Arc;
 
 #[cfg(not(feature = "new-geometry"))]
-use reearth_flow_geometry::algorithm::bufferable::{buffer_polygon, Bufferable};
+use reearth_flow_geometry::algorithm::bufferable::{Bufferable, buffer_polygon};
 #[cfg(feature = "new-geometry")]
-use reearth_flow_geometry::overlay::{buffer, BufferStyle};
+use reearth_flow_geometry::overlay::{BufferStyle, buffer};
 #[cfg(not(feature = "new-geometry"))]
 use reearth_flow_geometry::types::geometry::Geometry2D;
 #[cfg(not(feature = "new-geometry"))]
@@ -20,7 +20,7 @@ use reearth_flow_runtime::{
     event::EventHub,
     executor_operation::{ExecutorContext, NodeContext},
     forwarder::ProcessorChannelForwarder,
-    node::{Port, Processor, ProcessorFactory, FEATURES_PORT},
+    node::{FEATURES_PORT, Port, Processor, ProcessorFactory},
 };
 #[cfg(not(feature = "new-geometry"))]
 use reearth_flow_types::{Feature, Geometry, GeometryValue};

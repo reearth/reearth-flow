@@ -33,6 +33,7 @@ import { Role } from "@flow/types";
 
 import {
   CreatorFilter,
+  EarlyAccessBanner,
   ProjectAddDialog,
   ProjectCard,
   ProjectDeletionDialog,
@@ -170,6 +171,7 @@ const ProjectsManager: React.FC = () => {
             </Select>
           </div>
         </div>
+        <EarlyAccessBanner />
         {isDebouncingSearch ||
         isFetching ||
         isProjectImporting ||

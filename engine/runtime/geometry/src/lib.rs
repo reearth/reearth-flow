@@ -1513,12 +1513,14 @@ mod triangulate_tests {
                 vec![vec![0u32, 1, 2, 3]],
             )
             .unwrap(),
-            vec![TriangularMesh3DData::from_parts(
-                vec![[5.0, 5.0, 5.0], [6.0, 5.0, 5.0], [5.0, 6.0, 5.0]],
-                [0u32, 1, 2],
-            )
-            .unwrap()
-            .into()],
+            vec![
+                TriangularMesh3DData::from_parts(
+                    vec![[5.0, 5.0, 5.0], [6.0, 5.0, 5.0], [5.0, 6.0, 5.0]],
+                    [0u32, 1, 2],
+                )
+                .unwrap()
+                .into(),
+            ],
         );
 
         vec![
@@ -1804,12 +1806,14 @@ mod force_2d_tests {
                 vec![vec![0u32, 1, 2, 3]],
             )
             .unwrap(),
-            vec![TriangularMesh3DData::from_parts(
-                vec![[5.0, 5.0, 5.0], [6.0, 5.0, 5.0], [5.0, 6.0, 5.0]],
-                [0u32, 1, 2],
-            )
-            .unwrap()
-            .into()],
+            vec![
+                TriangularMesh3DData::from_parts(
+                    vec![[5.0, 5.0, 5.0], [6.0, 5.0, 5.0], [5.0, 6.0, 5.0]],
+                    [0u32, 1, 2],
+                )
+                .unwrap()
+                .into(),
+            ],
         )
     }
 
@@ -1855,7 +1859,10 @@ mod force_2d_tests {
             Geometry::GeometryCollection(c) => {
                 assert_eq!(c.member_attributes(), attrs.as_slice());
                 match c.members() {
-                    [Geometry::Euclidean2D(Euclidean2DGeometry::Point(p)), Geometry::None] => {
+                    [
+                        Geometry::Euclidean2D(Euclidean2DGeometry::Point(p)),
+                        Geometry::None,
+                    ] => {
                         assert_eq!(p.position(), [1.0, 2.0]);
                         assert_eq!(p.frame(), &crs_2d());
                     }

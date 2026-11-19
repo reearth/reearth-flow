@@ -8,9 +8,9 @@ use super::builtins::{
     builtin_itertools, builtin_json, builtin_math, builtin_uuid, regex_type_value,
 };
 use super::builtins::{dict as dict_methods, list as list_methods, str as str_methods};
-use super::env::{new_frame, Env};
-use super::error::{eval_error, Error, Result, POS_UNSET};
-use super::value::{format_float, ClosureValue, NativeFn, TypeValue, Value};
+use super::env::{Env, new_frame};
+use super::error::{Error, POS_UNSET, Result, eval_error};
+use super::value::{ClosureValue, NativeFn, TypeValue, Value, format_float};
 use crate::expect_arity;
 
 struct DepthCounter {
@@ -634,10 +634,10 @@ fn eval_inner(expr: &Expr, env: &Env) -> Result<Value> {
     let pos = expr.span.start;
     let _depth = DepthGuard::enter(&AST_DEPTH)?;
     eval_node(expr, env).map_err(|mut e| {
-        if let Error::Eval { pos: ref mut p, .. } = e {
-            if *p == POS_UNSET {
-                *p = pos;
-            }
+        if let Error::Eval { pos: ref mut p, .. } = e
+            && *p == POS_UNSET
+        {
+            *p = pos;
         }
         e
     })
@@ -668,7 +668,7 @@ fn eval_node(expr: &Expr, env: &Env) -> Result<Value> {
                         return Err(Error::Eval {
                             pos,
                             msg: format!("dict key must be a string, got {}", other.type_name()),
-                        })
+                        });
                     }
                 };
                 map.insert(key_str, eval_inner(v, env)?);
@@ -867,7 +867,7 @@ fn eval_assign_lvalue(lvalue: &Expr, value: Value, env: &Env, local: bool) -> Re
                             c.type_name(),
                             k.type_name()
                         ),
-                    })
+                    });
                 }
             }
             Ok(())
@@ -1123,7 +1123,7 @@ fn compare_values(
                     "cannot compare {} and {}",
                     left.type_name(),
                     right.type_name()
-                )))
+                )));
             }
         },
     };
@@ -1292,7 +1292,7 @@ fn builtin_dict(args: &[Value]) -> Result<Value> {
         _ => {
             return Err(eval_error(
                 "dict() expects a dict, a list of [key, value] pairs, or no argument",
-            ))
+            ));
         }
     };
     let mut out = IndexMap::new();
@@ -1311,7 +1311,7 @@ fn builtin_dict(args: &[Value]) -> Result<Value> {
                         return Err(eval_error(format!(
                             "dict() key at index {i} must be a string, got {}",
                             v.type_name()
-                        )))
+                        )));
                     }
                 };
                 out.insert(key, kv[1].clone());
@@ -1319,7 +1319,7 @@ fn builtin_dict(args: &[Value]) -> Result<Value> {
             _ => {
                 return Err(eval_error(format!(
                     "dict() entry at index {i} must be a 2-element list"
-                )))
+                )));
             }
         }
     }
@@ -1943,11 +1943,13 @@ mod tests {
             &[("bag", env.borrow().bindings["bag"].clone())],
             Value::from(20i64),
         );
-        assert!(try_run(
-            r#"bag["z"]"#,
-            &[("bag", env.borrow().bindings["bag"].clone())]
-        )
-        .is_err());
+        assert!(
+            try_run(
+                r#"bag["z"]"#,
+                &[("bag", env.borrow().bindings["bag"].clone())]
+            )
+            .is_err()
+        );
 
         // __iter__ via for-in
         assert_eval(
@@ -2253,7 +2255,7 @@ mod tests {
         // chaining and precedence
         assert_eval("1 | 2 & 3", &[], Value::from(3i64)); // & binds tighter: 1 | (2 & 3) = 1 | 2 = 3
         assert_eval("5 ^ 3 & 6", &[], Value::from(7i64)); // 5 ^ (3 & 6) = 5 ^ 2 = 7
-                                                          // compound assignment
+        // compound assignment
         assert_eval("x = 0b1111; x &= 0b1010; x", &[], Value::from(0b1010i64));
         assert_eval("x = 0b1010; x |= 0b0101; x", &[], Value::from(0b1111i64));
         assert_eval("x = 0b1111; x ^= 0b1010; x", &[], Value::from(0b0101i64));
@@ -2338,24 +2340,28 @@ mod tests {
         assert_eval("range(5, 0, -2)", &[], Value::from(vec![5i64, 3, 1]));
         assert_eval("range(3, 3)", &[], Value::from(Vec::<Value>::new()));
         assert!(try_run("range(1, 10, 0)", &[]).is_err());
-        assert!(try_run(
-            "range(start, end, step)",
-            &[
-                ("start", Value::Int(1)),
-                ("end", Value::Int(i64::MAX)),
-                ("step", Value::Int(i64::MAX)),
-            ]
-        )
-        .is_err());
-        assert!(try_run(
-            "range(start, end, step)",
-            &[
-                ("start", Value::Int(-1)),
-                ("end", Value::Int(i64::MIN)),
-                ("step", Value::Int(i64::MIN)),
-            ]
-        )
-        .is_err());
+        assert!(
+            try_run(
+                "range(start, end, step)",
+                &[
+                    ("start", Value::Int(1)),
+                    ("end", Value::Int(i64::MAX)),
+                    ("step", Value::Int(i64::MAX)),
+                ]
+            )
+            .is_err()
+        );
+        assert!(
+            try_run(
+                "range(start, end, step)",
+                &[
+                    ("start", Value::Int(-1)),
+                    ("end", Value::Int(i64::MIN)),
+                    ("step", Value::Int(i64::MIN)),
+                ]
+            )
+            .is_err()
+        );
     }
 
     #[test]

@@ -15,8 +15,8 @@
 //! The *constructed* counterpart (ray casting with hit coordinates) lives in
 //! [`ray`](super::ray) and is deliberately not exact; see there.
 
-use super::kernel::{orient2d, orient3d, segment_intersection, Orientation};
-use super::kernel::{segment_intersection_3d, SegmentIntersection};
+use super::kernel::{Orientation, orient2d, orient3d, segment_intersection};
+use super::kernel::{SegmentIntersection, segment_intersection_3d};
 use super::view::point_in_triangle_2d;
 
 /// Whether the three points are collinear, exactly.

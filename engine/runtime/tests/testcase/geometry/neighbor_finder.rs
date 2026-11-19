@@ -4,8 +4,8 @@
 // These tests verify the end-to-end behavior of the Neighbor Finder processor
 // using real geometry data loaded from GeoJSON files.
 
-use reearth_flow_action_log::factory::LoggerFactory;
 use reearth_flow_action_log::ActionLogger;
+use reearth_flow_action_log::factory::LoggerFactory;
 use reearth_flow_common::uri::Uri;
 use reearth_flow_runner::runner::Runner;
 use reearth_flow_state::State;

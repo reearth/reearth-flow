@@ -23,13 +23,13 @@ use reearth_flow_state::State;
 use reearth_flow_storage::resolve::StorageResolver;
 use reearth_flow_types::Workflow;
 use reearth_flow_worker::logger::{
-    UserFacingLogHandler, UserFacingLogLayer, USER_FACING_LOG_FILE_WRITER,
+    USER_FACING_LOG_FILE_WRITER, UserFacingLogHandler, UserFacingLogLayer,
 };
 use reearth_flow_worker::pubsub::{NoopPubSub, PubSubBackend};
 use reearth_flow_worker::types::user_facing_log_event::UserFacingLogLevel;
 use regex::Regex;
 use rust_embed::RustEmbed;
-use serde::{de::DeserializeOwned, Deserialize};
+use serde::{Deserialize, de::DeserializeOwned};
 use tempfile::TempDir;
 use tokio::runtime::Runtime;
 use tracing_subscriber::prelude::*;
@@ -84,7 +84,8 @@ pub fn execute_logging_error_test(fixture_dir: &str, workflow_name: &str) -> Log
 fn execute_workflow(fixture_dir: &str, workflow_name: &str, expect_success: bool) -> LogTestResult {
     // Ensure action logging is enabled regardless of CI environment variables.
     // ACTION_LOG_DISABLE is a Lazy<bool> static, so this must be set before its first evaluation.
-    env::set_var("FLOW_RUNTIME_ACTION_LOG_DISABLE", "false");
+    // FIXME: Audit that the environment access only happens in single-threaded code.
+    unsafe { env::set_var("FLOW_RUNTIME_ACTION_LOG_DISABLE", "false") };
 
     let workflow_bytes = Fixtures::get(&format!("{fixture_dir}/workflow.yml"))
         .expect("missing workflow.yml fixture");

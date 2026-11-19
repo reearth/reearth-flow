@@ -8,13 +8,13 @@ use reearth_flow_state::State;
 use reearth_flow_types::Workflow;
 use tracing::debug;
 
-use reearth_flow_action_log::factory::{create_root_logger, LoggerFactory};
+use reearth_flow_action_log::factory::{LoggerFactory, create_root_logger};
 use reearth_flow_common::{dir::setup_job_directory, uri::Uri};
 use reearth_flow_storage::resolve;
 
 use crate::factory::ALL_ACTION_FACTORIES;
 use crate::incremental::{
-    prepare_incremental_artifacts, prepare_incremental_feature_store, DirCopySpec,
+    DirCopySpec, prepare_incremental_artifacts, prepare_incremental_feature_store,
 };
 
 const WORKER_ARTIFACT_GLOBAL_PARAMETER_VARIABLE: &str = "workerArtifactPath";
@@ -192,10 +192,13 @@ impl RunCliCommand {
             .to_str()
             .ok_or_else(|| crate::errors::Error::init("Invalid temp-artifacts dir path"))?
             .to_string();
-        std::env::set_var(
-            "FLOW_RUNTIME_JOB_TEMP_ARTIFACT_DIRECTORY",
-            temp_artifact_root,
-        );
+        // FIXME: Audit that the environment access only happens in single-threaded code.
+        unsafe {
+            std::env::set_var(
+                "FLOW_RUNTIME_JOB_TEMP_ARTIFACT_DIRECTORY",
+                temp_artifact_root,
+            )
+        };
 
         let mut global = HashMap::new();
         let external = self
@@ -309,7 +312,9 @@ impl RunCliCommand {
                 available_port_file_ids,
             });
         } else if self.previous_job_id.is_some() || self.start_node_id.is_some() {
-            tracing::info!("Incremental snapshot requires both --previous-job-id and --start-node-id. Ignoring.");
+            tracing::info!(
+                "Incremental snapshot requires both --previous-job-id and --start-node-id. Ignoring."
+            );
         } else {
             tracing::info!("No incremental snapshot parameters provided. Running full workflow.");
         }

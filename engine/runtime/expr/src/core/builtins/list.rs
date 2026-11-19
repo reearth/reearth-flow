@@ -2,7 +2,7 @@ use std::cell::RefCell;
 use std::collections::HashMap;
 use std::sync::LazyLock;
 
-use crate::core::error::{eval_error, Result};
+use crate::core::error::{Result, eval_error};
 use crate::core::eval::eval_eq;
 use crate::core::value::{NativeFn, TrackedRc, Value};
 

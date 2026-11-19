@@ -549,16 +549,13 @@ const BACK_SIDE: &str = "back-side appearance binding";
 const BACK_SIDE_REASON: &str =
     "CityGML back-side surface data is not emitted; only the front side is painted";
 const PROJECTIVE_UV: &str = "world-to-texture UV set";
-const PROJECTIVE_UV_REASON: &str =
-    "a projective world-to-texture matrix has no per-corner texture coordinates to write into \
+const PROJECTIVE_UV_REASON: &str = "a projective world-to-texture matrix has no per-corner texture coordinates to write into \
      app:textureCoordinates";
 const UNMAPPED_MAP: &str = "material texture map";
-const UNMAPPED_MAP_REASON: &str =
-    "app:X3DMaterial carries no emissive, normal, occlusion or metallic-roughness map; only the \
+const UNMAPPED_MAP_REASON: &str = "app:X3DMaterial carries no emissive, normal, occlusion or metallic-roughness map; only the \
      diffuse map becomes an app:ParameterizedTexture";
 const UNSAMPLED_UV: &str = "textured material";
-const UNSAMPLED_UV_REASON: &str =
-    "its map samples a UV channel the theme supplies no explicit front-side coordinates for, so \
+const UNSAMPLED_UV_REASON: &str = "its map samples a UV channel the theme supplies no explicit front-side coordinates for, so \
      it is written colour-only";
 
 #[cfg(test)]
@@ -890,14 +887,18 @@ mod tests {
         assert_eq!(resolved.bindings[0].material_idx, Some(0));
         assert_eq!(resolved.bindings[0].texture_idx, None);
         assert!(palette.textures.is_empty(), "nothing to stage");
-        assert!(resolved
-            .omissions
-            .iter()
-            .any(|omission| omission.geometry == PROJECTIVE_UV));
-        assert!(resolved
-            .omissions
-            .iter()
-            .any(|omission| omission.geometry == UNSAMPLED_UV));
+        assert!(
+            resolved
+                .omissions
+                .iter()
+                .any(|omission| omission.geometry == PROJECTIVE_UV)
+        );
+        assert!(
+            resolved
+                .omissions
+                .iter()
+                .any(|omission| omission.geometry == UNSAMPLED_UV)
+        );
     }
 
     // Bindings

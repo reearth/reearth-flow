@@ -49,6 +49,7 @@ type Props = {
   ) => Promise<Deployment | undefined>;
   sharingUrl?: string;
   onProjectShare: (share: boolean) => void;
+  onProjectShareOpen: () => void;
   onProjectExport: () => void;
   onProjectSnapshotSave: () => Promise<void>;
   onProjectLockChange: (lock: boolean) => void;
@@ -64,6 +65,7 @@ const ActionBar: React.FC<Props> = ({
   onWorkflowDeployment,
   sharingUrl,
   onProjectShare,
+  onProjectShareOpen,
   onProjectExport,
   onProjectSnapshotSave,
   onProjectLockChange,
@@ -126,7 +128,10 @@ const ActionBar: React.FC<Props> = ({
               tooltipText={t("Share Project")}
               tooltipOffset={tooltipOffset}
               icon={<PaperPlaneTiltIcon weight="thin" size={18} />}
-              onClick={() => onDialogOpen("share")}
+              onClick={() => {
+                onProjectShareOpen();
+                onDialogOpen("share");
+              }}
             />
           }
         />

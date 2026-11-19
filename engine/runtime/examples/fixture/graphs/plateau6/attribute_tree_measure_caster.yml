@@ -2,6 +2,7 @@ id: d9f0c1d7-3bd4-49d8-a8ba-f56994776d22
 name: AttributeTreeMeasureCaster
 # Stopgap for schema-driven typing: `{name}` with a `{name}@uom` sibling is a measure and becomes a float,
 # and the sibling is renamed `{name}_uom`, the key the plateau outputs use.
+# Each dict is rebuilt in key order so `{name}_uom` lands right after `{name}` (an in-place rename would append it last).
 # Multi-token lists are left alone. A float() failure means the PLATEAU dataset is invalid, and is reported.
 nodes:
   - id: 8829e033-7b04-4226-a93a-a77966d30bab
@@ -33,14 +34,24 @@ nodes:
               while len(stack) > 0 {
                 node = stack.pop();
                 if type(node) == dict {
+                  rebuilt = {};
                   for k in node.keys() {
+                    v = node[k];
                     if k.ends_with("@uom") {
                       base = k.remove_suffix("@uom");
-                      v = node.get(base);
-                      if type(v) == list { node[base] = itertools.map(v, to_number); } else if v != null { node[base] = to_number(v); }
-                      node[base + "_uom"] = node.pop(k);
+                      if node.get(base) == null { rebuilt[base + "_uom"] = v; }
+                    } else {
+                      uom = node.get(k + "@uom");
+                      if uom == null {
+                        rebuilt[k] = v;
+                      } else {
+                        if type(v) == list { rebuilt[k] = itertools.map(v, to_number); } else if v != null { rebuilt[k] = to_number(v); } else { rebuilt[k] = v; }
+                        rebuilt[k + "_uom"] = uom;
+                      }
                     }
                   }
+                  for k in node.keys() { node.pop(k); }
+                  for k in rebuilt.keys() { node[k] = rebuilt[k]; }
                   for v in node.values() {
                     if type(v) == dict or type(v) == list { stack.append(v); }
                   }

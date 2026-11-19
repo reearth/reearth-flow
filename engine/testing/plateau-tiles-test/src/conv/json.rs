@@ -1,4 +1,4 @@
-use crate::cast_config::{convert_casts, CastConfigValue};
+use crate::cast_config::{CastConfigValue, convert_casts};
 use crate::compare_attributes::apply_casts_to_value;
 use serde_json::Value;
 use std::collections::HashMap;

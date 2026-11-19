@@ -1,6 +1,6 @@
 use bytes::Bytes;
 use geojson::FeatureCollection;
-use reearth_flow_runtime::node::{IngestionMessage, Port, FEATURES_PORT};
+use reearth_flow_runtime::node::{FEATURES_PORT, IngestionMessage, Port};
 use reearth_flow_types::Feature;
 use tokio::sync::mpsc::Sender;
 

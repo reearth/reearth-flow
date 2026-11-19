@@ -3,7 +3,7 @@
 //! (or an `xs:import` in a fetched XSD) cannot reach internal addresses.
 
 use std::{
-    collections::{hash_map::DefaultHasher, HashMap},
+    collections::{HashMap, hash_map::DefaultHasher},
     io::Read,
     path::{Path, PathBuf},
     sync::Arc,
@@ -84,7 +84,7 @@ impl SchemaDiskCache {
         &'a self,
         client: &BlockingHttpClient,
         base_dir: Option<&Path>,
-    ) -> impl SchemaFetcher + 'a {
+    ) -> impl SchemaFetcher + 'a + use<'a> {
         let file = match base_dir {
             Some(dir) => FileFetcher::with_base_dir(dir),
             None => FileFetcher::new(),
@@ -314,6 +314,15 @@ pub enum SchemaCompileError {
     Compile(String),
 }
 
+/// Why [`fetch_remote_schema`] could not read a schema.
+#[derive(Debug, thiserror::Error)]
+pub enum SchemaFetchError {
+    #[error("Failed to build schema HTTP client: {0}")]
+    Client(String),
+    #[error("Failed to fetch schema {location}: {message}")]
+    Fetch { location: String, message: String },
+}
+
 static SCHEMA_DISK_CACHE: Lazy<SchemaDiskCache> = Lazy::new(SchemaDiskCache::from_env);
 
 /// Never dropped, so it is safe to build it on any thread.
@@ -372,6 +381,36 @@ pub fn compiled_schema(
         .cloned()
 }
 
+/// Fetches one remote XSD over http or https, for a caller that resolves its
+/// imports itself, through the same egress-guarded client and on-disk cache as
+/// [`compiled_schema`].
+pub fn fetch_remote_schema(url: &str) -> Result<Vec<u8>, SchemaFetchError> {
+    let client = SCHEMA_HTTP_CLIENT
+        .as_ref()
+        .map_err(|e| SchemaFetchError::Client(e.clone()))?;
+    fetch_remote_schema_with(&SCHEMA_DISK_CACHE, client, url)
+}
+
+fn fetch_remote_schema_with(
+    cache: &SchemaDiskCache,
+    client: &BlockingHttpClient,
+    url: &str,
+) -> Result<Vec<u8>, SchemaFetchError> {
+    let failed = |message: String| SchemaFetchError::Fetch {
+        location: url.to_string(),
+        message,
+    };
+    // The fetcher also reads local files, which a remote fetch must never do.
+    if !is_remote(url) {
+        return Err(failed("not an http or https URL".to_string()));
+    }
+    cache
+        .fetcher(client, None)
+        .fetch(url)
+        .map(|fetched| fetched.content)
+        .map_err(|e| failed(e.to_string()))
+}
+
 fn is_remote(location: &str) -> bool {
     location.starts_with("http://") || location.starts_with("https://")
 }
@@ -426,7 +465,7 @@ fn compile(
                 return Err(SchemaCompileError::Fetch {
                     location: location.clone(),
                     message: format!("{e:?}"),
-                })
+                });
             }
         };
         match resolver.resolve_entry(&fetched.content, &fetched.final_url) {
@@ -441,7 +480,7 @@ fn compile(
                 return Err(SchemaCompileError::Resolve {
                     location: location.clone(),
                     message: format!("{e:?}"),
-                })
+                });
             }
         }
     }
@@ -466,8 +505,8 @@ mod tests {
     #[test]
     fn test_disk_caching_fetcher_coalesces_concurrent_fetches() {
         use std::sync::{
-            atomic::{AtomicUsize, Ordering},
             Barrier,
+            atomic::{AtomicUsize, Ordering},
         };
 
         // Each thread fetches the same URL through a temp-dir-backed disk cache.
@@ -583,6 +622,83 @@ mod tests {
             result.expect("fetch should succeed").content,
             schema.to_vec()
         );
+    }
+
+    /// Serves `content` once on loopback; returns the URL and the server thread.
+    fn serve_once(content: &'static [u8]) -> (String, std::thread::JoinHandle<()>) {
+        use std::io::Write;
+        use std::net::TcpListener;
+
+        let server = TcpListener::bind("127.0.0.1:0").unwrap();
+        let url = format!("http://{}/ade/schema.xsd", server.local_addr().unwrap());
+        let handle = std::thread::spawn(move || {
+            let (mut stream, _) = server.accept().unwrap();
+            let mut buf = [0u8; 4096];
+            let _ = stream.read(&mut buf).unwrap();
+            let header = format!(
+                "HTTP/1.1 200 OK\r\nContent-Length: {}\r\nConnection: close\r\n\r\n",
+                content.len()
+            );
+            stream.write_all(header.as_bytes()).unwrap();
+            stream.write_all(content).unwrap();
+        });
+        (url, handle)
+    }
+
+    #[test]
+    fn test_fetch_remote_schema_reads_once_then_from_the_disk_cache() {
+        let schema = b"<xsd:schema xmlns:xsd=\"http://www.w3.org/2001/XMLSchema\"/>";
+        let (url, handle) = serve_once(schema);
+        let tmp = tempfile::tempdir().unwrap();
+        let cache = SchemaDiskCache::new(tmp.path().to_path_buf());
+        let client = HttpClientBuilder::new()
+            .policy(crate::policy::EgressPolicy {
+                allow_private_network: true,
+            })
+            .build_blocking()
+            .unwrap();
+
+        let first = fetch_remote_schema_with(&cache, &client, &url).unwrap();
+        handle.join().unwrap();
+        // The server has gone, so a second read can only come from the cache.
+        let second = fetch_remote_schema_with(&cache, &client, &url).unwrap();
+
+        assert_eq!(first, schema.to_vec());
+        assert_eq!(second, schema.to_vec());
+    }
+
+    #[test]
+    fn test_fetch_remote_schema_refuses_loopback_by_default() {
+        let tmp = tempfile::tempdir().unwrap();
+        let cache = SchemaDiskCache::new(tmp.path().to_path_buf());
+        let client = HttpClientBuilder::new()
+            .policy(crate::policy::EgressPolicy {
+                allow_private_network: false,
+            })
+            .build_blocking()
+            .unwrap();
+
+        let err =
+            fetch_remote_schema_with(&cache, &client, "http://127.0.0.1:9/x.xsd").unwrap_err();
+
+        assert!(err.to_string().contains("blocked"), "{err}");
+    }
+
+    #[test]
+    fn test_fetch_remote_schema_refuses_a_local_file() {
+        let tmp = tempfile::tempdir().unwrap();
+        let path = tmp.path().join("x.xsd");
+        std::fs::write(&path, "<xsd:schema/>").unwrap();
+        let cache = SchemaDiskCache::new(tmp.path().join("cache"));
+        let client = HttpClientBuilder::new().build_blocking().unwrap();
+
+        for url in [
+            format!("file://{}", path.display()),
+            path.display().to_string(),
+        ] {
+            let err = fetch_remote_schema_with(&cache, &client, &url).unwrap_err();
+            assert!(err.to_string().contains("not an http"), "{url}: {err}");
+        }
     }
 
     #[test]

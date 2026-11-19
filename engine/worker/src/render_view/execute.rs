@@ -12,13 +12,13 @@ use std::sync::Arc;
 
 use reearth_flow_common::uri::{Protocol, Uri};
 use reearth_flow_feature_view::{
-    load_selected, render_feature, render_tileset, Destination, RenderedLayer, RenderedView,
-    Selection, ViewOptions,
+    Destination, RenderedLayer, RenderedView, Selection, ViewOptions, load_selected,
+    render_feature, render_tileset,
 };
 use reearth_flow_storage::resolve::StorageResolver;
 
 use super::args::RenderViewArgs;
-use super::report::{classify, relativise, Report, ReportLayer, Shape, Status};
+use super::report::{Report, ReportLayer, Shape, Status, classify, relativise};
 
 /// Render, then write the report. Returns `Err` only for a fault the caller
 /// should see as a failed job.
