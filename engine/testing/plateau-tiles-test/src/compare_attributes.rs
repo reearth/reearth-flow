@@ -229,7 +229,11 @@ pub fn apply_cast(cast: &CastConfig, value: Value) -> Value {
         CastConfig::OrderedDict => match value {
             Value::Object(mut map) => {
                 let order = map.keys().cloned().map(Value::String).collect();
-                map.insert("__key_order".to_string(), Value::Array(order));
+                assert!(
+                    map.insert("__key_order".to_string(), Value::Array(order))
+                        .is_none(),
+                    "ordered_dict: the object already has a \"__key_order\" key"
+                );
                 Value::Object(map)
             }
             other => other,
@@ -523,6 +527,14 @@ mod tests {
         // the plain comparison now sees the reorder
         assert!(analyze_attributes("test", &a, &b, HashMap::new(), HashMap::new()).is_err());
         assert!(analyze_attributes("test", &a, &a, HashMap::new(), HashMap::new()).is_ok());
+    }
+
+    #[test]
+    #[should_panic(expected = "already has a \"__key_order\" key")]
+    fn test_ordered_dict_cast_panics_on_key_order_collision() {
+        let mut casts = HashMap::new();
+        casts.insert("".to_string(), CastConfig::OrderedDict);
+        apply_casts_to_value(json!({"__key_order": 1, "a": 0}), "", &casts);
     }
 
     #[test]
