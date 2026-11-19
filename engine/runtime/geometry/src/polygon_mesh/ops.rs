@@ -1639,3 +1639,137 @@ mod tests {
         );
     }
 }
+
+#[cfg(feature = "new-geometry")]
+mod decompose {
+    use super::{PolygonMesh2D, PolygonMesh3D};
+    use crate::index::IndexBuffer;
+    use crate::ops::decompose::{MeshFaces, Part, Partition, decompose, geometries};
+    use crate::ops::merge::internal_boundaries;
+    use crate::ops::{
+        DecomposeIntoEdgeConnectedParts, DecomposeIntoManifolds, UnsupportedOperation,
+    };
+    use crate::{Euclidean2DGeometry, Euclidean3DGeometry, Geometry};
+
+    /// The faces of a CSR mesh as flat buffers.
+    fn faces<'a, const N: usize>(
+        vertices: &'a [[f64; N]],
+        (indices, offsets, interiors): (&IndexBuffer<1>, &IndexBuffer<1>, &IndexBuffer<1>),
+        appearance: &'a Option<crate::appearance::Appearance>,
+    ) -> MeshFaces<'a, N> {
+        let indices: Vec<u32> = indices.iter_u32().map(|[i]| i).collect();
+        let mut face_ends: Vec<usize> = Vec::new();
+        if !indices.is_empty() {
+            face_ends.extend(offsets.iter_u32().map(|[o]| o as usize));
+            face_ends.push(indices.len());
+        }
+        MeshFaces {
+            vertices,
+            hole_starts: interiors.iter_u32().map(|[o]| o as usize).collect(),
+            indices,
+            face_ends,
+            appearance,
+        }
+    }
+
+    impl PolygonMesh2D {
+        /// The parts under `partition`, each with the faces it holds.
+        pub(crate) fn decompose_parts(&self, partition: Partition) -> Vec<(Geometry, Vec<usize>)> {
+            let mesh = faces(self.vertices(), self.csr_buffers(), self.appearance());
+            if mesh.face_ends.is_empty() {
+                return Vec::new();
+            }
+            let Some(parts) = decompose(&mesh, partition) else {
+                return vec![(
+                    Geometry::Euclidean2D(Euclidean2DGeometry::PolygonMesh(Box::new(self.clone()))),
+                    (0..mesh.face_ends.len()).collect(),
+                )];
+            };
+            parts
+                .into_iter()
+                .map(|part: Part<2>| {
+                    let mut mesh = PolygonMesh2D::from_raw_parts(
+                        self.frame().clone(),
+                        part.vertices,
+                        part.indices,
+                        internal_boundaries(&part.face_ends),
+                        part.interior_offsets,
+                    )
+                    .expect("the faces of a valid mesh make a valid mesh");
+                    mesh.set_elevation(self.elevation());
+                    *mesh.appearance_mut() = part.appearance;
+                    (
+                        Geometry::Euclidean2D(Euclidean2DGeometry::PolygonMesh(Box::new(mesh))),
+                        part.faces,
+                    )
+                })
+                .collect()
+        }
+    }
+
+    impl PolygonMesh3D {
+        /// The parts under `partition`, each with the faces it holds.
+        pub(crate) fn decompose_parts(&self, partition: Partition) -> Vec<(Geometry, Vec<usize>)> {
+            let mesh = faces(
+                self.vertices(),
+                self.data().csr_buffers(),
+                self.appearance(),
+            );
+            if mesh.face_ends.is_empty() {
+                return Vec::new();
+            }
+            let Some(parts) = decompose(&mesh, partition) else {
+                return vec![(
+                    Geometry::Euclidean3D(Euclidean3DGeometry::PolygonMesh(Box::new(self.clone()))),
+                    (0..mesh.face_ends.len()).collect(),
+                )];
+            };
+            parts
+                .into_iter()
+                .map(|part: Part<3>| {
+                    let mut mesh = PolygonMesh3D::from_raw_parts(
+                        self.frame().clone(),
+                        part.vertices,
+                        part.indices,
+                        internal_boundaries(&part.face_ends),
+                        part.interior_offsets,
+                    )
+                    .expect("the faces of a valid mesh make a valid mesh");
+                    *mesh.appearance_mut() = part.appearance;
+                    (
+                        Geometry::Euclidean3D(Euclidean3DGeometry::PolygonMesh(Box::new(mesh))),
+                        part.faces,
+                    )
+                })
+                .collect()
+        }
+    }
+
+    impl DecomposeIntoEdgeConnectedParts for PolygonMesh2D {
+        fn decompose_into_edge_connected_parts(
+            &self,
+        ) -> Result<Vec<Geometry>, UnsupportedOperation> {
+            Ok(geometries(self.decompose_parts(Partition::EdgeConnected)))
+        }
+    }
+
+    impl DecomposeIntoEdgeConnectedParts for PolygonMesh3D {
+        fn decompose_into_edge_connected_parts(
+            &self,
+        ) -> Result<Vec<Geometry>, UnsupportedOperation> {
+            Ok(geometries(self.decompose_parts(Partition::EdgeConnected)))
+        }
+    }
+
+    impl DecomposeIntoManifolds for PolygonMesh2D {
+        fn decompose_into_manifolds(&self) -> Result<Vec<Geometry>, UnsupportedOperation> {
+            Ok(geometries(self.decompose_parts(Partition::Manifold)))
+        }
+    }
+
+    impl DecomposeIntoManifolds for PolygonMesh3D {
+        fn decompose_into_manifolds(&self) -> Result<Vec<Geometry>, UnsupportedOperation> {
+            Ok(geometries(self.decompose_parts(Partition::Manifold)))
+        }
+    }
+}

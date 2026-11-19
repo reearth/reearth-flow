@@ -17,6 +17,8 @@ pub mod centroid;
 pub mod boundary;
 pub mod coerce;
 #[cfg(feature = "new-geometry")]
+pub mod decompose;
+#[cfg(feature = "new-geometry")]
 pub mod elevation;
 #[cfg(feature = "new-geometry")]
 pub mod extrude;
@@ -27,6 +29,8 @@ pub mod frame;
 #[cfg(feature = "new-geometry")]
 pub mod grid;
 pub mod hole;
+#[cfg(feature = "new-geometry")]
+pub mod merge;
 pub mod reproject;
 #[cfg(feature = "new-geometry")]
 pub mod round;
@@ -45,6 +49,10 @@ pub(crate) use boundary::{
     BoundaryEdges, container_boundary, surface_boundary_2d, surface_boundary_3d,
 };
 pub use coerce::{Coerce, CoercionTarget, rings_as_faces_2d};
+#[cfg(feature = "new-geometry")]
+pub use decompose::{
+    DecomposeIntoEdgeConnectedParts, DecomposeIntoManifolds, Partition, decompose_with_faces,
+};
 #[cfg(feature = "new-geometry")]
 pub use elevation::{Elevation, SetElevation};
 #[cfg(feature = "new-geometry")]

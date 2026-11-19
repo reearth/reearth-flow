@@ -9977,6 +9977,129 @@
       ]
     },
     {
+      "name": "Mesh Merger",
+      "type": "processor",
+      "description": "グループ化属性の値が同じ地物のポリゴンとメッシュを、各面をそのまま保ってメッシュに統合し、グループごと、またはその連結部分ごとに1つの地物を出力する。すべての入力が三角形メッシュなら三角形メッシュ、それ以外はポリゴンメッシュになる。",
+      "parameter": {
+        "$schema": "http://json-schema.org/draft-07/schema#",
+        "title": "メッシュ統合のパラメータ",
+        "description": "どの地物をまとめて統合するか、結果をどう分けるか、どの属性を保持するかを設定する。",
+        "type": "object",
+        "properties": {
+          "groupBy": {
+            "title": "グループ化属性",
+            "description": "まとめて統合する地物を決める属性。すべての属性値が一致する地物が1つのグループになる。省略した場合はすべての地物が1つのグループに属する。",
+            "default": null,
+            "type": [
+              "array",
+              "null"
+            ],
+            "items": {
+              "$ref": "#/definitions/Attribute"
+            }
+          },
+          "attributeAccumulation": {
+            "title": "属性の保持",
+            "description": "統合後の各地物が保持する属性。その地物に統合された地物から取られる。",
+            "default": "useOneFeature",
+            "allOf": [
+              {
+                "$ref": "#/definitions/AttributeAccumulation"
+              }
+            ]
+          },
+          "granularity": {
+            "title": "出力単位",
+            "description": "各グループを出力地物にどこまで細かく分けるか。",
+            "default": "group",
+            "allOf": [
+              {
+                "$ref": "#/definitions/Granularity"
+              }
+            ]
+          }
+        },
+        "definitions": {
+          "Attribute": {
+            "type": "string"
+          },
+          "AttributeAccumulation": {
+            "title": "Attribute Accumulation",
+            "description": "Which attributes a merged feature keeps.",
+            "oneOf": [
+              {
+                "title": "グループ化属性のみ保持",
+                "description": "グループ化属性のみを保持し、それ以外はすべて破棄する。",
+                "type": "string",
+                "enum": [
+                  "groupAttributesOnly"
+                ]
+              },
+              {
+                "title": "属性を収集",
+                "description": "グループ化属性を保持し、統合された各地物のそれ以外の属性を、到着順に地物ごとに1つのマップを持つ配列として `__members` に書き込む。",
+                "type": "string",
+                "enum": [
+                  "collectAttributes"
+                ]
+              },
+              {
+                "title": "1つの地物の属性を使用",
+                "description": "最初に統合された地物の属性を保持し、残りを破棄する。",
+                "type": "string",
+                "enum": [
+                  "useOneFeature"
+                ]
+              }
+            ]
+          },
+          "Granularity": {
+            "description": "How finely each group is divided into output features.",
+            "oneOf": [
+              {
+                "title": "グループ",
+                "description": "グループごとに1つのメッシュを出力する。",
+                "type": "string",
+                "enum": [
+                  "group"
+                ]
+              },
+              {
+                "title": "辺で連結した部分",
+                "description": "座標が完全に一致する辺でつながった面のまとまりごとに1つのメッシュを出力する。頂点のみで接する面は別のメッシュになる。",
+                "type": "string",
+                "enum": [
+                  "edgeConnectedPart"
+                ]
+              },
+              {
+                "title": "多様体部分",
+                "description": "辺で連結した部分をさらに分け、メッシュのどの辺も接する面が1つか2つになるようにする。1つの辺に3つ以上の面が接する場合、その辺でつながったままになるのは2つの面だけである。",
+                "type": "string",
+                "enum": [
+                  "manifoldPart"
+                ]
+              }
+            ]
+          }
+        }
+      },
+      "builtin": true,
+      "inputPorts": [
+        "features"
+      ],
+      "outputPorts": [
+        "features",
+        "rejected"
+      ],
+      "categories": [
+        "Geometry"
+      ],
+      "tags": [
+        "aggregation"
+      ]
+    },
+    {
       "name": "Neighbor Finder",
       "type": "processor",
       "description": "空間的な近接性に基づいて、各基本地物に対して最も近い候補地物を見つける",
