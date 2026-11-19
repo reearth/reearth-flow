@@ -2,7 +2,9 @@ package interactor
 
 import (
 	"context"
+	"errors"
 	"testing"
+	"time"
 
 	accountsid "github.com/reearth/reearth-accounts/server/pkg/id"
 	accountsuser "github.com/reearth/reearth-accounts/server/pkg/user"
@@ -167,4 +169,121 @@ func TestProject_SetStar_Public(t *testing.T) {
 
 	_, err = f.uc.SetStar(context.Background(), f.theirPublic.ID(), true)
 	assert.ErrorIs(t, err, interfaces.ErrOperationDenied, "starring needs a user")
+}
+
+// memberOfAny allows everything in the given workspaces and nothing elsewhere.
+type memberOfAny accountsid.WorkspaceIDList
+
+func (m memberOfAny) CheckPermission(_ context.Context, _, _ string, ws ...accountsid.WorkspaceID) (bool, error) {
+	return len(ws) == 1 && accountsid.WorkspaceIDList(m).Has(ws[0]), nil
+}
+
+// failingChecker fails every permission check.
+type failingChecker struct{}
+
+func (failingChecker) CheckPermission(context.Context, string, string, ...accountsid.WorkspaceID) (bool, error) {
+	return false, errors.New("permission service down")
+}
+
+func TestProject_Search_Workspaces(t *testing.T) {
+	t.Parallel()
+
+	type fixture struct {
+		ctx            context.Context
+		uc             *Project
+		one, two, them accountsid.WorkspaceID
+	}
+	setup := func(t *testing.T) fixture {
+		t.Helper()
+		f := fixture{one: accountsid.NewWorkspaceID(), two: accountsid.NewWorkspaceID(), them: accountsid.NewWorkspaceID()}
+		repo := memory.NewProject()
+		f.uc = &Project{
+			projectRepo:       repo,
+			transaction:       usecasex.NewTransactor(&usecasex.NopTransaction{}, 0),
+			permissionChecker: memberOfAny{f.one, f.two},
+		}
+		u := accountsuser.New().NewID().Name("u").Email("u@example.com").MustBuild()
+		f.ctx = adapter.AttachUser(context.Background(), u)
+
+		base := time.Date(2026, 1, 1, 0, 0, 0, 0, time.UTC)
+		save := func(ws accountsid.WorkspaceID, name string, v project.Visibility, archived bool, hour int) {
+			p := project.New().NewID().Workspace(ws).Name(name).Visibility(v).IsArchived(archived).
+				UpdatedAt(base.Add(time.Duration(hour) * time.Hour)).MustBuild()
+			require.NoError(t, repo.Save(context.Background(), p))
+		}
+		save(f.one, "one private", project.VisibilityPrivate, false, 0)
+		save(f.two, "two public", project.VisibilityPublic, false, 1)
+		save(f.one, "one archived", project.VisibilityPublic, true, 2)
+		save(f.them, "their public", project.VisibilityPublic, false, 3)
+		save(f.them, "their private", project.VisibilityPrivate, false, 4)
+		return f
+	}
+
+	t.Run("lists member workspaces as one page and skips the rest", func(t *testing.T) {
+		t.Parallel()
+		f := setup(t)
+
+		got, info, err := f.uc.Search(f.ctx, interfaces.ProjectSearchParam{
+			Workspaces: accountsid.WorkspaceIDList{f.one, f.them, f.two, f.one},
+		})
+		require.NoError(t, err)
+		assert.Equal(t, []string{"two public", "one private"}, names(got), "newest first; non-member and archived projects left out")
+		assert.Equal(t, int64(2), info.TotalCount)
+	})
+
+	t.Run("members may include archived and filter by visibility", func(t *testing.T) {
+		t.Parallel()
+		f := setup(t)
+
+		got, _, err := f.uc.Search(f.ctx, interfaces.ProjectSearchParam{
+			Workspaces:      accountsid.WorkspaceIDList{f.one, f.two, f.them},
+			IncludeArchived: true,
+			Visibility:      lo.ToPtr(project.VisibilityPublic),
+		})
+		require.NoError(t, err)
+		assert.Equal(t, []string{"one archived", "two public"}, names(got))
+	})
+
+	t.Run("pages across workspaces", func(t *testing.T) {
+		t.Parallel()
+		f := setup(t)
+
+		got, info, err := f.uc.Search(f.ctx, interfaces.ProjectSearchParam{
+			Workspaces: accountsid.WorkspaceIDList{f.one, f.two},
+			Page:       2,
+			PageSize:   1,
+		})
+		require.NoError(t, err)
+		assert.Equal(t, []string{"one private"}, names(got))
+		assert.Equal(t, int64(2), info.TotalCount)
+	})
+
+	t.Run("no member workspace gives an empty page", func(t *testing.T) {
+		t.Parallel()
+		f := setup(t)
+
+		got, info, err := f.uc.Search(f.ctx, interfaces.ProjectSearchParam{Workspaces: accountsid.WorkspaceIDList{f.them}})
+		require.NoError(t, err)
+		assert.Empty(t, got)
+		assert.Zero(t, info.TotalCount)
+	})
+
+	t.Run("anonymous callers are members of nothing", func(t *testing.T) {
+		t.Parallel()
+		f := setup(t)
+
+		got, info, err := f.uc.Search(context.Background(), interfaces.ProjectSearchParam{Workspaces: accountsid.WorkspaceIDList{f.one, f.two}})
+		require.NoError(t, err)
+		assert.Empty(t, got)
+		assert.Zero(t, info.TotalCount)
+	})
+
+	t.Run("a failing permission check is returned", func(t *testing.T) {
+		t.Parallel()
+		f := setup(t)
+		f.uc.permissionChecker = failingChecker{}
+
+		_, _, err := f.uc.Search(f.ctx, interfaces.ProjectSearchParam{Workspaces: accountsid.WorkspaceIDList{f.one}})
+		assert.Error(t, err)
+	})
 }

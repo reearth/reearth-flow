@@ -55,8 +55,13 @@ const (
 // ProjectSearchParam filters and pages a project search. A nil Workspace
 // searches every workspace, Topics matches projects that have all of them, and
 // an empty SortBy sorts by update time. Page starts at 1.
+//
+// A non-nil Workspaces limits the search to those workspaces; an empty one
+// matches nothing. When both Workspace and Workspaces are set, a project must
+// match both.
 type ProjectSearchParam struct {
 	Workspace       *accountsid.WorkspaceID
+	Workspaces      accountsid.WorkspaceIDList
 	Visibility      *project.Visibility
 	Keyword         string
 	SortBy          ProjectSortField
@@ -102,6 +107,8 @@ type Project interface {
 	// Search lists the projects the caller may see. In a workspace the caller
 	// is a member of, the search runs as given; anywhere else, including with
 	// no Workspace, it returns only public projects that are not archived.
+	// With Workspaces set, it searches only those the caller is a member of,
+	// as given, and skips the rest.
 	Search(context.Context, ProjectSearchParam) ([]*project.Project, *PageBasedInfo, error)
 	// CanCreatePrivate reports whether the workspace's plan allows private projects.
 	CanCreatePrivate(ctx context.Context, wid accountsid.WorkspaceID) (bool, error)

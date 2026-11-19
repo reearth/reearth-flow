@@ -101,4 +101,25 @@ func ProjectSearch(t *testing.T, r repo.Project) {
 	got, total = search(interfaces.ProjectSearchParam{Page: 5, PageSize: 2})
 	assert.Empty(t, got, "past the last page")
 	assert.Equal(t, int64(3), total)
+
+	got, total = search(interfaces.ProjectSearchParam{Workspaces: accountsid.WorkspaceIDList{a, b}})
+	assert.Equal(t, []string{"delta", "beta", "alpha"}, got, "one order across workspaces, archived left out")
+	assert.Equal(t, int64(3), total)
+
+	got, total = search(interfaces.ProjectSearchParam{Workspaces: accountsid.WorkspaceIDList{a, b}, Page: 2, PageSize: 2})
+	assert.Equal(t, []string{"alpha"}, got, "pages run across workspaces")
+	assert.Equal(t, int64(3), total)
+
+	got, _ = search(interfaces.ProjectSearchParam{Workspaces: accountsid.WorkspaceIDList{a, b}, Visibility: lo.ToPtr(project.VisibilityPrivate)})
+	assert.Equal(t, []string{"beta"}, got)
+
+	got, _ = search(interfaces.ProjectSearchParam{Workspaces: accountsid.WorkspaceIDList{b, other}})
+	assert.Equal(t, []string{"delta"}, got, "the readable filter still applies")
+
+	got, _ = search(interfaces.ProjectSearchParam{Workspace: &a, Workspaces: accountsid.WorkspaceIDList{b}})
+	assert.Empty(t, got, "Workspace and Workspaces must both match")
+
+	got, total = search(interfaces.ProjectSearchParam{Workspaces: accountsid.WorkspaceIDList{}})
+	assert.Empty(t, got, "an empty list matches nothing")
+	assert.Zero(t, total)
 }

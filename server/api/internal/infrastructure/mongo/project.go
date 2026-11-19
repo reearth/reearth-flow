@@ -252,6 +252,9 @@ func (r *Project) Search(ctx context.Context, p interfaces.ProjectSearchParam) (
 	if p.Workspace != nil {
 		and = append(and, bson.M{"workspace": p.Workspace.String()})
 	}
+	if p.Workspaces != nil {
+		and = append(and, bson.M{"workspace": bson.M{"$in": p.Workspaces.Strings()}})
+	}
 	if r.f.Readable != nil {
 		and = append(and, bson.M{"workspace": bson.M{"$in": r.f.Readable.Strings()}})
 	}

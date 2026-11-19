@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"slices"
 	"time"
 
 	gqlworkspace "github.com/reearth/reearth-accounts/server/pkg/gqlclient/workspace"
@@ -23,6 +24,7 @@ import (
 	"github.com/reearth/reearthx/usecasex"
 	"go.opentelemetry.io/otel"
 	"go.opentelemetry.io/otel/attribute"
+	"golang.org/x/sync/errgroup"
 )
 
 type Project struct {
@@ -111,6 +113,18 @@ func (i *Project) FindViewableByAlias(ctx context.Context, wid accountsid.Worksp
 func (i *Project) Search(ctx context.Context, p interfaces.ProjectSearchParam) ([]*project.Project, *interfaces.PageBasedInfo, error) {
 	p.Page, p.PageSize = interfaces.NormalizePage(p.Page, p.PageSize)
 
+	if p.Workspaces != nil {
+		members, err := i.memberWorkspaces(ctx, p.Workspaces)
+		if err != nil {
+			return nil, nil, err
+		}
+		if len(members) == 0 {
+			return nil, interfaces.NewPageBasedInfo(0, p.Page, p.PageSize), nil
+		}
+		p.Workspaces = members
+		return i.projectRepo.Search(ctx, p)
+	}
+
 	if p.Workspace != nil {
 		member, err := i.isMember(ctx, *p.Workspace)
 		if err != nil {
@@ -160,6 +174,46 @@ func (i *Project) isMember(ctx context.Context, wid accountsid.WorkspaceID) (boo
 		return false, nil
 	}
 	return err == nil, err
+}
+
+// maxConcurrentMemberChecks bounds the permission checks memberWorkspaces runs
+// at once; each one may call the permission service.
+const maxConcurrentMemberChecks = 8
+
+// memberWorkspaces returns the distinct workspaces in wids the caller is a
+// member of, in their first-seen order. Only a denial drops a workspace; other
+// errors are returned.
+func (i *Project) memberWorkspaces(ctx context.Context, wids accountsid.WorkspaceIDList) (accountsid.WorkspaceIDList, error) {
+	seen := make(map[accountsid.WorkspaceID]struct{}, len(wids))
+	uniq := slices.DeleteFunc(slices.Clone(wids), func(w accountsid.WorkspaceID) bool {
+		if _, ok := seen[w]; ok {
+			return true
+		}
+		seen[w] = struct{}{}
+		return false
+	})
+
+	member := make([]bool, len(uniq))
+	g, gctx := errgroup.WithContext(ctx)
+	g.SetLimit(maxConcurrentMemberChecks)
+	for idx, wid := range uniq {
+		g.Go(func() error {
+			ok, err := i.isMember(gctx, wid)
+			member[idx] = ok
+			return err
+		})
+	}
+	if err := g.Wait(); err != nil {
+		return nil, err
+	}
+
+	res := make(accountsid.WorkspaceIDList, 0, len(uniq))
+	for idx, wid := range uniq {
+		if member[idx] {
+			res = append(res, wid)
+		}
+	}
+	return res, nil
 }
 
 // isOpen reports whether anyone may see p: it is public and not archived.
