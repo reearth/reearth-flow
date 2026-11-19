@@ -19,7 +19,7 @@ import (
 )
 
 type UserFacingLogInteractor struct {
-	logsGatewayRedis  gateway.Redis
+	logsGatewayRedis  gateway.LiveStore
 	jobRepo           repo.Job
 	permissionChecker gateway.PermissionChecker
 	subscriptions     *subscription.UserFacingLogManager
@@ -27,7 +27,7 @@ type UserFacingLogInteractor struct {
 	mu                sync.Mutex
 }
 
-func NewUserFacingLogInteractor(lgRedis gateway.Redis, jobRepo repo.Job, permissionChecker gateway.PermissionChecker) interfaces.UserFacingLog {
+func NewUserFacingLogInteractor(lgRedis gateway.LiveStore, jobRepo repo.Job, permissionChecker gateway.PermissionChecker) interfaces.UserFacingLog {
 	return &UserFacingLogInteractor{
 		logsGatewayRedis:  lgRedis,
 		jobRepo:           jobRepo,

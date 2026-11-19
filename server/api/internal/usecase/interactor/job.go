@@ -32,7 +32,7 @@ type Job struct {
 	file                gateway.File
 	batch               gateway.Batch
 	cloudRunWorker      gateway.CloudRunWorker
-	redis               gateway.Redis
+	redis               gateway.LiveStore
 	notifier            notification.Notifier
 	permissionChecker   gateway.PermissionChecker
 	monitor             *monitor.Monitor
@@ -63,7 +63,7 @@ func NewJob(
 		file:                gr.File,
 		batch:               gr.Batch,
 		cloudRunWorker:      gr.CloudRunWorker,
-		redis:               gr.Redis,
+		redis:               gr.LiveStore,
 		monitor:             monitor.NewMonitor(),
 		subscriptions:       subscription.NewJobManager(),
 		notifier:            notification.NewHTTPNotifier(),

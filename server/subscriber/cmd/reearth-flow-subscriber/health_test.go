@@ -1,6 +1,8 @@
 package main
 
 import (
+	"context"
+	"errors"
 	"net/http"
 	"net/http/httptest"
 	"testing"
@@ -17,7 +19,7 @@ func TestHealthChecker_Handler_NoAuth(t *testing.T) {
 	}
 
 	// Create health checker with nil clients (will skip their checks)
-	hc := NewHealthChecker(conf, "test-version", nil, nil, nil)
+	hc := NewHealthChecker(conf, "test-version", nil, nil, nil, nil)
 	assert.NotNil(t, hc)
 
 	// Create request
@@ -42,7 +44,7 @@ func TestHealthChecker_Handler_WithAuth_Unauthorized(t *testing.T) {
 		HealthCheckPassword: "secret",
 	}
 
-	hc := NewHealthChecker(conf, "test-version", nil, nil, nil)
+	hc := NewHealthChecker(conf, "test-version", nil, nil, nil, nil)
 	assert.NotNil(t, hc)
 
 	// Create request without auth
@@ -67,7 +69,7 @@ func TestHealthChecker_Handler_WithAuth_Authorized(t *testing.T) {
 		HealthCheckPassword: "secret",
 	}
 
-	hc := NewHealthChecker(conf, "test-version", nil, nil, nil)
+	hc := NewHealthChecker(conf, "test-version", nil, nil, nil, nil)
 	assert.NotNil(t, hc)
 
 	// Create request with correct auth
@@ -93,7 +95,7 @@ func TestHealthChecker_Handler_WithAuth_WrongPassword(t *testing.T) {
 		HealthCheckPassword: "secret",
 	}
 
-	hc := NewHealthChecker(conf, "test-version", nil, nil, nil)
+	hc := NewHealthChecker(conf, "test-version", nil, nil, nil, nil)
 	assert.NotNil(t, hc)
 
 	// Create request with wrong password
@@ -119,4 +121,20 @@ func TestHealthCheckError_Error(t *testing.T) {
 	}
 
 	assert.Equal(t, "health check failed", err.Error())
+}
+
+func TestHealthChecker_Handler_PostgresDown(t *testing.T) {
+	t.Parallel()
+
+	conf := &Config{LiveBackend: LiveBackendPostgres}
+	hc := NewHealthChecker(conf, "test-version", nil, nil, nil, func(context.Context) error {
+		return errors.New("connection refused")
+	})
+
+	req := httptest.NewRequest(http.MethodGet, "/health", nil)
+	rec := httptest.NewRecorder()
+	hc.Handler()(rec, req)
+
+	assert.Equal(t, http.StatusServiceUnavailable, rec.Code)
+	assert.Contains(t, rec.Body.String(), "postgres")
 }
