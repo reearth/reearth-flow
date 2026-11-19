@@ -176,13 +176,10 @@ func (i *Project) isMember(ctx context.Context, wid accountsid.WorkspaceID) (boo
 	return err == nil, err
 }
 
-// maxConcurrentMemberChecks bounds the permission checks memberWorkspaces runs
-// at once; each one may call the permission service.
+// maxConcurrentMemberChecks bounds concurrent permission checks in memberWorkspaces.
 const maxConcurrentMemberChecks = 8
 
-// memberWorkspaces returns the distinct workspaces in wids the caller is a
-// member of, in their first-seen order. Only a denial drops a workspace; other
-// errors are returned.
+// memberWorkspaces returns the distinct workspaces in wids the caller is a member of.
 func (i *Project) memberWorkspaces(ctx context.Context, wids accountsid.WorkspaceIDList) (accountsid.WorkspaceIDList, error) {
 	seen := make(map[accountsid.WorkspaceID]struct{}, len(wids))
 	uniq := slices.DeleteFunc(slices.Clone(wids), func(w accountsid.WorkspaceID) bool {
