@@ -459,23 +459,23 @@ not, and every preliminary finding gathered but not acted on. Read this before r
 
 ### Where the palette stands
 
-`server/api/internal/app/base_actions.go` exposes **112** actions: **87** under this standard and
+`server/api/internal/app/base_actions.go` exposes **114** actions: **89** under this standard and
 25 `PLATEAU4.*`/`PLATEAU6.*` actions exposed in #2470, which belong to PLATEAU Flow and sit outside
-this audit's settled scope. Recounted after the CityGML Writer audit with `grep -c 'true,'
-base_actions.go`, cross-checked per section comment (Input 12, Output 12, Geometry 27, Attribute
+this audit's settled scope. Recounted after the CZML audit with `grep -c 'true,'
+base_actions.go`, cross-checked per section comment (Input 13, Output 13, Geometry 27, Attribute
 13, Feature / Flow 16, Utility 7, PLATEAU 25), with no duplicate keys. The table had said 80 since
 #2437 (Spatial Filter), down from 105 before that; #2470 (+27: CityGML 2 and 3 Reader plus the 25
 PLATEAU actions) and #2471 (+2: Feature Writer, Geometry Filter) changed the file without updating
 it, so the 80 and the pending 5 below were stale until this correction. #2562 then added the
-JP Mesh Code Extractor (+1), #2577 added Extruder (+1) and the CityGML Writer audit adds the
-CityGML Writer (+1). For the actions under
+JP Mesh Code Extractor (+1), #2577 added Extruder (+1), the CityGML Writer audit added the
+CityGML Writer (+1) and the CZML audit adds the CZML Reader and CZML Writer (+2). For the actions under
 this standard the gate is now strict: an action is listed only if it **runs in the shipped build** (§7.1) **and** has passed an
 engine-side review. Nothing below is a deletion — every hidden action still executes in a
 workflow that names it, so no existing workflow broke.
 
 | Bucket | Count | Trigger to re-expose |
 |---|---|---|
-| Exposed and audited | 87 | — |
+| Exposed and audited | 89 | — |
 | Exposed, PLATEAU (outside this audit's settled scope) | 25 | n/a |
 | Does not run in the shipped build | 15 | Its new-geometry port landing (Notion FLOW-DEV-182) |
 | **Pending audit** | **3** | An engine-side §8 pass — the list below |
@@ -562,6 +562,12 @@ rather than in Bufferer's — the audit it then owed is the addendum at the bott
 `Elevation Extractor`, `Area Calculator`, `Spatial Filter` and `Extruder` were all in this list
 and are now audited and exposed; `HTTP Caller` left it on its own PR track. See their addenda below. This
 sub-list is now empty — the next action to join it will be whichever geometry port merges next.
+
+`CityGML Writer`, `CZML Reader` and `CZML Writer` never appeared in this list even though they
+belonged in it: their ports (#2355, #2468, #2444) merged without recording the move, so they were
+found by going back through the merged ports rather than by reading this file. That is the failure
+§7.2 describes, and it has now happened four times. When checking what is pending, read the
+merged geometry ports as well as this list.
 
 #### Group E — Root-level `oneOf` restructuring (2 remaining, plus 1 already-audited)
 
@@ -2228,3 +2234,156 @@ is a Feature Writer change, and its legacy `build_lod_mask` copy carries the sam
 **Bucket arithmetic.** The writer was in no list (owed since #2355) and leaves pending audit in
 this PR, so pending audit stays at 3, "does not run" stays at 15, and exposed and audited rises to
 87. Palette recounted with `grep -c 'true,' base_actions.go`: **112**, of which 25 are PLATEAU.
+
+## Addendum: CZML Reader and CZML Writer, audited and exposed
+
+**Why they were pending.** The writer's new-geometry port landed in #2444 and the reader's in
+#2468, both merged 2026-09-29. Before those, the writer's only `process`/`finish` pair was
+`cfg(not(feature = "new-geometry"))`, so it hit the loud `Sink` trait default and failed on every
+feature; the reader was in the same state. Both started running the moment their ports merged and
+moved into pending audit under §7.2's never-reviewed case, and — as with Elevation Extractor,
+Extruder and the CityGML Writer — neither port recorded the move, so both sat in no list at all.
+Full §8 pass run against the new-geometry build, which is the shipped one (`cli` sets
+`default = ["new-geometry"]`).
+
+The two were audited together because they are one surface: the reader's `preserveRaw` strategy
+exists to round-trip through the writer's Embedded Mode, and the attribute contract between them
+is what `docs/czml-timeseries.md` documents.
+
+```
+CZML Reader: kept and exposed
+  runs:    OK. `start` reads through `czml_next::read` under new-geometry.
+             Registered unconditionally in mapping.rs.
+  impl:    OK. `force2D`, `skipDocumentPacket` and `timeSampling` are all read and applied, and
+             all three `TimeSamplingStrategy` variants have a branch in `czml_next.rs`.
+             `preserveRaw` is the real default in both the schema and `Default`.
+  diag:    OK on the drop paths: an unsupported position, an INERTIAL cartesian frame and
+             `force2D` on a geocentric packet all go through `ctx.report_drop` with a registry
+             code, and the packet is skipped rather than silently vanishing.
+  diag:    DEFERRED. A malformed file fails the read with a plain `SourceError`, so it reaches
+             the user as `internal.unclassified`/Fatal even though a bad CZML file is exactly
+             the kind of failure a user can fix. §9 says a source `start()` *can* classify
+             (`CSV Reader` raises `csv.no_data_rows` this way), so this is reachable, not a
+             platform gap. Not done here: the registry has no generic parse code to reuse, so it
+             wants a `czml.parse_failed` alongside `citygml.parse_failed`, and adding a code
+             drags in the manual `schema/error-codes.json` regeneration. TRIGGER: the next PR
+             that adds a CZML error code for any reason takes this one with it.
+  name:    OK.
+  desc:    OK. Verb-first, two sentences, and it matches what the three strategies actually do.
+  params:  FIXED. `force2d` was the only reader on that spelling; `GeoPackage Reader` and
+             `Shapefile Reader` both use `force2D`, and both are audited. Renamed to match, with
+             `alias = "force2d"` so a workflow written against the old spelling still loads.
+  params:  NOTE. `inline`'s description ends without a period (§2). It comes from the shared
+             `FileReaderCommonParam`, so fixing it here would change every file reader's schema
+             at once; it belongs to whoever audits that struct, not to this action.
+  ports:   OK. `features` out, no inputs. Sources sit outside §4.3, and this reader takes the
+             carve-out correctly: malformed input fails the read rather than routing anywhere.
+  cat:     OK. `Input`.
+  tags:    OK. `czml`, `3d`.
+```
+
+```
+CZML Writer: kept and exposed
+  runs:    OK. `process` buffers and `finish` writes in both worlds; under new-geometry the
+             geometry work goes through `czml/next/`. Registered unconditionally in mapping.rs.
+  impl:    FIXED (blocked exposure). `colorAttribute`, `opacity` and `heightAttribute` were
+             accepted by the schema and then ignored on the grouped-timeseries path:
+             `build_entity_packet_next` called the unstyled `polygon_value_for`, where the old
+             world's `build_entity_packet` called `feature_geometry_to_polygon_json`, which
+             applies all three. So the port silently dropped the styling from every
+             grouped-timeseries entity — not a gap it inherited, a regression it introduced.
+             Now calls `styled_polygon_value_for`. Pinned by a test, which was mutation-checked
+             against the old call: it fails with no `material` and no `extrudedHeight`.
+  impl:    OK otherwise. `output`, `groupBy`, `timeField`, `groupTimeseriesBy`, `epoch`,
+             `interpolationAlgorithm` and `interpolationDegree` are all read and applied in the
+             new-geometry build, and the epoch auto-detection to the Unix epoch fires on both
+             the grouped and the per-entity path, as the text now says.
+  impl:    FIXED. `interpolationDegree` accepted 0, which is not an interpolation — CZML's own
+             `interpolationDegree` is the degree of the polynomial, so 0 was written straight
+             into the output for a viewer to reject. `build()` now refuses it and the schema
+             declares `minimum: 1`.
+  diag:    FIXED (blocked exposure). Embedded Mode and the grouped-timeseries path both took an
+             `Option` from `cartographic_position` and wrote the entity with no position,
+             reporting nothing — a batch could lose every position with the run still green, and
+             the function's own doc comment recorded this as intended. `cartographic_position`
+             now returns a `Result` separating "nothing to place" from "frame cannot be
+             resolved", and both paths report the same two codes mode 3 already reported for the
+             same two causes. The entity is still written: in Embedded Mode its `czml.*`
+             attributes carry graphics worth keeping, and it was the silence that was the defect.
+  diag:    FIXED. `build()` printed the `output` compile and evaluation errors with `{e:?}`.
+             Both types implement Display, so the message now gives the cause. §9 notes `build()`
+             cannot classify at all.
+  diag:    NOTE. `czml.missing_feature_id` and `czml.non_citygml_geometry` are raised only by
+             the legacy `feature_to_packets`. Their help text ("Ensure upstream features carry a
+             CityGML gml:id", "CZML Writer only converts CityGML geometry to polygons") is false
+             of the shipped build, which parents packets on `feature.id` and draws any geometry.
+             Codes are append-only, and the text goes with the legacy cleanup rather than being
+             rewritten to describe a path that no longer exists.
+  name:    OK.
+  desc:    FIXED. "Export features as CZML for Cesium visualization. Supports static entities and
+             time-animated timeseries. Configure timeField, groupTimeseriesBy, and epoch..." was
+             imperative rather than third-person (§2), ran to three sentences, and read as setup
+             instructions. It also said "a CZML file" nowhere near `groupBy`, which writes one
+             file per group. Both now said, in two sentences.
+  params:  FIXED. The parameter block's description was a 1,200-character markdown document with
+             two YAML examples and three heading levels, which §3.3 asks to be one sentence
+             summarising what the block configures; `timeField` and `epoch` carried their own
+             YAML examples and bold-headed sections. All three rewritten. The depth is not lost:
+             `docs/czml-timeseries.md` is where it already lived.
+  params:  FIXED. `InterpolationAlgorithm`'s values were `LINEAR`/`LAGRANGE`/`HERMITE`, which
+             §3.4 prohibits outright, and the variants carried a description but no `title`.
+             Values are now camelCase with a title each, with uppercase serde aliases so an
+             existing workflow still loads. The uppercase spelling is what CZML requires in the
+             file, so `Display` still emits it — the wire value and the output value are
+             deliberately different, and the note saying so was moved out of the doc comment,
+             which ships to users.
+  params:  FIXED. Ten top-level parameters, over §3.5's guideline of 8. `colorAttribute`,
+             `opacity` and `heightAttribute` are one thing — `opacity` does nothing without
+             `colorAttribute`, and all three apply to the same derived polygon — so they are now
+             a `polygonStyle` group, which is one parameter by §3.5 and legitimately optional as
+             a whole. That brings the count to 8, and the group's description is the natural
+             place for the one fact that could not be stated per-leaf: the styling applies to
+             entity packets, not to a feature written straight from its geometry. Remaining
+             properties reordered required-first per §3.5.
+  params:  FIXED. `opacity`'s description ended "Default: 180.", restating the schema `default`
+             (§3.3). `groupBy` now says what the per-group path actually does.
+  params:  ACCEPTED. `groupBy` names the house parameter, as on `GeoJSON Writer`, `Shapefile
+             Writer` and nine processors, so it keeps the name despite sitting next to
+             `groupTimeseriesBy`; the two descriptions carry the distinction instead.
+  params:  DEFERRED. With `groupBy` set, each group's file is named `<hash>.json` under the
+             `output` path — a hash of the group's values, and a `.json` extension on a CZML
+             file. `GeoJSON Writer` and `Shapefile Writer` both name the file after the group's
+             value instead. Changing it is an output-naming change of the kind already parked
+             for the Shapefile Writer ("Deferred: Shapefile Writer output naming"), not an audit
+             fix, and the description now states the behaviour accurately. TRIGGER: whoever
+             takes the Shapefile Writer naming decision settles this writer in the same PR.
+  ports:   OK. `features` in, no outputs (sink, §4.3 exempt).
+  cat:     FIXED. `File`, which is for file utilities such as decompression and path handling.
+             Sinks take `Output` (§5). `OBJ Writer` and `glTF Writer` are still on `File` and are
+             both unaudited; this is a finding against them, not fixed here.
+  tags:    FIXED. No tags at all. `czml` and `3d`, matching the reader and the pattern every
+             audited writer follows (`citygml`/`3d` on CityGML Writer, `3d`/`tiling` on Cesium
+             3D Tiles Writer).
+  i18n:    Every changed string translated in ja/es/fr/zh, including the new `polygonStyle`
+             leaves and the renamed enum variants. The nested `definitionI18n.PolygonStyleParam`
+             keys were checked in `ja.json` and in the generated `actions_ja.json` rather than
+             assumed from the schema shape, per §3.4's closing warning.
+```
+
+**`docs/czml-timeseries.md` stays orphaned, and this audit cannot adopt it.** The "Deferred:
+Extended action documentation" item at the top of this file says the home and format for
+per-action extended docs still need planning, and that until then concise wins. Inventing a
+convention for one action would pre-empt that decision. What the audit *did* owe it is accuracy:
+its `interpolationAlgorithm` examples were updated for the camelCase values, `polygonStyle` was
+added to its parameter table, and its claim that the writer "falls back to legacy CityGML polygon
+output" was corrected — #2444 replaced that fallback with per-feature geometry packets.
+
+**The does-not-run reconciliation is untouched.** Its trigger is a PR that moves an action into
+or out of that bucket; these two left it when their ports merged in September, so this PR does
+not meet it. The item stays open.
+
+**Bucket arithmetic.** Both actions were in no list (owed since #2444 and #2468) and leave pending
+audit in this PR, so pending audit stays at 3, "does not run" stays at 15, and exposed and audited
+rises from 87 to 89. Palette recounted with `grep -c 'true,' base_actions.go`: **114**, of which
+25 are PLATEAU, cross-checked per section comment (Input 13, Output 13, Geometry 27, Attribute 13,
+Feature / Flow 16, Utility 7, PLATEAU 25) with no duplicate keys.
