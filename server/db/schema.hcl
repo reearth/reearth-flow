@@ -861,3 +861,178 @@ table "auth_requests" {
     columns = [column.subject]
   }
 }
+
+// Transient job live data for REEARTH_FLOW_LIVE_BACKEND=postgres, standing in for Redis.
+// UNLOGGED: expires within 24h via the subscriber's janitor and is never system-of-record.
+
+table "job_logs" {
+  schema   = schema.public
+  unlogged = true
+
+  column "id" {
+    type = bigserial
+  }
+  column "job_id" {
+    type = text
+  }
+  column "workflow_id" {
+    type = text
+  }
+  column "node_id" {
+    type = text
+    null = true
+  }
+  column "ts" {
+    type = timestamptz
+  }
+  column "level" {
+    type = text
+  }
+  column "message" {
+    type = bytea
+  }
+  column "payload_hash" {
+    type    = bytea
+    comment = "sha256 of the serialized event; dedupes Pub/Sub redelivery"
+  }
+  column "created_at" {
+    type    = timestamptz
+    default = sql("now()")
+  }
+
+  primary_key {
+    columns = [column.id]
+  }
+
+  index "job_logs_job_id_payload_hash_key" {
+    unique  = true
+    columns = [column.job_id, column.payload_hash]
+  }
+  // The reader's hot path: one job's logs in a time window, in time order.
+  index "job_logs_job_id_ts_idx" {
+    columns = [column.job_id, column.ts]
+  }
+  // The janitor's retention sweep.
+  index "job_logs_created_at_idx" {
+    columns = [column.created_at]
+  }
+}
+
+table "job_user_facing_logs" {
+  schema   = schema.public
+  unlogged = true
+
+  column "id" {
+    type = bigserial
+  }
+  column "job_id" {
+    type = text
+  }
+  column "workflow_id" {
+    type = text
+  }
+  column "node_id" {
+    type = text
+    null = true
+  }
+  column "node_name" {
+    type = text
+    null = true
+  }
+  column "ts" {
+    type = timestamptz
+  }
+  column "level" {
+    type = text
+  }
+  column "message" {
+    type = bytea
+  }
+  column "metadata" {
+    type = jsonb
+    null = true
+  }
+  column "payload_hash" {
+    type    = bytea
+    comment = "sha256 of the serialized event; dedupes Pub/Sub redelivery"
+  }
+  column "created_at" {
+    type    = timestamptz
+    default = sql("now()")
+  }
+
+  primary_key {
+    columns = [column.id]
+  }
+
+  index "job_user_facing_logs_job_id_payload_hash_key" {
+    unique  = true
+    columns = [column.job_id, column.payload_hash]
+  }
+  index "job_user_facing_logs_job_id_ts_idx" {
+    columns = [column.job_id, column.ts]
+  }
+  index "job_user_facing_logs_created_at_idx" {
+    columns = [column.created_at]
+  }
+}
+
+table "job_diagnostics" {
+  schema   = schema.public
+  unlogged = true
+
+  column "id" {
+    type    = bigserial
+    comment = "insertion order; readers return newest first, matching the Redis LPUSH lists"
+  }
+  column "job_id" {
+    type = text
+  }
+  column "node_id" {
+    type    = text
+    null    = true
+    comment = "NULL for job-level diagnostics (the Redis _job segment)"
+  }
+  column "data" {
+    type = json
+  }
+  column "created_at" {
+    type    = timestamptz
+    default = sql("now()")
+  }
+
+  primary_key {
+    columns = [column.id]
+  }
+
+  index "job_diagnostics_job_id_node_id_id_idx" {
+    columns = [column.job_id, column.node_id, column.id]
+  }
+  index "job_diagnostics_created_at_idx" {
+    columns = [column.created_at]
+  }
+}
+
+table "job_complete_events" {
+  schema   = schema.public
+  unlogged = true
+
+  column "job_id" {
+    type = text
+  }
+  column "data" {
+    type = json
+  }
+  column "created_at" {
+    type    = timestamptz
+    default = sql("now()")
+  }
+
+  primary_key {
+    columns = [column.job_id]
+  }
+
+  index "job_complete_events_created_at_idx" {
+    columns = [column.created_at]
+  }
+}

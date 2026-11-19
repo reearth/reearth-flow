@@ -19,6 +19,7 @@ type Querier interface {
 	DeleteAsset(ctx context.Context, id string) error
 	DeleteDeployment(ctx context.Context, id string) error
 	DeleteJob(ctx context.Context, id string) error
+	DeleteJobCompleteEvent(ctx context.Context, jobID string) error
 	DeleteJobsByProject(ctx context.Context, projectID *string) error
 	DeleteParameter(ctx context.Context, id string) error
 	DeleteParametersByIDs(ctx context.Context, dollar_1 []string) error
@@ -36,6 +37,7 @@ type Querier interface {
 	GetJob(ctx context.Context, id string) (Job, error)
 	// The job a time-driven trigger started for one scheduled time.
 	GetJobByScheduledRun(ctx context.Context, arg GetJobByScheduledRunParams) (Job, error)
+	GetJobCompleteEvent(ctx context.Context, jobID string) ([]byte, error)
 	GetParameter(ctx context.Context, id string) (Parameter, error)
 	GetProject(ctx context.Context, id string) (Project, error)
 	GetProjectAccessByProjectID(ctx context.Context, projectID string) (ProjectAccess, error)
@@ -47,7 +49,16 @@ type Querier interface {
 	ListAssetsByIDs(ctx context.Context, dollar_1 []string) ([]Asset, error)
 	ListDeploymentsByIDs(ctx context.Context, dollar_1 []string) ([]Deployment, error)
 	ListEdgeExecutionsByJobID(ctx context.Context, jobID string) ([]EdgeExecution, error)
+	ListJobDiagnostics(ctx context.Context, jobID string) ([][]byte, error)
+	ListJobLevelDiagnostics(ctx context.Context, jobID string) ([][]byte, error)
+	// Transient job live data (REEARTH_FLOW_LIVE_BACKEND=postgres). Written by the
+	// subscriber, read here; see the unlogged section of db/schema.hcl.
+	ListJobLogs(ctx context.Context, arg ListJobLogsParams) ([]ListJobLogsRow, error)
+	ListJobLogsByJobIDs(ctx context.Context, arg ListJobLogsByJobIDsParams) ([]ListJobLogsByJobIDsRow, error)
+	ListJobUserFacingLogs(ctx context.Context, arg ListJobUserFacingLogsParams) ([]ListJobUserFacingLogsRow, error)
 	ListJobsByIDs(ctx context.Context, dollar_1 []string) ([]Job, error)
+	// Diagnostics are returned newest first, matching the LPUSH'd Redis lists.
+	ListNodeDiagnostics(ctx context.Context, arg ListNodeDiagnosticsParams) ([][]byte, error)
 	ListParametersByIDs(ctx context.Context, dollar_1 []string) ([]Parameter, error)
 	ListParametersByProject(ctx context.Context, projectID string) ([]Parameter, error)
 	ListProjectsByIDs(ctx context.Context, dollar_1 []string) ([]Project, error)
