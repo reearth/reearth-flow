@@ -24,10 +24,7 @@ query GetProjectHistory($projectId: ID!) {
 
 query GetProjectNamedSnapshots($projectId: ID!) {
   projectNamedSnapshots(projectId: $projectId) {
-    snapshotNumber
-    label
-    timestamp
-    size
+    ...NamedSnapshot
   }
 }
 
@@ -40,10 +37,7 @@ query GetProjectNamedSnapshot($projectId: ID!, $snapshotNumber: Int!) {
 
 mutation SaveNamedSnapshot($projectId: ID!, $label: String!) {
   saveNamedSnapshot(projectId: $projectId, label: $label) {
-    snapshotNumber
-    label
-    timestamp
-    size
+    ...NamedSnapshot
   }
 }
 

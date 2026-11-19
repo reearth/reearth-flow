@@ -10,6 +10,7 @@ generate_truth = true
 
 [convs.mvt_attributes.dm.casts]
 ".attributes" = "json"
+"" = "ordered_dict"
 
 [convs.mvt_png.dm]
 path = "08220_tsukuba-shi_city_2023_citygml_2_op_trk_dm_geometric_attributes"
@@ -30,6 +31,7 @@ generate_truth = true
 
 [convs.cesium_attributes.trk_lod2.casts]
 ".attributes" = "json"
+"" = "ordered_dict"
 
 [tests.json_attributes_v2.trk_lod2]
 path = "trk_lod2_truth.json"

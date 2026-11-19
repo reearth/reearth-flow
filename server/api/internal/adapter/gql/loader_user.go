@@ -31,9 +31,18 @@ func (c *UserLoader) Fetch(ctx context.Context, ids []gqlmodel.ID) ([]*gqlmodel.
 		return nil, []error{err}
 	}
 
-	users := make([]*gqlmodel.User, 0, len(res))
+	// Accounts returns only the users it found, in no particular order, but a
+	// data loader matches results to keys by position, so align them by ID.
+	found := make(map[string]*gqlmodel.User, len(res))
 	for _, u := range res {
-		users = append(users, gqlmodel.ToUser(u))
+		if u != nil {
+			found[u.ID().String()] = gqlmodel.ToUser(u)
+		}
+	}
+
+	users := make([]*gqlmodel.User, len(uids))
+	for i, uid := range uids {
+		users[i] = found[uid.String()]
 	}
 
 	return users, nil

@@ -224,7 +224,20 @@ pub fn apply_cast(cast: &CastConfig, value: Value) -> Value {
             }
         }
         CastConfig::IgnoreBoth => Value::Null,
-        CastConfig::OrderedDict => value,
+        // Records the key order as a "__key_order" entry so that the unordered comparison
+        // also catches a reorder. Conversion-only: nested paths are left unchanged.
+        CastConfig::OrderedDict => match value {
+            Value::Object(mut map) => {
+                let order = map.keys().cloned().map(Value::String).collect();
+                assert!(
+                    map.insert("__key_order".to_string(), Value::Array(order))
+                        .is_none(),
+                    "ordered_dict: the object already has a \"__key_order\" key"
+                );
+                Value::Object(map)
+            }
+            other => other,
+        },
     }
 }
 
@@ -501,6 +514,28 @@ pub fn analyze_attributes(
 mod tests {
     use super::*;
     use serde_json::json;
+
+    #[test]
+    fn test_ordered_dict_cast_at_conversion_records_key_order() {
+        let mut casts = HashMap::new();
+        casts.insert("".to_string(), CastConfig::OrderedDict);
+        let convert = |v: Value| apply_casts_to_value(v, "", &casts);
+
+        let a = convert(json!({"a": 1, "b": 2}));
+        let b = convert(json!({"b": 2, "a": 1}));
+        assert_eq!(a["__key_order"], json!(["a", "b"]));
+        // the plain comparison now sees the reorder
+        assert!(analyze_attributes("test", &a, &b, HashMap::new(), HashMap::new()).is_err());
+        assert!(analyze_attributes("test", &a, &a, HashMap::new(), HashMap::new()).is_ok());
+    }
+
+    #[test]
+    #[should_panic(expected = "already has a \"__key_order\" key")]
+    fn test_ordered_dict_cast_panics_on_key_order_collision() {
+        let mut casts = HashMap::new();
+        casts.insert("".to_string(), CastConfig::OrderedDict);
+        apply_casts_to_value(json!({"__key_order": 1, "a": 0}), "", &casts);
+    }
 
     #[test]
     fn test_ordered_dict_order_mismatch() {

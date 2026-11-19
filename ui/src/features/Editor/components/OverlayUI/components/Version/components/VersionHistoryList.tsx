@@ -9,6 +9,8 @@ import {
 import type { NamedSnapshot, ProjectDocument } from "@flow/types";
 import { formatDate } from "@flow/utils";
 
+import ContributorStack from "./ContributorStack";
+
 // What a version row shows as its name. Labels set by the system are codes, so
 // they are translated; any other label was named by a user and is shown as is.
 const snapshotLabel = (
@@ -94,9 +96,16 @@ const VersionHistoryList: React.FC<Props> = ({
                     <p className="flex-2 self-start text-xs font-light dark:font-thin">
                       {snapshotLabel(snapshot.label, t)}
                     </p>
-                    <p className="text-xs font-thin">
-                      {formatDate(snapshot.timestamp)}
-                    </p>
+                    <div className="flex items-center gap-3">
+                      <p className="text-xs font-thin">
+                        {formatDate(snapshot.timestamp)}
+                      </p>
+                      <ContributorStack
+                        contributors={snapshot.contributors}
+                        contributorCount={snapshot.contributorCount}
+                        lastEditorId={snapshot.lastEditorId}
+                      />
+                    </div>
                   </div>
                   <div className="flex justify-end">
                     <p className="h-fit rounded border bg-border/15 p-1 text-xs font-thin dark:bg-primary/30">

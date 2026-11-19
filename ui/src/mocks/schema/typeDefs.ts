@@ -348,6 +348,11 @@ export const typeDefs = `
     label: String!
     timestamp: DateTime!
     size: Int!
+    contributorIds: [ID!]!
+    contributors: [User!]!
+    contributorCount: Int!
+    lastEditorId: ID
+    lastEditor: User
   }
 
   # Trigger Types

@@ -1,5 +1,6 @@
 import type {
   DeploymentFragment,
+  NamedSnapshotFragment,
   ProjectFragment,
   ProjectVisibility as GraphqlProjectVisibility,
   JobFragment,
@@ -40,6 +41,7 @@ import type {
   Trigger,
   ProjectDocument,
   ProjectSnapshotMeta,
+  NamedSnapshot,
   VarType,
   AnyWorkflowVariable,
   Workspace,
@@ -604,3 +606,19 @@ export const toCmsSchemaFieldType = (
       return "text";
   }
 };
+
+export const toNamedSnapshot = (
+  snapshot: NamedSnapshotFragment,
+): NamedSnapshot => ({
+  snapshotNumber: snapshot.snapshotNumber,
+  label: snapshot.label,
+  timestamp: snapshot.timestamp,
+  size: snapshot.size,
+  contributors: snapshot.contributors.map((c) => ({
+    id: c.id,
+    name: c.name,
+    photoURL: c.metadata.photoURL ?? undefined,
+  })),
+  contributorCount: snapshot.contributorCount,
+  lastEditorId: snapshot.lastEditorId ?? undefined,
+});
