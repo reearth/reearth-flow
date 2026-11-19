@@ -282,6 +282,7 @@ func TestSignalLock_WritesItsChangeAgainWhenAnOlderOneLandsBeforeItsObserver(t *
 	// write and the lock observer, which then reads the older change.
 	var older []byte
 	var once sync.Once
+	var lockedMeanwhile bool
 	watch := srv.ws.OnLoadDocument
 	srv.ws.OnLoadDocument = func(ctx context.Context, room string, doc *crdt.Doc) error {
 		doc.GetMap(metadataMapName).Observe(func(ev crdt.YMapEvent) {
@@ -292,6 +293,7 @@ func TestSignalLock_WritesItsChangeAgainWhenAnOlderOneLandsBeforeItsObserver(t *
 				if err := crdt.ApplyUpdateV1(doc, older, nil); err != nil {
 					t.Errorf("apply the older change: %v", err)
 				}
+				lockedMeanwhile = srv.locks.locked(room, doc)
 			})
 		})
 		return watch(ctx, room, doc)
@@ -320,6 +322,9 @@ func TestSignalLock_WritesItsChangeAgainWhenAnOlderOneLandsBeforeItsObserver(t *
 
 	if err := srv.SignalLock(context.Background(), lockRoom, true, time.UnixMilli(2000)); err != nil {
 		t.Fatalf("SignalLock: %v", err)
+	}
+	if !lockedMeanwhile {
+		t.Error("writes were let through while the lock was being written again")
 	}
 	want := projectLock{Locked: true, At: 2000}
 	waitFor(t, "the newer lock change", func() bool {
