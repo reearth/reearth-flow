@@ -497,6 +497,7 @@ const DebugRunDropDownMenu: React.FC<{
         <DropdownMenuItem
           className="flex items-center justify-between"
           disabled={
+            debugRunStarted ||
             isSaving ||
             !selectedNode ||
             selectedNodeIds.length > 1 ||

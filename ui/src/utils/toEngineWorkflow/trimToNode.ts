@@ -5,8 +5,6 @@ import {
 import { deployableNodeTypes } from "@flow/types";
 import type { Edge, Node, Workflow } from "@flow/types";
 
-import { isDefined } from "../isDefined";
-
 type RouterPort = { subworkflowNodeId: string; portName: string };
 
 export type RunGraph = {
@@ -17,8 +15,8 @@ export type RunGraph = {
   outgoing: Map<string, Edge[]>;
   inputRouters: Map<string, RouterPort>;
   outputRouters: Map<string, RouterPort>;
-  inputRouterAt: Map<string, string>;
-  outputRouterAt: Map<string, string>;
+  inputRouterAt: Map<string, string[]>;
+  outputRouterAt: Map<string, string[]>;
 };
 
 const portKey = (nodeId: string, portName: string) => `${nodeId}\0${portName}`;
@@ -29,10 +27,10 @@ const targetPort = (edge: Edge) => edge.targetHandle ?? DEFAULT_EDGE_PORT;
 const isRunnable = (node: Node) =>
   deployableNodeTypes.includes(node.type) && !node.data.isDisabled;
 
-const append = (map: Map<string, Edge[]>, key: string, edge: Edge) => {
+const append = <T>(map: Map<string, T[]>, key: string, value: T) => {
   const list = map.get(key);
-  if (list) list.push(edge);
-  else map.set(key, [edge]);
+  if (list) list.push(value);
+  else map.set(key, [value]);
 };
 
 export const buildRunGraph = (workflows: Workflow[]): RunGraph => {
@@ -60,14 +58,14 @@ export const buildRunGraph = (workflows: Workflow[]): RunGraph => {
           subworkflowNodeId: node.id,
           portName,
         });
-        graph.inputRouterAt.set(portKey(node.id, portName), nodeId);
+        append(graph.inputRouterAt, portKey(node.id, portName), nodeId);
       });
       node.data.pseudoOutputs?.forEach(({ nodeId, portName }) => {
         graph.outputRouters.set(nodeId, {
           subworkflowNodeId: node.id,
           portName,
         });
-        graph.outputRouterAt.set(portKey(node.id, portName), nodeId);
+        append(graph.outputRouterAt, portKey(node.id, portName), nodeId);
       });
     }),
   );
@@ -87,15 +85,15 @@ export const buildRunGraph = (workflows: Workflow[]): RunGraph => {
 const isSubworkflowNode = (graph: RunGraph, nodeId: string) =>
   graph.nodes.get(nodeId)?.type === "subworkflow";
 
-const resolveSource = (graph: RunGraph, edge: Edge) =>
+const resolveSources = (graph: RunGraph, edge: Edge): string[] =>
   isSubworkflowNode(graph, edge.source)
-    ? graph.outputRouterAt.get(portKey(edge.source, sourcePort(edge)))
-    : edge.source;
+    ? (graph.outputRouterAt.get(portKey(edge.source, sourcePort(edge))) ?? [])
+    : [edge.source];
 
-const resolveTarget = (graph: RunGraph, edge: Edge) =>
+const resolveTargets = (graph: RunGraph, edge: Edge): string[] =>
   isSubworkflowNode(graph, edge.target)
-    ? graph.inputRouterAt.get(portKey(edge.target, targetPort(edge)))
-    : edge.target;
+    ? (graph.inputRouterAt.get(portKey(edge.target, targetPort(edge))) ?? [])
+    : [edge.target];
 
 export const feedersOf = (graph: RunGraph, nodeId: string): string[] => {
   const router = graph.inputRouters.get(nodeId);
@@ -104,7 +102,7 @@ export const feedersOf = (graph: RunGraph, nodeId: string): string[] => {
         (edge) => targetPort(edge) === router.portName,
       )
     : (graph.incoming.get(nodeId) ?? []);
-  return edges.map((edge) => resolveSource(graph, edge)).filter(isDefined);
+  return edges.flatMap((edge) => resolveSources(graph, edge));
 };
 
 const consumersOf = (graph: RunGraph, nodeId: string): string[] => {
@@ -114,7 +112,7 @@ const consumersOf = (graph: RunGraph, nodeId: string): string[] => {
         (edge) => sourcePort(edge) === router.portName,
       )
     : (graph.outgoing.get(nodeId) ?? []);
-  return edges.map((edge) => resolveTarget(graph, edge)).filter(isDefined);
+  return edges.flatMap((edge) => resolveTargets(graph, edge));
 };
 
 const walk = (
@@ -180,10 +178,9 @@ export const trimWorkflowsToNode = (
   const keepsEdge = (edge: Edge) => {
     if (!keptNodeIds.has(edge.source) || !keptNodeIds.has(edge.target))
       return false;
-    const source = resolveSource(graph, edge);
-    const target = resolveTarget(graph, edge);
     return (
-      !!source && !!target && keptNodeIds.has(source) && keptNodeIds.has(target)
+      resolveSources(graph, edge).some((id) => keptNodeIds.has(id)) &&
+      resolveTargets(graph, edge).some((id) => keptNodeIds.has(id))
     );
   };
 

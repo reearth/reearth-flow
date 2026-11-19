@@ -305,6 +305,38 @@ describe("trimWorkflowsToNode", () => {
     expect(nodeIdsIn(workflowOf(result?.workflows, "S"))).toEqual(["F", "IR1"]);
   });
 
+  it("keeps the parent edge for every input router sharing a port name", () => {
+    const workflows = [
+      main(
+        [
+          node("R", "reader"),
+          subworkflow(
+            "S",
+            [
+              ["IR1", "default"],
+              ["IR2", "default"],
+            ],
+            [],
+          ),
+        ],
+        [edge("R", "S", undefined, "default")],
+      ),
+      graph(
+        "S",
+        [node("IR1"), node("IR2"), node("F"), node("G")],
+        [edge("IR1", "F"), edge("IR2", "G")],
+      ),
+    ];
+
+    for (const target of ["F", "G"]) {
+      const result = trimWorkflowsToNode(workflows, target);
+      expect(edgeIdsIn(workflowOf(result?.workflows, "main"))).toEqual([
+        "R->S:default",
+      ]);
+      expect(result?.keptNodeIds.has("R")).toBe(true);
+    }
+  });
+
   it("keeps everything that feeds a subworkflow node as the target", () => {
     const workflows = [
       main(
