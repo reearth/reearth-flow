@@ -2310,6 +2310,24 @@ CZML Writer: kept and exposed
              resolved", and both paths report the same two codes mode 3 already reported for the
              same two causes. The entity is still written: in Embedded Mode its `czml.*`
              attributes carry graphics worth keeping, and it was the silence that was the defect.
+  impl:    FIXED (found in review). The document clock resolved numeric times against
+             `params.epoch` only when one was set, so a grouped batch of numeric times with no
+             `epoch` wrote `clock.interval: "0/60"` — raw numbers, where CZML wants ISO 8601 —
+             while the entities in the same document had already defaulted to the Unix epoch.
+             One document, two readings of the same times. All three inference sites now share
+             an `effective_epoch` helper so they cannot drift again.
+  impl:    FIXED (found in review). `hex_to_rgba` checked `hex.len() != 6`, which counts bytes,
+             then sliced `&hex[0..2]`. A six-byte, five-character value such as `#aé123` passed
+             the check and panicked on the slice. The colour comes from a feature attribute, so
+             it was reachable from data, and routing the grouped-timeseries path through
+             `styled_polygon_value_for` widened who could reach it. ASCII hex digits are now
+             required before slicing.
+  diag:    FIXED (found in review). Deferring the placement diagnostic: a feature read with
+             `preserveRaw` can carry no geometry and a valid `czml.polygon` that places itself,
+             and the first cut of the diagnostics fix reported `czml.empty_geometry` for it
+             while the packet went out fully drawn. The error is now held until the `czml.*`
+             restoration and the geometry auto-convert have had their turn, and raised only if
+             the entity ends with neither a position nor a graphic.
   diag:    FIXED. `build()` printed the `output` compile and evaluation errors with `{e:?}`.
              Both types implement Display, so the message now gives the cause. §9 notes `build()`
              cannot classify at all.

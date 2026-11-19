@@ -371,6 +371,20 @@ mod param_tests {
     }
 
     #[test]
+    fn a_non_ascii_colour_is_refused_not_panicked_on() {
+        // `len()` is a byte count: "aé123" is six bytes and five characters, so
+        // the length check passed and `&hex[0..2]` split `é`, panicking on a
+        // feature attribute's value. Exposing the writer and routing the
+        // grouped-timeseries path through it widened who can reach this.
+        assert_eq!(hex_to_rgba("#aé123", 180), None);
+        assert_eq!(hex_to_rgba("aé123", 180), None);
+        // Still refuses the merely wrong, and still accepts the right.
+        assert_eq!(hex_to_rgba("#zzzzzz", 180), None);
+        assert_eq!(hex_to_rgba("#fff", 180), None);
+        assert_eq!(hex_to_rgba("#ffd8c0", 180), Some([255, 216, 192, 180]));
+    }
+
+    #[test]
     fn an_omitted_polygon_style_keeps_the_opacity_the_schema_advertises() {
         // `#[serde(default = "default_opacity")]` does not reach an absent
         // block, so `Default` has to carry 180 itself.
@@ -943,6 +957,24 @@ fn feature_to_packets_next(
     }
 }
 
+/// The epoch numeric times are counted from: the one the user set, else the
+/// Unix epoch when every time value is numeric, else none.
+///
+/// Shared so the document clock and the entity packets cannot disagree about
+/// what a bare `60` means.
+#[cfg(feature = "new-geometry")]
+fn effective_epoch(explicit: Option<&str>, all_numeric: bool) -> Option<String> {
+    match explicit {
+        Some(epoch) => Some(epoch.to_string()),
+        None if all_numeric => Some(UNIX_EPOCH_ISO.to_string()),
+        None => None,
+    }
+}
+
+/// The epoch CZML counts from when numeric times carry no explicit one.
+#[cfg(feature = "new-geometry")]
+const UNIX_EPOCH_ISO: &str = "1970-01-01T00:00:00Z";
+
 /// Build a CZML document with time-dynamic entities grouped by attribute —
 /// the new-geometry counterpart of `build_timeseries_czml`. Same shape;
 /// position extraction goes through `first_vertex` + `to_wgs84`
@@ -1004,10 +1036,21 @@ fn build_timeseries_czml_next(
         let start = &all_timestamps[0];
         let end = &all_timestamps[all_timestamps.len() - 1];
 
-        let (start_iso, end_iso) = if all_numeric && params.epoch.is_some() {
-            let start_iso = strip_epoch_offset_for_availability(start, params.epoch.as_deref());
-            let end_iso = strip_epoch_offset_for_availability(end, params.epoch.as_deref());
-            (start_iso, end_iso)
+        // The same epoch each entity resolves for itself in
+        // `build_entity_packet_next`: an explicit one, else the Unix epoch when
+        // every time value is numeric. This used to require `params.epoch` to be
+        // set, so numeric times with no epoch wrote the raw numbers into
+        // `clock.currentTime` and `clock.interval`, which CZML requires to be
+        // ISO 8601 — while the entities in the same document had already
+        // defaulted to the Unix epoch. One document, two readings of the same
+        // times. `strip_epoch_offset_for_availability` returns an ISO input
+        // untouched, so this is a no-op when the times are already timestamps.
+        let clock_epoch = effective_epoch(params.epoch.as_deref(), all_numeric);
+        let (start_iso, end_iso) = if all_numeric {
+            (
+                strip_epoch_offset_for_availability(start, clock_epoch.as_deref()),
+                strip_epoch_offset_for_availability(end, clock_epoch.as_deref()),
+            )
         } else {
             (start.clone(), end.clone())
         };
@@ -1097,13 +1140,7 @@ fn build_entity_packet_next(
         }
     });
 
-    let epoch = if params.epoch.is_some() {
-        params.epoch.clone()
-    } else if all_numeric_times {
-        Some("1970-01-01T00:00:00Z".to_string())
-    } else {
-        None
-    };
+    let epoch = effective_epoch(params.epoch.as_deref(), all_numeric_times);
 
     let mut sorted: Vec<&Feature> = features.to_vec();
     sorted.sort_by(|a, b| {
@@ -1365,25 +1402,17 @@ fn build_embedded_czml_next(
 
     // Auto-detect epoch for numeric time values in per-entity mode
     let effective_epoch: Option<String> = if per_entity_mode {
-        if params.epoch.is_some() {
-            params.epoch.clone()
-        } else {
-            let all_numeric = params.time_field.as_ref().is_some_and(|tf| {
-                features.iter().all(|f| {
-                    f.get(tf)
-                        .map(|v| {
-                            let s = attribute_value_to_string(v);
-                            s.parse::<f64>().is_ok()
-                        })
-                        .unwrap_or(true)
-                })
-            });
-            if all_numeric {
-                Some("1970-01-01T00:00:00Z".to_string())
-            } else {
-                None
-            }
-        }
+        let all_numeric = params.time_field.as_ref().is_some_and(|tf| {
+            features.iter().all(|f| {
+                f.get(tf)
+                    .map(|v| {
+                        let s = attribute_value_to_string(v);
+                        s.parse::<f64>().is_ok()
+                    })
+                    .unwrap_or(true)
+            })
+        });
+        effective_epoch(params.epoch.as_deref(), all_numeric)
     } else {
         params.epoch.clone()
     };
@@ -1491,6 +1520,9 @@ fn build_embedded_packet_next(
     cache: &mut ReprojectionCache,
 ) -> Result<Value, BoxedError> {
     let mut packet = serde_json::Map::new();
+    // Set when geometry could not place the entity, and resolved at the end of
+    // this function once the `czml.*` graphics have had their chance.
+    let mut unplaced: Option<PlacementError> = None;
 
     if let Some(AttributeValue::String(id)) = feature.get(Attribute::new("id")) {
         packet.insert("id".to_string(), serde_json::json!(id));
@@ -1603,10 +1635,13 @@ fn build_embedded_packet_next(
                     }),
                 );
             }
-            // The entity is still written: in Embedded Mode its `czml.*`
-            // attributes carry graphics and properties that are worth keeping
-            // even unpositioned. It is the silence that was the defect.
-            Err(err) => report_unplaced(gctx, feature, err),
+            // Held, not reported yet. A feature read with `preserveRaw` can
+            // carry `Geometry::None` and a perfectly good `czml.polygon`, whose
+            // own `positions` place the graphic — the restoration loop below is
+            // what puts it back. Reporting here would call that a placement
+            // failure while the packet goes out fully drawn, which is the kind
+            // of false positive that teaches users to ignore the diagnostic.
+            Err(err) => unplaced = Some(err),
         }
     }
 
@@ -1672,8 +1707,30 @@ fn build_embedded_packet_next(
         packet.insert("properties".to_string(), props);
     }
 
+    // Now that every source of a position or a graphic has had its turn —
+    // `czml.*` restoration and the geometry auto-convert — a held placement
+    // error is a real one only if the entity ended up with neither.
+    if let Some(err) = unplaced
+        && !packet.contains_key("position")
+        && !GRAPHIC_KEYS.iter().any(|k| packet.contains_key(*k))
+    {
+        report_unplaced(gctx, feature, err);
+    }
+
     Ok(Value::Object(packet))
 }
+
+/// The CZML graphic properties this writer recognises. A packet carrying one of
+/// them is drawable on its own terms, whatever the feature's geometry says.
+#[cfg(feature = "new-geometry")]
+const GRAPHIC_KEYS: [&str; 6] = [
+    "point",
+    "billboard",
+    "model",
+    "label",
+    "polygon",
+    "polyline",
+];
 
 /// Build a CZML document from features with embedded `czml.*` attributes
 /// (produced by the reader's `PreserveRaw` strategy).
@@ -2397,7 +2454,12 @@ fn polygon_to_czml_polygon(poly: &Polygon3D<f64>) -> CzmlPolygon {
 /// Parse a hex color string like "#ffd8c0" into [r, g, b, alpha].
 fn hex_to_rgba(hex: &str, alpha: u8) -> Option<[u8; 4]> {
     let hex = hex.strip_prefix('#').unwrap_or(hex);
-    if hex.len() != 6 {
+    // `len()` counts bytes, so six bytes is not six hex digits: `#aé123` passes
+    // a length check and then splits `é` on the first slice below, which panics
+    // rather than returning `None`. The colour comes from a feature attribute,
+    // so that is reachable from data. Require ASCII hex digits before slicing;
+    // `from_str_radix` would reject them anyway, but only if we get that far.
+    if hex.len() != 6 || !hex.bytes().all(|b| b.is_ascii_hexdigit()) {
         return None;
     }
     let r = u8::from_str_radix(&hex[0..2], 16).ok()?;
@@ -3353,6 +3415,63 @@ mod new_geometry_tests {
     }
 
     #[test]
+    fn the_document_clock_reads_numeric_times_the_same_way_the_entities_do() {
+        // With numeric times and no `epoch`, the clock used to take the raw
+        // numbers — `"interval": "0/60"` — while the entities in the same
+        // document defaulted to the Unix epoch. CZML wants ISO 8601 here, and
+        // one document must not read the same times two ways.
+        let doc = parse(&fixture::write_timeseries_batch(
+            vec![
+                fixture::polygon_timeseries_feature_in(6677, "0", "v1"),
+                fixture::polygon_timeseries_feature_in(6677, "60", "v1"),
+            ],
+            "timestamp",
+            "vehicleId",
+        ));
+        let clock = doc
+            .iter()
+            .find(|p| p.get("id") == Some(&Value::String("document".to_string())))
+            .and_then(|p| p.get("clock"))
+            .expect("the document packet's clock");
+
+        assert_eq!(
+            clock["interval"],
+            serde_json::json!("1970-01-01T00:00:00Z/1970-01-01T00:01:00Z"),
+            "the clock must resolve numeric times against the same epoch the \
+             entities infer: {clock:?}"
+        );
+        assert_eq!(
+            clock["currentTime"],
+            serde_json::json!("1970-01-01T00:00:00Z"),
+            "{clock:?}"
+        );
+    }
+
+    #[test]
+    fn an_iso_timestamped_document_clock_is_left_alone() {
+        // The counterpart: ISO times must pass through untouched, so the fix
+        // above cannot quietly rewrite a document that was already correct.
+        let doc = parse(&fixture::write_timeseries_batch(
+            vec![
+                fixture::polygon_timeseries_feature_in(6677, "2024-01-01T00:00:00Z", "v1"),
+                fixture::polygon_timeseries_feature_in(6677, "2024-01-01T00:01:00Z", "v1"),
+            ],
+            "timestamp",
+            "vehicleId",
+        ));
+        let clock = doc
+            .iter()
+            .find(|p| p.get("id") == Some(&Value::String("document".to_string())))
+            .and_then(|p| p.get("clock"))
+            .expect("the document packet's clock");
+        assert_eq!(
+            clock["interval"],
+            serde_json::json!("2024-01-01T00:00:00Z/2024-01-01T00:01:00Z"),
+            "{clock:?}"
+        );
+    }
+
+    #[test]
     fn a_grouped_timeseries_polygon_carries_its_polygon_style() {
         // The port called the *unstyled* `polygon_value_for` on this path, so
         // `colorAttribute`, `opacity` and `heightAttribute` were accepted by
@@ -3819,6 +3938,42 @@ mod new_geometry_diagnostics_tests {
         assert_eq!(
             summaries[0].effective_disposition,
             Some(Disposition::WarnDrop)
+        );
+    }
+
+    #[test]
+    fn an_embedded_graphic_places_the_entity_so_absent_geometry_is_not_reported() {
+        // The counterpart to the test above, and the line between them is the
+        // whole point. A feature read with `preserveRaw` can carry no geometry
+        // at all and a `czml.polygon` whose own `positions` place it. Reporting
+        // `czml.empty_geometry` the moment geometry fails to place it would
+        // call that a failure while the packet goes out fully drawn — a false
+        // positive, and the fastest way to teach users to ignore the code.
+        let handle = make_handle();
+        let ctx = context_with_handle(&handle);
+        let mut feature =
+            Feature::new_with_attributes_and_geometry(indexmap::IndexMap::new(), NewGeometry::None);
+        feature.insert(
+            Attribute::new("czml.polygon"),
+            AttributeValue::String(
+                r#"{"positions":{"cartographicDegrees":[139.0,36.0,0,139.1,36.0,0,139.1,36.1,0]}}"#
+                    .to_string(),
+            ),
+        );
+        let mut cache = ReprojectionCache::default();
+
+        let out =
+            build_embedded_czml_next(&ctx, &[feature], &per_entity_params(), &mut cache).unwrap();
+        let doc: Vec<Value> =
+            serde_json::from_slice(&out).expect("written CZML must be valid JSON");
+
+        assert!(
+            doc.iter().any(|p| p.get("polygon").is_some()),
+            "the embedded polygon must survive: {doc:?}"
+        );
+        assert!(
+            handle.inner.drain_summaries().is_empty(),
+            "a packet that carries its own graphic is not a placement failure"
         );
     }
 }
