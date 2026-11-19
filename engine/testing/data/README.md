@@ -12,9 +12,16 @@ Source: Ministry of Land, Infrastructure, Transport and Tourism PLATEAU Website 
 PLATEAU 3D都市モデル - G空間情報センター公開コンテンツの一部 (https://www.geospatial.jp/ckan/dataset/plateau)
 PLATEAU 3D City Models - Part of content published on G-spatial Information Center (https://www.geospatial.jp/ckan/dataset/plateau)
 
+## 加工について / Modifications
+
+テストデータの多くは、上記のPLATEAUコンテンツを加工して作成したものです。地物の抜き出し、異常データの追加、取得項目一覧（objectlist）の編集などを行っています。国土交通省や各地方公共団体が作成したものではありません。
+
+Much of the test data was created by modifying the PLATEAU content above: extracting features, adding invalid data, and editing the objectlists. It was not created by the Ministry of Land, Infrastructure, Transport and Tourism or the local governments.
+
 ## ライセンス / License
 
-使用しているPLATEAUデータのライセンスについては、以下をご確認ください:
-For licensing information of the PLATEAU data used, please refer to:
+このディレクトリのPLATEAU由来のデータには、リポジトリのライセンス（Apache License 2.0およびMIT License）は適用されません。PLATEAUウェブサイトの利用条件（公共データ利用規約 第1.0版（PDL1.0）に準拠。CC BY 4.0と互換）に従います。詳しくは以下をご確認ください:
+
+The PLATEAU-derived data in this directory is not covered by the repository's licenses (Apache License 2.0 and MIT License). It is subject to the PLATEAU Website Terms of Use, which follow the Public Data License (Version 1.0) (PDL1.0) and are compatible with CC BY 4.0. For details, please refer to:
 
 https://www.mlit.go.jp/plateau/site-policy/
