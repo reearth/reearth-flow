@@ -38,13 +38,15 @@ func TestProjectSnapshot_RejectsAmbiguousArguments(t *testing.T) {
 type saveClient struct {
 	interfaces.WebsocketClient
 	flushErr, versionErr error
-	versions             []string
+	// unchanged makes SaveVersion find nothing new since the last version.
+	unchanged bool
+	versions  []string
 }
 
 func (c *saveClient) FlushToGCS(context.Context, string) error { return c.flushErr }
 func (c *saveClient) SaveVersion(_ context.Context, docID, label string) (bool, error) {
 	c.versions = append(c.versions, docID+" "+label)
-	return c.versionErr == nil, c.versionErr
+	return c.versionErr == nil && !c.unchanged, c.versionErr
 }
 
 func saveSnapshot(t *testing.T, c *saveClient) (bool, error) {
@@ -62,6 +64,15 @@ func TestSaveSnapshot_SavesAVersion(t *testing.T) {
 		ok, err := saveSnapshot(t, c)
 		require.NoError(t, err)
 		assert.True(t, ok)
+		assert.Equal(t, []string{"p1 save"}, c.versions)
+	})
+
+	t.Run("nothing new to save answers false", func(t *testing.T) {
+		t.Parallel()
+		c := &saveClient{unchanged: true}
+		ok, err := saveSnapshot(t, c)
+		require.NoError(t, err)
+		assert.False(t, ok)
 		assert.Equal(t, []string{"p1 save"}, c.versions)
 	})
 
