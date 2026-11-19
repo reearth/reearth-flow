@@ -2133,6 +2133,177 @@ mod tests {
         Ok(())
     }
 
+    /// The gml:ids of [`process_external_references`].
+    struct ExternalReferenceIds {
+        building: String,
+        not_well_formed: String,
+        group: String,
+        /// In the external GML file.
+        external_polygon: String,
+        /// In no file.
+        missing: String,
+        /// The external GML file as an xlink names it.
+        external: String,
+        /// A GML file that does not exist, as an xlink names it.
+        nonexistent: String,
+    }
+
+    /// Checks a file whose member refers to gml:ids of another GML file, each
+    /// reference written as `{href_path(file)}#{gml:id}`, and returns every
+    /// feature sent.
+    fn process_external_references(
+        href_path: impl Fn(&Path) -> String,
+    ) -> Result<(Vec<Output>, ExternalReferenceIds), BoxedError> {
+        let temp_dir = TempDir::with_prefix("domain_of_definition_validator_test_")?;
+        let root = temp_dir.path();
+        let codelists = root.join("codelists");
+        fs::create_dir_all(&codelists)?;
+
+        let ids = ExternalReferenceIds {
+            building: gml_id("bldg", 1),
+            not_well_formed: "bldg_not-a-uuid".to_string(),
+            group: gml_id("grp", 3),
+            external_polygon: gml_id("poly", 91),
+            missing: gml_id("bldg", 99),
+            external: href_path(&root.join("udx/bldg/external.gml")),
+            nonexistent: href_path(&root.join("udx/bldg/nonexistent.gml")),
+        };
+        let ExternalReferenceIds {
+            building,
+            not_well_formed,
+            group,
+            external_polygon,
+            missing,
+            external,
+            nonexistent,
+        } = &ids;
+
+        // The polygon is nested in a member, not the root element.
+        write_file(
+            &root.join("udx/bldg/external.gml"),
+            &city_model(
+                VALID_SRS_NAME_6697,
+                &format!(
+                    r#"    <core:cityObjectMember>
+        <bldg:Building gml:id="{}">
+            <core:lod2MultiSurface>
+                <gml:MultiSurface>
+                    <gml:surfaceMember>
+                        <gml:Polygon gml:id="{external_polygon}"/>
+                    </gml:surfaceMember>
+                </gml:MultiSurface>
+            </core:lod2MultiSurface>
+        </bldg:Building>
+    </core:cityObjectMember>"#,
+                    gml_id("bldg", 92)
+                ),
+            ),
+        )?;
+
+        let f1 = root.join("udx/bldg/f1.gml");
+        write_file(
+            &f1,
+            &city_model(
+                VALID_SRS_NAME_6697,
+                &format!(
+                    r##"    <core:cityObjectMember>
+        <bldg:Building gml:id="{building}">
+            <core:lod1Solid>
+                <gml:Solid>
+                    <gml:exterior>
+                        <gml:Shell>
+                            <gml:surfaceMember xlink:href="{external}#{external_polygon}"/>
+                            <gml:surfaceMember xlink:href="{external}#{missing}"/>
+                            <gml:surfaceMember xlink:href="{nonexistent}#{external_polygon}"/>
+                            <gml:surfaceMember xlink:href="#{missing}"/>
+                        </gml:Shell>
+                    </gml:exterior>
+                </gml:Solid>
+            </core:lod1Solid>
+        </bldg:Building>
+    </core:cityObjectMember>
+    <core:cityObjectMember>
+        <bldg:Building gml:id="{not_well_formed}"/>
+    </core:cityObjectMember>
+{group_member}"##,
+                    group_member = city_object_group(group, &[format!("#{missing}")]),
+                ),
+            ),
+        )?;
+
+        let outputs = run(
+            vec![input("f1.gml", "bldg", 0, &f1, Some(&codelists))],
+            None,
+        )?;
+        Ok((outputs, ids))
+    }
+
+    /// Asserts the errors of [`process_external_references`]: a reference to a
+    /// gml:id in the external file is valid, one to a gml:id or a file that
+    /// does not exist has no referent, and the other xlinks and members of the
+    /// file are still checked.
+    fn assert_external_references(outputs: &[Output], ids: &ExternalReferenceIds) {
+        let ExternalReferenceIds {
+            building,
+            not_well_formed,
+            group,
+            external_polygon,
+            missing,
+            external,
+            nonexistent,
+        } = ids;
+        assert_eq!(
+            fields(outputs, "XLink_NoReference", &["gmlId", "xlinkHref"]),
+            [
+                (building, format!("{external}#{missing}")),
+                (building, format!("{nonexistent}#{external_polygon}")),
+                (building, format!("#{missing}")),
+                (group, format!("#{missing}")),
+            ]
+            .map(|(id, href)| vec![json!(id), json!(href)])
+            .to_vec()
+        );
+        assert!(with_flag(outputs, "XLink_InvalidObjectType").is_empty());
+        assert_eq!(
+            fields(outputs, "GMLID_NotWellFormed", &["gmlId"]),
+            [[json!(not_well_formed)]]
+        );
+        assert_eq!(
+            fields(
+                outputs,
+                "Summary",
+                &[
+                    "isCorrectSrsName",
+                    "gmlIdNotWellformed",
+                    "xlinkHasNoReference",
+                    "xlinkInvalidObjectType",
+                ]
+            ),
+            [[json!(true), json!(1), json!(4), json!(0)]]
+        );
+    }
+
+    #[test]
+    // An xlink to `{absolute URI of a GML file}#{gml:id}` refers to a gml:id
+    // anywhere in that file.
+    fn test_xlink_to_external_file_by_uri() -> Result<(), BoxedError> {
+        let (outputs, ids) = process_external_references(file_uri)?;
+
+        assert_external_references(&outputs, &ids);
+        Ok(())
+    }
+
+    #[test]
+    // An xlink to `{GML file relative to the referring one}#{gml:id}` refers to
+    // a gml:id anywhere in that file.
+    fn test_xlink_to_external_file_by_relative_path() -> Result<(), BoxedError> {
+        let relative = |path: &Path| path.file_name().unwrap().to_string_lossy().to_string();
+        let (outputs, ids) = process_external_references(relative)?;
+
+        assert_external_references(&outputs, &ids);
+        Ok(())
+    }
+
     #[test]
     // The geometry types allowed in the LoD0 geometry of a DM geometric
     // attribute.
