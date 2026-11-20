@@ -3859,6 +3859,7 @@
           "description": "CityGML フィーチャーの定義域を検証する設定"
         },
         "codelistsPath": {
+          "title": "Codelists Path",
           "description": "フォールバックのコードリストディレクトリパス式。GML ファイルからの相対位置にコードリストが見つからない場合、codeSpace 参照を解決するベースディレクトリとして使用される。"
         }
       }
@@ -4133,6 +4134,7 @@
           "description": "CityGML フィーチャーの定義域を検証する設定"
         },
         "codelistsPath": {
+          "title": "Codelists Path",
           "description": "フォールバックのコードリストディレクトリパス式。GML ファイルからの相対位置にコードリストが見つからない場合、codeSpace 参照を解決するベースディレクトリとして使用される。"
         }
       }
