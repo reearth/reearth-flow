@@ -1,8 +1,9 @@
 //! Merging polygons and meshes into one mesh, and listing their edges.
 //!
 //! Faces are copied as they are, with no re-triangulation. Vertices with the
-//! same coordinates (exact `f64` bits) are welded into one shared pool, and two
-//! edges are equal when their endpoints are, by the same comparison.
+//! same coordinates (exact `f64` bits, with `-0.0` taken as `0.0`) are welded
+//! into one shared pool, and two edges are equal when their endpoints are, by
+//! the same comparison.
 
 use std::borrow::Borrow;
 use std::collections::HashMap;
@@ -28,36 +29,17 @@ pub fn is_mergeable(geometry: &Geometry) -> bool {
     if collect(geometry, &mut leaves).is_err() || check_leaves(&leaves).is_err() {
         return false;
     }
-    let finite = |coords: &[[f64; 2]]| coords.iter().flatten().all(|v| v.is_finite());
-    let finite_3d = |coords: &[[f64; 3]]| coords.iter().flatten().all(|v| v.is_finite());
-    let all_finite = leaves.d2.iter().all(|leaf| {
-        frame_2d(leaf).1.is_none_or(f64::is_finite)
-            && match leaf {
-                Euclidean2DGeometry::Polygon(p) => {
-                    finite(p.exterior()) && p.interiors().all(finite)
-                }
-                Euclidean2DGeometry::PolygonMesh(m) => finite(m.vertices()),
-                Euclidean2DGeometry::TriangularMesh(m) => finite(m.vertices()),
-                _ => false,
-            }
-    }) && leaves.d3.iter().all(|leaf| match leaf {
-        Euclidean3DGeometry::Polygon(p) => finite_3d(p.exterior()) && p.interiors().all(finite_3d),
-        Euclidean3DGeometry::PolygonMesh(m) => finite_3d(m.vertices()),
-        Euclidean3DGeometry::TriangularMesh(m) => finite_3d(m.vertices()),
+    leaves.d2.iter().any(|leaf| match leaf {
+        Euclidean2DGeometry::Polygon(p) => !p.exterior().is_empty(),
+        Euclidean2DGeometry::PolygonMesh(m) => m.csr_buffers().0.len() > 0,
+        Euclidean2DGeometry::TriangularMesh(m) => m.triangles().next().is_some(),
         _ => false,
-    });
-    all_finite
-        && (leaves.d2.iter().any(|leaf| match leaf {
-            Euclidean2DGeometry::Polygon(p) => !p.exterior().is_empty(),
-            Euclidean2DGeometry::PolygonMesh(m) => m.csr_buffers().0.len() > 0,
-            Euclidean2DGeometry::TriangularMesh(m) => m.triangles().next().is_some(),
-            _ => false,
-        }) || leaves.d3.iter().any(|leaf| match leaf {
-            Euclidean3DGeometry::Polygon(p) => !p.exterior().is_empty(),
-            Euclidean3DGeometry::PolygonMesh(m) => m.data().csr_buffers().0.len() > 0,
-            Euclidean3DGeometry::TriangularMesh(m) => m.triangles().next().is_some(),
-            _ => false,
-        }))
+    }) || leaves.d3.iter().any(|leaf| match leaf {
+        Euclidean3DGeometry::Polygon(p) => !p.exterior().is_empty(),
+        Euclidean3DGeometry::PolygonMesh(m) => m.data().csr_buffers().0.len() > 0,
+        Euclidean3DGeometry::TriangularMesh(m) => m.triangles().next().is_some(),
+        _ => false,
+    })
 }
 
 /// Merge every face of `meshes` into one mesh, also returning how many faces
@@ -69,8 +51,8 @@ pub fn is_mergeable(geometry: &Geometry) -> bool {
 /// count. Appearance is carried over: palettes concatenate, themes union, and
 /// each theme's UV is rebuilt per corner. Each input is read once, so an
 /// iterator can stream them. `None` when no input has a face. Errors when an
-/// input holds anything but polygons and meshes, or when the inputs differ in
-/// dimension, frame, or 2D elevation.
+/// input holds anything but polygons and meshes, when the inputs differ in
+/// dimension, frame, or 2D elevation, or when a coordinate is not finite.
 pub fn merge<G: Borrow<Geometry>>(
     meshes: impl IntoIterator<Item = G>,
 ) -> Result<Option<(Geometry, Vec<usize>)>, Error> {
@@ -86,9 +68,14 @@ pub fn merge<G: Borrow<Geometry>>(
     Ok(merger.finish()?.map(|mesh| (mesh, counts)))
 }
 
-/// An edge as the exact `f64` bits of its two ends, the smaller first. A 2D
-/// end has zero bits for its third coordinate.
+/// An edge as the [`coord_bits`] of its two ends, the smaller first. A 2D end
+/// has zero bits for its third coordinate.
 pub type EdgeKey = ([u64; 3], [u64; 3]);
+
+/// The exact bits of `x`, with `-0.0` taken as `0.0` so the two compare equal.
+fn coord_bits(x: f64) -> u64 {
+    (x + 0.0).to_bits()
+}
 
 /// The distinct edges of the faces of `geometry`, sorted, closing open rings.
 /// Two geometries of one dimension share an edge when their edge lists have a
@@ -105,14 +92,12 @@ pub fn edge_keys(geometry: &Geometry) -> Vec<EdgeKey> {
         std::cmp::Ordering::Greater => keys.push((q, p)),
         std::cmp::Ordering::Equal => {}
     };
-    let lift = |p: [f64; 2]| [p[0].to_bits(), p[1].to_bits(), 0];
+    let lift = |p: [f64; 2]| [coord_bits(p[0]), coord_bits(p[1]), 0];
     for leaf in &leaves.d2 {
         edges_2d(leaf, &mut |p, q| push(lift(p), lift(q)));
     }
     for leaf in &leaves.d3 {
-        edges_3d(leaf, &mut |p, q| {
-            push(p.map(f64::to_bits), q.map(f64::to_bits))
-        });
+        edges_3d(leaf, &mut |p, q| push(p.map(coord_bits), q.map(coord_bits)));
     }
     keys.sort_unstable();
     keys.dedup();
@@ -311,10 +296,14 @@ fn frame_3d(leaf: &Euclidean3DGeometry) -> &CoordinateFrame {
     }
 }
 
-/// Errors unless the leaves share one dimension, frame and 2D elevation.
+/// Errors unless the leaves share one dimension, frame and 2D elevation, and
+/// every coordinate is finite.
 fn check_leaves(leaves: &Leaves<'_>) -> Result<(), Error> {
     if !leaves.d2.is_empty() && !leaves.d3.is_empty() {
         return Err(mixed_dimensions());
+    }
+    if !all_finite(leaves) {
+        return Err(non_finite());
     }
     let mut frames = leaves
         .d2
@@ -326,13 +315,38 @@ fn check_leaves(leaves: &Leaves<'_>) -> Result<(), Error> {
     {
         return Err(mixed_frames());
     }
-    let mut elevations = leaves.d2.iter().map(|l| frame_2d(l).1.map(f64::to_bits));
+    let mut elevations = leaves.d2.iter().map(|l| frame_2d(l).1.map(coord_bits));
     if let Some(first) = elevations.next()
         && elevations.any(|z| z != first)
     {
         return Err(mixed_elevations());
     }
     Ok(())
+}
+
+fn all_finite(leaves: &Leaves<'_>) -> bool {
+    let finite = |coords: &[[f64; 2]]| coords.iter().flatten().all(|v| v.is_finite());
+    let finite_3d = |coords: &[[f64; 3]]| coords.iter().flatten().all(|v| v.is_finite());
+    leaves.d2.iter().all(|leaf| {
+        frame_2d(leaf).1.is_none_or(f64::is_finite)
+            && match leaf {
+                Euclidean2DGeometry::Polygon(p) => {
+                    finite(p.exterior()) && p.interiors().all(finite)
+                }
+                Euclidean2DGeometry::PolygonMesh(m) => finite(m.vertices()),
+                Euclidean2DGeometry::TriangularMesh(m) => finite(m.vertices()),
+                _ => false,
+            }
+    }) && leaves.d3.iter().all(|leaf| match leaf {
+        Euclidean3DGeometry::Polygon(p) => finite_3d(p.exterior()) && p.interiors().all(finite_3d),
+        Euclidean3DGeometry::PolygonMesh(m) => finite_3d(m.vertices()),
+        Euclidean3DGeometry::TriangularMesh(m) => finite_3d(m.vertices()),
+        _ => false,
+    })
+}
+
+fn non_finite() -> Error {
+    Error::invalid_geometry("cannot merge geometries with non-finite coordinates")
 }
 
 fn mixed_dimensions() -> Error {
@@ -371,7 +385,7 @@ impl Merger {
     fn push(&mut self, leaves: &Leaves<'_>) -> Result<(), Error> {
         check_leaves(leaves)?;
         if let Some(first) = leaves.d2.first() {
-            let elevation = frame_2d(first).1.map(f64::to_bits);
+            let elevation = frame_2d(first).1.map(coord_bits);
             if matches!(self, Merger::Empty) {
                 *self = Merger::D2 {
                     builder: Builder::default(),
@@ -578,7 +592,7 @@ impl<const N: usize> Builder<N> {
     }
 
     fn weld(&mut self, coord: [f64; N]) -> u32 {
-        *self.weld.entry(coord.map(f64::to_bits)).or_insert_with(|| {
+        *self.weld.entry(coord.map(coord_bits)).or_insert_with(|| {
             self.vertices.push(coord);
             (self.vertices.len() - 1) as u32
         })
@@ -910,6 +924,44 @@ mod tests {
         assert_eq!(mesh.num_faces(), 2);
         assert_eq!(mesh.vertices().len(), 4);
         assert!(mesh.appearance().is_none());
+    }
+
+    #[test]
+    fn negative_zero_welds_with_zero() {
+        let a = tri([[0., 0., 0.], [1., 0., 0.], [0., 1., 0.]]);
+        let b = tri([[1., -0., -0.], [1., 1., 0.], [-0., 1., -0.]]);
+        let b_keys = edge_keys(&polygon(b.clone()));
+        let shared = edge_keys(&polygon(a.clone()))
+            .into_iter()
+            .filter(|k| b_keys.contains(k))
+            .count();
+        assert_eq!(shared, 1);
+        let merged = merge_some(&[polygon(a), polygon(b)]).unwrap();
+        assert_eq!(as_polygon_mesh(&merged).vertices().len(), 4);
+    }
+
+    #[test]
+    fn a_nan_coordinate_is_rejected() {
+        let a = polygon(tri([[0., 0., 0.], [1., 0., 0.], [0., 1., 0.]]));
+        let nan = polygon(tri([[1., 0., 0.], [f64::NAN, 1., 0.], [0., 1., 0.]]));
+        assert!(!is_mergeable(&nan));
+        assert!(edge_keys(&nan).is_empty());
+        assert!(merge_some(&[a, nan]).is_err());
+    }
+
+    #[test]
+    fn negative_zero_elevation_matches_zero() {
+        let at = |z: f64| {
+            Geometry::Euclidean2D(Euclidean2DGeometry::Polygon(Box::new(
+                Polygon2D::from_rings_at_elevation(
+                    F,
+                    [[0., 0.], [1., 0.], [0., 1.]],
+                    Vec::<Vec<[f64; 2]>>::new(),
+                    z,
+                ),
+            )))
+        };
+        assert!(merge_some(&[at(0.), at(-0.)]).is_ok());
     }
 
     #[test]
