@@ -9720,6 +9720,126 @@ Writes features to Mapbox Vector Tiles (MVT) format.
 ### Category
 * Output
 
+## Mesh Merger
+### Type
+* processor
+### Description
+Merges the polygons and meshes of features that share the same grouping attribute values into meshes, keeping every face as it is, and emits one feature per group or per connected part of it. The result is a triangular mesh when every polygon and mesh merged into it is a triangular mesh, including those inside collections, and a polygon mesh otherwise.
+### Parameters
+```json
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "Mesh Merger Parameters",
+  "description": "Sets which features are merged together, how the result is divided, and which attributes it keeps.",
+  "type": "object",
+  "properties": {
+    "groupBy": {
+      "title": "Group By Attributes",
+      "description": "Attributes whose values decide which features merge together; features matching on all of them form one group. When omitted, every feature belongs to a single group. Cannot include `__members` when attributes are collected, since that attribute holds the collected values.",
+      "default": null,
+      "type": [
+        "array",
+        "null"
+      ],
+      "items": {
+        "$ref": "#/definitions/Attribute"
+      }
+    },
+    "attributeAccumulation": {
+      "title": "Attribute Accumulation",
+      "description": "Which attributes each merged feature keeps, taken from the features merged into it.",
+      "default": "useOneFeature",
+      "allOf": [
+        {
+          "$ref": "#/definitions/AttributeAccumulation"
+        }
+      ]
+    },
+    "granularity": {
+      "title": "Granularity",
+      "description": "How finely each group is divided into output features.",
+      "default": "group",
+      "allOf": [
+        {
+          "$ref": "#/definitions/Granularity"
+        }
+      ]
+    }
+  },
+  "definitions": {
+    "Attribute": {
+      "type": "string"
+    },
+    "AttributeAccumulation": {
+      "title": "Attribute Accumulation",
+      "description": "Which attributes a merged feature keeps.",
+      "oneOf": [
+        {
+          "title": "Keep Group Attributes Only",
+          "description": "Keeps only the grouping attributes, discarding everything else.",
+          "type": "string",
+          "enum": [
+            "groupAttributesOnly"
+          ]
+        },
+        {
+          "title": "Collect Attributes",
+          "description": "Keeps the grouping attributes and writes the other attributes of every merged feature to `__members`, an array with one map per feature in arrival order.",
+          "type": "string",
+          "enum": [
+            "collectAttributes"
+          ]
+        },
+        {
+          "title": "Use Attributes From One Feature",
+          "description": "Keeps the attributes of the first merged feature and discards the rest.",
+          "type": "string",
+          "enum": [
+            "useOneFeature"
+          ]
+        }
+      ]
+    },
+    "Granularity": {
+      "description": "How finely each group is divided into output features.",
+      "oneOf": [
+        {
+          "title": "Group",
+          "description": "Emits one mesh per group.",
+          "type": "string",
+          "enum": [
+            "group"
+          ]
+        },
+        {
+          "title": "Edge-Connected Part",
+          "description": "Emits one mesh per set of faces connected through edges with exactly equal coordinates. Faces meeting at a vertex alone become separate meshes.",
+          "type": "string",
+          "enum": [
+            "edgeConnectedPart"
+          ]
+        },
+        {
+          "title": "Manifold Part",
+          "description": "Divides each edge-connected part further, so that every edge of a mesh borders one or two of its faces. Where more faces meet at one edge, two of them stay joined there.",
+          "type": "string",
+          "enum": [
+            "manifoldPart"
+          ]
+        }
+      ]
+    }
+  }
+}
+```
+### Input Ports
+* features
+### Output Ports
+* features
+* rejected
+### Category
+* Geometry
+
 ## Neighbor Finder
 ### Type
 * processor
@@ -10997,7 +11117,8 @@ Validates domain of definition of CityGML features
   "type": "object",
   "properties": {
     "codelistsPath": {
-      "description": "Fallback codelists directory path expression. When codelists files are not found at the location relative to the GML file, this path will be used as the base directory for resolving codeSpace references.",
+      "title": "Codelists Path",
+      "description": "Expression for the URI of a directory of codelist files, evaluated for each input feature. The codelists are read from it when the first input feature has no `dirCodelists` attribute or its directory does not exist; without either, the action fails. A codeSpace found neither under `dirCodelists` nor relative to the city GML is looked up in it by the file name of the codeSpace.",
       "type": [
         "object",
         "null"
@@ -12153,7 +12274,8 @@ Validates domain of definition of CityGML features
   "type": "object",
   "properties": {
     "codelistsPath": {
-      "description": "Fallback codelists directory path expression. When codelists files are not found at the location relative to the GML file, this path will be used as the base directory for resolving codeSpace references.",
+      "title": "Codelists Path",
+      "description": "Expression for the URI of a directory of codelist files, evaluated for each input feature. The codelists are read from it when the first input feature has no `dirCodelists` attribute or its directory does not exist; without either, the action fails. A codeSpace found neither under `dirCodelists` nor relative to the city GML is looked up in it by the file name of the codeSpace.",
       "type": [
         "object",
         "null"
@@ -12185,44 +12307,6 @@ Validates domain of definition of CityGML features
 * features
 * rejected
 * duplicateGmlIdStats
-### Category
-* PLATEAU
-
-## PLATEAU6.FloodingAreaSurfaceGenerator
-### Type
-* processor
-### Description
-Merges the triangles of flood zone bodies into connected areas and rebuilds each area as one triangulated surface, constrained to the area's outline and filled with sparse points sampled from the original surface. Emits one feature per area, carrying the attributes of the first body in its group. All input must be in one coordinate frame; the action fails otherwise.
-### Parameters
-```json
-{
-  "$schema": "http://json-schema.org/draft-07/schema#",
-  "title": "Flooding Area Surface Generator Parameters",
-  "description": "Which bodies are merged into one surface.",
-  "type": "object",
-  "properties": {
-    "groupBy": {
-      "title": "Group By",
-      "description": "Attributes whose values partition the bodies: only bodies with the same values are merged. Empty (the default) merges every body together.",
-      "default": [],
-      "type": "array",
-      "items": {
-        "$ref": "#/definitions/Attribute"
-      }
-    }
-  },
-  "definitions": {
-    "Attribute": {
-      "type": "string"
-    }
-  }
-}
-```
-### Input Ports
-* features
-### Output Ports
-* features
-* rejected
 ### Category
 * PLATEAU
 

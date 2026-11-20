@@ -93,11 +93,11 @@ graphs:
         with:
           inline: !include ../../../../config/plateau6_bldg_flat_attributes.json
 
-      # Flattens PLATEAU disaster-risk (fld/tnm/htd/ifld/rfld/lsld) attributes into
-      # dynamically-named keys, e.g. "利根川水系利根川（国管理区間）_L1（計画規模）_浸水ランク".
-      # Attribute names are data-dependent (built from each risk record's description/
-      # adminType/scale fields), so this uses AttributeMapper's multipleExpr rather than
-      # a static AttributeTableExtractor mapping.
+      # Risk records -> one group, __risk. Key names come from the data (multipleExpr).
+      # - categories in order: river, tsunami, high tide, inland, reservoir, landslide
+      # - within a category, sorted by codelist codes (river: description, adminType, scale; others: description)
+      # - river sort key = description*10000 + adminType*100 + scale (adminType, scale are 1..2 in the standard)
+      # - requires resolved codes, and a unique sort-code tuple per record within a category
       - id: 32eed03e-18e6-497b-b588-1afb84492ee1
         name: DisasterRiskAttributeMapper
         type: action
@@ -109,7 +109,6 @@ graphs:
             - multipleExpr:
                 type: flowExpr
                 value: |
-                  out = {};
                   entries = attributes["__city_gml_attributes"].get("core:adeOfAbstractCityObject", []);
                   if type(entries) == dict { entries = [entries]; }
                   tnm_htd_ifld_rfld = [
@@ -119,6 +118,11 @@ graphs:
                     ["urc:ReservoirFloodingRiskAttribute", "ため池浸水想定"],
                   ];
 
+                  # every record becomes {"order": sort key, "keys": its keys}
+                  river = [];
+                  others = [[], [], [], []];
+                  landslide = [];
+
                   for e in entries {
                     if "urc:RiverFloodingRiskAttribute" in e {
                       r = e["urc:RiverFloodingRiskAttribute"];
@@ -126,6 +130,7 @@ graphs:
                       admin = r.get("urc:adminType");
                       scale = r.get("urc:scale");
                       if desc != null and admin != null and scale != null {
+                        keys = {};
                         basename = desc + "（" + admin + "管理区間）_" + scale;
                         rank = r.get("urc:rank");
                         rank_code = r.get("urc:rank_code");
@@ -135,18 +140,27 @@ graphs:
                         }
                         depth = r.get("urc:depth");
                         duration = r.get("urc:duration");
-                        if rank != null { out[basename + "_浸水ランク"] = rank; }
-                        if rank_code != null { out[basename + "_浸水ランクコード"] = int(rank_code); }
-                        if depth != null { out[basename + "_浸水深"] = float(depth); }
-                        if duration != null { out[basename + "_浸水継続時間"] = float(duration); }
+                        if rank != null { keys[basename + "_浸水ランク"] = rank; }
+                        if rank_code != null { keys[basename + "_浸水ランクコード"] = int(rank_code); }
+                        if depth != null { keys[basename + "_浸水深"] = float(depth); }
+                        if duration != null { keys[basename + "_浸水継続時間"] = float(duration); }
+
+                        order = 0;
+                        if r.get("urc:description_code") != null { order = order + int(r.get("urc:description_code")) * 10000; }
+                        if r.get("urc:adminType_code") != null { order = order + int(r.get("urc:adminType_code")) * 100; }
+                        if r.get("urc:scale_code") != null { order = order + int(r.get("urc:scale_code")); }
+                        river.append({"order": order, "keys": keys});
                       }
                     }
 
-                    for [tag, title] in tnm_htd_ifld_rfld {
+                    for i in range(len(tnm_htd_ifld_rfld)) {
+                      tag = tnm_htd_ifld_rfld[i][0];
+                      title = tnm_htd_ifld_rfld[i][1];
                       if tag in e {
                         r = e[tag];
                         desc = r.get("urc:description");
                         if desc != null {
+                          keys = {};
                           basename = title + "_" + desc;
                           rank = r.get("urc:rank");
                           rank_code = r.get("urc:rank_code");
@@ -155,9 +169,13 @@ graphs:
                             rank_code = r.get("urc:rankOrg_code");
                           }
                           depth = r.get("urc:depth");
-                          if rank != null { out[basename + "_浸水ランク"] = rank; }
-                          if rank_code != null { out[basename + "_浸水ランクコード"] = int(rank_code); }
-                          if depth != null { out[basename + "_浸水深"] = float(depth); }
+                          if rank != null { keys[basename + "_浸水ランク"] = rank; }
+                          if rank_code != null { keys[basename + "_浸水ランクコード"] = int(rank_code); }
+                          if depth != null { keys[basename + "_浸水深"] = float(depth); }
+
+                          order = 0;
+                          if r.get("urc:description_code") != null { order = int(r.get("urc:description_code")); }
+                          others[i].append({"order": order, "keys": keys});
                         }
                       }
                     }
@@ -170,16 +188,27 @@ graphs:
                       if desc != null and type_code != null {
                         type_code = int(type_code);
                         if type_code <= 2 {
+                          keys = {};
                           if area_type != null {
-                            out["土砂災害リスク_" + desc + "_区域区分"] = area_type;
+                            keys["土砂災害リスク_" + desc + "_区域区分"] = area_type;
                           }
-                          out["土砂災害リスク_" + desc + "_区域区分コード"] = type_code;
+                          keys["土砂災害リスク_" + desc + "_区域区分コード"] = type_code;
+
+                          order = 0;
+                          if r.get("urc:description_code") != null { order = int(r.get("urc:description_code")); }
+                          landslide.append({"order": order, "keys": keys});
                         }
                       }
                     }
                   }
 
-                  out
+                  risk = {};
+                  for category in [river, others[0], others[1], others[2], others[3], landslide] {
+                    for record in itertools.sorted(category, fn(x) { x["order"] }) {
+                      for k in record["keys"].keys() { risk[k] = record["keys"][k]; }
+                    }
+                  }
+                  {"__risk": risk}
 
       - id: 928649ad-9058-42a2-b0b4-f7b91f1765c9
         name: FeatureMergerForRiskAttributes
@@ -352,7 +381,7 @@ graphs:
               method: create
               value:
                 type: flowExpr
-                value: attributes.get("uro:BuildingIDAttribute_uro:city") or attributes["city_name"]
+                value: attributes.get("__flat", {}).get("uro:BuildingIDAttribute_uro:city") or attributes["city_name"]
             - attribute: __output_base
               method: create
               value:
@@ -370,20 +399,10 @@ graphs:
                 type: flowExpr
                 value: attributes["__lod"]
 
-      # --- LOD1 branch ---
-      - id: 04339391-dcfe-485a-9593-e12b0eddf864
-        name: FeatureFilterLod1
-        type: action
-        action: Feature Filter
-        with:
-          conditions:
-            - expr:
-                type: flowExpr
-                value: attributes["__lod"] == 1
-              outputPort: features
-
+      # The bounds do not depend on which LOD branch a feature goes to, so they are
+      # computed once here, and the attributes are put in their final order right after.
       - id: 39f7c2d0-4f5a-4ce6-992d-17ae7b73eb50
-        name: BoundsExtractorByLod1
+        name: BoundsExtractor
         type: action
         action: Bounds Extractor
         with:
@@ -395,7 +414,7 @@ graphs:
           zmax: _zmax
 
       - id: d22ce8c5-4e85-416c-9fe9-84396ecb7399
-        name: AttributeManagerXYByLod1
+        name: AttributeManagerXY
         type: action
         action: Attribute Manager
         with:
@@ -410,6 +429,51 @@ graphs:
               value:
                 type: flowExpr
                 value: '(attributes["_ymin"] + attributes["_ymax"]) * 0.5'
+
+      # Final attribute order, rebuilt from groups (earlier steps cannot affect it):
+      # - base keys, __flat (AttributeTableExtractor), __risk (DisasterRiskAttributeMapper), geometry keys
+      # - "__" keys read by later nodes are kept after them; writers do not expose "__" keys
+      - id: 5b8d1f3a-2c4e-4a6b-9d0f-7e1a3c5b9d24
+        name: AttributeOrderMapper
+        type: action
+        action: Attribute Mapper
+        with:
+          mappers:
+            - multipleExpr:
+                type: flowExpr
+                value: |
+                  out = {};
+                  for k in ["meshcode", "feature_type", "city_code", "city_name", "gml_id", "attributes"] {
+                    if k in attributes { out[k] = attributes[k]; }
+                  }
+                  flat = attributes.get("__flat", {});
+                  for k in flat.keys() { out[k] = flat[k]; }
+                  risk = attributes.get("__risk", {});
+                  for k in risk.keys() { out[k] = risk[k]; }
+                  for k in ["_lod", "_x", "_y", "_xmin", "_xmax", "_ymin", "_ymax", "_zmin", "_zmax"] {
+                    if k in attributes { out[k] = attributes[k]; }
+                  }
+                  out
+            - attribute: __lod
+              valueAttribute: __lod
+            - attribute: __lod_mask
+              valueAttribute: __lod_mask
+            - attribute: __city_max_lod
+              valueAttribute: __city_max_lod
+            - attribute: __output_base
+              valueAttribute: __output_base
+
+      # --- LOD1 branch ---
+      - id: 04339391-dcfe-485a-9593-e12b0eddf864
+        name: FeatureFilterLod1
+        type: action
+        action: Feature Filter
+        with:
+          conditions:
+            - expr:
+                type: flowExpr
+                value: attributes["__lod"] == 1
+              outputPort: features
 
       - id: a4f07c6f-3972-4c4f-9e70-f93af486c78d
         name: Cesium3DTilesWriterLod1
@@ -444,35 +508,6 @@ graphs:
                   }
                   attributes["__city_max_lod"] >= 2 and attributes["__lod"] == best
               outputPort: features
-
-      - id: 81393f88-cdbc-44e3-b55d-49bc838dc127
-        name: BoundsExtractorByLod2
-        type: action
-        action: Bounds Extractor
-        with:
-          xmin: _ymin
-          ymin: _xmin
-          xmax: _ymax
-          ymax: _xmax
-          zmin: _zmin
-          zmax: _zmax
-
-      - id: e78b5d2f-a9d5-4991-aa7c-ba67dc64cadc
-        name: AttributeManagerXYByLod2
-        type: action
-        action: Attribute Manager
-        with:
-          operations:
-            - attribute: _x
-              method: create
-              value:
-                type: flowExpr
-                value: '(attributes["_xmin"] + attributes["_xmax"]) * 0.5'
-            - attribute: _y
-              method: create
-              value:
-                type: flowExpr
-                value: '(attributes["_ymin"] + attributes["_ymax"]) * 0.5'
 
       - id: e44e7208-c0a6-4bca-829c-5d2769dd49f3
         name: Cesium3DTilesWriterLod2
@@ -522,35 +557,6 @@ graphs:
                   }
                   attributes["__city_max_lod"] >= 3 and attributes["__lod"] == best
               outputPort: features
-
-      - id: db01f1d9-e4b0-4ac1-ba89-ddd7a3103570
-        name: BoundsExtractorByLod3
-        type: action
-        action: Bounds Extractor
-        with:
-          xmin: _ymin
-          ymin: _xmin
-          xmax: _ymax
-          ymax: _xmax
-          zmin: _zmin
-          zmax: _zmax
-
-      - id: cd167799-4d08-4256-8203-584c66f49d9b
-        name: AttributeManagerXYByLod3
-        type: action
-        action: Attribute Manager
-        with:
-          operations:
-            - attribute: _x
-              method: create
-              value:
-                type: flowExpr
-                value: '(attributes["_xmin"] + attributes["_xmax"]) * 0.5'
-            - attribute: _y
-              method: create
-              value:
-                type: flowExpr
-                value: '(attributes["_ymin"] + attributes["_ymax"]) * 0.5'
 
       - id: a7b575b0-8a0b-44d6-a80e-1fef936058df
         name: Cesium3DTilesWriterLod3
@@ -697,78 +703,62 @@ graphs:
         to: 96cc26d1-57f8-49fa-aa47-f8d92ec78189
         fromPort: joined
         toPort: features
-      - id: 71f0a555-6c6d-4201-9e03-a2c8278bd5bf
+      # bounds and final attribute order, then the per-lod filters
+      - id: e4c7f444-5c2c-4bd1-9d24-393e85b65d1e
         from: 96cc26d1-57f8-49fa-aa47-f8d92ec78189
-        to: 04339391-dcfe-485a-9593-e12b0eddf864
-        fromPort: features
-        toPort: features
-      - id: 6d8c644d-3f72-4634-b2f5-0b62a7d9b813
-        from: 96cc26d1-57f8-49fa-aa47-f8d92ec78189
-        to: acf7b926-7c8b-4448-9a3d-af4a1d1aa2cd
-        fromPort: features
-        toPort: features
-      - id: 9ae53fa9-ed12-46ce-b628-494d610d93f3
-        from: 96cc26d1-57f8-49fa-aa47-f8d92ec78189
-        to: acd88b8a-708a-4adf-ad6e-b471d934191d
-        fromPort: features
-        toPort: features
-      # lod1 filter -> bounds extractor -> writer
-      - id: 6cf1b755-369a-4d11-a9a5-83d46118a459
-        from: 04339391-dcfe-485a-9593-e12b0eddf864
         to: 39f7c2d0-4f5a-4ce6-992d-17ae7b73eb50
         fromPort: features
         toPort: features
-      - id: e4c7f444-5c2c-4bd1-9d24-393e85b65d1e
+      - id: 6cf1b755-369a-4d11-a9a5-83d46118a459
         from: 39f7c2d0-4f5a-4ce6-992d-17ae7b73eb50
         to: d22ce8c5-4e85-416c-9fe9-84396ecb7399
         fromPort: features
         toPort: features
-      - id: 550153be-925d-4199-9939-c021d05c2e5d
+      - id: 8d2f4a6c-1b3e-4c5a-9e7d-0f1a2b3c4d5e
         from: d22ce8c5-4e85-416c-9fe9-84396ecb7399
+        to: 5b8d1f3a-2c4e-4a6b-9d0f-7e1a3c5b9d24
+        fromPort: features
+        toPort: features
+      - id: 71f0a555-6c6d-4201-9e03-a2c8278bd5bf
+        from: 5b8d1f3a-2c4e-4a6b-9d0f-7e1a3c5b9d24
+        to: 04339391-dcfe-485a-9593-e12b0eddf864
+        fromPort: features
+        toPort: features
+      - id: 6d8c644d-3f72-4634-b2f5-0b62a7d9b813
+        from: 5b8d1f3a-2c4e-4a6b-9d0f-7e1a3c5b9d24
+        to: acf7b926-7c8b-4448-9a3d-af4a1d1aa2cd
+        fromPort: features
+        toPort: features
+      - id: 9ae53fa9-ed12-46ce-b628-494d610d93f3
+        from: 5b8d1f3a-2c4e-4a6b-9d0f-7e1a3c5b9d24
+        to: acd88b8a-708a-4adf-ad6e-b471d934191d
+        fromPort: features
+        toPort: features
+      # lod1 filter -> writer
+      - id: 550153be-925d-4199-9939-c021d05c2e5d
+        from: 04339391-dcfe-485a-9593-e12b0eddf864
         to: a4f07c6f-3972-4c4f-9e70-f93af486c78d
         fromPort: features
         toPort: features
-      # lod2 filter -> bounds extractor -> writer
-      - id: 1a2b3c4d-5e6f-4a7b-8c9d-0e1f2a3b4c5d
-        from: acf7b926-7c8b-4448-9a3d-af4a1d1aa2cd
-        to: 81393f88-cdbc-44e3-b55d-49bc838dc127
-        fromPort: features
-        toPort: features
-      - id: 753ee3b2-bff4-480e-adbf-77e174f23fda
-        from: 81393f88-cdbc-44e3-b55d-49bc838dc127
-        to: e78b5d2f-a9d5-4991-aa7c-ba67dc64cadc
-        fromPort: features
-        toPort: features
+      # lod2 filter -> writers
       - id: 11b9c258-2623-444a-8cb6-0d9115fa2183
-        from: e78b5d2f-a9d5-4991-aa7c-ba67dc64cadc
+        from: acf7b926-7c8b-4448-9a3d-af4a1d1aa2cd
         to: e44e7208-c0a6-4bca-829c-5d2769dd49f3
         fromPort: features
         toPort: features
-      # lod2 bounds extractor -> no-texture writer
       - id: 73ebe44d-1210-46ed-ada6-f6052353d6e9
-        from: e78b5d2f-a9d5-4991-aa7c-ba67dc64cadc
+        from: acf7b926-7c8b-4448-9a3d-af4a1d1aa2cd
         to: 0beef7bf-acac-4661-b325-fb8adea8739a
         fromPort: features
         toPort: features
-      # lod3 filter -> bounds extractor -> writer
-      - id: 3c4d5e6f-7a8b-4c9d-0e1f-2a3b4c5d6e7f
-        from: acd88b8a-708a-4adf-ad6e-b471d934191d
-        to: db01f1d9-e4b0-4ac1-ba89-ddd7a3103570
-        fromPort: features
-        toPort: features
-      - id: 44846f06-cb2e-4d7d-a473-9e36f5ea3a11
-        from: db01f1d9-e4b0-4ac1-ba89-ddd7a3103570
-        to: cd167799-4d08-4256-8203-584c66f49d9b
-        fromPort: features
-        toPort: features
+      # lod3 filter -> writers
       - id: db01247a-6eb9-490d-bd4b-a1117489d1d9
-        from: cd167799-4d08-4256-8203-584c66f49d9b
+        from: acd88b8a-708a-4adf-ad6e-b471d934191d
         to: a7b575b0-8a0b-44d6-a80e-1fef936058df
         fromPort: features
         toPort: features
-      # lod3 bounds extractor -> no-texture writer
       - id: a8b14a8a-985e-4f04-9d8b-476491911c6d
-        from: cd167799-4d08-4256-8203-584c66f49d9b
+        from: acd88b8a-708a-4adf-ad6e-b471d934191d
         to: cfca323d-02e2-49a2-a327-d928746657a1
         fromPort: features
         toPort: features

@@ -12,6 +12,7 @@ generate_truth = true
 
 [convs.cesium_attributes.lod1.casts]
 ".attributes" = "json"
+"" = "ordered_dict"
 
 [tests.json_attributes_v2.cesium_lod1]
 path = "cesium_lod1_truth.json"

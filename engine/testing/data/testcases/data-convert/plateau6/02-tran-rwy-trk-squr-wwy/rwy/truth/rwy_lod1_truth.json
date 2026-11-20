@@ -1,5 +1,10 @@
 {
   "TrafficArea_124cc8d3-46b1-4e4c-9cd7-0e0e6302a1b9": {
+    "meshcode": "55360718",
+    "feature_type": "tran:TrafficArea",
+    "city_code": "16202",
+    "city_name": "富山県高岡市",
+    "gml_id": "TrafficArea_124cc8d3-46b1-4e4c-9cd7-0e0e6302a1b9",
     "attributes": [
       {
         "meshcode": "55360718",
@@ -45,14 +50,21 @@
         }
       }
     ],
-    "meshcode": "55360718",
-    "city_name": "富山県高岡市",
-    "lod": 1,
-    "feature_type": "tran:TrafficArea",
-    "gml_id": "TrafficArea_124cc8d3-46b1-4e4c-9cd7-0e0e6302a1b9",
-    "city_code": "16202"
+    "__key_order": [
+      "meshcode",
+      "feature_type",
+      "city_code",
+      "city_name",
+      "gml_id",
+      "attributes"
+    ]
   },
   "TrafficArea_13ac4836-054c-4a5b-8c84-48e76ca7c0cb": {
+    "meshcode": "55360728",
+    "feature_type": "tran:TrafficArea",
+    "city_code": "16202",
+    "city_name": "富山県高岡市",
+    "gml_id": "TrafficArea_13ac4836-054c-4a5b-8c84-48e76ca7c0cb",
     "attributes": [
       {
         "meshcode": "55360728",
@@ -98,14 +110,21 @@
         }
       }
     ],
-    "meshcode": "55360728",
-    "city_name": "富山県高岡市",
-    "lod": 1,
-    "feature_type": "tran:TrafficArea",
-    "gml_id": "TrafficArea_13ac4836-054c-4a5b-8c84-48e76ca7c0cb",
-    "city_code": "16202"
+    "__key_order": [
+      "meshcode",
+      "feature_type",
+      "city_code",
+      "city_name",
+      "gml_id",
+      "attributes"
+    ]
   },
   "TrafficArea_282273de-038d-4f06-b8fa-1cce8c95a58a": {
+    "meshcode": "55360728",
+    "feature_type": "tran:TrafficArea",
+    "city_code": "16202",
+    "city_name": "富山県高岡市",
+    "gml_id": "TrafficArea_282273de-038d-4f06-b8fa-1cce8c95a58a",
     "attributes": [
       {
         "meshcode": "55360728",
@@ -151,14 +170,21 @@
         }
       }
     ],
-    "meshcode": "55360728",
-    "city_name": "富山県高岡市",
-    "lod": 1,
-    "feature_type": "tran:TrafficArea",
-    "gml_id": "TrafficArea_282273de-038d-4f06-b8fa-1cce8c95a58a",
-    "city_code": "16202"
+    "__key_order": [
+      "meshcode",
+      "feature_type",
+      "city_code",
+      "city_name",
+      "gml_id",
+      "attributes"
+    ]
   },
   "TrafficArea_28aa46bd-36cf-47a1-895d-54b318068c11": {
+    "meshcode": "55360733",
+    "feature_type": "tran:TrafficArea",
+    "city_code": "16202",
+    "city_name": "富山県高岡市",
+    "gml_id": "TrafficArea_28aa46bd-36cf-47a1-895d-54b318068c11",
     "attributes": [
       {
         "meshcode": "55360733",
@@ -204,14 +230,21 @@
         }
       }
     ],
-    "meshcode": "55360733",
-    "city_name": "富山県高岡市",
-    "lod": 1,
-    "feature_type": "tran:TrafficArea",
-    "gml_id": "TrafficArea_28aa46bd-36cf-47a1-895d-54b318068c11",
-    "city_code": "16202"
+    "__key_order": [
+      "meshcode",
+      "feature_type",
+      "city_code",
+      "city_name",
+      "gml_id",
+      "attributes"
+    ]
   },
   "TrafficArea_377470ee-9895-4621-91d2-b0fa96f06b18": {
+    "meshcode": "55360728",
+    "feature_type": "tran:TrafficArea",
+    "city_code": "16202",
+    "city_name": "富山県高岡市",
+    "gml_id": "TrafficArea_377470ee-9895-4621-91d2-b0fa96f06b18",
     "attributes": [
       {
         "meshcode": "55360728",
@@ -257,14 +290,21 @@
         }
       }
     ],
-    "meshcode": "55360728",
-    "city_name": "富山県高岡市",
-    "lod": 1,
-    "feature_type": "tran:TrafficArea",
-    "gml_id": "TrafficArea_377470ee-9895-4621-91d2-b0fa96f06b18",
-    "city_code": "16202"
+    "__key_order": [
+      "meshcode",
+      "feature_type",
+      "city_code",
+      "city_name",
+      "gml_id",
+      "attributes"
+    ]
   },
   "TrafficArea_c442ce8f-38de-4a66-b255-5abfcbd146d0": {
+    "meshcode": "55360728",
+    "feature_type": "tran:TrafficArea",
+    "city_code": "16202",
+    "city_name": "富山県高岡市",
+    "gml_id": "TrafficArea_c442ce8f-38de-4a66-b255-5abfcbd146d0",
     "attributes": [
       {
         "meshcode": "55360728",
@@ -310,14 +350,21 @@
         }
       }
     ],
-    "meshcode": "55360728",
-    "city_name": "富山県高岡市",
-    "lod": 1,
-    "feature_type": "tran:TrafficArea",
-    "gml_id": "TrafficArea_c442ce8f-38de-4a66-b255-5abfcbd146d0",
-    "city_code": "16202"
+    "__key_order": [
+      "meshcode",
+      "feature_type",
+      "city_code",
+      "city_name",
+      "gml_id",
+      "attributes"
+    ]
   },
   "TrafficArea_ed057b58-c9bd-44ab-81ce-0cb830a2c45d": {
+    "meshcode": "55360733",
+    "feature_type": "tran:TrafficArea",
+    "city_code": "16202",
+    "city_name": "富山県高岡市",
+    "gml_id": "TrafficArea_ed057b58-c9bd-44ab-81ce-0cb830a2c45d",
     "attributes": [
       {
         "meshcode": "55360733",
@@ -363,11 +410,13 @@
         }
       }
     ],
-    "meshcode": "55360733",
-    "city_name": "富山県高岡市",
-    "lod": 1,
-    "feature_type": "tran:TrafficArea",
-    "gml_id": "TrafficArea_ed057b58-c9bd-44ab-81ce-0cb830a2c45d",
-    "city_code": "16202"
+    "__key_order": [
+      "meshcode",
+      "feature_type",
+      "city_code",
+      "city_name",
+      "gml_id",
+      "attributes"
+    ]
   }
 }

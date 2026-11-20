@@ -67,6 +67,8 @@ type (
 
 		// log
 		Redis_URL string `pp:",omitempty"`
+		// Live_Backend selects where job live data is read from: "redis" or "postgres" (via DB_PG).
+		Live_Backend string `default:"redis"`
 
 		Auth_ISS                               string `pp:",omitempty"`
 		Auth_AUD                               string `pp:",omitempty"`
@@ -307,3 +309,9 @@ func addHTTPScheme(host string) string {
 	}
 	return host
 }
+
+// Live_Backend values.
+const (
+	LiveBackendRedis    = "redis"
+	LiveBackendPostgres = "postgres"
+)

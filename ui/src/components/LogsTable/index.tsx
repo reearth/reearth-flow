@@ -116,7 +116,6 @@ const LogsTable = ({
 
   const { ref: scrollRef, onScroll: handleScroll } =
     useStickToBottom<HTMLDivElement>(`${isFetching}:${rows.length}`);
-
   return (
     <div className="flex size-full flex-col rounded">
       <div className="flex w-full shrink-0 items-center justify-between px-2 pb-2">
@@ -136,6 +135,7 @@ const LogsTable = ({
             size="icon"
             variant={statusValue === "ERROR" ? "default" : "outline"}
             tooltipText={t("Error")}
+            aria-label={t("Error")}
             onClick={() => handleStatusChange(UserFacingLogLevel.Error)}
             icon={<XCircleIcon className="text-destructive" />}
           />
@@ -143,6 +143,7 @@ const LogsTable = ({
             size="icon"
             variant={statusValue === "INFO" ? "default" : "outline"}
             tooltipText={t("Info")}
+            aria-label={t("Info")}
             onClick={() => handleStatusChange(UserFacingLogLevel.Info)}
             icon={<InfoIcon />}
           />
@@ -150,6 +151,7 @@ const LogsTable = ({
             size="icon"
             variant={statusValue === "SUCCESS" ? "default" : "outline"}
             tooltipText={t("Success")}
+            aria-label={t("Success")}
             onClick={() => handleStatusChange(UserFacingLogLevel.Success)}
             icon={<CheckCircleIcon className="text-success" />}
           />
@@ -157,6 +159,7 @@ const LogsTable = ({
             size="icon"
             variant="ghost"
             tooltipText={t("Reset Logs")}
+            aria-label={t("Reset Logs")}
             onClick={handleResetTable}
             icon={<ArrowsClockwiseIcon />}
           />

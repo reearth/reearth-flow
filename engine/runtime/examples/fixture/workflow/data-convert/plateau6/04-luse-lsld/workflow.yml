@@ -183,7 +183,7 @@ graphs:
           conditions:
             - expr:
                 type: flowExpr
-                value: attributes["lod"] == 1
+                value: attributes["__lod"] == 1
               outputPort: features
 
       - id: 3944e300-8e9a-4a1a-a9d2-f068cfe9827d
@@ -199,6 +199,30 @@ graphs:
           attributes:
             - __sort_order
           order: ascending
+
+      # Builds the final attribute order from three groups, each kept in order on its own:
+      # base keys, __flat (AttributeTableExtractor). No earlier step can affect it.
+      # The writer does not expose "__" keys, so only __lod and __output_base are kept after them.
+      - id: 6f2a8c4e-1d3b-4e5f-9a7c-0b1d3f5a7c92
+        name: AttributeOrderMapper
+        type: action
+        action: Attribute Mapper
+        with:
+          mappers:
+            - multipleExpr:
+                type: flowExpr
+                value: |
+                  out = {};
+                  for k in ["meshcode", "city_code", "city_name", "feature_type", "gml_id", "attributes"] {
+                    if k in attributes { out[k] = attributes[k]; }
+                  }
+                  flat = attributes.get("__flat", {});
+                  for k in flat.keys() { out[k] = flat[k]; }
+                  out
+            - attribute: __lod
+              valueAttribute: __lod
+            - attribute: __output_base
+              valueAttribute: __output_base
 
       # layer and file named by package, as in plateau4
       - id: 08ef4c5e-85c6-45c0-b5c4-5bd003891939
@@ -288,6 +312,11 @@ graphs:
         toPort: features
       - id: 3b6b7a1c-df36-431f-81b3-c10101a36be3
         from: 239f5374-4959-4028-a72a-480cb8b72ce2
+        to: 6f2a8c4e-1d3b-4e5f-9a7c-0b1d3f5a7c92
+        fromPort: features
+        toPort: features
+      - id: 9c1e3a5b-7d2f-4b6a-8e0c-2a4c6e8a1b3d
+        from: 6f2a8c4e-1d3b-4e5f-9a7c-0b1d3f5a7c92
         to: 08ef4c5e-85c6-45c0-b5c4-5bd003891939
         fromPort: features
         toPort: features

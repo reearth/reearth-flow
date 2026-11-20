@@ -8,6 +8,7 @@ generate_truth = true
 [convs.mvt_attributes.luse.casts]
 ".attributes" = "json"
 ".attributes.meshcode" = "string"
+"" = "ordered_dict"
 
 [tests.mvt_polygons]
 threshold = 0.001

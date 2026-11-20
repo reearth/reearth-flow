@@ -139,8 +139,8 @@ const LogsConsole: React.FC<LogsConsoleProps> = ({ jobId, leadingActions }) => {
             variant="outline"
             tooltipText={t("Download Logs")}
             aria-label={t("Download Logs")}
-            disabled={!logs.length}
-            onClick={() => downloadLogs(jobId, logs)}
+            disabled={!urlLogs?.length}
+            onClick={() => urlLogs && downloadLogs(jobId, urlLogs)}
             icon={<DownloadIcon />}
           />
         </>
