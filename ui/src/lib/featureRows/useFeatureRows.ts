@@ -35,7 +35,11 @@ export function toTableRow(record: FeatureRowRecord): FeatureTableRow {
 export function cellValue(row: FeatureTableRow, column: string): string {
   let value = row.cells.get(column);
   if (value === undefined) {
-    value = safeSerialize(row.attributes[column] ?? null);
+    value = safeSerialize(
+      Object.hasOwn(row.attributes, column)
+        ? (row.attributes[column] ?? null)
+        : null,
+    );
     row.cells.set(column, value);
   }
   return value;
@@ -45,8 +49,12 @@ type Block = { rows: FeatureTableRow[] };
 
 const EMPTY_BLOCK: Block = { rows: [] };
 
-const keyOf = (url: string, searchTerm: string, block: number) =>
-  `${url}\u0000${searchTerm}\u0000${block}`;
+const keyOf = (
+  url: string,
+  session: number,
+  searchTerm: string,
+  block: number,
+) => `${url}\u0000${session}\u0000${searchTerm}\u0000${block}`;
 
 export function useFeatureRows(
   url: string,
@@ -78,12 +86,13 @@ export function useFeatureRows(
   );
   const inflight = useRef(new Map<string, Promise<Block>>());
 
+  const session = status?.session ?? 0;
   const searchTerm = status?.searchTerm ?? "";
   const viewCount = status?.viewCount ?? 0;
 
   const blockKey = useCallback(
-    (block: number) => keyOf(url, searchTerm, block),
-    [searchTerm, url],
+    (block: number) => keyOf(url, session, searchTerm, block),
+    [searchTerm, session, url],
   );
 
   const fetchBlock = useCallback(
@@ -94,8 +103,9 @@ export function useFeatureRows(
       const request = client
         .rows(url, block * ROW_BLOCK_SIZE, ROW_BLOCK_SIZE)
         .then((reply) => {
+          if (!reply.rows.length) return EMPTY_BLOCK;
           const entry = { rows: reply.rows.map(toTableRow) };
-          const answeredKey = keyOf(url, reply.searchTerm, block);
+          const answeredKey = keyOf(url, session, reply.searchTerm, block);
           setBlocks((previous) => {
             const next = new Map(previous);
             next.delete(answeredKey);
@@ -113,7 +123,7 @@ export function useFeatureRows(
       inflight.current.set(key, request);
       return request;
     },
-    [blockKey, client, url],
+    [blockKey, client, session, url],
   );
 
   const ensureRange = useCallback(
@@ -160,6 +170,10 @@ export function useFeatureRows(
     [fetchBlock, getRow],
   );
 
+  const retry = useCallback(() => {
+    if (url) client.retry(url);
+  }, [client, url]);
+
   const readLine = useCallback(
     (row: number) =>
       url ? client.line(url, row).catch(() => null) : Promise.resolve(null),
@@ -176,13 +190,23 @@ export function useFeatureRows(
     () => ({
       status,
       search,
+      retry,
       getRow,
       ensureRange,
       ensureRow,
       readLine,
       viewIndexOf,
     }),
-    [status, search, getRow, ensureRange, ensureRow, readLine, viewIndexOf],
+    [
+      status,
+      search,
+      retry,
+      getRow,
+      ensureRange,
+      ensureRow,
+      readLine,
+      viewIndexOf,
+    ],
   );
 }
 

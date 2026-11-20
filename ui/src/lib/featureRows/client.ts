@@ -34,6 +34,7 @@ export class FeatureRowsClient {
   private readonly pending = new Map<number, Pending>();
   private readonly listeners = new Map<string, Set<Listener>>();
   private readonly statuses = new Map<string, FeatureRowsStatus>();
+  private session = 0;
 
   constructor(createWorker: () => WorkerLike) {
     this.createWorker = createWorker;
@@ -61,8 +62,17 @@ export class FeatureRowsClient {
   }
 
   clear() {
+    this.reset("The data preview was cleared");
     this.statuses.clear();
-    this.worker?.postMessage({ type: "clear" });
+    queueMicrotask(() => {
+      for (const url of this.listeners.keys()) this.open(url);
+    });
+  }
+
+  retry(url: string) {
+    this.session++;
+    this.statuses.delete(url);
+    this.open(url);
   }
 
   search(url: string, term: string) {
@@ -100,11 +110,20 @@ export class FeatureRowsClient {
   private ensureWorker(): WorkerLike {
     if (!this.worker) {
       const worker = this.createWorker();
-      worker.onmessage = (event) => this.receive(event.data);
-      worker.onerror = (event) =>
-        this.fail(event.message || "The data preview worker failed");
-      worker.onmessageerror = () =>
-        this.fail("The data preview worker sent an unreadable message");
+      const current = () => this.worker === worker;
+      worker.onmessage = (event) => {
+        if (current()) this.receive(event.data);
+      };
+      worker.onerror = (event) => {
+        if (current()) {
+          this.fail(event.message || "The data preview worker failed");
+        }
+      };
+      worker.onmessageerror = () => {
+        if (current()) {
+          this.fail("The data preview worker sent an unreadable message");
+        }
+      };
       this.worker = worker;
     }
     return this.worker;
@@ -118,26 +137,39 @@ export class FeatureRowsClient {
     const id = this.nextId++;
     return new Promise<Reply>((resolve, reject) => {
       this.pending.set(id, { resolve, reject });
-      this.send(build(id));
+      try {
+        this.send(build(id));
+      } catch (error) {
+        this.pending.delete(id);
+        reject(error);
+      }
     });
   }
 
-  private fail(message: string) {
+  private reset(message: string) {
     this.worker?.terminate();
     this.worker = null;
+    this.session++;
 
     const error = new Error(message);
     const pending = [...this.pending.values()];
     this.pending.clear();
     pending.forEach(({ reject }) => reject(error));
+  }
 
+  private fail(message: string) {
+    this.reset(message);
     const urls = new Set([...this.statuses.keys(), ...this.listeners.keys()]);
     for (const url of urls) {
       this.setStatus({
-        ...(this.statuses.get(url) ?? emptyStatus(url)),
+        ...(this.statuses.get(url) ?? emptyStatus(url, this.session)),
+        rowCount: 0,
+        totalRows: 0,
+        viewCount: 0,
         done: true,
         searching: false,
         error: message,
+        session: this.session,
       });
     }
   }
@@ -150,9 +182,11 @@ export class FeatureRowsClient {
   private receive(message: WorkerResponse) {
     if (message.type === "status") {
       const { columns, ...rest } = message.status;
+      const previous = this.statuses.get(rest.url);
       this.setStatus({
         ...rest,
-        columns: columns ?? this.statuses.get(rest.url)?.columns ?? [],
+        columns: columns ?? previous?.columns ?? [],
+        session: this.session,
       });
       return;
     }
@@ -164,7 +198,7 @@ export class FeatureRowsClient {
   }
 }
 
-function emptyStatus(url: string): FeatureRowsStatus {
+function emptyStatus(url: string, session: number): FeatureRowsStatus {
   return {
     url,
     rowCount: 0,
@@ -178,6 +212,7 @@ function emptyStatus(url: string): FeatureRowsStatus {
     columns: [],
     geometryType: null,
     error: null,
+    session,
   };
 }
 

@@ -2,10 +2,17 @@ import { describe, expect, test } from "vitest";
 
 import { toSelectedFeature } from "./hooks";
 
-const select = (line: unknown, row = 0) =>
-  toSelectedFeature(JSON.stringify(line), row);
+const select = (line: unknown, row = 0) => {
+  const feature = toSelectedFeature(JSON.stringify(line), row);
+  if (!feature) throw new Error("expected a feature");
+  return feature;
+};
 
 describe("toSelectedFeature", () => {
+  test("a line that is not valid JSON gives no feature", () => {
+    expect(toSelectedFeature('{"id":1,"geometry":[1,', 0)).toBeNull();
+  });
+
   test("carries the transformed geometry and the attributes", () => {
     const feature = select({
       id: "0195f3a0-0000-7000-8000-000000000005",

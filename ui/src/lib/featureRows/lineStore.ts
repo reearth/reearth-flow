@@ -1,15 +1,11 @@
+import { scanFeature } from "./featureScan";
+import type { Span } from "./featureScan";
+
 const NEWLINE = 10;
 const CARRIAGE_RETURN = 13;
-const QUOTE = 34;
-const BACKSLASH = 92;
-const COMMA = 44;
-const COLON = 58;
-const OPEN_BRACE = 123;
 const CLOSE_BRACE = 125;
-const OPEN_BRACKET = 91;
-const CLOSE_BRACKET = 93;
-const ATTRIBUTES_KEY = new TextEncoder().encode('"attributes"');
 const SAMPLE_SIZE = 10;
+const INDEX_ARRAYS = 3;
 
 export const DEFAULT_CHUNK_BYTES = 16 * 1024 * 1024;
 const FIRST_CHUNK_BYTES = 64 * 1024;
@@ -26,89 +22,27 @@ export type ParsedRow = {
   geometry?: unknown;
 };
 
+export type TableRow = {
+  id: unknown;
+  attributes: Record<string, unknown>;
+};
+
 function isWhitespace(byte: number) {
   return byte === 32 || byte === 9 || byte === CARRIAGE_RETURN;
 }
 
-function skipWhitespace(bytes: Uint8Array, pos: number, end: number) {
-  while (pos < end && isWhitespace(bytes[pos])) pos++;
-  return pos;
-}
-
-function skipString(bytes: Uint8Array, pos: number, end: number) {
-  for (let i = pos + 1; i < end; i++) {
-    if (bytes[i] === BACKSLASH) i++;
-    else if (bytes[i] === QUOTE) return i + 1;
-  }
-  return -1;
-}
-
-function valueEnd(bytes: Uint8Array, pos: number, end: number) {
-  let depth = 0;
-  let i = pos;
-  while (i < end) {
-    const byte = bytes[i];
-    if (byte === QUOTE) {
-      i = skipString(bytes, i, end);
-      if (i < 0 || depth === 0) return i;
-      continue;
-    }
-    if (byte === OPEN_BRACE || byte === OPEN_BRACKET) {
-      depth++;
-    } else if (byte === CLOSE_BRACE || byte === CLOSE_BRACKET) {
-      if (depth === 0) return i;
-      if (--depth === 0) return i + 1;
-    } else if (depth === 0 && byte === COMMA) {
-      return i;
-    }
-    i++;
-  }
-  return depth === 0 ? end : -1;
-}
-
-function isAttributesKey(bytes: Uint8Array, start: number, end: number) {
-  if (end - start !== ATTRIBUTES_KEY.length) return false;
-  for (let i = 0; i < ATTRIBUTES_KEY.length; i++) {
-    if (bytes[start + i] !== ATTRIBUTES_KEY[i]) return false;
-  }
-  return true;
-}
-
-function attributesSpan(
-  bytes: Uint8Array,
-  start: number,
-  end: number,
-): [number, number] | null {
-  let depth = 0;
-  let i = start;
-  while (i < end) {
-    const byte = bytes[i];
-    if (byte === QUOTE) {
-      const keyStart = i;
-      i = skipString(bytes, i, end);
-      if (i < 0) return null;
-      if (depth === 1 && isAttributesKey(bytes, keyStart, i)) {
-        const colon = skipWhitespace(bytes, i, end);
-        if (bytes[colon] === COLON) {
-          const from = skipWhitespace(bytes, colon + 1, end);
-          const to = valueEnd(bytes, from, end);
-          return to < 0 ? null : [from, to];
-        }
-      }
-      continue;
-    }
-    if (byte === OPEN_BRACE || byte === OPEN_BRACKET) depth++;
-    else if (byte === CLOSE_BRACE || byte === CLOSE_BRACKET) depth--;
-    i++;
-  }
-  return null;
-}
-
 type Index = Uint32Array<ArrayBuffer>;
 
+const EMPTY_INDEX: Index = new Uint32Array(0);
+
+function grownLength(array: Index, min: number) {
+  return array.length >= min ? array.length : Math.max(min, array.length * 2);
+}
+
 function grow(array: Index, min: number): Index {
-  if (array.length >= min) return array;
-  const next = new Uint32Array(Math.max(min, array.length * 2));
+  const length = grownLength(array, min);
+  if (length === array.length) return array;
+  const next = new Uint32Array(length);
   next.set(array);
   return next;
 }
@@ -122,19 +56,21 @@ export class LineStore {
   private writePos = 0;
   private lineStart = 0;
   private allocatedBytes = 0;
+  private sampleBytes = 0;
 
-  private rowChunk: Index = new Uint32Array(1024);
-  private rowStart: Index = new Uint32Array(1024);
-  private rowLength: Index = new Uint32Array(1024);
+  private rowChunk: Index = EMPTY_INDEX;
+  private rowStart: Index = EMPTY_INDEX;
+  private rowLength: Index = EMPTY_INDEX;
 
   rowCount = 0;
   droppedRows = 0;
   skippedLines = 0;
   truncated = false;
-  columns: string[] = [];
+  columns: readonly string[] = [];
   readonly sample: ParsedRow[] = [];
 
   private readonly columnSet = new Set<string>();
+  private readonly columnList: string[] = [];
   private droppedLineHasContent = false;
 
   constructor(options: LineStoreOptions = {}) {
@@ -147,16 +83,96 @@ export class LineStore {
   }
 
   get bytes() {
-    return this.allocatedBytes;
+    return (
+      this.allocatedBytes +
+      this.rowChunk.byteLength * INDEX_ARRAYS +
+      this.sampleBytes
+    );
   }
 
   append(bytes: Uint8Array) {
     if (bytes.length === 0) return;
-    if (this.truncated || !this.reserve(bytes.length)) {
+    if (this.truncated) {
       this.countDropped(bytes);
       return;
     }
 
+    let cut = bytes.length;
+    if (!this.reserve(cut)) {
+      cut = this.fittingPrefix(bytes);
+      if (cut === 0 || !this.reserve(cut)) {
+        this.truncate(bytes);
+        return;
+      }
+    }
+    if (this.write(bytes.subarray(0, cut)) && cut < bytes.length) {
+      this.truncate(bytes.subarray(cut));
+    }
+    this.publishColumns();
+  }
+
+  finish() {
+    if (
+      !this.truncated &&
+      this.chunks.length &&
+      this.writePos > this.lineStart
+    ) {
+      if (
+        this.addLine(
+          this.chunks.length - 1,
+          this.lineStart,
+          this.writePos,
+          this.writePos,
+        )
+      ) {
+        this.lineStart = this.writePos;
+      } else {
+        this.truncate(new Uint8Array(0));
+      }
+    }
+    if (this.truncated) {
+      if (this.droppedLineHasContent) this.droppedRows++;
+      this.droppedLineHasContent = false;
+    }
+    this.publishColumns();
+  }
+
+  readLine(row: number): string | null {
+    if (row < 0 || row >= this.rowCount) return null;
+    const [chunk, start, end] = this.locate(row);
+    return this.decoder.decode(chunk.subarray(start, end));
+  }
+
+  tableRow(row: number): TableRow | null {
+    if (row < 0 || row >= this.rowCount) return null;
+    const [chunk, start, end] = this.locate(row);
+    const spans = scanFeature(chunk, start, end);
+    if (!spans) return null;
+    const attributes = this.parseSpan(chunk, spans.attributes);
+    return {
+      id: this.parseSpan(chunk, spans.id),
+      attributes:
+        attributes && typeof attributes === "object"
+          ? (attributes as Record<string, unknown>)
+          : {},
+    };
+  }
+
+  private locate(row: number): [Uint8Array, number, number] {
+    const start = this.rowStart[row];
+    return [
+      this.chunks[this.rowChunk[row]],
+      start,
+      start + this.rowLength[row],
+    ];
+  }
+
+  private parseSpan(chunk: Uint8Array, span: Span | null): unknown {
+    if (!span) return undefined;
+    return JSON.parse(this.decoder.decode(chunk.subarray(span[0], span[1])));
+  }
+
+  private write(bytes: Uint8Array): boolean {
     const chunkIndex = this.chunks.length - 1;
     const chunk = this.chunks[chunkIndex];
     const scanFrom = this.writePos;
@@ -166,41 +182,63 @@ export class LineStore {
     const written = chunk.subarray(0, this.writePos);
     let newline = written.indexOf(NEWLINE, scanFrom);
     while (newline !== -1) {
-      this.addLine(chunkIndex, this.lineStart, newline);
-      this.lineStart = newline + 1;
+      const added = this.addLine(
+        chunkIndex,
+        this.lineStart,
+        newline,
+        newline + 1,
+      );
+      if (added) this.lineStart = newline + 1;
+      if (!added || this.chunks[chunkIndex].length < this.writePos) {
+        this.writePos = this.lineStart;
+        this.truncate(written.subarray(this.lineStart));
+        return false;
+      }
       newline = written.indexOf(NEWLINE, this.lineStart);
     }
+    return true;
   }
 
-  finish() {
-    if (this.truncated) {
-      if (this.droppedLineHasContent) this.droppedRows++;
-      this.droppedLineHasContent = false;
-      return;
+  private truncate(rest: Uint8Array) {
+    this.truncated = true;
+    this.droppedLineHasContent = false;
+    const current = this.chunks[this.chunks.length - 1];
+    if (current) {
+      this.countDropped(current.subarray(this.lineStart, this.writePos));
+      this.writePos = this.lineStart;
     }
-    if (this.chunks.length && this.writePos > this.lineStart) {
-      this.addLine(this.chunks.length - 1, this.lineStart, this.writePos);
-      this.lineStart = this.writePos;
-    }
+    this.countDropped(rest);
   }
 
-  readLine(row: number): string | null {
-    if (row < 0 || row >= this.rowCount) return null;
-    const chunk = this.chunks[this.rowChunk[row]];
-    const start = this.rowStart[row];
-    return this.decoder.decode(
-      chunk.subarray(start, start + this.rowLength[row]),
-    );
+  private fittingPrefix(bytes: Uint8Array) {
+    let newline = bytes.lastIndexOf(NEWLINE);
+    while (newline >= 0) {
+      if (this.canReserve(newline + 1)) return newline + 1;
+      if (newline === 0) return 0;
+      newline = bytes.lastIndexOf(NEWLINE, newline - 1);
+    }
+    return 0;
   }
 
-  parseRow(row: number): ParsedRow | null {
-    const line = this.readLine(row);
-    if (line === null) return null;
-    try {
-      return JSON.parse(line);
-    } catch {
-      return null;
-    }
+  private partialLength() {
+    return this.chunks.length ? this.writePos - this.lineStart : 0;
+  }
+
+  private available(replacing: boolean) {
+    const current = this.chunks[this.chunks.length - 1];
+    const freed = replacing && current ? current.length : 0;
+    return this.byteBudget - this.bytes + freed;
+  }
+
+  private replacingCurrent() {
+    return this.chunks.length > 0 && !this.chunkHasRows(this.chunks.length - 1);
+  }
+
+  private canReserve(incoming: number) {
+    const current = this.chunks[this.chunks.length - 1];
+    if (current && this.writePos + incoming <= current.length) return true;
+    const needed = this.partialLength() + incoming;
+    return needed <= this.available(this.replacingCurrent());
   }
 
   private reserve(incoming: number): boolean {
@@ -211,15 +249,9 @@ export class LineStore {
       ? current.subarray(this.lineStart, this.writePos)
       : new Uint8Array(0);
     const needed = partial.length + incoming;
-    const replacing = !!current && !this.chunkHasRows(this.chunks.length - 1);
-    const freed = replacing ? current.length : 0;
-    const available = this.byteBudget - this.allocatedBytes + freed;
-
-    if (needed > available) {
-      this.truncated = true;
-      this.droppedLineHasContent = partial.some((byte) => !isWhitespace(byte));
-      return false;
-    }
+    const replacing = this.replacingCurrent();
+    const available = this.available(replacing);
+    if (needed > available) return false;
 
     const grown = Math.max(
       needed,
@@ -233,12 +265,21 @@ export class LineStore {
 
     const next = new Uint8Array(size);
     next.set(partial);
+    const freed = replacing && current ? current.length : 0;
     if (replacing) this.chunks.pop();
     this.chunks.push(next);
     this.allocatedBytes += size - freed;
     this.writePos = partial.length;
     this.lineStart = 0;
     return true;
+  }
+
+  private trimCurrentChunk(keep: number) {
+    const last = this.chunks.length - 1;
+    const chunk = this.chunks[last];
+    if (!chunk || chunk.length <= keep) return;
+    this.chunks[last] = chunk.slice(0, keep);
+    this.allocatedBytes -= chunk.length - keep;
   }
 
   private chunkHasRows(chunkIndex: number) {
@@ -265,38 +306,46 @@ export class LineStore {
     }
   }
 
-  private addLine(chunkIndex: number, start: number, end: number) {
+  private addLine(
+    chunkIndex: number,
+    start: number,
+    end: number,
+    lineEnd: number,
+  ): boolean {
     const chunk = this.chunks[chunkIndex];
     if (end > start && chunk[end - 1] === CARRIAGE_RETURN) end--;
 
     let first = start;
     while (first < end && isWhitespace(chunk[first])) first++;
-    if (first === end) return;
+    if (first === end) return true;
 
-    let last = end - 1;
-    while (last > first && isWhitespace(chunk[last])) last--;
-    if (chunk[first] !== OPEN_BRACE || chunk[last] !== CLOSE_BRACE) {
-      this.skippedLines++;
-      return;
+    const index = this.rowCount;
+    const capacity = grownLength(this.rowChunk, index + 1);
+    const indexGrowth = (capacity - this.rowChunk.length) * 4 * INDEX_ARRAYS;
+    const sampling = this.sample.length < SAMPLE_SIZE;
+    const sampleGrowth = sampling ? end - start : 0;
+    if (this.bytes + indexGrowth + sampleGrowth > this.byteBudget) {
+      this.trimCurrentChunk(lineEnd);
+      if (this.bytes + indexGrowth + sampleGrowth > this.byteBudget) {
+        return false;
+      }
     }
 
-    const attributes =
-      this.sample.length < SAMPLE_SIZE
-        ? this.parseSample(chunk, start, end)
-        : this.parseAttributes(chunk, first, end);
+    const attributes = sampling
+      ? this.parseSample(chunk, start, end)
+      : this.parseAttributes(chunk, first, end);
     if (attributes === undefined) {
       this.skippedLines++;
-      return;
+      return true;
     }
     if (attributes && typeof attributes === "object") {
       for (const key of Object.keys(attributes)) {
         if (this.columnSet.has(key)) continue;
         this.columnSet.add(key);
-        this.columns = [...this.columns, key];
+        this.columnList.push(key);
       }
     }
 
-    const index = this.rowCount;
     this.rowChunk = grow(this.rowChunk, index + 1);
     this.rowStart = grow(this.rowStart, index + 1);
     this.rowLength = grow(this.rowLength, index + 1);
@@ -304,35 +353,43 @@ export class LineStore {
     this.rowStart[index] = start;
     this.rowLength[index] = end - start;
     this.rowCount++;
+    return true;
+  }
+
+  private publishColumns() {
+    if (this.columns.length !== this.columnList.length) {
+      this.columns = this.columnList.slice();
+    }
   }
 
   private parseSample(chunk: Uint8Array, start: number, end: number) {
-    let row: ParsedRow;
+    let row: unknown;
     try {
       row = JSON.parse(this.decoder.decode(chunk.subarray(start, end)));
     } catch {
       return undefined;
     }
-    this.sample.push(row);
-    return row.attributes ?? null;
+    if (typeof row !== "object" || row === null || Array.isArray(row)) {
+      return undefined;
+    }
+    this.sample.push(row as ParsedRow);
+    this.sampleBytes += end - start;
+    return (row as ParsedRow).attributes ?? null;
   }
 
   private parseAttributes(chunk: Uint8Array, start: number, end: number) {
-    const span = attributesSpan(chunk, start, end);
-    if (!span) return null;
-    try {
-      return JSON.parse(
-        this.decoder.decode(chunk.subarray(span[0], span[1])),
-      ) as unknown;
-    } catch {
-      return undefined;
-    }
+    let last = end - 1;
+    while (last > start && isWhitespace(chunk[last])) last--;
+    if (chunk[last] !== CLOSE_BRACE) return undefined;
+    const spans = scanFeature(chunk, start, end);
+    if (!spans) return undefined;
+    return this.parseSpan(chunk, spans.attributes) ?? null;
   }
 }
 
 export class RowFilter {
   readonly term: string;
-  matches: Index = new Uint32Array(1024);
+  matches: Index = EMPTY_INDEX;
   count = 0;
   scanned = 0;
 
@@ -342,6 +399,10 @@ export class RowFilter {
     this.term = term.toLowerCase();
     this.matchesNormalizedValues =
       /^[\d.eE+-]+$/.test(this.term) && /\d/.test(this.term);
+  }
+
+  get bytes() {
+    return this.matches.byteLength;
   }
 
   caughtUp(store: LineStore) {
@@ -387,15 +448,11 @@ export class RowFilter {
       return false;
     }
 
-    let parsed: ParsedRow;
-    try {
-      parsed = JSON.parse(line);
-    } catch {
-      return false;
-    }
+    const parsed = store.tableRow(row);
+    if (!parsed) return false;
 
     if (this.contains(parsed.id || row)) return true;
-    for (const value of Object.values(parsed.attributes ?? {})) {
+    for (const value of Object.values(parsed.attributes)) {
       if (this.contains(value ?? null)) return true;
     }
     return false;

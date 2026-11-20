@@ -17,4 +17,16 @@ describe("table rows", () => {
     expect(toTableRow({ row: 0, id: "a", attributes: {} }).id).toBe('"a"');
     expect(toTableRow({ row: 3, id: undefined, attributes: {} }).id).toBe("3");
   });
+
+  test("an attribute named like an Object member is only read when present", () => {
+    const row = toTableRow({ row: 0, id: "a", attributes: {} });
+    expect(cellValue(row, "constructor")).toBe("null");
+    expect(cellValue(row, "toString")).toBe("null");
+    const named = toTableRow({
+      row: 1,
+      id: "b",
+      attributes: JSON.parse('{"constructor":"building"}'),
+    });
+    expect(cellValue(named, "constructor")).toBe('"building"');
+  });
 });

@@ -154,11 +154,9 @@ export default () => {
     let cancelled = false;
     void readLine(selectedRow).then((text) => {
       if (cancelled || text === null) return;
-      setLoadedFeature({
-        url: metadataUrl,
-        row: selectedRow,
-        feature: toSelectedFeature(text, selectedRow),
-      });
+      const feature = toSelectedFeature(text, selectedRow);
+      if (!feature) return;
+      setLoadedFeature({ url: metadataUrl, row: selectedRow, feature });
     });
     return () => {
       cancelled = true;
@@ -417,7 +415,12 @@ export default () => {
 };
 
 export function toSelectedFeature(text: string, row: number) {
-  const parsed = JSON.parse(text);
+  let parsed: any;
+  try {
+    parsed = JSON.parse(text);
+  } catch {
+    return null;
+  }
   let feature: any;
   try {
     feature = intermediateDataTransform(parsed);

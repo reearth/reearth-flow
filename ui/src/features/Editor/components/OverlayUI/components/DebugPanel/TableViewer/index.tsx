@@ -1,6 +1,7 @@
 import { CircleNotchIcon } from "@phosphor-icons/react";
 import { memo } from "react";
 
+import { Button } from "@flow/components";
 import BasicBoiler from "@flow/components/BasicBoiler";
 import type { FeatureRows, FeatureTableRow } from "@flow/lib/featureRows";
 import { useLang, useT } from "@flow/lib/i18n";
@@ -22,8 +23,18 @@ const TableViewer: React.FC<Props> = memo(
     const lang = useLang();
     const { status } = rows;
 
+    const retryButton = (
+      <Button variant="outline" size="sm" onClick={rows.retry}>
+        {t("Retry")}
+      </Button>
+    );
+
     if (status?.error && status.rowCount === 0) {
-      return <BasicBoiler text={status.error} className="h-full" />;
+      return (
+        <BasicBoiler text={status.error} className="h-full">
+          {retryButton}
+        </BasicBoiler>
+      );
     }
     if (!status || (!status.done && status.rowCount === 0)) {
       return <BasicBoiler text={t("Loading data...")} className="h-full" />;
@@ -45,8 +56,9 @@ const TableViewer: React.FC<Props> = memo(
           {status.error && (
             <div
               role="alert"
-              className="mb-1 rounded-md border border-destructive/50 px-2 py-1 text-xs text-destructive">
+              className="mb-1 flex items-center justify-between gap-2 rounded-md border border-destructive/50 px-2 py-1 text-xs text-destructive">
               {status.error}
+              {retryButton}
             </div>
           )}
           <div className="flex-1 overflow-hidden">

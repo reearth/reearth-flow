@@ -19,7 +19,7 @@ function storeOf(text: string, pieces = 1, options = {}) {
 }
 
 const ids = (store: LineStore) =>
-  Array.from({ length: store.rowCount }, (_, row) => store.parseRow(row)?.id);
+  Array.from({ length: store.rowCount }, (_, row) => store.tableRow(row)?.id);
 
 describe("LineStore", () => {
   test("indexes every line, wherever the chunks split them", () => {
@@ -32,7 +32,7 @@ describe("LineStore", () => {
   test("keeps a multi-byte character split across chunks intact", () => {
     const text = line("渋谷", { name: "新宿駅" }) + "\n";
     const store = storeOf(text, text.length);
-    expect(store.parseRow(0)).toMatchObject({
+    expect(store.tableRow(0)).toMatchObject({
       id: "渋谷",
       attributes: { name: "新宿駅" },
     });
@@ -91,17 +91,22 @@ describe("LineStore", () => {
     expect(ids(store)).toEqual(["a", "long", "b"]);
   });
 
-  test("a line that fits the budget is kept though doubling would not fit", () => {
-    const base = line("a", { t: "" });
-    const row = line("a", { t: "x".repeat(76 - base.length) });
-    expect(row.length).toBe(76);
+  test("a row kept in one append is kept when it arrives in two", () => {
+    const row = line("a", { t: "x".repeat(50) });
     const bytes = encoder.encode(row + "\n");
-    const store = new LineStore({ chunkBytes: 64, byteBudget: 100 });
-    store.append(bytes.subarray(0, 64));
-    store.append(bytes.subarray(64));
-    store.finish();
-    expect(store.truncated).toBe(false);
-    expect(ids(store)).toEqual(["a"]);
+    const keeps = (byteBudget: number, pieces: Uint8Array[]) => {
+      const store = new LineStore({ chunkBytes: 64, byteBudget });
+      pieces.forEach((piece) => store.append(piece));
+      store.finish();
+      return store.rowCount === 1;
+    };
+    for (let budget = bytes.length; budget < 400; budget++) {
+      if (!keeps(budget, [bytes])) continue;
+      expect(
+        keeps(budget, [bytes.subarray(0, 64), bytes.subarray(64)]),
+        `budget ${budget}`,
+      ).toBe(true);
+    }
   });
 
   test("a small file does not take a whole default chunk", () => {
@@ -145,6 +150,60 @@ describe("LineStore", () => {
     expect(ids(store).slice(10)).toEqual(["a", "b", "d"]);
     expect(store.skippedLines).toBe(2);
     expect(store.sample).toHaveLength(10);
+  });
+
+  test("past the sample, a line must be valid JSON to be a row", () => {
+    const sample = Array.from({ length: 10 }, (_, i) => line(`s${i}`));
+    const store = storeOf(
+      [
+        ...sample,
+        '{"id":,"attributes":{"name":"A"}}',
+        '{"\\u0061ttributes":{"escaped":1},"id":"ok"}',
+      ].join("\n"),
+    );
+    expect(ids(store).slice(10)).toEqual(["ok"]);
+    expect(store.columns).toEqual(["escaped"]);
+    expect(store.skippedLines).toBe(1);
+  });
+
+  test("keeps the rows of a delivery that fit before dropping the rest", () => {
+    const rows = [
+      line("a", { t: "x".repeat(30) }),
+      line("b", { t: "y".repeat(30) }),
+    ];
+    const text = rows.join("\n") + "\n";
+    const storeWith = (byteBudget: number, pieces: string[]) => {
+      const store = new LineStore({ byteBudget });
+      pieces.forEach((piece) => store.append(encoder.encode(piece)));
+      store.finish();
+      return store;
+    };
+    let budget = text.length / 2;
+    while (storeWith(budget, [rows[0] + "\n", rows[1] + "\n"]).rowCount === 0) {
+      budget++;
+    }
+    for (const pieces of [[text], [rows[0] + "\n", rows[1] + "\n"]]) {
+      const store = storeWith(budget, pieces);
+      expect(store.truncated).toBe(true);
+      expect(ids(store)).toEqual(["a"]);
+      expect(store.totalRows).toBe(2);
+    }
+  });
+
+  test("the row index counts against the budget", () => {
+    const text = "{}\n".repeat(5000);
+    const store = storeOf(text, 10, { byteBudget: text.length * 2 });
+    expect(store.truncated).toBe(true);
+    expect(store.bytes).toBeLessThanOrEqual(text.length * 2);
+    expect(store.totalRows).toBe(5000);
+  });
+
+  test("table rows carry the id and attributes", () => {
+    const store = storeOf(
+      Array.from({ length: 12 }, (_, i) => line(`r${i}`, { n: i })).join("\n"),
+    );
+    expect(store.tableRow(11)).toEqual({ id: "r11", attributes: { n: 11 } });
+    expect(store.tableRow(12)).toBeNull();
   });
 
   test("keeps the parsed sample for geometry detection", () => {

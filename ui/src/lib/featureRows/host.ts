@@ -9,6 +9,7 @@ import type {
   WorkerRequest,
   WorkerResponse,
 } from "./protocol";
+import { ZstdWindowGuard } from "./zstdWindow";
 
 const STATUS_INTERVAL_MS = 150;
 const SEARCH_SLICE_MS = 12;
@@ -28,7 +29,7 @@ type Entry = {
   geometryType: string | null;
   geometryResolved: boolean;
   lastUsed: number;
-  postedColumns: string[] | null;
+  postedColumns: readonly string[] | null;
   lastPostAt: number;
   statusTimer: ReturnType<typeof setTimeout> | null;
   pumping: boolean;
@@ -66,9 +67,6 @@ export class FeatureRowsHost {
     switch (request.type) {
       case "open":
         this.open(request.url);
-        return;
-      case "clear":
-        this.clear();
         return;
       case "search":
         this.search(request.url, request.term);
@@ -131,11 +129,6 @@ export class FeatureRowsHost {
     this.postStatus(entry, true);
   }
 
-  private clear() {
-    this.active = null;
-    for (const entry of [...this.entries.values()]) this.discard(entry);
-  }
-
   private search(url: string, rawTerm: string) {
     const entry = this.entries.get(url);
     if (!entry) return;
@@ -161,7 +154,7 @@ export class FeatureRowsHost {
     const rows: FeatureRowRecord[] = [];
     for (let index = Math.max(0, start); index < end; index++) {
       const row = filter ? filter.rowAt(index) : index;
-      const parsed = store.parseRow(row);
+      const parsed = store.tableRow(row);
       rows.push({
         row,
         id: parsed?.id,
@@ -208,10 +201,12 @@ export class FeatureRowsHost {
       .filter((entry) => entry.url !== this.active && entry.done)
       .sort((a, b) => a.lastUsed - b.lastUsed);
 
+    const sizeOf = (entry: Entry) =>
+      entry.store.bytes + (entry.filter?.bytes ?? 0);
     let bytes = 0;
-    for (const entry of this.entries.values()) bytes += entry.store.bytes;
+    for (const entry of this.entries.values()) bytes += sizeOf(entry);
     let inactiveBytes = 0;
-    for (const entry of candidates) inactiveBytes += entry.store.bytes;
+    for (const entry of candidates) inactiveBytes += sizeOf(entry);
 
     for (const entry of candidates) {
       if (
@@ -221,8 +216,8 @@ export class FeatureRowsHost {
       ) {
         return;
       }
-      bytes -= entry.store.bytes;
-      inactiveBytes -= entry.store.bytes;
+      bytes -= sizeOf(entry);
+      inactiveBytes -= sizeOf(entry);
       this.discard(entry);
     }
   }
@@ -239,7 +234,9 @@ export class FeatureRowsHost {
       const reader = response.body?.getReader();
       if (!reader) throw new Error("Response body is not readable");
 
-      const decompressor = isCompressed(entry.url)
+      const compressed = isCompressed(entry.url);
+      const guard = compressed ? new ZstdWindowGuard() : null;
+      const decompressor = compressed
         ? new Decompress((chunk) => store.append(chunk))
         : null;
 
@@ -248,10 +245,17 @@ export class FeatureRowsHost {
           const { done, value } = await reader.read();
           if (controller.signal.aborted) return;
           if (done) break;
-          if (decompressor) decompressor.push(value);
-          else store.append(value);
+          if (decompressor) {
+            guard?.push(value);
+            decompressor.push(value);
+          } else {
+            store.append(value);
+          }
           this.afterAppend(entry);
         }
+      } catch (error) {
+        await reader.cancel().catch(() => undefined);
+        throw error;
       } finally {
         reader.releaseLock();
       }

@@ -1,9 +1,8 @@
-import * as zlib from "node:zlib";
-
 import { describe, expect, test } from "vitest";
 
 import { FeatureRowsHost } from "./host";
 import type { StatusMessage, WorkerResponse } from "./protocol";
+import { rawZstdFrame } from "./zstdTestFrame";
 
 const encoder = new TextEncoder();
 
@@ -19,7 +18,7 @@ const feature = (n: number, attributes: Record<string, unknown> = { n }) =>
 const jsonl = (count: number) =>
   Array.from({ length: count }, (_, n) => feature(n)).join("\n") + "\n";
 
-function streamOf(bytes: Uint8Array, pieces = 4) {
+function streamOf(bytes: Uint8Array, pieces = 4, onCancel?: () => void) {
   const size = Math.ceil(bytes.length / pieces);
   let offset = 0;
   return new ReadableStream<Uint8Array>({
@@ -31,6 +30,7 @@ function streamOf(bytes: Uint8Array, pieces = 4) {
       controller.enqueue(bytes.slice(offset, offset + size));
       offset += size;
     },
+    cancel: onCancel,
   });
 }
 
@@ -38,6 +38,7 @@ function setup(files: Record<string, Uint8Array>) {
   const messages: WorkerResponse[] = [];
   const requested: string[] = [];
   const aborted: string[] = [];
+  const cancelled: string[] = [];
   const host = new FeatureRowsHost({
     post: (message) => messages.push(message),
     fetch: (async (input: string, init?: RequestInit) => {
@@ -46,7 +47,7 @@ function setup(files: Record<string, Uint8Array>) {
       init?.signal?.addEventListener("abort", () => aborted.push(url));
       const bytes = files[url];
       if (!bytes) return new Response(null, { status: 404 });
-      return new Response(streamOf(bytes));
+      return new Response(streamOf(bytes, 4, () => cancelled.push(url)));
     }) as typeof fetch,
   });
 
@@ -64,7 +65,16 @@ function setup(files: Record<string, Uint8Array>) {
       (m) => m.type === type && "id" in m && m.id === id,
     ) as Extract<WorkerResponse, { type: T }>;
 
-  return { host, messages, requested, aborted, statuses, lastStatus, reply };
+  return {
+    host,
+    messages,
+    requested,
+    aborted,
+    cancelled,
+    statuses,
+    lastStatus,
+    reply,
+  };
 }
 
 describe("FeatureRowsHost", () => {
@@ -88,22 +98,30 @@ describe("FeatureRowsHost", () => {
     expect(withColumns.at(-1)?.columns).toEqual(["n"]);
   });
 
-  test.skipIf(typeof zlib.zstdCompressSync !== "function")(
-    "decompresses a .jsonl.zst file",
-    async () => {
-      const compressed = new Uint8Array(
-        zlib.zstdCompressSync(Buffer.from(jsonl(3000))),
-      );
-      const { host, lastStatus } = setup({ "b.jsonl.zst?sig=1": compressed });
-      host.handle({ type: "open", url: "b.jsonl.zst?sig=1" });
-      await host.settled("b.jsonl.zst?sig=1");
-      expect(lastStatus("b.jsonl.zst?sig=1")).toMatchObject({
-        rowCount: 3000,
-        done: true,
-        error: null,
-      });
-    },
-  );
+  test("decompresses a .jsonl.zst file", async () => {
+    const compressed = rawZstdFrame(encoder.encode(jsonl(300)));
+    const { host, lastStatus } = setup({ "b.jsonl.zst?sig=1": compressed });
+    host.handle({ type: "open", url: "b.jsonl.zst?sig=1" });
+    await host.settled("b.jsonl.zst?sig=1");
+    expect(lastStatus("b.jsonl.zst?sig=1")).toMatchObject({
+      rowCount: 300,
+      done: true,
+      error: null,
+    });
+  });
+
+  test("refuses a .jsonl.zst whose window exceeds the limit, and cancels it", async () => {
+    const header = new Uint8Array(64);
+    header.set([0x28, 0xb5, 0x2f, 0xfd, 0x00, 0xa0]);
+    const { host, lastStatus, cancelled } = setup({ "big.jsonl.zst": header });
+    host.handle({ type: "open", url: "big.jsonl.zst" });
+    await host.settled("big.jsonl.zst");
+    expect(lastStatus("big.jsonl.zst")).toMatchObject({
+      done: true,
+      error: expect.stringContaining("window"),
+    });
+    expect(cancelled).toEqual(["big.jsonl.zst"]);
+  });
 
   test("returns a window of rows with their attributes", async () => {
     const { host, reply } = setup({ "a.jsonl": encoder.encode(jsonl(300)) });
@@ -180,22 +198,6 @@ describe("FeatureRowsHost", () => {
     await host.settled("a.jsonl");
 
     expect(reply("rows", 1).searchTerm).toBe("abc");
-  });
-
-  test("clear drops every cached file, so the next open fetches again", async () => {
-    const { host, requested, reply } = setup({
-      "a.jsonl": encoder.encode(jsonl(10)),
-    });
-    host.handle({ type: "open", url: "a.jsonl" });
-    await host.settled("a.jsonl");
-    host.handle({ type: "clear" });
-
-    host.handle({ type: "rows", id: 1, url: "a.jsonl", start: 0, count: 10 });
-    expect(reply("rows", 1).rows).toEqual([]);
-
-    host.handle({ type: "open", url: "a.jsonl" });
-    await host.settled("a.jsonl");
-    expect(requested).toEqual(["a.jsonl", "a.jsonl"]);
   });
 
   test("switching ports cancels the unfinished load and stops its statuses", async () => {

@@ -8,9 +8,10 @@ export type FeatureRowsStatus = {
   done: boolean;
   truncated: boolean;
   skippedLines: number;
-  columns: string[];
+  columns: readonly string[];
   geometryType: string | null;
   error: string | null;
+  session: number;
 };
 
 export type FeatureRowRecord = {
@@ -21,14 +22,13 @@ export type FeatureRowRecord = {
 
 export type WorkerRequest =
   | { type: "open"; url: string }
-  | { type: "clear" }
   | { type: "search"; url: string; term: string }
   | { type: "rows"; id: number; url: string; start: number; count: number }
   | { type: "line"; id: number; url: string; row: number }
   | { type: "viewIndex"; id: number; url: string; row: number };
 
-export type StatusMessage = Omit<FeatureRowsStatus, "columns"> & {
-  columns?: string[];
+export type StatusMessage = Omit<FeatureRowsStatus, "columns" | "session"> & {
+  columns?: readonly string[];
 };
 
 export type WorkerResponse =

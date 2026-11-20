@@ -335,6 +335,7 @@
   "None": "なし",
   "Part of this geometry has no CRS, so rendered views leave that part out.": "このジオメトリの一部には座標参照系がないため、レンダリングされたビューではその部分が表示されません。",
   "This geometry has no CRS, so rendered views cannot place it and leave it out.": "このジオメトリには座標参照系がないため、レンダリングされたビューでは配置できず、表示されません。",
+  "Retry": "再試行",
   "Loading data...": "データを読み込んでいます...",
   "No data to display in table format": "テーブル形式で表示するデータがありません",
   "Rows": "行",

@@ -96,23 +96,46 @@ const FeatureRowsTable: React.FC<Props> = ({
 
   const [activeIndex, setActiveIndex] = useState(0);
 
-  useEffect(() => {
-    if (selectedRow === null) return;
-    let cancelled = false;
-    void viewIndexOf(selectedRow).then((index) => {
-      if (cancelled || index < 0) return;
+  const reveal = useCallback(
+    (index: number) => {
       setActiveIndex(index);
       const visible = virtualizer.getVirtualItems();
       const start = visible[0]?.index ?? 0;
       const end = visible[visible.length - 1]?.index ?? -1;
       if (index >= start && index <= end) return;
       virtualizer.scrollToIndex(index, { align: "start", behavior: "auto" });
+    },
+    [virtualizer],
+  );
+
+  const searching = status?.searching ?? false;
+  const lookupKey = `${selectedRow}\u0000${searchTerm}`;
+  const missedLookup = useRef<string | null>(null);
+
+  useEffect(() => {
+    missedLookup.current = null;
+    if (selectedRow === null) return;
+    let cancelled = false;
+    void viewIndexOf(selectedRow).then((index) => {
+      if (cancelled) return;
+      if (index < 0) missedLookup.current = lookupKey;
+      else reveal(index);
     });
     return () => {
       cancelled = true;
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [selectedRow, searchTerm, viewIndexOf]);
+
+  useEffect(() => {
+    const key = lookupKey;
+    if (selectedRow === null || missedLookup.current !== key) return;
+    void viewIndexOf(selectedRow).then((index) => {
+      if (index < 0 || missedLookup.current !== key) return;
+      missedLookup.current = null;
+      reveal(index);
+    });
+  }, [lookupKey, reveal, searching, selectedRow, viewCount, viewIndexOf]);
 
   const [parentHeight, setParentHeight] = useState(0);
   useEffect(() => {

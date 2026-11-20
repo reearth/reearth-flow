@@ -339,6 +339,7 @@
   "None": "Aucun",
   "Part of this geometry has no CRS, so rendered views leave that part out.": "Une partie de cette géométrie n'a pas de SRC, les vues rendues l'omettent donc.",
   "This geometry has no CRS, so rendered views cannot place it and leave it out.": "Cette géométrie n'a pas de SRC : les vues rendues ne peuvent pas la placer et l'omettent.",
+  "Retry": "Réessayer",
   "Loading data...": "Chargement des données...",
   "No data to display in table format": "Aucune donnée à afficher au format tableau",
   "Rows": "Lignes",
