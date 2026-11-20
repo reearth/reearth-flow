@@ -76,6 +76,8 @@ use ops::{
 #[cfg(feature = "new-geometry")]
 use ops::{CellCoverage, DivideByGrid, GridCell, GridDivideError, GridSpec};
 #[cfg(feature = "new-geometry")]
+use ops::{DecomposeIntoEdgeConnectedParts, DecomposeIntoManifolds, DecomposedParts};
+#[cfg(feature = "new-geometry")]
 use predicates::{Equal, PredicateError};
 #[cfg(feature = "new-geometry")]
 use validation_next::{Validate, ValidationParams, ValidationReport, ValidationType};
@@ -224,7 +226,9 @@ impl GeometryCollection {
         Area,
         CountVertices,
         RoundCoordinates,
-        SelectVertices
+        SelectVertices,
+        DecomposeIntoEdgeConnectedParts,
+        DecomposeIntoManifolds
     )
 )]
 #[cfg_attr(feature = "schema", derive(schemars::JsonSchema))]
@@ -291,7 +295,9 @@ pub enum Euclidean2DGeometry {
         RoundCoordinates,
         SelectVertices,
         SetElevation,
-        Extrude
+        Extrude,
+        DecomposeIntoEdgeConnectedParts,
+        DecomposeIntoManifolds
     )
 )]
 #[cfg_attr(feature = "schema", derive(schemars::JsonSchema))]
@@ -846,6 +852,34 @@ impl Split for Geometry {
             Geometry::Euclidean2D(g) => g.split(emit),
             Geometry::Euclidean3D(g) => g.split(emit),
             Geometry::GeometryCollection(c) => c.split(emit),
+        }
+    }
+}
+
+#[cfg(feature = "new-geometry")]
+impl DecomposeIntoEdgeConnectedParts for Geometry {
+    fn decompose_into_edge_connected_parts(&self) -> Result<DecomposedParts, UnsupportedOperation> {
+        match self {
+            Geometry::Euclidean2D(g) => g.decompose_into_edge_connected_parts(),
+            Geometry::Euclidean3D(g) => g.decompose_into_edge_connected_parts(),
+            Geometry::None | Geometry::GeometryCollection(_) => Err(UnsupportedOperation {
+                geometry: core::any::type_name::<Self>(),
+                operation: "decompose_into_edge_connected_parts",
+            }),
+        }
+    }
+}
+
+#[cfg(feature = "new-geometry")]
+impl DecomposeIntoManifolds for Geometry {
+    fn decompose_into_manifolds(&self) -> Result<DecomposedParts, UnsupportedOperation> {
+        match self {
+            Geometry::Euclidean2D(g) => g.decompose_into_manifolds(),
+            Geometry::Euclidean3D(g) => g.decompose_into_manifolds(),
+            Geometry::None | Geometry::GeometryCollection(_) => Err(UnsupportedOperation {
+                geometry: core::any::type_name::<Self>(),
+                operation: "decompose_into_manifolds",
+            }),
         }
     }
 }

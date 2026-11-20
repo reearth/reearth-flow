@@ -111,6 +111,12 @@ impl TriangularMesh2D {
         self.z
     }
 
+    /// Set the elevation the mesh lies at.
+    #[cfg(feature = "new-geometry")]
+    pub(crate) fn set_elevation(&mut self, z: Option<f64>) {
+        self.z = z;
+    }
+
     /// The number of triangles in the mesh.
     #[inline]
     pub fn num_triangles(&self) -> usize {
