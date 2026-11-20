@@ -68,6 +68,42 @@ describe("LogsTable", () => {
     expect(screen.getAllByRole("cell")).toHaveLength(25);
   });
 
+  test("the status buttons filter the rows by level", () => {
+    const mixed: UserFacingLog[] = [
+      { ...logs[0], level: UserFacingLogLevel.Error, message: "error-line" },
+      { ...logs[0], level: UserFacingLogLevel.Info, message: "info-line" },
+      {
+        ...logs[0],
+        level: UserFacingLogLevel.Success,
+        message: "success-line",
+      },
+    ];
+
+    render(
+      <LogsTable
+        columns={[
+          { accessorKey: "level", header: "Status" },
+          { accessorKey: "message", header: "Message" },
+        ]}
+        data={mixed}
+        isFetching={false}
+      />,
+    );
+
+    fireEvent.click(screen.getByRole("button", { name: "Info" }));
+    expect(screen.getByText("info-line")).toBeInTheDocument();
+    expect(screen.queryByText("error-line")).not.toBeInTheDocument();
+    expect(screen.queryByText("success-line")).not.toBeInTheDocument();
+
+    fireEvent.click(screen.getByRole("button", { name: "Error" }));
+    expect(screen.getByText("error-line")).toBeInTheDocument();
+    expect(screen.queryByText("info-line")).not.toBeInTheDocument();
+
+    fireEvent.click(screen.getByRole("button", { name: "Reset Logs" }));
+    expect(screen.getByText("info-line")).toBeInTheDocument();
+    expect(screen.getByText("success-line")).toBeInTheDocument();
+  });
+
   describe("following new logs", () => {
     const columns = [{ accessorKey: "message", header: "Message" }];
     const makeLogs = (n: number): UserFacingLog[] =>

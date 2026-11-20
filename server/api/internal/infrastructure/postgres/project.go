@@ -196,6 +196,9 @@ func (r *Project) Search(ctx context.Context, p interfaces.ProjectSearchParam) (
 	if p.Workspace != nil {
 		where = append(where, "workspace_id = "+arg(p.Workspace.String()))
 	}
+	if p.Workspaces != nil {
+		where = append(where, "workspace_id = ANY("+arg(p.Workspaces.Strings())+"::text[])")
+	}
 	if r.f.Readable != nil {
 		where = append(where, "workspace_id = ANY("+arg(r.f.Readable.Strings())+"::text[])")
 	}

@@ -1,6 +1,6 @@
 import { describe, expect, test } from "vitest";
 
-import { analyzeDataType } from "./useStreamingDebugRunQuery";
+import { analyzeDataType } from "./geometryType";
 
 /** A new-format feature carrying one geometry. */
 const next = (geometry: unknown) => ({ id: "1", attributes: {}, geometry });
