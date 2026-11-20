@@ -802,10 +802,10 @@ graphs:
         valueAttribute: feature_type
       - attribute: gml_id
         valueAttribute: gml_id
-      - attribute: gml_name
-        valueAttribute: gml_name
       - attribute: attributes
         valueAttribute: attributes
+      - attribute: gml_name
+        valueAttribute: gml_name
       - attribute: core:creationDate
         valueAttribute: core:creationDate
       - attribute: veg:class

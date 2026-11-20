@@ -185,6 +185,9 @@ graphs:
             - attribute: urf_validFrom
               expr: |
                 env.get("__value")["urf:validFrom"]
+            - attribute: urf_validFromType
+              expr: |
+                env.get("__value")["urf:validFromType"]
             - attribute: urf_prefecture
               expr: |
                 env.get("__value")["urf:prefecture"]
