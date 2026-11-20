@@ -577,15 +577,25 @@ pub fn write_citygml_documents(
                 }
                 let claimed = xml_writer.claim_object_ids(&mut settled);
                 let mut unresolved = std::collections::BTreeSet::new();
+                let mut ambiguous = std::collections::BTreeSet::new();
                 for object in &mut settled {
-                    resolve_links(object, &claimed, prefixes, &mut |source| {
-                        unresolved.insert(source);
+                    resolve_links(object, &claimed, prefixes, &mut |source, kept| {
+                        match kept {
+                            LinkKept::NotWritten => unresolved.insert(source),
+                            LinkKept::Ambiguous => ambiguous.insert(source),
+                        };
                     });
                 }
                 if let Some(diagnostics) = diagnostics {
                     for source in unresolved {
                         diagnostics.report_warn(
                             ErrorCode::CitygmlLinkTargetNotWritten,
+                            Some(features[source].id),
+                        );
+                    }
+                    for source in ambiguous {
+                        diagnostics.report_warn(
+                            ErrorCode::CitygmlLinkTargetAmbiguous,
                             Some(features[source].id),
                         );
                     }
@@ -791,14 +801,17 @@ fn for_each_property(object: &SettledNode, f: &mut impl FnMut(usize, &XmlPropert
 /// Geometry owned by something that is not a city object, such as an ADE data
 /// object, is written on the city object holding it, so it counts.
 ///
-/// This answers for the owner, not for the entry. The envelope is folded
-/// before `settle_geometry` runs, and that is where an entry can still be
-/// dropped on its own: a `lod1MultiSurface` losing to a `lod1Solid` under the
-/// exclusive-shell rule, or an entry whose class declares no property for its
-/// LOD and type. Geometry dropped that way still widens the envelope. Closing
-/// that gap means folding the envelope over the settled trees, which the
-/// writer cannot do yet because `write_header` puts `gml:boundedBy` in the
-/// file before any tree is settled.
+/// A key that reaches here named an object the tree holds: geometry placed
+/// anywhere but on the object its owner names is the target's own by then,
+/// with no key left to answer for ([`hierarchy::build_feature_objects`]).
+/// Unmatched geometry a feature takes over, as a wall's is when the reader
+/// hoists no `gml:id`, therefore counts, which is what the document writes.
+///
+/// The entry is one a settled tree still carries, and every one of those is
+/// written, so this answers for the entry as well as for its owner. Entries
+/// settling drops on their own, a `lod1MultiSurface` losing to a `lod1Solid`
+/// under the exclusive-shell rule or one whose class declares no property for
+/// its LOD and type, are gone before the folds see them.
 #[cfg(feature = "new-geometry")]
 fn writes_entry(
     entry: &model::GeometryEntry,
@@ -1439,27 +1452,40 @@ fn collect_links(
     }
 }
 
+/// Why a link was left as the source wrote it.
+#[cfg(feature = "new-geometry")]
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+enum LinkKept {
+    /// No object the document writes has that `gml:id`.
+    NotWritten,
+    /// Several do, so which one the link means cannot be told.
+    Ambiguous,
+}
+
 /// Point each object link in `object`'s tree at the `gml:id` its target is
 /// written with.
 ///
-/// `claimed` maps each written object's source key to its written id. A link
-/// to a key no written object has is kept as given, as citygml4j and the 3D
-/// City Database exporter write group members they cannot check, so the
-/// member's identity is not lost; `unresolved` is told the feature it belongs
-/// to.
+/// `claimed` says what each `gml:id` names among the objects the document
+/// writes. A link to a key no written object has is kept as given, as
+/// citygml4j and the 3D City Database exporter write group members they
+/// cannot check, so the member's identity is not lost. A key several written
+/// objects hold is kept the same way: rewriting it would point the link at
+/// whichever object was claimed first, which is a link to the wrong element
+/// rather than one a reader can see is unresolved. Either way `kept` is told
+/// the feature the link belongs to and which of the two it was.
 #[cfg(feature = "new-geometry")]
 fn resolve_links(
     object: &mut SettledNode,
-    claimed: &HashMap<String, String>,
+    claimed: &writer::ClaimedIds,
     prefixes: &Prefixes,
-    unresolved: &mut impl FnMut(usize),
+    kept: &mut impl FnMut(usize, LinkKept),
 ) {
     for placed in &mut object.properties {
         let Some(target) = link_target(&placed.property, prefixes) else {
             continue;
         };
-        match claimed.get(target) {
-            Some(id) => {
+        match claimed.target(target) {
+            writer::LinkTarget::Written(id) => {
                 let href = format!("#{id}");
                 for (name, value) in &mut placed.property.attrs {
                     if name == "xlink:href" {
@@ -1467,11 +1493,12 @@ fn resolve_links(
                     }
                 }
             }
-            None => unresolved(object.source),
+            writer::LinkTarget::NotWritten => kept(object.source, LinkKept::NotWritten),
+            writer::LinkTarget::Ambiguous => kept(object.source, LinkKept::Ambiguous),
         }
     }
     for nested in &mut object.children {
-        resolve_links(&mut nested.object, claimed, prefixes, unresolved);
+        resolve_links(&mut nested.object, claimed, prefixes, kept);
     }
 }
 
@@ -4842,6 +4869,35 @@ mod hierarchy_tests {
     /// `gml:id`, so nothing matches the geometry to its object: it is written
     /// on the feature and reported. The objects keep their data, with minted
     /// ids, and an object left with no data is not written and is reported.
+    /// Geometry a feature takes over, because the object its owner names is
+    /// not in the feature's attribute tree, is written, so the document has to
+    /// answer for it.
+    ///
+    /// The document folded the envelope, the `srsName` and the staged images
+    /// over each entry's owner key, and an owner the document does not write
+    /// counted for nothing. An owner that matched nothing is exactly that, so
+    /// this building, whose every coordinate arrives on a wall, a window and a
+    /// part the reader hoisted no `gml:id` for, went out with its geometry
+    /// written, no `gml:boundedBy` at all, and `srsName` left at the default
+    /// rather than the CRS those coordinates are in.
+    #[test]
+    fn geometry_the_feature_takes_over_is_covered_by_the_document() {
+        let features = read(&[("hierarchy.gml", &building())], &[], false, None);
+
+        let (xml, _) = write(features, json!({}));
+
+        assert_eq!(
+            inside(&xml, "<gml:Envelope", "</gml:Envelope>"),
+            "<gml:lowerCorner>35 135 0</gml:lowerCorner>\
+             <gml:upperCorner>35.001 135.001 2</gml:upperCorner>",
+            "{xml}"
+        );
+        assert!(
+            xml.contains(r#"srsName="http://www.opengis.net/def/crs/EPSG/0/6697" srsDimension="3"><gml:surfaceMember>"#),
+            "{xml}"
+        );
+    }
+
     #[test]
     fn without_hoisted_ids_nested_geometry_goes_on_the_feature_and_is_reported() {
         let features = read(&[("hierarchy.gml", &building())], &[], false, None);
@@ -5797,6 +5853,50 @@ mod hierarchy_tests {
             reported_for(&diagnostics, ErrorCode::CitygmlLinkTargetNotWritten),
             [group]
         );
+    }
+
+    /// A `gml:id` two written objects hold resolves to neither.
+    ///
+    /// One source document's `gml:id`s are unique inside it, but a write joins
+    /// several into one document, where two of them can carry the same one.
+    /// The ids claimed up front were kept per source `gml:id`, first object
+    /// wins, so the link was pointed at that first object: a link to the wrong
+    /// element, written as confidently as a right one and with nothing said.
+    /// It is kept as the source wrote it instead, as a link to an object the
+    /// document does not write is, and reported.
+    #[test]
+    fn a_link_to_an_id_two_written_objects_hold_is_kept_and_reported() {
+        // `1m` is not an NCName, so neither building is written under it and a
+        // link resolved against the first would name a minted id.
+        let group = format!(
+            r##"{header}<grp:CityObjectGroup gml:id="g1"><grp:groupMember xlink:href="#1m"/></grp:CityObjectGroup></core:cityObjectMember>
+<core:cityObjectMember><bldg:Building gml:id="1m">{own}</bldg:Building>{FOOTER}"##,
+            header = header_with_groups(),
+            own = surface("lod2MultiSurface", 0),
+        );
+        let other = format!(
+            r##"{header}<bldg:Building gml:id="1m">{own}</bldg:Building>{FOOTER}"##,
+            header = header_with_groups(),
+            own = surface("lod2MultiSurface", 7),
+        );
+        let features = read(&[("a.gml", &group), ("b.gml", &other)], &[], true, None);
+        assert_eq!(features.len(), 3);
+        let group_feature = features[0].id.to_string();
+
+        let (xml, diagnostics) = write(features, json!({}));
+
+        // Both buildings are written, under ids of their own.
+        assert!(xml.contains(r#"<bldg:Building gml:id="bldg_1m">"#), "{xml}");
+        assert!(xml.contains(r#"<bldg:Building gml:id="bldg_1">"#), "{xml}");
+        assert!(
+            xml.contains(r##"<grp:groupMember xlink:href="#1m"/>"##),
+            "{xml}"
+        );
+        assert_eq!(
+            reported_for(&diagnostics, ErrorCode::CitygmlLinkTargetAmbiguous),
+            [group_feature]
+        );
+        assert_eq!(diagnostics.len(), 1, "{diagnostics:?}");
     }
 
     #[test]

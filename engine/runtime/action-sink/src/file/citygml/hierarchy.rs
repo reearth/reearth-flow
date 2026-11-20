@@ -376,15 +376,21 @@ pub fn build_feature_objects(
 
     for entry in geometries {
         let key = entry.owner.key.as_deref();
-        let target = match (
+        // `matched` is whether the owner named the object the geometry is
+        // written on. It is not whether an owner was named: an owner that
+        // named nothing still leaves its key behind.
+        let (target, matched) = match (
             key.and_then(|key| index.get(key)),
             key.and_then(|key| data_owners.get(key)),
         ) {
-            (Some(&node), _) => node,
-            (None, Some(holder)) => holder
-                .as_deref()
-                .and_then(|holder| index.get(holder).copied())
-                .unwrap_or(ROOT),
+            (Some(&node), _) => (node, true),
+            (None, Some(holder)) => (
+                holder
+                    .as_deref()
+                    .and_then(|holder| index.get(holder).copied())
+                    .unwrap_or(ROOT),
+                false,
+            ),
             (None, None) => {
                 reports.extend(report_unmatched_owner(
                     &entry,
@@ -393,12 +399,25 @@ pub fn build_feature_objects(
                     prefixes,
                     classes,
                 ));
-                ROOT
+                (ROOT, false)
             }
         };
         // The reader emits a repeated object's geometry once per occurrence,
         // so the occurrences left out leave exact repeats behind.
         let repeated = key.is_some_and(|key| repeats.collapsed.contains(key));
+        let mut entry = entry;
+        if !matched {
+            // The geometry is written on `target`, which is not the object the
+            // owner names. Keeping that key would say the geometry belongs to
+            // an object this tree does not hold, and the document reads the key
+            // back as the place the geometry is written: an owner absent from
+            // the document is taken for geometry the document does not write,
+            // which would leave this geometry out of `gml:boundedBy` and its
+            // CRS and textures out with it. The geometry is the target's own
+            // from here on, so the key goes. It is cleared before the repeat
+            // check below so both sides of that comparison are cleared alike.
+            entry.owner.key = None;
+        }
         if repeated && nodes[target].geometries.contains(&entry) {
             continue;
         }

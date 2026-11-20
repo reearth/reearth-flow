@@ -246,8 +246,8 @@ impl<'a, W: Write> CityGmlXmlWriter<'a, W> {
 
     /// Claim the `gml:id` of every city object in `objects`, nested ones
     /// included, in the order [`Self::write_settled_tree`] writes them, and
-    /// set each object's candidate to it. Returns the id each source key was
-    /// claimed under, the first object's where several share a key.
+    /// set each object's candidate to it. Returns what each source key was
+    /// claimed under, as [`ClaimedIds`].
     ///
     /// An `xlink:href` to an object can then name the id the object is written
     /// with before the object itself is written, as a group listed ahead of
@@ -257,18 +257,15 @@ impl<'a, W: Write> CityGmlXmlWriter<'a, W> {
     /// Takes settled trees, so the walk follows the children as
     /// [`settle_tree`] sorted them instead of sorting them the same way again:
     /// two orders that have to agree are one order.
-    pub(super) fn claim_object_ids(
-        &mut self,
-        objects: &mut [SettledNode],
-    ) -> HashMap<String, String> {
+    pub(super) fn claim_object_ids(&mut self, objects: &mut [SettledNode]) -> ClaimedIds {
         fn claim<W: Write>(
             writer: &mut CityGmlXmlWriter<'_, W>,
             object: &mut SettledNode,
-            claimed: &mut HashMap<String, String>,
+            claimed: &mut ClaimedIds,
         ) {
             let id = writer.claim_gml_id(object.gml_id.as_deref(), &object.class.id_prefix);
             if let Some(key) = &object.key {
-                claimed.entry(key.clone()).or_insert_with(|| id.clone());
+                claimed.claim(key, &id);
             }
             writer.reserved_ids.insert(id.clone());
             object.gml_id = Some(id);
@@ -276,7 +273,7 @@ impl<'a, W: Write> CityGmlXmlWriter<'a, W> {
                 claim(writer, &mut child.object, claimed);
             }
         }
-        let mut claimed = HashMap::new();
+        let mut claimed = ClaimedIds::default();
         for object in objects {
             claim(self, object, &mut claimed);
         }
@@ -1423,6 +1420,55 @@ fn settle_node(
         children,
         source,
     })
+}
+
+/// The `gml:id` each source key was written under, from
+/// [`CityGmlXmlWriter::claim_object_ids`].
+///
+/// A key belongs to one object: copies of one object are dropped before the
+/// write, so two objects left holding one key are two different objects that
+/// arrived under the same `gml:id`, as two source documents joined into one
+/// output document can. Neither of them owns the key, so the key resolves to
+/// nothing rather than to whichever was claimed first: a link that cannot say
+/// which object it means is kept as it was written, and reported, which is
+/// what a link to an object the document does not write already does.
+#[derive(Debug, Default)]
+pub(super) struct ClaimedIds {
+    by_key: HashMap<String, String>,
+    ambiguous: HashSet<String>,
+}
+
+/// What a link's `gml:id` names among the objects the document writes.
+#[derive(Debug, PartialEq, Eq)]
+pub(super) enum LinkTarget<'a> {
+    /// One written object, which is written with this `gml:id`.
+    Written(&'a str),
+    /// No written object.
+    NotWritten,
+    /// More than one written object, so which is meant cannot be told.
+    Ambiguous,
+}
+
+impl ClaimedIds {
+    /// Record that the object keyed `key` is written with `id`.
+    fn claim(&mut self, key: &str, id: &str) {
+        if self.by_key.contains_key(key) {
+            self.ambiguous.insert(key.to_owned());
+            return;
+        }
+        self.by_key.insert(key.to_owned(), id.to_owned());
+    }
+
+    /// What `key` names among the written objects.
+    pub(super) fn target(&self, key: &str) -> LinkTarget<'_> {
+        if self.ambiguous.contains(key) {
+            return LinkTarget::Ambiguous;
+        }
+        match self.by_key.get(key) {
+            Some(id) => LinkTarget::Written(id),
+            None => LinkTarget::NotWritten,
+        }
+    }
 }
 
 /// One object with its geometry settled, and the objects nested in it the

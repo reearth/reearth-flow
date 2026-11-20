@@ -134,6 +134,15 @@ default_disposition = "warn_drop"
 message = "wrote a link such as grp:groupMember to a city object that is not in the document"
 help = "A grp:groupMember, grp:parent or core:generalizesTo names a gml:id that no object in the written document has: an upstream filter removed the object, it had nothing to write, or it was never read. An object held only inline inside the reference arrives the same way as the copy the CityGML reader inlines for an xlink:href, so it too is written as a link, and its own content is not written. The xlink:href is written as given so the reference is kept, and a reader resolving it will not find it. No other element in the document is given that gml:id. Keep the referenced object in the stream to the same writer, or remove the reference."
 
+# Raised through `NodeDiagnosticsHandle::report_warn`: the link is written, so
+# the feature is never dropped and `warn_drop` is inert.
+[[codes]]
+code = "citygml.link_target_ambiguous"
+category = "schema"
+default_disposition = "warn_drop"
+message = "wrote a link such as grp:groupMember as it was given because several city objects in the document have that gml:id"
+help = "A grp:groupMember, grp:parent or core:generalizesTo names a gml:id that more than one object in the written document has, which happens when features read from different source documents reuse a gml:id and are written to one document. Which object the link means cannot be told, so the xlink:href is written as given rather than pointed at whichever object was written first, which would be a link to the wrong element. Give the objects distinct gml:ids upstream, or write the source documents to separate output documents."
+
 # The four terrain codes are raised only through `NodeDiagnosticsHandle`, as
 # `citygml.geometry_not_written` is, so `warn_drop` here is equally inert.
 [[codes]]
