@@ -11429,6 +11429,7 @@
         "type": "object",
         "properties": {
           "codelistsPath": {
+            "title": "Codelists Path",
             "description": "フォールバックのコードリストディレクトリパス式。GML ファイルからの相対位置にコードリストが見つからない場合、codeSpace 参照を解決するベースディレクトリとして使用される。",
             "type": [
               "object",
@@ -12607,6 +12608,7 @@
         "type": "object",
         "properties": {
           "codelistsPath": {
+            "title": "Codelists Path",
             "description": "フォールバックのコードリストディレクトリパス式。GML ファイルからの相対位置にコードリストが見つからない場合、codeSpace 参照を解決するベースディレクトリとして使用される。",
             "type": [
               "object",
