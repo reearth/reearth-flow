@@ -11117,7 +11117,8 @@ Validates domain of definition of CityGML features
   "type": "object",
   "properties": {
     "codelistsPath": {
-      "description": "Fallback codelists directory path expression. When codelists files are not found at the location relative to the GML file, this path will be used as the base directory for resolving codeSpace references.",
+      "title": "Codelists Path",
+      "description": "Expression for the URI of a directory of codelist files, evaluated for each input feature. The codelists are read from it when the first input feature has no `dirCodelists` attribute or its directory does not exist; without either, the action fails. A codeSpace found neither under `dirCodelists` nor relative to the city GML is looked up in it by the file name of the codeSpace.",
       "type": [
         "object",
         "null"
@@ -12273,7 +12274,8 @@ Validates domain of definition of CityGML features
   "type": "object",
   "properties": {
     "codelistsPath": {
-      "description": "Fallback codelists directory path expression. When codelists files are not found at the location relative to the GML file, this path will be used as the base directory for resolving codeSpace references.",
+      "title": "Codelists Path",
+      "description": "Expression for the URI of a directory of codelist files, evaluated for each input feature. The codelists are read from it when the first input feature has no `dirCodelists` attribute or its directory does not exist; without either, the action fails. A codeSpace found neither under `dirCodelists` nor relative to the city GML is looked up in it by the file name of the codeSpace.",
       "type": [
         "object",
         "null"

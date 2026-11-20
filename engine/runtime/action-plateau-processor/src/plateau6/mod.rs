@@ -16,3 +16,9 @@ mod unmatched_xlink_strategy;
 mod unshared_edge_extractor;
 
 pub(crate) use mapping::ACTION_FACTORY_MAPPINGS;
+
+// The PLATEAU6 profile is referenced from plateau6/mapping via `super::profile`.
+// This re-export exists so the common check logic tests can reference it as
+// `crate::plateau6::PLATEAU6`, and is only needed in test builds.
+#[cfg(test)]
+pub(crate) use profile::PLATEAU6;

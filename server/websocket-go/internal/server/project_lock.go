@@ -70,7 +70,8 @@ type roomLock struct {
 	// document was loaded with, so a peer writing back an older signed entry
 	// cannot undo a newer change.
 	latest projectLock
-	// enforced is set once a lock change arrives while the document is loaded.
+	// enforced is set once a lock change arrives, or this instance writes one,
+	// while the document is loaded.
 	// The value a document is loaded with is not enforced: a connection opened
 	// after the change was already checked by /auth/verify.
 	enforced bool
@@ -134,6 +135,21 @@ func (l *projectLocks) observe(rl *roomLock, cur projectLock) (newest projectLoc
 	rl.latest = cur
 	rl.enforced = true
 	return projectLock{}, false
+}
+
+// wrote records and enforces a change this instance is about to write to doc.
+// Observers run after the write lets go of the document and can read a
+// concurrent older change instead, so they must already know the newer one to
+// write it again, and the gate must not wait for that round trip.
+func (l *projectLocks) wrote(room string, doc *crdt.Doc, c projectLock) {
+	l.mu.Lock()
+	defer l.mu.Unlock()
+	for _, rl := range l.rooms[room] {
+		if rl.doc == doc && c.At > rl.latest.At {
+			rl.latest = c
+			rl.enforced = true
+		}
+	}
 }
 
 // enableProjectLock installs the hooks that keep a locked project's document
@@ -229,6 +245,7 @@ func (s *Server) applyProjectLock(ctx context.Context, room string, l projectLoc
 				return // a retried call: the document already holds this change
 			}
 		}
+		s.locks.wrote(room, doc, l)
 		transact(func(txn *crdt.Transaction) {
 			// at is stored as a float64 so a JS client reads it as a number.
 			m.Set(txn, projectLockKey, map[string]any{"locked": l.Locked, "at": float64(l.At), "sig": sig})
