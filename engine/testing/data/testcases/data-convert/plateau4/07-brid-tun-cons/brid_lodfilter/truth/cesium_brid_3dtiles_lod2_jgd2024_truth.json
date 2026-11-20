@@ -1,0 +1,108 @@
+{
+  "brid_67b209ad-0344-4718-bfeb-0b2d77920464": {
+    "meshcode": "53393680",
+    "feature_type": "brid:Bridge",
+    "city_code": "13102",
+    "city_name": "東京都中央区",
+    "gml_id": "brid_67b209ad-0344-4718-bfeb-0b2d77920464",
+    "attributes": {
+      "meshcode": "53393680",
+      "feature_type": "brid:Bridge",
+      "gml:id": "brid_67b209ad-0344-4718-bfeb-0b2d77920464",
+      "core:creationDate": "2024-03-15",
+      "brid:class": "不明",
+      "brid:class_code": "99",
+      "brid:function": "不明",
+      "brid:function_code": "99",
+      "uro:DataQualityAttribute": [
+        {
+          "uro:geometrySrcDescLod1": "未作成",
+          "uro:geometrySrcDescLod1_code": "999",
+          "uro:geometrySrcDescLod2": "BIMモデル、CADデータ、設計図、完成図、一般図（平面図、配置図、断面図等）",
+          "uro:geometrySrcDescLod2_code": "500",
+          "uro:geometrySrcDescLod3": "BIMモデル、CADデータ、設計図、完成図、一般図（平面図、配置図、断面図等）",
+          "uro:geometrySrcDescLod3_code": "500",
+          "uro:thematicSrcDesc": "不明",
+          "uro:thematicSrcDesc_code": "898",
+          "uro:appearanceSrcDescLod2": "不明",
+          "uro:appearanceSrcDescLod2_code": "88",
+          "uro:lodType": "道路橋、桟道橋及び鉄道橋は、床版及び主桁によって、厚みと高さをもった立体として表現する。橋脚などの構造上不可欠な部材を表現してもよい。横断歩道橋、ペデストリアンデッキ及び跨線橋は、本体（上部工、階段及び踊り場）を、それぞれを厚みと高さを持った立体として表現する。上部工、階段及び踊り場は分けて取得できる。階段の個々の段は取得せず、下端と上端を結んだ面として表現する。",
+          "uro:lodType_code": "2.1",
+          "uro:lod1HeightType": "航空写真図化_最高高さ",
+          "uro:lod1HeightType_code": "6"
+        }
+      ]
+    },
+    "core:creationDate": "2024-03-15",
+    "brid:class": "不明",
+    "brid:function": "不明",
+    "uro:geometrySrcDescLod1": "未作成",
+    "uro:lodType": "道路橋、桟道橋及び鉄道橋は、床版及び主桁によって、厚みと高さをもった立体として表現する。橋脚などの構造上不可欠な部材を表現してもよい。横断歩道橋、ペデストリアンデッキ及び跨線橋は、本体（上部工、階段及び踊り場）を、それぞれを厚みと高さを持った立体として表現する。上部工、階段及び踊り場は分けて取得できる。階段の個々の段は取得せず、下端と上端を結んだ面として表現する。",
+    "__key_order": [
+      "meshcode",
+      "feature_type",
+      "city_code",
+      "city_name",
+      "gml_id",
+      "attributes",
+      "core:creationDate",
+      "brid:class",
+      "brid:function",
+      "uro:geometrySrcDescLod1",
+      "uro:lodType"
+    ]
+  },
+  "brid_77a17601-d13c-4f14-9036-9e974b0dbce5": {
+    "meshcode": "53393680",
+    "feature_type": "brid:Bridge",
+    "city_code": "13102",
+    "city_name": "東京都中央区",
+    "gml_id": "brid_77a17601-d13c-4f14-9036-9e974b0dbce5",
+    "attributes": {
+      "meshcode": "53393680",
+      "feature_type": "brid:Bridge",
+      "gml:id": "brid_77a17601-d13c-4f14-9036-9e974b0dbce5",
+      "core:creationDate": "2024-03-15",
+      "brid:class": "不明",
+      "brid:class_code": "99",
+      "brid:function": "不明",
+      "brid:function_code": "99",
+      "uro:DataQualityAttribute": [
+        {
+          "uro:geometrySrcDescLod1": "未作成",
+          "uro:geometrySrcDescLod1_code": "999",
+          "uro:geometrySrcDescLod2": "（公共測量ではない）航空レーザ測量の測量成果",
+          "uro:geometrySrcDescLod2_code": "112",
+          "uro:geometrySrcDescLod3": "未作成",
+          "uro:geometrySrcDescLod3_code": "999",
+          "uro:thematicSrcDesc": "不明",
+          "uro:thematicSrcDesc_code": "898",
+          "uro:appearanceSrcDescLod2": "空中写真",
+          "uro:appearanceSrcDescLod2_code": "1",
+          "uro:lodType": "道路橋、桟道橋及び鉄道橋は、床版及び主桁によって、厚みと高さをもった立体として表現する。橋脚などの構造上不可欠な部材を表現してもよい。横断歩道橋、ペデストリアンデッキ及び跨線橋は、本体（上部工、階段及び踊り場）を、それぞれを厚みと高さを持った立体として表現する。上部工、階段及び踊り場は分けて取得できる。階段の個々の段は取得せず、下端と上端を結んだ面として表現する。",
+          "uro:lodType_code": "2.1",
+          "uro:lod1HeightType": "航空写真図化_最高高さ",
+          "uro:lod1HeightType_code": "6"
+        }
+      ]
+    },
+    "core:creationDate": "2024-03-15",
+    "brid:class": "不明",
+    "brid:function": "不明",
+    "uro:geometrySrcDescLod1": "未作成",
+    "uro:lodType": "道路橋、桟道橋及び鉄道橋は、床版及び主桁によって、厚みと高さをもった立体として表現する。橋脚などの構造上不可欠な部材を表現してもよい。横断歩道橋、ペデストリアンデッキ及び跨線橋は、本体（上部工、階段及び踊り場）を、それぞれを厚みと高さを持った立体として表現する。上部工、階段及び踊り場は分けて取得できる。階段の個々の段は取得せず、下端と上端を結んだ面として表現する。",
+    "__key_order": [
+      "meshcode",
+      "feature_type",
+      "city_code",
+      "city_name",
+      "gml_id",
+      "attributes",
+      "core:creationDate",
+      "brid:class",
+      "brid:function",
+      "uro:geometrySrcDescLod1",
+      "uro:lodType"
+    ]
+  }
+}

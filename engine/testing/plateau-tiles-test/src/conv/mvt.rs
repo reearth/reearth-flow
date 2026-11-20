@@ -1,5 +1,5 @@
 use crate::cast_config::{convert_casts, CastConfigValue};
-use crate::compare_attributes::{apply_casts_to_value, make_feature_key};
+use crate::compare_attributes::{apply_casts_to_value, make_feature_key, normalize_numbers};
 use indexmap::IndexMap;
 use prost::Message;
 use serde_json::{json, Value};
@@ -108,7 +108,7 @@ pub fn write_mvt_json(
     let normalized: serde_json::Map<String, Value> = raw
         .into_iter()
         .map(|(feature_key, props)| {
-            let props = apply_casts_to_value(props, "", &casts);
+            let props = normalize_numbers(apply_casts_to_value(props, "", &casts));
             (feature_key, props)
         })
         .collect();

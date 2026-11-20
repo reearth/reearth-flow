@@ -1,0 +1,86 @@
+{
+  "unf_1444d979-3842-4930-96c8-7662456b3e49__dm_E5": {
+    "meshcode": "08EE752",
+    "city_code": "15202",
+    "city_name": "新潟県長岡市",
+    "feature_type": "uro:Manhole",
+    "gml_id": "unf_1444d979-3842-4930-96c8-7662456b3e49",
+    "attributes": {
+      "meshcode": "08EE752",
+      "feature_type": "uro:Manhole",
+      "gml:id": "unf_1444d979-3842-4930-96c8-7662456b3e49",
+      "gml:name": "雨水マンホール",
+      "core:creationDate": "2025-03-21",
+      "uro:DataQualityAttribute": [
+        {
+          "uro:geometrySrcDescLod0": "BIMモデル、CADデータ、設計図、完成図、一般図（平面図、配置図、断面図等）",
+          "uro:geometrySrcDescLod0_code": "500",
+          "uro:geometrySrcDescLod1": "未作成",
+          "uro:geometrySrcDescLod1_code": "999",
+          "uro:geometrySrcDescLod2": "未作成",
+          "uro:geometrySrcDescLod2_code": "999",
+          "uro:geometrySrcDescLod3": "未作成",
+          "uro:geometrySrcDescLod3_code": "999",
+          "uro:thematicSrcDesc": "BIMモデル、CADデータ、設計図、完成図、一般図（平面図、配置図、断面図等）",
+          "uro:thematicSrcDesc_code": "500"
+        }
+      ],
+      "uro:DmGeometricAttribute": [
+        {
+          "uro:dmCode": "非区分",
+          "uro:dmCode_code": "0001",
+          "uro:meshCode": "08EE752",
+          "uro:geometryType": "点",
+          "uro:geometryType_code": "E5",
+          "uro:mapLevel": "地図情報レベル2500",
+          "uro:mapLevel_code": "2500",
+          "uro:shapeType": "非区分（下記に該当しない全データ）",
+          "uro:shapeType_code": "0"
+        }
+      ],
+      "uro:year": 1995
+    },
+    "core_creationDate": "2025-03-21",
+    "uro_geometrySrcDescLod1": "未作成",
+    "dm_feature_type": "DmGeometricAttribute",
+    "dm_attributes": {
+      "uro:dmCode": "非区分",
+      "uro:dmCode_code": "0001",
+      "uro:meshCode": "08EE752",
+      "uro:geometryType": "点",
+      "uro:geometryType_code": "E5",
+      "uro:mapLevel": "地図情報レベル2500",
+      "uro:mapLevel_code": "2500",
+      "uro:shapeType": "非区分（下記に該当しない全データ）",
+      "uro:shapeType_code": "0"
+    },
+    "dm_dmCode": "非区分",
+    "dm_dmCode_code": "0001",
+    "dm_geometryType": "点",
+    "dm_geometryType_code": "E5",
+    "dm_mapLevel": "地図情報レベル2500",
+    "dm_mapLevel_code": "2500",
+    "dm_shapeType": "非区分（下記に該当しない全データ）",
+    "dm_shapeType_code": "0",
+    "__key_order": [
+      "meshcode",
+      "city_code",
+      "city_name",
+      "feature_type",
+      "gml_id",
+      "attributes",
+      "core_creationDate",
+      "uro_geometrySrcDescLod1",
+      "dm_feature_type",
+      "dm_attributes",
+      "dm_dmCode",
+      "dm_dmCode_code",
+      "dm_geometryType",
+      "dm_geometryType_code",
+      "dm_mapLevel",
+      "dm_mapLevel_code",
+      "dm_shapeType",
+      "dm_shapeType_code"
+    ]
+  }
+}

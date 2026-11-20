@@ -1,0 +1,43 @@
+{
+  "unf_1a6787c5-da82-4634-8d4e-7a7db46a0276": {
+    "meshcode": "08EE752",
+    "city_code": "15202",
+    "city_name": "新潟県長岡市",
+    "feature_type": "uro:Manhole",
+    "gml_id": "unf_1a6787c5-da82-4634-8d4e-7a7db46a0276",
+    "attributes": {
+      "meshcode": "08EE752",
+      "feature_type": "uro:Manhole",
+      "gml:id": "unf_1a6787c5-da82-4634-8d4e-7a7db46a0276",
+      "gml:name": "汚水マンホール",
+      "core:creationDate": "2025-03-21",
+      "uro:DataQualityAttribute": [
+        {
+          "uro:geometrySrcDescLod0": "BIMモデル、CADデータ、設計図、完成図、一般図（平面図、配置図、断面図等）",
+          "uro:geometrySrcDescLod0_code": "500",
+          "uro:geometrySrcDescLod1": "未作成",
+          "uro:geometrySrcDescLod1_code": "999",
+          "uro:geometrySrcDescLod2": "BIMモデル、CADデータ、設計図、完成図、一般図（平面図、配置図、断面図等）",
+          "uro:geometrySrcDescLod2_code": "500",
+          "uro:geometrySrcDescLod3": "BIMモデル、CADデータ、設計図、完成図、一般図（平面図、配置図、断面図等）",
+          "uro:geometrySrcDescLod3_code": "500",
+          "uro:thematicSrcDesc": "BIMモデル、CADデータ、設計図、完成図、一般図（平面図、配置図、断面図等）",
+          "uro:thematicSrcDesc_code": "500"
+        }
+      ],
+      "uro:year": 1995
+    },
+    "core:creationDate": "2025-03-21",
+    "uro:geometrySrcDescLod1": "未作成",
+    "__key_order": [
+      "meshcode",
+      "city_code",
+      "city_name",
+      "feature_type",
+      "gml_id",
+      "attributes",
+      "core:creationDate",
+      "uro:geometrySrcDescLod1"
+    ]
+  }
+}

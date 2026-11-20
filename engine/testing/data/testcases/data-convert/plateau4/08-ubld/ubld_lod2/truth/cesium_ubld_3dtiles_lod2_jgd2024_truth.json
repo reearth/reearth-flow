@@ -1,0 +1,85 @@
+{
+  "ubld_e5c930fe-413a-439d-b6e9-5fdc84e1029a": {
+    "meshcode": "53393690",
+    "feature_type": "uro:UndergroundBuilding",
+    "city_code": "13999",
+    "city_name": "東京都帰属未定地",
+    "gml_id": "ubld_e5c930fe-413a-439d-b6e9-5fdc84e1029a",
+    "attributes": {
+      "meshcode": "53393690",
+      "feature_type": "uro:UndergroundBuilding",
+      "gml:id": "ubld_e5c930fe-413a-439d-b6e9-5fdc84e1029a",
+      "core:creationDate": "2024-03-22",
+      "bldg:usage": "商業施設",
+      "bldg:usage_code": "402",
+      "bldg:storeysBelowGround": 1,
+      "bldg:address": "東京都港区新橋2丁目",
+      "uro:FacilityIdAttribute": [
+        {
+          "uro:prefecture": "東京都",
+          "uro:prefecture_code": "13"
+        }
+      ],
+      "uro:DataQualityAttribute": [
+        {
+          "uro:geometrySrcDescLod0": "BIMモデル、CADデータ、設計図、完成図、一般図（平面図、配置図、断面図等）",
+          "uro:geometrySrcDescLod0_code": "500",
+          "uro:geometrySrcDescLod1": "BIMモデル、CADデータ、設計図、完成図、一般図（平面図、配置図、断面図等）",
+          "uro:geometrySrcDescLod1_code": "500",
+          "uro:geometrySrcDescLod2": "BIMモデル、CADデータ、設計図、完成図、一般図（平面図、配置図、断面図等）",
+          "uro:geometrySrcDescLod2_code": "500",
+          "uro:geometrySrcDescLod3": "BIMモデル、CADデータ、設計図、完成図、一般図（平面図、配置図、断面図等）",
+          "uro:geometrySrcDescLod3_code": "500",
+          "uro:geometrySrcDescLod4": [
+            "公共測量成果又は基本測量成果",
+            "BIMモデル、CADデータ、設計図、完成図、一般図（平面図、配置図、断面図等）"
+          ],
+          "uro:geometrySrcDescLod4_code": [
+            "000",
+            "500"
+          ],
+          "uro:thematicSrcDesc": "BIMモデル、CADデータ、設計図、完成図、一般図（平面図、配置図、断面図等）",
+          "uro:thematicSrcDesc_code": "500",
+          "uro:appearanceSrcDescLod2": "疑似テクスチャ",
+          "uro:appearanceSrcDescLod2_code": "5",
+          "uro:appearanceSrcDescLod3": "疑似テクスチャ",
+          "uro:appearanceSrcDescLod3_code": "5",
+          "uro:appearanceSrcDescLod4": [
+            "空中写真",
+            "疑似テクスチャ"
+          ],
+          "uro:appearanceSrcDescLod4_code": [
+            "1",
+            "5"
+          ],
+          "uro:lodType": [
+            "LOD2.0",
+            "LOD3.0",
+            "LOD4.0"
+          ],
+          "uro:lodType_code": [
+            "2.0",
+            "3.0",
+            "4.0"
+          ],
+          "uro:lod1HeightType": "点群から取得_中央値",
+          "uro:lod1HeightType_code": "2"
+        }
+      ]
+    },
+    "core:creationDate": "2024-03-22",
+    "uro:geometrySrcDescLod1": "BIMモデル、CADデータ、設計図、完成図、一般図（平面図、配置図、断面図等）",
+    "uro:lodType": "LOD2.0,LOD3.0,LOD4.0",
+    "__key_order": [
+      "meshcode",
+      "feature_type",
+      "city_code",
+      "city_name",
+      "gml_id",
+      "attributes",
+      "core:creationDate",
+      "uro:geometrySrcDescLod1",
+      "uro:lodType"
+    ]
+  }
+}

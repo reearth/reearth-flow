@@ -1,0 +1,54 @@
+{
+  "12206_kisarazu-shi_city_2024_citygml_1_op_rfld_12_4_3dtiles_no_texture_jgd2024/1": {
+    "city_code": "12206",
+    "city_name": "千葉県木更津市",
+    "feature_type": "wtr:WaterBody",
+    "attributes": {
+      "feature_type": "wtr:WaterBody",
+      "gml:name": "防災重点ため池浸水想定区域図（田川貯水池下）",
+      "core:creationDate": "2025-03-21",
+      "wtr:class": "flooded land（浸水域）",
+      "wtr:class_code": "1140",
+      "wtr:function": "ため池ハザードマップ",
+      "wtr:function_code": "5",
+      "uro:ReservoirFloodingRiskAttribute": [
+        {
+          "uro:description": "防災重点ため池浸水想定区域図（田川貯水池下）",
+          "uro:description_code": "4",
+          "uro:rank": "0.5m未満",
+          "uro:rank_code": "1"
+        }
+      ],
+      "uro:DataQualityAttribute": [
+        {
+          "uro:geometrySrcDescLod1": "その他のGISデータ",
+          "uro:geometrySrcDescLod1_code": "400",
+          "uro:thematicSrcDesc": "その他のGISデータ",
+          "uro:thematicSrcDesc_code": "400"
+        }
+      ]
+    },
+    "gml:name": "防災重点ため池浸水想定区域図（田川貯水池下）",
+    "core:creationDate": "2025-03-21",
+    "wtr:class": "flooded land（浸水域）",
+    "wtr:function": "ため池ハザードマップ",
+    "uro:description": "防災重点ため池浸水想定区域図（田川貯水池下）",
+    "uro:rank": "0.5m未満",
+    "uro:rank_code": 1,
+    "uro:geometrySrcDescLod1": "その他のGISデータ",
+    "__key_order": [
+      "city_code",
+      "city_name",
+      "feature_type",
+      "attributes",
+      "gml:name",
+      "core:creationDate",
+      "wtr:class",
+      "wtr:function",
+      "uro:description",
+      "uro:rank",
+      "uro:rank_code",
+      "uro:geometrySrcDescLod1"
+    ]
+  }
+}

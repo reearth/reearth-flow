@@ -11,6 +11,7 @@ truth_path = "squr_lod2_truth.json"
 generate_truth = false
 
 [convs.mvt_attributes.squr_lod2.casts]
+"" = "ordered_dict"
 ".attributes" = "json"
 ".attributes.meshcode" = "string"
 ".attributes.ancestors[0].meshcode" = "string"

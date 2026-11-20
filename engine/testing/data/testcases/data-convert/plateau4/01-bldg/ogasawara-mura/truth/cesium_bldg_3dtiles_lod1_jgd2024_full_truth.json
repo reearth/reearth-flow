@@ -1,0 +1,1796 @@
+{
+  "bldg_7711a1e1-4f5b-456d-a279-f57c6590ed00": {
+    "meshcode": "40425105",
+    "feature_type": "bldg:Building",
+    "city_code": "13421",
+    "city_name": "東京都小笠原村",
+    "gml_id": "bldg_7711a1e1-4f5b-456d-a279-f57c6590ed00",
+    "attributes": {
+      "meshcode": "40425105",
+      "feature_type": "bldg:Building",
+      "gml:id": "bldg_7711a1e1-4f5b-456d-a279-f57c6590ed00",
+      "core:creationDate": "2026-03-13",
+      "bldg:class": "普通建物",
+      "bldg:class_code": "3001",
+      "bldg:usage": "不明",
+      "bldg:usage_code": "461",
+      "bldg:measuredHeight": 3.236,
+      "bldg:measuredHeight_uom": "m",
+      "bldg:storeysAboveGround": 9999,
+      "bldg:storeysBelowGround": 9999,
+      "bldg:address": "東京都小笠原村父島",
+      "uro:DataQualityAttribute": [
+        {
+          "uro:geometrySrcDescLod0": "公共測量成果又は基本測量成果",
+          "uro:geometrySrcDescLod0_code": "000",
+          "uro:geometrySrcDescLod1": "公共測量成果又は基本測量成果",
+          "uro:geometrySrcDescLod1_code": "000",
+          "uro:thematicSrcDesc": "都市計画基礎調査",
+          "uro:thematicSrcDesc_code": "201",
+          "uro:lod1HeightType": "点群から取得_中央値",
+          "uro:lod1HeightType_code": "2",
+          "uro:PublicSurveyDataQualityAttribute": [
+            {
+              "uro:srcScaleLod0": "地図情報レベル2500",
+              "uro:srcScaleLod0_code": "1",
+              "uro:srcScaleLod1": "地図情報レベル2500",
+              "uro:srcScaleLod1_code": "1",
+              "uro:publicSurveySrcDescLod0": "数値地形図データ",
+              "uro:publicSurveySrcDescLod0_code": "023",
+              "uro:publicSurveySrcDescLod1": "数値地形図データ",
+              "uro:publicSurveySrcDescLod1_code": "023"
+            }
+          ]
+        }
+      ],
+      "uro:LandSlideRiskAttribute": [
+        {
+          "uro:description": "急傾斜地の崩落",
+          "uro:description_code": "1",
+          "uro:areaType": "土砂災害特別警戒区域（指定済）",
+          "uro:areaType_code": "2"
+        }
+      ],
+      "uro:KeyValuePairAttribute": [
+        {
+          "uro:key": "建物構造コード",
+          "uro:key_code": "100",
+          "uro:codeValue": "不明",
+          "uro:codeValue_code": "99"
+        },
+        {
+          "uro:key": "延べ面積換算コード",
+          "uro:key_code": "101",
+          "uro:codeValue": "不明",
+          "uro:codeValue_code": "9"
+        },
+        {
+          "uro:key": "変化フラグ",
+          "uro:key_code": "102",
+          "uro:codeValue": "不明",
+          "uro:codeValue_code": "9"
+        },
+        {
+          "uro:key": "過年度修正フラグ",
+          "uro:key_code": "103",
+          "uro:codeValue": "不明",
+          "uro:codeValue_code": "9"
+        },
+        {
+          "uro:key": "調整フラグ",
+          "uro:key_code": "104",
+          "uro:codeValue": "不明",
+          "uro:codeValue_code": "9"
+        },
+        {
+          "uro:key": "修正フラグ",
+          "uro:key_code": "107",
+          "uro:codeValue": "不明",
+          "uro:codeValue_code": "9"
+        }
+      ],
+      "uro:BuildingDetailAttribute": [
+        {
+          "uro:buildingRoofEdgeArea": -9999,
+          "uro:buildingRoofEdgeArea_uom": "m2",
+          "uro:fireproofStructureType": "不明",
+          "uro:fireproofStructureType_code": "1011",
+          "uro:urbanPlanType": "都市計画区域",
+          "uro:urbanPlanType_code": "21",
+          "uro:landUseType": "商業用地（業務施設、商業施設、宿泊施設、商業系複合施設）",
+          "uro:landUseType_code": "212",
+          "uro:detailedUsage": "不明",
+          "uro:detailedUsage_code": "0",
+          "uro:surveyYear": 2022
+        }
+      ],
+      "uro:BuildingIDAttribute": [
+        {
+          "uro:buildingID": "13421-bldg-1077",
+          "uro:prefecture": "東京都",
+          "uro:prefecture_code": "13",
+          "uro:city": "東京都小笠原村",
+          "uro:city_code": "13421"
+        }
+      ]
+    },
+    "core:creationDate": "2026-03-13",
+    "bldg:class": "普通建物",
+    "bldg:usage": "不明",
+    "bldg:measuredHeight": 3.236,
+    "bldg:address": "東京都小笠原村父島",
+    "uro:BuildingIDAttribute_uro:buildingID": "13421-bldg-1077",
+    "uro:BuildingIDAttribute_uro:prefecture": "東京都",
+    "uro:BuildingIDAttribute_uro:city": "東京都小笠原村",
+    "uro:BuildingDetailAttribute_uro:fireproofStructureType": "不明",
+    "uro:BuildingDetailAttribute_uro:urbanPlanType": "都市計画区域",
+    "uro:BuildingDetailAttribute_uro:landUseType": "商業用地（業務施設、商業施設、宿泊施設、商業系複合施設）",
+    "uro:BuildingDetailAttribute_uro:surveyYear": 2022,
+    "uro:geometrySrcDescLod1": "公共測量成果又は基本測量成果",
+    "uro:lod1HeightType": "点群から取得_中央値",
+    "土砂災害リスク_急傾斜地の崩落_区域区分": "土砂災害特別警戒区域（指定済）",
+    "土砂災害リスク_急傾斜地の崩落_区域区分コード": 2,
+    "_lod": 1,
+    "_x": 142.18915366342696,
+    "_y": 27.091505484694608,
+    "_xmin": 142.18913461308645,
+    "_xmax": 142.1891727137675,
+    "_ymin": 27.091487661069173,
+    "_ymax": 27.09152330832004,
+    "_zmin": 30.419,
+    "_zmax": 33.248,
+    "__key_order": [
+      "meshcode",
+      "feature_type",
+      "city_code",
+      "city_name",
+      "gml_id",
+      "attributes",
+      "core:creationDate",
+      "bldg:class",
+      "bldg:usage",
+      "bldg:measuredHeight",
+      "bldg:address",
+      "uro:BuildingIDAttribute_uro:buildingID",
+      "uro:BuildingIDAttribute_uro:prefecture",
+      "uro:BuildingIDAttribute_uro:city",
+      "uro:BuildingDetailAttribute_uro:fireproofStructureType",
+      "uro:BuildingDetailAttribute_uro:urbanPlanType",
+      "uro:BuildingDetailAttribute_uro:landUseType",
+      "uro:BuildingDetailAttribute_uro:surveyYear",
+      "uro:geometrySrcDescLod1",
+      "uro:lod1HeightType",
+      "土砂災害リスク_急傾斜地の崩落_区域区分",
+      "土砂災害リスク_急傾斜地の崩落_区域区分コード",
+      "_lod",
+      "_x",
+      "_y",
+      "_xmin",
+      "_xmax",
+      "_ymin",
+      "_ymax",
+      "_zmin",
+      "_zmax"
+    ]
+  },
+  "bldg_64c84be4-a0ab-4be0-980f-4ec423b83a6e": {
+    "meshcode": "40425105",
+    "feature_type": "bldg:Building",
+    "city_code": "13421",
+    "city_name": "東京都小笠原村",
+    "gml_id": "bldg_64c84be4-a0ab-4be0-980f-4ec423b83a6e",
+    "attributes": {
+      "meshcode": "40425105",
+      "feature_type": "bldg:Building",
+      "gml:id": "bldg_64c84be4-a0ab-4be0-980f-4ec423b83a6e",
+      "core:creationDate": "2026-03-13",
+      "bldg:class": "普通建物",
+      "bldg:class_code": "3001",
+      "bldg:usage": "不明",
+      "bldg:usage_code": "461",
+      "bldg:measuredHeight": 3.526,
+      "bldg:measuredHeight_uom": "m",
+      "bldg:storeysAboveGround": 9999,
+      "bldg:storeysBelowGround": 9999,
+      "bldg:address": "東京都小笠原村父島",
+      "uro:DataQualityAttribute": [
+        {
+          "uro:geometrySrcDescLod0": "公共測量成果又は基本測量成果",
+          "uro:geometrySrcDescLod0_code": "000",
+          "uro:geometrySrcDescLod1": "公共測量成果又は基本測量成果",
+          "uro:geometrySrcDescLod1_code": "000",
+          "uro:thematicSrcDesc": "都市計画基礎調査",
+          "uro:thematicSrcDesc_code": "201",
+          "uro:lod1HeightType": "点群から取得_中央値",
+          "uro:lod1HeightType_code": "2",
+          "uro:PublicSurveyDataQualityAttribute": [
+            {
+              "uro:srcScaleLod0": "地図情報レベル2500",
+              "uro:srcScaleLod0_code": "1",
+              "uro:srcScaleLod1": "地図情報レベル2500",
+              "uro:srcScaleLod1_code": "1",
+              "uro:publicSurveySrcDescLod0": "数値地形図データ",
+              "uro:publicSurveySrcDescLod0_code": "023",
+              "uro:publicSurveySrcDescLod1": "数値地形図データ",
+              "uro:publicSurveySrcDescLod1_code": "023"
+            }
+          ]
+        }
+      ],
+      "uro:LandSlideRiskAttribute": [
+        {
+          "uro:description": "急傾斜地の崩落",
+          "uro:description_code": "1",
+          "uro:areaType": "土砂災害特別警戒区域（指定済）",
+          "uro:areaType_code": "2"
+        }
+      ],
+      "uro:KeyValuePairAttribute": [
+        {
+          "uro:key": "建物構造コード",
+          "uro:key_code": "100",
+          "uro:codeValue": "不明",
+          "uro:codeValue_code": "99"
+        },
+        {
+          "uro:key": "延べ面積換算コード",
+          "uro:key_code": "101",
+          "uro:codeValue": "不明",
+          "uro:codeValue_code": "9"
+        },
+        {
+          "uro:key": "変化フラグ",
+          "uro:key_code": "102",
+          "uro:codeValue": "不明",
+          "uro:codeValue_code": "9"
+        },
+        {
+          "uro:key": "過年度修正フラグ",
+          "uro:key_code": "103",
+          "uro:codeValue": "不明",
+          "uro:codeValue_code": "9"
+        },
+        {
+          "uro:key": "調整フラグ",
+          "uro:key_code": "104",
+          "uro:codeValue": "不明",
+          "uro:codeValue_code": "9"
+        },
+        {
+          "uro:key": "修正フラグ",
+          "uro:key_code": "107",
+          "uro:codeValue": "不明",
+          "uro:codeValue_code": "9"
+        }
+      ],
+      "uro:BuildingDetailAttribute": [
+        {
+          "uro:buildingRoofEdgeArea": -9999,
+          "uro:buildingRoofEdgeArea_uom": "m2",
+          "uro:fireproofStructureType": "不明",
+          "uro:fireproofStructureType_code": "1011",
+          "uro:urbanPlanType": "都市計画区域",
+          "uro:urbanPlanType_code": "21",
+          "uro:landUseType": "商業用地（業務施設、商業施設、宿泊施設、商業系複合施設）",
+          "uro:landUseType_code": "212",
+          "uro:detailedUsage": "不明",
+          "uro:detailedUsage_code": "0",
+          "uro:surveyYear": 2022
+        }
+      ],
+      "uro:BuildingIDAttribute": [
+        {
+          "uro:buildingID": "13421-bldg-1078",
+          "uro:prefecture": "東京都",
+          "uro:prefecture_code": "13",
+          "uro:city": "東京都小笠原村",
+          "uro:city_code": "13421"
+        }
+      ]
+    },
+    "core:creationDate": "2026-03-13",
+    "bldg:class": "普通建物",
+    "bldg:usage": "不明",
+    "bldg:measuredHeight": 3.526,
+    "bldg:address": "東京都小笠原村父島",
+    "uro:BuildingIDAttribute_uro:buildingID": "13421-bldg-1078",
+    "uro:BuildingIDAttribute_uro:prefecture": "東京都",
+    "uro:BuildingIDAttribute_uro:city": "東京都小笠原村",
+    "uro:BuildingDetailAttribute_uro:fireproofStructureType": "不明",
+    "uro:BuildingDetailAttribute_uro:urbanPlanType": "都市計画区域",
+    "uro:BuildingDetailAttribute_uro:landUseType": "商業用地（業務施設、商業施設、宿泊施設、商業系複合施設）",
+    "uro:BuildingDetailAttribute_uro:surveyYear": 2022,
+    "uro:geometrySrcDescLod1": "公共測量成果又は基本測量成果",
+    "uro:lod1HeightType": "点群から取得_中央値",
+    "土砂災害リスク_急傾斜地の崩落_区域区分": "土砂災害特別警戒区域（指定済）",
+    "土砂災害リスク_急傾斜地の崩落_区域区分コード": 2,
+    "_lod": 1,
+    "_x": 142.1891207049428,
+    "_y": 27.091485491830923,
+    "_xmin": 142.18910232137011,
+    "_xmax": 142.18913908851547,
+    "_ymin": 27.091465763170813,
+    "_ymax": 27.09150522049103,
+    "_zmin": 30.423,
+    "_zmax": 33.653,
+    "__key_order": [
+      "meshcode",
+      "feature_type",
+      "city_code",
+      "city_name",
+      "gml_id",
+      "attributes",
+      "core:creationDate",
+      "bldg:class",
+      "bldg:usage",
+      "bldg:measuredHeight",
+      "bldg:address",
+      "uro:BuildingIDAttribute_uro:buildingID",
+      "uro:BuildingIDAttribute_uro:prefecture",
+      "uro:BuildingIDAttribute_uro:city",
+      "uro:BuildingDetailAttribute_uro:fireproofStructureType",
+      "uro:BuildingDetailAttribute_uro:urbanPlanType",
+      "uro:BuildingDetailAttribute_uro:landUseType",
+      "uro:BuildingDetailAttribute_uro:surveyYear",
+      "uro:geometrySrcDescLod1",
+      "uro:lod1HeightType",
+      "土砂災害リスク_急傾斜地の崩落_区域区分",
+      "土砂災害リスク_急傾斜地の崩落_区域区分コード",
+      "_lod",
+      "_x",
+      "_y",
+      "_xmin",
+      "_xmax",
+      "_ymin",
+      "_ymax",
+      "_zmin",
+      "_zmax"
+    ]
+  },
+  "bldg_a5064b70-5bd7-4024-b64c-8c3f35b4a8d5": {
+    "meshcode": "40425105",
+    "feature_type": "bldg:Building",
+    "city_code": "13421",
+    "city_name": "東京都小笠原村",
+    "gml_id": "bldg_a5064b70-5bd7-4024-b64c-8c3f35b4a8d5",
+    "attributes": {
+      "meshcode": "40425105",
+      "feature_type": "bldg:Building",
+      "gml:id": "bldg_a5064b70-5bd7-4024-b64c-8c3f35b4a8d5",
+      "gml:name": "小笠原村情報センター",
+      "core:creationDate": "2026-03-13",
+      "gen:genericAttribute": [
+        {
+          "type": "string",
+          "name": "延べ面積換算係数",
+          "value": "1"
+        },
+        {
+          "type": "string",
+          "name": "大字・町コード",
+          "value": "3"
+        },
+        {
+          "type": "string",
+          "name": "町・丁目コード",
+          "value": "0"
+        },
+        {
+          "type": "string",
+          "name": "13+区市町村コード+大字・町コード+町・丁目コード",
+          "value": "13421003000"
+        }
+      ],
+      "bldg:class": "普通建物",
+      "bldg:class_code": "3001",
+      "bldg:usage": "業務施設",
+      "bldg:usage_code": "401",
+      "bldg:measuredHeight": 7.25,
+      "bldg:measuredHeight_uom": "m",
+      "bldg:storeysAboveGround": 1,
+      "bldg:storeysBelowGround": 0,
+      "bldg:address": "東京都小笠原村父島",
+      "uro:DataQualityAttribute": [
+        {
+          "uro:geometrySrcDescLod0": "公共測量成果又は基本測量成果",
+          "uro:geometrySrcDescLod0_code": "000",
+          "uro:geometrySrcDescLod1": "公共測量成果又は基本測量成果",
+          "uro:geometrySrcDescLod1_code": "000",
+          "uro:thematicSrcDesc": "都市計画基礎調査",
+          "uro:thematicSrcDesc_code": "201",
+          "uro:lod1HeightType": "点群から取得_中央値",
+          "uro:lod1HeightType_code": "2",
+          "uro:PublicSurveyDataQualityAttribute": [
+            {
+              "uro:srcScaleLod0": "地図情報レベル2500",
+              "uro:srcScaleLod0_code": "1",
+              "uro:srcScaleLod1": "地図情報レベル2500",
+              "uro:srcScaleLod1_code": "1",
+              "uro:publicSurveySrcDescLod0": "数値地形図データ",
+              "uro:publicSurveySrcDescLod0_code": "023",
+              "uro:publicSurveySrcDescLod1": "数値地形図データ",
+              "uro:publicSurveySrcDescLod1_code": "023"
+            }
+          ]
+        }
+      ],
+      "uro:LandSlideRiskAttribute": [
+        {
+          "uro:description": "急傾斜地の崩落",
+          "uro:description_code": "1",
+          "uro:areaType": "土砂災害特別警戒区域（指定済）",
+          "uro:areaType_code": "2"
+        }
+      ],
+      "uro:KeyValuePairAttribute": [
+        {
+          "uro:key": "建物構造コード",
+          "uro:key_code": "100",
+          "uro:codeValue": "耐火構造",
+          "uro:codeValue_code": "11"
+        },
+        {
+          "uro:key": "延べ面積換算コード",
+          "uro:key_code": "101",
+          "uro:codeValue": "全階数とも同一形状",
+          "uro:codeValue_code": "1"
+        },
+        {
+          "uro:key": "変化フラグ",
+          "uro:key_code": "102",
+          "uro:codeValue": "変化していない",
+          "uro:codeValue_code": "0"
+        },
+        {
+          "uro:key": "過年度修正フラグ",
+          "uro:key_code": "103",
+          "uro:codeValue": "過年度修正なし",
+          "uro:codeValue_code": "0"
+        },
+        {
+          "uro:key": "調整フラグ",
+          "uro:key_code": "104",
+          "uro:codeValue": "調整が必要でない建物",
+          "uro:codeValue_code": "0"
+        },
+        {
+          "uro:key": "修正フラグ",
+          "uro:key_code": "107",
+          "uro:codeValue": "修正なし",
+          "uro:codeValue_code": "0"
+        }
+      ],
+      "uro:BuildingDetailAttribute": [
+        {
+          "uro:buildingRoofEdgeArea": 350.341,
+          "uro:buildingRoofEdgeArea_uom": "m2",
+          "uro:fireproofStructureType": "耐火",
+          "uro:fireproofStructureType_code": "1001",
+          "uro:urbanPlanType": "都市計画区域",
+          "uro:urbanPlanType_code": "21",
+          "uro:landUseType": "商業用地（業務施設、商業施設、宿泊施設、商業系複合施設）",
+          "uro:landUseType_code": "212",
+          "uro:detailedUsage": "事務所建築物",
+          "uro:detailedUsage_code": "1210",
+          "uro:surveyYear": 2022
+        }
+      ],
+      "uro:BuildingIDAttribute": [
+        {
+          "uro:buildingID": "13421-bldg-1076",
+          "uro:prefecture": "東京都",
+          "uro:prefecture_code": "13",
+          "uro:city": "東京都小笠原村",
+          "uro:city_code": "13421"
+        }
+      ]
+    },
+    "gml:name": "小笠原村情報センター",
+    "core:creationDate": "2026-03-13",
+    "bldg:class": "普通建物",
+    "bldg:usage": "業務施設",
+    "bldg:measuredHeight": 7.25,
+    "bldg:storeysAboveGround": 1,
+    "bldg:storeysBelowGround": 0,
+    "bldg:address": "東京都小笠原村父島",
+    "uro:BuildingIDAttribute_uro:buildingID": "13421-bldg-1076",
+    "uro:BuildingIDAttribute_uro:prefecture": "東京都",
+    "uro:BuildingIDAttribute_uro:city": "東京都小笠原村",
+    "uro:BuildingDetailAttribute_uro:buildingRoofEdgeArea": 350.341,
+    "uro:BuildingDetailAttribute_uro:fireproofStructureType": "耐火",
+    "uro:BuildingDetailAttribute_uro:urbanPlanType": "都市計画区域",
+    "uro:BuildingDetailAttribute_uro:landUseType": "商業用地（業務施設、商業施設、宿泊施設、商業系複合施設）",
+    "uro:BuildingDetailAttribute_uro:surveyYear": 2022,
+    "uro:geometrySrcDescLod1": "公共測量成果又は基本測量成果",
+    "uro:lod1HeightType": "点群から取得_中央値",
+    "延べ面積換算係数": "1",
+    "大字・町コード": "3",
+    "町・丁目コード": "0",
+    "13+区市町村コード+大字・町コード+町・丁目コード": "13421003000",
+    "土砂災害リスク_急傾斜地の崩落_区域区分": "土砂災害特別警戒区域（指定済）",
+    "土砂災害リスク_急傾斜地の崩落_区域区分コード": 2,
+    "_lod": 1,
+    "_x": 142.18928625721122,
+    "_y": 27.0915273290045,
+    "_xmin": 142.18915312038615,
+    "_xmax": 142.1894193940363,
+    "_ymin": 27.09141162201706,
+    "_ymax": 27.09164303599194,
+    "_zmin": 30.23,
+    "_zmax": 35.635,
+    "__key_order": [
+      "meshcode",
+      "feature_type",
+      "city_code",
+      "city_name",
+      "gml_id",
+      "attributes",
+      "gml:name",
+      "core:creationDate",
+      "bldg:class",
+      "bldg:usage",
+      "bldg:measuredHeight",
+      "bldg:storeysAboveGround",
+      "bldg:storeysBelowGround",
+      "bldg:address",
+      "uro:BuildingIDAttribute_uro:buildingID",
+      "uro:BuildingIDAttribute_uro:prefecture",
+      "uro:BuildingIDAttribute_uro:city",
+      "uro:BuildingDetailAttribute_uro:buildingRoofEdgeArea",
+      "uro:BuildingDetailAttribute_uro:fireproofStructureType",
+      "uro:BuildingDetailAttribute_uro:urbanPlanType",
+      "uro:BuildingDetailAttribute_uro:landUseType",
+      "uro:BuildingDetailAttribute_uro:surveyYear",
+      "uro:geometrySrcDescLod1",
+      "uro:lod1HeightType",
+      "延べ面積換算係数",
+      "大字・町コード",
+      "町・丁目コード",
+      "13+区市町村コード+大字・町コード+町・丁目コード",
+      "土砂災害リスク_急傾斜地の崩落_区域区分",
+      "土砂災害リスク_急傾斜地の崩落_区域区分コード",
+      "_lod",
+      "_x",
+      "_y",
+      "_xmin",
+      "_xmax",
+      "_ymin",
+      "_ymax",
+      "_zmin",
+      "_zmax"
+    ]
+  },
+  "bldg_0477b70a-641f-4a4a-8579-735fd2ce1fdd": {
+    "meshcode": "40425105",
+    "feature_type": "bldg:Building",
+    "city_code": "13421",
+    "city_name": "東京都小笠原村",
+    "gml_id": "bldg_0477b70a-641f-4a4a-8579-735fd2ce1fdd",
+    "attributes": {
+      "meshcode": "40425105",
+      "feature_type": "bldg:Building",
+      "gml:id": "bldg_0477b70a-641f-4a4a-8579-735fd2ce1fdd",
+      "core:creationDate": "2026-03-13",
+      "bldg:class": "普通建物",
+      "bldg:class_code": "3001",
+      "bldg:usage": "不明",
+      "bldg:usage_code": "461",
+      "bldg:measuredHeight": 2.922,
+      "bldg:measuredHeight_uom": "m",
+      "bldg:storeysAboveGround": 9999,
+      "bldg:storeysBelowGround": 9999,
+      "bldg:address": "東京都小笠原村父島",
+      "uro:DataQualityAttribute": [
+        {
+          "uro:geometrySrcDescLod0": "公共測量成果又は基本測量成果",
+          "uro:geometrySrcDescLod0_code": "000",
+          "uro:geometrySrcDescLod1": "公共測量成果又は基本測量成果",
+          "uro:geometrySrcDescLod1_code": "000",
+          "uro:thematicSrcDesc": "都市計画基礎調査",
+          "uro:thematicSrcDesc_code": "201",
+          "uro:lod1HeightType": "点群から取得_中央値",
+          "uro:lod1HeightType_code": "2",
+          "uro:PublicSurveyDataQualityAttribute": [
+            {
+              "uro:srcScaleLod0": "地図情報レベル2500",
+              "uro:srcScaleLod0_code": "1",
+              "uro:srcScaleLod1": "地図情報レベル2500",
+              "uro:srcScaleLod1_code": "1",
+              "uro:publicSurveySrcDescLod0": "数値地形図データ",
+              "uro:publicSurveySrcDescLod0_code": "023",
+              "uro:publicSurveySrcDescLod1": "数値地形図データ",
+              "uro:publicSurveySrcDescLod1_code": "023"
+            }
+          ]
+        }
+      ],
+      "uro:LandSlideRiskAttribute": [
+        {
+          "uro:description": "急傾斜地の崩落",
+          "uro:description_code": "1",
+          "uro:areaType": "土砂災害警戒区域（指定済）",
+          "uro:areaType_code": "1"
+        }
+      ],
+      "uro:KeyValuePairAttribute": [
+        {
+          "uro:key": "建物構造コード",
+          "uro:key_code": "100",
+          "uro:codeValue": "不明",
+          "uro:codeValue_code": "99"
+        },
+        {
+          "uro:key": "延べ面積換算コード",
+          "uro:key_code": "101",
+          "uro:codeValue": "不明",
+          "uro:codeValue_code": "9"
+        },
+        {
+          "uro:key": "変化フラグ",
+          "uro:key_code": "102",
+          "uro:codeValue": "不明",
+          "uro:codeValue_code": "9"
+        },
+        {
+          "uro:key": "過年度修正フラグ",
+          "uro:key_code": "103",
+          "uro:codeValue": "不明",
+          "uro:codeValue_code": "9"
+        },
+        {
+          "uro:key": "調整フラグ",
+          "uro:key_code": "104",
+          "uro:codeValue": "不明",
+          "uro:codeValue_code": "9"
+        },
+        {
+          "uro:key": "修正フラグ",
+          "uro:key_code": "107",
+          "uro:codeValue": "不明",
+          "uro:codeValue_code": "9"
+        }
+      ],
+      "uro:BuildingDetailAttribute": [
+        {
+          "uro:buildingRoofEdgeArea": -9999,
+          "uro:buildingRoofEdgeArea_uom": "m2",
+          "uro:fireproofStructureType": "不明",
+          "uro:fireproofStructureType_code": "1011",
+          "uro:urbanPlanType": "都市計画区域",
+          "uro:urbanPlanType_code": "21",
+          "uro:landUseType": "商業用地（業務施設、商業施設、宿泊施設、商業系複合施設）",
+          "uro:landUseType_code": "212",
+          "uro:detailedUsage": "不明",
+          "uro:detailedUsage_code": "0",
+          "uro:surveyYear": 2022
+        }
+      ],
+      "uro:BuildingIDAttribute": [
+        {
+          "uro:buildingID": "13421-bldg-1079",
+          "uro:prefecture": "東京都",
+          "uro:prefecture_code": "13",
+          "uro:city": "東京都小笠原村",
+          "uro:city_code": "13421"
+        }
+      ]
+    },
+    "core:creationDate": "2026-03-13",
+    "bldg:class": "普通建物",
+    "bldg:usage": "不明",
+    "bldg:measuredHeight": 2.922,
+    "bldg:address": "東京都小笠原村父島",
+    "uro:BuildingIDAttribute_uro:buildingID": "13421-bldg-1079",
+    "uro:BuildingIDAttribute_uro:prefecture": "東京都",
+    "uro:BuildingIDAttribute_uro:city": "東京都小笠原村",
+    "uro:BuildingDetailAttribute_uro:fireproofStructureType": "不明",
+    "uro:BuildingDetailAttribute_uro:urbanPlanType": "都市計画区域",
+    "uro:BuildingDetailAttribute_uro:landUseType": "商業用地（業務施設、商業施設、宿泊施設、商業系複合施設）",
+    "uro:BuildingDetailAttribute_uro:surveyYear": 2022,
+    "uro:geometrySrcDescLod1": "公共測量成果又は基本測量成果",
+    "uro:lod1HeightType": "点群から取得_中央値",
+    "土砂災害リスク_急傾斜地の崩落_区域区分": "土砂災害警戒区域（指定済）",
+    "土砂災害リスク_急傾斜地の崩落_区域区分コード": 1,
+    "_lod": 1,
+    "_x": 142.18917382333706,
+    "_y": 27.0914403368485,
+    "_xmin": 142.18915105990135,
+    "_xmax": 142.18919658677274,
+    "_ymin": 27.091415235440053,
+    "_ymax": 27.091465438256947,
+    "_zmin": 30.431,
+    "_zmax": 33.277,
+    "__key_order": [
+      "meshcode",
+      "feature_type",
+      "city_code",
+      "city_name",
+      "gml_id",
+      "attributes",
+      "core:creationDate",
+      "bldg:class",
+      "bldg:usage",
+      "bldg:measuredHeight",
+      "bldg:address",
+      "uro:BuildingIDAttribute_uro:buildingID",
+      "uro:BuildingIDAttribute_uro:prefecture",
+      "uro:BuildingIDAttribute_uro:city",
+      "uro:BuildingDetailAttribute_uro:fireproofStructureType",
+      "uro:BuildingDetailAttribute_uro:urbanPlanType",
+      "uro:BuildingDetailAttribute_uro:landUseType",
+      "uro:BuildingDetailAttribute_uro:surveyYear",
+      "uro:geometrySrcDescLod1",
+      "uro:lod1HeightType",
+      "土砂災害リスク_急傾斜地の崩落_区域区分",
+      "土砂災害リスク_急傾斜地の崩落_区域区分コード",
+      "_lod",
+      "_x",
+      "_y",
+      "_xmin",
+      "_xmax",
+      "_ymin",
+      "_ymax",
+      "_zmin",
+      "_zmax"
+    ]
+  },
+  "bldg_0d1cf86e-37d6-479d-9f1a-6668c28c7e95": {
+    "meshcode": "40425105",
+    "feature_type": "bldg:Building",
+    "city_code": "13421",
+    "city_name": "東京都小笠原村",
+    "gml_id": "bldg_0d1cf86e-37d6-479d-9f1a-6668c28c7e95",
+    "attributes": {
+      "meshcode": "40425105",
+      "feature_type": "bldg:Building",
+      "gml:id": "bldg_0d1cf86e-37d6-479d-9f1a-6668c28c7e95",
+      "core:creationDate": "2026-03-13",
+      "gen:genericAttribute": [
+        {
+          "type": "string",
+          "name": "延べ面積換算係数",
+          "value": "1"
+        },
+        {
+          "type": "string",
+          "name": "大字・町コード",
+          "value": "3"
+        },
+        {
+          "type": "string",
+          "name": "町・丁目コード",
+          "value": "0"
+        },
+        {
+          "type": "string",
+          "name": "13+区市町村コード+大字・町コード+町・丁目コード",
+          "value": "13421003000"
+        }
+      ],
+      "bldg:class": "普通建物",
+      "bldg:class_code": "3001",
+      "bldg:usage": "供給処理施設",
+      "bldg:usage_code": "452",
+      "bldg:measuredHeight": 3.533,
+      "bldg:measuredHeight_uom": "m",
+      "bldg:storeysAboveGround": 1,
+      "bldg:storeysBelowGround": 0,
+      "bldg:address": "東京都小笠原村父島",
+      "uro:DataQualityAttribute": [
+        {
+          "uro:geometrySrcDescLod0": "公共測量成果又は基本測量成果",
+          "uro:geometrySrcDescLod0_code": "000",
+          "uro:geometrySrcDescLod1": "公共測量成果又は基本測量成果",
+          "uro:geometrySrcDescLod1_code": "000",
+          "uro:thematicSrcDesc": "都市計画基礎調査",
+          "uro:thematicSrcDesc_code": "201",
+          "uro:lod1HeightType": "点群から取得_中央値",
+          "uro:lod1HeightType_code": "2",
+          "uro:PublicSurveyDataQualityAttribute": [
+            {
+              "uro:srcScaleLod0": "地図情報レベル2500",
+              "uro:srcScaleLod0_code": "1",
+              "uro:srcScaleLod1": "地図情報レベル2500",
+              "uro:srcScaleLod1_code": "1",
+              "uro:publicSurveySrcDescLod0": "数値地形図データ",
+              "uro:publicSurveySrcDescLod0_code": "023",
+              "uro:publicSurveySrcDescLod1": "数値地形図データ",
+              "uro:publicSurveySrcDescLod1_code": "023"
+            }
+          ]
+        }
+      ],
+      "uro:LandSlideRiskAttribute": [
+        {
+          "uro:description": "急傾斜地の崩落",
+          "uro:description_code": "1",
+          "uro:areaType": "土砂災害特別警戒区域（指定済）",
+          "uro:areaType_code": "2"
+        }
+      ],
+      "uro:KeyValuePairAttribute": [
+        {
+          "uro:key": "建物構造コード",
+          "uro:key_code": "100",
+          "uro:codeValue": "耐火構造",
+          "uro:codeValue_code": "11"
+        },
+        {
+          "uro:key": "延べ面積換算コード",
+          "uro:key_code": "101",
+          "uro:codeValue": "全階数とも同一形状",
+          "uro:codeValue_code": "1"
+        },
+        {
+          "uro:key": "変化フラグ",
+          "uro:key_code": "102",
+          "uro:codeValue": "変化していない",
+          "uro:codeValue_code": "0"
+        },
+        {
+          "uro:key": "過年度修正フラグ",
+          "uro:key_code": "103",
+          "uro:codeValue": "過年度修正なし",
+          "uro:codeValue_code": "0"
+        },
+        {
+          "uro:key": "調整フラグ",
+          "uro:key_code": "104",
+          "uro:codeValue": "調整が必要でない建物",
+          "uro:codeValue_code": "0"
+        },
+        {
+          "uro:key": "修正フラグ",
+          "uro:key_code": "107",
+          "uro:codeValue": "修正なし",
+          "uro:codeValue_code": "0"
+        }
+      ],
+      "uro:BuildingDetailAttribute": [
+        {
+          "uro:buildingRoofEdgeArea": 61.909,
+          "uro:buildingRoofEdgeArea_uom": "m2",
+          "uro:fireproofStructureType": "耐火",
+          "uro:fireproofStructureType_code": "1001",
+          "uro:urbanPlanType": "都市計画区域",
+          "uro:urbanPlanType_code": "21",
+          "uro:landUseType": "公益施設用地（官公庁施設、文教厚生施設、供給処理施設）",
+          "uro:landUseType_code": "214",
+          "uro:detailedUsage": "処理施設",
+          "uro:detailedUsage_code": "1142",
+          "uro:surveyYear": 2022
+        }
+      ],
+      "uro:BuildingIDAttribute": [
+        {
+          "uro:buildingID": "13421-bldg-1083",
+          "uro:prefecture": "東京都",
+          "uro:prefecture_code": "13",
+          "uro:city": "東京都小笠原村",
+          "uro:city_code": "13421"
+        }
+      ]
+    },
+    "core:creationDate": "2026-03-13",
+    "bldg:class": "普通建物",
+    "bldg:usage": "供給処理施設",
+    "bldg:measuredHeight": 3.533,
+    "bldg:storeysAboveGround": 1,
+    "bldg:storeysBelowGround": 0,
+    "bldg:address": "東京都小笠原村父島",
+    "uro:BuildingIDAttribute_uro:buildingID": "13421-bldg-1083",
+    "uro:BuildingIDAttribute_uro:prefecture": "東京都",
+    "uro:BuildingIDAttribute_uro:city": "東京都小笠原村",
+    "uro:BuildingDetailAttribute_uro:buildingRoofEdgeArea": 61.909,
+    "uro:BuildingDetailAttribute_uro:fireproofStructureType": "耐火",
+    "uro:BuildingDetailAttribute_uro:urbanPlanType": "都市計画区域",
+    "uro:BuildingDetailAttribute_uro:landUseType": "公益施設用地（官公庁施設、文教厚生施設、供給処理施設）",
+    "uro:BuildingDetailAttribute_uro:surveyYear": 2022,
+    "uro:geometrySrcDescLod1": "公共測量成果又は基本測量成果",
+    "uro:lod1HeightType": "点群から取得_中央値",
+    "延べ面積換算係数": "1",
+    "大字・町コード": "3",
+    "町・丁目コード": "0",
+    "13+区市町村コード+大字・町コード+町・丁目コード": "13421003000",
+    "土砂災害リスク_急傾斜地の崩落_区域区分": "土砂災害特別警戒区域（指定済）",
+    "土砂災害リスク_急傾斜地の崩落_区域区分コード": 2,
+    "_lod": 1,
+    "_x": 142.19054489252125,
+    "_y": 27.089365858873066,
+    "_xmin": 142.19051426452825,
+    "_xmax": 142.19057552051424,
+    "_ymin": 27.089321818566095,
+    "_ymax": 27.089409899180037,
+    "_zmin": 2.083,
+    "_zmax": 5.506,
+    "__key_order": [
+      "meshcode",
+      "feature_type",
+      "city_code",
+      "city_name",
+      "gml_id",
+      "attributes",
+      "core:creationDate",
+      "bldg:class",
+      "bldg:usage",
+      "bldg:measuredHeight",
+      "bldg:storeysAboveGround",
+      "bldg:storeysBelowGround",
+      "bldg:address",
+      "uro:BuildingIDAttribute_uro:buildingID",
+      "uro:BuildingIDAttribute_uro:prefecture",
+      "uro:BuildingIDAttribute_uro:city",
+      "uro:BuildingDetailAttribute_uro:buildingRoofEdgeArea",
+      "uro:BuildingDetailAttribute_uro:fireproofStructureType",
+      "uro:BuildingDetailAttribute_uro:urbanPlanType",
+      "uro:BuildingDetailAttribute_uro:landUseType",
+      "uro:BuildingDetailAttribute_uro:surveyYear",
+      "uro:geometrySrcDescLod1",
+      "uro:lod1HeightType",
+      "延べ面積換算係数",
+      "大字・町コード",
+      "町・丁目コード",
+      "13+区市町村コード+大字・町コード+町・丁目コード",
+      "土砂災害リスク_急傾斜地の崩落_区域区分",
+      "土砂災害リスク_急傾斜地の崩落_区域区分コード",
+      "_lod",
+      "_x",
+      "_y",
+      "_xmin",
+      "_xmax",
+      "_ymin",
+      "_ymax",
+      "_zmin",
+      "_zmax"
+    ]
+  },
+  "bldg_a32476f4-2a04-4d94-8709-2354dda083aa": {
+    "meshcode": "40425105",
+    "feature_type": "bldg:Building",
+    "city_code": "13421",
+    "city_name": "東京都小笠原村",
+    "gml_id": "bldg_a32476f4-2a04-4d94-8709-2354dda083aa",
+    "attributes": {
+      "meshcode": "40425105",
+      "feature_type": "bldg:Building",
+      "gml:id": "bldg_a32476f4-2a04-4d94-8709-2354dda083aa",
+      "core:creationDate": "2026-03-13",
+      "gen:genericAttribute": [
+        {
+          "type": "string",
+          "name": "延べ面積換算係数",
+          "value": "1"
+        },
+        {
+          "type": "string",
+          "name": "大字・町コード",
+          "value": "3"
+        },
+        {
+          "type": "string",
+          "name": "町・丁目コード",
+          "value": "0"
+        },
+        {
+          "type": "string",
+          "name": "13+区市町村コード+大字・町コード+町・丁目コード",
+          "value": "13421003000"
+        }
+      ],
+      "bldg:class": "普通建物",
+      "bldg:class_code": "3001",
+      "bldg:usage": "供給処理施設",
+      "bldg:usage_code": "452",
+      "bldg:measuredHeight": 6.007,
+      "bldg:measuredHeight_uom": "m",
+      "bldg:storeysAboveGround": 1,
+      "bldg:storeysBelowGround": 0,
+      "bldg:address": "東京都小笠原村父島",
+      "uro:DataQualityAttribute": [
+        {
+          "uro:geometrySrcDescLod0": "公共測量成果又は基本測量成果",
+          "uro:geometrySrcDescLod0_code": "000",
+          "uro:geometrySrcDescLod1": "公共測量成果又は基本測量成果",
+          "uro:geometrySrcDescLod1_code": "000",
+          "uro:thematicSrcDesc": "都市計画基礎調査",
+          "uro:thematicSrcDesc_code": "201",
+          "uro:lod1HeightType": "点群から取得_中央値",
+          "uro:lod1HeightType_code": "2",
+          "uro:PublicSurveyDataQualityAttribute": [
+            {
+              "uro:srcScaleLod0": "地図情報レベル2500",
+              "uro:srcScaleLod0_code": "1",
+              "uro:srcScaleLod1": "地図情報レベル2500",
+              "uro:srcScaleLod1_code": "1",
+              "uro:publicSurveySrcDescLod0": "数値地形図データ",
+              "uro:publicSurveySrcDescLod0_code": "023",
+              "uro:publicSurveySrcDescLod1": "数値地形図データ",
+              "uro:publicSurveySrcDescLod1_code": "023"
+            }
+          ]
+        }
+      ],
+      "uro:LandSlideRiskAttribute": [
+        {
+          "uro:description": "急傾斜地の崩落",
+          "uro:description_code": "1",
+          "uro:areaType": "土砂災害警戒区域（指定済）",
+          "uro:areaType_code": "1"
+        }
+      ],
+      "uro:TsunamiRiskAttribute": [
+        {
+          "uro:description": "南海トラフケース１（島しょ部）",
+          "uro:description_code": "2",
+          "uro:rankOrg": "0.3ｍ以上1m未満",
+          "uro:rankOrg_code": "2",
+          "uro:depth": 0.38,
+          "uro:depth_uom": "m"
+        },
+        {
+          "uro:description": "南海トラフケース２（島しょ部）",
+          "uro:description_code": "3",
+          "uro:rankOrg": "2m以上5m未満",
+          "uro:rankOrg_code": "4",
+          "uro:depth": 2.97,
+          "uro:depth_uom": "m"
+        },
+        {
+          "uro:description": "南海トラフケース５（島しょ部）",
+          "uro:description_code": "4",
+          "uro:rankOrg": "2m以上5m未満",
+          "uro:rankOrg_code": "4",
+          "uro:depth": 3.059,
+          "uro:depth_uom": "m"
+        },
+        {
+          "uro:description": "南海トラフケース６（島しょ部）",
+          "uro:description_code": "5",
+          "uro:rankOrg": "2m以上5m未満",
+          "uro:rankOrg_code": "4",
+          "uro:depth": 3.06,
+          "uro:depth_uom": "m"
+        },
+        {
+          "uro:description": "南海トラフケース８（島しょ部）",
+          "uro:description_code": "6",
+          "uro:rankOrg": "1m以上2m未満",
+          "uro:rankOrg_code": "3",
+          "uro:depth": 1.63,
+          "uro:depth_uom": "m"
+        }
+      ],
+      "uro:KeyValuePairAttribute": [
+        {
+          "uro:key": "建物構造コード",
+          "uro:key_code": "100",
+          "uro:codeValue": "準防火造",
+          "uro:codeValue_code": "12"
+        },
+        {
+          "uro:key": "延べ面積換算コード",
+          "uro:key_code": "101",
+          "uro:codeValue": "全階数とも同一形状",
+          "uro:codeValue_code": "1"
+        },
+        {
+          "uro:key": "変化フラグ",
+          "uro:key_code": "102",
+          "uro:codeValue": "変化していない",
+          "uro:codeValue_code": "0"
+        },
+        {
+          "uro:key": "過年度修正フラグ",
+          "uro:key_code": "103",
+          "uro:codeValue": "過年度修正なし",
+          "uro:codeValue_code": "0"
+        },
+        {
+          "uro:key": "調整フラグ",
+          "uro:key_code": "104",
+          "uro:codeValue": "調整が必要でない建物",
+          "uro:codeValue_code": "0"
+        },
+        {
+          "uro:key": "修正フラグ",
+          "uro:key_code": "107",
+          "uro:codeValue": "修正なし",
+          "uro:codeValue_code": "0"
+        }
+      ],
+      "uro:BuildingDetailAttribute": [
+        {
+          "uro:buildingRoofEdgeArea": 282.831,
+          "uro:buildingRoofEdgeArea_uom": "m2",
+          "uro:fireproofStructureType": "準耐火造",
+          "uro:fireproofStructureType_code": "1002",
+          "uro:urbanPlanType": "都市計画区域",
+          "uro:urbanPlanType_code": "21",
+          "uro:landUseType": "公益施設用地（官公庁施設、文教厚生施設、供給処理施設）",
+          "uro:landUseType_code": "214",
+          "uro:detailedUsage": "処理施設",
+          "uro:detailedUsage_code": "1142",
+          "uro:surveyYear": 2022
+        }
+      ],
+      "uro:BuildingIDAttribute": [
+        {
+          "uro:buildingID": "13421-bldg-1081",
+          "uro:prefecture": "東京都",
+          "uro:prefecture_code": "13",
+          "uro:city": "東京都小笠原村",
+          "uro:city_code": "13421"
+        }
+      ]
+    },
+    "core:creationDate": "2026-03-13",
+    "bldg:class": "普通建物",
+    "bldg:usage": "供給処理施設",
+    "bldg:measuredHeight": 6.007,
+    "bldg:storeysAboveGround": 1,
+    "bldg:storeysBelowGround": 0,
+    "bldg:address": "東京都小笠原村父島",
+    "uro:BuildingIDAttribute_uro:buildingID": "13421-bldg-1081",
+    "uro:BuildingIDAttribute_uro:prefecture": "東京都",
+    "uro:BuildingIDAttribute_uro:city": "東京都小笠原村",
+    "uro:BuildingDetailAttribute_uro:buildingRoofEdgeArea": 282.831,
+    "uro:BuildingDetailAttribute_uro:fireproofStructureType": "準耐火造",
+    "uro:BuildingDetailAttribute_uro:urbanPlanType": "都市計画区域",
+    "uro:BuildingDetailAttribute_uro:landUseType": "公益施設用地（官公庁施設、文教厚生施設、供給処理施設）",
+    "uro:BuildingDetailAttribute_uro:surveyYear": 2022,
+    "uro:geometrySrcDescLod1": "公共測量成果又は基本測量成果",
+    "uro:lod1HeightType": "点群から取得_中央値",
+    "延べ面積換算係数": "1",
+    "大字・町コード": "3",
+    "町・丁目コード": "0",
+    "13+区市町村コード+大字・町コード+町・丁目コード": "13421003000",
+    "津波浸水想定_南海トラフケース１（島しょ部）_浸水ランク": "0.3ｍ以上1m未満",
+    "津波浸水想定_南海トラフケース１（島しょ部）_浸水ランクコード": 2,
+    "津波浸水想定_南海トラフケース１（島しょ部）_浸水深": 0.38,
+    "津波浸水想定_南海トラフケース２（島しょ部）_浸水ランク": "2m以上5m未満",
+    "津波浸水想定_南海トラフケース２（島しょ部）_浸水ランクコード": 4,
+    "津波浸水想定_南海トラフケース２（島しょ部）_浸水深": 2.97,
+    "津波浸水想定_南海トラフケース５（島しょ部）_浸水ランク": "2m以上5m未満",
+    "津波浸水想定_南海トラフケース５（島しょ部）_浸水ランクコード": 4,
+    "津波浸水想定_南海トラフケース５（島しょ部）_浸水深": 3.059,
+    "津波浸水想定_南海トラフケース６（島しょ部）_浸水ランク": "2m以上5m未満",
+    "津波浸水想定_南海トラフケース６（島しょ部）_浸水ランクコード": 4,
+    "津波浸水想定_南海トラフケース６（島しょ部）_浸水深": 3.06,
+    "津波浸水想定_南海トラフケース８（島しょ部）_浸水ランク": "1m以上2m未満",
+    "津波浸水想定_南海トラフケース８（島しょ部）_浸水ランクコード": 3,
+    "津波浸水想定_南海トラフケース８（島しょ部）_浸水深": 1.63,
+    "土砂災害リスク_急傾斜地の崩落_区域区分": "土砂災害警戒区域（指定済）",
+    "土砂災害リスク_急傾斜地の崩落_区域区分コード": 1,
+    "_lod": 1,
+    "_x": 142.19089201826768,
+    "_y": 27.08945816436488,
+    "_xmin": 142.19081015648123,
+    "_xmax": 142.19097388005412,
+    "_ymin": 27.08935104410784,
+    "_ymax": 27.089565284621923,
+    "_zmin": 2.346,
+    "_zmax": 7.176,
+    "__key_order": [
+      "meshcode",
+      "feature_type",
+      "city_code",
+      "city_name",
+      "gml_id",
+      "attributes",
+      "core:creationDate",
+      "bldg:class",
+      "bldg:usage",
+      "bldg:measuredHeight",
+      "bldg:storeysAboveGround",
+      "bldg:storeysBelowGround",
+      "bldg:address",
+      "uro:BuildingIDAttribute_uro:buildingID",
+      "uro:BuildingIDAttribute_uro:prefecture",
+      "uro:BuildingIDAttribute_uro:city",
+      "uro:BuildingDetailAttribute_uro:buildingRoofEdgeArea",
+      "uro:BuildingDetailAttribute_uro:fireproofStructureType",
+      "uro:BuildingDetailAttribute_uro:urbanPlanType",
+      "uro:BuildingDetailAttribute_uro:landUseType",
+      "uro:BuildingDetailAttribute_uro:surveyYear",
+      "uro:geometrySrcDescLod1",
+      "uro:lod1HeightType",
+      "延べ面積換算係数",
+      "大字・町コード",
+      "町・丁目コード",
+      "13+区市町村コード+大字・町コード+町・丁目コード",
+      "津波浸水想定_南海トラフケース１（島しょ部）_浸水ランク",
+      "津波浸水想定_南海トラフケース１（島しょ部）_浸水ランクコード",
+      "津波浸水想定_南海トラフケース１（島しょ部）_浸水深",
+      "津波浸水想定_南海トラフケース２（島しょ部）_浸水ランク",
+      "津波浸水想定_南海トラフケース２（島しょ部）_浸水ランクコード",
+      "津波浸水想定_南海トラフケース２（島しょ部）_浸水深",
+      "津波浸水想定_南海トラフケース５（島しょ部）_浸水ランク",
+      "津波浸水想定_南海トラフケース５（島しょ部）_浸水ランクコード",
+      "津波浸水想定_南海トラフケース５（島しょ部）_浸水深",
+      "津波浸水想定_南海トラフケース６（島しょ部）_浸水ランク",
+      "津波浸水想定_南海トラフケース６（島しょ部）_浸水ランクコード",
+      "津波浸水想定_南海トラフケース６（島しょ部）_浸水深",
+      "津波浸水想定_南海トラフケース８（島しょ部）_浸水ランク",
+      "津波浸水想定_南海トラフケース８（島しょ部）_浸水ランクコード",
+      "津波浸水想定_南海トラフケース８（島しょ部）_浸水深",
+      "土砂災害リスク_急傾斜地の崩落_区域区分",
+      "土砂災害リスク_急傾斜地の崩落_区域区分コード",
+      "_lod",
+      "_x",
+      "_y",
+      "_xmin",
+      "_xmax",
+      "_ymin",
+      "_ymax",
+      "_zmin",
+      "_zmax"
+    ]
+  },
+  "bldg_4d484f8e-a9f0-4e92-8269-6b6b5c0c93f9": {
+    "meshcode": "40425105",
+    "feature_type": "bldg:Building",
+    "city_code": "13421",
+    "city_name": "東京都小笠原村",
+    "gml_id": "bldg_4d484f8e-a9f0-4e92-8269-6b6b5c0c93f9",
+    "attributes": {
+      "meshcode": "40425105",
+      "feature_type": "bldg:Building",
+      "gml:id": "bldg_4d484f8e-a9f0-4e92-8269-6b6b5c0c93f9",
+      "gml:name": "父島し尿処理場",
+      "core:creationDate": "2026-03-13",
+      "gen:genericAttribute": [
+        {
+          "type": "string",
+          "name": "延べ面積換算係数",
+          "value": "1"
+        },
+        {
+          "type": "string",
+          "name": "大字・町コード",
+          "value": "3"
+        },
+        {
+          "type": "string",
+          "name": "町・丁目コード",
+          "value": "0"
+        },
+        {
+          "type": "string",
+          "name": "13+区市町村コード+大字・町コード+町・丁目コード",
+          "value": "13421003000"
+        }
+      ],
+      "bldg:class": "普通建物",
+      "bldg:class_code": "3001",
+      "bldg:usage": "供給処理施設",
+      "bldg:usage_code": "452",
+      "bldg:measuredHeight": 6.041,
+      "bldg:measuredHeight_uom": "m",
+      "bldg:storeysAboveGround": 1,
+      "bldg:storeysBelowGround": 0,
+      "bldg:address": "東京都小笠原村父島",
+      "uro:DataQualityAttribute": [
+        {
+          "uro:geometrySrcDescLod0": "公共測量成果又は基本測量成果",
+          "uro:geometrySrcDescLod0_code": "000",
+          "uro:geometrySrcDescLod1": "公共測量成果又は基本測量成果",
+          "uro:geometrySrcDescLod1_code": "000",
+          "uro:thematicSrcDesc": "都市計画基礎調査",
+          "uro:thematicSrcDesc_code": "201",
+          "uro:lod1HeightType": "点群から取得_中央値",
+          "uro:lod1HeightType_code": "2",
+          "uro:PublicSurveyDataQualityAttribute": [
+            {
+              "uro:srcScaleLod0": "地図情報レベル2500",
+              "uro:srcScaleLod0_code": "1",
+              "uro:srcScaleLod1": "地図情報レベル2500",
+              "uro:srcScaleLod1_code": "1",
+              "uro:publicSurveySrcDescLod0": "数値地形図データ",
+              "uro:publicSurveySrcDescLod0_code": "023",
+              "uro:publicSurveySrcDescLod1": "数値地形図データ",
+              "uro:publicSurveySrcDescLod1_code": "023"
+            }
+          ]
+        }
+      ],
+      "uro:LandSlideRiskAttribute": [
+        {
+          "uro:description": "急傾斜地の崩落",
+          "uro:description_code": "1",
+          "uro:areaType": "土砂災害警戒区域（指定済）",
+          "uro:areaType_code": "1"
+        }
+      ],
+      "uro:TsunamiRiskAttribute": [
+        {
+          "uro:description": "大正関東地震（島しょ部）",
+          "uro:description_code": "1",
+          "uro:rankOrg": "0.3ｍ以上1m未満",
+          "uro:rankOrg_code": "2",
+          "uro:depth": 0.827,
+          "uro:depth_uom": "m"
+        },
+        {
+          "uro:description": "南海トラフケース１（島しょ部）",
+          "uro:description_code": "2",
+          "uro:rankOrg": "2m以上5m未満",
+          "uro:rankOrg_code": "4",
+          "uro:depth": 2.976,
+          "uro:depth_uom": "m"
+        },
+        {
+          "uro:description": "南海トラフケース２（島しょ部）",
+          "uro:description_code": "3",
+          "uro:rankOrg": "2m以上5m未満",
+          "uro:rankOrg_code": "4",
+          "uro:depth": 3.269,
+          "uro:depth_uom": "m"
+        },
+        {
+          "uro:description": "南海トラフケース５（島しょ部）",
+          "uro:description_code": "4",
+          "uro:rankOrg": "5m以上10m未満",
+          "uro:rankOrg_code": "5",
+          "uro:depth": 5.727,
+          "uro:depth_uom": "m"
+        },
+        {
+          "uro:description": "南海トラフケース６（島しょ部）",
+          "uro:description_code": "5",
+          "uro:rankOrg": "2m以上5m未満",
+          "uro:rankOrg_code": "4",
+          "uro:depth": 3.433,
+          "uro:depth_uom": "m"
+        },
+        {
+          "uro:description": "南海トラフケース８（島しょ部）",
+          "uro:description_code": "6",
+          "uro:rankOrg": "2m以上5m未満",
+          "uro:rankOrg_code": "4",
+          "uro:depth": 3.601,
+          "uro:depth_uom": "m"
+        }
+      ],
+      "uro:KeyValuePairAttribute": [
+        {
+          "uro:key": "建物構造コード",
+          "uro:key_code": "100",
+          "uro:codeValue": "耐火構造",
+          "uro:codeValue_code": "11"
+        },
+        {
+          "uro:key": "延べ面積換算コード",
+          "uro:key_code": "101",
+          "uro:codeValue": "全階数とも同一形状",
+          "uro:codeValue_code": "1"
+        },
+        {
+          "uro:key": "変化フラグ",
+          "uro:key_code": "102",
+          "uro:codeValue": "変化していない",
+          "uro:codeValue_code": "0"
+        },
+        {
+          "uro:key": "過年度修正フラグ",
+          "uro:key_code": "103",
+          "uro:codeValue": "過年度修正なし",
+          "uro:codeValue_code": "0"
+        },
+        {
+          "uro:key": "調整フラグ",
+          "uro:key_code": "104",
+          "uro:codeValue": "調整が必要でない建物",
+          "uro:codeValue_code": "0"
+        },
+        {
+          "uro:key": "修正フラグ",
+          "uro:key_code": "107",
+          "uro:codeValue": "修正なし",
+          "uro:codeValue_code": "0"
+        }
+      ],
+      "uro:BuildingDetailAttribute": [
+        {
+          "uro:buildingRoofEdgeArea": 364.227,
+          "uro:buildingRoofEdgeArea_uom": "m2",
+          "uro:fireproofStructureType": "耐火",
+          "uro:fireproofStructureType_code": "1001",
+          "uro:urbanPlanType": "都市計画区域",
+          "uro:urbanPlanType_code": "21",
+          "uro:landUseType": "公益施設用地（官公庁施設、文教厚生施設、供給処理施設）",
+          "uro:landUseType_code": "214",
+          "uro:detailedUsage": "処理施設",
+          "uro:detailedUsage_code": "1142",
+          "uro:surveyYear": 2022
+        }
+      ],
+      "uro:BuildingIDAttribute": [
+        {
+          "uro:buildingID": "13421-bldg-1080",
+          "uro:prefecture": "東京都",
+          "uro:prefecture_code": "13",
+          "uro:city": "東京都小笠原村",
+          "uro:city_code": "13421"
+        }
+      ]
+    },
+    "gml:name": "父島し尿処理場",
+    "core:creationDate": "2026-03-13",
+    "bldg:class": "普通建物",
+    "bldg:usage": "供給処理施設",
+    "bldg:measuredHeight": 6.041,
+    "bldg:storeysAboveGround": 1,
+    "bldg:storeysBelowGround": 0,
+    "bldg:address": "東京都小笠原村父島",
+    "uro:BuildingIDAttribute_uro:buildingID": "13421-bldg-1080",
+    "uro:BuildingIDAttribute_uro:prefecture": "東京都",
+    "uro:BuildingIDAttribute_uro:city": "東京都小笠原村",
+    "uro:BuildingDetailAttribute_uro:buildingRoofEdgeArea": 364.227,
+    "uro:BuildingDetailAttribute_uro:fireproofStructureType": "耐火",
+    "uro:BuildingDetailAttribute_uro:urbanPlanType": "都市計画区域",
+    "uro:BuildingDetailAttribute_uro:landUseType": "公益施設用地（官公庁施設、文教厚生施設、供給処理施設）",
+    "uro:BuildingDetailAttribute_uro:surveyYear": 2022,
+    "uro:geometrySrcDescLod1": "公共測量成果又は基本測量成果",
+    "uro:lod1HeightType": "点群から取得_中央値",
+    "延べ面積換算係数": "1",
+    "大字・町コード": "3",
+    "町・丁目コード": "0",
+    "13+区市町村コード+大字・町コード+町・丁目コード": "13421003000",
+    "津波浸水想定_南海トラフケース１（島しょ部）_浸水ランク": "2m以上5m未満",
+    "津波浸水想定_南海トラフケース１（島しょ部）_浸水ランクコード": 4,
+    "津波浸水想定_南海トラフケース１（島しょ部）_浸水深": 2.976,
+    "津波浸水想定_南海トラフケース２（島しょ部）_浸水ランク": "2m以上5m未満",
+    "津波浸水想定_南海トラフケース２（島しょ部）_浸水ランクコード": 4,
+    "津波浸水想定_南海トラフケース２（島しょ部）_浸水深": 3.269,
+    "津波浸水想定_南海トラフケース５（島しょ部）_浸水ランク": "5m以上10m未満",
+    "津波浸水想定_南海トラフケース５（島しょ部）_浸水ランクコード": 5,
+    "津波浸水想定_南海トラフケース５（島しょ部）_浸水深": 5.727,
+    "津波浸水想定_南海トラフケース６（島しょ部）_浸水ランク": "2m以上5m未満",
+    "津波浸水想定_南海トラフケース６（島しょ部）_浸水ランクコード": 4,
+    "津波浸水想定_南海トラフケース６（島しょ部）_浸水深": 3.433,
+    "津波浸水想定_南海トラフケース８（島しょ部）_浸水ランク": "2m以上5m未満",
+    "津波浸水想定_南海トラフケース８（島しょ部）_浸水ランクコード": 4,
+    "津波浸水想定_南海トラフケース８（島しょ部）_浸水深": 3.601,
+    "津波浸水想定_大正関東地震（島しょ部）_浸水ランク": "0.3ｍ以上1m未満",
+    "津波浸水想定_大正関東地震（島しょ部）_浸水ランクコード": 2,
+    "津波浸水想定_大正関東地震（島しょ部）_浸水深": 0.827,
+    "土砂災害リスク_急傾斜地の崩落_区域区分": "土砂災害警戒区域（指定済）",
+    "土砂災害リスク_急傾斜地の崩落_区域区分コード": 1,
+    "_lod": 1,
+    "_x": 142.19103904416215,
+    "_y": 27.08949714797169,
+    "_xmin": 142.19095323602207,
+    "_xmax": 142.1911248523022,
+    "_ymin": 27.089365306533512,
+    "_ymax": 27.08962898940987,
+    "_zmin": 1.929,
+    "_zmax": 6.833,
+    "__key_order": [
+      "meshcode",
+      "feature_type",
+      "city_code",
+      "city_name",
+      "gml_id",
+      "attributes",
+      "gml:name",
+      "core:creationDate",
+      "bldg:class",
+      "bldg:usage",
+      "bldg:measuredHeight",
+      "bldg:storeysAboveGround",
+      "bldg:storeysBelowGround",
+      "bldg:address",
+      "uro:BuildingIDAttribute_uro:buildingID",
+      "uro:BuildingIDAttribute_uro:prefecture",
+      "uro:BuildingIDAttribute_uro:city",
+      "uro:BuildingDetailAttribute_uro:buildingRoofEdgeArea",
+      "uro:BuildingDetailAttribute_uro:fireproofStructureType",
+      "uro:BuildingDetailAttribute_uro:urbanPlanType",
+      "uro:BuildingDetailAttribute_uro:landUseType",
+      "uro:BuildingDetailAttribute_uro:surveyYear",
+      "uro:geometrySrcDescLod1",
+      "uro:lod1HeightType",
+      "延べ面積換算係数",
+      "大字・町コード",
+      "町・丁目コード",
+      "13+区市町村コード+大字・町コード+町・丁目コード",
+      "津波浸水想定_南海トラフケース１（島しょ部）_浸水ランク",
+      "津波浸水想定_南海トラフケース１（島しょ部）_浸水ランクコード",
+      "津波浸水想定_南海トラフケース１（島しょ部）_浸水深",
+      "津波浸水想定_南海トラフケース２（島しょ部）_浸水ランク",
+      "津波浸水想定_南海トラフケース２（島しょ部）_浸水ランクコード",
+      "津波浸水想定_南海トラフケース２（島しょ部）_浸水深",
+      "津波浸水想定_南海トラフケース５（島しょ部）_浸水ランク",
+      "津波浸水想定_南海トラフケース５（島しょ部）_浸水ランクコード",
+      "津波浸水想定_南海トラフケース５（島しょ部）_浸水深",
+      "津波浸水想定_南海トラフケース６（島しょ部）_浸水ランク",
+      "津波浸水想定_南海トラフケース６（島しょ部）_浸水ランクコード",
+      "津波浸水想定_南海トラフケース６（島しょ部）_浸水深",
+      "津波浸水想定_南海トラフケース８（島しょ部）_浸水ランク",
+      "津波浸水想定_南海トラフケース８（島しょ部）_浸水ランクコード",
+      "津波浸水想定_南海トラフケース８（島しょ部）_浸水深",
+      "津波浸水想定_大正関東地震（島しょ部）_浸水ランク",
+      "津波浸水想定_大正関東地震（島しょ部）_浸水ランクコード",
+      "津波浸水想定_大正関東地震（島しょ部）_浸水深",
+      "土砂災害リスク_急傾斜地の崩落_区域区分",
+      "土砂災害リスク_急傾斜地の崩落_区域区分コード",
+      "_lod",
+      "_x",
+      "_y",
+      "_xmin",
+      "_xmax",
+      "_ymin",
+      "_ymax",
+      "_zmin",
+      "_zmax"
+    ]
+  },
+  "bldg_20baf9d9-8c17-45a5-9a5a-153487ee7bee": {
+    "meshcode": "40425105",
+    "feature_type": "bldg:Building",
+    "city_code": "13421",
+    "city_name": "東京都小笠原村",
+    "gml_id": "bldg_20baf9d9-8c17-45a5-9a5a-153487ee7bee",
+    "attributes": {
+      "meshcode": "40425105",
+      "feature_type": "bldg:Building",
+      "gml:id": "bldg_20baf9d9-8c17-45a5-9a5a-153487ee7bee",
+      "core:creationDate": "2026-03-13",
+      "gen:genericAttribute": [
+        {
+          "type": "string",
+          "name": "延べ面積換算係数",
+          "value": "1"
+        },
+        {
+          "type": "string",
+          "name": "大字・町コード",
+          "value": "3"
+        },
+        {
+          "type": "string",
+          "name": "町・丁目コード",
+          "value": "0"
+        },
+        {
+          "type": "string",
+          "name": "13+区市町村コード+大字・町コード+町・丁目コード",
+          "value": "13421003000"
+        }
+      ],
+      "bldg:class": "普通建物",
+      "bldg:class_code": "3001",
+      "bldg:usage": "供給処理施設",
+      "bldg:usage_code": "452",
+      "bldg:measuredHeight": 4.93,
+      "bldg:measuredHeight_uom": "m",
+      "bldg:storeysAboveGround": 1,
+      "bldg:storeysBelowGround": 0,
+      "bldg:address": "東京都小笠原村父島",
+      "uro:DataQualityAttribute": [
+        {
+          "uro:geometrySrcDescLod0": "公共測量成果又は基本測量成果",
+          "uro:geometrySrcDescLod0_code": "000",
+          "uro:geometrySrcDescLod1": "公共測量成果又は基本測量成果",
+          "uro:geometrySrcDescLod1_code": "000",
+          "uro:thematicSrcDesc": "都市計画基礎調査",
+          "uro:thematicSrcDesc_code": "201",
+          "uro:lod1HeightType": "点群から取得_中央値",
+          "uro:lod1HeightType_code": "2",
+          "uro:PublicSurveyDataQualityAttribute": [
+            {
+              "uro:srcScaleLod0": "地図情報レベル2500",
+              "uro:srcScaleLod0_code": "1",
+              "uro:srcScaleLod1": "地図情報レベル2500",
+              "uro:srcScaleLod1_code": "1",
+              "uro:publicSurveySrcDescLod0": "数値地形図データ",
+              "uro:publicSurveySrcDescLod0_code": "023",
+              "uro:publicSurveySrcDescLod1": "数値地形図データ",
+              "uro:publicSurveySrcDescLod1_code": "023"
+            }
+          ]
+        }
+      ],
+      "uro:LandSlideRiskAttribute": [
+        {
+          "uro:description": "急傾斜地の崩落",
+          "uro:description_code": "1",
+          "uro:areaType": "土砂災害特別警戒区域（指定済）",
+          "uro:areaType_code": "2"
+        }
+      ],
+      "uro:TsunamiRiskAttribute": [
+        {
+          "uro:description": "南海トラフケース１（島しょ部）",
+          "uro:description_code": "2",
+          "uro:rankOrg": "0.3ｍ以上1m未満",
+          "uro:rankOrg_code": "2",
+          "uro:depth": 0.369,
+          "uro:depth_uom": "m"
+        },
+        {
+          "uro:description": "南海トラフケース２（島しょ部）",
+          "uro:description_code": "3",
+          "uro:rankOrg": "0.3ｍ以上1m未満",
+          "uro:rankOrg_code": "2",
+          "uro:depth": 0.736,
+          "uro:depth_uom": "m"
+        },
+        {
+          "uro:description": "南海トラフケース５（島しょ部）",
+          "uro:description_code": "4",
+          "uro:rankOrg": "0.3ｍ以上1m未満",
+          "uro:rankOrg_code": "2",
+          "uro:depth": 0.874,
+          "uro:depth_uom": "m"
+        },
+        {
+          "uro:description": "南海トラフケース６（島しょ部）",
+          "uro:description_code": "5",
+          "uro:rankOrg": "0.3ｍ以上1m未満",
+          "uro:rankOrg_code": "2",
+          "uro:depth": 0.806,
+          "uro:depth_uom": "m"
+        }
+      ],
+      "uro:KeyValuePairAttribute": [
+        {
+          "uro:key": "建物構造コード",
+          "uro:key_code": "100",
+          "uro:codeValue": "準防火造",
+          "uro:codeValue_code": "12"
+        },
+        {
+          "uro:key": "延べ面積換算コード",
+          "uro:key_code": "101",
+          "uro:codeValue": "全階数とも同一形状",
+          "uro:codeValue_code": "1"
+        },
+        {
+          "uro:key": "変化フラグ",
+          "uro:key_code": "102",
+          "uro:codeValue": "変化していない",
+          "uro:codeValue_code": "0"
+        },
+        {
+          "uro:key": "過年度修正フラグ",
+          "uro:key_code": "103",
+          "uro:codeValue": "過年度修正なし",
+          "uro:codeValue_code": "0"
+        },
+        {
+          "uro:key": "調整フラグ",
+          "uro:key_code": "104",
+          "uro:codeValue": "調整が必要でない建物",
+          "uro:codeValue_code": "0"
+        },
+        {
+          "uro:key": "修正フラグ",
+          "uro:key_code": "107",
+          "uro:codeValue": "修正なし",
+          "uro:codeValue_code": "0"
+        }
+      ],
+      "uro:BuildingDetailAttribute": [
+        {
+          "uro:buildingRoofEdgeArea": 374.743,
+          "uro:buildingRoofEdgeArea_uom": "m2",
+          "uro:fireproofStructureType": "準耐火造",
+          "uro:fireproofStructureType_code": "1002",
+          "uro:urbanPlanType": "都市計画区域",
+          "uro:urbanPlanType_code": "21",
+          "uro:landUseType": "公益施設用地（官公庁施設、文教厚生施設、供給処理施設）",
+          "uro:landUseType_code": "214",
+          "uro:detailedUsage": "処理施設",
+          "uro:detailedUsage_code": "1142",
+          "uro:surveyYear": 2022
+        }
+      ],
+      "uro:BuildingIDAttribute": [
+        {
+          "uro:buildingID": "13421-bldg-1082",
+          "uro:prefecture": "東京都",
+          "uro:prefecture_code": "13",
+          "uro:city": "東京都小笠原村",
+          "uro:city_code": "13421"
+        }
+      ]
+    },
+    "core:creationDate": "2026-03-13",
+    "bldg:class": "普通建物",
+    "bldg:usage": "供給処理施設",
+    "bldg:measuredHeight": 4.93,
+    "bldg:storeysAboveGround": 1,
+    "bldg:storeysBelowGround": 0,
+    "bldg:address": "東京都小笠原村父島",
+    "uro:BuildingIDAttribute_uro:buildingID": "13421-bldg-1082",
+    "uro:BuildingIDAttribute_uro:prefecture": "東京都",
+    "uro:BuildingIDAttribute_uro:city": "東京都小笠原村",
+    "uro:BuildingDetailAttribute_uro:buildingRoofEdgeArea": 374.743,
+    "uro:BuildingDetailAttribute_uro:fireproofStructureType": "準耐火造",
+    "uro:BuildingDetailAttribute_uro:urbanPlanType": "都市計画区域",
+    "uro:BuildingDetailAttribute_uro:landUseType": "公益施設用地（官公庁施設、文教厚生施設、供給処理施設）",
+    "uro:BuildingDetailAttribute_uro:surveyYear": 2022,
+    "uro:geometrySrcDescLod1": "公共測量成果又は基本測量成果",
+    "uro:lod1HeightType": "点群から取得_中央値",
+    "延べ面積換算係数": "1",
+    "大字・町コード": "3",
+    "町・丁目コード": "0",
+    "13+区市町村コード+大字・町コード+町・丁目コード": "13421003000",
+    "津波浸水想定_南海トラフケース１（島しょ部）_浸水ランク": "0.3ｍ以上1m未満",
+    "津波浸水想定_南海トラフケース１（島しょ部）_浸水ランクコード": 2,
+    "津波浸水想定_南海トラフケース１（島しょ部）_浸水深": 0.369,
+    "津波浸水想定_南海トラフケース２（島しょ部）_浸水ランク": "0.3ｍ以上1m未満",
+    "津波浸水想定_南海トラフケース２（島しょ部）_浸水ランクコード": 2,
+    "津波浸水想定_南海トラフケース２（島しょ部）_浸水深": 0.736,
+    "津波浸水想定_南海トラフケース５（島しょ部）_浸水ランク": "0.3ｍ以上1m未満",
+    "津波浸水想定_南海トラフケース５（島しょ部）_浸水ランクコード": 2,
+    "津波浸水想定_南海トラフケース５（島しょ部）_浸水深": 0.874,
+    "津波浸水想定_南海トラフケース６（島しょ部）_浸水ランク": "0.3ｍ以上1m未満",
+    "津波浸水想定_南海トラフケース６（島しょ部）_浸水ランクコード": 2,
+    "津波浸水想定_南海トラフケース６（島しょ部）_浸水深": 0.806,
+    "土砂災害リスク_急傾斜地の崩落_区域区分": "土砂災害特別警戒区域（指定済）",
+    "土砂災害リスク_急傾斜地の崩落_区域区分コード": 2,
+    "_lod": 1,
+    "_x": 142.19071182587592,
+    "_y": 27.089451918630477,
+    "_xmin": 142.1905944582456,
+    "_xmax": 142.19082919350623,
+    "_ymin": 27.089359395667003,
+    "_ymax": 27.08954444159395,
+    "_zmin": 2.18,
+    "_zmax": 6.505000000000001,
+    "__key_order": [
+      "meshcode",
+      "feature_type",
+      "city_code",
+      "city_name",
+      "gml_id",
+      "attributes",
+      "core:creationDate",
+      "bldg:class",
+      "bldg:usage",
+      "bldg:measuredHeight",
+      "bldg:storeysAboveGround",
+      "bldg:storeysBelowGround",
+      "bldg:address",
+      "uro:BuildingIDAttribute_uro:buildingID",
+      "uro:BuildingIDAttribute_uro:prefecture",
+      "uro:BuildingIDAttribute_uro:city",
+      "uro:BuildingDetailAttribute_uro:buildingRoofEdgeArea",
+      "uro:BuildingDetailAttribute_uro:fireproofStructureType",
+      "uro:BuildingDetailAttribute_uro:urbanPlanType",
+      "uro:BuildingDetailAttribute_uro:landUseType",
+      "uro:BuildingDetailAttribute_uro:surveyYear",
+      "uro:geometrySrcDescLod1",
+      "uro:lod1HeightType",
+      "延べ面積換算係数",
+      "大字・町コード",
+      "町・丁目コード",
+      "13+区市町村コード+大字・町コード+町・丁目コード",
+      "津波浸水想定_南海トラフケース１（島しょ部）_浸水ランク",
+      "津波浸水想定_南海トラフケース１（島しょ部）_浸水ランクコード",
+      "津波浸水想定_南海トラフケース１（島しょ部）_浸水深",
+      "津波浸水想定_南海トラフケース２（島しょ部）_浸水ランク",
+      "津波浸水想定_南海トラフケース２（島しょ部）_浸水ランクコード",
+      "津波浸水想定_南海トラフケース２（島しょ部）_浸水深",
+      "津波浸水想定_南海トラフケース５（島しょ部）_浸水ランク",
+      "津波浸水想定_南海トラフケース５（島しょ部）_浸水ランクコード",
+      "津波浸水想定_南海トラフケース５（島しょ部）_浸水深",
+      "津波浸水想定_南海トラフケース６（島しょ部）_浸水ランク",
+      "津波浸水想定_南海トラフケース６（島しょ部）_浸水ランクコード",
+      "津波浸水想定_南海トラフケース６（島しょ部）_浸水深",
+      "土砂災害リスク_急傾斜地の崩落_区域区分",
+      "土砂災害リスク_急傾斜地の崩落_区域区分コード",
+      "_lod",
+      "_x",
+      "_y",
+      "_xmin",
+      "_xmax",
+      "_ymin",
+      "_ymax",
+      "_zmin",
+      "_zmax"
+    ]
+  }
+}

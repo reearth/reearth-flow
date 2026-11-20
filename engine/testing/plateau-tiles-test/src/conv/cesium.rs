@@ -1,6 +1,6 @@
 use crate::align_cesium::load_tileset;
 use crate::cast_config::{convert_casts, CastConfigValue};
-use crate::compare_attributes::{apply_casts_to_value, make_feature_key};
+use crate::compare_attributes::{apply_casts_to_value, make_feature_key, normalize_numbers};
 use crate::tileset::collect_tile_contents;
 use indexmap::IndexMap;
 use reearth_flow_gltf::{extract_feature_properties, parse_gltf};
@@ -38,15 +38,29 @@ pub fn load_cesium_attr(tileset_dir: &Path) -> Result<IndexMap<String, Value>, S
             .map_err(|e| format!("Failed to extract features from {:?}: {}", glb_path, e))?;
 
         for props in features {
-            let props_value = Value::Object(props);
+            let props_value = normalize_numbers(Value::Object(props));
             let feature_key = make_feature_key(&props_value, dir_name);
 
             if let Some(existing) = ret.get(&feature_key) {
                 if existing != &props_value {
                     let existing_path = rel.get(&feature_key).unwrap();
+                    let differing: Vec<String> = match (existing, &props_value) {
+                        (Value::Object(a), Value::Object(b)) => {
+                            let mut keys: Vec<&String> = a
+                                .keys()
+                                .chain(b.keys())
+                                .filter(|k| a.get(*k) != b.get(*k))
+                                .collect();
+                            keys.dedup();
+                            keys.into_iter()
+                                .map(|k| format!("{k}: {:?} vs {:?}", a.get(k), b.get(k)))
+                                .collect()
+                        }
+                        _ => Vec::new(),
+                    };
                     return Err(format!(
-                        "Conflicting feature_key {}: properties differ between {:?} and {:?}",
-                        feature_key, existing_path, glb_path
+                        "Conflicting feature_key {}: properties differ between {:?} and {:?} (differing keys: {:?})",
+                        feature_key, existing_path, glb_path, differing
                     ));
                 }
             } else {
@@ -76,7 +90,7 @@ pub fn write_cesium_json(
     let normalized: serde_json::Map<String, Value> = raw
         .into_iter()
         .map(|(feature_key, props)| {
-            let props = apply_casts_to_value(props, "", &casts);
+            let props = normalize_numbers(apply_casts_to_value(props, "", &casts));
             (feature_key, props)
         })
         .collect();

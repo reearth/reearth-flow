@@ -32,13 +32,24 @@ pub fn zip_dir(src_dir: &Path, zip_path: &Path) -> Result<(), String> {
 
 /// Extracts `zip_path` into a fresh temporary directory and returns its path.
 pub fn extract_zip_to_tmp(zip_path: &Path) -> Result<PathBuf, String> {
-    let tmp_dir = std::env::temp_dir().join(format!("plateau-tiles-{}", std::process::id()));
-    let _ = fs::remove_dir_all(&tmp_dir);
+    // The directory is named after the zip stem, like the flow output directory:
+    // feature keys of risk types (fld, tnm, ...) are derived from that name.
+    let stem = zip_path
+        .file_stem()
+        .ok_or_else(|| format!("{zip_path:?} has no file name"))?;
+    let root = std::env::temp_dir().join(format!("plateau-tiles-{}", std::process::id()));
+    let _ = fs::remove_dir_all(&root);
+    let tmp_dir = root.join(stem);
     fs::create_dir_all(&tmp_dir).map_err(|e| perr(&tmp_dir, e))?;
     let file = fs::File::open(zip_path).map_err(|e| perr(zip_path, e))?;
     let mut zip = zip::ZipArchive::new(file).map_err(|e| perr(zip_path, e))?;
     zip.extract(&tmp_dir).map_err(|e| perr(zip_path, e))?;
     Ok(tmp_dir)
+}
+
+/// Removes a directory returned by `extract_zip_to_tmp` together with its root.
+pub fn remove_extracted(tmp_dir: &Path) {
+    let _ = fs::remove_dir_all(tmp_dir.parent().unwrap_or(tmp_dir));
 }
 
 /// Copies all items from `source_dir` into `output_dir`.

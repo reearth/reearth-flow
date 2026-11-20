@@ -1,15 +1,24 @@
 citygml_zip_name = "22203_numazu-shi_city_2023_citygml_3_op_wwy.zip"
 
+[convs.mvt_attributes.wwy_mvt_lod1]
+path = "22203_numazu-shi_city_2023_citygml_3_op_wwy_mvt_lod1"
+truth_path = "mvt_wwy_mvt_lod1_truth.json"
+generate_truth = true
+
+[convs.mvt_attributes.wwy_mvt_lod1.casts]
+"" = "ordered_dict"
+".attributes" = "json"
+".attributes.meshcode" = "string"
+".attributes.uro:FishingPortFacility[0].uro:referenceNumber" = "string"
+
+[tests.json_attributes_v2.mvt_wwy_mvt_lod1]
+path = "mvt_wwy_mvt_lod1_truth.json"
+
 [tests.mvt_lines]
 threshold = 0.01
 
 [tests.mvt_polygons]
 threshold = 0.01
-
-[tests.mvt_attributes.casts]
-".attributes" = "json"
-".attributes.meshcode" = "string"
-".attributes.uro:FishingPortFacility[0].uro:referenceNumber" = "string"
 
 [filter.tree]
 "udx/wwy/" = [

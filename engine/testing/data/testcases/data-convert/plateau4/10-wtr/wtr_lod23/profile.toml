@@ -6,9 +6,59 @@
 # appearance dropped (source textures are ~50MB tifs)
 citygml_zip_name = "13999_tokyo_city_2023_citygml_2_op_wtr.zip"
 
-[tests.cesium.casts]
+[convs.cesium_statistics.wtr_3dtiles_lod1_jgd2024]
+path = "13999_tokyo_city_2023_citygml_2_op_wtr_3dtiles_lod1_jgd2024"
+truth_path = "cesium_statistics_wtr_3dtiles_lod1_jgd2024_truth.json"
+generate_truth = true
+
+[convs.cesium_statistics.wtr_3dtiles_lod2_jgd2024]
+path = "13999_tokyo_city_2023_citygml_2_op_wtr_3dtiles_lod2_jgd2024"
+truth_path = "cesium_statistics_wtr_3dtiles_lod2_jgd2024_truth.json"
+generate_truth = true
+
+[convs.cesium_statistics.wtr_3dtiles_lod3_jgd2024]
+path = "13999_tokyo_city_2023_citygml_2_op_wtr_3dtiles_lod3_jgd2024"
+truth_path = "cesium_statistics_wtr_3dtiles_lod3_jgd2024_truth.json"
+generate_truth = true
+
+[convs.cesium_attributes.wtr_3dtiles_lod1_jgd2024]
+path = "13999_tokyo_city_2023_citygml_2_op_wtr_3dtiles_lod1_jgd2024"
+truth_path = "cesium_wtr_3dtiles_lod1_jgd2024_truth.json"
+generate_truth = true
+
+[convs.cesium_attributes.wtr_3dtiles_lod1_jgd2024.casts]
+"" = "ordered_dict"
 ".attributes" = "json"
 ".attributes.meshcode" = "string"
+
+[tests.json_attributes_v2.cesium_wtr_3dtiles_lod1_jgd2024]
+path = "cesium_wtr_3dtiles_lod1_jgd2024_truth.json"
+
+[convs.cesium_attributes.wtr_3dtiles_lod2_jgd2024]
+path = "13999_tokyo_city_2023_citygml_2_op_wtr_3dtiles_lod2_jgd2024"
+truth_path = "cesium_wtr_3dtiles_lod2_jgd2024_truth.json"
+generate_truth = true
+
+[convs.cesium_attributes.wtr_3dtiles_lod2_jgd2024.casts]
+"" = "ordered_dict"
+".attributes" = "json"
+".attributes.meshcode" = "string"
+
+[tests.json_attributes_v2.cesium_wtr_3dtiles_lod2_jgd2024]
+path = "cesium_wtr_3dtiles_lod2_jgd2024_truth.json"
+
+[convs.cesium_attributes.wtr_3dtiles_lod3_jgd2024]
+path = "13999_tokyo_city_2023_citygml_2_op_wtr_3dtiles_lod3_jgd2024"
+truth_path = "cesium_wtr_3dtiles_lod3_jgd2024_truth.json"
+generate_truth = true
+
+[convs.cesium_attributes.wtr_3dtiles_lod3_jgd2024.casts]
+"" = "ordered_dict"
+".attributes" = "json"
+".attributes.meshcode" = "string"
+
+[tests.json_attributes_v2.cesium_wtr_3dtiles_lod3_jgd2024]
+path = "cesium_wtr_3dtiles_lod3_jgd2024_truth.json"
 
 [filter.tree]
 "udx/wtr/533936_wtr_6697_op.gml" = [

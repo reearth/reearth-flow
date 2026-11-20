@@ -1,6 +1,71 @@
 # test dm geometric attributes
 citygml_zip_name = "08220_tsukuba-shi_city_2023_citygml_2_op_trk.zip"
 
+[convs.cesium_statistics.trk_3dtiles_lod3_jgd2024]
+path = "08220_tsukuba-shi_city_2023_citygml_2_op_trk_3dtiles_lod3_jgd2024"
+truth_path = "cesium_statistics_trk_3dtiles_lod3_jgd2024_truth.json"
+generate_truth = true
+
+[convs.cesium_attributes.trk_3dtiles_lod3_jgd2024]
+path = "08220_tsukuba-shi_city_2023_citygml_2_op_trk_3dtiles_lod3_jgd2024"
+truth_path = "cesium_trk_3dtiles_lod3_jgd2024_truth.json"
+generate_truth = true
+
+[convs.cesium_attributes.trk_3dtiles_lod3_jgd2024.casts]
+"" = "ordered_dict"
+".attributes" = "json"
+".dm_attributes" = "json"
+".attributes.meshcode" = "string"
+".attributes.ancestors[0].meshcode" = "string"
+
+[tests.json_attributes_v2.cesium_trk_3dtiles_lod3_jgd2024]
+path = "cesium_trk_3dtiles_lod3_jgd2024_truth.json"
+
+[convs.mvt_attributes.trk_dm_geometric_attributes]
+path = "08220_tsukuba-shi_city_2023_citygml_2_op_trk_dm_geometric_attributes"
+truth_path = "mvt_trk_dm_geometric_attributes_truth.json"
+generate_truth = true
+
+[convs.mvt_attributes.trk_dm_geometric_attributes.casts]
+"" = "ordered_dict"
+".attributes" = "json"
+".attributes.meshcode" = "string"
+".attributes.ancestors[0].meshcode" = "string"
+".dm_attributes" = "json"
+
+[tests.json_attributes_v2.mvt_trk_dm_geometric_attributes]
+path = "mvt_trk_dm_geometric_attributes_truth.json"
+
+[convs.mvt_attributes.trk_mvt_lod1]
+path = "08220_tsukuba-shi_city_2023_citygml_2_op_trk_mvt_lod1"
+truth_path = "mvt_trk_mvt_lod1_truth.json"
+generate_truth = true
+
+[convs.mvt_attributes.trk_mvt_lod1.casts]
+"" = "ordered_dict"
+".attributes" = "json"
+".attributes.meshcode" = "string"
+".attributes.ancestors[0].meshcode" = "string"
+".dm_attributes" = "json"
+
+[tests.json_attributes_v2.mvt_trk_mvt_lod1]
+path = "mvt_trk_mvt_lod1_truth.json"
+
+[convs.mvt_attributes.trk_mvt_lod2]
+path = "08220_tsukuba-shi_city_2023_citygml_2_op_trk_mvt_lod2"
+truth_path = "mvt_trk_mvt_lod2_truth.json"
+generate_truth = true
+
+[convs.mvt_attributes.trk_mvt_lod2.casts]
+"" = "ordered_dict"
+".attributes" = "json"
+".attributes.meshcode" = "string"
+".attributes.ancestors[0].meshcode" = "string"
+".dm_attributes" = "json"
+
+[tests.json_attributes_v2.mvt_trk_mvt_lod2]
+path = "mvt_trk_mvt_lod2_truth.json"
+
 [convs.json.tilesets_lod3]
 flow_path = "08220_tsukuba-shi_city_2023_citygml_2_op_trk_3dtiles_lod3_jgd2024/tileset.json"
 output_path = "3dtiles_lod3_tileset.json"
@@ -17,18 +82,6 @@ threshold = 0.01
 [tests.mvt_polygons]
 zoom = [12, 16]
 threshold = 0.01
-
-[tests.mvt_attributes.casts]
-".attributes" = "json"
-".attributes.meshcode" = "string"
-".attributes.ancestors[0].meshcode" = "string"
-".dm_attributes" = "json"
-
-[tests.cesium.casts]
-".attributes" = "json"
-".dm_attributes" = "json"
-".attributes.meshcode" = "string"
-".attributes.ancestors[0].meshcode" = "string"
 
 [filter.tree]
 "udx/trk/54401008_trk_6697_op.gml" = ["trk_c2138494-83e0-41b4-bfc1-609ca229aba2"]

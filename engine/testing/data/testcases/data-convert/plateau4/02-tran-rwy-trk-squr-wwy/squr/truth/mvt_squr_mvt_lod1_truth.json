@@ -1,0 +1,126 @@
+{
+  "squr_e899eb74-d5ec-498e-8268-634c0222aaa0": {
+    "meshcode": "533912",
+    "feature_type": "tran:Square",
+    "city_code": "14212",
+    "city_name": "神奈川県厚木市",
+    "gml_id": "squr_e899eb74-d5ec-498e-8268-634c0222aaa0",
+    "attributes": {
+      "meshcode": "533912",
+      "feature_type": "tran:Square",
+      "gml:id": "squr_e899eb74-d5ec-498e-8268-634c0222aaa0",
+      "gml:name": "本厚木駅前北口広場",
+      "core:creationDate": "2024-03-29",
+      "uro:DataQualityAttribute": [
+        {
+          "uro:geometrySrcDescLod1": "都市計画図書",
+          "uro:geometrySrcDescLod1_code": "202",
+          "uro:thematicSrcDesc": "都市計画図書",
+          "uro:thematicSrcDesc_code": "202"
+        }
+      ],
+      "uro:StationSquareAttribute": [
+        {
+          "uro:prefecture": "神奈川県",
+          "uro:prefecture_code": "14",
+          "uro:city": "神奈川県厚木市",
+          "uro:city_code": "14212",
+          "uro:urbanPlanningAreaName": "本厚木駅前北口広場",
+          "uro:dateOfDecision": "1963-03-02",
+          "uro:areaPlanned": 5010,
+          "uro:areaPlanned_uom": "m2",
+          "uro:status": "事業中",
+          "uro:status_code": "2"
+        }
+      ]
+    },
+    "gml_name": "本厚木駅前北口広場",
+    "core_creationDate": "2024-03-29",
+    "uro_StationSquareAttribute_uro_prefecture": "神奈川県",
+    "uro_StationSquareAttribute_uro_city": "神奈川県厚木市",
+    "uro_StationSquareAttribute_uro_urbanPlanningAreaName": "本厚木駅前北口広場",
+    "uro_StationSquareAttribute_uro_dateOfDecision": "1963-03-02",
+    "uro_StationSquareAttribute_uro_areaPlanned": 5010,
+    "uro_StationSquareAttribute_uro_status": "事業中",
+    "uro_geometrySrcDescLod1": "都市計画図書",
+    "__key_order": [
+      "meshcode",
+      "feature_type",
+      "city_code",
+      "city_name",
+      "gml_id",
+      "attributes",
+      "gml_name",
+      "core_creationDate",
+      "uro_StationSquareAttribute_uro_prefecture",
+      "uro_StationSquareAttribute_uro_city",
+      "uro_StationSquareAttribute_uro_urbanPlanningAreaName",
+      "uro_StationSquareAttribute_uro_dateOfDecision",
+      "uro_StationSquareAttribute_uro_areaPlanned",
+      "uro_StationSquareAttribute_uro_status",
+      "uro_geometrySrcDescLod1"
+    ]
+  },
+  "squr_20151e0d-cca1-4baa-a8be-b81e5ebad749": {
+    "meshcode": "533912",
+    "feature_type": "tran:Square",
+    "city_code": "14212",
+    "city_name": "神奈川県厚木市",
+    "gml_id": "squr_20151e0d-cca1-4baa-a8be-b81e5ebad749",
+    "attributes": {
+      "meshcode": "533912",
+      "feature_type": "tran:Square",
+      "gml:id": "squr_20151e0d-cca1-4baa-a8be-b81e5ebad749",
+      "gml:name": "本厚木駅前南口広場",
+      "core:creationDate": "2024-03-29",
+      "uro:DataQualityAttribute": [
+        {
+          "uro:geometrySrcDescLod1": "都市計画図書",
+          "uro:geometrySrcDescLod1_code": "202",
+          "uro:thematicSrcDesc": "都市計画図書",
+          "uro:thematicSrcDesc_code": "202"
+        }
+      ],
+      "uro:StationSquareAttribute": [
+        {
+          "uro:prefecture": "神奈川県",
+          "uro:prefecture_code": "14",
+          "uro:city": "神奈川県厚木市",
+          "uro:city_code": "14212",
+          "uro:urbanPlanningAreaName": "本厚木駅前南口広場",
+          "uro:dateOfDecision": "2015-05-29",
+          "uro:areaPlanned": 4270,
+          "uro:areaPlanned_uom": "m2",
+          "uro:status": "計画",
+          "uro:status_code": "1"
+        }
+      ]
+    },
+    "gml_name": "本厚木駅前南口広場",
+    "core_creationDate": "2024-03-29",
+    "uro_StationSquareAttribute_uro_prefecture": "神奈川県",
+    "uro_StationSquareAttribute_uro_city": "神奈川県厚木市",
+    "uro_StationSquareAttribute_uro_urbanPlanningAreaName": "本厚木駅前南口広場",
+    "uro_StationSquareAttribute_uro_dateOfDecision": "2015-05-29",
+    "uro_StationSquareAttribute_uro_areaPlanned": 4270,
+    "uro_StationSquareAttribute_uro_status": "計画",
+    "uro_geometrySrcDescLod1": "都市計画図書",
+    "__key_order": [
+      "meshcode",
+      "feature_type",
+      "city_code",
+      "city_name",
+      "gml_id",
+      "attributes",
+      "gml_name",
+      "core_creationDate",
+      "uro_StationSquareAttribute_uro_prefecture",
+      "uro_StationSquareAttribute_uro_city",
+      "uro_StationSquareAttribute_uro_urbanPlanningAreaName",
+      "uro_StationSquareAttribute_uro_dateOfDecision",
+      "uro_StationSquareAttribute_uro_areaPlanned",
+      "uro_StationSquareAttribute_uro_status",
+      "uro_geometrySrcDescLod1"
+    ]
+  }
+}
