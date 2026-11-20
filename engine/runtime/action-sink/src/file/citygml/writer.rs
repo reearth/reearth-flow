@@ -1729,6 +1729,7 @@ fn absorb(held: &mut GeometryEntry, extra: GeometryEntry) -> Option<GeometryEntr
         ) => triangles.extend(more),
         (_, element) => {
             return Some(GeometryEntry {
+                crs: Default::default(),
                 lod: extra.lod,
                 property: extra.property,
                 owner: extra.owner,
@@ -2007,6 +2008,7 @@ mod tests {
     fn duplicate_lod_property_is_merged_into_one_element() {
         let entries = vec![
             GeometryEntry {
+                crs: Default::default(),
                 lod: 2,
                 property: Some("lod2MultiSurface".to_string()),
                 owner: Default::default(),
@@ -2016,6 +2018,7 @@ mod tests {
                 },
             },
             GeometryEntry {
+                crs: Default::default(),
                 lod: 2,
                 property: Some("lod2MultiSurface".to_string()),
                 owner: Default::default(),
@@ -2048,6 +2051,7 @@ mod tests {
     fn duplicate_curve_property_keeps_every_curve() {
         let entries = vec![
             GeometryEntry {
+                crs: Default::default(),
                 lod: 0,
                 property: Some("lod0RoofEdge".to_string()),
                 owner: Default::default(),
@@ -2057,6 +2061,7 @@ mod tests {
                 },
             },
             GeometryEntry {
+                crs: Default::default(),
                 lod: 0,
                 property: Some("lod0RoofEdge".to_string()),
                 owner: Default::default(),
@@ -2099,12 +2104,14 @@ mod tests {
         };
         let entries = vec![
             GeometryEntry {
+                crs: Default::default(),
                 lod: 2,
                 property: Some("lod2Solid".to_string()),
                 owner: Default::default(),
                 element: GmlElement::Solid(solid(triangle())),
             },
             GeometryEntry {
+                crs: Default::default(),
                 lod: 2,
                 property: Some("lod2Solid".to_string()),
                 owner: Default::default(),
@@ -2149,12 +2156,14 @@ mod tests {
     fn shell_entries(lod: u8) -> Vec<GeometryEntry> {
         vec![
             GeometryEntry {
+                crs: Default::default(),
                 lod,
                 property: Some(format!("lod{lod}Solid")),
                 owner: Default::default(),
                 element: GmlElement::Solid(solid_of(triangle())),
             },
             GeometryEntry {
+                crs: Default::default(),
                 lod,
                 property: Some(format!("lod{lod}MultiSurface")),
                 owner: Default::default(),
@@ -2225,6 +2234,7 @@ mod tests {
 
     fn surfaces_at(lod: u8, property: Option<&str>, exterior: Vec<[f64; 3]>) -> GeometryEntry {
         GeometryEntry {
+            crs: Default::default(),
             lod,
             property: property.map(str::to_string),
             owner: Default::default(),
@@ -2237,6 +2247,7 @@ mod tests {
 
     fn solid_at(lod: u8, property: Option<&str>, exterior: Vec<[f64; 3]>) -> GeometryEntry {
         GeometryEntry {
+            crs: Default::default(),
             lod,
             property: property.map(str::to_string),
             owner: Default::default(),
@@ -2543,6 +2554,7 @@ mod tests {
     fn write_building(surfaces: Vec<GmlSurface>, appearance: Option<&AppearanceBundle>) -> String {
         write_entry(
             GeometryEntry {
+                crs: Default::default(),
                 lod: 2,
                 property: None,
                 owner: Default::default(),
@@ -2735,6 +2747,7 @@ mod tests {
         w.write_city_object(
             &class("bldg:Building"),
             vec![GeometryEntry {
+                crs: Default::default(),
                 lod: 2,
                 property: None,
                 owner: Default::default(),
@@ -2768,6 +2781,7 @@ mod tests {
     #[test]
     fn test_write_solid_with_a_void_shell() {
         let entry = GeometryEntry {
+            crs: Default::default(),
             lod: 1,
             property: None,
             owner: Default::default(),
@@ -2828,6 +2842,7 @@ mod tests {
     #[test]
     fn test_write_multi_solid_of_two_solids() {
         let entry = GeometryEntry {
+            crs: Default::default(),
             lod: 2,
             property: Some("lod2MultiSolid".to_string()),
             owner: Default::default(),
@@ -2903,6 +2918,7 @@ mod tests {
     #[test]
     fn test_multi_solid_property_name_falls_back_to_the_family() {
         let entry = GeometryEntry {
+            crs: Default::default(),
             lod: 3,
             property: None,
             owner: Default::default(),
@@ -2950,6 +2966,7 @@ mod tests {
 
     fn lone_solid(lod: u8, property: Option<&str>) -> GeometryEntry {
         GeometryEntry {
+            crs: Default::default(),
             lod,
             property: property.map(str::to_string),
             owner: Default::default(),
@@ -3151,6 +3168,7 @@ mod tests {
     /// One MultiSurface entry under the source property `property`.
     fn surface_entry(lod: u8, property: &str, surfaces: Vec<GmlSurface>) -> GeometryEntry {
         GeometryEntry {
+            crs: Default::default(),
             lod,
             property: Some(property.to_owned()),
             owner: Default::default(),
@@ -3239,6 +3257,7 @@ mod tests {
             vec![
                 surface_entry(3, "lod3MultiSurface", vec![plain_surface(triangle())]),
                 GeometryEntry {
+                    crs: Default::default(),
                     lod: 2,
                     property: Some("lod2Solid".to_owned()),
                     owner: Default::default(),
@@ -3539,6 +3558,7 @@ mod tests {
                 "dem:BreaklineRelief",
                 None,
                 vec![GeometryEntry {
+                    crs: Default::default(),
                     lod: 2,
                     property: Some("breaklines".to_owned()),
                     owner: Default::default(),
@@ -3589,6 +3609,7 @@ mod tests {
 
     fn tin_entry(triangles: GmlTriangles) -> GeometryEntry {
         GeometryEntry {
+            crs: Default::default(),
             lod: 1,
             property: Some("tin".to_owned()),
             owner: Default::default(),
@@ -3794,6 +3815,7 @@ mod tests {
             "bldg:Building",
             Some("b1"),
             vec![GeometryEntry {
+                crs: Default::default(),
                 lod: 2,
                 property: Some("lod2Solid".to_owned()),
                 owner: Default::default(),
@@ -3844,6 +3866,7 @@ mod tests {
             "bldg:Building",
             Some("b1"),
             vec![GeometryEntry {
+                crs: Default::default(),
                 lod: 2,
                 property: Some("lod2Solid".to_owned()),
                 owner: Default::default(),
@@ -3865,6 +3888,7 @@ mod tests {
             "bldg:Building",
             Some("b1"),
             vec![GeometryEntry {
+                crs: Default::default(),
                 lod: 2,
                 property: Some("lod2Solid".to_owned()),
                 owner: Default::default(),
@@ -3899,6 +3923,7 @@ mod tests {
             "bldg:Building",
             Some("b1"),
             vec![GeometryEntry {
+                crs: Default::default(),
                 lod: 2,
                 property: Some("lod2Solid".to_owned()),
                 owner: Default::default(),
@@ -3950,6 +3975,7 @@ mod tests {
             "bldg:Building",
             Some("b1"),
             vec![GeometryEntry {
+                crs: Default::default(),
                 lod: 2,
                 property: Some("lod2Solid".to_owned()),
                 owner: Default::default(),
@@ -4065,6 +4091,7 @@ mod tests {
             "bldg:Building",
             Some("b1"),
             vec![GeometryEntry {
+                crs: Default::default(),
                 lod: 2,
                 property: Some("lod2Solid".to_owned()),
                 owner: Default::default(),
@@ -4101,6 +4128,7 @@ mod tests {
 
         fn mesh_at(property: Option<&str>, triangles: Vec<GmlSurface>) -> GeometryEntry {
             GeometryEntry {
+                crs: Default::default(),
                 lod: 1,
                 property: property.map(str::to_owned),
                 owner: Default::default(),

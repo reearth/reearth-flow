@@ -1670,6 +1670,7 @@ mod tests {
 
     fn entry(key: Option<&str>, ty: Option<&str>, lod: u8) -> GeometryEntry {
         GeometryEntry {
+            crs: Default::default(),
             lod,
             property: None,
             element: GmlElement::MultiSurface {

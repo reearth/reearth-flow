@@ -358,6 +358,11 @@ struct Conversion {
     context: FeatureContext,
     geometries: Vec<GeometryEntry>,
     crs: CrsCoverage,
+    /// The coverage of the member being flattened, reset before each one, so
+    /// every entry it pushes carries the CRS of its own coordinates and not
+    /// the whole feature's. A group's feature carries its members' geometry,
+    /// which the document writes only where the members are written.
+    member_crs: CrsCoverage,
     /// One `app:Appearance` per feature; every leaf's bindings index into it.
     palette: Palette,
     omissions: Vec<GeometryOmission>,
@@ -408,6 +413,7 @@ impl Conversion {
                 }
                 let property = property.as_ref().map_err(|message| unusable(message))?;
                 let mut pieces = Vec::new();
+                self.member_crs = CrsCoverage::NoCoordinates;
                 self.collect_pieces(geometry, &mut pieces)?;
                 self.push_entries(*lod, property.as_deref(), owner, pieces);
                 Ok(())
@@ -769,12 +775,14 @@ impl Conversion {
         match solids.len() {
             0 => {}
             1 => self.geometries.push(GeometryEntry {
+                crs: self.member_crs,
                 lod,
                 property: property.map(str::to_string),
                 element: GmlElement::Solid(solids.pop().expect("one solid")),
                 owner: owner.clone(),
             }),
             _ => self.geometries.push(GeometryEntry {
+                crs: self.member_crs,
                 lod,
                 property: property.map(str::to_string),
                 element: GmlElement::MultiSolid { id: None, solids },
@@ -783,6 +791,7 @@ impl Conversion {
         }
         if !surfaces.is_empty() {
             self.geometries.push(GeometryEntry {
+                crs: self.member_crs,
                 lod,
                 property: property.map(str::to_string),
                 element: GmlElement::MultiSurface { id: None, surfaces },
@@ -791,6 +800,7 @@ impl Conversion {
         }
         if let Some(triangles) = triangles.filter(|triangles| !triangles.is_empty()) {
             self.geometries.push(GeometryEntry {
+                crs: self.member_crs,
                 lod,
                 property: property.map(str::to_string),
                 element: GmlElement::TriangulatedSurface { triangles },
@@ -799,6 +809,7 @@ impl Conversion {
         }
         if !curves.is_empty() {
             self.geometries.push(GeometryEntry {
+                crs: self.member_crs,
                 lod,
                 property: property.map(str::to_string),
                 element: GmlElement::MultiCurve { id: None, curves },
@@ -815,6 +826,7 @@ impl Conversion {
             CoordinateFrame::Euclidean | CoordinateFrame::Tangent(_) => CrsCoverage::outside(None),
         };
         self.crs = self.crs.and(coverage);
+        self.member_crs = self.member_crs.and(coverage);
     }
 
     /// Record one unwritable leaf, aggregated by kind.

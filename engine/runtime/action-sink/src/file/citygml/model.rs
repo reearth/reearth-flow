@@ -45,6 +45,14 @@ pub struct ConvertedCityObject {
 /// One geometry property: its LOD, its source name, and the GML element carrying it.
 #[derive(Debug, Clone, PartialEq)]
 pub struct GeometryEntry {
+    /// The CRS of this entry's own coordinates, folded as they were emitted.
+    ///
+    /// Held per entry, not per feature, because a group's feature carries its
+    /// members' geometry: a member written in another document, or in none,
+    /// must not put its CRS on this document's `srsName`. The shell folds this
+    /// over the entries the trees actually write. Legacy builds fold
+    /// [`ConvertedCityObject::crs`] instead and leave this at its default.
+    pub crs: CrsCoverage,
     pub lod: u8,
     /// The source property's local name (`"lod0RoofEdge"`, `"tin"`), used as the
     /// wrapper element name. `None` falls back to LOD plus GML family.

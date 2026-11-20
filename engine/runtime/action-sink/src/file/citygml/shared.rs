@@ -582,6 +582,7 @@ mod tests {
 
     fn entry(element: GmlElement) -> GeometryEntry {
         GeometryEntry {
+            crs: Default::default(),
             lod: 1,
             property: None,
             owner: Default::default(),

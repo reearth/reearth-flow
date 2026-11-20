@@ -448,11 +448,10 @@ pub fn write_citygml_documents(
         // left out may hold another CRS, a wider extent or a texture the
         // document never references.
         let mut envelope: Option<BoundingEnvelope> = None;
+        #[cfg_attr(feature = "new-geometry", allow(unused_mut))]
         let mut crs = CrsCoverage::default();
-        let mut textures: Vec<TextureRef> = Vec::new();
-        let mut texture_keys: HashSet<String> = HashSet::new();
+        #[cfg(not(feature = "new-geometry"))]
         for object in written.iter().map(|&source| &converted[source]) {
-            #[cfg(not(feature = "new-geometry"))]
             if let Some(object_envelope) = &object.envelope {
                 match &mut envelope {
                     Some(existing) => existing.merge(object_envelope),
@@ -460,11 +459,6 @@ pub fn write_citygml_documents(
                 }
             }
             crs = crs.and(object.crs);
-            for texture in &object.textures {
-                if texture_keys.insert(texture.key.clone()) {
-                    textures.push(texture.clone());
-                }
-            }
         }
 
         // The source keys of the objects this document writes, and every id
@@ -486,12 +480,34 @@ pub fn write_citygml_documents(
         // feature also carries its members' geometry, which is written where
         // the members live, or nowhere when they are not in the document.
         #[cfg(feature = "new-geometry")]
+        let mut referenced_textures: HashSet<String> = HashSet::new();
+        #[cfg(feature = "new-geometry")]
         for object in &top {
-            fold_tree_envelope(
-                object,
-                &|entry| writes_entry(entry, &written_keys, schema, prefixes),
-                &mut envelope,
-            );
+            let writes =
+                |entry: &model::GeometryEntry| writes_entry(entry, &written_keys, schema, prefixes);
+            fold_tree_envelope(object, &writes, &mut envelope);
+            // The `srsName` answers for the coordinates the file carries, so a
+            // member's CRS counts only where the member's geometry is written.
+            fold_tree_crs(object, &writes, &mut crs);
+            // Likewise an image: staging is strict, so an unreadable one must
+            // not fail a document that never names it.
+            fold_tree_textures(object, &converted, &writes, &mut referenced_textures);
+        }
+
+        // In feature order, so one image shared by several features is staged
+        // once and under the first key a single document would see.
+        let mut textures: Vec<TextureRef> = Vec::new();
+        let mut texture_keys: HashSet<String> = HashSet::new();
+        for object in written.iter().map(|&source| &converted[source]) {
+            for texture in &object.textures {
+                #[cfg(feature = "new-geometry")]
+                if !referenced_textures.contains(&texture.key) {
+                    continue;
+                }
+                if texture_keys.insert(texture.key.clone()) {
+                    textures.push(texture.clone());
+                }
+            }
         }
 
         let mut code_spaces: Vec<String> = Vec::new();
@@ -796,6 +812,90 @@ fn writes_entry(
     !placement::is_city_object(schema, &element)
 }
 
+/// Fold the CRS of every written entry in `object`'s tree into `crs`.
+///
+/// Per entry, not per feature: a group's feature carries its members'
+/// geometry, and a member written in another document, or in none, must not
+/// put its CRS on this document's `srsName`. A document that writes no
+/// coordinates is left at [`CrsCoverage::NoCoordinates`], which is the
+/// no-coordinates path rather than an error, so a group-only document still
+/// writes its links. Two CRSs that *are* written still make `Mixed`, which
+/// the shell rejects.
+#[cfg(feature = "new-geometry")]
+fn fold_tree_crs(
+    object: &ObjectNode,
+    writes: &impl Fn(&model::GeometryEntry) -> bool,
+    crs: &mut CrsCoverage,
+) {
+    for entry in &object.geometries {
+        if writes(entry) {
+            *crs = crs.and(entry.crs);
+        }
+    }
+    for nested in &object.children {
+        fold_tree_crs(&nested.object, writes, crs);
+    }
+}
+
+/// Collect the staging keys of the images the written surfaces of `object`'s
+/// tree reference.
+///
+/// Staging is strict: an image that cannot be read fails the document. A
+/// retained group feature carries its members' appearance, so without this an
+/// unreadable image belonging to a member whose geometry is not written would
+/// fail a document that never references it. Surface indices are resolved
+/// against `converted[object.source]`, the palette the writer itself uses for
+/// that object's surfaces.
+#[cfg(feature = "new-geometry")]
+fn fold_tree_textures(
+    object: &ObjectNode,
+    converted: &[model::ConvertedCityObject],
+    writes: &impl Fn(&model::GeometryEntry) -> bool,
+    used: &mut HashSet<String>,
+) {
+    let palette = converted.get(object.source);
+    let mut note = |surfaces: &[model::GmlSurface], used: &mut HashSet<String>| {
+        for surface in surfaces {
+            let Some(index) = surface.texture_idx else {
+                continue;
+            };
+            if let Some(texture) = palette.and_then(|one| one.textures.get(index as usize)) {
+                used.insert(texture.key.clone());
+            }
+        }
+    };
+    fn solid(
+        solid: &model::GmlSolid,
+        note: &mut impl FnMut(&[model::GmlSurface], &mut HashSet<String>),
+        used: &mut HashSet<String>,
+    ) {
+        note(&solid.exterior, used);
+        for shell in &solid.interiors {
+            note(shell, used);
+        }
+    }
+    for entry in &object.geometries {
+        if !writes(entry) {
+            continue;
+        }
+        match &entry.element {
+            model::GmlElement::Solid(one) => solid(one, &mut note, used),
+            model::GmlElement::MultiSolid { solids, .. } => {
+                for one in solids {
+                    solid(one, &mut note, used);
+                }
+            }
+            model::GmlElement::MultiSurface { surfaces, .. } => note(surfaces, used),
+            // A `dem:tin` writes no appearance, and a curve carries none.
+            model::GmlElement::TriangulatedSurface { .. }
+            | model::GmlElement::MultiCurve { .. } => {}
+        }
+    }
+    for nested in &object.children {
+        fold_tree_textures(&nested.object, converted, writes, used);
+    }
+}
+
 /// Grow `envelope` to cover every coordinate of `object`'s tree.
 #[cfg(feature = "new-geometry")]
 fn fold_tree_envelope(
@@ -860,6 +960,169 @@ fn fold_tree_envelope(
     }
 }
 
+/// A group's feature carries its members' geometry and appearance, so the
+/// document's `srsName` and its staged images are folded over the entries the
+/// trees actually write. Both are pinned here.
+#[cfg(all(test, feature = "new-geometry"))]
+mod written_geometry_tests {
+    use super::*;
+    use crate::file::citygml::classes::CityClass;
+    use crate::file::citygml::model::{
+        AppearanceBundle, ConvertedCityObject, EntryOwner, GeometryEntry, GmlElement, GmlSurface,
+        ObjectNode, TextureRef, TextureSource,
+    };
+    use reearth_flow_geometry::coordinate::EpsgCode;
+
+    fn epsg(code: u16) -> EpsgCode {
+        EpsgCode::new(code)
+    }
+
+    fn surface(texture: Option<u32>) -> GmlSurface {
+        GmlSurface {
+            id: None,
+            exterior: vec![[0.0, 0.0, 0.0]],
+            interiors: Vec::new(),
+            material_idx: None,
+            texture_idx: texture,
+            uv_exterior: Vec::new(),
+            uv_interiors: Vec::new(),
+        }
+    }
+
+    fn entry(owner_key: &str, crs: CrsCoverage, texture: Option<u32>) -> GeometryEntry {
+        GeometryEntry {
+            crs,
+            lod: 2,
+            property: None,
+            element: GmlElement::MultiSurface {
+                id: None,
+                surfaces: vec![surface(texture)],
+            },
+            owner: EntryOwner {
+                key: Some(owner_key.to_string()),
+                feature_type: None,
+            },
+        }
+    }
+
+    fn object(geometries: Vec<GeometryEntry>) -> ObjectNode {
+        ObjectNode {
+            class: CityClass::generic(),
+            key: None,
+            gml_id: None,
+            geometries,
+            properties: Vec::new(),
+            children: Vec::new(),
+            source: 0,
+        }
+    }
+
+    /// Only the entry whose owner is written counts.
+    fn writes(entry: &model::GeometryEntry) -> bool {
+        entry.owner.key.as_deref() != Some("absent-member")
+    }
+
+    fn feature(textures: Vec<&str>) -> ConvertedCityObject {
+        ConvertedCityObject {
+            geometries: Vec::new(),
+            appearance: AppearanceBundle::default(),
+            crs: CrsCoverage::default(),
+            textures: textures
+                .into_iter()
+                .map(|key| TextureRef {
+                    key: key.to_string(),
+                    source: TextureSource::Uri(
+                        url::Url::parse("file:///textures/image.png").expect("a valid url"),
+                    ),
+                })
+                .collect(),
+            omissions: Vec::new(),
+        }
+    }
+
+    fn folded_crs(object: &ObjectNode) -> CrsCoverage {
+        let mut crs = CrsCoverage::default();
+        fold_tree_crs(object, &writes, &mut crs);
+        crs
+    }
+
+    fn staged(object: &ObjectNode, converted: &[ConvertedCityObject]) -> Vec<String> {
+        let mut used = HashSet::new();
+        fold_tree_textures(object, converted, &writes, &mut used);
+        let mut keys: Vec<String> = used.into_iter().collect();
+        keys.sort();
+        keys
+    }
+
+    /// The CRS of a member the document does not write stays out of `srsName`.
+    /// Folding it in made a group carrying members in two CRSs `Mixed`, which
+    /// the shell rejects, failing a document whose written coordinates are all
+    /// in one CRS.
+    #[test]
+    fn an_unwritten_members_crs_does_not_reach_the_document() {
+        let node = object(vec![
+            entry("written-member", CrsCoverage::Single(epsg(6697)), None),
+            entry("absent-member", CrsCoverage::Single(epsg(6677)), None),
+        ]);
+
+        assert_eq!(folded_crs(&node), CrsCoverage::Single(epsg(6697)));
+    }
+
+    /// A group-only document writes its links rather than failing: with no
+    /// written coordinates the coverage is the no-coordinates path, not an
+    /// error about a CRS no written coordinate is in.
+    #[test]
+    fn a_document_writing_no_coordinates_has_no_coverage() {
+        let node = object(vec![entry(
+            "absent-member",
+            CrsCoverage::Single(epsg(6677)),
+            None,
+        )]);
+
+        assert_eq!(folded_crs(&node), CrsCoverage::NoCoordinates);
+    }
+
+    /// The check that matters still bites: two CRSs that are both written are
+    /// `Mixed`, which the shell turns into an error.
+    #[test]
+    fn two_written_crss_are_still_mixed() {
+        let node = object(vec![
+            entry("written-member", CrsCoverage::Single(epsg(6697)), None),
+            entry("other-member", CrsCoverage::Single(epsg(6677)), None),
+        ]);
+
+        assert!(matches!(folded_crs(&node), CrsCoverage::Mixed { .. }));
+    }
+
+    /// Staging is strict, so an image belonging to a member whose geometry is
+    /// not written must not be staged: an unreadable one would fail a document
+    /// that never references it.
+    #[test]
+    fn an_image_only_an_unwritten_member_references_is_not_staged() {
+        let node = object(vec![
+            entry("written-member", CrsCoverage::default(), Some(0)),
+            entry("absent-member", CrsCoverage::default(), Some(1)),
+        ]);
+        let converted = vec![feature(vec!["written.png", "absent.png"])];
+
+        assert_eq!(staged(&node, &converted), ["written.png"]);
+    }
+
+    /// An image a written surface references is still staged, so the strict
+    /// failure it carries is kept.
+    #[test]
+    fn an_image_a_written_surface_references_is_staged() {
+        let node = object(vec![entry(
+            "written-member",
+            CrsCoverage::default(),
+            Some(1),
+        )]);
+        let converted = vec![feature(vec!["other.png", "wall.png"])];
+
+        assert_eq!(staged(&node, &converted), ["wall.png"]);
+    }
+}
+
 /// The document envelope is folded here rather than per feature, so the
 /// extents it covers are pinned here too.
 #[cfg(all(test, feature = "new-geometry"))]
@@ -884,6 +1147,7 @@ mod envelope_tests {
 
     fn entry(owner_key: Option<&str>, element: GmlElement) -> GeometryEntry {
         GeometryEntry {
+            crs: Default::default(),
             lod: 2,
             property: None,
             element,
