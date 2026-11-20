@@ -1,4 +1,5 @@
 mod code_value;
+mod error;
 mod extents;
 mod feature_type;
 mod gml_id_format;

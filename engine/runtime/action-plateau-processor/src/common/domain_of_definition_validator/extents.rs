@@ -4,12 +4,35 @@
 use std::cell::RefCell;
 use std::collections::BTreeSet;
 
-use fastxml::transform::{EditableNode, Transformer};
+use std::num::ParseFloatError;
+
+use fastxml::transform::{EditableNode, TransformError, Transformer};
 use reearth_flow_types::{AttributeValue, Feature};
 use serde_json::Number;
 
+/// An error of the extents check.
+#[derive(thiserror::Error, Debug)]
+pub(super) enum Error {
+    #[error("failed to parse the city GML for its gml:Envelope: {0}")]
+    EnvelopeParse(#[source] TransformError),
+    #[error("the city GML has no gml:Envelope")]
+    NoEnvelope,
+    #[error("the gml:Envelope has no {0} corner")]
+    MissingCorner(&'static str),
+    #[error("the {0} corner of the gml:Envelope has fewer than three coordinates")]
+    ShortCorner(&'static str),
+    #[error("a coordinate of the {corner} corner of the gml:Envelope is not a number: {source}")]
+    EnvelopeCoordinate {
+        corner: &'static str,
+        #[source]
+        source: ParseFloatError,
+    },
+    #[error("a coordinate of a geometry is not a number: {0}")]
+    Coordinate(#[source] ParseFloatError),
+}
+
+type Result<T, E = Error> = std::result::Result<T, E>;
 use super::report::MemberReporter;
-use crate::common::errors::{PlateauProcessorError, Result};
 
 /// An invalid coordinate value found in the file.
 #[derive(thiserror::Error, Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord)]
@@ -106,11 +129,11 @@ struct AxisRange {
 /// [`Envelope`] and an [`Extent`]. An axis whose range is unknown holds the
 /// reason.
 #[derive(Debug, Clone, Copy, PartialEq)]
-struct Bounds([std::result::Result<AxisRange, CoordinateError>; 3]);
+struct Bounds([Result<AxisRange, CoordinateError>; 3]);
 
 impl Bounds {
     /// The ranges of (latitude, longitude, elevation).
-    fn axes(&self) -> &[std::result::Result<AxisRange, CoordinateError>; 3] {
+    fn axes(&self) -> &[Result<AxisRange, CoordinateError>; 3] {
         &self.0
     }
 
@@ -145,10 +168,10 @@ pub(super) struct Positions {
     count: usize,
     /// `None` for an axis without a coordinate yet. An axis with a NaN or
     /// infinite coordinate stays unknown.
-    axes: [Option<std::result::Result<AxisRange, CoordinateError>>; 3],
+    axes: [Option<Result<AxisRange, CoordinateError>>; 3],
     /// The error of the first coordinate that is not a number, after which the
     /// contents are not read.
-    error: Option<PlateauProcessorError>,
+    error: Option<Error>,
 }
 
 impl Positions {
@@ -161,9 +184,7 @@ impl Positions {
             match v.parse() {
                 Ok(v) => self.push(v),
                 Err(e) => {
-                    self.error = Some(PlateauProcessorError::DomainOfDefinitionValidator(format!(
-                        "{e:?}"
-                    )));
+                    self.error = Some(Error::Coordinate(e));
                     return;
                 }
             }
@@ -199,14 +220,8 @@ impl Positions {
 }
 
 /// Parses a whitespace-separated list of numbers such as `gml:posList`.
-fn parse_coordinates(content: &str) -> Result<Vec<f64>> {
-    content
-        .split_whitespace()
-        .map(|v| {
-            v.parse()
-                .map_err(|e| PlateauProcessorError::DomainOfDefinitionValidator(format!("{e:?}")))
-        })
-        .collect()
+fn parse_coordinates(content: &str) -> Result<Vec<f64>, ParseFloatError> {
+    content.split_whitespace().map(str::parse).collect()
 }
 
 fn parse_envelope_from_node(node: &EditableNode) -> Result<BoundedBy> {
@@ -222,17 +237,16 @@ fn parse_envelope_from_node(node: &EditableNode) -> Result<BoundedBy> {
         }
     }
 
-    let parse_corner = |value: Option<String>, name: &str| {
-        let value = value.ok_or_else(|| {
-            PlateauProcessorError::DomainOfDefinitionValidator(format!(
-                "Failed to get {name} corner node"
-            ))
-        })?;
-        match parse_coordinates(&value)?[..] {
+    let parse_corner = |value: Option<String>, name: &'static str| {
+        let value = value.ok_or(Error::MissingCorner(name))?;
+        let coordinates =
+            parse_coordinates(&value).map_err(|source| Error::EnvelopeCoordinate {
+                corner: name,
+                source,
+            })?;
+        match coordinates[..] {
             [x, y, z, ..] => Ok([x, y, z]),
-            _ => Err(PlateauProcessorError::DomainOfDefinitionValidator(format!(
-                "Failed to parse {name} corner"
-            ))),
+            _ => Err(Error::ShortCorner(name)),
         }
     };
     let lower = parse_corner(lower_corner_value, "lower")?;
@@ -251,11 +265,7 @@ pub(super) fn stream_extract_envelope(raw_xml: &str, xpath: &str) -> Result<Boun
 
     let transformer = Transformer::from(raw_xml)
         .with_root_namespaces()
-        .map_err(|e| {
-            PlateauProcessorError::DomainOfDefinitionValidator(format!(
-                "Failed to parse root namespaces: {e:?}"
-            ))
-        })?;
+        .map_err(Error::EnvelopeParse)?;
 
     transformer
         .on(xpath, |node| {
@@ -272,17 +282,13 @@ pub(super) fn stream_extract_envelope(raw_xml: &str, xpath: &str) -> Result<Boun
             }
         })
         .for_each()
-        .map_err(|e| PlateauProcessorError::DomainOfDefinitionValidator(format!("{e:?}")))?;
+        .map_err(Error::EnvelopeParse)?;
 
     if let Some(err) = error.into_inner() {
         return Err(err);
     }
 
-    envelope.into_inner().ok_or_else(|| {
-        PlateauProcessorError::DomainOfDefinitionValidator(
-            "Failed to get envelope element".to_string(),
-        )
-    })
+    envelope.into_inner().ok_or(Error::NoEnvelope)
 }
 
 /// The L06 check of a file.
@@ -422,7 +428,7 @@ mod tests {
         assert!(!envelope.contains(&unknown));
     }
 
-    fn range(min: f64, max: f64) -> std::result::Result<AxisRange, CoordinateError> {
+    fn range(min: f64, max: f64) -> Result<AxisRange, CoordinateError> {
         Ok(AxisRange { min, max })
     }
 }

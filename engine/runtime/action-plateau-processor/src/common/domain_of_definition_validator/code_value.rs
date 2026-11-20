@@ -5,17 +5,99 @@ use std::path::Path;
 use std::str::FromStr;
 use std::sync::Arc;
 
-use fastxml::transform::Transformer;
+use fastxml::transform::{TransformError, Transformer};
 use reearth_flow_common::uri::Uri;
 use reearth_flow_storage::resolve::StorageResolver;
 use reearth_flow_storage::storage::Storage;
 use reearth_flow_types::{Attribute, AttributeValue, Feature};
 use serde_json::Number;
 
+/// An error of the code value check.
+#[derive(thiserror::Error, Debug)]
+pub(super) enum Error {
+    #[error("the city GML path has no directory")]
+    NoCityGmlDirectory,
+    #[error("failed to join the codeSpace {code_space} to the directory of the city GML: {source}")]
+    CodeSpacePath {
+        code_space: String,
+        #[source]
+        source: reearth_flow_common::Error,
+    },
+    #[error("failed to join {file_name} to codelistsPath: {source}")]
+    CodelistsPathJoin {
+        file_name: String,
+        #[source]
+        source: reearth_flow_common::Error,
+    },
+    #[error("failed to resolve the storage of the codelist {path}: {source}")]
+    CodelistStorage {
+        path: String,
+        #[source]
+        source: reearth_flow_storage::Error,
+    },
+    #[error("the codelist file {0} does not exist")]
+    CodelistNotFound(String),
+    #[error("failed to read the codelist {path}: {source}")]
+    CodelistRead {
+        path: String,
+        #[source]
+        source: object_store::Error,
+    },
+    #[error("the codelist {path} is not UTF-8: {source}")]
+    CodelistNotUtf8 {
+        path: String,
+        #[source]
+        source: std::str::Utf8Error,
+    },
+    #[error("failed to parse the codelist {path}: {source}")]
+    CodelistParse {
+        path: String,
+        #[source]
+        source: TransformError,
+    },
+    #[error("failed to resolve the storage of dirCodelists {path}: {source}")]
+    DirCodelistsStorage {
+        path: String,
+        #[source]
+        source: reearth_flow_storage::Error,
+    },
+    #[error("failed to check whether dirCodelists {path} exists: {source}")]
+    DirCodelistsAccess {
+        path: String,
+        #[source]
+        source: object_store::Error,
+    },
+    #[error("dirCodelists does not exist and codelistsPath is not given")]
+    DirCodelistsNotFound,
+    #[error("the input feature has no dirCodelists and codelistsPath is not given")]
+    DirCodelistsMissing,
+    #[error("failed to resolve the storage of the codelists directory {path}: {source}")]
+    CodelistsDirectoryStorage {
+        path: String,
+        #[source]
+        source: reearth_flow_storage::Error,
+    },
+    #[error("failed to check whether the codelists directory {path} exists: {source}")]
+    CodelistsDirectoryAccess {
+        path: String,
+        #[source]
+        source: object_store::Error,
+    },
+    #[error("the codelists directory {0} does not exist")]
+    CodelistsDirectoryNotFound(String),
+    #[error("failed to list the codelists directory {path}: {source}")]
+    CodelistsDirectoryList {
+        path: String,
+        #[source]
+        source: object_store::Error,
+    },
+}
+
+type Result<T, E = Error> = std::result::Result<T, E>;
+
 use super::report::MemberReporter;
 use super::traversal::CodeSpaceEntry;
 use crate::citygml::GML_DICTIONARY_NS;
-use crate::common::errors::{PlateauProcessorError, Result};
 
 /// A codelist, as { code: description }.
 pub(super) type Codelist = HashMap<String, String>;
@@ -85,9 +167,13 @@ impl CodelistResolver<'_> {
         }
 
         // Fallback: Try primary lookup (relative to GML file)
-        let code_space_path = base_dir
-            .join(Path::new(code_space))
-            .map_err(|e| PlateauProcessorError::DomainOfDefinitionValidator(format!("{e:?}")))?;
+        let code_space_path =
+            base_dir
+                .join(Path::new(code_space))
+                .map_err(|source| Error::CodeSpacePath {
+                    code_space: code_space.to_string(),
+                    source,
+                })?;
         if let Some(code) = self.codelists.get(&code_space_path.to_string()) {
             return Ok(Some(Arc::clone(code)));
         }
@@ -98,8 +184,11 @@ impl CodelistResolver<'_> {
             && let Some(filename) = Path::new(code_space).file_name()
         {
             let fallback_code_space_path =
-                fallback_path.join(Path::new(filename)).map_err(|e| {
-                    PlateauProcessorError::DomainOfDefinitionValidator(format!("{e:?}"))
+                fallback_path.join(Path::new(filename)).map_err(|source| {
+                    Error::CodelistsPathJoin {
+                        file_name: filename.to_string_lossy().to_string(),
+                        source,
+                    }
                 })?;
             // First try dictionary lookup
             if let Some(code) = self.codelists.get(&fallback_code_space_path.to_string()) {
@@ -143,12 +232,7 @@ impl<'a> CodeValueCheck<'a> {
         entries: &[CodeSpaceEntry],
         report: &MemberReporter,
     ) -> Result<()> {
-        let base_dir =
-            resolver
-                .city_gml_dir
-                .ok_or(PlateauProcessorError::DomainOfDefinitionValidator(
-                    "illegal city gml path".to_string(),
-                ))?;
+        let base_dir = resolver.city_gml_dir.ok_or(Error::NoCityGmlDirectory)?;
         for entry in entries {
             let code = match self.resolved.get(&entry.code_space) {
                 Some(code) => code.clone(),
@@ -224,20 +308,19 @@ fn try_load_codelist_file(
     storage_resolver: Arc<StorageResolver>,
     codelist_path: &Uri,
 ) -> Result<Codelist> {
-    let storage = storage_resolver.resolve(codelist_path).map_err(|e| {
-        PlateauProcessorError::DomainOfDefinitionValidator(format!(
-            "Failed to resolve codelist path: {e:?}"
-        ))
-    })?;
+    let storage =
+        storage_resolver
+            .resolve(codelist_path)
+            .map_err(|source| Error::CodelistStorage {
+                path: codelist_path.to_string(),
+                source,
+            })?;
 
     if !storage
         .exists_sync(codelist_path.path().as_path())
         .unwrap_or(false)
     {
-        return Err(PlateauProcessorError::DomainOfDefinitionValidator(format!(
-            "Codelist file not found: {}",
-            codelist_path
-        )));
+        return Err(Error::CodelistNotFound(codelist_path.to_string()));
     }
 
     create_detail_codelist(storage, codelist_path)
@@ -256,72 +339,88 @@ pub(super) fn create_codelist(
 
     let dir = match dir {
         Some(d) => {
-            let storage = storage_resolver.resolve(&d).map_err(|e| {
-                PlateauProcessorError::DomainOfDefinitionValidator(format!("{e:?}"))
-            })?;
-            let exist = storage.exists_sync(d.path().as_path()).map_err(|e| {
-                PlateauProcessorError::DomainOfDefinitionValidator(format!("{e:?}"))
+            let storage =
+                storage_resolver
+                    .resolve(&d)
+                    .map_err(|source| Error::DirCodelistsStorage {
+                        path: d.to_string(),
+                        source,
+                    })?;
+            let exist = storage.exists_sync(d.path().as_path()).map_err(|source| {
+                Error::DirCodelistsAccess {
+                    path: d.to_string(),
+                    source,
+                }
             })?;
             if exist {
                 d
             } else if let Some(fallback) = fallback_codelists_path {
                 fallback.clone()
             } else {
-                return Err(PlateauProcessorError::DomainOfDefinitionValidator(
-                    "dirCodelists not found and no fallback provided".to_string(),
-                ));
+                return Err(Error::DirCodelistsNotFound);
             }
         }
         None => {
             if let Some(fallback) = fallback_codelists_path {
                 fallback.clone()
             } else {
-                return Err(PlateauProcessorError::DomainOfDefinitionValidator(
-                    "dirCodelists key empty and no fallback provided".to_string(),
-                ));
+                return Err(Error::DirCodelistsMissing);
             }
         }
     };
 
-    let storage = storage_resolver
-        .resolve(&dir)
-        .map_err(|e| PlateauProcessorError::DomainOfDefinitionValidator(format!("{e:?}")))?;
+    let path = || dir.to_string();
+    let storage =
+        storage_resolver
+            .resolve(&dir)
+            .map_err(|source| Error::CodelistsDirectoryStorage {
+                path: path(),
+                source,
+            })?;
     let exist = storage
         .exists_sync(dir.path().as_path())
-        .map_err(|e| PlateauProcessorError::DomainOfDefinitionValidator(format!("{e:?}")))?;
+        .map_err(|source| Error::CodelistsDirectoryAccess {
+            path: path(),
+            source,
+        })?;
     if !exist {
-        return Err(PlateauProcessorError::DomainOfDefinitionValidator(
-            "codelists directory not found".to_string(),
-        ));
+        return Err(Error::CodelistsDirectoryNotFound(path()));
     }
     let mut codelist = HashMap::new();
     let lists = storage
         .list_sync(Some(dir.path().as_path()), true)
-        .map_err(|e| PlateauProcessorError::DomainOfDefinitionValidator(format!("{e:?}")))?;
+        .map_err(|source| Error::CodelistsDirectoryList {
+            path: path(),
+            source,
+        })?;
     for file in lists
         .iter()
         .filter(|f| f.is_file() && f.path().extension() == Some("xml".as_ref()))
     {
-        let result = create_detail_codelist(Arc::clone(&storage), file)
-            .map_err(|e| PlateauProcessorError::DomainOfDefinitionValidator(format!("{e:?}")))?;
+        let result = create_detail_codelist(Arc::clone(&storage), file)?;
         codelist.insert(file.to_string(), Arc::new(result));
     }
     Ok(codelist)
 }
 
 fn create_detail_codelist(storage: Arc<Storage>, xml_path: &Uri) -> Result<Codelist> {
+    let path = || xml_path.to_string();
     let xml_content = storage
         .get_sync(xml_path.path().as_path())
-        .map_err(|e| PlateauProcessorError::DomainOfDefinitionValidator(format!("{e:?}")))?;
-    let xml_str = String::from_utf8(xml_content.to_vec())
-        .map_err(|e| PlateauProcessorError::DomainOfDefinitionValidator(format!("{e:?}")))?;
+        .map_err(|source| Error::CodelistRead {
+            path: path(),
+            source,
+        })?;
+    let xml_str = std::str::from_utf8(&xml_content).map_err(|source| Error::CodelistNotUtf8 {
+        path: path(),
+        source,
+    })?;
     let mut result = HashMap::new();
-    let transformer = Transformer::from(xml_str.as_str())
+    let transformer = Transformer::from(xml_str)
         .with_root_namespaces()
-        .map_err(|e| {
-            PlateauProcessorError::DomainOfDefinitionValidator(format!(
-                "Failed to parse root namespaces: {e:?}"
-            ))
+        .map_err(|source| Error::CodelistParse {
+            path: path(),
+            source,
         })?;
     // Codelist dictionaries use the GML 3.1.1 SimpleDictionary profile namespace
     // regardless of the CityGML version, so use the fixed value rather than the
@@ -344,10 +443,9 @@ fn create_detail_codelist(storage: Arc<Storage>, xml_path: &Uri) -> Result<Codel
             }
         })
         .for_each()
-        .map_err(|e| {
-            PlateauProcessorError::DomainOfDefinitionValidator(format!(
-                "Failed to parse codelist: {e:?}"
-            ))
+        .map_err(|source| Error::CodelistParse {
+            path: path(),
+            source,
         })?;
     Ok(result)
 }

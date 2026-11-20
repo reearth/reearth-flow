@@ -8,7 +8,7 @@ use std::time::Instant;
 
 use fastxml::parser;
 use fastxml::schema::types::CompiledSchema;
-use fastxml::transform::{EditableNodeRef, Transformer};
+use fastxml::transform::{EditableNodeRef, TransformError, Transformer};
 use reearth_flow_common::uri::Uri;
 use reearth_flow_diagnostics::{DiagnosticDraft, ErrorCode};
 use reearth_flow_runtime::{
@@ -27,6 +27,7 @@ use super::code_value::{
     CodeValueCheck, CodelistResolver, Codelists, LoadedCodelists, create_codelist,
     get_dir_codelists,
 };
+use super::error::{self, Result};
 use super::extents::{ExtentsCheck, stream_extract_envelope};
 use super::feature_type::{FeatureTypeCheck, valid_feature_types};
 use super::gml_id_format::GmlIdFormatCheck;
@@ -43,9 +44,58 @@ use crate::common::PlateauProfile;
 use crate::common::application_schema_conformance::{
     CityObjectTypes, ConformanceRules, ElementName, element_name,
 };
-use crate::common::errors::{PlateauProcessorError, Result};
+use crate::common::errors::PlateauProcessorError;
 use crate::common::object_list_extractor::OBJECT_LIST_DEFINITIONS_ATTRIBUTE;
 use crate::object_list::ObjectListDefinitions;
+
+/// An error of processing an input feature, other than those of the checks.
+#[derive(thiserror::Error, Debug)]
+pub(super) enum Error {
+    #[error("the input feature has no `{0}` attribute")]
+    MissingAttribute(&'static str),
+    #[error("the `package` attribute is not a string")]
+    PackageNotString,
+    #[error("failed to evaluate codelistsPath: {0}")]
+    CodelistsPathEval(#[source] reearth_flow_types::error::Error),
+    #[error("invalid codelistsPath URI {path}: {source}")]
+    CodelistsPathUri {
+        path: String,
+        #[source]
+        source: reearth_flow_common::Error,
+    },
+    #[error("invalid objectListDefinitions: {0}")]
+    ObjectListDefinitions(#[source] serde_json::Error),
+    #[error("invalid city GML path {path}: {source}")]
+    CityGmlPath {
+        path: String,
+        #[source]
+        source: reearth_flow_common::Error,
+    },
+    #[error("failed to resolve the storage of the city GML {path}: {source}")]
+    CityGmlStorage {
+        path: String,
+        #[source]
+        source: reearth_flow_storage::Error,
+    },
+    #[error("failed to read the city GML {path}: {source}")]
+    CityGmlRead {
+        path: String,
+        #[source]
+        source: object_store::Error,
+    },
+    #[error("the city GML {path} is not UTF-8: {source}")]
+    CityGmlNotUtf8 {
+        path: String,
+        #[source]
+        source: std::str::Utf8Error,
+    },
+    #[error("failed to parse the city GML: {0}")]
+    CityGmlParse(#[source] TransformError),
+    #[error("a cityObjectMember has no child element")]
+    EmptyMember,
+    #[error("a city object has no gml:id")]
+    MissingGmlId,
+}
 
 /// # DomainOfDefinitionValidator Parameters
 ///
@@ -173,7 +223,33 @@ impl Processor for DomainOfDefinitionValidator {
         &mut self,
         ctx: ExecutorContext,
         fw: &ProcessorChannelForwarder,
-    ) -> std::result::Result<(), BoxedError> {
+    ) -> Result<(), BoxedError> {
+        self.process_input(&ctx, fw)
+            .map_err(PlateauProcessorError::from)?;
+        Ok(())
+    }
+
+    fn finish(
+        &mut self,
+        ctx: NodeContext,
+        fw: &ProcessorChannelForwarder,
+    ) -> Result<(), BoxedError> {
+        self.gml_id_uniqueness.finish(&ctx, fw);
+        Ok(())
+    }
+
+    fn name(&self) -> &str {
+        "DomainOfDefinitionValidator"
+    }
+}
+
+impl DomainOfDefinitionValidator {
+    /// Checks the city GML of the input feature of `ctx`.
+    fn process_input(
+        &mut self,
+        ctx: &ExecutorContext,
+        fw: &ProcessorChannelForwarder,
+    ) -> Result<()> {
         let feature = &ctx.feature;
 
         // Collect file name for statistics output
@@ -186,16 +262,8 @@ impl Processor for DomainOfDefinitionValidator {
         let fallback_codelists_path = if let Some(expr) = &self.codelists_path_expr {
             let path = expr
                 .eval_string(feature, ctx.variables.clone())
-                .map_err(|e| {
-                    PlateauProcessorError::DomainOfDefinitionValidator(format!(
-                        "Failed to evaluate codelists_path expression: {e:?}"
-                    ))
-                })?;
-            Some(Uri::from_str(&path).map_err(|e| {
-                PlateauProcessorError::DomainOfDefinitionValidator(format!(
-                    "Invalid codelists_path URI: {e:?}"
-                ))
-            })?)
+                .map_err(Error::CodelistsPathEval)?;
+            Some(Uri::from_str(&path).map_err(|source| Error::CodelistsPathUri { path, source })?)
         } else {
             None
         };
@@ -205,19 +273,15 @@ impl Processor for DomainOfDefinitionValidator {
                 Arc::clone(&ctx.storage_resolver),
                 feature,
                 fallback_codelists_path.as_ref(),
-            )
-            .map_err(|e| PlateauProcessorError::DomainOfDefinitionValidator(format!("{e:?}")))?;
+            )?;
             self.codelists = Some(codelists);
         }
         if self.conformance_rules.is_none() {
             let rules = feature
                 .get(OBJECT_LIST_DEFINITIONS_ATTRIBUTE)
                 .map(|value| {
-                    ObjectListDefinitions::try_from(value.clone()).map_err(|e| {
-                        PlateauProcessorError::DomainOfDefinitionValidator(format!(
-                            "Invalid {OBJECT_LIST_DEFINITIONS_ATTRIBUTE}: {e}"
-                        ))
-                    })
+                    ObjectListDefinitions::try_from(value.clone())
+                        .map_err(Error::ObjectListDefinitions)
                 })
                 .transpose()?
                 .map(|definitions| ConformanceRules::new(definitions, self.profile));
@@ -243,7 +307,7 @@ impl Processor for DomainOfDefinitionValidator {
         };
         let gml_ids = process_feature(
             &inputs,
-            &ctx,
+            ctx,
             fw,
             feature,
             fallback_codelists_path.as_ref(),
@@ -251,19 +315,6 @@ impl Processor for DomainOfDefinitionValidator {
         )?;
         self.gml_id_uniqueness.add_file_gml_ids(gml_ids);
         Ok(())
-    }
-
-    fn finish(
-        &mut self,
-        ctx: NodeContext,
-        fw: &ProcessorChannelForwarder,
-    ) -> std::result::Result<(), BoxedError> {
-        self.gml_id_uniqueness.finish(&ctx, fw);
-        Ok(())
-    }
-
-    fn name(&self) -> &str {
-        "DomainOfDefinitionValidator"
     }
 }
 
@@ -351,32 +402,41 @@ fn process_feature(
         codelists,
         conformance_rules,
     } = *inputs;
-    let package = feature.attributes.get(&Attribute::new("package")).ok_or(
-        PlateauProcessorError::DomainOfDefinitionValidator("package key empty".to_string()),
-    )?;
+    let package = feature
+        .attributes
+        .get(&Attribute::new("package"))
+        .ok_or(Error::MissingAttribute("package"))?;
     let AttributeValue::String(package) = package else {
-        return Err(PlateauProcessorError::DomainOfDefinitionValidator(
-            "package value not string".to_string(),
-        ));
+        return Err(Error::PackageNotString.into());
     };
     let gml_id_format = GmlIdFormatCheck::new(package);
     let valid_feature_types = valid_feature_types(profile, package);
 
-    let city_gml_path = feature.attributes.get(&Attribute::new("path")).ok_or(
-        PlateauProcessorError::DomainOfDefinitionValidator("path key empty".to_string()),
-    )?;
+    let city_gml_path = feature
+        .attributes
+        .get(&Attribute::new("path"))
+        .ok_or(Error::MissingAttribute("path"))?;
 
-    let city_gml_uri = Uri::from_str(&city_gml_path.to_string())
-        .map_err(|e| PlateauProcessorError::DomainOfDefinitionValidator(format!("{e:?}")))?;
+    let path = city_gml_path.to_string();
+    let city_gml_uri = Uri::from_str(&path).map_err(|source| Error::CityGmlPath {
+        path: path.clone(),
+        source,
+    })?;
     let storage = ctx
         .storage_resolver
         .resolve(&city_gml_uri)
-        .map_err(|e| PlateauProcessorError::DomainOfDefinitionValidator(format!("{e:?}")))?;
+        .map_err(|source| Error::CityGmlStorage {
+            path: path.clone(),
+            source,
+        })?;
     let xml_content = storage
         .get_sync(city_gml_uri.path().as_path())
-        .map_err(|e| PlateauProcessorError::DomainOfDefinitionValidator(format!("{e:?}")))?;
+        .map_err(|source| Error::CityGmlRead {
+            path: path.clone(),
+            source,
+        })?;
     let xml_str = std::str::from_utf8(&xml_content)
-        .map_err(|e| PlateauProcessorError::DomainOfDefinitionValidator(format!("{e:?}")))?;
+        .map_err(|source| Error::CityGmlNotUtf8 { path, source })?;
 
     let schema = conformance_rules
         .filter(|rules| rules.package(package, None).is_some())
@@ -490,13 +550,9 @@ fn run_checks(
 
     let transformer = Transformer::from(xml_str)
         .with_root_namespaces()
-        .map_err(|e| {
-            PlateauProcessorError::DomainOfDefinitionValidator(format!(
-                "Failed to parse root namespaces: {e:?}"
-            ))
-        })?;
+        .map_err(Error::CityGmlParse)?;
 
-    let mut stream_error: Option<PlateauProcessorError> = None;
+    let mut stream_error: Option<error::Error> = None;
     transformer
         .on(members_xpath.as_str(), |node| {
             checks.member_count += 1;
@@ -506,9 +562,7 @@ fn run_checks(
 
             let children = node.children();
             let Some(member) = children.first() else {
-                stream_error = Some(PlateauProcessorError::DomainOfDefinitionValidator(
-                    "Failed to get cityObjectMember child".to_string(),
-                ));
+                stream_error = Some(Error::EmptyMember.into());
                 return;
             };
 
@@ -533,7 +587,7 @@ fn run_checks(
                 .check_appearance_member(node, gml_ns);
         })
         .for_each()
-        .map_err(|e| PlateauProcessorError::DomainOfDefinitionValidator(format!("{e:?}")))?;
+        .map_err(Error::CityGmlParse)?;
 
     feature_type
         .borrow_mut()
@@ -560,9 +614,7 @@ fn check_member(
 ) -> Result<()> {
     let gml_ns = context.profile.citygml.gml_ns;
     let Some(gml_id) = member.get_attribute_ns(gml_ns, "id") else {
-        return Err(PlateauProcessorError::DomainOfDefinitionValidator(
-            "Failed to get gml id".to_string(),
-        ));
+        return Err(Error::MissingGmlId.into());
     };
     let feature_type = if member_name.is_standard {
         member.name()
@@ -580,7 +632,7 @@ fn check_member(
     let member_gml_ids =
         member_gml_ids(&context.file_names, &gml_id, &tag, collected.gml_id_entries);
 
-    let result = (|| {
+    let result = (|| -> Result<()> {
         checks.code_value.check_member(
             &context.codelist_resolver,
             &collected.code_space_entries,
