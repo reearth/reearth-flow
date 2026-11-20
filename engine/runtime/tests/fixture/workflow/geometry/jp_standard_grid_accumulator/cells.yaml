@@ -1,0 +1,68 @@
+# yaml-language-server: $schema=https://raw.githubusercontent.com/reearth/reearth-flow/main/engine/schema/workflow.json
+#
+# JP Standard Grid Accumulator end to end: a GeoJSON reader (new-geometry world
+# tags coordinates as Crs(4326)), the accumulator, and one JSON writer per port.
+id: eb376c97-ce85-5cc0-bfd0-887a68c03ff5
+name: "JpStandardGridAccumulatorCells"
+entryGraphId: c97aec4e-2321-57ba-92c1-4f3c88557880
+with:
+  outputPath:
+  rejectedPath:
+graphs:
+  - id: c97aec4e-2321-57ba-92c1-4f3c88557880
+    name: entry_point
+    nodes:
+      - id: 2db962aa-ae0d-5341-98ca-86c7b1ec0eb2
+        name: GeoJsonReader
+        type: action
+        action: GeoJSON Reader
+        with:
+          dataset:
+            type: string
+            value: ram:///fixture/testdata/geometry/jp_standard_grid_accumulator/footprints.geojson
+
+      - id: b23116f7-3d35-5f10-be49-53652da01e68
+        name: GridAccumulator
+        type: action
+        action: JP Standard Grid Accumulator
+        with:
+          meshLevel: mesh1km
+          output: polygon
+          outputAttribute: meshCode
+
+      - id: 7c28be5d-ab55-5dad-90d7-01ddbed20640
+        name: AcceptedWriter
+        type: action
+        action: JSON Writer
+        with:
+          output:
+            type: flowExpr
+            value: 'variables["outputPath"]'
+
+      - id: f6a3e6de-b06f-58bb-bd29-3b436b553e49
+        name: RejectedWriter
+        type: action
+        action: JSON Writer
+        with:
+          output:
+            type: flowExpr
+            value: 'variables["rejectedPath"]'
+
+    edges:
+      - id: f8adfc02-9c0f-5c25-8f52-582abc1bd88c
+        from: 2db962aa-ae0d-5341-98ca-86c7b1ec0eb2
+        to: b23116f7-3d35-5f10-be49-53652da01e68
+        fromPort: features
+        toPort: features
+
+      - id: bbc4aa54-1d6f-5f89-887b-d3c85b1a53df
+        from: b23116f7-3d35-5f10-be49-53652da01e68
+        to: 7c28be5d-ab55-5dad-90d7-01ddbed20640
+        fromPort: features
+        toPort: features
+
+      - id: 73c4b163-3823-5400-a638-22d48dae2615
+        from: b23116f7-3d35-5f10-be49-53652da01e68
+        to: f6a3e6de-b06f-58bb-bd29-3b436b553e49
+        fromPort: rejected
+        toPort: features

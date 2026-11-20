@@ -10,6 +10,8 @@ use super::coordinate_rounder::CoordinateRounderFactory;
 #[cfg(feature = "new-geometry")]
 use super::identifier::GeometryIdentifierFactory;
 #[cfg(feature = "new-geometry")]
+use super::jp_mesh_code_replacer::JPMeshCodeReplacerFactory;
+#[cfg(feature = "new-geometry")]
 use super::mesh_merger::MeshMergerFactory;
 use super::{
     appearance_remover::AppearanceRemoverFactory,
@@ -128,6 +130,8 @@ pub static ACTION_FACTORY_MAPPINGS: Lazy<HashMap<String, NodeKind>> = Lazy::new(
         Box::<CoordinateRounderFactory>::default(),
         #[cfg(feature = "new-geometry")]
         Box::<GeometryIdentifierFactory>::default(),
+        #[cfg(feature = "new-geometry")]
+        Box::<JPMeshCodeReplacerFactory>::default(),
         #[cfg(feature = "new-geometry")]
         Box::<MeshMergerFactory>::default(),
     ];
