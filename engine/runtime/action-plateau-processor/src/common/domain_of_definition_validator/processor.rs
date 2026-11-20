@@ -1268,6 +1268,7 @@ mod tests {
         let mut ids = Vec::<(Value, Value)>::new();
         for (_, feature) in &duplicates {
             assert_eq!(feature["flag"], "GMLID_NotUnique", "{feature}");
+            assert!(feature["duplicateId"].is_string(), "{feature}");
             let id = (feature["gmlId"].clone(), feature["duplicateId"].clone());
             if !ids.contains(&id) {
                 ids.push(id);

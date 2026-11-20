@@ -423,6 +423,10 @@ fn normalize_segments(path: &str) -> String {
             _ => segments.push(segment),
         }
     }
+    // Only the empty root is left, as in `/data/..`.
+    if segments == [""] {
+        return "/".to_string();
+    }
     segments.join("/")
 }
 
@@ -600,6 +604,14 @@ mod tests {
         assert_eq!(
             Uri::for_test("gs://bucket").join("..").unwrap(),
             "gs://bucket"
+        );
+        assert_eq!(
+            Uri::for_test("ram:///data")
+                .join("..")
+                .unwrap()
+                .join("next.gml")
+                .unwrap(),
+            "ram:///next.gml"
         );
         assert_eq!(
             Uri::for_test("https://example.com/data")
