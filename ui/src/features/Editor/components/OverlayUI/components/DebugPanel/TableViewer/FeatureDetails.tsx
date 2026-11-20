@@ -39,7 +39,7 @@ const FeatureDetails: React.FC<Props> = ({ feature, actions, back }) => {
   // Read the values behind the row rather than the row's own cell strings: a
   // cell string is serialized to fit a cell, and a large one is a bounded
   // preview that no longer parses back into the value it came from. See
-  // `_values` in `useDataColumnizer`.
+  // `toSelectedFeature` in the panel's hooks.
   const processedFeature = useMemo(() => {
     if (!feature) return null;
 
