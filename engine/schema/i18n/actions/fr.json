@@ -3356,6 +3356,58 @@
       }
     },
     {
+      "name": "Mesh Merger",
+      "description": "Fusionne en maillages les polygones et maillages des entités partageant les mêmes valeurs d'attributs de regroupement, en conservant chaque face telle quelle, et émet une entité par groupe ou par partie connexe de celui-ci. Le résultat est un maillage triangulaire lorsque tous les polygones et maillages qui y sont fusionnés, y compris ceux des collections, sont des maillages triangulaires, et un maillage polygonal sinon.",
+      "parameterI18n": {
+        "": {
+          "title": "Paramètres du fusionneur de maillages",
+          "description": "Définit quelles entités sont fusionnées ensemble, comment le résultat est divisé et quels attributs il conserve."
+        },
+        "attributeAccumulation": {
+          "title": "Accumulation des attributs",
+          "description": "Attributs que conserve chaque entité fusionnée, tirés des entités fusionnées en elle."
+        },
+        "granularity": {
+          "title": "Granularité",
+          "description": "Finesse avec laquelle chaque groupe est divisé en entités de sortie."
+        },
+        "groupBy": {
+          "title": "Attributs de regroupement",
+          "description": "Attributs dont les valeurs déterminent quelles entités fusionnent ensemble ; les entités qui concordent sur tous forment un groupe. S'ils sont omis, toutes les entités appartiennent à un seul groupe. Ne peut pas inclure `__members` lorsque les attributs sont collectés, car cet attribut contient les valeurs collectées."
+        }
+      },
+      "enumI18n": {
+        "AttributeAccumulation": {
+          "collectAttributes": {
+            "title": "Collecter les attributs",
+            "description": "Conserve les attributs de regroupement et écrit les autres attributs de chaque entité fusionnée dans `__members`, un tableau contenant une table par entité dans l'ordre d'arrivée."
+          },
+          "groupAttributesOnly": {
+            "title": "Conserver uniquement les attributs de regroupement",
+            "description": "Conserve uniquement les attributs de regroupement et supprime tous les autres."
+          },
+          "useOneFeature": {
+            "title": "Utiliser les attributs d'une entité",
+            "description": "Conserve les attributs de la première entité fusionnée et ignore les autres."
+          }
+        },
+        "Granularity": {
+          "edgeConnectedPart": {
+            "title": "Partie connexe par les arêtes",
+            "description": "Émet un maillage par ensemble de faces reliées par des arêtes aux coordonnées exactement égales. Les faces ne se touchant qu'en un sommet forment des maillages distincts."
+          },
+          "group": {
+            "title": "Groupe",
+            "description": "Émet un maillage par groupe."
+          },
+          "manifoldPart": {
+            "title": "Partie variété",
+            "description": "Divise davantage chaque partie connexe par les arêtes afin que chaque arête d'un maillage borde une ou deux de ses faces. Lorsque plusieurs faces se rejoignent sur une arête, seules deux d'entre elles y restent reliées."
+          }
+        }
+      }
+    },
+    {
       "name": "Neighbor Finder",
       "description": "Trouve les entités candidates les plus proches pour chaque entité de base basée sur la proximité spatiale",
       "parameterI18n": {

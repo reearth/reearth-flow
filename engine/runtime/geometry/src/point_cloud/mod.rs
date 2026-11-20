@@ -231,3 +231,5 @@ impl crate::ops::ExtractBoundary for PointCloud {
 
 #[cfg(feature = "new-geometry")]
 crate::unsupported!(PointCloud: Extrude);
+#[cfg(feature = "new-geometry")]
+crate::unsupported!(PointCloud: DecomposeIntoEdgeConnectedParts, DecomposeIntoManifolds);
