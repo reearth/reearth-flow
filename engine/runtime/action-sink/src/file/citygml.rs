@@ -65,7 +65,7 @@ use model::{
 };
 use placement::Placed;
 use properties::{Skip, XmlProperty};
-use writer::CityGmlXmlWriter;
+use writer::{CityGmlXmlWriter, SettledNode, settle_tree};
 
 /// Whether `code` says why a feature was not written, so it is reported even
 /// then, alongside `CitygmlEmptyGeometry` for a feature whose only terrain was
@@ -331,7 +331,12 @@ pub fn write_citygml_documents(
     let mut written = vec![false; features.len()];
     let mut trees: Vec<TopLevel> = Vec::new();
     for tree in joined.top {
-        if !tree.orphan && !tree.object.has_geometry() {
+        // A group is its membership: it is written with or without geometry.
+        #[cfg(feature = "new-geometry")]
+        let group = hierarchy::is_group(schema, &tree.object.class.element);
+        #[cfg(not(feature = "new-geometry"))]
+        let group = false;
+        if !tree.orphan && !group && !tree.object.has_geometry() {
             continue;
         }
         for &source in &tree.roots {
@@ -439,13 +444,28 @@ pub fn write_citygml_documents(
         written.sort_unstable();
         written.dedup();
 
+        // Settled before anything is folded or written. Settling is the last
+        // place an entry can be dropped on its own, by the LOD1 exclusive-shell
+        // rule or for want of a property the class declares, so the envelope,
+        // the `srsName` and the staged images are folded over the settled trees
+        // rather than over what the converter offered. The writer is built from
+        // the `srsName` those folds decide, which is why settling cannot wait
+        // for it.
+        let mut settled: Vec<SettledNode> = Vec::with_capacity(top.len());
+        let mut outcomes: Vec<writer::WriteOutcome> = Vec::with_capacity(top.len());
+        for object in top {
+            let (tree, outcome) = settle_tree(object, schema, prefixes)?;
+            settled.push(tree);
+            outcomes.push(outcome);
+        }
+
         // Folded over the features that reach the file only: a copy the join
         // left out may hold another CRS, a wider extent or a texture the
         // document never references.
         let mut envelope: Option<BoundingEnvelope> = None;
+        #[cfg_attr(feature = "new-geometry", allow(unused_mut))]
         let mut crs = CrsCoverage::default();
-        let mut textures: Vec<TextureRef> = Vec::new();
-        let mut texture_keys: HashSet<String> = HashSet::new();
+        #[cfg(not(feature = "new-geometry"))]
         for object in written.iter().map(|&source| &converted[source]) {
             if let Some(object_envelope) = &object.envelope {
                 match &mut envelope {
@@ -454,7 +474,51 @@ pub fn write_citygml_documents(
                 }
             }
             crs = crs.and(object.crs);
+        }
+
+        // The source keys of the objects this document writes, and every id
+        // its links name. Both come out of one pass: the envelope below and
+        // the link reservation further down must agree on what the document
+        // writes, so they read the same two sets rather than each building
+        // their own.
+        #[cfg(feature = "new-geometry")]
+        let (written_keys, link_targets): (HashSet<String>, Vec<String>) = {
+            let mut keys = HashSet::new();
+            let mut targets = Vec::new();
+            for object in &settled {
+                collect_links(object, prefixes, &mut keys, &mut targets);
+            }
+            (keys, targets)
+        };
+
+        // Over the geometry the trees write, not each feature's own: a group's
+        // feature also carries its members' geometry, which is written where
+        // the members live, or nowhere when they are not in the document.
+        #[cfg(feature = "new-geometry")]
+        let mut referenced_textures: HashSet<String> = HashSet::new();
+        #[cfg(feature = "new-geometry")]
+        for object in &settled {
+            let writes =
+                |entry: &model::GeometryEntry| writes_entry(entry, &written_keys, schema, prefixes);
+            fold_tree_envelope(object, &writes, &mut envelope);
+            // The `srsName` answers for the coordinates the file carries, so a
+            // member's CRS counts only where the member's geometry is written.
+            fold_tree_crs(object, &writes, &mut crs);
+            // Likewise an image: staging is strict, so an unreadable one must
+            // not fail a document that never names it.
+            fold_tree_textures(object, &converted, &writes, &mut referenced_textures);
+        }
+
+        // In feature order, so one image shared by several features is staged
+        // once and under the first key a single document would see.
+        let mut textures: Vec<TextureRef> = Vec::new();
+        let mut texture_keys: HashSet<String> = HashSet::new();
+        for object in written.iter().map(|&source| &converted[source]) {
             for texture in &object.textures {
+                #[cfg(feature = "new-geometry")]
+                if !referenced_textures.contains(&texture.key) {
+                    continue;
+                }
                 if texture_keys.insert(texture.key.clone()) {
                     textures.push(texture.clone());
                 }
@@ -462,7 +526,7 @@ pub fn write_citygml_documents(
         }
 
         let mut code_spaces: Vec<String> = Vec::new();
-        for object in &top {
+        for object in &settled {
             for_each_property(object, &mut |source, property| {
                 collect_code_spaces(property, &stageable[source], &mut code_spaces)
             });
@@ -477,7 +541,7 @@ pub fn write_citygml_documents(
         )?;
         let code_space_remap =
             stage_codelists(&code_spaces, destination, storage_resolver, diagnostics)?;
-        for object in &mut top {
+        for object in &mut settled {
             for_each_property_mut(object, &mut |property| {
                 remap_code_spaces(property, &code_space_remap)
             });
@@ -494,10 +558,55 @@ pub fn write_citygml_documents(
             xml_writer.set_uri_remap(uri_remap);
             xml_writer.set_schema(schema, prefixes.clone());
 
+            if settled.iter().any(|object| writes_group(object, schema)) {
+                xml_writer.declare_groups();
+            }
+
+            // Every object's id is settled before anything is written, so a
+            // link can name an object written after it, as a group's members
+            // are. The ids links name that no written object has are kept off
+            // first, so the writer never mints one for an object the link does
+            // not mean.
+            #[cfg(feature = "new-geometry")]
+            {
+                for target in link_targets
+                    .iter()
+                    .filter(|target| !written_keys.contains(*target))
+                {
+                    xml_writer.reserve_link_target(target);
+                }
+                let claimed = xml_writer.claim_object_ids(&mut settled);
+                let mut unresolved = std::collections::BTreeSet::new();
+                let mut ambiguous = std::collections::BTreeSet::new();
+                for object in &mut settled {
+                    resolve_links(object, &claimed, prefixes, &mut |source, kept| {
+                        match kept {
+                            LinkKept::NotWritten => unresolved.insert(source),
+                            LinkKept::Ambiguous => ambiguous.insert(source),
+                        };
+                    });
+                }
+                if let Some(diagnostics) = diagnostics {
+                    for source in unresolved {
+                        diagnostics.report_warn(
+                            ErrorCode::CitygmlLinkTargetNotWritten,
+                            Some(features[source].id),
+                        );
+                    }
+                    for source in ambiguous {
+                        diagnostics.report_warn(
+                            ErrorCode::CitygmlLinkTargetAmbiguous,
+                            Some(features[source].id),
+                        );
+                    }
+                }
+            }
+
             xml_writer.write_header(envelope.as_ref(), ade_locations)?;
 
-            for object in top {
-                let outcome = xml_writer.write_object_tree(object, &appearances)?;
+            for (object, settled_outcome) in settled.into_iter().zip(outcomes) {
+                let outcome =
+                    xml_writer.write_settled_tree(object, settled_outcome, &appearances)?;
                 for (source, dropped) in outcome.lod1_surfaces_dropped {
                     *lod1_surfaces_dropped.entry(source).or_default() += dropped;
                 }
@@ -675,7 +784,7 @@ fn place_properties(
 
 /// Call `f` on every placed property of `object` and of the objects nested
 /// in it, parents first, with the source of the object holding it.
-fn for_each_property(object: &ObjectNode, f: &mut impl FnMut(usize, &XmlProperty)) {
+fn for_each_property(object: &SettledNode, f: &mut impl FnMut(usize, &XmlProperty)) {
     for placed in &object.properties {
         f(object.source, &placed.property);
     }
@@ -684,8 +793,717 @@ fn for_each_property(object: &ObjectNode, f: &mut impl FnMut(usize, &XmlProperty
     }
 }
 
+/// Whether the document writes `entry`'s owner.
+///
+/// A member names the city object its geometry belongs to. When that object is
+/// not one this document writes, as a group's member filtered out upstream is,
+/// the geometry reaches no element, so it is left out of the envelope too.
+/// Geometry owned by something that is not a city object, such as an ADE data
+/// object, is written on the city object holding it, so it counts.
+///
+/// A key that reaches here named an object the tree holds: geometry placed
+/// anywhere but on the object its owner names is the target's own by then,
+/// with no key left to answer for ([`hierarchy::build_feature_objects`]).
+/// Unmatched geometry a feature takes over, as a wall's is when the reader
+/// hoists no `gml:id`, therefore counts, which is what the document writes.
+///
+/// The entry is one a settled tree still carries, and every one of those is
+/// written, so this answers for the entry as well as for its owner. Entries
+/// settling drops on their own, a `lod1MultiSurface` losing to a `lod1Solid`
+/// under the exclusive-shell rule or one whose class declares no property for
+/// its LOD and type, are gone before the folds see them.
+#[cfg(feature = "new-geometry")]
+fn writes_entry(
+    entry: &model::GeometryEntry,
+    written_keys: &HashSet<String>,
+    schema: &SchemaSet,
+    prefixes: &Prefixes,
+) -> bool {
+    let Some(key) = entry.owner.key.as_deref() else {
+        return true;
+    };
+    if written_keys.contains(key) {
+        return true;
+    }
+    let Some(element) = entry
+        .owner
+        .feature_type
+        .as_deref()
+        .and_then(|name| name.split_once(':'))
+        .and_then(|(prefix, local)| {
+            prefixes
+                .namespace(prefix)
+                .map(|namespace| QName::new(namespace, local))
+        })
+    else {
+        return true;
+    };
+    !placement::is_city_object(schema, &element)
+}
+
+/// Fold the CRS of every written entry in `object`'s tree into `crs`.
+///
+/// Per entry, not per feature: a group's feature carries its members'
+/// geometry, and a member written in another document, or in none, must not
+/// put its CRS on this document's `srsName`. A document that writes no
+/// coordinates is left at [`CrsCoverage::NoCoordinates`], which is the
+/// no-coordinates path rather than an error, so a group-only document still
+/// writes its links. Two CRSs that *are* written still make `Mixed`, which
+/// the shell rejects.
+#[cfg(feature = "new-geometry")]
+fn fold_tree_crs(
+    object: &SettledNode,
+    writes: &impl Fn(&model::GeometryEntry) -> bool,
+    crs: &mut CrsCoverage,
+) {
+    for entry in &object.entries {
+        if writes(entry) {
+            *crs = crs.and(entry.crs);
+        }
+    }
+    for nested in &object.children {
+        fold_tree_crs(&nested.object, writes, crs);
+    }
+}
+
+/// Collect the staging keys of the images the written surfaces of `object`'s
+/// tree reference.
+///
+/// Staging is strict: an image that cannot be read fails the document. A
+/// retained group feature carries its members' appearance, so without this an
+/// unreadable image belonging to a member whose geometry is not written would
+/// fail a document that never references it. Surface indices are resolved
+/// against `converted[object.source]`, the palette the writer itself uses for
+/// that object's surfaces.
+#[cfg(feature = "new-geometry")]
+fn fold_tree_textures(
+    object: &SettledNode,
+    converted: &[model::ConvertedCityObject],
+    writes: &impl Fn(&model::GeometryEntry) -> bool,
+    used: &mut HashSet<String>,
+) {
+    let palette = converted.get(object.source);
+    let mut note = |surfaces: &[model::GmlSurface], used: &mut HashSet<String>| {
+        for surface in surfaces {
+            let Some(index) = surface.texture_idx else {
+                continue;
+            };
+            if let Some(texture) = palette.and_then(|one| one.textures.get(index as usize)) {
+                used.insert(texture.key.clone());
+            }
+        }
+    };
+    fn solid(
+        solid: &model::GmlSolid,
+        note: &mut impl FnMut(&[model::GmlSurface], &mut HashSet<String>),
+        used: &mut HashSet<String>,
+    ) {
+        note(&solid.exterior, used);
+        for shell in &solid.interiors {
+            note(shell, used);
+        }
+    }
+    for entry in &object.entries {
+        if !writes(entry) {
+            continue;
+        }
+        match &entry.element {
+            model::GmlElement::Solid(one) => solid(one, &mut note, used),
+            model::GmlElement::MultiSolid { solids, .. } => {
+                for one in solids {
+                    solid(one, &mut note, used);
+                }
+            }
+            model::GmlElement::MultiSurface { surfaces, .. } => note(surfaces, used),
+            // A `dem:tin` writes no appearance, and a curve carries none.
+            model::GmlElement::TriangulatedSurface { .. }
+            | model::GmlElement::MultiCurve { .. } => {}
+        }
+    }
+    for nested in &object.children {
+        fold_tree_textures(&nested.object, converted, writes, used);
+    }
+}
+
+/// Grow `envelope` to cover every coordinate of `object`'s tree.
+#[cfg(feature = "new-geometry")]
+fn fold_tree_envelope(
+    object: &SettledNode,
+    writes: &impl Fn(&model::GeometryEntry) -> bool,
+    envelope: &mut Option<BoundingEnvelope>,
+) {
+    fn fold(coords: &[[f64; 3]], envelope: &mut Option<BoundingEnvelope>) {
+        for &point in coords {
+            let point = BoundingEnvelope {
+                lower: point,
+                upper: point,
+            };
+            match envelope {
+                Some(existing) => existing.merge(&point),
+                None => *envelope = Some(point),
+            }
+        }
+    }
+    fn surfaces(surfaces: &[model::GmlSurface], envelope: &mut Option<BoundingEnvelope>) {
+        for surface in surfaces {
+            fold(&surface.exterior, envelope);
+            for interior in &surface.interiors {
+                fold(interior, envelope);
+            }
+        }
+    }
+    fn solid(solid: &model::GmlSolid, envelope: &mut Option<BoundingEnvelope>) {
+        surfaces(&solid.exterior, envelope);
+        for shell in &solid.interiors {
+            surfaces(shell, envelope);
+        }
+    }
+    for entry in &object.entries {
+        if !writes(entry) {
+            continue;
+        }
+        match &entry.element {
+            model::GmlElement::Solid(one) => solid(one, envelope),
+            model::GmlElement::MultiSolid { solids, .. } => {
+                for one in solids {
+                    solid(one, envelope);
+                }
+            }
+            model::GmlElement::MultiSurface { surfaces: all, .. } => surfaces(all, envelope),
+            model::GmlElement::MultiCurve { curves, .. } => {
+                for curve in curves {
+                    fold(curve, envelope);
+                }
+            }
+            // The corners the triangles use, not the whole pool, which may
+            // hold positions the mesh shared with no written triangle.
+            model::GmlElement::TriangulatedSurface { triangles } => {
+                for corners in triangles.corners() {
+                    fold(&corners, envelope);
+                }
+            }
+        }
+    }
+    for nested in &object.children {
+        fold_tree_envelope(&nested.object, writes, envelope);
+    }
+}
+
+/// A group's feature carries its members' geometry and appearance, so the
+/// document's `srsName` and its staged images are folded over the entries the
+/// trees actually write. Both are pinned here.
+#[cfg(all(test, feature = "new-geometry"))]
+mod written_geometry_tests {
+    use super::*;
+    use crate::file::citygml::classes::CityClass;
+    use crate::file::citygml::model::{
+        AppearanceBundle, ConvertedCityObject, EntryOwner, GeometryEntry, GmlElement, GmlSurface,
+        ObjectNode, TextureRef, TextureSource,
+    };
+    use reearth_flow_geometry::coordinate::EpsgCode;
+
+    fn epsg(code: u16) -> EpsgCode {
+        EpsgCode::new(code)
+    }
+
+    fn surface(texture: Option<u32>) -> GmlSurface {
+        GmlSurface {
+            id: None,
+            exterior: vec![[0.0, 0.0, 0.0]],
+            interiors: Vec::new(),
+            material_idx: None,
+            texture_idx: texture,
+            uv_exterior: Vec::new(),
+            uv_interiors: Vec::new(),
+        }
+    }
+
+    fn entry(owner_key: &str, crs: CrsCoverage, texture: Option<u32>) -> GeometryEntry {
+        GeometryEntry {
+            crs,
+            lod: 2,
+            property: None,
+            element: GmlElement::MultiSurface {
+                id: None,
+                surfaces: vec![surface(texture)],
+            },
+            owner: EntryOwner {
+                key: Some(owner_key.to_string()),
+                feature_type: None,
+            },
+        }
+    }
+
+    /// A settled tree holding `entries`, which is what the folds take: the
+    /// document settles every tree before it folds anything over one.
+    fn object(entries: Vec<GeometryEntry>) -> SettledNode {
+        SettledNode {
+            class: CityClass::generic(),
+            key: None,
+            gml_id: None,
+            entries,
+            properties: Vec::new(),
+            children: Vec::new(),
+            source: 0,
+        }
+    }
+
+    /// Only the entry whose owner is written counts.
+    fn writes(entry: &model::GeometryEntry) -> bool {
+        entry.owner.key.as_deref() != Some("absent-member")
+    }
+
+    fn feature(textures: Vec<&str>) -> ConvertedCityObject {
+        ConvertedCityObject {
+            geometries: Vec::new(),
+            appearance: AppearanceBundle::default(),
+            crs: CrsCoverage::default(),
+            textures: textures
+                .into_iter()
+                .map(|key| TextureRef {
+                    key: key.to_string(),
+                    source: TextureSource::Uri(
+                        url::Url::parse("file:///textures/image.png").expect("a valid url"),
+                    ),
+                })
+                .collect(),
+            omissions: Vec::new(),
+        }
+    }
+
+    /// A whole CityGML 2.0 schema, so settling can place entries on the
+    /// properties a real class declares and apply the LOD1 shell rule.
+    fn citygml2() -> (&'static SchemaSet, Prefixes) {
+        let schema = SchemaSet::core().expect("the bundled CityGML 2.0 schemas");
+        (schema, Prefixes::citygml2())
+    }
+
+    /// An entry already naming the property it belongs on, as the LOD1
+    /// exclusive-shell rule meets them: a `lod1Solid` keeps a `lod1MultiSurface`
+    /// out of the document.
+    fn shell_entry(property: &str, crs: CrsCoverage, texture: Option<u32>) -> GeometryEntry {
+        let element = if property.ends_with("Solid") {
+            GmlElement::Solid(model::GmlSolid {
+                id: None,
+                exterior: vec![surface(texture)],
+                interiors: Vec::new(),
+            })
+        } else {
+            GmlElement::MultiSurface {
+                id: None,
+                surfaces: vec![surface(texture)],
+            }
+        };
+        GeometryEntry {
+            crs,
+            lod: 1,
+            property: Some(property.to_string()),
+            element,
+            owner: EntryOwner::default(),
+        }
+    }
+
+    /// One building carrying both shell entries, settled as the document
+    /// settles it.
+    fn settled_building(entries: Vec<GeometryEntry>) -> writer::SettledNode {
+        let (schema, prefixes) = citygml2();
+        let class = crate::file::citygml::classes::resolve("bldg:Building", &prefixes, schema)
+            .expect("the building class");
+        let node = ObjectNode {
+            class,
+            key: None,
+            gml_id: None,
+            geometries: entries,
+            properties: Vec::new(),
+            children: Vec::new(),
+            source: 0,
+        };
+        let (settled, outcome) = settle_tree(node, schema, &prefixes).expect("the tree settles");
+        assert_eq!(
+            outcome.lod1_surfaces_dropped.get(&0).copied(),
+            Some(1),
+            "the fixture is only a regression test while settling drops the surface"
+        );
+        settled
+    }
+
+    fn folded_crs(object: &SettledNode) -> CrsCoverage {
+        let mut crs = CrsCoverage::default();
+        fold_tree_crs(object, &writes, &mut crs);
+        crs
+    }
+
+    fn staged(object: &SettledNode, converted: &[ConvertedCityObject]) -> Vec<String> {
+        let mut used = HashSet::new();
+        fold_tree_textures(object, converted, &writes, &mut used);
+        let mut keys: Vec<String> = used.into_iter().collect();
+        keys.sort();
+        keys
+    }
+
+    /// The CRS of a member the document does not write stays out of `srsName`.
+    /// Folding it in made a group carrying members in two CRSs `Mixed`, which
+    /// the shell rejects, failing a document whose written coordinates are all
+    /// in one CRS.
+    #[test]
+    fn an_unwritten_members_crs_does_not_reach_the_document() {
+        let node = object(vec![
+            entry("written-member", CrsCoverage::Single(epsg(6697)), None),
+            entry("absent-member", CrsCoverage::Single(epsg(6677)), None),
+        ]);
+
+        assert_eq!(folded_crs(&node), CrsCoverage::Single(epsg(6697)));
+    }
+
+    /// Settling is the last place an entry can be dropped on its own, and the
+    /// `srsName` answers for what it leaves. A `lod1MultiSurface` that loses to
+    /// a `lod1Solid` under the exclusive-shell rule reaches no element, so its
+    /// CRS folded in made a document `Mixed` over coordinates it never wrote,
+    /// which the shell rejects.
+    #[test]
+    fn a_crs_settling_drops_does_not_reach_the_document() {
+        let settled = settled_building(vec![
+            shell_entry("lod1Solid", CrsCoverage::Single(epsg(6697)), None),
+            shell_entry("lod1MultiSurface", CrsCoverage::Single(epsg(6677)), None),
+        ]);
+
+        let mut crs = CrsCoverage::default();
+        fold_tree_crs(&settled, &|_| true, &mut crs);
+
+        assert_eq!(crs, CrsCoverage::Single(epsg(6697)));
+    }
+
+    /// The same for an image: staging is strict, so a texture on a surface
+    /// settling drops would fail a document that never references it.
+    #[test]
+    fn an_image_on_a_surface_settling_drops_is_not_staged() {
+        let settled = settled_building(vec![
+            shell_entry("lod1Solid", CrsCoverage::default(), None),
+            shell_entry("lod1MultiSurface", CrsCoverage::default(), Some(0)),
+        ]);
+        let converted = vec![feature(vec!["dropped.png"])];
+
+        let mut used = HashSet::new();
+        fold_tree_textures(&settled, &converted, &|_| true, &mut used);
+
+        assert!(used.is_empty(), "staged {used:?}");
+    }
+
+    /// A group-only document writes its links rather than failing: with no
+    /// written coordinates the coverage is the no-coordinates path, not an
+    /// error about a CRS no written coordinate is in.
+    #[test]
+    fn a_document_writing_no_coordinates_has_no_coverage() {
+        let node = object(vec![entry(
+            "absent-member",
+            CrsCoverage::Single(epsg(6677)),
+            None,
+        )]);
+
+        assert_eq!(folded_crs(&node), CrsCoverage::NoCoordinates);
+    }
+
+    /// The check that matters still bites: two CRSs that are both written are
+    /// `Mixed`, which the shell turns into an error.
+    #[test]
+    fn two_written_crss_are_still_mixed() {
+        let node = object(vec![
+            entry("written-member", CrsCoverage::Single(epsg(6697)), None),
+            entry("other-member", CrsCoverage::Single(epsg(6677)), None),
+        ]);
+
+        assert!(matches!(folded_crs(&node), CrsCoverage::Mixed { .. }));
+    }
+
+    /// Staging is strict, so an image belonging to a member whose geometry is
+    /// not written must not be staged: an unreadable one would fail a document
+    /// that never references it.
+    #[test]
+    fn an_image_only_an_unwritten_member_references_is_not_staged() {
+        let node = object(vec![
+            entry("written-member", CrsCoverage::default(), Some(0)),
+            entry("absent-member", CrsCoverage::default(), Some(1)),
+        ]);
+        let converted = vec![feature(vec!["written.png", "absent.png"])];
+
+        assert_eq!(staged(&node, &converted), ["written.png"]);
+    }
+
+    /// An image a written surface references is still staged, so the strict
+    /// failure it carries is kept.
+    #[test]
+    fn an_image_a_written_surface_references_is_staged() {
+        let node = object(vec![entry(
+            "written-member",
+            CrsCoverage::default(),
+            Some(1),
+        )]);
+        let converted = vec![feature(vec!["other.png", "wall.png"])];
+
+        assert_eq!(staged(&node, &converted), ["wall.png"]);
+    }
+}
+
+/// The document envelope is folded here rather than per feature, so the
+/// extents it covers are pinned here too.
+#[cfg(all(test, feature = "new-geometry"))]
+mod envelope_tests {
+    use super::*;
+    use crate::file::citygml::classes::CityClass;
+    use crate::file::citygml::model::{
+        EntryOwner, GeometryEntry, GmlElement, GmlSolid, GmlSurface, NestedObject, ObjectNode,
+    };
+
+    fn ring(points: &[[f64; 3]]) -> GmlSurface {
+        GmlSurface {
+            id: None,
+            exterior: points.to_vec(),
+            interiors: Vec::new(),
+            material_idx: None,
+            texture_idx: None,
+            uv_exterior: Vec::new(),
+            uv_interiors: Vec::new(),
+        }
+    }
+
+    fn entry(owner_key: Option<&str>, element: GmlElement) -> GeometryEntry {
+        GeometryEntry {
+            crs: Default::default(),
+            lod: 2,
+            property: None,
+            element,
+            owner: EntryOwner {
+                key: owner_key.map(str::to_string),
+                feature_type: None,
+            },
+        }
+    }
+
+    fn object(entries: Vec<GeometryEntry>) -> SettledNode {
+        SettledNode {
+            class: CityClass::generic(),
+            key: None,
+            gml_id: None,
+            entries,
+            properties: Vec::new(),
+            children: Vec::new(),
+            source: 0,
+        }
+    }
+
+    fn folded(object: &SettledNode) -> Option<BoundingEnvelope> {
+        let mut envelope = None;
+        fold_tree_envelope(object, &|_| true, &mut envelope);
+        envelope
+    }
+
+    /// Every emitted ordinate of a surface counts, interior rings included.
+    #[test]
+    fn the_envelope_covers_every_coordinate_of_a_multi_surface() {
+        let node = object(vec![entry(
+            None,
+            GmlElement::MultiSurface {
+                id: None,
+                surfaces: vec![
+                    ring(&[[35.0, 139.0, 0.0], [35.1, 139.1, 0.0]]),
+                    ring(&[[36.1, 140.1, 2.0]]),
+                ],
+            },
+        )]);
+
+        let envelope = folded(&node).unwrap();
+        assert_eq!(envelope.lower, [35.0, 139.0, 0.0]);
+        assert_eq!(envelope.upper, [36.1, 140.1, 2.0]);
+    }
+
+    /// A solid's void is written to the file, so its corners bound it too.
+    #[test]
+    fn a_solids_interior_shell_widens_the_envelope() {
+        let node = object(vec![entry(
+            None,
+            GmlElement::Solid(GmlSolid {
+                id: None,
+                exterior: vec![ring(&[[35.0, 139.0, 0.0]])],
+                interiors: vec![vec![ring(&[[35.1 + 0.01, 139.1 + 0.01, 0.0]])]],
+            }),
+        )]);
+
+        let envelope = folded(&node).unwrap();
+        assert_eq!(envelope.lower, [35.0, 139.0, 0.0]);
+        assert_eq!(envelope.upper, [35.1 + 0.01, 139.1 + 0.01, 0.0]);
+    }
+
+    /// Geometry nested objects carry is written under its parent, so it is
+    /// part of the same envelope.
+    #[test]
+    fn a_nested_objects_geometry_reaches_the_envelope() {
+        let mut node = object(Vec::new());
+        node.children.push(writer::SettledChild {
+            slot: 0,
+            property: QName::new("ns", "boundedBy"),
+            object: object(vec![entry(
+                None,
+                GmlElement::MultiCurve {
+                    id: None,
+                    curves: vec![vec![[1.0, 2.0, 3.0]]],
+                },
+            )]),
+        });
+
+        assert_eq!(folded(&node).unwrap().upper, [1.0, 2.0, 3.0]);
+    }
+
+    /// The filter is the whole point of folding here: a group carries its
+    /// members' geometry, and a member the document leaves out must not widen
+    /// the envelope over a building that is not in the file.
+    #[test]
+    fn geometry_the_filter_rejects_is_left_out() {
+        let node = object(vec![
+            entry(
+                Some("kept"),
+                GmlElement::MultiCurve {
+                    id: None,
+                    curves: vec![vec![[1.0, 1.0, 1.0]]],
+                },
+            ),
+            entry(
+                Some("filtered"),
+                GmlElement::MultiCurve {
+                    id: None,
+                    curves: vec![vec![[99.0, 99.0, 99.0]]],
+                },
+            ),
+        ]);
+
+        let mut envelope = None;
+        fold_tree_envelope(
+            &node,
+            &|entry| entry.owner.key.as_deref() != Some("filtered"),
+            &mut envelope,
+        );
+
+        let envelope = envelope.unwrap();
+        assert_eq!(envelope.lower, [1.0, 1.0, 1.0]);
+        assert_eq!(
+            envelope.upper,
+            [1.0, 1.0, 1.0],
+            "the filtered member must not reach the envelope"
+        );
+    }
+
+    /// An object with nothing written leaves no `gml:boundedBy` at all.
+    #[test]
+    fn an_object_with_no_written_geometry_folds_to_nothing() {
+        let node = object(vec![entry(
+            Some("filtered"),
+            GmlElement::MultiCurve {
+                id: None,
+                curves: vec![vec![[1.0, 1.0, 1.0]]],
+            },
+        )]);
+
+        let mut envelope = None;
+        fold_tree_envelope(&node, &|_| false, &mut envelope);
+        assert!(envelope.is_none());
+    }
+}
+
+/// Whether `object`, or an object nested in it, is a city object group.
+fn writes_group(object: &SettledNode, schema: &SchemaSet) -> bool {
+    hierarchy::is_group(schema, &object.class.element)
+        || object
+            .children
+            .iter()
+            .any(|nested| writes_group(&nested.object, schema))
+}
+
+/// The `gml:id` an object link in `property` names, if it is one: a
+/// reference property, such as `grp:groupMember`, whose `xlink:href` names a
+/// `gml:id` in the same document.
+#[cfg(feature = "new-geometry")]
+fn link_target<'p>(property: &'p XmlProperty, prefixes: &Prefixes) -> Option<&'p str> {
+    if !hierarchy::is_reference(&property.qname(prefixes)) {
+        return None;
+    }
+    property
+        .attr("xlink:href")
+        .and_then(hierarchy::local_link_target)
+}
+
+/// Adds the source key of every object in `object`'s tree to `keys`, and the
+/// target of every object link in it to `targets`.
+#[cfg(feature = "new-geometry")]
+fn collect_links(
+    object: &SettledNode,
+    prefixes: &Prefixes,
+    keys: &mut HashSet<String>,
+    targets: &mut Vec<String>,
+) {
+    if let Some(key) = &object.key {
+        keys.insert(key.clone());
+    }
+    for placed in &object.properties {
+        if let Some(target) = link_target(&placed.property, prefixes) {
+            targets.push(target.to_owned());
+        }
+    }
+    for nested in &object.children {
+        collect_links(&nested.object, prefixes, keys, targets);
+    }
+}
+
+/// Why a link was left as the source wrote it.
+#[cfg(feature = "new-geometry")]
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+enum LinkKept {
+    /// No object the document writes has that `gml:id`.
+    NotWritten,
+    /// Several do, so which one the link means cannot be told.
+    Ambiguous,
+}
+
+/// Point each object link in `object`'s tree at the `gml:id` its target is
+/// written with.
+///
+/// `claimed` says what each `gml:id` names among the objects the document
+/// writes. A link to a key no written object has is kept as given, as
+/// citygml4j and the 3D City Database exporter write group members they
+/// cannot check, so the member's identity is not lost. A key several written
+/// objects hold is kept the same way: rewriting it would point the link at
+/// whichever object was claimed first, which is a link to the wrong element
+/// rather than one a reader can see is unresolved. Either way `kept` is told
+/// the feature the link belongs to and which of the two it was.
+#[cfg(feature = "new-geometry")]
+fn resolve_links(
+    object: &mut SettledNode,
+    claimed: &writer::ClaimedIds,
+    prefixes: &Prefixes,
+    kept: &mut impl FnMut(usize, LinkKept),
+) {
+    for placed in &mut object.properties {
+        let Some(target) = link_target(&placed.property, prefixes) else {
+            continue;
+        };
+        match claimed.target(target) {
+            writer::LinkTarget::Written(id) => {
+                let href = format!("#{id}");
+                for (name, value) in &mut placed.property.attrs {
+                    if name == "xlink:href" {
+                        *value = href.clone();
+                    }
+                }
+            }
+            writer::LinkTarget::NotWritten => kept(object.source, LinkKept::NotWritten),
+            writer::LinkTarget::Ambiguous => kept(object.source, LinkKept::Ambiguous),
+        }
+    }
+    for nested in &mut object.children {
+        resolve_links(&mut nested.object, claimed, prefixes, kept);
+    }
+}
+
 /// [`for_each_property`], changing each property.
-fn for_each_property_mut(object: &mut ObjectNode, f: &mut impl FnMut(&mut XmlProperty)) {
+fn for_each_property_mut(object: &mut SettledNode, f: &mut impl FnMut(&mut XmlProperty)) {
     for placed in &mut object.properties {
         f(&mut placed.property);
     }
@@ -4051,6 +4869,35 @@ mod hierarchy_tests {
     /// `gml:id`, so nothing matches the geometry to its object: it is written
     /// on the feature and reported. The objects keep their data, with minted
     /// ids, and an object left with no data is not written and is reported.
+    /// Geometry a feature takes over, because the object its owner names is
+    /// not in the feature's attribute tree, is written, so the document has to
+    /// answer for it.
+    ///
+    /// The document folded the envelope, the `srsName` and the staged images
+    /// over each entry's owner key, and an owner the document does not write
+    /// counted for nothing. An owner that matched nothing is exactly that, so
+    /// this building, whose every coordinate arrives on a wall, a window and a
+    /// part the reader hoisted no `gml:id` for, went out with its geometry
+    /// written, no `gml:boundedBy` at all, and `srsName` left at the default
+    /// rather than the CRS those coordinates are in.
+    #[test]
+    fn geometry_the_feature_takes_over_is_covered_by_the_document() {
+        let features = read(&[("hierarchy.gml", &building())], &[], false, None);
+
+        let (xml, _) = write(features, json!({}));
+
+        assert_eq!(
+            inside(&xml, "<gml:Envelope", "</gml:Envelope>"),
+            "<gml:lowerCorner>35 135 0</gml:lowerCorner>\
+             <gml:upperCorner>35.001 135.001 2</gml:upperCorner>",
+            "{xml}"
+        );
+        assert!(
+            xml.contains(r#"srsName="http://www.opengis.net/def/crs/EPSG/0/6697" srsDimension="3"><gml:surfaceMember>"#),
+            "{xml}"
+        );
+    }
+
     #[test]
     fn without_hoisted_ids_nested_geometry_goes_on_the_feature_and_is_reported() {
         let features = read(&[("hierarchy.gml", &building())], &[], false, None);
@@ -4211,7 +5058,9 @@ mod hierarchy_tests {
     }
 
     #[test]
-    fn a_reference_property_is_still_reported_as_not_written() {
+    fn an_object_held_only_inside_a_reference_is_written_as_a_link_and_reported() {
+        // The reader gives an inline object and the copy it inlines for an
+        // xlink:href the same shape, so both are written as a link.
         let gml = format!(
             r#"{HEADER}<bldg:Building gml:id="b1">{own}
 <core:generalizesTo><bldg:Building gml:id="g1"><gml:name>generalized</gml:name></bldg:Building></core:generalizesTo>
@@ -4219,15 +5068,23 @@ mod hierarchy_tests {
             own = surface("lod2MultiSurface", 0),
         );
         let features = read(&[("hierarchy.gml", &gml)], &[], true, None);
+        let b1 = features[0].id.to_string();
 
         let (xml, diagnostics) = write(features, json!({}));
 
         assert!(xml.contains(r#"<bldg:Building gml:id="b1">"#), "{xml}");
-        assert!(!xml.contains("generalizesTo"), "{xml}");
-        assert!(!xml.contains("g1"), "{xml}");
+        assert!(
+            xml.contains(r##"<core:generalizesTo xlink:href="#g1"/>"##),
+            "{xml}"
+        );
+        assert!(!xml.contains("generalized"), "{xml}");
+        assert_eq!(
+            reported_for(&diagnostics, ErrorCode::CitygmlLinkTargetNotWritten),
+            [b1]
+        );
         assert_eq!(
             reported(&diagnostics, ErrorCode::CitygmlNestedObjectNotWritten),
-            1
+            0
         );
     }
 
@@ -4866,7 +5723,6 @@ mod hierarchy_tests {
         );
         let features = read(&[("group.gml", &gml)], &[], true, None);
         assert_eq!(features.len(), 2);
-        let group = features[0].id.to_string();
 
         let (xml, diagnostics) = write(features, json!({}));
 
@@ -4877,7 +5733,19 @@ mod hierarchy_tests {
             "{xml}"
         );
         assert_eq!(xml.matches("<bldg:Room ").count(), 1, "{xml}");
-        assert_eq!(xml.matches("<core:cityObjectMember>").count(), 1, "{xml}");
+        // The group goes first, as in the source, linking forward to the room
+        // and the building rather than holding copies of them.
+        assert!(
+            xml.contains(
+                r##"<core:cityObjectMember><grp:CityObjectGroup gml:id="g1"><gml:name>floor</gml:name><grp:groupMember xlink:href="#r1"/><grp:parent xlink:href="#b1"/></grp:CityObjectGroup></core:cityObjectMember><core:cityObjectMember><bldg:Building gml:id="b1">"##
+            ),
+            "{xml}"
+        );
+        assert!(
+            xml.contains(r#"xmlns:grp="http://www.opengis.net/citygml/cityobjectgroup/2.0""#),
+            "{xml}"
+        );
+        assert_eq!(xml.matches("<core:cityObjectMember>").count(), 2, "{xml}");
         assert_eq!(
             reported(&diagnostics, ErrorCode::CitygmlParentCannotHold),
             0
@@ -4886,12 +5754,257 @@ mod hierarchy_tests {
             reported(&diagnostics, ErrorCode::CitygmlDuplicateObjectNotWritten),
             0
         );
-        // The group has no geometry of its own, so it is not written, and
-        // that is reported.
+        // A group is written without geometry of its own, and every link
+        // resolves, so nothing is reported.
+        assert!(diagnostics.is_empty(), "{diagnostics:?}");
+
+        // Read back, the links resolve to the room and the building.
+        let again = read(&[("written.gml", &xml)], &[], true, None);
+        let group = again
+            .iter()
+            .find(|feature| gml_id_of(feature).as_deref() == Some("g1"))
+            .unwrap();
+        let member = group.get("grp:groupMember").unwrap();
         assert_eq!(
-            reported_for(&diagnostics, ErrorCode::CitygmlEmptyGeometry),
+            serde_json::to_value(member).unwrap()["bldg:Room@gml:id"],
+            "r1"
+        );
+        let parent = group.get("grp:parent").unwrap();
+        assert_eq!(
+            serde_json::to_value(parent).unwrap()["bldg:Building@gml:id"],
+            "b1"
+        );
+    }
+
+    /// A group naming room `r1` and building `b1`, then the building holding
+    /// the room. `member` is the group member element, so a test can add a
+    /// role or change the target.
+    fn grouped_building(member: &str) -> String {
+        format!(
+            r##"{header}<grp:CityObjectGroup gml:id="g1"><gml:name>floor</gml:name>
+{member}
+<grp:parent xlink:href="#b1"/>
+</grp:CityObjectGroup></core:cityObjectMember>
+<core:cityObjectMember><bldg:Building gml:id="b1">{own}
+<bldg:interiorRoom><bldg:Room gml:id="r1">{room}</bldg:Room></bldg:interiorRoom>
+</bldg:Building>{FOOTER}"##,
+            header = header_with_groups(),
+            own = surface("lod2MultiSurface", 0),
+            room = surface("lod4MultiSurface", 1),
+        )
+    }
+
+    #[test]
+    fn a_link_to_an_object_left_out_upstream_is_kept_and_reported() {
+        let gml = grouped_building(r##"<grp:groupMember xlink:href="#r1"/>"##);
+        let mut features = read(&[("group.gml", &gml)], &[], true, None);
+        assert_eq!(features.len(), 2);
+        // As if a filter had removed the building, and the room with it.
+        features.truncate(1);
+        let group = features[0].id.to_string();
+
+        let (xml, diagnostics) = write(features, json!({}));
+
+        let body = inside(
+            &xml,
+            r#"<grp:CityObjectGroup gml:id="g1">"#,
+            "</grp:CityObjectGroup>",
+        );
+        assert_eq!(
+            body,
+            r##"<gml:name>floor</gml:name><grp:groupMember xlink:href="#r1"/><grp:parent xlink:href="#b1"/>"##
+        );
+        // The group's feature carries its members' geometry, none of which is
+        // written, so the document has no extent to declare.
+        assert!(!xml.contains("<gml:boundedBy>"), "{xml}");
+        assert_eq!(
+            reported_for(&diagnostics, ErrorCode::CitygmlLinkTargetNotWritten),
             [group]
         );
+        assert_eq!(diagnostics.len(), 1, "{diagnostics:?}");
+    }
+
+    #[test]
+    fn an_id_a_kept_link_names_is_never_minted_for_another_object() {
+        // The member is the id-less building's would-be id, bldg_1, and it is
+        // not in the document, so the building is minted another id.
+        let gml = format!(
+            r##"{header}<grp:CityObjectGroup gml:id="g1"><grp:groupMember xlink:href="#bldg_1"/></grp:CityObjectGroup></core:cityObjectMember>
+<core:cityObjectMember><bldg:Building gml:id="bldg_1"><gml:name>gone</gml:name></bldg:Building></core:cityObjectMember>
+<core:cityObjectMember><bldg:Building>{own}</bldg:Building>{FOOTER}"##,
+            header = header_with_groups(),
+            own = surface("lod2MultiSurface", 5),
+        );
+        let features = read(&[("group.gml", &gml)], &[], true, None);
+        assert_eq!(features.len(), 3);
+
+        let group = features[0].id.to_string();
+
+        let (xml, diagnostics) = write(features, json!({}));
+
+        // bldg_1 had no geometry, so it is not written; the link stays.
+        assert!(
+            xml.contains(r##"<grp:groupMember xlink:href="#bldg_1"/>"##),
+            "{xml}"
+        );
+        assert!(!xml.contains(r#"gml:id="bldg_1""#), "{xml}");
+        assert!(xml.contains(r#"<bldg:Building gml:id="bldg_2">"#), "{xml}");
+        assert_eq!(
+            reported_for(&diagnostics, ErrorCode::CitygmlLinkTargetNotWritten),
+            [group]
+        );
+    }
+
+    /// A `gml:id` two written objects hold resolves to neither.
+    ///
+    /// One source document's `gml:id`s are unique inside it, but a write joins
+    /// several into one document, where two of them can carry the same one.
+    /// The ids claimed up front were kept per source `gml:id`, first object
+    /// wins, so the link was pointed at that first object: a link to the wrong
+    /// element, written as confidently as a right one and with nothing said.
+    /// It is kept as the source wrote it instead, as a link to an object the
+    /// document does not write is, and reported.
+    #[test]
+    fn a_link_to_an_id_two_written_objects_hold_is_kept_and_reported() {
+        // `1m` is not an NCName, so neither building is written under it and a
+        // link resolved against the first would name a minted id.
+        let group = format!(
+            r##"{header}<grp:CityObjectGroup gml:id="g1"><grp:groupMember xlink:href="#1m"/></grp:CityObjectGroup></core:cityObjectMember>
+<core:cityObjectMember><bldg:Building gml:id="1m">{own}</bldg:Building>{FOOTER}"##,
+            header = header_with_groups(),
+            own = surface("lod2MultiSurface", 0),
+        );
+        let other = format!(
+            r##"{header}<bldg:Building gml:id="1m">{own}</bldg:Building>{FOOTER}"##,
+            header = header_with_groups(),
+            own = surface("lod2MultiSurface", 7),
+        );
+        let features = read(&[("a.gml", &group), ("b.gml", &other)], &[], true, None);
+        assert_eq!(features.len(), 3);
+        let group_feature = features[0].id.to_string();
+
+        let (xml, diagnostics) = write(features, json!({}));
+
+        // Both buildings are written, under ids of their own.
+        assert!(xml.contains(r#"<bldg:Building gml:id="bldg_1m">"#), "{xml}");
+        assert!(xml.contains(r#"<bldg:Building gml:id="bldg_1">"#), "{xml}");
+        assert!(
+            xml.contains(r##"<grp:groupMember xlink:href="#1m"/>"##),
+            "{xml}"
+        );
+        assert_eq!(
+            reported_for(&diagnostics, ErrorCode::CitygmlLinkTargetAmbiguous),
+            [group_feature]
+        );
+        assert_eq!(diagnostics.len(), 1, "{diagnostics:?}");
+    }
+
+    #[test]
+    fn a_link_follows_the_id_its_target_is_written_under() {
+        // `1r` is not an NCName, so the room is written under a generated id,
+        // and the link names that id.
+        let gml = grouped_building(r##"<grp:groupMember xlink:href="#1r"/>"##)
+            .replace(r#"<bldg:Room gml:id="r1">"#, r#"<bldg:Room gml:id="1r">"#);
+        let features = read(&[("group.gml", &gml)], &[], true, None);
+
+        let (xml, diagnostics) = write(features, json!({}));
+
+        assert!(
+            xml.contains(r##"<grp:groupMember xlink:href="#room_1"/>"##),
+            "{xml}"
+        );
+        assert!(xml.contains(r#"<bldg:Room gml:id="room_1">"#), "{xml}");
+        assert!(diagnostics.is_empty(), "{diagnostics:?}");
+    }
+
+    #[test]
+    fn a_group_member_keeps_its_role() {
+        let gml = grouped_building(r##"<grp:groupMember xlink:href="#r1"/>"##);
+        let mut features = read(&[("group.gml", &gml)], &[], true, None);
+        // The reader does not carry a reference property's own XML attributes,
+        // so the member's `role` is set here as a reader that hoists it would
+        // hand it over: a sibling of the property it sits on.
+        features[0].insert(
+            "grp:groupMember@role",
+            reearth_flow_types::AttributeValue::String("office".to_string()),
+        );
+        let features = features;
+
+        let (xml, diagnostics) = write(features, json!({}));
+
+        assert!(
+            xml.contains(r##"<grp:groupMember role="office" xlink:href="#r1"/>"##),
+            "{xml}"
+        );
+        assert!(diagnostics.is_empty(), "{diagnostics:?}");
+    }
+
+    #[test]
+    fn a_member_the_reader_could_not_resolve_is_reported_empty() {
+        // The reader drops an xlink:href that names nothing, so the member
+        // reaches the writer with no target left to write.
+        let gml = grouped_building(
+            r##"<grp:groupMember xlink:href="#r1"/><grp:groupMember xlink:href="#gone"/>"##,
+        );
+        let features = read(&[("group.gml", &gml)], &[], true, None);
+        let group = features[0].id.to_string();
+
+        let (xml, diagnostics) = write(features, json!({}));
+
+        assert_eq!(xml.matches("<grp:groupMember ").count(), 1, "{xml}");
+        assert!(!xml.contains("gone"), "{xml}");
+        assert_eq!(
+            reported_for(&diagnostics, ErrorCode::CitygmlEmptyValueNotWritten),
+            [group]
+        );
+        assert_eq!(diagnostics.len(), 1, "{diagnostics:?}");
+    }
+
+    #[test]
+    fn a_group_with_nothing_but_a_name_is_written() {
+        let gml = format!(
+            r#"{header}<grp:CityObjectGroup gml:id="g1"><gml:name>empty</gml:name></grp:CityObjectGroup>{FOOTER}"#,
+            header = header_with_groups(),
+        );
+        let features = read(&[("group.gml", &gml)], &[], true, None);
+
+        let (xml, diagnostics) = write(features, json!({}));
+
+        assert!(
+            xml.contains(r#"<core:cityObjectMember><grp:CityObjectGroup gml:id="g1"><gml:name>empty</gml:name></grp:CityObjectGroup></core:cityObjectMember>"#),
+            "{xml}"
+        );
+        assert!(diagnostics.is_empty(), "{diagnostics:?}");
+    }
+
+    #[test]
+    fn a_document_without_a_group_does_not_declare_the_group_module() {
+        let features = read(&[("building.gml", &building())], &[], true, None);
+
+        let (xml, _) = write(features, json!({}));
+
+        assert!(!xml.contains("xmlns:grp"), "{xml}");
+        assert!(!xml.contains("cityObjectGroup.xsd"), "{xml}");
+    }
+
+    #[test]
+    fn a_groups_own_geometry_is_written_back_as_read() {
+        // The reader keeps grp:geometry in the attribute tree, as it reads
+        // geometry only from lodN and tin properties, so it is written back
+        // verbatim, coordinates as read.
+        let gml = format!(
+            r#"{header}<grp:CityObjectGroup gml:id="g1"><grp:geometry><gml:MultiSurface><gml:surfaceMember><gml:Polygon><gml:exterior><gml:LinearRing><gml:posList>35.0 135.0 0 35.0 135.001 0 35.001 135.0 0 35.0 135.0 0</gml:posList></gml:LinearRing></gml:exterior></gml:Polygon></gml:surfaceMember></gml:MultiSurface></grp:geometry></grp:CityObjectGroup>{FOOTER}"#,
+            header = header_with_groups(),
+        );
+        let features = read(&[("group.gml", &gml)], &[], true, None);
+
+        let (xml, diagnostics) = write(features, json!({}));
+
+        assert!(
+            xml.contains(r#"<grp:CityObjectGroup gml:id="g1"><grp:geometry><gml:MultiSurface><gml:surfaceMember><gml:Polygon><gml:exterior><gml:LinearRing><gml:posList>35.0 135.0 0 35.0 135.001 0 35.001 135.0 0 35.0 135.0 0</gml:posList>"#),
+            "{xml}"
+        );
+        assert!(diagnostics.is_empty(), "{diagnostics:?}");
     }
 
     #[test]

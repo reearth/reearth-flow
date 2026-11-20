@@ -23,6 +23,7 @@ use super::writer::is_ncname;
 
 const CORE: &str = "http://www.opengis.net/citygml/2.0";
 const GRP: &str = "http://www.opengis.net/citygml/cityobjectgroup/2.0";
+const XLINK_HREF: &str = "xlink:href";
 
 /// Properties that refer to a city object rather than nest it, as
 /// `(namespace, local name)`. Every city object can hold any other through
@@ -45,6 +46,11 @@ pub struct TreeObject {
 
 /// Takes the nested city objects out of `properties`. Returns the properties
 /// left for placement and the objects, each with its own nested objects.
+///
+/// A reference property holding a city object, such as a group's
+/// `grp:groupMember`, holds a copy: the reader inlines the object an
+/// `xlink:href` named. It is turned back into a link to that object
+/// ([`as_link`]), which the write resolves against the objects it writes.
 pub fn split_nested_objects(
     schema: &SchemaSet,
     prefixes: &Prefixes,
@@ -54,11 +60,18 @@ pub fn split_nested_objects(
     let mut tree = Vec::new();
     for property in properties {
         let wrapper = property.qname(prefixes);
-        let holds_object = !is_reference(&wrapper)
-            && property
-                .children
-                .iter()
-                .any(|child| is_city_object(schema, &child.qname(prefixes)));
+        let holds_object = property
+            .children
+            .iter()
+            .any(|child| is_city_object(schema, &child.qname(prefixes)));
+        if is_reference(&wrapper) {
+            remaining.push(if holds_object {
+                as_link(schema, prefixes, property)
+            } else {
+                property
+            });
+            continue;
+        }
         if !holds_object {
             remaining.push(property);
             continue;
@@ -81,10 +94,58 @@ pub fn split_nested_objects(
     (remaining, tree)
 }
 
-fn is_reference(property: &QName) -> bool {
+/// `property`, a reference property holding a copy of a city object, as an
+/// empty element with an `xlink:href` to the copy's `gml:id`, keeping its own
+/// XML attributes, such as a group member's `role`. A copy without a `gml:id`
+/// cannot be linked to, so the property is returned as it is, and placement
+/// leaves it out and reports it as before.
+fn as_link(schema: &SchemaSet, prefixes: &Prefixes, mut property: XmlProperty) -> XmlProperty {
+    let target = property
+        .children
+        .iter()
+        .find(|child| is_city_object(schema, &child.qname(prefixes)))
+        .and_then(|object| object.attr("gml:id"))
+        .filter(|id| !id.is_empty())
+        .map(|id| format!("#{id}"));
+    let Some(href) = target else {
+        return property;
+    };
+    property.children.clear();
+    property.text = None;
+    property.attrs.retain(|(name, _)| name != XLINK_HREF);
+    property.attrs.push((XLINK_HREF.to_owned(), href));
+    property
+}
+
+/// Whether `property` is one of [`REFERENCE_PROPERTIES`].
+pub fn is_reference(property: &QName) -> bool {
     REFERENCE_PROPERTIES
         .iter()
         .any(|(namespace, local)| property.namespace == *namespace && property.local == *local)
+}
+
+/// Whether `element` is a city object group: `grp:CityObjectGroup`, or an
+/// element that substitutes for it, such as an ADE's group class.
+pub fn is_group(schema: &SchemaSet, element: &QName) -> bool {
+    let group = QName::new(GRP, "CityObjectGroup");
+    let mut current = element.clone();
+    // A substitution chain is short; the bound only guards a cyclic schema.
+    for _ in 0..32 {
+        if current == group {
+            return true;
+        }
+        match schema.substitution_group(&current) {
+            Some(head) => current = head.clone(),
+            None => return false,
+        }
+    }
+    false
+}
+
+/// The `gml:id` an `xlink:href` names in the same document: `#id` gives
+/// `id`. A link into another document, or anything else, gives `None`.
+pub fn local_link_target(href: &str) -> Option<&str> {
+    href.strip_prefix('#').filter(|id| !id.is_empty())
 }
 
 /// The slot of `parent`'s class that nests a `child`, and the property
@@ -315,15 +376,21 @@ pub fn build_feature_objects(
 
     for entry in geometries {
         let key = entry.owner.key.as_deref();
-        let target = match (
+        // `matched` is whether the owner named the object the geometry is
+        // written on. It is not whether an owner was named: an owner that
+        // named nothing still leaves its key behind.
+        let (target, matched) = match (
             key.and_then(|key| index.get(key)),
             key.and_then(|key| data_owners.get(key)),
         ) {
-            (Some(&node), _) => node,
-            (None, Some(holder)) => holder
-                .as_deref()
-                .and_then(|holder| index.get(holder).copied())
-                .unwrap_or(ROOT),
+            (Some(&node), _) => (node, true),
+            (None, Some(holder)) => (
+                holder
+                    .as_deref()
+                    .and_then(|holder| index.get(holder).copied())
+                    .unwrap_or(ROOT),
+                false,
+            ),
             (None, None) => {
                 reports.extend(report_unmatched_owner(
                     &entry,
@@ -332,12 +399,25 @@ pub fn build_feature_objects(
                     prefixes,
                     classes,
                 ));
-                ROOT
+                (ROOT, false)
             }
         };
         // The reader emits a repeated object's geometry once per occurrence,
         // so the occurrences left out leave exact repeats behind.
         let repeated = key.is_some_and(|key| repeats.collapsed.contains(key));
+        let mut entry = entry;
+        if !matched {
+            // The geometry is written on `target`, which is not the object the
+            // owner names. Keeping that key would say the geometry belongs to
+            // an object this tree does not hold, and the document reads the key
+            // back as the place the geometry is written: an owner absent from
+            // the document is taken for geometry the document does not write,
+            // which would leave this geometry out of `gml:boundedBy` and its
+            // CRS and textures out with it. The geometry is the target's own
+            // from here on, so the key goes. It is cleared before the repeat
+            // check below so both sides of that comparison are cleared alike.
+            entry.owner.key = None;
+        }
         if repeated && nodes[target].geometries.contains(&entry) {
             continue;
         }
@@ -1609,6 +1689,7 @@ mod tests {
 
     fn entry(key: Option<&str>, ty: Option<&str>, lod: u8) -> GeometryEntry {
         GeometryEntry {
+            crs: Default::default(),
             lod,
             property: None,
             element: GmlElement::MultiSurface {
@@ -1809,12 +1890,22 @@ mod tests {
         assert_eq!(wall.children[0].element.children, vec![name("W")]);
     }
 
+    /// `prefix:local` as an empty element with `attrs`.
+    fn empty(prefix: &str, local: &str, attrs: &[(&str, &str)]) -> XmlProperty {
+        let mut element = XmlProperty::new(prefix, local);
+        element.attrs = attrs
+            .iter()
+            .map(|(name, value)| (name.to_string(), value.to_string()))
+            .collect();
+        element
+    }
+
     #[test]
-    fn a_reference_property_and_a_non_city_object_stay_for_placement() {
+    fn a_reference_property_becomes_a_link_and_a_non_city_object_stays_for_placement() {
         let generalizes = wrap(
             "core",
             "generalizesTo",
-            object("bldg", "Building", Some("x"), Vec::new()),
+            object("bldg", "Building", Some("x"), vec![name("N")]),
         );
         let address = wrap(
             "bldg",
@@ -1824,10 +1915,81 @@ mod tests {
         let (remaining, tree) = split_nested_objects(
             schema(),
             &Prefixes::citygml2(),
-            vec![generalizes.clone(), address.clone()],
+            vec![generalizes, address.clone()],
         );
-        assert_eq!(remaining, vec![generalizes, address]);
+        assert_eq!(
+            remaining,
+            vec![
+                empty("core", "generalizesTo", &[("xlink:href", "#x")]),
+                address
+            ]
+        );
         assert!(tree.is_empty());
+    }
+
+    #[test]
+    fn a_group_member_keeps_its_role_and_drops_the_copy_nested_in_it() {
+        let mut member = wrap(
+            "grp",
+            "groupMember",
+            object(
+                "bldg",
+                "Building",
+                Some("b1"),
+                vec![wall(Some("w1"), vec![name("N")])],
+            ),
+        );
+        member
+            .attrs
+            .push(("role".to_owned(), "entrance".to_owned()));
+        let parent = wrap(
+            "grp",
+            "parent",
+            object("bldg", "Building", Some("b0"), Vec::new()),
+        );
+        let (remaining, tree) =
+            split_nested_objects(schema(), &Prefixes::citygml2(), vec![member, parent]);
+        assert_eq!(
+            remaining,
+            vec![
+                empty(
+                    "grp",
+                    "groupMember",
+                    &[("role", "entrance"), ("xlink:href", "#b1")]
+                ),
+                empty("grp", "parent", &[("xlink:href", "#b0")]),
+            ]
+        );
+        // The wall is the copy's, and is written where the building lives.
+        assert!(tree.is_empty());
+    }
+
+    #[test]
+    fn a_reference_to_an_object_without_a_gml_id_is_left_for_placement() {
+        let member = wrap(
+            "grp",
+            "groupMember",
+            object("bldg", "Building", None, Vec::new()),
+        );
+        let (remaining, tree) =
+            split_nested_objects(schema(), &Prefixes::citygml2(), vec![member.clone()]);
+        assert_eq!(remaining, vec![member]);
+        assert!(tree.is_empty());
+    }
+
+    #[test]
+    fn only_a_local_href_names_a_target() {
+        assert_eq!(local_link_target("#b1"), Some("b1"));
+        assert_eq!(local_link_target("#"), None);
+        assert_eq!(local_link_target("other.gml#b1"), None);
+        assert_eq!(local_link_target("b1"), None);
+    }
+
+    #[test]
+    fn a_group_class_is_recognised_through_its_substitution_group() {
+        let grp = |local: &str| QName::new(GRP, local);
+        assert!(is_group(schema(), &grp("CityObjectGroup")));
+        assert!(!is_group(schema(), &bldg("Building")));
     }
 
     #[test]

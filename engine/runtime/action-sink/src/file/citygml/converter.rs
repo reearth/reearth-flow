@@ -159,6 +159,7 @@ pub fn convert_citygml_geometry(
             // anyway — is applied here rather than leaking the type across.
             let property = gml_geom.gml_trait.as_ref().map(|t| t.property.to_string());
             convert_gml_geometry(gml_geom, geometry, need_appearance).map(|elem| GeometryEntry {
+                crs: Default::default(),
                 lod,
                 property,
                 element: elem,
