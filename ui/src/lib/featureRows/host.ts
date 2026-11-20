@@ -254,7 +254,7 @@ export class FeatureRowsHost {
           this.afterAppend(entry);
         }
       } catch (error) {
-        await reader.cancel().catch(() => undefined);
+        reader.cancel().catch(() => undefined);
         throw error;
       } finally {
         reader.releaseLock();
@@ -306,6 +306,7 @@ export class FeatureRowsHost {
       entry.pumping = false;
     }
     this.postStatus(entry, true);
+    if (entry.url !== this.active) this.evict();
   }
 
   private postStatus(entry: Entry, force = false) {

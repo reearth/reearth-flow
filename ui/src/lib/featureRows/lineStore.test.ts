@@ -178,16 +178,37 @@ describe("LineStore", () => {
       store.finish();
       return store;
     };
-    let budget = text.length / 2;
-    while (storeWith(budget, [rows[0] + "\n", rows[1] + "\n"]).rowCount === 0) {
-      budget++;
-    }
+    const rowBytes = rows[0].length;
+    const budget = rowBytes + 1 + 12 + rowBytes;
     for (const pieces of [[text], [rows[0] + "\n", rows[1] + "\n"]]) {
       const store = storeWith(budget, pieces);
       expect(store.truncated).toBe(true);
       expect(ids(store)).toEqual(["a"]);
       expect(store.totalRows).toBe(2);
     }
+  });
+
+  test("after trimming a chunk, later rows that fit are still kept", () => {
+    const rows = Array.from({ length: 10 }, (_, i) => line(`r${i}`));
+    const text = rows.join("\n") + "\n";
+    const indexBytes = 16 * 12;
+    const budget = text.length + indexBytes + text.length;
+    const store = storeOf(text, 1, { byteBudget: budget });
+    expect(store.truncated).toBe(false);
+    expect(ids(store)).toEqual(rows.map((_, i) => `r${i}`));
+  });
+
+  test("a byte order mark does not hide the row", () => {
+    const rows = Array.from({ length: 12 }, (_, i) => line(`r${i}`, { n: i }));
+    rows[0] = "\uFEFF" + rows[0];
+    rows[11] = "\uFEFF" + rows[11];
+    const store = storeOf(rows.join("\n"));
+    expect(store.tableRow(0)).toEqual({ id: "r0", attributes: { n: 0 } });
+    expect(store.tableRow(11)).toEqual({ id: "r11", attributes: { n: 11 } });
+    expect(store.skippedLines).toBe(0);
+    const filter = new RowFilter("r11");
+    filter.advance(store, () => false);
+    expect(filter.count).toBe(1);
   });
 
   test("the row index counts against the budget", () => {

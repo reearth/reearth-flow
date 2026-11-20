@@ -62,17 +62,28 @@ export class FeatureRowsClient {
   }
 
   clear() {
+    const terms = new Map(
+      [...this.statuses].map(([url, status]) => [url, status.searchTerm]),
+    );
     this.reset("The data preview was cleared");
     this.statuses.clear();
     queueMicrotask(() => {
-      for (const url of this.listeners.keys()) this.open(url);
+      for (const url of this.listeners.keys()) {
+        this.reopen(url, terms.get(url) ?? "");
+      }
     });
   }
 
   retry(url: string) {
+    const term = this.statuses.get(url)?.searchTerm ?? "";
     this.session++;
     this.statuses.delete(url);
+    this.reopen(url, term);
+  }
+
+  private reopen(url: string, term: string) {
     this.open(url);
+    if (term) this.search(url, term);
   }
 
   search(url: string, term: string) {

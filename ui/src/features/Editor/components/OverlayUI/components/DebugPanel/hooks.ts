@@ -131,6 +131,7 @@ export default () => {
   const rows = useFeatureRows(metadataUrl);
   const { readLine } = rows;
   const loadedRowCount = rows.status?.rowCount ?? 0;
+  const session = rows.status?.session ?? 0;
 
   const [selection, setSelection] = useState<{
     url: string;
@@ -145,27 +146,37 @@ export default () => {
 
   const [loadedFeature, setLoadedFeature] = useState<{
     url: string;
+    session: number;
     row: number;
     feature: any;
   } | null>(null);
 
+  const selectedRowLoaded =
+    selectedRow !== null && selectedRow < loadedRowCount;
+
   useEffect(() => {
-    if (selectedRow === null) return;
+    if (selectedRow === null || !selectedRowLoaded) return;
     let cancelled = false;
     void readLine(selectedRow).then((text) => {
       if (cancelled || text === null) return;
       const feature = toSelectedFeature(text, selectedRow);
       if (!feature) return;
-      setLoadedFeature({ url: metadataUrl, row: selectedRow, feature });
+      setLoadedFeature({
+        url: metadataUrl,
+        session,
+        row: selectedRow,
+        feature,
+      });
     });
     return () => {
       cancelled = true;
     };
-  }, [metadataUrl, readLine, selectedRow]);
+  }, [metadataUrl, readLine, selectedRow, selectedRowLoaded, session]);
 
   const selectedFeature =
     selectedRow !== null &&
     loadedFeature?.url === metadataUrl &&
+    loadedFeature.session === session &&
     loadedFeature.row === selectedRow
       ? loadedFeature.feature
       : null;

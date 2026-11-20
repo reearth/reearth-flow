@@ -143,4 +143,34 @@ describe("FeatureRowsClient", () => {
     status();
     expect(client.status("a.jsonl")?.session).not.toBe(before);
   });
+
+  test("retry and clear keep the search term", async () => {
+    const workers: ReturnType<typeof fakeWorker>[] = [];
+    const client = new FeatureRowsClient(() => {
+      const fake = fakeWorker();
+      workers.push(fake);
+      return fake.worker;
+    });
+    client.subscribe("a.jsonl", () => {});
+    client.open("a.jsonl");
+    workers[0].worker.onmessage?.(
+      statusMessage({ url: "a.jsonl", searchTerm: "tokyo", error: "HTTP 500" }),
+    );
+
+    client.retry("a.jsonl");
+    expect(workers[0].sent.slice(-2)).toEqual([
+      { type: "open", url: "a.jsonl" },
+      { type: "search", url: "a.jsonl", term: "tokyo" },
+    ]);
+
+    workers[0].worker.onmessage?.(
+      statusMessage({ url: "a.jsonl", searchTerm: "tokyo" }),
+    );
+    client.clear();
+    await Promise.resolve();
+    expect(workers[1].sent).toEqual([
+      { type: "open", url: "a.jsonl" },
+      { type: "search", url: "a.jsonl", term: "tokyo" },
+    ]);
+  });
 });

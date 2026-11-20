@@ -34,6 +34,7 @@ function isWhitespace(byte: number) {
 type Index = Uint32Array<ArrayBuffer>;
 
 const EMPTY_INDEX: Index = new Uint32Array(0);
+const EMPTY_BYTES = new Uint8Array(0);
 
 function grownLength(array: Index, min: number) {
   return array.length >= min ? array.length : Math.max(min, array.length * 2);
@@ -91,22 +92,24 @@ export class LineStore {
   }
 
   append(bytes: Uint8Array) {
-    if (bytes.length === 0) return;
-    if (this.truncated) {
-      this.countDropped(bytes);
-      return;
-    }
-
-    let cut = bytes.length;
-    if (!this.reserve(cut)) {
-      cut = this.fittingPrefix(bytes);
-      if (cut === 0 || !this.reserve(cut)) {
-        this.truncate(bytes);
-        return;
+    const queue = [bytes];
+    for (let pending = queue.shift(); pending; pending = queue.shift()) {
+      if (pending.length === 0) continue;
+      if (this.truncated) {
+        this.countDropped(pending);
+        continue;
       }
-    }
-    if (this.write(bytes.subarray(0, cut)) && cut < bytes.length) {
-      this.truncate(bytes.subarray(cut));
+
+      let cut = pending.length;
+      if (!this.reserve(cut)) {
+        cut = this.fittingPrefix(pending);
+        if (cut === 0 || !this.reserve(cut)) {
+          this.truncate(pending);
+          continue;
+        }
+      }
+      const unread = this.write(pending.subarray(0, cut));
+      queue.unshift(unread, pending.subarray(cut));
     }
     this.publishColumns();
   }
@@ -127,7 +130,7 @@ export class LineStore {
       ) {
         this.lineStart = this.writePos;
       } else {
-        this.truncate(new Uint8Array(0));
+        this.truncate(EMPTY_BYTES);
       }
     }
     if (this.truncated) {
@@ -172,7 +175,7 @@ export class LineStore {
     return JSON.parse(this.decoder.decode(chunk.subarray(span[0], span[1])));
   }
 
-  private write(bytes: Uint8Array): boolean {
+  private write(bytes: Uint8Array): Uint8Array {
     const chunkIndex = this.chunks.length - 1;
     const chunk = this.chunks[chunkIndex];
     const scanFrom = this.writePos;
@@ -188,15 +191,19 @@ export class LineStore {
         newline,
         newline + 1,
       );
-      if (added) this.lineStart = newline + 1;
-      if (!added || this.chunks[chunkIndex].length < this.writePos) {
+      if (!added) {
         this.writePos = this.lineStart;
         this.truncate(written.subarray(this.lineStart));
-        return false;
+        return EMPTY_BYTES;
+      }
+      this.lineStart = newline + 1;
+      if (this.chunks[chunkIndex].length < this.writePos) {
+        this.writePos = this.lineStart;
+        return written.subarray(this.lineStart);
       }
       newline = written.indexOf(NEWLINE, this.lineStart);
     }
-    return true;
+    return EMPTY_BYTES;
   }
 
   private truncate(rest: Uint8Array) {
@@ -314,6 +321,15 @@ export class LineStore {
   ): boolean {
     const chunk = this.chunks[chunkIndex];
     if (end > start && chunk[end - 1] === CARRIAGE_RETURN) end--;
+
+    if (
+      chunk[start] === 0xef &&
+      chunk[start + 1] === 0xbb &&
+      chunk[start + 2] === 0xbf &&
+      start + 3 <= end
+    ) {
+      start += 3;
+    }
 
     let first = start;
     while (first < end && isWhitespace(chunk[first])) first++;
