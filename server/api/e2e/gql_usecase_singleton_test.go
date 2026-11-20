@@ -95,8 +95,8 @@ func TestUsecaseContainer_SharedAcrossRequests_LogPollerIsNotDuplicated(t *testi
 
 	redisGateway := &countingRedisGateway{}
 	gateways := &gateway.Container{
-		File:  lo.Must(fs.NewFile(afero.NewMemMapFs(), "https://example.com", "https://example2.com")),
-		Redis: redisGateway,
+		File:      lo.Must(fs.NewFile(afero.NewMemMapFs(), "https://example.com", "https://example2.com")),
+		LiveStore: redisGateway,
 	}
 
 	mockPermissionChecker := gateway.NewMockPermissionChecker()

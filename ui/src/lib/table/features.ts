@@ -5,6 +5,7 @@ import {
   columnVisibilityFeature,
   createFilteredRowModel,
   createSortedRowModel,
+  filterFn_includesString,
   globalFilteringFeature,
   rowPaginationFeature,
   rowSelectionFeature,
@@ -44,6 +45,7 @@ export const appTableFeatures = tableFeatures({
   rowSelectionFeature,
   rowSortingFeature,
   filteredRowModel: createFilteredRowModel(),
+  filterFns: { includesString: filterFn_includesString },
   sortedRowModel: createSortedRowModel(),
   // No `paginatedRowModel` on purpose. Every table here paginates server-side:
   // it reads and writes `pagination` state (hence `rowPaginationFeature`) but

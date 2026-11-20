@@ -11,6 +11,8 @@ use super::coordinate_rounder::CoordinateRounderFactory;
 use super::identifier::GeometryIdentifierFactory;
 #[cfg(feature = "new-geometry")]
 use super::jp_mesh_code_replacer::JPMeshCodeReplacerFactory;
+#[cfg(feature = "new-geometry")]
+use super::mesh_merger::MeshMergerFactory;
 use super::{
     appearance_remover::AppearanceRemoverFactory,
     area_calculator::AreaCalculatorFactory,
@@ -130,6 +132,8 @@ pub static ACTION_FACTORY_MAPPINGS: Lazy<HashMap<String, NodeKind>> = Lazy::new(
         Box::<GeometryIdentifierFactory>::default(),
         #[cfg(feature = "new-geometry")]
         Box::<JPMeshCodeReplacerFactory>::default(),
+        #[cfg(feature = "new-geometry")]
+        Box::<MeshMergerFactory>::default(),
     ];
     factories
         .into_iter()

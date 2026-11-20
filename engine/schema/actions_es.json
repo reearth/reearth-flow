@@ -10220,6 +10220,129 @@
       ]
     },
     {
+      "name": "Mesh Merger",
+      "type": "processor",
+      "description": "Fusiona en mallas los polígonos y mallas de las entidades que comparten los mismos valores de atributos de agrupación, conservando cada cara tal cual, y emite una entidad por grupo o por cada parte conectada de este. El resultado es una malla triangular cuando todos los polígonos y mallas fusionados en ella, incluidos los de las colecciones, son mallas triangulares, y una malla poligonal en caso contrario.",
+      "parameter": {
+        "$schema": "http://json-schema.org/draft-07/schema#",
+        "title": "Parámetros del fusionador de mallas",
+        "description": "Define qué entidades se fusionan juntas, cómo se divide el resultado y qué atributos conserva.",
+        "type": "object",
+        "properties": {
+          "groupBy": {
+            "title": "Atributos de agrupación",
+            "description": "Atributos cuyos valores deciden qué entidades se fusionan juntas; las entidades que coinciden en todos ellos forman un grupo. Si se omiten, todas las entidades pertenecen a un único grupo. No puede incluir `__members` cuando se recopilan atributos, ya que ese atributo contiene los valores recopilados.",
+            "default": null,
+            "type": [
+              "array",
+              "null"
+            ],
+            "items": {
+              "$ref": "#/definitions/Attribute"
+            }
+          },
+          "attributeAccumulation": {
+            "title": "Acumulación de atributos",
+            "description": "Qué atributos conserva cada entidad fusionada, tomados de las entidades fusionadas en ella.",
+            "default": "useOneFeature",
+            "allOf": [
+              {
+                "$ref": "#/definitions/AttributeAccumulation"
+              }
+            ]
+          },
+          "granularity": {
+            "title": "Granularidad",
+            "description": "Con qué detalle se divide cada grupo en entidades de salida.",
+            "default": "group",
+            "allOf": [
+              {
+                "$ref": "#/definitions/Granularity"
+              }
+            ]
+          }
+        },
+        "definitions": {
+          "Attribute": {
+            "type": "string"
+          },
+          "AttributeAccumulation": {
+            "title": "Attribute Accumulation",
+            "description": "Which attributes a merged feature keeps.",
+            "oneOf": [
+              {
+                "title": "Conservar solo los atributos de agrupación",
+                "description": "Conserva solo los atributos de agrupación y descarta todo lo demás.",
+                "type": "string",
+                "enum": [
+                  "groupAttributesOnly"
+                ]
+              },
+              {
+                "title": "Recopilar atributos",
+                "description": "Conserva los atributos de agrupación y escribe los demás atributos de cada entidad fusionada en `__members`, un arreglo con un mapa por entidad en orden de llegada.",
+                "type": "string",
+                "enum": [
+                  "collectAttributes"
+                ]
+              },
+              {
+                "title": "Usar atributos de una entidad",
+                "description": "Conserva los atributos de la primera entidad fusionada y descarta el resto.",
+                "type": "string",
+                "enum": [
+                  "useOneFeature"
+                ]
+              }
+            ]
+          },
+          "Granularity": {
+            "description": "How finely each group is divided into output features.",
+            "oneOf": [
+              {
+                "title": "Grupo",
+                "description": "Emite una malla por grupo.",
+                "type": "string",
+                "enum": [
+                  "group"
+                ]
+              },
+              {
+                "title": "Parte conectada por aristas",
+                "description": "Emite una malla por cada conjunto de caras conectadas por aristas con coordenadas exactamente iguales. Las caras que solo se tocan en un vértice forman mallas separadas.",
+                "type": "string",
+                "enum": [
+                  "edgeConnectedPart"
+                ]
+              },
+              {
+                "title": "Parte variedad",
+                "description": "Divide aún más cada parte conectada por aristas para que cada arista de una malla limite con una o dos de sus caras. Cuando varias caras coinciden en una arista, solo dos de ellas permanecen unidas allí.",
+                "type": "string",
+                "enum": [
+                  "manifoldPart"
+                ]
+              }
+            ]
+          }
+        }
+      },
+      "builtin": true,
+      "inputPorts": [
+        "features"
+      ],
+      "outputPorts": [
+        "features",
+        "rejected"
+      ],
+      "categories": [
+        "Geometry"
+      ],
+      "tags": [
+        "aggregation"
+      ]
+    },
+    {
       "name": "Neighbor Finder",
       "type": "processor",
       "description": "Encuentra las entidades candidatas más cercanas para cada entidad base basándose en proximidad espacial",
