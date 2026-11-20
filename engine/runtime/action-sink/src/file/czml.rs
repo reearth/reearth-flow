@@ -54,7 +54,7 @@ impl SinkFactory for CzmlWriterFactory {
     }
 
     fn description(&self) -> &str {
-        "Export features as CZML for Cesium visualization. Supports static entities and time-animated timeseries. Configure timeField, groupTimeseriesBy, and epoch (for numeric times) to enable animation."
+        "Writes features to a CZML file for display in Cesium, or to one file per group when `groupBy` is set. Features carrying a time attribute are written as time-dynamic entities with time-tagged position samples, and the rest as static entities."
     }
 
     fn parameter_schema(&self) -> Option<schemars::schema::RootSchema> {
@@ -62,7 +62,11 @@ impl SinkFactory for CzmlWriterFactory {
     }
 
     fn categories(&self) -> &[&'static str] {
-        &["File"]
+        &["Output"]
+    }
+
+    fn tags(&self) -> &[&'static str] {
+        &["czml", "3d"]
     }
 
     fn get_input_ports(&self) -> Vec<Port> {
@@ -94,16 +98,25 @@ impl SinkFactory for CzmlWriterFactory {
             .into());
         };
         params.sanitize();
+        // A degree of 0 is not an interpolation: CZML's own `interpolationDegree`
+        // is the degree of the polynomial, so 0 would be written straight into the
+        // output for a viewer to reject. Refuse it here, where the user can still
+        // fix the workflow, rather than emitting an unusable file.
+        if params.interpolation_degree < 1 {
+            return Err(SinkError::CzmlWriterFactory(
+                "`interpolationDegree` must be 1 or greater".to_string(),
+            )
+            .into());
+        }
         let output = params
             .output
             .compile()
-            .map_err(|e| {
-                SinkError::CzmlWriterFactory(format!("Failed to compile `output`: {e:?}"))
-            })?
+            .map_err(|e| SinkError::CzmlWriterFactory(format!("Failed to compile `output`: {e}")))?
             .eval_string_variables_only(ctx.variables.clone())
             .map_err(|e| {
-                SinkError::CzmlWriterFactory(format!("Failed to evaluate `output`: {e:?}"))
+                SinkError::CzmlWriterFactory(format!("Failed to evaluate `output`: {e}"))
             })?;
+        let style = params.polygon_style.unwrap_or_default();
         let sink = CzmlWriter {
             params: CzmlWriterCompiledParam {
                 output,
@@ -113,9 +126,9 @@ impl SinkFactory for CzmlWriterFactory {
                 interpolation_algorithm: params.interpolation_algorithm,
                 interpolation_degree: params.interpolation_degree,
                 group_timeseries_by: params.group_timeseries_by,
-                color_attribute: params.color_attribute,
-                opacity: params.opacity,
-                height_attribute: params.height_attribute,
+                color_attribute: style.color_attribute,
+                opacity: style.opacity,
+                height_attribute: style.height_attribute,
             },
             buffer: Default::default(),
         };
@@ -145,110 +158,91 @@ pub(crate) struct CzmlWriter {
 
 /// # CZML Writer Parameters
 ///
-/// Configuration for writing geographic features to CZML files. Supports both
-/// static entities and time-dynamic entities with interpolated position samples.
-///
-/// ## Timeseries Configuration
-///
-/// To create time-animated entities in Cesium, configure at least the first two
-/// parameters below; configure `epoch` only when using numeric time offsets:
-/// 1. `timeField` - Attribute containing time values
-/// 2. `groupTimeseriesBy` - Attribute to group features into entities
-/// 3. `epoch` (optional) - Base time used when `timeField` contains numeric offsets
-///
-/// ### Example with ISO 8601 timestamps:
-/// ```yaml
-/// - action: CZML Writer
-///   with:
-///     output: "vehicles.czml"
-///     timeField: "timestamp"           # Contains "2024-01-01T00:00:00Z", etc.
-///     groupTimeseriesBy: "vehicleId"   # Groups by vehicle ID
-///     interpolationAlgorithm: "LAGRANGE"
-///     interpolationDegree: 5
-/// ```
-///
-/// ### Example with numeric time offsets:
-/// ```yaml
-/// - action: CZML Writer
-///   with:
-///     output: "sensors.czml"
-///     timeField: "timeOffset"          # Contains numeric values: 0, 60, 120, etc.
-///     groupTimeseriesBy: "sensorId"
-///     epoch: "2024-01-01T00:00:00Z"    # Base time for offsets
-///     interpolationAlgorithm: "LINEAR"
-/// ```
+/// Configures where the CZML is written, how features are grouped into files
+/// and entities, and how a derived polygon is styled.
 #[derive(Serialize, Deserialize, Debug, Clone, JsonSchema)]
 #[serde(rename_all = "camelCase")]
 pub(crate) struct CzmlWriterParam {
     /// # Output File Path
-    /// Path where the CZML file will be written
+    /// Path of the CZML file to write. Evaluated once when the workflow starts,
+    /// with workflow variables only, so it cannot depend on feature attributes.
     pub(super) output: Code,
     /// # Group By Attributes
-    /// Attributes used to group features into separate CZML files
+    /// Attributes to group features by, writing one file per distinct group
+    /// under the `output` path and naming it after a hash of the group's
+    /// values. When omitted, every feature goes to the single file `output`
+    /// names.
     pub(super) group_by: Option<Vec<Attribute>>,
     /// # Time Field
-    /// Attribute containing the timestamp for each feature. Supports two formats:
-    /// - **ISO 8601 strings**: e.g., "2024-01-01T00:00:00Z", "2024-01-01T12:30:45+09:00"
-    /// - **Numeric values**: Seconds as offset from epoch (e.g., "0", "60", "120.5")
-    ///
-    /// When set together with `groupTimeseriesBy`, features sharing the same
-    /// group key are combined into a single CZML entity with time-tagged position
-    /// samples for animation in Cesium.
-    ///
-    /// **Example workflow configuration:**
-    /// ```yaml
-    /// - action: CZML Writer
-    ///   with:
-    ///     output: "output.czml"
-    ///     timeField: "timestamp"
-    ///     groupTimeseriesBy: "vehicleId"
-    ///     epoch: "2024-01-01T00:00:00Z"  # Optional for numeric times (auto-defaults to Unix epoch)
-    /// ```
+    /// Attribute holding each feature's time, either an ISO 8601 timestamp or a
+    /// number of seconds counted from `epoch`. Set it together with
+    /// `groupTimeseriesBy` to merge a group into one time-dynamic entity; set
+    /// alone, each feature becomes a time-dynamic entity of its own.
     pub(super) time_field: Option<Attribute>,
+    /// # Group Timeseries By
+    /// Attribute whose value merges features into a single time-dynamic entity,
+    /// one entity per distinct value. Has no effect unless `timeField` is set.
+    pub(super) group_timeseries_by: Option<Attribute>,
     /// # Epoch
-    /// Reference time (ISO 8601 format) used as the base for numeric time offsets.
-    ///
-    /// **When to use:**
-    /// - Optional but recommended when `timeField` contains numeric values (e.g., "0", "60", "3600")
-    /// - Not needed when `timeField` contains ISO 8601 datetime strings
-    ///
-    /// **Format:** ISO 8601 datetime string with timezone
-    /// - Examples: "2024-01-01T00:00:00Z", "2024-06-15T09:00:00+09:00"
-    ///
-    /// **Auto-detection:** If omitted and all time values are numeric, automatically
-    /// defaults to Unix epoch "1970-01-01T00:00:00Z". For custom time ranges,
-    /// explicitly set this parameter to your desired base time.
-    ///
-    /// **Example:**
-    /// ```yaml
-    /// epoch: "2024-01-01T00:00:00Z"  # Time value "60" means 2024-01-01T00:01:00Z
-    /// ```
+    /// Base time that numeric `timeField` values count from, as an ISO 8601
+    /// timestamp. When omitted and every time value is numeric, the Unix epoch
+    /// `1970-01-01T00:00:00Z` is used.
     pub(super) epoch: Option<String>,
     /// # Interpolation Algorithm
-    /// Algorithm used by Cesium to interpolate between time-tagged samples.
+    /// How a viewer interpolates between the time-tagged samples. Written into
+    /// the output as a hint; the engine itself never interpolates.
     #[serde(default)]
     pub(super) interpolation_algorithm: InterpolationAlgorithm,
     /// # Interpolation Degree
-    /// Degree of interpolation (1 for LINEAR, 5 typical for LAGRANGE).
+    /// Degree of the interpolation polynomial, written alongside the algorithm.
+    /// Linear interpolation takes 1; 5 is typical for Lagrange.
     #[serde(default = "default_interpolation_degree")]
+    #[schemars(range(min = 1))]
     pub(super) interpolation_degree: u32,
-    /// # Group Timeseries By
-    /// Attribute used to group features into a single time-dynamic CZML
-    /// entity. Features with the same value for this attribute are merged
-    /// into one packet with time-tagged positions.
-    pub(super) group_timeseries_by: Option<Attribute>,
+    /// # Polygon Style
+    /// Fill colour and extrusion for the single polygon the writer derives from
+    /// a feature's geometry. This applies to time-dynamic entities and to
+    /// features read back from CZML; a feature written straight from its
+    /// geometry gets one packet per face, with the default outline only.
+    #[serde(default)]
+    pub(super) polygon_style: Option<PolygonStyleParam>,
+}
+
+/// # Polygon Style
+///
+/// Fill colour and extrusion for a derived polygon.
+#[derive(Serialize, Deserialize, Debug, Clone, JsonSchema)]
+#[serde(rename_all = "camelCase")]
+pub(crate) struct PolygonStyleParam {
     /// # Color Attribute
-    /// Attribute containing a hex color string (e.g., "#ffd8c0") for polygon fill.
-    /// Used when polygon geometry is auto-converted from the feature geometry.
+    /// Attribute holding the fill colour as a hex string, such as `#ffd8c0`.
+    /// When omitted, or when the attribute does not parse, the polygon is left
+    /// unfilled by colour.
     pub(super) color_attribute: Option<Attribute>,
     /// # Opacity
-    /// Alpha value (0–255) for polygon fill color. Default: 180.
+    /// Alpha applied to the fill colour, from 0 for transparent to 255 for
+    /// opaque. Has no effect without `colorAttribute`.
     #[serde(default = "default_opacity")]
     pub(super) opacity: u8,
     /// # Height Attribute
-    /// Attribute containing a numeric value for polygon extrusion height.
-    /// When set, polygons are extruded from ground to this height value.
+    /// Attribute holding the extrusion height in metres. When set, the polygon
+    /// is extruded from the ground to that height and closed top and bottom.
     pub(super) height_attribute: Option<Attribute>,
+}
+
+/// Hand-written rather than derived. `#[serde(default = "default_opacity")]`
+/// fills `opacity` only when a `polygonStyle` object is present and omits the
+/// field; when the whole block is absent, `build()` reaches for `Default`
+/// instead, and a derived one would hand it `opacity: 0` rather than the 180
+/// the schema advertises.
+impl Default for PolygonStyleParam {
+    fn default() -> Self {
+        Self {
+            color_attribute: None,
+            opacity: default_opacity(),
+            height_attribute: None,
+        }
+    }
 }
 
 fn default_interpolation_degree() -> u32 {
@@ -295,11 +289,13 @@ impl CzmlWriterParam {
         if let Some(ref attr) = self.group_timeseries_by {
             self.group_timeseries_by = Some(sanitize_attribute(attr));
         }
-        if let Some(ref attr) = self.color_attribute {
-            self.color_attribute = Some(sanitize_attribute(attr));
-        }
-        if let Some(ref attr) = self.height_attribute {
-            self.height_attribute = Some(sanitize_attribute(attr));
+        if let Some(style) = self.polygon_style.as_mut() {
+            if let Some(ref attr) = style.color_attribute {
+                style.color_attribute = Some(sanitize_attribute(attr));
+            }
+            if let Some(ref attr) = style.height_attribute {
+                style.height_attribute = Some(sanitize_attribute(attr));
+            }
         }
         if let Some(ref epoch) = self.epoch {
             self.epoch = Some(sanitize_epoch(epoch));
@@ -307,16 +303,31 @@ impl CzmlWriterParam {
     }
 }
 
-/// Interpolation algorithm for Cesium time-dynamic properties.
+/// Interpolation algorithm for time-dynamic properties, written into the
+/// output for the viewer to apply.
+//
+// Doc comments on this enum ship to users (§2), so the note that belongs to
+// maintainers lives below the line: the wire values are camelCase per §3.4,
+// while `Display` emits the uppercase spelling CZML itself requires. The two
+// are deliberately different and neither may be derived from the other.
 #[derive(Serialize, Deserialize, Debug, Clone, Default, JsonSchema)]
-#[serde(rename_all = "UPPERCASE")]
+#[serde(rename_all = "camelCase")]
 pub(super) enum InterpolationAlgorithm {
-    /// Linear interpolation between samples (degree 1).
+    /// # Linear
+    /// Straight-line interpolation between neighbouring samples. Takes an
+    /// interpolation degree of 1.
     #[default]
+    #[serde(alias = "LINEAR")]
     Linear,
-    /// Lagrange polynomial interpolation for smooth curves (typical degree 5).
+    /// # Lagrange
+    /// Polynomial interpolation through the samples, giving a smooth path.
+    /// Takes a higher interpolation degree, typically 5.
+    #[serde(alias = "LAGRANGE")]
     Lagrange,
-    /// Hermite spline interpolation using tangent data.
+    /// # Hermite
+    /// Spline interpolation that also reads tangent data where the samples
+    /// carry it.
+    #[serde(alias = "HERMITE")]
     Hermite,
 }
 
@@ -327,6 +338,58 @@ impl std::fmt::Display for InterpolationAlgorithm {
             Self::Lagrange => write!(f, "LAGRANGE"),
             Self::Hermite => write!(f, "HERMITE"),
         }
+    }
+}
+
+/// Parameter-level tests that touch no geometry, so they run in both worlds.
+#[cfg(test)]
+mod param_tests {
+    use super::*;
+
+    #[test]
+    fn the_interpolation_algorithms_old_uppercase_values_still_deserialize() {
+        // The audit renamed the wire values to camelCase (§3.4). The uppercase
+        // spellings stay as serde aliases so a workflow written before the
+        // rename still loads; dropping them would fail the whole job at build
+        // time rather than degrading.
+        for (wire, expected) in [
+            ("LINEAR", "LINEAR"),
+            ("LAGRANGE", "LAGRANGE"),
+            ("HERMITE", "HERMITE"),
+            ("linear", "LINEAR"),
+            ("lagrange", "LAGRANGE"),
+            ("hermite", "HERMITE"),
+        ] {
+            let parsed: InterpolationAlgorithm = serde_json::from_value(serde_json::json!(wire))
+                .unwrap_or_else(|e| {
+                    panic!("`{wire}` must still deserialize: {e}");
+                });
+            // `Display` is what reaches the CZML file, and CZML wants the
+            // uppercase spelling whichever way the parameter was written.
+            assert_eq!(parsed.to_string(), expected);
+        }
+    }
+
+    #[test]
+    fn a_non_ascii_colour_is_refused_not_panicked_on() {
+        // `len()` is a byte count: "aé123" is six bytes and five characters, so
+        // the length check passed and `&hex[0..2]` split `é`, panicking on a
+        // feature attribute's value. Exposing the writer and routing the
+        // grouped-timeseries path through it widened who can reach this.
+        assert_eq!(hex_to_rgba("#aé123", 180), None);
+        assert_eq!(hex_to_rgba("aé123", 180), None);
+        // Still refuses the merely wrong, and still accepts the right.
+        assert_eq!(hex_to_rgba("#zzzzzz", 180), None);
+        assert_eq!(hex_to_rgba("#fff", 180), None);
+        assert_eq!(hex_to_rgba("#ffd8c0", 180), Some([255, 216, 192, 180]));
+    }
+
+    #[test]
+    fn an_omitted_polygon_style_keeps_the_opacity_the_schema_advertises() {
+        // `#[serde(default = "default_opacity")]` does not reach an absent
+        // block, so `Default` has to carry 180 itself.
+        assert_eq!(PolygonStyleParam::default().opacity, default_opacity());
+        assert_eq!(PolygonStyleParam::default().opacity, 180);
     }
 }
 
@@ -496,12 +559,22 @@ impl Sink for CzmlWriter {
 
             if is_grouped_timeseries {
                 let mut cache = ReprojectionCache::default();
-                let buffer = build_timeseries_czml_next(features, &self.params, &mut cache)?;
+                let buffer = build_timeseries_czml_next(
+                    &ctx.as_context(),
+                    features,
+                    &self.params,
+                    &mut cache,
+                )?;
                 out.write(Bytes::from(buffer))
                     .map_err(crate::errors::SinkError::czml_writer)?;
             } else if is_embedded_mode(features, &self.params) {
                 let mut cache = ReprojectionCache::default();
-                let buffer = build_embedded_czml_next(features, &self.params, &mut cache)?;
+                let buffer = build_embedded_czml_next(
+                    &ctx.as_context(),
+                    features,
+                    &self.params,
+                    &mut cache,
+                )?;
                 out.write(Bytes::from(buffer))
                     .map_err(crate::errors::SinkError::czml_writer)?;
             } else {
@@ -716,23 +789,63 @@ fn collect_lines_2d(geometry: &Euclidean2DGeometry, out: &mut Vec<LineChain>) {
     }
 }
 
+/// Why a feature could not be given a position. The two cases carry different
+/// diagnostic codes, which is the whole reason this is not an `Option`: a
+/// feature with nothing to place and a feature in a frame we cannot resolve
+/// are different problems with different fixes.
+#[cfg(feature = "new-geometry")]
+enum PlacementError {
+    /// The geometry holds no vertex to position the entity at.
+    NothingToPlace,
+    /// A vertex exists, but its frame could not be reprojected to WGS84.
+    Frame(FrameError),
+}
+
 /// A feature's representative position, reprojected to WGS84 and swapped into
-/// `cartographicDegrees` order (`[lon, lat, height]`). `None` covers both "no
-/// position" and "position present but unplaceable" — used only by the
-/// grouped-timeseries path (mode 1), which — like the old writer before it —
-/// silently drops a sample it cannot place rather than diagnosing it; the
-/// per-feature diagnostics table (mode 2) is what actually reports frame
-/// failures.
+/// `cartographicDegrees` order (`[lon, lat, height]`).
+///
+/// Used by the two entity-building paths (grouped timeseries and Embedded
+/// Mode). Both used to take an `Option` here and drop an unplaceable sample
+/// without a word, so a batch could lose every position while the run stayed
+/// green; the caller now reports through [`placement_draft`].
 #[cfg(feature = "new-geometry")]
 fn cartographic_position(
     cache: &mut ReprojectionCache,
     feature: &Feature,
-) -> Option<(f64, f64, f64)> {
-    let (pos, frame) = first_vertex(&feature.geometry)?;
+) -> Result<(f64, f64, f64), PlacementError> {
+    let (pos, frame) = first_vertex(&feature.geometry).ok_or(PlacementError::NothingToPlace)?;
     let mut coords = vec![pos];
-    to_wgs84(cache, &frame, &mut coords).ok()?;
+    to_wgs84(cache, &frame, &mut coords).map_err(PlacementError::Frame)?;
     let [lat, lon, height] = coords[0];
-    Some((lon, lat, height))
+    Ok((lon, lat, height))
+}
+
+/// The diagnostic for a [`PlacementError`], so that the entity paths report the
+/// same two codes mode 3 reports for the same two causes.
+#[cfg(feature = "new-geometry")]
+fn placement_draft(err: PlacementError, feature: &Feature) -> DiagnosticDraft {
+    match err {
+        PlacementError::NothingToPlace => DiagnosticDraft::new(ErrorCode::CzmlEmptyGeometry)
+            .with_message(format!(
+                "feature has no drawable geometry: feature_id={}",
+                feature.id
+            )),
+        PlacementError::Frame(err) => frame_error_draft(err, feature),
+    }
+}
+
+/// Report a feature the entity paths could not place, then carry on.
+///
+/// `finish()` has no single feature of its own, so the per-feature
+/// `ExecutorContext` that carries `report` is synthesized here exactly as
+/// `feature_to_packets_next` does it. The `Result` is discarded for the same
+/// reason it is there: a promoted `Fatal` has already reached the node's fatal
+/// slot inside `report()`, and these builders return a document, not a
+/// per-feature outcome.
+#[cfg(feature = "new-geometry")]
+fn report_unplaced(gctx: &Context, feature: &Feature, err: PlacementError) {
+    let ectx = gctx.as_executor_context(feature.clone(), FEATURES_PORT.clone());
+    let _ = ectx.report(placement_draft(err, feature));
 }
 
 /// Decide and build every CZML packet for one feature (mode 3: geometry-only
@@ -844,12 +957,31 @@ fn feature_to_packets_next(
     }
 }
 
+/// The epoch numeric times are counted from: the one the user set, else the
+/// Unix epoch when every time value is numeric, else none.
+///
+/// Shared so the document clock and the entity packets cannot disagree about
+/// what a bare `60` means.
+#[cfg(feature = "new-geometry")]
+fn effective_epoch(explicit: Option<&str>, all_numeric: bool) -> Option<String> {
+    match explicit {
+        Some(epoch) => Some(epoch.to_string()),
+        None if all_numeric => Some(UNIX_EPOCH_ISO.to_string()),
+        None => None,
+    }
+}
+
+/// The epoch CZML counts from when numeric times carry no explicit one.
+#[cfg(feature = "new-geometry")]
+const UNIX_EPOCH_ISO: &str = "1970-01-01T00:00:00Z";
+
 /// Build a CZML document with time-dynamic entities grouped by attribute —
 /// the new-geometry counterpart of `build_timeseries_czml`. Same shape;
 /// position extraction goes through `first_vertex` + `to_wgs84`
 /// (`cartographic_position`) instead of the old geometry-type match.
 #[cfg(feature = "new-geometry")]
 fn build_timeseries_czml_next(
+    gctx: &Context,
     features: &[Feature],
     params: &CzmlWriterCompiledParam,
     cache: &mut ReprojectionCache,
@@ -904,10 +1036,21 @@ fn build_timeseries_czml_next(
         let start = &all_timestamps[0];
         let end = &all_timestamps[all_timestamps.len() - 1];
 
-        let (start_iso, end_iso) = if all_numeric && params.epoch.is_some() {
-            let start_iso = strip_epoch_offset_for_availability(start, params.epoch.as_deref());
-            let end_iso = strip_epoch_offset_for_availability(end, params.epoch.as_deref());
-            (start_iso, end_iso)
+        // The same epoch each entity resolves for itself in
+        // `build_entity_packet_next`: an explicit one, else the Unix epoch when
+        // every time value is numeric. This used to require `params.epoch` to be
+        // set, so numeric times with no epoch wrote the raw numbers into
+        // `clock.currentTime` and `clock.interval`, which CZML requires to be
+        // ISO 8601 — while the entities in the same document had already
+        // defaulted to the Unix epoch. One document, two readings of the same
+        // times. `strip_epoch_offset_for_availability` returns an ISO input
+        // untouched, so this is a no-op when the times are already timestamps.
+        let clock_epoch = effective_epoch(params.epoch.as_deref(), all_numeric);
+        let (start_iso, end_iso) = if all_numeric {
+            (
+                strip_epoch_offset_for_availability(start, clock_epoch.as_deref()),
+                strip_epoch_offset_for_availability(end, clock_epoch.as_deref()),
+            )
         } else {
             (start.clone(), end.clone())
         };
@@ -928,7 +1071,7 @@ fn build_timeseries_czml_next(
         .map_err(SinkError::czml_writer)?;
 
     for (entity_id, group_features) in &groups {
-        let packet = build_entity_packet_next(entity_id, group_features, params, cache)?;
+        let packet = build_entity_packet_next(gctx, entity_id, group_features, params, cache)?;
         output_buffer.write(b",").map_err(SinkError::czml_writer)?;
         output_buffer
             .write(&serde_json::to_vec(&packet).map_err(SinkError::czml_writer)?)
@@ -965,12 +1108,15 @@ fn polygon_value_for(
 /// features — the new-geometry counterpart of `build_entity_packet`. Same
 /// shape, including the polygon-vs-point graphic decision: position samples
 /// come from `cartographic_position` instead of `extract_point_coords`, and
-/// the polygon-or-point decision comes from `polygon_value_for` (first face
-/// of the group's first feature) instead of `feature_geometry_to_polygon_json`
-/// (old-geometry-specific), but the resulting shape is the same — a polygon
-/// feature still renders as a footprint, with `position` removed, not a dot.
+/// the polygon-or-point decision comes from `styled_polygon_value_for` (first
+/// face of the group's first feature) instead of
+/// `feature_geometry_to_polygon_json` (old-geometry-specific), but the
+/// resulting shape is the same — a polygon feature still renders as a
+/// footprint, with `position` removed, not a dot, and carrying the same
+/// `polygonStyle` the old world applied here.
 #[cfg(feature = "new-geometry")]
 fn build_entity_packet_next(
+    gctx: &Context,
     entity_id: &str,
     features: &[&Feature],
     params: &CzmlWriterCompiledParam,
@@ -994,13 +1140,7 @@ fn build_entity_packet_next(
         }
     });
 
-    let epoch = if params.epoch.is_some() {
-        params.epoch.clone()
-    } else if all_numeric_times {
-        Some("1970-01-01T00:00:00Z".to_string())
-    } else {
-        None
-    };
+    let epoch = effective_epoch(params.epoch.as_deref(), all_numeric_times);
 
     let mut sorted: Vec<&Feature> = features.to_vec();
     sorted.sort_by(|a, b| {
@@ -1031,7 +1171,17 @@ fn build_entity_packet_next(
             .get(time_field)
             .map(attribute_value_to_string)
             .unwrap_or_default();
-        let placed = cartographic_position(cache, feature);
+        // Reported once per feature, here, rather than at each of the two uses
+        // below: a feature contributes at most one sample, so reporting at the
+        // use sites would say nothing extra and would miss the feature whose
+        // time value is unparseable *and* whose position is unplaceable.
+        let placed = match cartographic_position(cache, feature) {
+            Ok(pos) => Some(pos),
+            Err(err) => {
+                report_unplaced(gctx, feature, err);
+                None
+            }
+        };
 
         if time_str.is_empty() {
             if let Some((lon, lat, height)) = placed {
@@ -1122,10 +1272,13 @@ fn build_entity_packet_next(
 
     // Add graphic based on geometry type: polygon for areal features, point
     // for everything else — same decision `build_entity_packet` makes via
-    // `feature_geometry_to_polygon_json`, just sourced from `polygon_value_for`.
+    // `feature_geometry_to_polygon_json`, styling included. The port originally
+    // called the unstyled `polygon_value_for` here, which silently dropped
+    // `colorAttribute`, `opacity` and `heightAttribute` from every grouped
+    // timeseries entity; the old world applied them on this path.
     match sorted
         .first()
-        .and_then(|f| polygon_value_for(f, entity_id, cache))
+        .and_then(|f| styled_polygon_value_for(f, params, entity_id, cache))
     {
         Some(polygon_val) => {
             packet["polygon"] = polygon_val;
@@ -1240,6 +1393,7 @@ fn styled_polygon_value_for(
 /// `build_embedded_packet_next`.
 #[cfg(feature = "new-geometry")]
 fn build_embedded_czml_next(
+    gctx: &Context,
     features: &[Feature],
     params: &CzmlWriterCompiledParam,
     cache: &mut ReprojectionCache,
@@ -1248,25 +1402,17 @@ fn build_embedded_czml_next(
 
     // Auto-detect epoch for numeric time values in per-entity mode
     let effective_epoch: Option<String> = if per_entity_mode {
-        if params.epoch.is_some() {
-            params.epoch.clone()
-        } else {
-            let all_numeric = params.time_field.as_ref().is_some_and(|tf| {
-                features.iter().all(|f| {
-                    f.get(tf)
-                        .map(|v| {
-                            let s = attribute_value_to_string(v);
-                            s.parse::<f64>().is_ok()
-                        })
-                        .unwrap_or(true)
-                })
-            });
-            if all_numeric {
-                Some("1970-01-01T00:00:00Z".to_string())
-            } else {
-                None
-            }
-        }
+        let all_numeric = params.time_field.as_ref().is_some_and(|tf| {
+            features.iter().all(|f| {
+                f.get(tf)
+                    .map(|v| {
+                        let s = attribute_value_to_string(v);
+                        s.parse::<f64>().is_ok()
+                    })
+                    .unwrap_or(true)
+            })
+        });
+        effective_epoch(params.epoch.as_deref(), all_numeric)
     } else {
         params.epoch.clone()
     };
@@ -1330,6 +1476,7 @@ fn build_embedded_czml_next(
     // Pass 2: Build packets
     for (idx, feature) in features.iter().enumerate() {
         let mut packet = build_embedded_packet_next(
+            gctx,
             feature,
             params,
             global_end.as_deref(),
@@ -1365,6 +1512,7 @@ fn build_embedded_czml_next(
 /// `feature_geometry_to_polygon_json` becomes `styled_polygon_value_for`.
 #[cfg(feature = "new-geometry")]
 fn build_embedded_packet_next(
+    gctx: &Context,
     feature: &Feature,
     params: &CzmlWriterCompiledParam,
     global_end: Option<&str>,
@@ -1372,6 +1520,9 @@ fn build_embedded_packet_next(
     cache: &mut ReprojectionCache,
 ) -> Result<Value, BoxedError> {
     let mut packet = serde_json::Map::new();
+    // Set when geometry could not place the entity, and resolved at the end of
+    // this function once the `czml.*` graphics have had their chance.
+    let mut unplaced: Option<PlacementError> = None;
 
     if let Some(AttributeValue::String(id)) = feature.get(Attribute::new("id")) {
         packet.insert("id".to_string(), serde_json::json!(id));
@@ -1475,13 +1626,22 @@ fn build_embedded_packet_next(
     } else {
         // Static entity: position from geometry. `cartographic_position`
         // already returns `(lon, lat, height)` in CZML order.
-        if let Some((lon, lat, height)) = cartographic_position(cache, feature) {
-            packet.insert(
-                "position".to_string(),
-                serde_json::json!({
-                    "cartographicDegrees": [lon, lat, height],
-                }),
-            );
+        match cartographic_position(cache, feature) {
+            Ok((lon, lat, height)) => {
+                packet.insert(
+                    "position".to_string(),
+                    serde_json::json!({
+                        "cartographicDegrees": [lon, lat, height],
+                    }),
+                );
+            }
+            // Held, not reported yet. A feature read with `preserveRaw` can
+            // carry `Geometry::None` and a perfectly good `czml.polygon`, whose
+            // own `positions` place the graphic — the restoration loop below is
+            // what puts it back. Reporting here would call that a placement
+            // failure while the packet goes out fully drawn, which is the kind
+            // of false positive that teaches users to ignore the diagnostic.
+            Err(err) => unplaced = Some(err),
         }
     }
 
@@ -1547,8 +1707,30 @@ fn build_embedded_packet_next(
         packet.insert("properties".to_string(), props);
     }
 
+    // Now that every source of a position or a graphic has had its turn —
+    // `czml.*` restoration and the geometry auto-convert — a held placement
+    // error is a real one only if the entity ended up with neither.
+    if let Some(err) = unplaced
+        && !packet.contains_key("position")
+        && !GRAPHIC_KEYS.iter().any(|k| packet.contains_key(*k))
+    {
+        report_unplaced(gctx, feature, err);
+    }
+
     Ok(Value::Object(packet))
 }
+
+/// The CZML graphic properties this writer recognises. A packet carrying one of
+/// them is drawable on its own terms, whatever the feature's geometry says.
+#[cfg(feature = "new-geometry")]
+const GRAPHIC_KEYS: [&str; 6] = [
+    "point",
+    "billboard",
+    "model",
+    "label",
+    "polygon",
+    "polyline",
+];
 
 /// Build a CZML document from features with embedded `czml.*` attributes
 /// (produced by the reader's `PreserveRaw` strategy).
@@ -2272,7 +2454,12 @@ fn polygon_to_czml_polygon(poly: &Polygon3D<f64>) -> CzmlPolygon {
 /// Parse a hex color string like "#ffd8c0" into [r, g, b, alpha].
 fn hex_to_rgba(hex: &str, alpha: u8) -> Option<[u8; 4]> {
     let hex = hex.strip_prefix('#').unwrap_or(hex);
-    if hex.len() != 6 {
+    // `len()` counts bytes, so six bytes is not six hex digits: `#aé123` passes
+    // a length check and then splits `é` on the first slice below, which panics
+    // rather than returning `None`. The colour comes from a feature attribute,
+    // so that is reachable from data. Require ASCII hex digits before slicing;
+    // `from_str_radix` would reject them anyway, but only if we get that far.
+    if hex.len() != 6 || !hex.bytes().all(|b| b.is_ascii_hexdigit()) {
         return None;
     }
     let r = u8::from_str_radix(&hex[0..2], 16).ok()?;
@@ -3227,6 +3414,106 @@ mod new_geometry_tests {
         );
     }
 
+    #[test]
+    fn the_document_clock_reads_numeric_times_the_same_way_the_entities_do() {
+        // With numeric times and no `epoch`, the clock used to take the raw
+        // numbers — `"interval": "0/60"` — while the entities in the same
+        // document defaulted to the Unix epoch. CZML wants ISO 8601 here, and
+        // one document must not read the same times two ways.
+        let doc = parse(&fixture::write_timeseries_batch(
+            vec![
+                fixture::polygon_timeseries_feature_in(6677, "0", "v1"),
+                fixture::polygon_timeseries_feature_in(6677, "60", "v1"),
+            ],
+            "timestamp",
+            "vehicleId",
+        ));
+        let clock = doc
+            .iter()
+            .find(|p| p.get("id") == Some(&Value::String("document".to_string())))
+            .and_then(|p| p.get("clock"))
+            .expect("the document packet's clock");
+
+        assert_eq!(
+            clock["interval"],
+            serde_json::json!("1970-01-01T00:00:00Z/1970-01-01T00:01:00Z"),
+            "the clock must resolve numeric times against the same epoch the \
+             entities infer: {clock:?}"
+        );
+        assert_eq!(
+            clock["currentTime"],
+            serde_json::json!("1970-01-01T00:00:00Z"),
+            "{clock:?}"
+        );
+    }
+
+    #[test]
+    fn an_iso_timestamped_document_clock_is_left_alone() {
+        // The counterpart: ISO times must pass through untouched, so the fix
+        // above cannot quietly rewrite a document that was already correct.
+        let doc = parse(&fixture::write_timeseries_batch(
+            vec![
+                fixture::polygon_timeseries_feature_in(6677, "2024-01-01T00:00:00Z", "v1"),
+                fixture::polygon_timeseries_feature_in(6677, "2024-01-01T00:01:00Z", "v1"),
+            ],
+            "timestamp",
+            "vehicleId",
+        ));
+        let clock = doc
+            .iter()
+            .find(|p| p.get("id") == Some(&Value::String("document".to_string())))
+            .and_then(|p| p.get("clock"))
+            .expect("the document packet's clock");
+        assert_eq!(
+            clock["interval"],
+            serde_json::json!("2024-01-01T00:00:00Z/2024-01-01T00:01:00Z"),
+            "{clock:?}"
+        );
+    }
+
+    #[test]
+    fn a_grouped_timeseries_polygon_carries_its_polygon_style() {
+        // The port called the *unstyled* `polygon_value_for` on this path, so
+        // `colorAttribute`, `opacity` and `heightAttribute` were accepted by
+        // the schema and then silently dropped from every grouped-timeseries
+        // entity. The old world styled this path, so this is a regression the
+        // port introduced, not a gap it inherited.
+        let mut feature =
+            fixture::polygon_timeseries_feature_in(6677, "2024-01-01T00:00:00Z", "v1");
+        feature.insert(
+            Attribute::new("fillColor"),
+            AttributeValue::String("#ffd8c0".to_string()),
+        );
+        feature.insert(
+            Attribute::new("buildingHeight"),
+            AttributeValue::Number(serde_json::Number::from(12)),
+        );
+
+        let doc = parse(&fixture::write_styled_timeseries_batch(
+            vec![feature],
+            "timestamp",
+            "vehicleId",
+            "fillColor",
+            "buildingHeight",
+        ));
+        let polygon = doc
+            .iter()
+            .find(|p| p.get("id") == Some(&Value::String("v1".to_string())))
+            .and_then(|p| p.get("polygon"))
+            .expect("the vehicleId=v1 entity's polygon");
+
+        assert_eq!(
+            polygon["material"]["solidColor"]["color"]["rgba"],
+            serde_json::json!([255, 216, 192, 180]),
+            "colorAttribute and the default opacity must reach the polygon: {polygon:?}"
+        );
+        assert_eq!(
+            polygon["extrudedHeight"],
+            serde_json::json!(12.0),
+            "heightAttribute must reach the polygon: {polygon:?}"
+        );
+    }
+
     /// Test-only helpers: build features directly against the new geometry
     /// model, then drive a real `CzmlWriter` end to end (factory → `process`
     /// → `finish` → file) and hand back what it wrote.
@@ -3425,6 +3712,32 @@ mod new_geometry_tests {
             write_batch_with(features, extra)
         }
 
+        /// As [`write_timeseries_batch`], but with a `polygonStyle` block, so a
+        /// test can see whether the styling parameters reach the entity's
+        /// polygon at all.
+        pub(super) fn write_styled_timeseries_batch(
+            features: Vec<Feature>,
+            time_field: &str,
+            group_timeseries_by: &str,
+            color_attribute: &str,
+            height_attribute: &str,
+        ) -> String {
+            let mut extra = HashMap::new();
+            extra.insert("timeField".to_string(), serde_json::json!(time_field));
+            extra.insert(
+                "groupTimeseriesBy".to_string(),
+                serde_json::json!(group_timeseries_by),
+            );
+            extra.insert(
+                "polygonStyle".to_string(),
+                serde_json::json!({
+                    "colorAttribute": color_attribute,
+                    "heightAttribute": height_attribute,
+                }),
+            );
+            write_batch_with(features, extra)
+        }
+
         fn write_batch_with(
             features: Vec<Feature>,
             mut with: HashMap<String, serde_json::Value>,
@@ -3567,6 +3880,100 @@ mod new_geometry_diagnostics_tests {
         assert_eq!(
             summaries[0].effective_disposition,
             Some(Disposition::WarnDrop)
+        );
+    }
+
+    /// `CzmlWriterCompiledParam` with only `time_field` set — the Embedded Mode
+    /// per-entity trigger.
+    fn per_entity_params() -> CzmlWriterCompiledParam {
+        CzmlWriterCompiledParam {
+            output: "out.czml".to_string(),
+            group_by: None,
+            time_field: Some(Attribute::new("timestamp")),
+            epoch: None,
+            interpolation_algorithm: InterpolationAlgorithm::default(),
+            interpolation_degree: 1,
+            group_timeseries_by: None,
+            color_attribute: None,
+            opacity: 180,
+            height_attribute: None,
+        }
+    }
+
+    #[test]
+    fn an_unplaceable_feature_in_embedded_mode_is_reported_not_silently_unpositioned() {
+        // Embedded Mode and the grouped-timeseries path both took an `Option`
+        // from `cartographic_position` and wrote the entity with no position,
+        // saying nothing — a batch could lose every position with the run
+        // still green. The entity is still written, because its `czml.*`
+        // attributes carry graphics worth keeping; it is the silence that was
+        // the defect.
+        let handle = make_handle();
+        let ctx = context_with_handle(&handle);
+        let feature = Feature::new_with_attributes_and_geometry(
+            indexmap::IndexMap::new(),
+            NewGeometry::Euclidean3D(Euclidean3DGeometry::Point(Point3D::new(
+                CoordinateFrame::default(),
+                [1.0, 2.0, 3.0],
+            ))),
+        );
+        let mut cache = ReprojectionCache::default();
+
+        let out =
+            build_embedded_czml_next(&ctx, &[feature], &per_entity_params(), &mut cache).unwrap();
+        let doc: Vec<Value> =
+            serde_json::from_slice(&out).expect("written CZML must be valid JSON");
+
+        assert!(
+            doc.iter().all(|p| p.get("position").is_none()),
+            "an unplaceable feature must not be given a position: {doc:?}"
+        );
+        let summaries = handle.inner.drain_summaries();
+        assert_eq!(summaries.len(), 1);
+        assert!(
+            summaries[0].message.contains("czml.unplaceable_frame"),
+            "got {}",
+            summaries[0].message
+        );
+        assert_eq!(
+            summaries[0].effective_disposition,
+            Some(Disposition::WarnDrop)
+        );
+    }
+
+    #[test]
+    fn an_embedded_graphic_places_the_entity_so_absent_geometry_is_not_reported() {
+        // The counterpart to the test above, and the line between them is the
+        // whole point. A feature read with `preserveRaw` can carry no geometry
+        // at all and a `czml.polygon` whose own `positions` place it. Reporting
+        // `czml.empty_geometry` the moment geometry fails to place it would
+        // call that a failure while the packet goes out fully drawn — a false
+        // positive, and the fastest way to teach users to ignore the code.
+        let handle = make_handle();
+        let ctx = context_with_handle(&handle);
+        let mut feature =
+            Feature::new_with_attributes_and_geometry(indexmap::IndexMap::new(), NewGeometry::None);
+        feature.insert(
+            Attribute::new("czml.polygon"),
+            AttributeValue::String(
+                r#"{"positions":{"cartographicDegrees":[139.0,36.0,0,139.1,36.0,0,139.1,36.1,0]}}"#
+                    .to_string(),
+            ),
+        );
+        let mut cache = ReprojectionCache::default();
+
+        let out =
+            build_embedded_czml_next(&ctx, &[feature], &per_entity_params(), &mut cache).unwrap();
+        let doc: Vec<Value> =
+            serde_json::from_slice(&out).expect("written CZML must be valid JSON");
+
+        assert!(
+            doc.iter().any(|p| p.get("polygon").is_some()),
+            "the embedded polygon must survive: {doc:?}"
+        );
+        assert!(
+            handle.inner.drain_summaries().is_empty(),
+            "a packet that carries its own graphic is not a placement failure"
         );
     }
 }
