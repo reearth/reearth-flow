@@ -2,12 +2,10 @@
 //! geometry object.
 
 use std::collections::{HashMap, HashSet};
-use std::path::Path;
-use std::str::FromStr;
 
 use once_cell::sync::Lazy;
 use quick_xml::{NsReader, events::Event};
-use reearth_flow_common::uri::{PROTOCOL_SEPARATOR, Uri};
+use reearth_flow_common::uri::Uri;
 use reearth_flow_storage::resolve::StorageResolver;
 use reearth_flow_types::{AttributeValue, Feature};
 use regex::Regex;
@@ -48,8 +46,8 @@ struct CityObjectGroupInfo {
     xlinks: Vec<CollectedXlinkEntry>,
 }
 
-/// The gml:ids of each external GML file referred to, by its URI; none for a
-/// file that cannot be read.
+/// The gml:ids of each external GML file referred to, by its URI. A file that
+/// cannot be read is not kept, so that a later file tries it again.
 pub(super) type ExternalGmlIds = HashMap<String, HashSet<String>>;
 
 /// The gml:id an xlink:href `#{gml:id}` within the file names.
@@ -65,6 +63,8 @@ pub(super) struct XlinkCheck<'a> {
     invalid_object_type: u32,
     /// Shared by all files.
     external_gml_ids: &'a mut ExternalGmlIds,
+    /// The external GML files of this file that cannot be read, by their URI.
+    unreadable_gml_files: HashSet<String>,
     city_object_groups: Vec<CityObjectGroupInfo>,
 }
 
@@ -74,6 +74,7 @@ impl<'a> XlinkCheck<'a> {
             no_reference: 0,
             invalid_object_type: 0,
             external_gml_ids,
+            unreadable_gml_files: HashSet::new(),
             city_object_groups: Vec::new(),
         }
     }
@@ -110,14 +111,9 @@ impl<'a> XlinkCheck<'a> {
             if let Some(caps) = GML_LINK_PATTERN.captures(href.as_str()) {
                 let gml_path = caps.get(1).map(|m| m.as_str()).unwrap_or_default();
                 let ext_gml_id = caps.get(2).map(|m| m.as_str()).unwrap_or_default();
-                let found = external_gml_uri(city_gml_dir, gml_path).is_some_and(|uri| {
-                    self.external_gml_ids
-                        .entry(uri.to_string())
-                        .or_insert_with(|| {
-                            read_gml_ids(storage_resolver, &uri, gml_ns).unwrap_or_default()
-                        })
-                        .contains(ext_gml_id)
-                });
+                let found = external_gml_uri(city_gml_dir, gml_path)
+                    .and_then(|uri| self.external_gml_ids(storage_resolver, &uri, gml_ns))
+                    .is_some_and(|ids| ids.contains(ext_gml_id));
                 if !found {
                     self.send_no_reference(xlink, report);
                 }
@@ -143,6 +139,28 @@ impl<'a> XlinkCheck<'a> {
                 );
             }
         }
+    }
+
+    /// The gml:ids of the external GML file `uri`, or `None` when it cannot be
+    /// read.
+    fn external_gml_ids(
+        &mut self,
+        storage_resolver: &StorageResolver,
+        uri: &Uri,
+        gml_ns: &str,
+    ) -> Option<&HashSet<String>> {
+        let key = uri.to_string();
+        if self.unreadable_gml_files.contains(&key) {
+            return None;
+        }
+        if !self.external_gml_ids.contains_key(&key) {
+            let Some(ids) = read_gml_ids(storage_resolver, uri, gml_ns) else {
+                self.unreadable_gml_files.insert(key);
+                return None;
+            };
+            self.external_gml_ids.insert(key.clone(), ids);
+        }
+        self.external_gml_ids.get(&key)
     }
 
     fn send_no_reference(&mut self, xlink: &CollectedXlinkEntry, report: &MemberReporter) {
@@ -198,18 +216,24 @@ impl<'a> XlinkCheck<'a> {
     }
 }
 
-/// The URI of the GML file `gml_path` an xlink names, relative to the directory
-/// of the city GML `city_gml_dir` unless absolute, or `None` when it cannot be
-/// resolved.
+/// The URI of the GML file `gml_path` an xlink names, or `None` when it is not
+/// a file in the directory of the city GML `city_gml_dir`, such as `a.gml` or
+/// `./a.gml`. No other file or URL is read, so that a city GML cannot make the
+/// action read anything outside its directory.
 fn external_gml_uri(city_gml_dir: Option<&Uri>, gml_path: &str) -> Option<Uri> {
-    if gml_path.contains(PROTOCOL_SEPARATOR) || Path::new(gml_path).is_absolute() {
-        return Uri::from_str(gml_path).ok();
+    let name = gml_path.strip_prefix("./").unwrap_or(gml_path);
+    if name.contains(['/', '\\', ':']) {
+        tracing::debug!(
+            href = gml_path,
+            "DomainOfDefinitionValidator: not reading an xlink target outside the directory of the city GML"
+        );
+        return None;
     }
-    city_gml_dir?.join(gml_path).ok()
+    city_gml_dir?.join(name).ok()
 }
 
 /// The gml:ids of all elements of the GML file `uri`, or `None` when it cannot
-/// be read.
+/// be read or ends with an element open.
 fn read_gml_ids(
     storage_resolver: &StorageResolver,
     uri: &Uri,
@@ -220,12 +244,18 @@ fn read_gml_ids(
     let mut reader = NsReader::from_reader(content.as_ref());
     let mut buf = Vec::new();
     let mut gml_ids = HashSet::new();
+    let mut depth = 0usize;
     loop {
         match reader.read_event_into(&mut buf).ok()? {
-            Event::Start(element) | Event::Empty(element) => {
+            Event::Start(element) => {
+                depth += 1;
                 gml_ids.extend(gml_id(&reader, &element, gml_ns).ok()?);
             }
-            Event::Eof => return Some(gml_ids),
+            Event::Empty(element) => {
+                gml_ids.extend(gml_id(&reader, &element, gml_ns).ok()?);
+            }
+            Event::End(_) => depth = depth.saturating_sub(1),
+            Event::Eof => return (depth == 0).then_some(gml_ids),
             _ => {}
         }
         buf.clear();

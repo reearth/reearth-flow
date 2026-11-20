@@ -23,9 +23,9 @@ pub(super) type Codelist = HashMap<String, String>;
 /// Each codelist file, by its URI.
 pub(super) type Codelists = HashMap<String, Arc<Codelist>>;
 
-/// The codelist files loaded when not in [`Codelists`], by their URI; `None`
-/// for a file that cannot be loaded.
-pub(super) type LoadedCodelists = HashMap<String, Option<Arc<Codelist>>>;
+/// The codelist files loaded when not in [`Codelists`], by their URI. A file
+/// that cannot be loaded is not kept, so that a later file tries it again.
+pub(super) type LoadedCodelists = HashMap<String, Arc<Codelist>>;
 
 /// Where the codelist of a codeSpace in a city GML is looked for.
 pub(super) struct CodelistResolver<'a> {
@@ -40,7 +40,7 @@ pub(super) struct CodelistResolver<'a> {
 
 impl CodelistResolver<'_> {
     /// The codelist of `code_space`, or `None` when there is none. A codelist
-    /// not in [`Codelists`] is loaded once into `loaded`.
+    /// not in [`Codelists`] is loaded into `loaded`.
     fn resolve(
         &self,
         base_dir: &Uri,
@@ -48,14 +48,14 @@ impl CodelistResolver<'_> {
         loaded: &mut LoadedCodelists,
     ) -> Result<Option<Arc<Codelist>>> {
         let mut load = |uri: &Uri| {
-            loaded
-                .entry(uri.to_string())
-                .or_insert_with(|| {
-                    try_load_codelist_file(Arc::clone(self.storage_resolver), uri)
-                        .ok()
-                        .map(Arc::new)
-                })
-                .clone()
+            let key = uri.to_string();
+            if let Some(code) = loaded.get(&key) {
+                return Some(Arc::clone(code));
+            }
+            let code =
+                Arc::new(try_load_codelist_file(Arc::clone(self.storage_resolver), uri).ok()?);
+            loaded.insert(key, Arc::clone(&code));
+            Some(code)
         };
 
         // First, try to resolve using dirCodelists if codeSpace contains "codelists/"

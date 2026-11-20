@@ -53,9 +53,12 @@ use crate::object_list::ObjectListDefinitions;
 #[derive(Serialize, Deserialize, Debug, Clone, JsonSchema, Default)]
 #[serde(rename_all = "camelCase")]
 pub struct DomainOfDefinitionValidatorParam {
-    /// Fallback codelists directory path expression. When codelists files are not found
-    /// at the location relative to the GML file, this path will be used as the base
-    /// directory for resolving codeSpace references.
+    /// # Codelists Path
+    /// Expression for the URI of a directory of codelist files, evaluated for each
+    /// input feature. The codelists are read from it when the first input feature has
+    /// no `dirCodelists` attribute or its directory does not exist; without either,
+    /// the action fails. A codeSpace found neither under `dirCodelists` nor relative
+    /// to the city GML is looked up in it by the file name of the codeSpace.
     #[serde(skip_serializing_if = "Option::is_none")]
     codelists_path: Option<Code>,
 }
@@ -386,13 +389,13 @@ fn process_feature(
     let t_total = Instant::now();
 
     // Parse the city GML and run the per-member domain-of-definition checks.
-    // If the document is not well-formed (e.g. an L01 syntax error), parsing
-    // fails here. Instead of dropping the file from the result set, log the
-    // failure and fall through to emit a Summary feature carrying zero
-    // domain-of-definition findings, so the file still appears in the per-file
-    // summary (01_共通.csv) and the error-count summary (summary_common.json).
-    // The well-formedness problem itself is reported separately as L01 by the
-    // upstream XMLValidator.
+    // If the document is not well-formed (e.g. an L01 syntax error), or a
+    // member cannot be checked, the checks stop. Instead of dropping the file
+    // from the result set, emit a Summary feature with the findings before the
+    // stop (none for a document that is not well-formed), so the file still
+    // appears in the per-file summary (01_共通.csv) and the error-count summary
+    // (summary_common.json). The well-formedness problem itself is reported
+    // separately as L01 by the upstream XMLValidator.
     let context = FileContext {
         profile,
         ctx,
@@ -426,10 +429,9 @@ fn process_feature(
 
     let parse_failed = parse_outcome.is_err();
     if let Err(e) = parse_outcome {
-        tracing::warn!(
-            target: "perf",
+        tracing::debug!(
             error = ?e,
-            "DomainOfDefinitionValidator: failed to parse/process city GML; emitting zero-finding summary"
+            "DomainOfDefinitionValidator: stopped checking the city GML; the summary has the findings before the stop"
         );
     }
 
@@ -1195,6 +1197,16 @@ mod tests {
         inputs: Vec<Feature>,
         with: Option<HashMap<String, Value>>,
     ) -> Result<Vec<Output>, BoxedError> {
+        run_with(inputs, with, |_| Ok(()))
+    }
+
+    /// [`run`], calling `before` with the index of each input before processing
+    /// it.
+    fn run_with(
+        inputs: Vec<Feature>,
+        with: Option<HashMap<String, Value>>,
+        mut before: impl FnMut(usize) -> std::io::Result<()>,
+    ) -> Result<Vec<Output>, BoxedError> {
         let factory = DomainOfDefinitionValidatorFactory::new(&crate::plateau6::PLATEAU6);
         let mut processor: Box<dyn Processor> = factory.build(
             create_default_node_context(),
@@ -1203,7 +1215,8 @@ mod tests {
             with,
         )?;
         let fw = ProcessorChannelForwarder::Noop(NoopChannelForwarder::default());
-        for input in inputs {
+        for (index, input) in inputs.into_iter().enumerate() {
+            before(index)?;
             processor.process(create_default_execute_context(input), &fw)?;
         }
         processor.finish(create_default_node_context(), &fw)?;
@@ -1233,8 +1246,19 @@ mod tests {
                 port == "duplicateGmlIdStats" || feature["flag"] == "GMLID_NotUnique"
             })
             .unwrap_or(outputs.len());
-        let (mut stats, mut duplicates): (Vec<_>, Vec<_>) = outputs
-            .split_off(start)
+        let finish_outputs = outputs.split_off(start);
+        // The statistics are sent before the duplicates.
+        let stats_count = finish_outputs
+            .iter()
+            .take_while(|(port, _)| port == "duplicateGmlIdStats")
+            .count();
+        assert!(
+            finish_outputs[stats_count..]
+                .iter()
+                .all(|(port, _)| port != "duplicateGmlIdStats"),
+            "{finish_outputs:?}"
+        );
+        let (mut stats, mut duplicates): (Vec<_>, Vec<_>) = finish_outputs
             .into_iter()
             .partition(|(port, _)| port == "duplicateGmlIdStats");
         stats.sort_by(|a, b| a.1["filename"].as_str().cmp(&b.1["filename"].as_str()));
@@ -2275,10 +2299,10 @@ mod tests {
     }
 
     /// Asserts the errors of [`process_external_references`]: a reference to a
-    /// gml:id in the external file is valid, one to a gml:id or a file that
-    /// does not exist has no referent, and the other xlinks and members of the
-    /// file are still checked.
-    fn assert_external_references(outputs: &[Output], ids: &ExternalReferenceIds) {
+    /// gml:id in the external file is valid when the file `is_read`, one to a
+    /// gml:id or a file that does not exist has no referent, and the other
+    /// xlinks and members of the file are still checked.
+    fn assert_external_references(outputs: &[Output], ids: &ExternalReferenceIds, is_read: bool) {
         let ExternalReferenceIds {
             building,
             not_well_formed,
@@ -2288,16 +2312,21 @@ mod tests {
             external,
             nonexistent,
         } = ids;
-        assert_eq!(
-            fields(outputs, "XLink_NoReference", &["gmlId", "xlinkHref"]),
-            [
+        let found_in_external =
+            (!is_read).then(|| (building, format!("{external}#{external_polygon}")));
+        let no_references = found_in_external
+            .into_iter()
+            .chain([
                 (building, format!("{external}#{missing}")),
                 (building, format!("{nonexistent}#{external_polygon}")),
                 (building, format!("#{missing}")),
                 (group, format!("#{missing}")),
-            ]
+            ])
             .map(|(id, href)| vec![json!(id), json!(href)])
-            .to_vec()
+            .collect::<Vec<_>>();
+        assert_eq!(
+            fields(outputs, "XLink_NoReference", &["gmlId", "xlinkHref"]),
+            no_references
         );
         assert!(with_flag(outputs, "XLink_InvalidObjectType").is_empty());
         assert_eq!(
@@ -2315,28 +2344,214 @@ mod tests {
                     "xlinkInvalidObjectType",
                 ]
             ),
-            [[json!(true), json!(1), json!(4), json!(0)]]
+            [[json!(true), json!(1), json!(no_references.len()), json!(0)]]
         );
     }
 
     #[test]
-    // An xlink to `{absolute URI of a GML file}#{gml:id}` refers to a gml:id
-    // anywhere in that file.
+    // An xlink to `{absolute URI of a GML file}#{gml:id}` has no referent, as
+    // the file is not read.
     fn test_xlink_to_external_file_by_uri() -> Result<(), BoxedError> {
         let (outputs, ids) = process_external_references(file_uri)?;
 
-        assert_external_references(&outputs, &ids);
+        assert_external_references(&outputs, &ids, false);
         Ok(())
     }
 
     #[test]
-    // An xlink to `{GML file relative to the referring one}#{gml:id}` refers to
-    // a gml:id anywhere in that file.
+    // An xlink to `{GML file in the directory of the referring one}#{gml:id}`
+    // refers to a gml:id anywhere in that file.
     fn test_xlink_to_external_file_by_relative_path() -> Result<(), BoxedError> {
         let relative = |path: &Path| path.file_name().unwrap().to_string_lossy().to_string();
         let (outputs, ids) = process_external_references(relative)?;
 
-        assert_external_references(&outputs, &ids);
+        assert_external_references(&outputs, &ids, true);
+        Ok(())
+    }
+
+    #[test]
+    // An xlink refers to a GML file in the directory of the referring one, by
+    // its file name with or without `./`, and to no other file.
+    fn test_xlink_to_external_file_only_in_same_directory() -> Result<(), BoxedError> {
+        let temp_dir = TempDir::with_prefix("domain_of_definition_validator_test_")?;
+        let root = temp_dir.path();
+        let codelists = root.join("codelists");
+        fs::create_dir_all(&codelists)?;
+        let polygon = gml_id("poly", 91);
+        let external = external_city_model(&polygon);
+        write_file(&root.join("udx/bldg/external.gml"), &external)?;
+        write_file(&root.join("udx/bldg/sub/external.gml"), &external)?;
+        let hrefs = [
+            "external.gml",
+            "./external.gml",
+            "sub/external.gml",
+            "../bldg/external.gml",
+        ]
+        .map(|path| format!("{path}#{polygon}"));
+        let members = hrefs
+            .iter()
+            .enumerate()
+            .map(|(i, href)| {
+                building_with_reference(&gml_id("bldg", i as u32), "../../codelists/C.xml", href)
+            })
+            .collect::<Vec<_>>()
+            .join("\n");
+        let f1 = root.join("udx/bldg/f1.gml");
+        write_file(&f1, &city_model(VALID_SRS_NAME_6697, &members))?;
+
+        let outputs = run(
+            vec![input("f1.gml", "bldg", 0, &f1, Some(&codelists))],
+            None,
+        )?;
+
+        assert_eq!(
+            fields(&outputs, "XLink_NoReference", &["xlinkHref"]),
+            [[json!(hrefs[2])], [json!(hrefs[3])]]
+        );
+        Ok(())
+    }
+
+    /// A building `gml_id` with a code value `1` of `code_space` and a surface
+    /// referring to `href`.
+    fn building_with_reference(gml_id: &str, code_space: &str, href: &str) -> String {
+        format!(
+            r#"    <core:cityObjectMember>
+        <bldg:Building gml:id="{gml_id}">
+            <core:lod1Solid>
+                <gml:Solid>
+                    <gml:exterior>
+                        <gml:Shell>
+                            <gml:surfaceMember xlink:href="{href}"/>
+                        </gml:Shell>
+                    </gml:exterior>
+                </gml:Solid>
+            </core:lod1Solid>
+            <bldg:class codeSpace="{code_space}">1</bldg:class>
+        </bldg:Building>
+    </core:cityObjectMember>"#
+        )
+    }
+
+    /// A city model with a building that has the polygon `polygon_id`.
+    fn external_city_model(polygon_id: &str) -> String {
+        city_model(
+            VALID_SRS_NAME_6697,
+            &format!(
+                r#"    <core:cityObjectMember>
+        <bldg:Building gml:id="{}">
+            <core:lod2MultiSurface>
+                <gml:MultiSurface>
+                    <gml:surfaceMember>
+                        <gml:Polygon gml:id="{polygon_id}"/>
+                    </gml:surfaceMember>
+                </gml:MultiSurface>
+            </core:lod2MultiSurface>
+        </bldg:Building>
+    </core:cityObjectMember>"#,
+                gml_id("bldg", 92)
+            ),
+        )
+    }
+
+    #[test]
+    // An external GML file that ends with an element open is not read.
+    fn test_xlink_to_truncated_external_file() -> Result<(), BoxedError> {
+        let temp_dir = TempDir::with_prefix("domain_of_definition_validator_test_")?;
+        let root = temp_dir.path();
+        let codelists = root.join("codelists");
+        fs::create_dir_all(&codelists)?;
+        let polygon = gml_id("poly", 91);
+        let complete = external_city_model(&polygon);
+        let truncated = &complete[..complete.rfind("</core:CityModel>").unwrap()];
+        write_file(&root.join("udx/bldg/external.gml"), truncated)?;
+        let building = gml_id("bldg", 1);
+        let href = format!("external.gml#{polygon}");
+        let f1 = root.join("udx/bldg/f1.gml");
+        write_file(
+            &f1,
+            &city_model(
+                VALID_SRS_NAME_6697,
+                &building_with_reference(&building, "../../codelists/C.xml", &href),
+            ),
+        )?;
+
+        let outputs = run(
+            vec![input("f1.gml", "bldg", 0, &f1, Some(&codelists))],
+            None,
+        )?;
+
+        assert_eq!(
+            fields(&outputs, "XLink_NoReference", &["gmlId", "xlinkHref"]),
+            [[json!(building), json!(href)]]
+        );
+        Ok(())
+    }
+
+    #[test]
+    // A codelist or an external GML file that cannot be read for a file is
+    // read again for a later file.
+    fn test_unreadable_files_are_read_again_by_later_files() -> Result<(), BoxedError> {
+        let temp_dir = TempDir::with_prefix("domain_of_definition_validator_test_")?;
+        let root = temp_dir.path();
+        let codelists = root.join("codelists");
+        fs::create_dir_all(&codelists)?;
+        let fallback = root.join("fallback");
+        let polygon = gml_id("poly", 91);
+        let href = format!("external.gml#{polygon}");
+        let mut inputs = Vec::new();
+        for index in 0..2 {
+            let path = root.join(format!("udx/bldg/f{index}.gml"));
+            write_file(
+                &path,
+                &city_model(
+                    VALID_SRS_NAME_6697,
+                    &building_with_reference(
+                        &gml_id("bldg", index),
+                        "../../elsewhere/F.xml",
+                        &href,
+                    ),
+                ),
+            )?;
+            inputs.push(input(
+                &format!("f{index}.gml"),
+                "bldg",
+                index as u64,
+                &path,
+                Some(&codelists),
+            ));
+        }
+        let with = HashMap::from([(
+            "codelistsPath".to_string(),
+            json!({"type": "string", "value": file_uri(&fallback)}),
+        )]);
+
+        // Both files appear only after the first city GML is checked.
+        let outputs = run_with(inputs, Some(with), |index| {
+            if index == 1 {
+                write_file(&fallback.join("F.xml"), &codelist(&["1"]))?;
+                write_file(
+                    &root.join("udx/bldg/external.gml"),
+                    &external_city_model(&polygon),
+                )?;
+            }
+            Ok(())
+        })?;
+
+        assert_eq!(
+            fields(
+                &outputs,
+                "Summary",
+                &[
+                    "incorrectCodeSpace",
+                    "correctCodeValues",
+                    "xlinkHasNoReference"
+                ]
+            ),
+            [
+                [json!(1), json!(0), json!(1)],
+                [json!(0), json!(1), json!(0)]
+            ]
+        );
         Ok(())
     }
 
