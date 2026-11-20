@@ -3356,6 +3356,58 @@
       }
     },
     {
+      "name": "Mesh Merger",
+      "description": "Fusiona en mallas los polígonos y mallas de las entidades que comparten los mismos valores de atributos de agrupación, conservando cada cara tal cual, y emite una entidad por grupo o por cada parte conectada de este. El resultado es una malla triangular cuando todos los polígonos y mallas fusionados en ella, incluidos los de las colecciones, son mallas triangulares, y una malla poligonal en caso contrario.",
+      "parameterI18n": {
+        "": {
+          "title": "Parámetros del fusionador de mallas",
+          "description": "Define qué entidades se fusionan juntas, cómo se divide el resultado y qué atributos conserva."
+        },
+        "attributeAccumulation": {
+          "title": "Acumulación de atributos",
+          "description": "Qué atributos conserva cada entidad fusionada, tomados de las entidades fusionadas en ella."
+        },
+        "granularity": {
+          "title": "Granularidad",
+          "description": "Con qué detalle se divide cada grupo en entidades de salida."
+        },
+        "groupBy": {
+          "title": "Atributos de agrupación",
+          "description": "Atributos cuyos valores deciden qué entidades se fusionan juntas; las entidades que coinciden en todos ellos forman un grupo. Si se omiten, todas las entidades pertenecen a un único grupo. No puede incluir `__members` cuando se recopilan atributos, ya que ese atributo contiene los valores recopilados."
+        }
+      },
+      "enumI18n": {
+        "AttributeAccumulation": {
+          "collectAttributes": {
+            "title": "Recopilar atributos",
+            "description": "Conserva los atributos de agrupación y escribe los demás atributos de cada entidad fusionada en `__members`, un arreglo con un mapa por entidad en orden de llegada."
+          },
+          "groupAttributesOnly": {
+            "title": "Conservar solo los atributos de agrupación",
+            "description": "Conserva solo los atributos de agrupación y descarta todo lo demás."
+          },
+          "useOneFeature": {
+            "title": "Usar atributos de una entidad",
+            "description": "Conserva los atributos de la primera entidad fusionada y descarta el resto."
+          }
+        },
+        "Granularity": {
+          "edgeConnectedPart": {
+            "title": "Parte conectada por aristas",
+            "description": "Emite una malla por cada conjunto de caras conectadas por aristas con coordenadas exactamente iguales. Las caras que solo se tocan en un vértice forman mallas separadas."
+          },
+          "group": {
+            "title": "Grupo",
+            "description": "Emite una malla por grupo."
+          },
+          "manifoldPart": {
+            "title": "Parte variedad",
+            "description": "Divide aún más cada parte conectada por aristas para que cada arista de una malla limite con una o dos de sus caras. Cuando varias caras coinciden en una arista, solo dos de ellas permanecen unidas allí."
+          }
+        }
+      }
+    },
+    {
       "name": "Neighbor Finder",
       "description": "Encuentra las entidades candidatas más cercanas para cada entidad base basándose en proximidad espacial",
       "parameterI18n": {
@@ -4080,19 +4132,6 @@
         },
         "codelistsPath": {
           "description": "Fallback codelists directory path expression. When codelists files are not found at the location relative to the GML file, this path will be used as the base directory for resolving codeSpace references."
-        }
-      }
-    },
-    {
-      "name": "PLATEAU6.FloodingAreaSurfaceGenerator",
-      "parameterI18n": {
-        "": {
-          "title": "Flooding Area Surface Generator Parameters",
-          "description": "Which bodies are merged into one surface."
-        },
-        "groupBy": {
-          "title": "Group By",
-          "description": "Attributes whose values partition the bodies: only bodies with the same values are merged. Empty (the default) merges every body together."
         }
       }
     },

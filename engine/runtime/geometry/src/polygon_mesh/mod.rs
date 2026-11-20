@@ -27,6 +27,8 @@ mod predicates;
 #[cfg(feature = "new-geometry")]
 mod validation;
 
+#[cfg(feature = "new-geometry")]
+pub(crate) use constructor::bake;
 pub use faces::{FaceRing, FaceVisit};
 pub(crate) use ops::build_open_rings;
 
@@ -137,6 +139,12 @@ impl PolygonMesh2D {
     #[inline]
     pub fn elevation(&self) -> Option<f64> {
         self.z
+    }
+
+    /// Set the elevation the mesh lies at.
+    #[cfg(feature = "new-geometry")]
+    pub(crate) fn set_elevation(&mut self, z: Option<f64>) {
+        self.z = z;
     }
 
     /// The `[x, y]` of the first face's first exterior vertex. The CSR index

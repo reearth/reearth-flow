@@ -70,6 +70,10 @@ crate::unsupported!(Point3D: Triangulate);
 
 crate::unsupported!(Point2D: Split);
 crate::unsupported!(Point3D: Split);
+#[cfg(feature = "new-geometry")]
+crate::unsupported!(Point2D: DecomposeIntoEdgeConnectedParts, DecomposeIntoManifolds);
+#[cfg(feature = "new-geometry")]
+crate::unsupported!(Point3D: DecomposeIntoEdgeConnectedParts, DecomposeIntoManifolds);
 
 crate::unsupported!(Point2D: RemoveAppearance);
 crate::unsupported!(Point3D: RemoveAppearance);

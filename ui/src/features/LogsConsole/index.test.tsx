@@ -197,8 +197,9 @@ describe("LogsConsole", () => {
     expect(screen.getByText("still live")).toBeInTheDocument();
   });
 
-  test("download is off until there are logs to save", () => {
+  test("download is off while the run is still streaming logs", () => {
     jobs["job-a"] = { id: "job-a", status: "running" };
+    liveLogs["job-a"] = [liveLog("job-a", "live line")];
 
     render(<LogsConsole jobId="job-a" />);
 
@@ -207,10 +208,31 @@ describe("LogsConsole", () => {
     ).toBeDisabled();
   });
 
-  test("downloads the logs shown as a JSONL file named for the job", () => {
-    jobs["job-a"] = { id: "job-a", status: "running" };
+  test("download is off when a finished run has no stored log file", async () => {
+    jobs["job-a"] = finishedJob("job-a");
+    liveLogs["job-a"] = [liveLog("job-a", "still live")];
+    fetchMock.mockResolvedValue({ ok: false, text: () => Promise.resolve("") });
+
+    render(<LogsConsole jobId="job-a" />);
+
+    await act(async () => {});
+    expect(
+      screen.getByRole("button", { name: "Download Logs" }),
+    ).toBeDisabled();
+  });
+
+  test("downloads the stored log file of a finished run, named for the job", async () => {
+    jobs["job-a"] = finishedJob("job-a");
     liveLogs["job-a"] = [liveLog("job-a", "live line")];
-    const createObjectURL = vi.fn(() => "blob:logs");
+    fetchMock.mockResolvedValue({
+      ok: true,
+      text: () => Promise.resolve(logLine("from the stored file")),
+    });
+    let blob: Blob | undefined;
+    const createObjectURL = vi.fn((b: Blob) => {
+      blob = b;
+      return "blob:logs";
+    });
     const revokeObjectURL = vi.fn();
     vi.stubGlobal("URL", { ...URL, createObjectURL, revokeObjectURL });
     const click = vi
@@ -221,10 +243,14 @@ describe("LogsConsole", () => {
       });
 
     render(<LogsConsole jobId="job-a" />);
+    await screen.findByText("from the stored file");
     fireEvent.click(screen.getByRole("button", { name: "Download Logs" }));
 
     expect(click).toHaveBeenCalledOnce();
     expect(revokeObjectURL).toHaveBeenCalledWith("blob:logs");
+    const text = await blob?.text();
+    expect(text).toContain("from the stored file");
+    expect(text).not.toContain("live line");
     click.mockRestore();
   });
 });
