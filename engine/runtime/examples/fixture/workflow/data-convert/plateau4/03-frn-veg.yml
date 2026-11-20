@@ -438,12 +438,12 @@ graphs:
         valueAttribute: gml_id
       - attribute: attributes
         valueAttribute: attributes
-      - attribute: core:creationDate
-        valueAttribute: core:creationDate
-      - attribute: uro:geometrySrcDescLod1
-        valueAttribute: uro:geometrySrcDescLod1
-      - attribute: uro:lodType
-        valueAttribute: uro:lodType
+      - attribute: core__creationDate
+        valueAttribute: core__creationDate
+      - attribute: uro__geometrySrcDescLod1
+        valueAttribute: uro__geometrySrcDescLod1
+      - attribute: uro__lodType
+        valueAttribute: uro__lodType
   - id: 35953fd4-5359-43cc-be03-a396259a4c8e
     name: GeometryFilterForFrn
     type: action
@@ -651,24 +651,24 @@ graphs:
         valueAttribute: gml_id
       - attribute: attributes
         valueAttribute: attributes
-      - attribute: gml:name
-        valueAttribute: gml:name
-      - attribute: core:creationDate
-        valueAttribute: core:creationDate
-      - attribute: veg:class
-        valueAttribute: veg:class
-      - attribute: veg:function
-        valueAttribute: veg:function
-      - attribute: veg:height
-        valueAttribute: veg:height
-      - attribute: veg:trunkDiameter
-        valueAttribute: veg:trunkDiameter
-      - attribute: veg:crownDiameter
-        valueAttribute: veg:crownDiameter
-      - attribute: uro:geometrySrcDescLod1
-        valueAttribute: uro:geometrySrcDescLod1
-      - attribute: uro:lodType
-        valueAttribute: uro:lodType
+      - attribute: gml__name
+        valueAttribute: gml__name
+      - attribute: core__creationDate
+        valueAttribute: core__creationDate
+      - attribute: veg__class
+        valueAttribute: veg__class
+      - attribute: veg__function
+        valueAttribute: veg__function
+      - attribute: veg__height
+        valueAttribute: veg__height
+      - attribute: veg__trunkDiameter
+        valueAttribute: veg__trunkDiameter
+      - attribute: veg__crownDiameter
+        valueAttribute: veg__crownDiameter
+      - attribute: uro__geometrySrcDescLod1
+        valueAttribute: uro__geometrySrcDescLod1
+      - attribute: uro__lodType
+        valueAttribute: uro__lodType
   - id: 4a1b2c3d-e5f6-7890-a1b2-c3d4e5f67891
     name: AttributeManagerByLodVeg1
     type: action
@@ -693,18 +693,18 @@ graphs:
     action: AttributeManager
     with:
       operations:
-      - attribute: veg:height
+      - attribute: veg__height
         method: convert
         value: |
-          env.get("__value")["veg:height"] * 1.0
-      - attribute: veg:trunkDiameter
+          env.get("__value")["veg__height"] * 1.0
+      - attribute: veg__trunkDiameter
         method: convert
         value: |
-          env.get("__value")["veg:trunkDiameter"] * 1.0
-      - attribute: veg:crownDiameter
+          env.get("__value")["veg__trunkDiameter"] * 1.0
+      - attribute: veg__crownDiameter
         method: convert
         value: |
-          env.get("__value")["veg:crownDiameter"] * 1.0
+          env.get("__value")["veg__crownDiameter"] * 1.0
   - id: b5222fc2-f67b-4e89-8b8a-029181748511
     name: Cesium3DTilesWriterVeg1
     type: action
@@ -806,22 +806,22 @@ graphs:
         valueAttribute: attributes
       - attribute: gml_name
         valueAttribute: gml_name
-      - attribute: core:creationDate
-        valueAttribute: core:creationDate
-      - attribute: veg:class
-        valueAttribute: veg:class
-      - attribute: veg:function
-        valueAttribute: veg:function
-      - attribute: veg:height
-        valueAttribute: veg:height
-      - attribute: veg:trunkDiameter
-        valueAttribute: veg:trunkDiameter
-      - attribute: veg:crownDiameter
-        valueAttribute: veg:crownDiameter
-      - attribute: uro:geometrySrcDescLod1
-        valueAttribute: uro:geometrySrcDescLod1
-      - attribute: uro:lodType
-        valueAttribute: uro:lodType
+      - attribute: core__creationDate
+        valueAttribute: core__creationDate
+      - attribute: veg__class
+        valueAttribute: veg__class
+      - attribute: veg__function
+        valueAttribute: veg__function
+      - attribute: veg__height
+        valueAttribute: veg__height
+      - attribute: veg__trunkDiameter
+        valueAttribute: veg__trunkDiameter
+      - attribute: veg__crownDiameter
+        valueAttribute: veg__crownDiameter
+      - attribute: uro__geometrySrcDescLod1
+        valueAttribute: uro__geometrySrcDescLod1
+      - attribute: uro__lodType
+        valueAttribute: uro__lodType
       - attribute: dm_feature_type
         valueAttribute: dm_feature_type
       - attribute: dm_attributes
@@ -900,16 +900,16 @@ graphs:
         valueAttribute: gml_id
       - attribute: attributes
         valueAttribute: attributes
-      - attribute: core:creationDate
-        valueAttribute: core:creationDate
-      - attribute: veg:class
-        valueAttribute: veg:class
-      - attribute: veg:averageHeight
-        valueAttribute: veg:averageHeight
-      - attribute: uro:geometrySrcDescLod1
-        valueAttribute: uro:geometrySrcDescLod1
-      - attribute: uro:lodType
-        valueAttribute: uro:lodType
+      - attribute: core__creationDate
+        valueAttribute: core__creationDate
+      - attribute: veg__class
+        valueAttribute: veg__class
+      - attribute: veg__averageHeight
+        valueAttribute: veg__averageHeight
+      - attribute: uro__geometrySrcDescLod1
+        valueAttribute: uro__geometrySrcDescLod1
+      - attribute: uro__lodType
+        valueAttribute: uro__lodType
   - id: 6c3d4e5f-a7b8-9012-c3d4-e5f6a7b89013
     name: AttributeManagerByLodVeg2
     type: action
@@ -1027,16 +1027,16 @@ graphs:
         valueAttribute: gml_id
       - attribute: attributes
         valueAttribute: attributes
-      - attribute: core:creationDate
-        valueAttribute: core:creationDate
-      - attribute: veg:class
-        valueAttribute: veg:class
-      - attribute: veg:averageHeight
-        valueAttribute: veg:averageHeight
-      - attribute: uro:geometrySrcDescLod1
-        valueAttribute: uro:geometrySrcDescLod1
-      - attribute: uro:lodType
-        valueAttribute: uro:lodType
+      - attribute: core__creationDate
+        valueAttribute: core__creationDate
+      - attribute: veg__class
+        valueAttribute: veg__class
+      - attribute: veg__averageHeight
+        valueAttribute: veg__averageHeight
+      - attribute: uro__geometrySrcDescLod1
+        valueAttribute: uro__geometrySrcDescLod1
+      - attribute: uro__lodType
+        valueAttribute: uro__lodType
       - attribute: dm_feature_type
         valueAttribute: dm_feature_type
       - attribute: dm_attributes

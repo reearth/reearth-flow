@@ -413,12 +413,12 @@ graphs:
         valueAttribute: gml_id
       - attribute: attributes
         valueAttribute: attributes
-      - attribute: core:creationDate
-        valueAttribute: core:creationDate
-      - attribute: uro:geometrySrcDescLod1
-        valueAttribute: uro:geometrySrcDescLod1
-      - attribute: uro:lodType
-        valueAttribute: uro:lodType
+      - attribute: core__creationDate
+        valueAttribute: core__creationDate
+      - attribute: uro__geometrySrcDescLod1
+        valueAttribute: uro__geometrySrcDescLod1
+      - attribute: uro__lodType
+        valueAttribute: uro__lodType
   - id: 3713b42c-a3af-489f-91a5-d101c26fcaee
     name: AttributeManagerByLod
     type: action
@@ -498,11 +498,11 @@ graphs:
       - attribute: attributes
         valueAttribute: attributes
       - attribute: core_creationDate
-        valueAttribute: core:creationDate
+        valueAttribute: core__creationDate
       - attribute: uro_geometrySrcDescLod1
-        valueAttribute: uro:geometrySrcDescLod1
+        valueAttribute: uro__geometrySrcDescLod1
       - attribute: uro_lodType
-        valueAttribute: uro:lodType
+        valueAttribute: uro__lodType
       - attribute: dm_feature_type
         valueAttribute: dm_feature_type
       - attribute: dm_attributes

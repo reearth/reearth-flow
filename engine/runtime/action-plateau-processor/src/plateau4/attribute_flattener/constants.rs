@@ -32,11 +32,11 @@ pub(super) static PACKAGE_SCHEMAS: Lazy<HashMap<String, Vec<SchemaColumn>>> = La
 /// Attributes kept on the `flatSchema` port for feature types with a reduced flat attribute set.
 pub(super) struct FlatSchemaAttributes {
     pub(super) attributes: &'static [&'static str],
-    /// Risk package and the attribute name suffixes kept for it (empty keeps all).
+    /// Risk package and the column key suffixes kept for it (empty keeps all).
     pub(super) risk_attributes: &'static [(&'static str, &'static [&'static str])],
 }
 
-const FLOOD_RANK_SUFFIXES: &[&str] = &["_浸水ランク", "_浸水ランクコード"];
+const FLOOD_RANK_SUFFIXES: &[&str] = &["_name", "_rank", "_rank_code"];
 
 pub(super) static FLAT_SCHEMA_ATTRIBUTES: Lazy<HashMap<&'static str, FlatSchemaAttributes>> =
     Lazy::new(|| {

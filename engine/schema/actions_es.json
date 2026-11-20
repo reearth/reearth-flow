@@ -6909,7 +6909,7 @@
         "properties": {
           "colonToUnderscore": {
             "title": "Colon to Underscore",
-            "description": "Replace colons in attribute keys (e.g., from XML Namespaces) with underscores",
+            "description": "Replace colons in attribute keys (e.g., from XML Namespaces) with underscores. Double underscores standing for colons also become single underscores; leading underscores are kept.",
             "type": [
               "boolean",
               "null"

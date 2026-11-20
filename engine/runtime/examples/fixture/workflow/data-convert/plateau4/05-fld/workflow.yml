@@ -94,8 +94,8 @@ graphs:
                   ""
                 }
             # Group keys for FloodingAreaMerger, which runs before the flattener:
-            # the values AttributeFlattener later writes to uro:rank_code and
-            # uro:rankOrg_code.
+            # the values AttributeFlattener later writes to uro__rank_code and
+            # uro__rankOrg_code.
             - attribute: __rank_code
               method: create
               value: |
@@ -166,7 +166,7 @@ graphs:
 
       # Schema branch - defines tileset.json properties. Hardcoded: this set of
       # keys is static, and every fld/tnm/htd/ifld/rfld feature is wtr:WaterBody.
-      # uro:adminType/uro:scale are fld-only (see FLATTEN_ATTRIBUTES), so they're
+      # uro__adminType/uro__scale are fld-only (see FLATTEN_ATTRIBUTES), so they're
       # only included when fld is actually targeted.
       - id: 8dc084cb-14f1-488c-8abe-015a54397d56
         name: HardcodedFldSchema
@@ -180,16 +180,16 @@ graphs:
               city_name: "",
               feature_type: "wtr:WaterBody",
               attributes: "",
-              "gml:name": "",
-              "core:creationDate": "",
-              "wtr:class": "",
-              "wtr:function": "",
-              "uro:description": "",
-              "uro:rank": "",
-              "uro:rank_code": 0,
-              "uro:rankOrg": "",
-              "uro:rankOrg_code": 0,
-              "uro:geometrySrcDescLod1": "",
+              "gml__name": "",
+              "core__creationDate": "",
+              "wtr__class": "",
+              "wtr__function": "",
+              "uro__description": "",
+              "uro__rank": "",
+              "uro__rank_code": 0,
+              "uro__rankOrg": "",
+              "uro__rankOrg_code": 0,
+              "uro__geometrySrcDescLod1": "",
             };
             let target_packages = env.get("targetPackages") ?? [];
             let has_fld = if target_packages.type_of() == "array" {
@@ -198,8 +198,8 @@ graphs:
               target_packages == "fld"
             };
             if has_fld {
-              schema["uro:adminType"] = "";
-              schema["uro:scale"] = "";
+              schema["uro__adminType"] = "";
+              schema["uro__scale"] = "";
             }
             schema
 
@@ -217,30 +217,30 @@ graphs:
               valueAttribute: feature_type
             - attribute: attributes
               valueAttribute: attributes
-            - attribute: gml:name
-              valueAttribute: gml:name
-            - attribute: core:creationDate
-              valueAttribute: core:creationDate
-            - attribute: wtr:class
-              valueAttribute: wtr:class
-            - attribute: wtr:function
-              valueAttribute: wtr:function
-            - attribute: uro:description
-              valueAttribute: uro:description
-            - attribute: uro:rank
-              valueAttribute: uro:rank
-            - attribute: uro:rank_code
-              valueAttribute: uro:rank_code
-            - attribute: uro:rankOrg
-              valueAttribute: uro:rankOrg
-            - attribute: uro:rankOrg_code
-              valueAttribute: uro:rankOrg_code
-            - attribute: uro:adminType
-              valueAttribute: uro:adminType
-            - attribute: uro:scale
-              valueAttribute: uro:scale
-            - attribute: uro:geometrySrcDescLod1
-              valueAttribute: uro:geometrySrcDescLod1
+            - attribute: gml__name
+              valueAttribute: gml__name
+            - attribute: core__creationDate
+              valueAttribute: core__creationDate
+            - attribute: wtr__class
+              valueAttribute: wtr__class
+            - attribute: wtr__function
+              valueAttribute: wtr__function
+            - attribute: uro__description
+              valueAttribute: uro__description
+            - attribute: uro__rank
+              valueAttribute: uro__rank
+            - attribute: uro__rank_code
+              valueAttribute: uro__rank_code
+            - attribute: uro__rankOrg
+              valueAttribute: uro__rankOrg
+            - attribute: uro__rankOrg_code
+              valueAttribute: uro__rankOrg_code
+            - attribute: uro__adminType
+              valueAttribute: uro__adminType
+            - attribute: uro__scale
+              valueAttribute: uro__scale
+            - attribute: uro__geometrySrcDescLod1
+              valueAttribute: uro__geometrySrcDescLod1
 
       - id: 8b05f9d4-1cb2-4071-a1da-c968431bc0ec
         name: VerticalReprojector
@@ -363,12 +363,12 @@ graphs:
               }
               let item = #{
                 name: feature.dict_name,
-                description: feature["uro:description"],
+                description: feature["uro__description"],
               };
-              if "uro:adminType" in feature {
-                item.admin = feature["uro:adminType"];
+              if "uro__adminType" in feature {
+                item.admin = feature["uro__adminType"];
               }
-              let scale = feature["uro:scale"] ?? "";
+              let scale = feature["uro__scale"] ?? "";
               if scale.len() < 2 {
               } else if scale[1] == "1" {
                 item.scale = "計画規模";

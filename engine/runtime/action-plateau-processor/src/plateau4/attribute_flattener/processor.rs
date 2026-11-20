@@ -307,6 +307,17 @@ fn remove_keys_recursive(mut map: Attributes, is_removed: &impl Fn(&str) -> bool
     map
 }
 
+/// Returns `attributes` with every `:` in their keys replaced by `__`, keeping the order.
+fn with_output_keys(attributes: Attributes) -> Attributes {
+    attributes
+        .into_iter()
+        .map(|(key, value)| match key.as_ref().contains(':') {
+            true => (Attribute::new(key.as_ref().replace(':', "__")), value),
+            false => (key, value),
+        })
+        .collect()
+}
+
 /// Placeholder value carrying the schema type of a flatten-list `data_type`, or `None` for unknown types.
 fn schema_value(data_type: &str) -> Option<AttributeValue> {
     match data_type {
@@ -817,7 +828,20 @@ impl AttributeFlattener {
         self.gmlid_to_risk_attr_keys.clear();
     }
 
+    /// Schema feature of `feature_type_key` with output column keys.
     fn generate_schema_feature(&self, feature_type_key: &str) -> Feature {
+        Self::with_output_column_keys(self.schema_feature(feature_type_key))
+    }
+
+    /// Returns `feature` with its column keys converted by `with_output_keys`.
+    fn with_output_column_keys(mut feature: Feature) -> Feature {
+        let attributes = std::mem::take(feature.attributes_mut());
+        *feature.attributes_mut() = with_output_keys(attributes);
+        feature
+    }
+
+    /// Schema feature of `feature_type_key` with the flattening-rule column names.
+    fn schema_feature(&self, feature_type_key: &str) -> Feature {
         let mut attributes = Attributes::new();
         for (key, value) in BASE_SCHEMA_KEYS.clone().into_iter() {
             attributes.insert(Attribute::new(key), value);
@@ -942,7 +966,7 @@ impl AttributeFlattener {
     /// Schema without the nested `attributes` column, reduced further by `FLAT_SCHEMA_ATTRIBUTES`.
     /// LOD4 sub-features are reduced by their top-level ancestor's entry.
     fn generate_flat_schema_feature(&self, feature_type_key: &str) -> Feature {
-        let mut feature = self.generate_schema_feature(feature_type_key);
+        let mut feature = self.schema_feature(feature_type_key);
         let attributes = feature.attributes_mut();
         attributes.shift_remove(&Attribute::new("attributes".to_string()));
         let flat_lookup_key = self
@@ -969,7 +993,7 @@ impl AttributeFlattener {
                 flat.attributes.contains(&key) || kept_risk_keys.contains(key)
             });
         }
-        feature
+        Self::with_output_column_keys(feature)
     }
 
     fn flatten_feature(&mut self, mut feature: Feature) -> Result<Feature, BoxedError> {
@@ -1057,7 +1081,7 @@ impl AttributeFlattener {
             .or_default()
             .extend(attribute_keys);
 
-        Ok(feature)
+        Ok(Self::with_output_column_keys(feature))
     }
 
     /// Determines whether generic attributes should be flattened for the given package and feature type.
@@ -1287,7 +1311,7 @@ mod tests {
             .collect();
         let bldg_keys: Vec<String> = BLDG_SCHEMA_KEYS.iter().map(|(k, _)| k.clone()).collect();
         assert_eq!(keys[keys.len() - bldg_keys.len()..], bldg_keys[..]);
-        assert!(keys.iter().any(|k| k.ends_with("_浸水深")), "{keys:?}");
+        assert!(keys.iter().any(|k| k == "fld_1_1_1_depth"), "{keys:?}");
     }
 
     /// Test that every tran feature type gets the package's fixed column list after the base columns
@@ -1310,12 +1334,12 @@ mod tests {
         expected.extend(
             super::super::constants::PACKAGE_SCHEMAS["tran"]
                 .iter()
-                .map(|c| c.attribute.clone()),
+                .map(|c| c.attribute.replace(':', "__")),
         );
         assert_eq!(traffic, expected);
-        assert_eq!(traffic[BASE_SCHEMA_KEYS.len()], "gml:name");
-        let lanes = traffic.iter().position(|k| k == "uro:numberOfLanes");
-        let material = traffic.iter().position(|k| k == "tran:surfaceMaterial");
+        assert_eq!(traffic[BASE_SCHEMA_KEYS.len()], "gml__name");
+        let lanes = traffic.iter().position(|k| k == "uro__numberOfLanes");
+        let material = traffic.iter().position(|k| k == "tran__surfaceMaterial");
         assert!(lanes < material);
     }
 
@@ -1362,7 +1386,7 @@ mod tests {
         let result = flattener.flatten_feature(feature).unwrap();
 
         // Check that bldg:measuredHeight is a float
-        let measured_height = result.get("bldg:measuredHeight").unwrap();
+        let measured_height = result.get("bldg__measuredHeight").unwrap();
         match measured_height {
             AttributeValue::Number(n) => {
                 assert!(n.is_f64(), "bldg:measuredHeight should be float");
@@ -1398,7 +1422,7 @@ mod tests {
         let result = flattener.flatten_feature(feature).unwrap();
 
         // Check flattened attribute
-        let survey_year = result.get("uro:BuildingDetailAttribute_uro:surveyYear");
+        let survey_year = result.get("uro__BuildingDetailAttribute_uro__surveyYear");
         match survey_year {
             Some(AttributeValue::Number(n)) => {
                 assert!(n.is_i64(), "uro:surveyYear should be integer");
@@ -1428,7 +1452,7 @@ mod tests {
         }
     }
 
-    /// Test that generic attributes are properly flattened
+    /// Test that generic attributes become `gen_{i}_name`/`gen_{i}_value` column groups numbered by first appearance
     #[test]
     fn test_generic_attributes_flattened() {
         let citygml_attrs = citygml_attrs_from_json(
@@ -1459,22 +1483,91 @@ mod tests {
         let mut flattener = AttributeFlattener::default();
         let result = flattener.flatten_feature(feature).unwrap();
 
-        // Check generic attributes are flattened to top level
-        let coefficient = result.get("延べ面積換算係数");
-        match coefficient {
-            Some(AttributeValue::String(s)) => {
-                assert_eq!(s, "0.65");
-            }
-            _ => panic!("延べ面積換算係数 should be String, got {:?}", coefficient),
-        }
+        let string = |s: &str| Some(AttributeValue::String(s.to_string()));
+        assert_eq!(
+            result.get("gen_1_name").cloned(),
+            string("延べ面積換算係数")
+        );
+        assert_eq!(result.get("gen_1_value").cloned(), string("0.65"));
+        assert_eq!(result.get("gen_2_name").cloned(), string("大字・町コード"));
+        assert_eq!(result.get("gen_2_value").cloned(), string("2"));
+        assert!(result.get("延べ面積換算係数").is_none());
+    }
 
-        let town_code = result.get("大字・町コード");
-        match town_code {
-            Some(AttributeValue::String(s)) => {
-                assert_eq!(s, "2");
-            }
-            _ => panic!("大字・町コード should be String, got {:?}", town_code),
-        }
+    /// Test that a name keeps its group number across features, measures get a unit column, attribute
+    /// set members are flattened, and a name seen with different types gets a string value column
+    #[test]
+    fn test_generic_attribute_groups_across_features() {
+        let first = citygml_attrs_from_json(
+            r#"{
+            "gen:genericAttribute": [
+                {"type": "measure", "name": "建物高さ", "value": 12.5, "uom": "m"},
+                {"type": "int", "name": "更新年", "value": 2020}
+            ]
+        }"#,
+        );
+        let second = citygml_attrs_from_json(
+            r#"{
+            "gen:genericAttribute": [
+                {"type": "string", "name": "更新年", "value": "不明"},
+                {"type": "attributeSet", "name": "商業施設", "value": [
+                    {"type": "string", "name": "NAME", "value": "店"}
+                ]}
+            ]
+        }"#,
+        );
+
+        let mut flattener = AttributeFlattener::default();
+        let _ = flattener
+            .flatten_feature(create_test_feature(
+                "bldg_a",
+                "bldg:Building",
+                "bldg",
+                first,
+                "m.gml",
+            ))
+            .unwrap();
+        let result = flattener
+            .flatten_feature(create_test_feature(
+                "bldg_b",
+                "bldg:Building",
+                "bldg",
+                second,
+                "m.gml",
+            ))
+            .unwrap();
+
+        let string = |s: &str| Some(AttributeValue::String(s.to_string()));
+        assert_eq!(result.get("gen_2_name").cloned(), string("更新年"));
+        assert_eq!(result.get("gen_2_value").cloned(), string("不明"));
+        assert_eq!(result.get("gen_3_name").cloned(), string("商業施設_NAME"));
+        assert_eq!(result.get("gen_3_value").cloned(), string("店"));
+
+        let schema = flattener.generate_schema_feature("bldg/bldg:Building");
+        let gen_keys: Vec<String> = schema_keys(&schema)
+            .into_iter()
+            .filter(|k| k.starts_with("gen_"))
+            .collect();
+        assert_eq!(
+            gen_keys,
+            [
+                "gen_1_name",
+                "gen_1_value",
+                "gen_1_uom",
+                "gen_2_name",
+                "gen_2_value",
+                "gen_3_name",
+                "gen_3_value"
+            ]
+        );
+        assert!(matches!(
+            schema.get("gen_1_value"),
+            Some(AttributeValue::Number(_))
+        ));
+        assert!(matches!(
+            schema.get("gen_2_value"),
+            Some(AttributeValue::String(_))
+        ));
     }
 
     /// Test that bldg:address is extracted from nested core:Address structure
@@ -1506,7 +1599,7 @@ mod tests {
         let result = flattener.flatten_feature(feature).unwrap();
 
         // Check top-level flattened attribute
-        let address = result.get("bldg:address");
+        let address = result.get("bldg__address");
         match address {
             Some(AttributeValue::String(s)) => {
                 assert_eq!(s, "東京都新島村式根島");
@@ -1564,7 +1657,7 @@ mod tests {
         let mut flattener = AttributeFlattener::default();
         let result = flattener.flatten_feature(feature).unwrap();
 
-        let address = result.get("bldg:address");
+        let address = result.get("bldg__address");
         match address {
             Some(AttributeValue::String(s)) => {
                 assert_eq!(s, "福島県福島市");
@@ -1607,7 +1700,7 @@ mod tests {
         let result = flattener.flatten_feature(feature).unwrap();
 
         assert_eq!(
-            result.get("bldg:address"),
+            result.get("bldg__address"),
             Some(&AttributeValue::String(
                 "福島県福島市下野寺字薬師堂".to_string()
             ))
@@ -1648,7 +1741,7 @@ mod tests {
         let result = flattener.flatten_feature(feature).unwrap();
 
         assert_eq!(
-            result.get("bldg:address"),
+            result.get("bldg__address"),
             Some(&AttributeValue::String("東京都○○区××2-2-3".to_string()))
         );
     }
@@ -1697,7 +1790,7 @@ mod tests {
         let result = flattener.flatten_feature(feature).unwrap();
 
         assert_eq!(
-            result.get("bldg:address"),
+            result.get("bldg__address"),
             Some(&AttributeValue::String(
                 "福島県福島市下野寺字薬師堂".to_string()
             ))
@@ -1796,7 +1889,7 @@ mod tests {
         let result = flattener.flatten_feature(feature).unwrap();
 
         // Verify date types - core:creationDate is parsed as String
-        let creation_date = result.get("core:creationDate");
+        let creation_date = result.get("core__creationDate");
         match creation_date {
             Some(AttributeValue::String(dt)) => {
                 assert_eq!(
@@ -1810,20 +1903,20 @@ mod tests {
             ),
         }
         assert_eq!(
-            result.get("bldg:class"),
+            result.get("bldg__class"),
             Some(&AttributeValue::String("普通建物".to_string()))
         );
         assert_eq!(
-            result.get("bldg:usage"),
+            result.get("bldg__usage"),
             Some(&AttributeValue::String("供給処理施設".to_string()))
         );
         assert_eq!(
-            result.get("bldg:address"),
+            result.get("bldg__address"),
             Some(&AttributeValue::String("東京都新島村式根島".to_string()))
         );
 
         // Verify integer types
-        let storeys_above = result.get("bldg:storeysAboveGround");
+        let storeys_above = result.get("bldg__storeysAboveGround");
         match storeys_above {
             Some(AttributeValue::Number(n)) => {
                 assert!(n.is_i64());
@@ -1835,7 +1928,7 @@ mod tests {
             ),
         }
 
-        let storeys_below = result.get("bldg:storeysBelowGround");
+        let storeys_below = result.get("bldg__storeysBelowGround");
         match storeys_below {
             Some(AttributeValue::Number(n)) => {
                 assert!(n.is_i64());
@@ -1848,7 +1941,7 @@ mod tests {
         }
 
         // Verify float types (measure)
-        let measured_height = result.get("bldg:measuredHeight");
+        let measured_height = result.get("bldg__measuredHeight");
         match measured_height {
             Some(AttributeValue::Number(n)) => {
                 assert!(n.is_f64(), "bldg:measuredHeight should be float");
@@ -1862,20 +1955,20 @@ mod tests {
 
         // Verify nested attributes are flattened
         assert_eq!(
-            result.get("uro:BuildingIDAttribute_uro:buildingID"),
+            result.get("uro__BuildingIDAttribute_uro__buildingID"),
             Some(&AttributeValue::String("13363-bldg-5013".to_string()))
         );
         assert_eq!(
-            result.get("uro:BuildingIDAttribute_uro:prefecture"),
+            result.get("uro__BuildingIDAttribute_uro__prefecture"),
             Some(&AttributeValue::String("東京都".to_string()))
         );
         assert_eq!(
-            result.get("uro:BuildingIDAttribute_uro:city"),
+            result.get("uro__BuildingIDAttribute_uro__city"),
             Some(&AttributeValue::String("東京都新島村".to_string()))
         );
 
         // Verify surveyYear is integer
-        let survey_year = result.get("uro:BuildingDetailAttribute_uro:surveyYear");
+        let survey_year = result.get("uro__BuildingDetailAttribute_uro__surveyYear");
         match survey_year {
             Some(AttributeValue::Number(n)) => {
                 assert!(n.is_i64(), "surveyYear should be integer");
@@ -1888,7 +1981,7 @@ mod tests {
         }
 
         // Verify buildingRoofEdgeArea is float
-        let roof_area = result.get("uro:BuildingDetailAttribute_uro:buildingRoofEdgeArea");
+        let roof_area = result.get("uro__BuildingDetailAttribute_uro__buildingRoofEdgeArea");
         match roof_area {
             Some(AttributeValue::Number(n)) => {
                 assert!(n.is_f64(), "buildingRoofEdgeArea should be float");
@@ -1902,23 +1995,31 @@ mod tests {
 
         // Verify DataQualityAttribute fields
         assert_eq!(
-            result.get("uro:geometrySrcDescLod1"),
+            result.get("uro__geometrySrcDescLod1"),
             Some(&AttributeValue::String(
                 "公共測量成果又は基本測量成果".to_string()
             ))
         );
         assert_eq!(
-            result.get("uro:lod1HeightType"),
+            result.get("uro__lod1HeightType"),
             Some(&AttributeValue::String("点群から取得_中央値".to_string()))
         );
 
         // Verify generic attributes
         assert_eq!(
-            result.get("延べ面積換算係数"),
+            result.get("gen_1_name"),
+            Some(&AttributeValue::String("延べ面積換算係数".to_string()))
+        );
+        assert_eq!(
+            result.get("gen_1_value"),
             Some(&AttributeValue::String("0.65".to_string()))
         );
         assert_eq!(
-            result.get("大字・町コード"),
+            result.get("gen_2_name"),
+            Some(&AttributeValue::String("大字・町コード".to_string()))
+        );
+        assert_eq!(
+            result.get("gen_2_value"),
             Some(&AttributeValue::String("2".to_string()))
         );
     }
@@ -2006,18 +2107,18 @@ mod tests {
         }"#,
         );
 
-        assert!(building.get("uro:lodType").is_some());
-        assert!(building.get("uro:lod1HeightType").is_some());
-        match room.get("bldg:measuredHeight") {
+        assert!(building.get("uro__lodType").is_some());
+        assert!(building.get("uro__lod1HeightType").is_some());
+        match room.get("bldg__measuredHeight") {
             Some(AttributeValue::Number(n)) => assert_eq!(n.as_f64(), Some(19.9)),
             other => panic!("bldg:measuredHeight should be inherited, got {other:?}"),
         }
         assert_eq!(
-            room.get("uro:BuildingIDAttribute_uro:buildingID"),
+            room.get("uro__BuildingIDAttribute_uro__buildingID"),
             Some(&AttributeValue::String("14100-bldg-440865".to_string()))
         );
-        assert_eq!(room.get("uro:lodType"), None);
-        assert_eq!(room.get("uro:lod1HeightType"), None);
+        assert_eq!(room.get("uro__lodType"), None);
+        assert_eq!(room.get("uro__lod1HeightType"), None);
     }
 
     /// Test that an LOD4 bldg sub-feature takes the root's risk attributes
@@ -2043,7 +2144,7 @@ mod tests {
             .attributes
             .keys()
             .map(|k| k.to_string())
-            .filter(|k| k.contains("浸水"))
+            .filter(|k| k.starts_with("fld_"))
             .collect();
         assert!(!risk_keys.is_empty());
         for key in &risk_keys {
@@ -2064,14 +2165,14 @@ mod tests {
         );
 
         assert_eq!(
-            part.get("uro:lodType"),
+            part.get("uro__lodType"),
             Some(&AttributeValue::String("2.2".to_string()))
         );
         assert_eq!(
-            part.get("uro:lod1HeightType"),
+            part.get("uro__lod1HeightType"),
             Some(&AttributeValue::String("点群から取得_中央値".to_string()))
         );
-        match part.get("bldg:measuredHeight") {
+        match part.get("bldg__measuredHeight") {
             Some(AttributeValue::Number(n)) => assert_eq!(n.as_f64(), Some(12.0)),
             other => panic!("bldg:measuredHeight should be the part's own, got {other:?}"),
         }
@@ -2100,9 +2201,9 @@ mod tests {
         }"#,
         );
 
-        assert_eq!(part.get("uro:lodType"), None);
+        assert_eq!(part.get("uro__lodType"), None);
         assert_eq!(
-            part.get("uro:lod1HeightType"),
+            part.get("uro__lod1HeightType"),
             Some(&AttributeValue::String("航空写真図化_最高高さ".to_string()))
         );
     }
@@ -2155,24 +2256,24 @@ mod tests {
 
         // Verify that -9999 sentinel values are NOT present in the output
         assert_eq!(
-            result.get("uro:BuildingDetailAttribute_uro:specifiedBuildingCoverageRate"),
+            result.get("uro__BuildingDetailAttribute_uro__specifiedBuildingCoverageRate"),
             None,
             "Sentinel value -9999 for specifiedBuildingCoverageRate should be filtered out"
         );
         assert_eq!(
-            result.get("uro:BuildingDetailAttribute_uro:specifiedFloorAreaRate"),
+            result.get("uro__BuildingDetailAttribute_uro__specifiedFloorAreaRate"),
             None,
             "Sentinel value -9999 for specifiedFloorAreaRate should be filtered out"
         );
 
         // Verify that valid values are still present
         assert_eq!(
-            result.get("uro:BuildingDetailAttribute_uro:buildingStructureType"),
+            result.get("uro__BuildingDetailAttribute_uro__buildingStructureType"),
             Some(&AttributeValue::String("鉄筋コンクリート造".to_string())),
             "Valid string attributes should still be present"
         );
 
-        let survey_year = result.get("uro:BuildingDetailAttribute_uro:surveyYear");
+        let survey_year = result.get("uro__BuildingDetailAttribute_uro__surveyYear");
         match survey_year {
             Some(AttributeValue::Number(n)) => {
                 assert_eq!(n.as_i64().unwrap(), 2022);
@@ -2237,16 +2338,16 @@ mod tests {
 
         assert!(bldg_schema
             .attributes
-            .contains_key(&Attribute::new("bldg:measuredHeight".to_string())));
+            .contains_key(&Attribute::new("bldg__measuredHeight".to_string())));
         assert!(!road_schema
             .attributes
-            .contains_key(&Attribute::new("bldg:measuredHeight".to_string())));
+            .contains_key(&Attribute::new("bldg__measuredHeight".to_string())));
         assert!(road_schema
             .attributes
-            .contains_key(&Attribute::new("tran:function".to_string())));
+            .contains_key(&Attribute::new("tran__function".to_string())));
         assert!(!bldg_schema
             .attributes
-            .contains_key(&Attribute::new("tran:function".to_string())));
+            .contains_key(&Attribute::new("tran__function".to_string())));
     }
 
     /// Test all attributes on processed feature are tracked
@@ -2264,10 +2365,10 @@ mod tests {
 
         assert!(schema
             .attributes
-            .contains_key(&Attribute::new("bldg:class".to_string())));
+            .contains_key(&Attribute::new("bldg__class".to_string())));
         assert!(schema
             .attributes
-            .contains_key(&Attribute::new("bldg:usage".to_string())));
+            .contains_key(&Attribute::new("bldg__usage".to_string())));
     }
 
     fn schema_keys(feature: &Feature) -> Vec<String> {
@@ -2276,6 +2377,159 @@ mod tests {
             .keys()
             .map(|k| k.as_ref().to_string())
             .collect()
+    }
+
+    /// Test that each risk entry becomes a column group keyed by its codes, with its label in `_name`
+    #[test]
+    fn test_risk_columns_keyed_by_codes() {
+        let attrs = citygml_attrs_from_json(
+            r#"{
+            "uro:RiverFloodingRiskAttribute": [{
+                "uro:description": "荒川水系神田川流域",
+                "uro:description_code": "31",
+                "uro:adminType": "都道府県",
+                "uro:adminType_code": "2",
+                "uro:scale": "L2（想定最大規模）",
+                "uro:scale_code": "2",
+                "uro:rankOrg": "0.5m未満",
+                "uro:rankOrg_code": "1",
+                "uro:depth": 0.402
+            }],
+            "uro:HighTideRiskAttribute": [{
+                "uro:description": "東京都高潮浸水想定区域図",
+                "uro:description_code": "2",
+                "uro:rank": "0.5m以上3m未満",
+                "uro:rank_code": "2",
+                "uro:depth": 0.9
+            }],
+            "uro:LandSlideRiskAttribute": [{
+                "uro:description": "土石流",
+                "uro:description_code": "1",
+                "uro:areaType": "警戒区域",
+                "uro:areaType_code": "1"
+            }]
+        }"#,
+        );
+        let feature = create_test_feature("b1", "bldg:Building", "bldg", attrs, "m.gml");
+        let mut flattener = AttributeFlattener::default();
+        let result = flattener.flatten_feature(feature).unwrap();
+
+        let string = |s: &str| Some(AttributeValue::String(s.to_string()));
+        assert_eq!(
+            result.get("fld_31_2_2_name").cloned(),
+            string("荒川水系神田川流域（都道府県管理区間）_L2（想定最大規模）")
+        );
+        assert_eq!(result.get("fld_31_2_2_rank").cloned(), string("0.5m未満"));
+        assert_eq!(result.get("fld_31_2_2_rank_code").cloned(), string("1"));
+        assert_eq!(result.get("fld_31_2_2_depth").cloned(), string("0.402"));
+        assert_eq!(result.get("fld_31_2_2_duration"), None);
+        assert_eq!(
+            result.get("htd_2_name").cloned(),
+            string("高潮浸水想定_東京都高潮浸水想定区域図")
+        );
+        assert_eq!(result.get("htd_2_rank_code").cloned(), string("2"));
+        assert_eq!(
+            result.get("lsld_1_name").cloned(),
+            string("土砂災害リスク_土石流")
+        );
+        assert_eq!(
+            result.get("lsld_1_area_type_code"),
+            Some(&AttributeValue::Number(1.into()))
+        );
+
+        let schema = schema_keys(&flattener.generate_schema_feature("bldg/bldg:Building"));
+        let fld: Vec<&String> = schema.iter().filter(|k| k.starts_with("fld_")).collect();
+        assert_eq!(
+            fld,
+            [
+                "fld_31_2_2_name",
+                "fld_31_2_2_rank",
+                "fld_31_2_2_rank_code",
+                "fld_31_2_2_depth"
+            ]
+        );
+    }
+
+    /// Test that a risk entry whose codes cannot form a column key is dropped
+    #[test]
+    fn test_risk_entry_without_key_code_dropped() {
+        let attrs = citygml_attrs_from_json(
+            r#"{
+            "uro:TsunamiRiskAttribute": [
+                {"uro:description": "津波浸水想定図", "uro:rank": "0.5m未満"},
+                {"uro:description": "3", "uro:rank": "0.5m未満"}
+            ]
+        }"#,
+        );
+        let feature = create_test_feature("b1", "bldg:Building", "bldg", attrs, "m.gml");
+        let mut flattener = AttributeFlattener::default();
+        let result = flattener.flatten_feature(feature).unwrap();
+
+        let tnm: Vec<String> = result
+            .attributes
+            .keys()
+            .map(|k| k.to_string())
+            .filter(|k| k.starts_with("tnm_"))
+            .collect();
+        assert_eq!(tnm, ["tnm_3_name", "tnm_3_rank"]);
+    }
+
+    /// Test that every column of the features and both schemas is a valid 3D Tiles property ID,
+    /// while the nested `attributes` JSON keeps the CityGML keys
+    #[test]
+    fn test_output_keys_are_valid_property_ids() {
+        let attrs = citygml_attrs_from_json(
+            r#"{
+            "bldg:class": "普通建物",
+            "bldg:measuredHeight": 7.8,
+            "uro:BuildingDetailAttribute": [{"uro:landUseType": "住宅用地"}],
+            "uro:InlandFloodingRiskAttribute": [{
+                "uro:description": "内水浸水想定区域図",
+                "uro:description_code": "1",
+                "uro:rank": "0.5m未満",
+                "uro:rank_code": "1"
+            }],
+            "gen:genericAttribute": [{"type": "string", "name": "1/2500図郭", "value": "A"}]
+        }"#,
+        );
+        let feature = create_test_feature("b1", "bldg:Building", "bldg", attrs, "m.gml");
+        let mut flattener = AttributeFlattener::default();
+        let result = flattener.flatten_feature(feature).unwrap();
+
+        let is_valid = |key: &str| {
+            let mut chars = key.chars();
+            chars
+                .next()
+                .is_some_and(|c| c.is_ascii_alphabetic() || c == '_')
+                && chars.all(|c| c.is_ascii_alphanumeric() || c == '_')
+        };
+        let flattened = [
+            "bldg__class",
+            "bldg__measuredHeight",
+            "uro__BuildingDetailAttribute_uro__landUseType",
+            "ifld_1_name",
+            "gen_1_name",
+        ];
+        for key in flattened {
+            assert!(result.get(key).is_some(), "{key} should be set");
+        }
+        let schemas = [
+            flattener.generate_schema_feature("bldg/bldg:Building"),
+            flattener.generate_flat_schema_feature("bldg/bldg:Building"),
+        ];
+        for key in flattened
+            .iter()
+            .map(|k| k.to_string())
+            .chain(schemas.iter().flat_map(schema_keys))
+        {
+            assert!(is_valid(&key), "{key} is not a valid property ID");
+        }
+
+        let Some(AttributeValue::String(json)) = result.get("attributes") else {
+            panic!("attributes should be a JSON string");
+        };
+        let parsed: serde_json::Value = serde_json::from_str(json).unwrap();
+        assert_eq!(parsed["bldg:class"], "普通建物");
     }
 
     #[test]
@@ -2288,16 +2542,24 @@ mod tests {
             "uro:BuildingDetailAttribute": [{"uro:landUseType": "住宅用地", "uro:surveyYear": "2022"}],
             "uro:RiverFloodingRiskAttribute": [{
                 "uro:description": "荒川水系荒川",
+                "uro:description_code": "1",
                 "uro:adminType": "国",
+                "uro:adminType_code": "1",
                 "uro:scale": "L2（想定最大規模）",
+                "uro:scale_code": "2",
                 "uro:rank": "0.5m以上3m未満",
                 "uro:rank_code": "2",
                 "uro:depth": 1.2,
                 "uro:duration": 3.0
             }],
-            "uro:ReservoirFloodingRiskAttribute": [{"uro:description": "ため池", "uro:rank": "0.5m未満"}],
+            "uro:ReservoirFloodingRiskAttribute": [{
+                "uro:description": "ため池",
+                "uro:description_code": "1",
+                "uro:rank": "0.5m未満"
+            }],
             "uro:LandSlideRiskAttribute": [{
                 "uro:description": "急傾斜地の崩落",
+                "uro:description_code": "1",
                 "uro:areaType": "警戒区域",
                 "uro:areaType_code": "1"
             }],
@@ -2317,25 +2579,29 @@ mod tests {
         let expected_kept = [
             "gml_id",
             "_lod",
-            "bldg:usage",
-            "bldg:measuredHeight",
-            "uro:BuildingDetailAttribute_uro:landUseType",
-            "荒川水系荒川（国管理区間）_L2（想定最大規模）_浸水ランク",
-            "荒川水系荒川（国管理区間）_L2（想定最大規模）_浸水ランクコード",
-            "土砂災害リスク_急傾斜地の崩落_区域区分",
-            "土砂災害リスク_急傾斜地の崩落_区域区分コード",
+            "bldg__usage",
+            "bldg__measuredHeight",
+            "uro__BuildingDetailAttribute_uro__landUseType",
+            "fld_1_1_2_name",
+            "fld_1_1_2_rank",
+            "fld_1_1_2_rank_code",
+            "lsld_1_name",
+            "lsld_1_area_type",
+            "lsld_1_area_type_code",
         ];
         for key in expected_kept {
             assert!(flat.iter().any(|k| k == key), "{key} should be kept");
         }
         let expected_dropped = [
             "attributes",
-            "uro:BuildingIDAttribute_uro:buildingID",
-            "uro:BuildingDetailAttribute_uro:surveyYear",
-            "荒川水系荒川（国管理区間）_L2（想定最大規模）_浸水深",
-            "荒川水系荒川（国管理区間）_L2（想定最大規模）_浸水継続時間",
-            "ため池浸水想定_ため池_浸水ランク",
-            "大字・町コード",
+            "uro__BuildingIDAttribute_uro__buildingID",
+            "uro__BuildingDetailAttribute_uro__surveyYear",
+            "fld_1_1_2_depth",
+            "fld_1_1_2_duration",
+            "rfld_1_name",
+            "rfld_1_rank",
+            "gen_1_name",
+            "gen_1_value",
         ];
         for key in expected_dropped {
             assert!(
@@ -2370,7 +2636,7 @@ mod tests {
         assert_eq!(building, room);
         assert!(!room
             .iter()
-            .any(|k| k == "uro:BuildingIDAttribute_uro:buildingID"));
+            .any(|k| k == "uro__BuildingIDAttribute_uro__buildingID"));
     }
 
     #[test]
@@ -2450,7 +2716,7 @@ mod tests {
         assert_eq!(detail_keys, vec!["uro:orgLandUse", "uro:city"]);
 
         assert!(result
-            .get("uro:LandUseDetailAttribute_uro:areaInSquareMeter")
+            .get("uro__LandUseDetailAttribute_uro__areaInSquareMeter")
             .is_some());
     }
 }

@@ -159,7 +159,8 @@ pub struct MVTWriterParam {
     /// Skip attributes with double underscore prefix
     pub(super) skip_unexposed_attributes: Option<bool>,
     /// # Colon to Underscore
-    /// Replace colons in attribute keys (e.g., from XML Namespaces) with underscores
+    /// Replace colons in attribute keys (e.g., from XML Namespaces) with underscores.
+    /// Double underscores standing for colons also become single underscores; leading underscores are kept.
     pub(super) colon_to_underscore: Option<bool>,
     /// # Extent
     /// MVT tile resolution. Default is 4096.
@@ -288,7 +289,7 @@ impl MVTWriter {
                     if self.params.colon_to_underscore {
                         new_attrs = new_attrs
                             .into_iter()
-                            .map(|(k, v)| (Attribute::new(k.inner().replace(":", "_")), v))
+                            .map(|(k, v)| (Attribute::new(colon_to_underscore(k.as_ref())), v))
                             .collect();
                     }
                     (feature.with_attributes(new_attrs), layer_name.clone())
@@ -311,5 +312,29 @@ impl MVTWriter {
             )?;
         }
         Ok(())
+    }
+}
+
+/// Replaces `:` in `key` with `_` and collapses `__` after the leading underscores into `_`.
+fn colon_to_underscore(key: &str) -> String {
+    let body = key.trim_start_matches('_');
+    let prefix = &key[..key.len() - body.len()];
+    format!("{prefix}{}", body.replace("__", "_").replace(':', "_"))
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_colon_to_underscore() {
+        assert_eq!(colon_to_underscore("tran:function"), "tran_function");
+        assert_eq!(
+            colon_to_underscore("uro__TrafficVolumeAttribute_uro__sectionID"),
+            "uro_TrafficVolumeAttribute_uro_sectionID"
+        );
+        assert_eq!(colon_to_underscore("__feature_type"), "__feature_type");
+        assert_eq!(colon_to_underscore("_lod"), "_lod");
+        assert_eq!(colon_to_underscore("gen_1_value"), "gen_1_value");
     }
 }
