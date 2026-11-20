@@ -187,17 +187,6 @@ graphs:
                   if attributes["__scale"] { scale = "_" + attributes["__scale"]; }
                   city_gml + "_op_" + attributes["udxDirs"].replace("/", "_") + "_3dtiles" + scale + "_no_texture.zip"
 
-      # the original builds the surface in EPSG:3857, so its spacing and tolerances are in that unit
-      - id: 8a8d12e6-6024-46fa-822d-4a55fbd19cbe
-        name: CoordinateFrameReprojectorToWebMercator
-        type: action
-        action: Coordinate Frame Reprojector
-        with:
-          destinationFrame:
-            crs:
-              type: flowExpr
-              value: "3857"
-
       - id: 5e81a0a3-5bf6-45e1-9bbc-d8044c5b77c9
         name: MeshMergerByArea
         type: action
@@ -208,17 +197,6 @@ graphs:
             - __rank_for_style
             - __scale
           granularity: edgeConnectedPart
-
-      # back to JGD2011 so the writer turns the elevations into ellipsoidal heights
-      - id: e25081e4-1ee7-4f39-a899-a2d3f1319da2
-        name: CoordinateFrameReprojectorToJgd2011
-        type: action
-        action: Coordinate Frame Reprojector
-        with:
-          destinationFrame:
-            crs:
-              type: flowExpr
-              value: "6697"
 
       # adminType and scale exist only for fld, so the other packages leave the columns out
       - id: eb0b2634-244b-4080-a7cb-bdb66e2753b4
@@ -430,21 +408,11 @@ graphs:
         toPort: features
       - id: 7fdbe389-975d-472d-b022-3bd39c56e591
         from: 151a7e47-6607-418a-bda2-6be5eebcea7f
-        to: 8a8d12e6-6024-46fa-822d-4a55fbd19cbe
-        fromPort: features
-        toPort: features
-      - id: 2b29709e-2c4b-45a9-95ba-c9a878227543
-        from: 8a8d12e6-6024-46fa-822d-4a55fbd19cbe
         to: 5e81a0a3-5bf6-45e1-9bbc-d8044c5b77c9
         fromPort: features
         toPort: features
       - id: 4fa4a720-4406-4a2e-8be3-1bc9980d4ace
         from: 5e81a0a3-5bf6-45e1-9bbc-d8044c5b77c9
-        to: e25081e4-1ee7-4f39-a899-a2d3f1319da2
-        fromPort: features
-        toPort: features
-      - id: 937da2e4-af61-415b-a95b-9d9b1bcfe5f4
-        from: e25081e4-1ee7-4f39-a899-a2d3f1319da2
         to: eb0b2634-244b-4080-a7cb-bdb66e2753b4
         fromPort: features
         toPort: features
