@@ -9977,6 +9977,129 @@
       ]
     },
     {
+      "name": "Mesh Merger",
+      "type": "processor",
+      "description": "Fusionne en maillages les polygones et maillages des entités partageant les mêmes valeurs d'attributs de regroupement, en conservant chaque face telle quelle, et émet une entité par groupe ou par partie connexe de celui-ci. Le résultat est un maillage triangulaire lorsque tous les polygones et maillages qui y sont fusionnés, y compris ceux des collections, sont des maillages triangulaires, et un maillage polygonal sinon.",
+      "parameter": {
+        "$schema": "http://json-schema.org/draft-07/schema#",
+        "title": "Paramètres du fusionneur de maillages",
+        "description": "Définit quelles entités sont fusionnées ensemble, comment le résultat est divisé et quels attributs il conserve.",
+        "type": "object",
+        "properties": {
+          "groupBy": {
+            "title": "Attributs de regroupement",
+            "description": "Attributs dont les valeurs déterminent quelles entités fusionnent ensemble ; les entités qui concordent sur tous forment un groupe. S'ils sont omis, toutes les entités appartiennent à un seul groupe. Ne peut pas inclure `__members` lorsque les attributs sont collectés, car cet attribut contient les valeurs collectées.",
+            "default": null,
+            "type": [
+              "array",
+              "null"
+            ],
+            "items": {
+              "$ref": "#/definitions/Attribute"
+            }
+          },
+          "attributeAccumulation": {
+            "title": "Accumulation des attributs",
+            "description": "Attributs que conserve chaque entité fusionnée, tirés des entités fusionnées en elle.",
+            "default": "useOneFeature",
+            "allOf": [
+              {
+                "$ref": "#/definitions/AttributeAccumulation"
+              }
+            ]
+          },
+          "granularity": {
+            "title": "Granularité",
+            "description": "Finesse avec laquelle chaque groupe est divisé en entités de sortie.",
+            "default": "group",
+            "allOf": [
+              {
+                "$ref": "#/definitions/Granularity"
+              }
+            ]
+          }
+        },
+        "definitions": {
+          "Attribute": {
+            "type": "string"
+          },
+          "AttributeAccumulation": {
+            "title": "Attribute Accumulation",
+            "description": "Which attributes a merged feature keeps.",
+            "oneOf": [
+              {
+                "title": "Conserver uniquement les attributs de regroupement",
+                "description": "Conserve uniquement les attributs de regroupement et supprime tous les autres.",
+                "type": "string",
+                "enum": [
+                  "groupAttributesOnly"
+                ]
+              },
+              {
+                "title": "Collecter les attributs",
+                "description": "Conserve les attributs de regroupement et écrit les autres attributs de chaque entité fusionnée dans `__members`, un tableau contenant une table par entité dans l'ordre d'arrivée.",
+                "type": "string",
+                "enum": [
+                  "collectAttributes"
+                ]
+              },
+              {
+                "title": "Utiliser les attributs d'une entité",
+                "description": "Conserve les attributs de la première entité fusionnée et ignore les autres.",
+                "type": "string",
+                "enum": [
+                  "useOneFeature"
+                ]
+              }
+            ]
+          },
+          "Granularity": {
+            "description": "How finely each group is divided into output features.",
+            "oneOf": [
+              {
+                "title": "Groupe",
+                "description": "Émet un maillage par groupe.",
+                "type": "string",
+                "enum": [
+                  "group"
+                ]
+              },
+              {
+                "title": "Partie connexe par les arêtes",
+                "description": "Émet un maillage par ensemble de faces reliées par des arêtes aux coordonnées exactement égales. Les faces ne se touchant qu'en un sommet forment des maillages distincts.",
+                "type": "string",
+                "enum": [
+                  "edgeConnectedPart"
+                ]
+              },
+              {
+                "title": "Partie variété",
+                "description": "Divise davantage chaque partie connexe par les arêtes afin que chaque arête d'un maillage borde une ou deux de ses faces. Lorsque plusieurs faces se rejoignent sur une arête, seules deux d'entre elles y restent reliées.",
+                "type": "string",
+                "enum": [
+                  "manifoldPart"
+                ]
+              }
+            ]
+          }
+        }
+      },
+      "builtin": true,
+      "inputPorts": [
+        "features"
+      ],
+      "outputPorts": [
+        "features",
+        "rejected"
+      ],
+      "categories": [
+        "Geometry"
+      ],
+      "tags": [
+        "aggregation"
+      ]
+    },
+    {
       "name": "Neighbor Finder",
       "type": "processor",
       "description": "Trouve les entités candidates les plus proches pour chaque entité de base basée sur la proximité spatiale",
@@ -12517,45 +12640,6 @@
         "features",
         "rejected",
         "duplicateGmlIdStats"
-      ],
-      "categories": [
-        "PLATEAU"
-      ],
-      "tags": []
-    },
-    {
-      "name": "PLATEAU6.FloodingAreaSurfaceGenerator",
-      "type": "processor",
-      "description": "Merges the triangles of flood zone bodies into connected areas and rebuilds each area as one triangulated surface, constrained to the area's outline and filled with sparse points sampled from the original surface. Emits one feature per area, carrying the attributes of the first body in its group. All input must be in one coordinate frame; the action fails otherwise.",
-      "parameter": {
-        "$schema": "http://json-schema.org/draft-07/schema#",
-        "title": "Flooding Area Surface Generator Parameters",
-        "description": "Which bodies are merged into one surface.",
-        "type": "object",
-        "properties": {
-          "groupBy": {
-            "title": "Group By",
-            "description": "Attributes whose values partition the bodies: only bodies with the same values are merged. Empty (the default) merges every body together.",
-            "default": [],
-            "type": "array",
-            "items": {
-              "$ref": "#/definitions/Attribute"
-            }
-          }
-        },
-        "definitions": {
-          "Attribute": {
-            "type": "string"
-          }
-        }
-      },
-      "builtin": false,
-      "inputPorts": [
-        "features"
-      ],
-      "outputPorts": [
-        "features",
-        "rejected"
       ],
       "categories": [
         "PLATEAU"

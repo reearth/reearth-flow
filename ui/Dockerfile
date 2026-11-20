@@ -26,7 +26,7 @@ RUN --mount=type=bind,source=package.json,target=package.json \
     --mount=type=cache,target=/root/.yarn,sharing=locked \
     yarn build
 
-FROM nginx:1.27-alpine
+FROM nginx:1.31-alpine
 
 # Quite the Nginx startup logs.
 ENV NGINX_ENTRYPOINT_QUIET_LOGS=true
