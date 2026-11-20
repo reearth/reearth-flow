@@ -5,6 +5,7 @@ type Props = {
   textClassName?: string;
   text: string;
   icon?: ReactNode;
+  children?: ReactNode;
 };
 
 const BasicBoiler: React.FC<Props> = ({
@@ -12,6 +13,7 @@ const BasicBoiler: React.FC<Props> = ({
   textClassName,
   text,
   icon,
+  children,
 }) => {
   return (
     <div
@@ -19,6 +21,7 @@ const BasicBoiler: React.FC<Props> = ({
       <div className="flex flex-col items-center gap-6">
         {icon}
         <p className={`font-light dark:font-thin ${textClassName}`}>{text}</p>
+        {children}
       </div>
     </div>
   );

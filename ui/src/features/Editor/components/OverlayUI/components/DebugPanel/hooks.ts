@@ -1,8 +1,8 @@
 import type { MouseEvent } from "react";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 
-import useDataColumnizer from "@flow/hooks/useDataColumnizer";
-import { useStreamingDebugRunQuery } from "@flow/hooks/useStreamingDebugRunQuery";
+import { featureRowsClient, useFeatureRows } from "@flow/lib/featureRows";
+import type { FeatureTableRow } from "@flow/lib/featureRows";
 import {
   IntermediateDataViewError,
   useIntermediateDataView,
@@ -13,15 +13,13 @@ import { useIndexedDB } from "@flow/lib/indexedDB";
 import { fileIdFromIntermediateDataUrl } from "@flow/lib/intermediateData";
 import { useCurrentProject } from "@flow/stores";
 import { toArtifactFiles } from "@flow/utils";
+import { intermediateDataTransform } from "@flow/utils/jsonl/transformIntermediateData";
 
 export default () => {
   const [fullscreenDebug, setFullscreenDebug] = useState(false);
   const [expanded, setExpanded] = useState(false);
   const [minimized, setMinimized] = useState(false);
   const prevSelectedDataURLRef = useRef<string | undefined>(undefined);
-  const [selectedFeatureId, setSelectedFeatureId] = useState<string | null>(
-    null,
-  );
 
   const [currentProject] = useCurrentProject();
 
@@ -125,12 +123,63 @@ export default () => {
     return selection?.fileId ?? fileIdFromIntermediateDataUrl(metadataUrl);
   }, [debugJobState?.selectedIntermediateData, metadataUrl]);
 
-  const streamingQuery = useStreamingDebugRunQuery(metadataUrl, {
-    enabled: !!metadataUrl,
-  });
+  useEffect(() => {
+    const client = featureRowsClient();
+    return () => client.clear();
+  }, [debugJobId]);
 
-  const selectedOutputData = streamingQuery.fileContent;
-  const fileType = streamingQuery.fileType;
+  const rows = useFeatureRows(metadataUrl);
+  const { readLine } = rows;
+  const loadedRowCount = rows.status?.rowCount ?? 0;
+  const session = rows.status?.session ?? 0;
+
+  const [selection, setSelection] = useState<{
+    url: string;
+    row: number;
+  } | null>(null);
+  const selectedRow = selection?.url === metadataUrl ? selection.row : null;
+  const selectRow = useCallback(
+    (row: number | null) =>
+      setSelection(row === null ? null : { url: metadataUrl, row }),
+    [metadataUrl],
+  );
+
+  const [loadedFeature, setLoadedFeature] = useState<{
+    url: string;
+    session: number;
+    row: number;
+    feature: any;
+  } | null>(null);
+
+  const selectedRowLoaded =
+    selectedRow !== null && selectedRow < loadedRowCount;
+
+  useEffect(() => {
+    if (selectedRow === null || !selectedRowLoaded) return;
+    let cancelled = false;
+    void readLine(selectedRow).then((text) => {
+      if (cancelled || text === null) return;
+      const feature = toSelectedFeature(text, selectedRow);
+      if (!feature) return;
+      setLoadedFeature({
+        url: metadataUrl,
+        session,
+        row: selectedRow,
+        feature,
+      });
+    });
+    return () => {
+      cancelled = true;
+    };
+  }, [metadataUrl, readLine, selectedRow, selectedRowLoaded, session]);
+
+  const selectedFeature =
+    selectedRow !== null &&
+    loadedFeature?.url === metadataUrl &&
+    loadedFeature.session === session &&
+    loadedFeature.row === selectedRow
+      ? loadedFeature.feature
+      : null;
 
   const handleExpand = () => {
     setExpanded((prev) => !prev);
@@ -153,28 +202,6 @@ export default () => {
 
   const handleFullscreenExit = useCallback(() => setFullscreenDebug(false), []);
 
-  const formattedData = useDataColumnizer({
-    parsedData: selectedOutputData,
-    type: fileType,
-  });
-
-  const featureIdMap = useMemo(() => {
-    if (!formattedData.tableData) return null;
-
-    const map = new Map<string, any>();
-    formattedData.tableData.forEach((row: any) => {
-      const id = row.id;
-      const normalizedId = JSON.parse(id);
-      map.set(normalizedId, row);
-    });
-    return map;
-  }, [formattedData.tableData]);
-
-  const selectedFeature = useMemo(
-    () => findSelectedRow(featureIdMap, selectedFeatureId),
-    [selectedFeatureId, featureIdMap],
-  );
-
   const { requestView } = useIntermediateDataView();
 
   // The row a 3D model was opened for. The pane shows the model only while
@@ -187,17 +214,17 @@ export default () => {
   const [modelViewOpenError, setModelViewOpenError] =
     useState<IntermediateDataViewError>();
 
-  const selectedRow: number | undefined = selectedFeature?._row;
+  const featureRow: number | undefined = selectedFeature?._row;
 
   const modelViewRequest = useMemo(
     () =>
       debugJobId &&
       modelView &&
       modelView.fileId === focusedFileId &&
-      modelView.row === selectedRow
+      modelView.row === featureRow
         ? { jobId: debugJobId, fileId: modelView.fileId, row: modelView.row }
         : undefined,
-    [debugJobId, modelView, focusedFileId, selectedRow],
+    [debugJobId, modelView, focusedFileId, featureRow],
   );
 
   // A 3D model needs 3D geometry somewhere on the globe; anything else would
@@ -205,14 +232,14 @@ export default () => {
   const canOpenIn3D =
     !!debugJobId &&
     !!focusedFileId &&
-    selectedRow !== undefined &&
+    featureRow !== undefined &&
     !!selectedFeature?._values?.geometrySummary?.has3DWithCrs;
 
   const handleOpenIn3D = useCallback(() => {
-    if (!debugJobId || !focusedFileId || selectedRow === undefined) return;
-    setModelView({ fileId: focusedFileId, row: selectedRow });
+    if (!debugJobId || !focusedFileId || featureRow === undefined) return;
+    setModelView({ fileId: focusedFileId, row: featureRow });
     setModelViewOpenError(undefined);
-    requestView({ jobId: debugJobId, fileId: focusedFileId, row: selectedRow })
+    requestView({ jobId: debugJobId, fileId: focusedFileId, row: featureRow })
       // A render that was asked for keeps its outcome in the view's own
       // state. Only one that could not be asked for at all needs keeping here.
       .catch((err: unknown) => {
@@ -223,7 +250,7 @@ export default () => {
           setModelViewOpenError(err);
         }
       });
-  }, [debugJobId, focusedFileId, selectedRow, requestView]);
+  }, [debugJobId, focusedFileId, featureRow, requestView]);
 
   const handleCloseModelView = useCallback(() => setModelView(null), []);
 
@@ -260,58 +287,32 @@ export default () => {
 
   const handleCloseMap = useCallback(() => setMapView(null), []);
 
-  useEffect(() => {
-    if (!selectedFeatureId || !featureIdMap) return;
-    if (!findSelectedRow(featureIdMap, selectedFeatureId)) {
-      setSelectedFeatureId(null);
-    }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [featureIdMap]);
-
-  const handleFeatureSelect = useCallback(
-    (featureId: string | null) => {
-      if (selectedFeatureId !== featureId) {
-        setSelectedFeatureId(featureId);
-      }
-    },
-    [selectedFeatureId],
-  );
-
   // Whether the last feature picked on the map is one the table has not
   // loaded, so its row cannot be shown. Cleared by the next pick or row click.
   const [pickedUnloadedRow, setPickedUnloadedRow] = useState(false);
 
-  // A feature picked on the map selects its row, when the table has it.
   const handlePickRow = useCallback(
     (row: number | null) => {
-      const tableRow =
-        row === null
-          ? undefined
-          : formattedData.tableData?.find(
-              (candidate: any) => candidate._row === row,
-            );
-      setPickedUnloadedRow(row !== null && !tableRow);
-      handleFeatureSelect(tableRow?.id ?? null);
+      const loaded = row !== null && row < loadedRowCount;
+      setPickedUnloadedRow(row !== null && !loaded);
+      selectRow(loaded ? row : null);
     },
-    [formattedData.tableData, handleFeatureSelect],
+    [loadedRowCount, selectRow],
   );
 
   // Clicking the selected row again clears the selection, which also closes
   // the details pane.
   const handleRowSingleClick = useCallback(
-    (value: any) => {
+    (row: FeatureTableRow) => {
       setPickedUnloadedRow(false);
-      handleFeatureSelect(
-        selectionAfterRowClick(featureIdMap, selectedFeatureId, value),
-      );
+      selectRow(row._row === selectedRow ? null : row._row);
     },
-    [handleFeatureSelect, featureIdMap, selectedFeatureId],
+    [selectRow, selectedRow],
   );
 
-  // Double-clicking a row selects it, whether or not it was selected already.
   const handleRowDoubleClick = useCallback(
-    (value: any) => handleFeatureSelect(value?.id ?? null),
-    [handleFeatureSelect],
+    (row: FeatureTableRow) => selectRow(row._row),
+    [selectRow],
   );
 
   const handleRemoveDataURL = useCallback(
@@ -396,8 +397,8 @@ export default () => {
     dataURLs,
     outputDataForDownload,
     archiveName,
-    selectedOutputData,
-    selectedFeatureId,
+    rows,
+    selectedRow,
     selectedFeature,
     canOpenIn3D,
     modelViewRequest,
@@ -411,8 +412,7 @@ export default () => {
     handleCloseMap,
     handlePickRow,
     pickedUnloadedRow,
-    loadedRowCount: formattedData.tableData?.length ?? 0,
-    formattedData,
+    loadedRowCount,
     handleFullscreenExpand,
     handleFullscreenExit,
     handleExpand,
@@ -422,38 +422,30 @@ export default () => {
     handleRemoveDataURL,
     handleRowSingleClick,
     handleRowDoubleClick,
-    detectedGeometryType: streamingQuery.detectedGeometryType,
-    totalFeatures: streamingQuery.totalFeatures,
   };
 };
 
-/**
- * The table row a selection names. A row click stores the row's serialized id
- * and a map click the parsed one, so both forms are looked up.
- */
-export function findSelectedRow(
-  rowsById: Map<string, any> | null,
-  selectedId: string | null,
-): any {
-  if (!selectedId || !rowsById) return null;
-  if (rowsById.has(selectedId)) return rowsById.get(selectedId);
+export function toSelectedFeature(text: string, row: number) {
+  let parsed: any;
   try {
-    return rowsById.get(JSON.parse(selectedId)) ?? null;
+    parsed = JSON.parse(text);
   } catch {
     return null;
   }
-}
-
-/**
- * The selection after a row is clicked: the clicked row, or nothing when it
- * was the selected row already.
- */
-export function selectionAfterRowClick(
-  rowsById: Map<string, any> | null,
-  selectedId: string | null,
-  clicked: any,
-): string | null {
-  if (clicked == null) return null;
-  if (findSelectedRow(rowsById, selectedId) === clicked) return null;
-  return clicked.id ?? null;
+  let feature: any;
+  try {
+    feature = intermediateDataTransform(parsed);
+  } catch (error) {
+    console.warn("Failed to transform feature:", error);
+    feature = { id: parsed.id, properties: parsed.attributes };
+  }
+  return {
+    id: JSON.stringify(feature.id || row),
+    _row: row,
+    _values: {
+      geometry: feature.geometry ?? {},
+      attributes: feature.properties ?? {},
+      geometrySummary: feature.geometrySummary,
+    },
+  };
 }
