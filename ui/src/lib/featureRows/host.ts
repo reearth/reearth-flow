@@ -15,6 +15,7 @@ const SEARCH_SLICE_MS = 12;
 const MAX_ROWS_PER_REQUEST = 500;
 const MAX_CACHED_FILES = 3;
 const CACHED_BYTE_BUDGET = 1024 * 1024 * 1024;
+const INACTIVE_BYTE_BUDGET = 256 * 1024 * 1024;
 
 type Entry = {
   url: string;
@@ -66,6 +67,9 @@ export class FeatureRowsHost {
       case "open":
         this.open(request.url);
         return;
+      case "clear":
+        this.clear();
+        return;
       case "search":
         this.search(request.url, request.term);
         return;
@@ -73,6 +77,7 @@ export class FeatureRowsHost {
         this.post({
           type: "rows",
           id: request.id,
+          searchTerm: this.entries.get(request.url)?.searchTerm ?? "",
           rows: this.rows(request.url, request.start, request.count),
         });
         return;
@@ -124,6 +129,11 @@ export class FeatureRowsHost {
     entry.postedColumns = null;
     this.evict();
     this.postStatus(entry, true);
+  }
+
+  private clear() {
+    this.active = null;
+    for (const entry of [...this.entries.values()]) this.discard(entry);
   }
 
   private search(url: string, rawTerm: string) {
@@ -200,15 +210,19 @@ export class FeatureRowsHost {
 
     let bytes = 0;
     for (const entry of this.entries.values()) bytes += entry.store.bytes;
+    let inactiveBytes = 0;
+    for (const entry of candidates) inactiveBytes += entry.store.bytes;
 
     for (const entry of candidates) {
       if (
         this.entries.size <= MAX_CACHED_FILES &&
-        bytes <= CACHED_BYTE_BUDGET
+        bytes <= CACHED_BYTE_BUDGET &&
+        inactiveBytes <= INACTIVE_BYTE_BUDGET
       ) {
         return;
       }
       bytes -= entry.store.bytes;
+      inactiveBytes -= entry.store.bytes;
       this.discard(entry);
     }
   }

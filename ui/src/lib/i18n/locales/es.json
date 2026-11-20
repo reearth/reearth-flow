@@ -343,6 +343,8 @@
   "No data to display in table format": "No hay datos para mostrar en formato de tabla",
   "Rows": "Filas",
   "total": "total",
+  "Showing the first {{rows}} rows (memory limit reached)": "Mostrando las primeras {{rows}} filas (se alcanzó el límite de memoria)",
+  "{{lines}} unreadable line(s) skipped": "Se omitieron {{lines}} línea(s) ilegibles",
   "({{n}} chars)": "({{n}} caracteres)",
   "JSON copied to clipboard": "JSON copiado al portapapeles",
   "JSON has been successfully copied to the clipboard.": "El JSON se ha copiado correctamente al portapapeles.",

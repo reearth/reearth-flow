@@ -8,17 +8,24 @@ import type {
 export type WorkerLike = {
   postMessage: (message: WorkerRequest) => void;
   onmessage: ((event: MessageEvent<WorkerResponse>) => void) | null;
+  onerror: ((event: ErrorEvent) => void) | null;
+  onmessageerror: ((event: MessageEvent) => void) | null;
+  terminate: () => void;
 };
 
 type Listener = (status: FeatureRowsStatus) => void;
 
+type Reply = Extract<WorkerResponse, { id: number }>;
+
 type Pending = {
-  resolve: (value: any) => void;
+  resolve: (reply: Reply) => void;
+  reject: (error: Error) => void;
 };
 
-type DistributiveOmit<T, K extends PropertyKey> = T extends unknown
-  ? Omit<T, K>
-  : never;
+export type RowsReply = {
+  searchTerm: string;
+  rows: FeatureRowRecord[];
+};
 
 export class FeatureRowsClient {
   private worker: WorkerLike | null = null;
@@ -53,26 +60,52 @@ export class FeatureRowsClient {
     this.send({ type: "open", url });
   }
 
+  clear() {
+    this.statuses.clear();
+    this.worker?.postMessage({ type: "clear" });
+  }
+
   search(url: string, term: string) {
     this.send({ type: "search", url, term });
   }
 
-  rows(url: string, start: number, count: number): Promise<FeatureRowRecord[]> {
-    return this.request({ type: "rows", url, start, count });
+  async rows(url: string, start: number, count: number): Promise<RowsReply> {
+    const reply = await this.request((id) => ({
+      type: "rows",
+      id,
+      url,
+      start,
+      count,
+    }));
+    return reply.type === "rows"
+      ? { searchTerm: reply.searchTerm, rows: reply.rows }
+      : { searchTerm: "", rows: [] };
   }
 
-  line(url: string, row: number): Promise<string | null> {
-    return this.request({ type: "line", url, row });
+  async line(url: string, row: number): Promise<string | null> {
+    const reply = await this.request((id) => ({ type: "line", id, url, row }));
+    return reply.type === "line" ? reply.text : null;
   }
 
-  viewIndexOf(url: string, row: number): Promise<number> {
-    return this.request({ type: "viewIndex", url, row });
+  async viewIndexOf(url: string, row: number): Promise<number> {
+    const reply = await this.request((id) => ({
+      type: "viewIndex",
+      id,
+      url,
+      row,
+    }));
+    return reply.type === "viewIndex" ? reply.index : -1;
   }
 
   private ensureWorker(): WorkerLike {
     if (!this.worker) {
-      this.worker = this.createWorker();
-      this.worker.onmessage = (event) => this.receive(event.data);
+      const worker = this.createWorker();
+      worker.onmessage = (event) => this.receive(event.data);
+      worker.onerror = (event) =>
+        this.fail(event.message || "The data preview worker failed");
+      worker.onmessageerror = () =>
+        this.fail("The data preview worker sent an unreadable message");
+      this.worker = worker;
     }
     return this.worker;
   }
@@ -81,36 +114,71 @@ export class FeatureRowsClient {
     this.ensureWorker().postMessage(message);
   }
 
-  private request<T>(
-    message: DistributiveOmit<Extract<WorkerRequest, { id: number }>, "id">,
-  ): Promise<T> {
+  private request(build: (id: number) => WorkerRequest): Promise<Reply> {
     const id = this.nextId++;
-    return new Promise<T>((resolve) => {
-      this.pending.set(id, { resolve });
-      this.send({ ...message, id } as WorkerRequest);
+    return new Promise<Reply>((resolve, reject) => {
+      this.pending.set(id, { resolve, reject });
+      this.send(build(id));
     });
+  }
+
+  private fail(message: string) {
+    this.worker?.terminate();
+    this.worker = null;
+
+    const error = new Error(message);
+    const pending = [...this.pending.values()];
+    this.pending.clear();
+    pending.forEach(({ reject }) => reject(error));
+
+    const urls = new Set([...this.statuses.keys(), ...this.listeners.keys()]);
+    for (const url of urls) {
+      this.setStatus({
+        ...(this.statuses.get(url) ?? emptyStatus(url)),
+        done: true,
+        searching: false,
+        error: message,
+      });
+    }
+  }
+
+  private setStatus(status: FeatureRowsStatus) {
+    this.statuses.set(status.url, status);
+    this.listeners.get(status.url)?.forEach((listener) => listener(status));
   }
 
   private receive(message: WorkerResponse) {
     if (message.type === "status") {
       const { columns, ...rest } = message.status;
-      const previous = this.statuses.get(rest.url);
-      const status: FeatureRowsStatus = {
+      this.setStatus({
         ...rest,
-        columns: columns ?? previous?.columns ?? [],
-      };
-      this.statuses.set(rest.url, status);
-      this.listeners.get(rest.url)?.forEach((listener) => listener(status));
+        columns: columns ?? this.statuses.get(rest.url)?.columns ?? [],
+      });
       return;
     }
 
     const pending = this.pending.get(message.id);
     if (!pending) return;
     this.pending.delete(message.id);
-    if (message.type === "rows") pending.resolve(message.rows);
-    else if (message.type === "line") pending.resolve(message.text);
-    else pending.resolve(message.index);
+    pending.resolve(message);
   }
+}
+
+function emptyStatus(url: string): FeatureRowsStatus {
+  return {
+    url,
+    rowCount: 0,
+    totalRows: 0,
+    viewCount: 0,
+    searchTerm: "",
+    searching: false,
+    done: false,
+    truncated: false,
+    skippedLines: 0,
+    columns: [],
+    geometryType: null,
+    error: null,
+  };
 }
 
 let shared: FeatureRowsClient | null = null;
@@ -118,9 +186,7 @@ let shared: FeatureRowsClient | null = null;
 export function featureRowsClient(): FeatureRowsClient {
   shared ??= new FeatureRowsClient(
     () =>
-      new Worker(new URL("./worker.ts", import.meta.url), {
-        type: "module",
-      }) as unknown as WorkerLike,
+      new Worker(new URL("./worker.ts", import.meta.url), { type: "module" }),
   );
   return shared;
 }

@@ -339,6 +339,8 @@
   "No data to display in table format": "テーブル形式で表示するデータがありません",
   "Rows": "行",
   "total": "合計",
+  "Showing the first {{rows}} rows (memory limit reached)": "最初の {{rows}} 行のみ表示しています（メモリ上限に達しました）",
+  "{{lines}} unreadable line(s) skipped": "読み取れない {{lines}} 行をスキップしました",
   "({{n}} chars)": "（{{n}}文字）",
   "JSON copied to clipboard": "JSONがクリップボードにコピーされました",
   "JSON has been successfully copied to the clipboard.": "JSONがクリップボードに正常にコピーされました。",

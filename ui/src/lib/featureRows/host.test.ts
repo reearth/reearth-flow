@@ -164,6 +164,40 @@ describe("FeatureRowsHost", () => {
     expect(lastStatus("a.jsonl")).toMatchObject({ viewCount: 3 });
   });
 
+  test("rows say which search term they were filtered by", async () => {
+    const lines = [
+      feature(0, { name: "ab" }),
+      feature(1, { name: "abc" }),
+    ].join("\n");
+    const { host, reply } = setup({ "a.jsonl": encoder.encode(lines) });
+    host.handle({ type: "open", url: "a.jsonl" });
+    await host.settled("a.jsonl");
+
+    host.handle({ type: "search", url: "a.jsonl", term: "ab" });
+    await host.settled("a.jsonl");
+    host.handle({ type: "search", url: "a.jsonl", term: "abc" });
+    host.handle({ type: "rows", id: 1, url: "a.jsonl", start: 0, count: 10 });
+    await host.settled("a.jsonl");
+
+    expect(reply("rows", 1).searchTerm).toBe("abc");
+  });
+
+  test("clear drops every cached file, so the next open fetches again", async () => {
+    const { host, requested, reply } = setup({
+      "a.jsonl": encoder.encode(jsonl(10)),
+    });
+    host.handle({ type: "open", url: "a.jsonl" });
+    await host.settled("a.jsonl");
+    host.handle({ type: "clear" });
+
+    host.handle({ type: "rows", id: 1, url: "a.jsonl", start: 0, count: 10 });
+    expect(reply("rows", 1).rows).toEqual([]);
+
+    host.handle({ type: "open", url: "a.jsonl" });
+    await host.settled("a.jsonl");
+    expect(requested).toEqual(["a.jsonl", "a.jsonl"]);
+  });
+
   test("switching ports cancels the unfinished load and stops its statuses", async () => {
     const { host, aborted, statuses } = setup({
       "a.jsonl": encoder.encode(jsonl(2000)),

@@ -1,7 +1,7 @@
 import type { MouseEvent } from "react";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 
-import { useFeatureRows } from "@flow/lib/featureRows";
+import { featureRowsClient, useFeatureRows } from "@flow/lib/featureRows";
 import type { FeatureTableRow } from "@flow/lib/featureRows";
 import {
   IntermediateDataViewError,
@@ -122,6 +122,11 @@ export default () => {
     );
     return selection?.fileId ?? fileIdFromIntermediateDataUrl(metadataUrl);
   }, [debugJobState?.selectedIntermediateData, metadataUrl]);
+
+  useEffect(() => {
+    const client = featureRowsClient();
+    return () => client.clear();
+  }, [debugJobId]);
 
   const rows = useFeatureRows(metadataUrl);
   const { readLine } = rows;

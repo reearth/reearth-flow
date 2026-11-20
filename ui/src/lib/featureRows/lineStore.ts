@@ -1,8 +1,18 @@
 const NEWLINE = 10;
 const CARRIAGE_RETURN = 13;
+const QUOTE = 34;
+const BACKSLASH = 92;
+const COMMA = 44;
+const COLON = 58;
+const OPEN_BRACE = 123;
+const CLOSE_BRACE = 125;
+const OPEN_BRACKET = 91;
+const CLOSE_BRACKET = 93;
+const ATTRIBUTES_KEY = new TextEncoder().encode('"attributes"');
 const SAMPLE_SIZE = 10;
 
 export const DEFAULT_CHUNK_BYTES = 16 * 1024 * 1024;
+const FIRST_CHUNK_BYTES = 64 * 1024;
 export const DEFAULT_BYTE_BUDGET = 512 * 1024 * 1024;
 
 export type LineStoreOptions = {
@@ -18,6 +28,80 @@ export type ParsedRow = {
 
 function isWhitespace(byte: number) {
   return byte === 32 || byte === 9 || byte === CARRIAGE_RETURN;
+}
+
+function skipWhitespace(bytes: Uint8Array, pos: number, end: number) {
+  while (pos < end && isWhitespace(bytes[pos])) pos++;
+  return pos;
+}
+
+function skipString(bytes: Uint8Array, pos: number, end: number) {
+  for (let i = pos + 1; i < end; i++) {
+    if (bytes[i] === BACKSLASH) i++;
+    else if (bytes[i] === QUOTE) return i + 1;
+  }
+  return -1;
+}
+
+function valueEnd(bytes: Uint8Array, pos: number, end: number) {
+  let depth = 0;
+  let i = pos;
+  while (i < end) {
+    const byte = bytes[i];
+    if (byte === QUOTE) {
+      i = skipString(bytes, i, end);
+      if (i < 0 || depth === 0) return i;
+      continue;
+    }
+    if (byte === OPEN_BRACE || byte === OPEN_BRACKET) {
+      depth++;
+    } else if (byte === CLOSE_BRACE || byte === CLOSE_BRACKET) {
+      if (depth === 0) return i;
+      if (--depth === 0) return i + 1;
+    } else if (depth === 0 && byte === COMMA) {
+      return i;
+    }
+    i++;
+  }
+  return depth === 0 ? end : -1;
+}
+
+function isAttributesKey(bytes: Uint8Array, start: number, end: number) {
+  if (end - start !== ATTRIBUTES_KEY.length) return false;
+  for (let i = 0; i < ATTRIBUTES_KEY.length; i++) {
+    if (bytes[start + i] !== ATTRIBUTES_KEY[i]) return false;
+  }
+  return true;
+}
+
+function attributesSpan(
+  bytes: Uint8Array,
+  start: number,
+  end: number,
+): [number, number] | null {
+  let depth = 0;
+  let i = start;
+  while (i < end) {
+    const byte = bytes[i];
+    if (byte === QUOTE) {
+      const keyStart = i;
+      i = skipString(bytes, i, end);
+      if (i < 0) return null;
+      if (depth === 1 && isAttributesKey(bytes, keyStart, i)) {
+        const colon = skipWhitespace(bytes, i, end);
+        if (bytes[colon] === COLON) {
+          const from = skipWhitespace(bytes, colon + 1, end);
+          const to = valueEnd(bytes, from, end);
+          return to < 0 ? null : [from, to];
+        }
+      }
+      continue;
+    }
+    if (byte === OPEN_BRACE || byte === OPEN_BRACKET) depth++;
+    else if (byte === CLOSE_BRACE || byte === CLOSE_BRACKET) depth--;
+    i++;
+  }
+  return null;
 }
 
 type Index = Uint32Array<ArrayBuffer>;
@@ -127,18 +211,25 @@ export class LineStore {
       ? current.subarray(this.lineStart, this.writePos)
       : new Uint8Array(0);
     const needed = partial.length + incoming;
-    const size =
-      needed > this.chunkBytes
-        ? Math.max(needed, (current?.length ?? 0) * 2)
-        : this.chunkBytes;
     const replacing = !!current && !this.chunkHasRows(this.chunks.length - 1);
     const freed = replacing ? current.length : 0;
+    const available = this.byteBudget - this.allocatedBytes + freed;
 
-    if (this.allocatedBytes - freed + size > this.byteBudget) {
+    if (needed > available) {
       this.truncated = true;
       this.droppedLineHasContent = partial.some((byte) => !isWhitespace(byte));
       return false;
     }
+
+    const grown = Math.max(
+      needed,
+      current
+        ? current.length * 2
+        : Math.min(this.chunkBytes, FIRST_CHUNK_BYTES),
+    );
+    const target =
+      needed > this.chunkBytes ? grown : Math.min(grown, this.chunkBytes);
+    const size = Math.min(target, available);
 
     const next = new Uint8Array(size);
     next.set(partial);
@@ -182,20 +273,21 @@ export class LineStore {
     while (first < end && isWhitespace(chunk[first])) first++;
     if (first === end) return;
 
-    let parsed: unknown;
-    try {
-      parsed = JSON.parse(this.decoder.decode(chunk.subarray(start, end)));
-    } catch {
-      this.skippedLines++;
-      return;
-    }
-    if (typeof parsed !== "object" || parsed === null) {
+    let last = end - 1;
+    while (last > first && isWhitespace(chunk[last])) last--;
+    if (chunk[first] !== OPEN_BRACE || chunk[last] !== CLOSE_BRACE) {
       this.skippedLines++;
       return;
     }
 
-    const row = parsed as ParsedRow;
-    const attributes = row.attributes;
+    const attributes =
+      this.sample.length < SAMPLE_SIZE
+        ? this.parseSample(chunk, start, end)
+        : this.parseAttributes(chunk, first, end);
+    if (attributes === undefined) {
+      this.skippedLines++;
+      return;
+    }
     if (attributes && typeof attributes === "object") {
       for (const key of Object.keys(attributes)) {
         if (this.columnSet.has(key)) continue;
@@ -203,7 +295,6 @@ export class LineStore {
         this.columns = [...this.columns, key];
       }
     }
-    if (this.sample.length < SAMPLE_SIZE) this.sample.push(row);
 
     const index = this.rowCount;
     this.rowChunk = grow(this.rowChunk, index + 1);
@@ -213,6 +304,29 @@ export class LineStore {
     this.rowStart[index] = start;
     this.rowLength[index] = end - start;
     this.rowCount++;
+  }
+
+  private parseSample(chunk: Uint8Array, start: number, end: number) {
+    let row: ParsedRow;
+    try {
+      row = JSON.parse(this.decoder.decode(chunk.subarray(start, end)));
+    } catch {
+      return undefined;
+    }
+    this.sample.push(row);
+    return row.attributes ?? null;
+  }
+
+  private parseAttributes(chunk: Uint8Array, start: number, end: number) {
+    const span = attributesSpan(chunk, start, end);
+    if (!span) return null;
+    try {
+      return JSON.parse(
+        this.decoder.decode(chunk.subarray(span[0], span[1])),
+      ) as unknown;
+    } catch {
+      return undefined;
+    }
   }
 }
 
@@ -226,7 +340,8 @@ export class RowFilter {
 
   constructor(term: string) {
     this.term = term.toLowerCase();
-    this.matchesNormalizedValues = /^[\d.eE+-]+$/.test(this.term);
+    this.matchesNormalizedValues =
+      /^[\d.eE+-]+$/.test(this.term) && /\d/.test(this.term);
   }
 
   caughtUp(store: LineStore) {

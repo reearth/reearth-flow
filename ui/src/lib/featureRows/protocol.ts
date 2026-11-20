@@ -21,6 +21,7 @@ export type FeatureRowRecord = {
 
 export type WorkerRequest =
   | { type: "open"; url: string }
+  | { type: "clear" }
   | { type: "search"; url: string; term: string }
   | { type: "rows"; id: number; url: string; start: number; count: number }
   | { type: "line"; id: number; url: string; row: number }
@@ -32,6 +33,6 @@ export type StatusMessage = Omit<FeatureRowsStatus, "columns"> & {
 
 export type WorkerResponse =
   | { type: "status"; status: StatusMessage }
-  | { type: "rows"; id: number; rows: FeatureRowRecord[] }
+  | { type: "rows"; id: number; searchTerm: string; rows: FeatureRowRecord[] }
   | { type: "line"; id: number; text: string | null }
   | { type: "viewIndex"; id: number; index: number };

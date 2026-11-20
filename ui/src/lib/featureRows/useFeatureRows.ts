@@ -43,6 +43,11 @@ export function cellValue(row: FeatureTableRow, column: string): string {
 
 type Block = { rows: FeatureTableRow[] };
 
+const EMPTY_BLOCK: Block = { rows: [] };
+
+const keyOf = (url: string, searchTerm: string, block: number) =>
+  `${url}\u0000${searchTerm}\u0000${block}`;
+
 export function useFeatureRows(
   url: string,
   client: FeatureRowsClient = featureRowsClient(),
@@ -73,12 +78,12 @@ export function useFeatureRows(
   );
   const inflight = useRef(new Map<string, Promise<Block>>());
 
-  const viewKey = `${url}\u0000${status?.searchTerm ?? ""}`;
+  const searchTerm = status?.searchTerm ?? "";
   const viewCount = status?.viewCount ?? 0;
 
   const blockKey = useCallback(
-    (block: number) => `${viewKey}\u0000${block}`,
-    [viewKey],
+    (block: number) => keyOf(url, searchTerm, block),
+    [searchTerm, url],
   );
 
   const fetchBlock = useCallback(
@@ -88,20 +93,22 @@ export function useFeatureRows(
       if (existing) return existing;
       const request = client
         .rows(url, block * ROW_BLOCK_SIZE, ROW_BLOCK_SIZE)
-        .then((records) => {
-          const entry = { rows: records.map(toTableRow) };
+        .then((reply) => {
+          const entry = { rows: reply.rows.map(toTableRow) };
+          const answeredKey = keyOf(url, reply.searchTerm, block);
           setBlocks((previous) => {
             const next = new Map(previous);
-            next.delete(key);
-            next.set(key, entry);
+            next.delete(answeredKey);
+            next.set(answeredKey, entry);
             for (const oldest of next.keys()) {
               if (next.size <= MAX_CACHED_BLOCKS) break;
               next.delete(oldest);
             }
             return next;
           });
-          return entry;
+          return answeredKey === key ? entry : EMPTY_BLOCK;
         })
+        .catch(() => EMPTY_BLOCK)
         .finally(() => inflight.current.delete(key));
       inflight.current.set(key, request);
       return request;
@@ -154,12 +161,14 @@ export function useFeatureRows(
   );
 
   const readLine = useCallback(
-    (row: number) => (url ? client.line(url, row) : Promise.resolve(null)),
+    (row: number) =>
+      url ? client.line(url, row).catch(() => null) : Promise.resolve(null),
     [client, url],
   );
 
   const viewIndexOf = useCallback(
-    (row: number) => (url ? client.viewIndexOf(url, row) : Promise.resolve(-1)),
+    (row: number) =>
+      url ? client.viewIndexOf(url, row).catch(() => -1) : Promise.resolve(-1),
     [client, url],
   );
 

@@ -91,6 +91,24 @@ describe("LineStore", () => {
     expect(ids(store)).toEqual(["a", "long", "b"]);
   });
 
+  test("a line that fits the budget is kept though doubling would not fit", () => {
+    const base = line("a", { t: "" });
+    const row = line("a", { t: "x".repeat(76 - base.length) });
+    expect(row.length).toBe(76);
+    const bytes = encoder.encode(row + "\n");
+    const store = new LineStore({ chunkBytes: 64, byteBudget: 100 });
+    store.append(bytes.subarray(0, 64));
+    store.append(bytes.subarray(64));
+    store.finish();
+    expect(store.truncated).toBe(false);
+    expect(ids(store)).toEqual(["a"]);
+  });
+
+  test("a small file does not take a whole default chunk", () => {
+    const store = storeOf(line("a"));
+    expect(store.bytes).toBeLessThan(DEFAULT_CHUNK_BYTES);
+  });
+
   test("past the budget, stops keeping rows but still counts them", () => {
     const text = Array.from({ length: 100 }, (_, i) => line(`row-${i}`)).join(
       "\n",
@@ -103,6 +121,30 @@ describe("LineStore", () => {
     expect(ids(store)).toEqual(
       Array.from({ length: store.rowCount }, (_, i) => `row-${i}`),
     );
+  });
+
+  test("past the sample, reads columns from the attributes alone", () => {
+    const sample = Array.from({ length: 10 }, (_, i) => line(`s${i}`));
+    const rest = [
+      JSON.stringify({
+        id: "a",
+        attributes: { 'q"}]{[,': 'x\\"}', n: null },
+        geometry: { attributes: { hidden: 1 } },
+      }),
+      JSON.stringify({
+        id: "b",
+        geometry: { attributes: { hidden: 2 } },
+        attributes: { after: 1 },
+      }),
+      '{"id":"c","attributes":{"broken":}, "geometry":null}',
+      '{"id":"d","attributes":null,"geometry":null}',
+      '{"id":"e","attributes":{"cut":1},"geometry":[1,',
+    ];
+    const store = storeOf([...sample, ...rest].join("\n"));
+    expect(store.columns).toEqual(['q"}]{[,', "n", "after"]);
+    expect(ids(store).slice(10)).toEqual(["a", "b", "d"]);
+    expect(store.skippedLines).toBe(2);
+    expect(store.sample).toHaveLength(10);
   });
 
   test("keeps the parsed sample for geometry detection", () => {
@@ -151,6 +193,11 @@ describe("RowFilter", () => {
     expect(matches("0")).toContain(0);
     expect(matches("café")).toEqual([1]);
     expect(matches("1000")).toEqual([2]);
+  });
+
+  test("a term with no digit uses the raw-text check", () => {
+    expect(matchesOf("-")).toEqual([2]);
+    expect(matchesOf("k")).toEqual([0, 1, 2, 3]);
   });
 
   test("never matches on geometry alone", () => {

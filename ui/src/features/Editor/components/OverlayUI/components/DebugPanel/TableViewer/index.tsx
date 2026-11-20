@@ -74,6 +74,20 @@ const TableViewer: React.FC<Props> = memo(
                 {t("Columns")}:{" "}
                 {(status.columns.length + 1).toLocaleString(lang)}
               </span>
+              {status.truncated && (
+                <span className="text-warning">
+                  {t("Showing the first {{rows}} rows (memory limit reached)", {
+                    rows: status.rowCount.toLocaleString(lang),
+                  })}
+                </span>
+              )}
+              {status.skippedLines > 0 && (
+                <span className="text-warning">
+                  {t("{{lines}} unreadable line(s) skipped", {
+                    lines: status.skippedLines.toLocaleString(lang),
+                  })}
+                </span>
+              )}
             </div>
           </div>
         </div>

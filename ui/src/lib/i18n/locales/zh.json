@@ -339,6 +339,8 @@
   "No data to display in table format": "没有数据可在表格中显示",
   "Rows": "行",
   "total": "合计",
+  "Showing the first {{rows}} rows (memory limit reached)": "仅显示前 {{rows}} 行（已达到内存上限）",
+  "{{lines}} unreadable line(s) skipped": "已跳过 {{lines}} 行无法读取的内容",
   "({{n}} chars)": "（{{n}} 个字符）",
   "JSON copied to clipboard": "JSON已复制到剪贴板",
   "JSON has been successfully copied to the clipboard.": "JSON已成功复制到剪贴板。",

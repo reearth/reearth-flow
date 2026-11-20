@@ -5,4 +5,5 @@ export {
   type FeatureRows,
   type FeatureTableRow,
 } from "./useFeatureRows";
+export { featureRowsClient } from "./client";
 export type { FeatureRowsStatus } from "./protocol";
