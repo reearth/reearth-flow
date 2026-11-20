@@ -202,6 +202,10 @@ impl Polygon3D {
 // A polygon is a single face, not a multi-part container.
 crate::unsupported!(Polygon2D: Split);
 crate::unsupported!(Polygon3D: Split);
+#[cfg(feature = "new-geometry")]
+crate::unsupported!(Polygon2D: DecomposeIntoEdgeConnectedParts, DecomposeIntoManifolds);
+#[cfg(feature = "new-geometry")]
+crate::unsupported!(Polygon3D: DecomposeIntoEdgeConnectedParts, DecomposeIntoManifolds);
 
 #[cfg(test)]
 mod tests {

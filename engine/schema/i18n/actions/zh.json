@@ -3356,6 +3356,58 @@
       }
     },
     {
+      "name": "Mesh Merger",
+      "description": "将分组属性值相同的要素的多边形和网格合并为网格，保持每个面不变，并按组或按组内的连通部分各输出一个要素。合并的所有多边形和网格（包括集合中的）都是三角网格时结果为三角网格，否则为多边形网格。",
+      "parameterI18n": {
+        "": {
+          "title": "网格合并参数",
+          "description": "设置哪些要素合并在一起、结果如何划分以及保留哪些属性。"
+        },
+        "attributeAccumulation": {
+          "title": "属性保留",
+          "description": "每个合并后的要素保留哪些属性，取自合并到其中的要素。"
+        },
+        "granularity": {
+          "title": "输出粒度",
+          "description": "每个组被划分为输出要素的细致程度。"
+        },
+        "groupBy": {
+          "title": "分组属性",
+          "description": "决定哪些要素合并在一起的属性；所有这些属性值都一致的要素组成一个组。省略时，所有要素属于同一个组。收集属性时不能包含 `__members`，因为该属性保存收集到的值。"
+        }
+      },
+      "enumI18n": {
+        "AttributeAccumulation": {
+          "collectAttributes": {
+            "title": "收集属性",
+            "description": "保留分组属性，并将每个被合并要素的其他属性写入 `__members`，即按到达顺序每个要素对应一个映射的数组。"
+          },
+          "groupAttributesOnly": {
+            "title": "仅保留分组属性",
+            "description": "仅保留分组属性，丢弃其他所有属性。"
+          },
+          "useOneFeature": {
+            "title": "使用单个要素的属性",
+            "description": "保留第一个被合并要素的属性，丢弃其余属性。"
+          }
+        },
+        "Granularity": {
+          "edgeConnectedPart": {
+            "title": "边连通部分",
+            "description": "按坐标完全相同的边相连的面集合，各输出一个网格。仅在顶点处相接的面成为不同的网格。"
+          },
+          "group": {
+            "title": "组",
+            "description": "每组输出一个网格。"
+          },
+          "manifoldPart": {
+            "title": "流形部分",
+            "description": "将边连通部分进一步划分，使网格的每条边只与其一个或两个面相邻。多个面交于同一条边时，只有其中两个面在该边保持相连。"
+          }
+        }
+      }
+    },
+    {
       "name": "Neighbor Finder",
       "description": "基于空间邻近性，为每个基础要素找到最近的候选要素",
       "parameterI18n": {
@@ -4080,19 +4132,6 @@
         },
         "codelistsPath": {
           "description": "Fallback codelists directory path expression. When codelists files are not found at the location relative to the GML file, this path will be used as the base directory for resolving codeSpace references."
-        }
-      }
-    },
-    {
-      "name": "PLATEAU6.FloodingAreaSurfaceGenerator",
-      "parameterI18n": {
-        "": {
-          "title": "Flooding Area Surface Generator Parameters",
-          "description": "Which bodies are merged into one surface."
-        },
-        "groupBy": {
-          "title": "Group By",
-          "description": "Attributes whose values partition the bodies: only bodies with the same values are merged. Empty (the default) merges every body together."
         }
       }
     },

@@ -472,7 +472,7 @@ fn extend_polygon_uv(out: &mut Vec<[f64; 2]>, polygon: &Polygon3D, source: &UvSo
 /// non-finite), which would otherwise bake `inf`/`NaN` UVs that corrupt texture
 /// sampling and break downstream tile encoders. Such degenerate corners have no
 /// meaningful UV, so they fall back to the texture origin.
-fn bake(matrix: &TexMatrix, [x, y, z]: [f64; 3]) -> [f64; 2] {
+pub(crate) fn bake(matrix: &TexMatrix, [x, y, z]: [f64; 3]) -> [f64; 2] {
     let apply = |row: [f64; 4]| row[0] * x + row[1] * y + row[2] * z + row[3];
     let s = apply(matrix.0[0]);
     let t = apply(matrix.0[1]);
