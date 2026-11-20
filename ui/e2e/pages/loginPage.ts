@@ -11,8 +11,9 @@ export class LoginPage {
   readonly loggedInMarker: Locator;
 
   constructor(page: Page) {
-    this.emailInput = page.locator("input#username");
-    this.passwordInput = page.locator("input#password");
+    // Dev signs in over two steps; Test shows email and password on one form.
+    this.emailInput = page.locator('input#username, input[name="username"]');
+    this.passwordInput = page.locator('input#password, input[name="password"]');
     this.continueButton = page.getByRole("button", { name: "Continue" });
     this.loginButton = page.getByRole("button", { name: "Log In" });
     this.errorMessage = page.locator("#error-element-password");
@@ -30,11 +31,12 @@ export class LoginPage {
   async login(email: string, password: string) {
     await this.emailInput.waitFor({ state: "visible" });
     await this.emailInput.fill(email);
-    await this.continueButton.first().click();
+    const singleForm = await this.passwordInput.isVisible();
+    if (!singleForm) await this.continueButton.first().click();
 
     await this.passwordInput.waitFor({ state: "visible" });
     await this.passwordInput.fill(password);
-    await this.continueButton.click();
+    await (singleForm ? this.loginButton : this.continueButton).click();
   }
 
   async waitForLoggedIn() {

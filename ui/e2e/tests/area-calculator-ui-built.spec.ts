@@ -144,6 +144,7 @@ test.describe.serial(
     });
 
     test("shows the workflow run logs", async () => {
+      await editor.showDebugLogs();
       await expect(
         editor.debugPanel.getByText(/Workflow - Started/).first(),
       ).toBeVisible({ timeout: 30_000 });
