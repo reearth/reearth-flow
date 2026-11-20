@@ -45,10 +45,24 @@ impl SinkOutput {
     ///
     /// Semantics are "put" (full overwrite), not append.
     pub fn write(&self, bytes: Bytes) -> Result<(), BoxedError> {
+        #[cfg(test)]
+        WRITES.with(|writes| writes.set(writes.get() + 1));
         self.storage
             .put_sync(self.resolved.path().as_path(), bytes)?;
         Ok(())
     }
+}
+
+#[cfg(test)]
+thread_local! {
+    static WRITES: std::cell::Cell<usize> = const { std::cell::Cell::new(0) };
+}
+
+/// How many times [`SinkOutput::write`] has run on this thread, for tests that
+/// check a sink writes some other way.
+#[cfg(test)]
+pub(crate) fn writes_on_this_thread() -> usize {
+    WRITES.with(std::cell::Cell::get)
 }
 
 /// Validate `path` as a strict-relative sink output and resolve it against
