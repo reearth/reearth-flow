@@ -401,8 +401,6 @@ graphs:
     action: AttributeMapper
     with:
       mappers:
-      - attribute: attributes
-        valueAttribute: attributes
       - attribute: meshcode
         valueAttribute: meshcode
       - attribute: city_code
@@ -413,6 +411,8 @@ graphs:
         valueAttribute: feature_type
       - attribute: gml_id
         valueAttribute: gml_id
+      - attribute: attributes
+        valueAttribute: attributes
       - attribute: core:creationDate
         valueAttribute: core:creationDate
       - attribute: uro:geometrySrcDescLod1

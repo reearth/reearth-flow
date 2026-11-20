@@ -380,6 +380,30 @@ graphs:
       - attribute: cityName
         method: rename
         value: city_name
+  - id: 5b8d2f61-3c47-4e9a-8d1b-6a0e7c4f2b93
+    name: SchemaColumnOrder
+    type: action
+    action: AttributeMapper
+    with:
+      mappers:
+      - attribute: meshcode
+        valueAttribute: meshcode
+      - attribute: city_code
+        valueAttribute: city_code
+      - attribute: city_name
+        valueAttribute: city_name
+      - attribute: feature_type
+        valueAttribute: feature_type
+      - attribute: gml_id
+        valueAttribute: gml_id
+      - attribute: attributes
+        valueAttribute: attributes
+      - attribute: core:creationDate
+        valueAttribute: core:creationDate
+      - attribute: uro:geometrySrcDescLod1
+        valueAttribute: uro:geometrySrcDescLod1
+      - attribute: uro:lodType
+        valueAttribute: uro:lodType
   - id: d3e4f5a6-b7c8-9d0e-1f2a-3b4c5d6e7f8a
     name: MVTWriterLod0
     type: action
@@ -504,12 +528,17 @@ graphs:
     fromPort: default
     toPort: default
   - id: 12345678-90ab-cdef-1234-567890abcdef
-    from: 14468caf-5633-4f5f-82a3-7e55c4a4c80e
+    from: 5b8d2f61-3c47-4e9a-8d1b-6a0e7c4f2b93
     to: 674b22f7-ffb7-4594-b569-4c4f780326ce
-    fromPort: schema
+    fromPort: default
     toPort: schema
   - id: b7c8d9e0-f1a2-3b4c-5d6e-7f8a9b0c1d2e
     from: 14468caf-5633-4f5f-82a3-7e55c4a4c80e
-    to: d3e4f5a6-b7c8-9d0e-1f2a-3b4c5d6e7f8a
+    to: 5b8d2f61-3c47-4e9a-8d1b-6a0e7c4f2b93
     fromPort: schema
+    toPort: default
+  - id: 9a2c6e40-7d15-4b83-a5f9-1e3b8d0c6a27
+    from: 5b8d2f61-3c47-4e9a-8d1b-6a0e7c4f2b93
+    to: d3e4f5a6-b7c8-9d0e-1f2a-3b4c5d6e7f8a
+    fromPort: default
     toPort: schema
