@@ -238,30 +238,16 @@ impl Uri {
                     .to_string();
                 Self::parse_str(p.as_str())?.into_string()
             }
-            _ => {
-                let joined = format!(
-                    "{}{}{}",
-                    self.uri,
-                    if self.uri.ends_with(self.protocol.separator()) {
-                        "".to_string()
-                    } else {
-                        self.protocol.separator().to_string()
-                    },
-                    path.as_ref().display(),
-                );
-                match joined.split_once(PROTOCOL_SEPARATOR) {
-                    Some((scheme, rest)) => {
-                        // Only the path has dot segments, not the query or fragment.
-                        let (path, query) =
-                            rest.split_at(rest.find(['?', '#']).unwrap_or(rest.len()));
-                        format!(
-                            "{scheme}{PROTOCOL_SEPARATOR}{}{query}",
-                            normalize_segments(path)
-                        )
-                    }
-                    None => joined,
-                }
-            }
+            _ => format!(
+                "{}{}{}",
+                self.uri,
+                if self.uri.ends_with(self.protocol.separator()) {
+                    "".to_string()
+                } else {
+                    self.protocol.separator().to_string()
+                },
+                path.as_ref().display(),
+            ),
         };
         Ok(Self {
             uri: joined,
@@ -407,29 +393,6 @@ impl Serialize for Uri {
 /// It only differs from `Path::canonicalize` by not checking file existence
 /// during resolution.
 /// <https://github.com/rust-lang/cargo/blob/fede83ccf973457de319ba6fa0e36ead454d2e20/src/cargo/util/paths.rs#L61>
-/// `path` with its `.` segments removed and each `..` segment removing the
-/// segment before it, separated by `/`. The first segment, the bucket or host
-/// or the empty root, is kept.
-fn normalize_segments(path: &str) -> String {
-    let mut segments = Vec::new();
-    for segment in path.split('/') {
-        match segment {
-            "." => {}
-            ".." => {
-                if segments.len() > 1 {
-                    segments.pop();
-                }
-            }
-            _ => segments.push(segment),
-        }
-    }
-    // Only the empty root is left, as in `/data/..`.
-    if segments == [""] {
-        return "/".to_string();
-    }
-    segments.join("/")
-}
-
 fn normalize_path(path: &Path) -> PathBuf {
     let mut components = path.components().peekable();
     let mut resulting_path_buf =
@@ -590,40 +553,6 @@ mod tests {
         assert_eq!(
             Uri::for_test("gs://bucket").join("key").unwrap(),
             "gs://bucket/key"
-        );
-        assert_eq!(
-            Uri::for_test("ram:///data/bldg")
-                .join("../shared.gml")
-                .unwrap(),
-            "ram:///data/shared.gml"
-        );
-        assert_eq!(
-            Uri::for_test("gs://bucket/a/b").join("./../c").unwrap(),
-            "gs://bucket/a/c"
-        );
-        assert_eq!(
-            Uri::for_test("gs://bucket").join("..").unwrap(),
-            "gs://bucket"
-        );
-        assert_eq!(
-            Uri::for_test("ram:///data")
-                .join("..")
-                .unwrap()
-                .join("next.gml")
-                .unwrap(),
-            "ram:///next.gml"
-        );
-        assert_eq!(
-            Uri::for_test("https://example.com/data")
-                .join("item?next=/../other")
-                .unwrap(),
-            "https://example.com/data/item?next=/../other"
-        );
-        assert_eq!(
-            Uri::for_test("https://example.com/data/a")
-                .join("../b#x/../y")
-                .unwrap(),
-            "https://example.com/data/b#x/../y"
         );
     }
 
