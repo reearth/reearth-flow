@@ -52,10 +52,9 @@ export type TransformedFeature = {
  * those.
  *
  * None of it is retained, because keeping every parsed record alongside every
- * derived one cost ~3.5x memory (~35 MB to ~123 MB over the panel's
- * 2000-feature `displayLimit`, shaped like PLATEAU CityGML). If it is wanted
- * again, fetch the one selected feature's line on demand rather than retaining
- * all of them.
+ * derived one cost ~3.5x memory (~35 MB to ~123 MB over 2000 features shaped
+ * like PLATEAU CityGML). If it is wanted again, read it from the selected
+ * row's line, which the feature-rows worker keeps.
  */
 
 /** Human-readable coordinate frame, since the EPSG is no longer feature-level. */
@@ -790,8 +789,8 @@ function isCoordinateData(value: unknown): boolean {
  * (`Raster::InMemory`), and serde writes those bytes as a JSON array of
  * integers — so after `JSON.parse` a 2 MB texture is a two-million-element JS
  * number array. The reader splits a GLB by `EXT_mesh_features` into one feature
- * per building and re-serializes the texture on each, and the debug panel holds
- * up to 2000 features, so left in place a single textured GLB exhausts the tab.
+ * per building and re-serializes the texture on each, so left in place the
+ * details of one such feature carry millions of numbers.
  *
  * Nothing renders these today, so they are described rather than decoded.
  * Engine PR #2303 left the encoding deliberately open ("UI needs to eagerly
