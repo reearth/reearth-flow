@@ -65,7 +65,7 @@ use model::{
 };
 use placement::Placed;
 use properties::{Skip, XmlProperty};
-use writer::CityGmlXmlWriter;
+use writer::{CityGmlXmlWriter, SettledNode, settle_tree};
 
 /// Whether `code` says why a feature was not written, so it is reported even
 /// then, alongside `CitygmlEmptyGeometry` for a feature whose only terrain was
@@ -444,6 +444,21 @@ pub fn write_citygml_documents(
         written.sort_unstable();
         written.dedup();
 
+        // Settled before anything is folded or written. Settling is the last
+        // place an entry can be dropped on its own, by the LOD1 exclusive-shell
+        // rule or for want of a property the class declares, so the envelope,
+        // the `srsName` and the staged images are folded over the settled trees
+        // rather than over what the converter offered. The writer is built from
+        // the `srsName` those folds decide, which is why settling cannot wait
+        // for it.
+        let mut settled: Vec<SettledNode> = Vec::with_capacity(top.len());
+        let mut outcomes: Vec<writer::WriteOutcome> = Vec::with_capacity(top.len());
+        for object in top {
+            let (tree, outcome) = settle_tree(object, schema, prefixes)?;
+            settled.push(tree);
+            outcomes.push(outcome);
+        }
+
         // Folded over the features that reach the file only: a copy the join
         // left out may hold another CRS, a wider extent or a texture the
         // document never references.
@@ -470,7 +485,7 @@ pub fn write_citygml_documents(
         let (written_keys, link_targets): (HashSet<String>, Vec<String>) = {
             let mut keys = HashSet::new();
             let mut targets = Vec::new();
-            for object in &top {
+            for object in &settled {
                 collect_links(object, prefixes, &mut keys, &mut targets);
             }
             (keys, targets)
@@ -482,7 +497,7 @@ pub fn write_citygml_documents(
         #[cfg(feature = "new-geometry")]
         let mut referenced_textures: HashSet<String> = HashSet::new();
         #[cfg(feature = "new-geometry")]
-        for object in &top {
+        for object in &settled {
             let writes =
                 |entry: &model::GeometryEntry| writes_entry(entry, &written_keys, schema, prefixes);
             fold_tree_envelope(object, &writes, &mut envelope);
@@ -511,7 +526,7 @@ pub fn write_citygml_documents(
         }
 
         let mut code_spaces: Vec<String> = Vec::new();
-        for object in &top {
+        for object in &settled {
             for_each_property(object, &mut |source, property| {
                 collect_code_spaces(property, &stageable[source], &mut code_spaces)
             });
@@ -526,7 +541,7 @@ pub fn write_citygml_documents(
         )?;
         let code_space_remap =
             stage_codelists(&code_spaces, destination, storage_resolver, diagnostics)?;
-        for object in &mut top {
+        for object in &mut settled {
             for_each_property_mut(object, &mut |property| {
                 remap_code_spaces(property, &code_space_remap)
             });
@@ -543,7 +558,7 @@ pub fn write_citygml_documents(
             xml_writer.set_uri_remap(uri_remap);
             xml_writer.set_schema(schema, prefixes.clone());
 
-            if top.iter().any(|object| writes_group(object, schema)) {
+            if settled.iter().any(|object| writes_group(object, schema)) {
                 xml_writer.declare_groups();
             }
 
@@ -560,9 +575,9 @@ pub fn write_citygml_documents(
                 {
                     xml_writer.reserve_link_target(target);
                 }
-                let claimed = xml_writer.claim_object_ids(&mut top);
+                let claimed = xml_writer.claim_object_ids(&mut settled);
                 let mut unresolved = std::collections::BTreeSet::new();
-                for object in &mut top {
+                for object in &mut settled {
                     resolve_links(object, &claimed, prefixes, &mut |source| {
                         unresolved.insert(source);
                     });
@@ -579,8 +594,9 @@ pub fn write_citygml_documents(
 
             xml_writer.write_header(envelope.as_ref(), ade_locations)?;
 
-            for object in top {
-                let outcome = xml_writer.write_object_tree(object, &appearances)?;
+            for (object, settled_outcome) in settled.into_iter().zip(outcomes) {
+                let outcome =
+                    xml_writer.write_settled_tree(object, settled_outcome, &appearances)?;
                 for (source, dropped) in outcome.lod1_surfaces_dropped {
                     *lod1_surfaces_dropped.entry(source).or_default() += dropped;
                 }
@@ -758,7 +774,7 @@ fn place_properties(
 
 /// Call `f` on every placed property of `object` and of the objects nested
 /// in it, parents first, with the source of the object holding it.
-fn for_each_property(object: &ObjectNode, f: &mut impl FnMut(usize, &XmlProperty)) {
+fn for_each_property(object: &SettledNode, f: &mut impl FnMut(usize, &XmlProperty)) {
     for placed in &object.properties {
         f(object.source, &placed.property);
     }
@@ -823,11 +839,11 @@ fn writes_entry(
 /// the shell rejects.
 #[cfg(feature = "new-geometry")]
 fn fold_tree_crs(
-    object: &ObjectNode,
+    object: &SettledNode,
     writes: &impl Fn(&model::GeometryEntry) -> bool,
     crs: &mut CrsCoverage,
 ) {
-    for entry in &object.geometries {
+    for entry in &object.entries {
         if writes(entry) {
             *crs = crs.and(entry.crs);
         }
@@ -848,7 +864,7 @@ fn fold_tree_crs(
 /// that object's surfaces.
 #[cfg(feature = "new-geometry")]
 fn fold_tree_textures(
-    object: &ObjectNode,
+    object: &SettledNode,
     converted: &[model::ConvertedCityObject],
     writes: &impl Fn(&model::GeometryEntry) -> bool,
     used: &mut HashSet<String>,
@@ -874,7 +890,7 @@ fn fold_tree_textures(
             note(shell, used);
         }
     }
-    for entry in &object.geometries {
+    for entry in &object.entries {
         if !writes(entry) {
             continue;
         }
@@ -899,7 +915,7 @@ fn fold_tree_textures(
 /// Grow `envelope` to cover every coordinate of `object`'s tree.
 #[cfg(feature = "new-geometry")]
 fn fold_tree_envelope(
-    object: &ObjectNode,
+    object: &SettledNode,
     writes: &impl Fn(&model::GeometryEntry) -> bool,
     envelope: &mut Option<BoundingEnvelope>,
 ) {
@@ -929,7 +945,7 @@ fn fold_tree_envelope(
             surfaces(shell, envelope);
         }
     }
-    for entry in &object.geometries {
+    for entry in &object.entries {
         if !writes(entry) {
             continue;
         }
@@ -1005,12 +1021,14 @@ mod written_geometry_tests {
         }
     }
 
-    fn object(geometries: Vec<GeometryEntry>) -> ObjectNode {
-        ObjectNode {
+    /// A settled tree holding `entries`, which is what the folds take: the
+    /// document settles every tree before it folds anything over one.
+    fn object(entries: Vec<GeometryEntry>) -> SettledNode {
+        SettledNode {
             class: CityClass::generic(),
             key: None,
             gml_id: None,
-            geometries,
+            entries,
             properties: Vec::new(),
             children: Vec::new(),
             source: 0,
@@ -1040,13 +1058,69 @@ mod written_geometry_tests {
         }
     }
 
-    fn folded_crs(object: &ObjectNode) -> CrsCoverage {
+    /// A whole CityGML 2.0 schema, so settling can place entries on the
+    /// properties a real class declares and apply the LOD1 shell rule.
+    fn citygml2() -> (&'static SchemaSet, Prefixes) {
+        let schema = SchemaSet::core().expect("the bundled CityGML 2.0 schemas");
+        (schema, Prefixes::citygml2())
+    }
+
+    /// An entry already naming the property it belongs on, as the LOD1
+    /// exclusive-shell rule meets them: a `lod1Solid` keeps a `lod1MultiSurface`
+    /// out of the document.
+    fn shell_entry(property: &str, crs: CrsCoverage, texture: Option<u32>) -> GeometryEntry {
+        let element = if property.ends_with("Solid") {
+            GmlElement::Solid(model::GmlSolid {
+                id: None,
+                exterior: vec![surface(texture)],
+                interiors: Vec::new(),
+            })
+        } else {
+            GmlElement::MultiSurface {
+                id: None,
+                surfaces: vec![surface(texture)],
+            }
+        };
+        GeometryEntry {
+            crs,
+            lod: 1,
+            property: Some(property.to_string()),
+            element,
+            owner: EntryOwner::default(),
+        }
+    }
+
+    /// One building carrying both shell entries, settled as the document
+    /// settles it.
+    fn settled_building(entries: Vec<GeometryEntry>) -> writer::SettledNode {
+        let (schema, prefixes) = citygml2();
+        let class = crate::file::citygml::classes::resolve("bldg:Building", &prefixes, schema)
+            .expect("the building class");
+        let node = ObjectNode {
+            class,
+            key: None,
+            gml_id: None,
+            geometries: entries,
+            properties: Vec::new(),
+            children: Vec::new(),
+            source: 0,
+        };
+        let (settled, outcome) = settle_tree(node, schema, &prefixes).expect("the tree settles");
+        assert_eq!(
+            outcome.lod1_surfaces_dropped.get(&0).copied(),
+            Some(1),
+            "the fixture is only a regression test while settling drops the surface"
+        );
+        settled
+    }
+
+    fn folded_crs(object: &SettledNode) -> CrsCoverage {
         let mut crs = CrsCoverage::default();
         fold_tree_crs(object, &writes, &mut crs);
         crs
     }
 
-    fn staged(object: &ObjectNode, converted: &[ConvertedCityObject]) -> Vec<String> {
+    fn staged(object: &SettledNode, converted: &[ConvertedCityObject]) -> Vec<String> {
         let mut used = HashSet::new();
         fold_tree_textures(object, converted, &writes, &mut used);
         let mut keys: Vec<String> = used.into_iter().collect();
@@ -1066,6 +1140,40 @@ mod written_geometry_tests {
         ]);
 
         assert_eq!(folded_crs(&node), CrsCoverage::Single(epsg(6697)));
+    }
+
+    /// Settling is the last place an entry can be dropped on its own, and the
+    /// `srsName` answers for what it leaves. A `lod1MultiSurface` that loses to
+    /// a `lod1Solid` under the exclusive-shell rule reaches no element, so its
+    /// CRS folded in made a document `Mixed` over coordinates it never wrote,
+    /// which the shell rejects.
+    #[test]
+    fn a_crs_settling_drops_does_not_reach_the_document() {
+        let settled = settled_building(vec![
+            shell_entry("lod1Solid", CrsCoverage::Single(epsg(6697)), None),
+            shell_entry("lod1MultiSurface", CrsCoverage::Single(epsg(6677)), None),
+        ]);
+
+        let mut crs = CrsCoverage::default();
+        fold_tree_crs(&settled, &|_| true, &mut crs);
+
+        assert_eq!(crs, CrsCoverage::Single(epsg(6697)));
+    }
+
+    /// The same for an image: staging is strict, so a texture on a surface
+    /// settling drops would fail a document that never references it.
+    #[test]
+    fn an_image_on_a_surface_settling_drops_is_not_staged() {
+        let settled = settled_building(vec![
+            shell_entry("lod1Solid", CrsCoverage::default(), None),
+            shell_entry("lod1MultiSurface", CrsCoverage::default(), Some(0)),
+        ]);
+        let converted = vec![feature(vec!["dropped.png"])];
+
+        let mut used = HashSet::new();
+        fold_tree_textures(&settled, &converted, &|_| true, &mut used);
+
+        assert!(used.is_empty(), "staged {used:?}");
     }
 
     /// A group-only document writes its links rather than failing: with no
@@ -1158,19 +1266,19 @@ mod envelope_tests {
         }
     }
 
-    fn object(geometries: Vec<GeometryEntry>) -> ObjectNode {
-        ObjectNode {
+    fn object(entries: Vec<GeometryEntry>) -> SettledNode {
+        SettledNode {
             class: CityClass::generic(),
             key: None,
             gml_id: None,
-            geometries,
+            entries,
             properties: Vec::new(),
             children: Vec::new(),
             source: 0,
         }
     }
 
-    fn folded(object: &ObjectNode) -> Option<BoundingEnvelope> {
+    fn folded(object: &SettledNode) -> Option<BoundingEnvelope> {
         let mut envelope = None;
         fold_tree_envelope(object, &|_| true, &mut envelope);
         envelope
@@ -1217,7 +1325,7 @@ mod envelope_tests {
     #[test]
     fn a_nested_objects_geometry_reaches_the_envelope() {
         let mut node = object(Vec::new());
-        node.children.push(NestedObject {
+        node.children.push(writer::SettledChild {
             slot: 0,
             property: QName::new("ns", "boundedBy"),
             object: object(vec![entry(
@@ -1288,7 +1396,7 @@ mod envelope_tests {
 }
 
 /// Whether `object`, or an object nested in it, is a city object group.
-fn writes_group(object: &ObjectNode, schema: &SchemaSet) -> bool {
+fn writes_group(object: &SettledNode, schema: &SchemaSet) -> bool {
     hierarchy::is_group(schema, &object.class.element)
         || object
             .children
@@ -1313,7 +1421,7 @@ fn link_target<'p>(property: &'p XmlProperty, prefixes: &Prefixes) -> Option<&'p
 /// target of every object link in it to `targets`.
 #[cfg(feature = "new-geometry")]
 fn collect_links(
-    object: &ObjectNode,
+    object: &SettledNode,
     prefixes: &Prefixes,
     keys: &mut HashSet<String>,
     targets: &mut Vec<String>,
@@ -1341,7 +1449,7 @@ fn collect_links(
 /// to.
 #[cfg(feature = "new-geometry")]
 fn resolve_links(
-    object: &mut ObjectNode,
+    object: &mut SettledNode,
     claimed: &HashMap<String, String>,
     prefixes: &Prefixes,
     unresolved: &mut impl FnMut(usize),
@@ -1368,7 +1476,7 @@ fn resolve_links(
 }
 
 /// [`for_each_property`], changing each property.
-fn for_each_property_mut(object: &mut ObjectNode, f: &mut impl FnMut(&mut XmlProperty)) {
+fn for_each_property_mut(object: &mut SettledNode, f: &mut impl FnMut(&mut XmlProperty)) {
     for placed in &mut object.properties {
         f(&mut placed.property);
     }

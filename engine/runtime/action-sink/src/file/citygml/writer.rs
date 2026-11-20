@@ -245,18 +245,25 @@ impl<'a, W: Write> CityGmlXmlWriter<'a, W> {
     }
 
     /// Claim the `gml:id` of every city object in `objects`, nested ones
-    /// included, in the order [`Self::write_object_tree`] writes them, and set
-    /// each object's candidate to it. Returns the id each source key was
+    /// included, in the order [`Self::write_settled_tree`] writes them, and
+    /// set each object's candidate to it. Returns the id each source key was
     /// claimed under, the first object's where several share a key.
     ///
     /// An `xlink:href` to an object can then name the id the object is written
     /// with before the object itself is written, as a group listed ahead of
     /// its members needs: an id the writer mints, or changes because another
     /// object took it, is known up front.
-    pub fn claim_object_ids(&mut self, objects: &mut [ObjectNode]) -> HashMap<String, String> {
+    ///
+    /// Takes settled trees, so the walk follows the children as
+    /// [`settle_tree`] sorted them instead of sorting them the same way again:
+    /// two orders that have to agree are one order.
+    pub(super) fn claim_object_ids(
+        &mut self,
+        objects: &mut [SettledNode],
+    ) -> HashMap<String, String> {
         fn claim<W: Write>(
             writer: &mut CityGmlXmlWriter<'_, W>,
-            object: &mut ObjectNode,
+            object: &mut SettledNode,
             claimed: &mut HashMap<String, String>,
         ) {
             let id = writer.claim_gml_id(object.gml_id.as_deref(), &object.class.id_prefix);
@@ -265,12 +272,8 @@ impl<'a, W: Write> CityGmlXmlWriter<'a, W> {
             }
             writer.reserved_ids.insert(id.clone());
             object.gml_id = Some(id);
-            // The order `settle_node` writes nested objects in: by slot, and
-            // in arrival order within one.
-            let mut order: Vec<usize> = (0..object.children.len()).collect();
-            order.sort_by_key(|&index| object.children[index].slot);
-            for index in order {
-                claim(writer, &mut object.children[index].object, claimed);
+            for child in &mut object.children {
+                claim(writer, &mut child.object, claimed);
             }
         }
         let mut claimed = HashMap::new();
@@ -278,6 +281,17 @@ impl<'a, W: Write> CityGmlXmlWriter<'a, W> {
             claim(self, object, &mut claimed);
         }
         claimed
+    }
+
+    /// The schema [`Self::set_schema`] bound, or the bare CityGML 2.0 core
+    /// when nothing bound one.
+    fn schema_set(&self) -> Result<&'a SchemaSet, SinkError> {
+        match self.schema {
+            Some(schema) => Ok(schema),
+            None => SchemaSet::core().map_err(|e| {
+                SinkError::CityGmlWriter(format!("the CityGML 2.0 schemas failed to load: {e}"))
+            }),
+        }
     }
 
     /// Keep `target`, a `gml:id` a link names that no written object has,
@@ -400,25 +414,31 @@ impl<'a, W: Write> CityGmlXmlWriter<'a, W> {
         object: ObjectNode,
         appearances: &[Option<&AppearanceBundle>],
     ) -> Result<WriteOutcome, SinkError> {
-        let schema = match self.schema {
-            Some(schema) => schema,
-            None => SchemaSet::core().map_err(|e| {
-                SinkError::CityGmlWriter(format!("the CityGML 2.0 schemas failed to load: {e}"))
-            })?,
-        };
+        let (settled, outcome) = settle_tree(object, self.schema_set()?, &self.prefixes)?;
+        self.write_settled_tree(settled, outcome, appearances)
+    }
 
+    /// Write a tree [`settle_tree`] has already fixed as one
+    /// `core:cityObjectMember`, carrying that call's `outcome` on.
+    ///
+    /// Geometry is settled for the whole tree before anything is written, so
+    /// the shared-geometry plan sees exactly the surfaces that reach the
+    /// document: one dropped by the LOD1 shell rule must not become the target
+    /// of an `xlink:href` nothing resolves. The document settles ahead of its
+    /// header for the same reason, and folds the envelope, the `srsName` and
+    /// the staged images over what these calls write.
+    pub(super) fn write_settled_tree(
+        &mut self,
+        settled: SettledNode,
+        outcome: WriteOutcome,
+        appearances: &[Option<&AppearanceBundle>],
+    ) -> Result<WriteOutcome, SinkError> {
         let mut tree = TreeWrite {
-            schema,
+            schema: self.schema_set()?,
             appearances,
             surfaces: Vec::new(),
-            outcome: WriteOutcome::default(),
+            outcome,
         };
-
-        // Geometry is settled for the whole tree before anything is written,
-        // so the shared-geometry plan sees exactly the surfaces that reach the
-        // document: one dropped by the LOD1 shell rule must not become the
-        // target of an `xlink:href` nothing resolves.
-        let settled = self.settle_node(object, &mut tree)?;
         self.dropped_lod1_surfaces += tree.outcome.lod1_surfaces_dropped.values().sum::<usize>();
 
         // A repeated surface is written in full once, so its `gml:id` has to
@@ -460,77 +480,6 @@ impl<'a, W: Write> CityGmlXmlWriter<'a, W> {
         Ok(tree.outcome)
     }
 
-    /// Settle one object's geometry and that of everything nested in it,
-    /// counting what could not be written, so the tree is fixed before the
-    /// shared-geometry plan looks at it.
-    fn settle_node(
-        &self,
-        object: ObjectNode,
-        tree: &mut TreeWrite<'_, '_>,
-    ) -> Result<SettledNode, SinkError> {
-        let ObjectNode {
-            class,
-            gml_id,
-            geometries,
-            properties,
-            children: nested,
-            source,
-            ..
-        } = object;
-
-        // CityGML declares each class's properties as an `xs:sequence`, so
-        // arrival order is not good enough: geometry, attribute properties and
-        // nested objects share one list and are emitted in schema order. The
-        // class model is the same for every entry, so look it up once; the key
-        // is computed once per entry and the sort stays stable. Placement and
-        // containment numbered the other slots against this same model.
-        let model = tree.schema.class_for_element(&class.element);
-
-        let settled = settle_geometry(geometries, &class, model, tree.schema, &self.prefixes)?;
-        if settled.lod1_surfaces_dropped > 0 {
-            *tree
-                .outcome
-                .lod1_surfaces_dropped
-                .entry(source)
-                .or_insert(0) += settled.lod1_surfaces_dropped;
-        }
-        if settled.not_written > 0 {
-            *tree.outcome.geometry_not_written.entry(source).or_insert(0) += settled.not_written;
-        }
-        if settled.tin_appearance_dropped > 0 {
-            *tree
-                .outcome
-                .tin_appearance_dropped
-                .entry(source)
-                .or_insert(0) += settled.tin_appearance_dropped;
-        }
-
-        let mut children: Vec<SettledChild> = nested
-            .into_iter()
-            .map(|nested| {
-                Ok(SettledChild {
-                    slot: nested.slot,
-                    property: nested.property,
-                    object: self.settle_node(nested.object, tree)?,
-                })
-            })
-            .collect::<Result<_, SinkError>>()?;
-        // Sorted here rather than only at the point of writing, so the
-        // shared-geometry plan meets siblings in the order the document shows
-        // them: of two occurrences equally well placed, the first is the one
-        // written in full.
-        children.sort_by_key(|child| child.slot);
-
-        Ok(SettledNode {
-            class,
-            gml_id,
-            entries: settled.entries,
-            properties,
-            children,
-            source,
-        })
-    }
-
     /// Write one city object element and everything nested in it. `depth` is
     /// how far the object is nested, which decides where a repeated surface is
     /// written in full.
@@ -542,6 +491,7 @@ impl<'a, W: Write> CityGmlXmlWriter<'a, W> {
     ) -> Result<(), SinkError> {
         let SettledNode {
             class,
+            key: _,
             gml_id,
             entries: merged,
             properties,
@@ -1392,27 +1342,114 @@ fn family_property_name(entry: &GeometryEntry) -> String {
     format!("lod{}{}", entry.lod, family)
 }
 
+/// Settle `object`'s geometry and that of everything nested in it, counting
+/// what could not be written: the tree exactly as it will be written.
+///
+/// Free-standing, and not a [`CityGmlXmlWriter`] method, because the document
+/// has to settle every tree before it can build a writer: the writer is
+/// constructed with the `srsName`, and that is folded over the settled
+/// geometry. Settling first is also what lets the envelope, the CRS and the
+/// staged images answer for the geometry that reaches the file rather than
+/// for everything the converter offered.
+pub(super) fn settle_tree(
+    object: ObjectNode,
+    schema: &SchemaSet,
+    prefixes: &Prefixes,
+) -> Result<(SettledNode, WriteOutcome), SinkError> {
+    let mut outcome = WriteOutcome::default();
+    let settled = settle_node(object, schema, prefixes, &mut outcome)?;
+    Ok((settled, outcome))
+}
+
+fn settle_node(
+    object: ObjectNode,
+    schema: &SchemaSet,
+    prefixes: &Prefixes,
+    outcome: &mut WriteOutcome,
+) -> Result<SettledNode, SinkError> {
+    let ObjectNode {
+        class,
+        key,
+        gml_id,
+        geometries,
+        properties,
+        children: nested,
+        source,
+    } = object;
+
+    // CityGML declares each class's properties as an `xs:sequence`, so
+    // arrival order is not good enough: geometry, attribute properties and
+    // nested objects share one list and are emitted in schema order. The
+    // class model is the same for every entry, so look it up once; the key
+    // is computed once per entry and the sort stays stable. Placement and
+    // containment numbered the other slots against this same model.
+    let model = schema.class_for_element(&class.element);
+
+    let settled = settle_geometry(geometries, &class, model, schema, prefixes)?;
+    if settled.lod1_surfaces_dropped > 0 {
+        *outcome.lod1_surfaces_dropped.entry(source).or_insert(0) += settled.lod1_surfaces_dropped;
+    }
+    if settled.not_written > 0 {
+        *outcome.geometry_not_written.entry(source).or_insert(0) += settled.not_written;
+    }
+    if settled.tin_appearance_dropped > 0 {
+        *outcome.tin_appearance_dropped.entry(source).or_insert(0) +=
+            settled.tin_appearance_dropped;
+    }
+
+    let mut children: Vec<SettledChild> = nested
+        .into_iter()
+        .map(|nested| {
+            Ok(SettledChild {
+                slot: nested.slot,
+                property: nested.property,
+                object: settle_node(nested.object, schema, prefixes, outcome)?,
+            })
+        })
+        .collect::<Result<_, SinkError>>()?;
+    // Sorted here rather than only at the point of writing, so the
+    // shared-geometry plan meets siblings in the order the document shows
+    // them: of two occurrences equally well placed, the first is the one
+    // written in full. Everything that walks a settled tree afterwards, id
+    // claiming included, follows this order rather than deriving it again.
+    children.sort_by_key(|child| child.slot);
+
+    Ok(SettledNode {
+        class,
+        key,
+        gml_id,
+        entries: settled.entries,
+        properties,
+        children,
+        source,
+    })
+}
+
 /// One object with its geometry settled, and the objects nested in it the
 /// same way: the tree exactly as it will be written.
 ///
 /// Settling the whole tree first is what lets the shared-geometry plan run
 /// over the surfaces that reach the document rather than over the ones the
 /// converter offered.
-struct SettledNode {
-    class: CityClass,
-    gml_id: Option<String>,
+pub(super) struct SettledNode {
+    pub(super) class: CityClass,
+    /// The key the object was grouped and joined by, carried from
+    /// [`ObjectNode::key`]: ids are claimed per source key after settling.
+    pub(super) key: Option<String>,
+    pub(super) gml_id: Option<String>,
     /// Each on a property the class declares, at most one per property.
-    entries: Vec<GeometryEntry>,
-    properties: Vec<Placed>,
-    children: Vec<SettledChild>,
-    source: usize,
+    pub(super) entries: Vec<GeometryEntry>,
+    pub(super) properties: Vec<Placed>,
+    /// In the order they are written, which is by slot.
+    pub(super) children: Vec<SettledChild>,
+    pub(super) source: usize,
 }
 
 /// A settled object and the parent property it is written inside.
-struct SettledChild {
-    slot: usize,
-    property: QName,
-    object: SettledNode,
+pub(super) struct SettledChild {
+    pub(super) slot: usize,
+    pub(super) property: QName,
+    pub(super) object: SettledNode,
 }
 
 impl SurfaceTree for SettledNode {
