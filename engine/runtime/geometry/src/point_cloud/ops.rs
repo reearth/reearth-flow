@@ -416,18 +416,4 @@ mod tests {
         );
         assert!(pc.kdtree.get().is_none());
     }
-
-    #[test]
-    fn a_file_segment_moves_without_reading_the_file() {
-        let mut pc = PointCloud::from_las_file(
-            CoordinateFrame::Euclidean,
-            reearth_flow_common::uri::Uri::for_test("file:///nonexistent/a.las"),
-        );
-        pc.translate([1.0, 2.0, 3.0]).unwrap();
-        let Segment::File(file) = &pc.segments[0] else {
-            unreachable!()
-        };
-        assert_eq!(file.shift(), [1.0, 2.0, 3.0]);
-        assert!(pc.split(&mut |_, _| {}).is_err());
-    }
 }

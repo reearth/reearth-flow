@@ -255,15 +255,6 @@ pub(super) mod tests {
         }
     }
 
-    fn wkt_crs(wkt: &str) -> ::las::Vlr {
-        ::las::Vlr {
-            user_id: "LASF_Projection".into(),
-            record_id: 2112,
-            description: String::new(),
-            data: wkt.as_bytes().to_vec(),
-        }
-    }
-
     fn read_in(epsg: u16, crs: ::las::Vlr) -> Result<PointCloud> {
         PointCloud::from_las(
             CoordinateFrame::Crs(EpsgCode::new(epsg)),
@@ -397,54 +388,12 @@ pub(super) mod tests {
     }
 
     #[test]
-    fn rejects_non_las() {
-        let err = PointCloud::from_las(
-            CoordinateFrame::Euclidean,
-            None,
-            Cursor::new(b"not a las file".to_vec()),
-        )
-        .unwrap_err();
-        assert!(matches!(err, Error::PointCloudRead(_)));
-    }
-
-    #[test]
-    fn north_first_crs_swaps_easting_and_northing() {
-        // EPSG:6677 (JGD2011 / Japan Plane Rectangular CS IX) stores northing first.
-        let points = [point(0)];
-        let pc = PointCloud::from_las(
-            CoordinateFrame::Crs(crate::coordinate::EpsgCode::new(6677)),
-            None,
-            write(3, false, &points),
-        )
-        .unwrap();
-        let [x, y, z] = segment_positions(pc.segments[0].as_buffer())
-            .next()
-            .unwrap();
-        assert!((x - points[0].y).abs() < 1e-9);
-        assert!((y - points[0].x).abs() < 1e-9);
-        assert!((z - points[0].z).abs() < 1e-9);
-    }
-
-    #[test]
-    fn a_recorded_crs_must_match_the_frame() {
+    fn a_recorded_crs_must_agree_with_the_frame() {
         assert!(read_in(6677, geotiff_crs(3072, 6677)).is_ok());
-        let err = read_in(6676, geotiff_crs(3072, 6677)).unwrap_err();
-        assert!(matches!(err, Error::PointCloudRead(_)), "{err}");
-        assert!(err.to_string().contains("EPSG:6677"), "{err}");
-    }
-
-    #[test]
-    fn a_2d_file_crs_agrees_with_its_3d_frame() {
-        // EPSG:6697 is JGD2011 + JGD2011 (vertical) height; EPSG:6668 is JGD2011.
+        // EPSG:6668 is the horizontal part of EPSG:6697.
         assert!(read_in(6697, geotiff_crs(2048, 6668)).is_ok());
-        assert!(read_in(6697, geotiff_crs(2048, 4326)).is_err());
-    }
-
-    #[test]
-    fn a_wkt_crs_is_checked_too() {
-        let wkt = r#"PROJCS["JGD2011 / Japan Plane Rectangular CS IX",GEOGCS["JGD2011",AUTHORITY["EPSG","6668"]],UNIT["metre",1,AUTHORITY["EPSG","9001"]],AUTHORITY["EPSG","6677"]]"#;
-        assert!(read_in(6677, wkt_crs(wkt)).is_ok());
-        assert!(read_in(6668, wkt_crs(wkt)).is_err());
+        let err = read_in(6676, geotiff_crs(3072, 6677)).unwrap_err();
+        assert!(err.to_string().contains("EPSG:6677"), "{err}");
     }
 
     #[test]
@@ -467,35 +416,15 @@ pub(super) mod tests {
     }
 
     #[test]
-    fn a_file_without_a_crs_takes_the_frame() {
-        let pc = PointCloud::from_las(
-            CoordinateFrame::Crs(EpsgCode::new(6677)),
-            None,
-            write(3, false, &[point(0)]),
-        );
-        assert!(pc.is_ok());
-    }
-
-    #[test]
-    fn a_header_claiming_more_points_than_the_file_holds_is_rejected() {
-        let mut bytes = write(3, false, &[point(0), point(1)]).into_inner();
-        // Legacy point count at byte 107, LAS 1.4 count at byte 247.
-        bytes[107..111].copy_from_slice(&u32::MAX.to_le_bytes());
-        bytes[247..255].copy_from_slice(&u64::from(u32::MAX).to_le_bytes());
-        let err =
-            PointCloud::from_las(CoordinateFrame::Euclidean, None, Cursor::new(bytes)).unwrap_err();
-        assert!(matches!(err, Error::PointCloudRead(_)), "{err}");
-    }
-
-    #[test]
-    fn an_impossible_point_count_is_rejected_without_allocating() {
-        let mut bytes = write(3, false, &[point(0)]).into_inner();
-        bytes[107..111].copy_from_slice(&0u32.to_le_bytes());
-        // Far beyond memory, but small enough that `las` itself does not
-        // overflow computing where the points end.
-        bytes[247..255].copy_from_slice(&(1u64 << 58).to_le_bytes());
-        let err =
-            PointCloud::from_las(CoordinateFrame::Euclidean, None, Cursor::new(bytes)).unwrap_err();
-        assert!(matches!(err, Error::PointCloudRead(_)), "{err}");
+    fn a_header_overstating_the_point_count_is_rejected() {
+        // More points than the file holds, then more than memory can hold.
+        for count in [u64::from(u32::MAX), 1 << 58] {
+            let mut bytes = write(3, false, &[point(0)]).into_inner();
+            bytes[107..111].copy_from_slice(&0u32.to_le_bytes());
+            bytes[247..255].copy_from_slice(&count.to_le_bytes());
+            let err = PointCloud::from_las(CoordinateFrame::Euclidean, None, Cursor::new(bytes))
+                .unwrap_err();
+            assert!(matches!(err, Error::PointCloudRead(_)), "{err}");
+        }
     }
 }

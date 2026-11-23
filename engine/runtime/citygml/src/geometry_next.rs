@@ -20,13 +20,14 @@ use reearth_flow_geometry::point_cloud::PointCloud;
 use reearth_flow_geometry::polygon::Polygon3D;
 use reearth_flow_geometry::triangular_mesh::TriangularMesh3D;
 
-use super::appearance::resolve_uri;
 use super::coordinate_handling::CoordinateHandling;
 use super::malformation::{Malformation, MalformationKind};
 use super::parser::{Parser, RawChild, RawNode, raw_gml_id};
 use super::resolver::{FaceIds, GeomNode, GmlGeometryType, LeafIds, Role, Unresolved};
 use super::srsname::parse_point_file_epsg;
-use super::utils::{CITYGML_NS_30_ID, GML_NS_311_ID, GML_NS_ID, GeomMeta, frame_for, local_name};
+use super::utils::{
+    CITYGML_NS_30_ID, GML_NS_311_ID, GML_NS_ID, GeomMeta, frame_for, local_name, resolve_uri,
+};
 
 impl Parser {
     /// Strip every geometry property from `node`, replacing each in place with a

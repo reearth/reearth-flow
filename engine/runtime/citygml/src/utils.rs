@@ -7,6 +7,16 @@ use reearth_flow_geometry::coordinate::{CoordinateFrame, EpsgCode};
 use reearth_flow_types::{Attribute, AttributeValue, Attributes};
 use url::Url;
 
+/// Resolve a reference such as `app:imageURI` or `pcl:pointFile` against the
+/// URL of the document it appears in.
+#[cfg(feature = "new-geometry")]
+pub(super) fn resolve_uri(
+    document: &Url,
+    reference: &str,
+) -> Option<reearth_flow_common::uri::Uri> {
+    reearth_flow_common::uri::Uri::try_from(document.join(reference).ok()?).ok()
+}
+
 /// One value per element, or just the value when there is a single element.
 pub(super) fn one_or_array(mut values: Vec<AttributeValue>) -> AttributeValue {
     if values.len() == 1 {

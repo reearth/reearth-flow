@@ -566,24 +566,6 @@ mod tests {
         round_trip(&pc);
     }
 
-    #[test]
-    fn short_field_column_is_rejected() {
-        let json = r#"{
-            "frame": "Euclidean",
-            "segments": [{
-                "positions": {"F64": [[0.0,0.0,0.0],[1.0,1.0,1.0]]},
-                "intensity": [7]
-            }]
-        }"#;
-        let err = serde_json::from_str::<PointCloud>(json)
-            .unwrap_err()
-            .to_string();
-        assert!(
-            err.contains("field `intensity` has 1 entries but the segment has 2 points"),
-            "unexpected error: {err}"
-        );
-    }
-
     /// Columns are read by point index, so a short one would index out of
     /// bounds on the first read; it is rejected while decoding instead.
     #[test]

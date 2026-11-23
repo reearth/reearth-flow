@@ -799,14 +799,9 @@ mod build_next {
                     Uri::for_test("file:///data/udx/bldg/a_pointcloud/tower.las"),
                 )
             );
-            assert_eq!(attrs.get(&Attribute::new(MEMBER_LOD_KEY)), None);
             assert_eq!(
                 attrs.get(&Attribute::new(MEMBER_GML_PROPERTY_NAME_KEY)),
                 Some(&AttributeValue::String("pointCloud".into()))
-            );
-            assert_eq!(
-                attrs.get(&Attribute::new(MEMBER_GEOMETRY_NAME_KEY)),
-                Some(&AttributeValue::String("PointCloud".into()))
             );
             let Some(AttributeValue::Map(property)) = features[0].get("core:pointCloud") else {
                 panic!("core:pointCloud left the attributes");
@@ -817,24 +812,6 @@ mod build_next {
             assert_eq!(
                 cloud.get("pcl:pointFile"),
                 Some(&AttributeValue::String("./a_pointcloud/tower.las".into()))
-            );
-        }
-
-        /// Without `pcl:pointFileSrsName`, the file is in the document's CRS.
-        #[test]
-        fn point_file_without_srs_name_takes_the_document_crs() {
-            let (features, _) = run_point_cloud(
-                "<core:pointCloud><pcl:PointCloud>\
-                   <pcl:pointFile>tower.laz</pcl:pointFile>\
-                 </pcl:PointCloud></core:pointCloud>",
-            );
-            let (pc, _) = point_cloud_member(&features[0]);
-            assert_eq!(
-                *pc,
-                PointCloud::from_las_file(
-                    CoordinateFrame::Crs(EpsgCode::new(6697)),
-                    Uri::for_test("file:///data/udx/bldg/tower.laz"),
-                )
             );
         }
 

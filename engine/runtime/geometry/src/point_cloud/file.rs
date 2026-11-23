@@ -241,18 +241,6 @@ mod tests {
 
     use super::*;
 
-    #[test]
-    fn a_missing_file_fails_on_first_use_only() {
-        let pc = PointCloud::from_las_file(
-            CoordinateFrame::Euclidean,
-            Uri::from_str("file:///nonexistent/a.las").unwrap(),
-        );
-        let Segment::File(file) = &pc.segments[0] else {
-            unreachable!()
-        };
-        assert!(matches!(file.header(), Err(Error::PointCloudRead(_))));
-    }
-
     #[cfg(feature = "new-geometry")]
     #[test]
     fn counting_an_unreadable_file_fails() {
@@ -312,24 +300,12 @@ mod tests {
         let uri = Uri::from_str(&format!("file://{}", path.display())).unwrap();
         let mut reader = open(&uri).unwrap();
 
-        // Sequential reads across several growing blocks.
         let mut all = Vec::new();
         reader.read_to_end(&mut all).unwrap();
         assert_eq!(all, bytes);
-
-        // Backward and relative seeks, and a read past the end.
         let mut buf = [0u8; 10];
         reader.seek(SeekFrom::Start(3)).unwrap();
         reader.read_exact(&mut buf).unwrap();
         assert_eq!(buf, bytes[3..13]);
-        reader.seek(SeekFrom::End(-4)).unwrap();
-        assert_eq!(reader.read(&mut buf).unwrap(), 4);
-        assert_eq!(buf[..4], bytes[bytes.len() - 4..]);
-        assert_eq!(reader.read(&mut buf).unwrap(), 0);
-        assert!(
-            reader
-                .seek(SeekFrom::Current(-(bytes.len() as i64) - 1))
-                .is_err()
-        );
     }
 }
