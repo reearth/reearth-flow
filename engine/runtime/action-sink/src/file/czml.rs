@@ -1203,6 +1203,10 @@ fn build_entity_packet_next(
     let mut cartographic_degrees: Vec<Value> = Vec::new();
     let mut first_time: Option<String> = None;
     let mut last_time: Option<String> = None;
+    // The feature behind the first sample actually written. Carrying a time
+    // value is not enough to be the entity's representative: a timed feature
+    // can still fail placement and contribute nothing.
+    let mut first_sampled: Option<&Feature> = None;
 
     for (feature, time_str) in &sorted {
         let time_str = time_str.as_str();
@@ -1266,6 +1270,9 @@ fn build_entity_packet_next(
         };
 
         if let Some((lon, lat, height)) = placed {
+            if first_sampled.is_none() {
+                first_sampled = Some(feature);
+            }
             cartographic_degrees.push(time_value);
             cartographic_degrees.push(serde_json::json!(lon));
             cartographic_degrees.push(serde_json::json!(lat));
@@ -1307,10 +1314,21 @@ fn build_entity_packet_next(
     // `polygon` and remove `position`, throwing away every timed sample the
     // loop had just collected.
     let first_feature = if is_time_dynamic {
-        sorted
-            .iter()
-            .find(|(_, ts)| !ts.is_empty())
-            .map(|(f, _)| *f)
+        // The feature that produced the first sample, not merely the first one
+        // with a time value. `cartographic_position` places a feature from its
+        // *first vertex*, while `styled_polygon_value_for` works face by face
+        // in each face's own frame, so a feature can fail placement and still
+        // yield a polygon — a collection whose first leaf is in an unplaceable
+        // frame does exactly that. Letting it represent the entity emitted a
+        // polygon and removed `position`, discarding the samples its siblings
+        // had contributed. Falling back only matters when nothing was sampled
+        // at all, where there is no position left to protect.
+        first_sampled.or_else(|| {
+            sorted
+                .iter()
+                .find(|(_, ts)| !ts.is_empty())
+                .map(|(f, _)| *f)
+        })
     } else {
         sorted.first().map(|(f, _)| *f)
     };
@@ -3767,6 +3785,57 @@ mod new_geometry_tests {
     }
 
     #[test]
+    fn a_timed_feature_that_emits_no_sample_does_not_choose_the_entitys_graphic() {
+        // Having a time value is not enough to represent the entity. A feature
+        // is placed from its *first vertex*, while its polygon is built face
+        // by face in each face's own frame, so a collection whose first leaf
+        // sits in an unplaceable frame fails placement and still yields a
+        // drawable polygon. Picked as the representative, it emitted `polygon`
+        // and removed `position` — throwing away the samples its siblings had
+        // contributed, which is the same erasure as the untimed case by a
+        // different route.
+        let mut sample_less = fixture::unplaceable_first_leaf_with_drawable_polygon(4326);
+        sample_less.insert(
+            Attribute::new("timestamp"),
+            AttributeValue::String("0".to_string()),
+        );
+        sample_less.insert(
+            Attribute::new("vehicleId"),
+            AttributeValue::String("v1".to_string()),
+        );
+
+        let doc = parse(&fixture::write_timeseries_batch(
+            vec![
+                sample_less,
+                grouped_point("30", "v1"),
+                grouped_point("60", "v1"),
+            ],
+            "timestamp",
+            "vehicleId",
+        ));
+
+        let entity = doc
+            .iter()
+            .find(|p| p.get("id") == Some(&Value::String("v1".to_string())))
+            .expect("the vehicleId=v1 entity");
+
+        let samples = entity
+            .get("position")
+            .and_then(|p| p.get("cartographicDegrees"))
+            .and_then(|d| d.as_array())
+            .expect("the placeable samples must survive");
+        assert_eq!(
+            samples.len(),
+            8,
+            "both placeable samples must be kept: {samples:?}"
+        );
+        assert!(
+            entity.get("polygon").is_none(),
+            "a feature that contributed no sample must not choose the graphic: {entity:?}"
+        );
+    }
+
+    #[test]
     fn a_groups_numeric_times_are_read_the_same_way_as_the_document_clock() {
         // The entity decided `all_numeric` over *every* feature in the group
         // while the document clock skipped the untimed ones, so a single
@@ -3857,6 +3926,27 @@ mod new_geometry_tests {
                     ],
                     std::iter::empty::<Vec<[f64; 3]>>(),
                 ),
+            )))
+        }
+
+        /// A collection whose *first* leaf is an unplaceable point and whose
+        /// second is a placeable polygon. `cartographic_position` reads the
+        /// first vertex, so it fails; `faces_of` walks every leaf in its own
+        /// frame, so the polygon still converts. The two disagree, which is
+        /// what makes this feature a sample-less polygon source.
+        pub(super) fn unplaceable_first_leaf_with_drawable_polygon(epsg: u16) -> Feature {
+            let collection = Collection3D::new([
+                Euclidean3DGeometry::Point(Point3D::new(
+                    CoordinateFrame::default(),
+                    [1.0, 2.0, 3.0],
+                )),
+                match single_face_mesh(frame(epsg)) {
+                    NewGeometry::Euclidean3D(g) => g,
+                    _ => unreachable!("single_face_mesh is Euclidean3D"),
+                },
+            ]);
+            feature_with(NewGeometry::Euclidean3D(Euclidean3DGeometry::Collection(
+                collection,
             )))
         }
 
