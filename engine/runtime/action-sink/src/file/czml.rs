@@ -1008,10 +1008,19 @@ fn build_timeseries_czml_next(
         "version": "1.0",
     });
 
+    // Empty time values are skipped here for the same reason the entity skips
+    // them: an attribute that exists but holds `""` is not a time. Keeping it
+    // made `all_numeric` false and then sorted it to the front, so the clock
+    // wrote `currentTime: ""` and `interval: "/60"`, neither of which is the
+    // ISO 8601 CZML requires. A feature whose attribute is *absent* never got
+    // this far, so the two shapes of "no time" now agree.
     let mut all_timestamps: Vec<String> = Vec::new();
     for feature in features {
         if let Some(ts) = feature.get(time_field) {
-            all_timestamps.push(attribute_value_to_string(ts));
+            let ts = attribute_value_to_string(ts);
+            if !ts.is_empty() {
+                all_timestamps.push(ts);
+            }
         }
     }
     if all_timestamps.len() >= 2 {
@@ -1288,10 +1297,23 @@ fn build_entity_packet_next(
         _ => None,
     };
 
-    // `sorted` now carries each feature with the time string it was sorted
-    // by, so the metadata below reads through the tuple. It is still the
-    // group's earliest feature that names and describes the entity.
-    let first_feature = sorted.first().map(|(f, _)| *f);
+    // `sorted` now carries each feature with the time string it was sorted by,
+    // so the metadata below reads through the tuple. It is still the group's
+    // earliest feature that names and describes the entity — but on a
+    // time-dynamic entity it has to be the earliest feature that *contributed
+    // a sample*. Untimed features sort to the front and are dropped by the
+    // loop above, so taking `sorted.first()` blindly let a feature with no
+    // place on the timeline choose the graphic: a dropped polygon would emit
+    // `polygon` and remove `position`, throwing away every timed sample the
+    // loop had just collected.
+    let first_feature = if is_time_dynamic {
+        sorted
+            .iter()
+            .find(|(_, ts)| !ts.is_empty())
+            .map(|(f, _)| *f)
+    } else {
+        sorted.first().map(|(f, _)| *f)
+    };
 
     let name = first_feature
         .and_then(|f| f.get(Attribute::new("name")))
@@ -3598,8 +3620,20 @@ mod new_geometry_tests {
     /// and `time` as its timestamp unless `time` is empty, in which case the
     /// attribute is left off entirely.
     fn grouped_point(time: &str, group: &str) -> Feature {
+        grouped_point_inner(time, group, false)
+    }
+
+    /// As [`grouped_point`], but the timestamp attribute is always present,
+    /// holding `""` when there is no time. "Absent" and "present but empty"
+    /// are different inputs, and the document clock used to treat them
+    /// differently from the entity.
+    fn grouped_point_with_empty_attr(time: &str, group: &str) -> Feature {
+        grouped_point_inner(time, group, true)
+    }
+
+    fn grouped_point_inner(time: &str, group: &str, keep_empty: bool) -> Feature {
         let mut f = fixture::point_feature_in(4326);
-        if !time.is_empty() {
+        if !time.is_empty() || keep_empty {
             f.insert(
                 Attribute::new("timestamp"),
                 AttributeValue::String(time.to_string()),
@@ -3652,6 +3686,83 @@ mod new_geometry_tests {
             [samples[0].clone(), samples[4].clone()],
             [serde_json::json!(0.0), serde_json::json!(60.0)],
             "each quad must begin with its own time: {samples:?}"
+        );
+    }
+
+    #[test]
+    fn an_explicitly_empty_time_value_is_skipped_by_the_document_clock() {
+        // An attribute that exists and holds `""` is not a time. The clock
+        // collected it anyway, which made its times non-numeric and sorted the
+        // empty string to the front, so it wrote `currentTime: ""` and
+        // `interval: "/60"` — neither of them the ISO 8601 CZML requires.
+        let doc = parse(&fixture::write_timeseries_batch(
+            vec![
+                grouped_point_with_empty_attr("0", "v1"),
+                grouped_point_with_empty_attr("", "v1"),
+                grouped_point_with_empty_attr("60", "v1"),
+            ],
+            "timestamp",
+            "vehicleId",
+        ));
+
+        let clock = doc
+            .iter()
+            .find(|p| p.get("id") == Some(&Value::String("document".to_string())))
+            .and_then(|p| p.get("clock"))
+            .expect("the document packet's clock");
+
+        assert_eq!(
+            clock["interval"],
+            serde_json::json!("1970-01-01T00:00:00Z/1970-01-01T00:01:00Z"),
+            "the empty value must not become the interval's start: {clock:?}"
+        );
+        assert_eq!(
+            clock["currentTime"],
+            serde_json::json!("1970-01-01T00:00:00Z"),
+            "currentTime must be an ISO 8601 instant: {clock:?}"
+        );
+    }
+
+    #[test]
+    fn a_dropped_untimed_feature_does_not_choose_the_entitys_graphic() {
+        // Untimed features sort to the front and contribute no sample, so
+        // taking the sorted group's first feature as the representative let a
+        // feature with no place on the timeline pick the graphic. When that
+        // feature is areal, the polygon branch emits `polygon` and removes
+        // `position` — discarding every timed sample the loop just collected.
+        let untimed_polygon = {
+            let mut f = fixture::polygon_timeseries_feature_in(4326, "2024-01-01T00:00:00Z", "v1");
+            f.remove(Attribute::new("timestamp"));
+            f
+        };
+        let doc = parse(&fixture::write_timeseries_batch(
+            vec![
+                untimed_polygon,
+                grouped_point("0", "v1"),
+                grouped_point("60", "v1"),
+            ],
+            "timestamp",
+            "vehicleId",
+        ));
+
+        let entity = doc
+            .iter()
+            .find(|p| p.get("id") == Some(&Value::String("v1".to_string())))
+            .expect("the vehicleId=v1 entity");
+
+        let samples = entity
+            .get("position")
+            .and_then(|p| p.get("cartographicDegrees"))
+            .and_then(|d| d.as_array())
+            .expect("the timed samples must survive");
+        assert_eq!(
+            samples.len(),
+            8,
+            "both timed samples must be kept: {samples:?}"
+        );
+        assert!(
+            entity.get("polygon").is_none(),
+            "a dropped feature must not choose the graphic: {entity:?}"
         );
     }
 
