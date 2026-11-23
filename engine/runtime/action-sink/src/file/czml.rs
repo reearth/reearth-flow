@@ -1124,41 +1124,70 @@ fn build_entity_packet_next(
 ) -> Result<Value, BoxedError> {
     let time_field = params.time_field.as_ref().unwrap();
 
-    let all_numeric_times = features.iter().all(|f| {
-        if let Some(time_val) = f.get(time_field) {
-            let time_str = attribute_value_to_string(time_val);
-            if time_str.is_empty() {
-                return false;
+    // One pass to read every time value, so the three questions below —
+    // "is this entity time-dynamic", "are its times numeric", "in what order"
+    // — are all answered from the same population.
+    //
+    // That population is the features that actually carry a time value.
+    // Deciding `all_numeric` over *every* feature in the group, as this did,
+    // let a single untimed feature make the answer `false` while the document
+    // clock (which skips untimed features) still said `true`. The clock then
+    // wrote an ISO interval against the Unix epoch while the entity wrote its
+    // times as raw JSON strings, which CZML does not accept: one document,
+    // two readings of the same times, which is the gap `effective_epoch` was
+    // extracted to close.
+    let timed: Vec<(&Feature, String)> = features
+        .iter()
+        .map(|f| {
+            let ts = f
+                .get(time_field)
+                .map(attribute_value_to_string)
+                .unwrap_or_default();
+            (*f, ts)
+        })
+        .collect();
+
+    let all_numeric_times = {
+        let mut any = false;
+        let mut all = true;
+        for (_, ts) in &timed {
+            if ts.is_empty() {
+                continue;
             }
-            if let Ok(n) = time_str.parse::<f64>() {
-                n.is_finite()
-            } else {
-                false
+            any = true;
+            if !ts.parse::<f64>().is_ok_and(f64::is_finite) {
+                all = false;
+                break;
             }
-        } else {
-            false
         }
-    });
+        any && all
+    };
+
+    // Decided before anything is emitted, because it governs the *shape* of
+    // `cartographicDegrees`: a time-dynamic list is read in groups of four
+    // (time, lon, lat, height), a static one in groups of three.
+    let is_time_dynamic = timed.iter().any(|(_, ts)| !ts.is_empty());
 
     let epoch = effective_epoch(params.epoch.as_deref(), all_numeric_times);
 
-    let mut sorted: Vec<&Feature> = features.to_vec();
-    sorted.sort_by(|a, b| {
-        let ta = a
-            .get(time_field)
-            .map(attribute_value_to_string)
-            .unwrap_or_default();
-        let tb = b
-            .get(time_field)
-            .map(attribute_value_to_string)
-            .unwrap_or_default();
-
-        if all_numeric_times {
-            let na = ta.parse::<f64>().unwrap();
-            let nb = tb.parse::<f64>().unwrap();
-            na.partial_cmp(&nb).unwrap_or(std::cmp::Ordering::Equal)
-        } else {
-            ta.cmp(&tb)
+    let mut sorted = timed;
+    sorted.sort_by(|(_, ta), (_, tb)| {
+        // An untimed feature has no place on the timeline, so it sorts first
+        // and is handled separately below. Comparing it numerically would
+        // parse `""`, which is why this is a match and not a parse.
+        match (ta.is_empty(), tb.is_empty()) {
+            (true, true) => std::cmp::Ordering::Equal,
+            (true, false) => std::cmp::Ordering::Less,
+            (false, true) => std::cmp::Ordering::Greater,
+            (false, false) => {
+                if all_numeric_times {
+                    let na = ta.parse::<f64>().unwrap_or(0.0);
+                    let nb = tb.parse::<f64>().unwrap_or(0.0);
+                    na.partial_cmp(&nb).unwrap_or(std::cmp::Ordering::Equal)
+                } else {
+                    ta.cmp(tb)
+                }
+            }
         }
     });
 
@@ -1166,11 +1195,8 @@ fn build_entity_packet_next(
     let mut first_time: Option<String> = None;
     let mut last_time: Option<String> = None;
 
-    for feature in &sorted {
-        let time_str = feature
-            .get(time_field)
-            .map(attribute_value_to_string)
-            .unwrap_or_default();
+    for (feature, time_str) in &sorted {
+        let time_str = time_str.as_str();
         // Reported once per feature, here, rather than at each of the two uses
         // below: a feature contributes at most one sample, so reporting at the
         // use sites would say nothing extra and would miss the feature whose
@@ -1184,6 +1210,24 @@ fn build_entity_packet_next(
         };
 
         if time_str.is_empty() {
+            if is_time_dynamic {
+                // Its siblings put this entity on a timeline, and CZML has no
+                // way to say "this sample, at no time". Writing the position
+                // anyway pushed a bare triple into a list Cesium reads in
+                // fours, which knocked every later sample out of alignment and
+                // sent the entity to garbage coordinates at garbage times.
+                // Dropping the sample is the only valid output; saying so is
+                // what keeps it from being a silent one.
+                let ectx = gctx.as_executor_context((*feature).clone(), FEATURES_PORT.clone());
+                let _ = ectx.report(
+                    DiagnosticDraft::new(ErrorCode::CzmlUntimedSample).with_message(format!(
+                        "dropped sample with no time value from time-dynamic entity \
+                         {entity_id}: feature_id={}",
+                        feature.id
+                    )),
+                );
+                continue;
+            }
             if let Some((lon, lat, height)) = placed {
                 cartographic_degrees.push(serde_json::json!(lon));
                 cartographic_degrees.push(serde_json::json!(lat));
@@ -1193,9 +1237,9 @@ fn build_entity_packet_next(
         }
 
         if first_time.is_none() {
-            first_time = Some(time_str.clone());
+            first_time = Some(time_str.to_string());
         }
-        last_time = Some(time_str.clone());
+        last_time = Some(time_str.to_string());
 
         let time_value: Value = if all_numeric_times {
             if let Ok(n) = time_str.parse::<f64>() {
@@ -1203,7 +1247,7 @@ fn build_entity_packet_next(
                     continue;
                 }
                 serde_json::json!(n)
-            } else if let Some(offset) = parse_epoch_offset_timestamp(&time_str) {
+            } else if let Some(offset) = parse_epoch_offset_timestamp(time_str) {
                 serde_json::json!(offset)
             } else {
                 continue;
@@ -1220,7 +1264,6 @@ fn build_entity_packet_next(
         }
     }
 
-    let is_time_dynamic = first_time.is_some();
     let mut position = if is_time_dynamic {
         serde_json::json!({
             "cartographicDegrees": cartographic_degrees,
@@ -1245,12 +1288,16 @@ fn build_entity_packet_next(
         _ => None,
     };
 
-    let name = sorted
-        .first()
+    // `sorted` now carries each feature with the time string it was sorted
+    // by, so the metadata below reads through the tuple. It is still the
+    // group's earliest feature that names and describes the entity.
+    let first_feature = sorted.first().map(|(f, _)| *f);
+
+    let name = first_feature
         .and_then(|f| f.get(Attribute::new("name")))
         .map(attribute_value_to_string);
 
-    let description = sorted.first().map(|f| {
+    let description = first_feature.map(|f| {
         let filtered = filter_description_attributes(&f.attributes);
         map_to_html_table(&filtered)
     });
@@ -1276,10 +1323,7 @@ fn build_entity_packet_next(
     // called the unstyled `polygon_value_for` here, which silently dropped
     // `colorAttribute`, `opacity` and `heightAttribute` from every grouped
     // timeseries entity; the old world applied them on this path.
-    match sorted
-        .first()
-        .and_then(|f| styled_polygon_value_for(f, params, entity_id, cache))
-    {
+    match first_feature.and_then(|f| styled_polygon_value_for(f, params, entity_id, cache)) {
         Some(polygon_val) => {
             packet["polygon"] = polygon_val;
             // Polygon positions are self-contained; remove redundant position.
@@ -1710,9 +1754,23 @@ fn build_embedded_packet_next(
     // Now that every source of a position or a graphic has had its turn —
     // `czml.*` restoration and the geometry auto-convert — a held placement
     // error is a real one only if the entity ended up with neither.
+    //
+    // "A graphic" has to mean one that places itself, which is a narrower set
+    // than "a graphic this writer recognises". Only the polyline-family
+    // graphics and `rectangle` carry their own coordinates; `point`,
+    // `billboard`, `label`, `model` and the rest are drawn at the containing
+    // entity's `position`. A packet holding one of those and no `position` is
+    // not drawn at all, so suppressing the error there would restore exactly
+    // the silence this diagnostic was added to end.
+    let self_placed = SELF_PLACING_GRAPHICS.iter().any(|(graphic, placed_by)| {
+        packet
+            .get(*graphic)
+            .and_then(|g| g.get(*placed_by))
+            .is_some_and(|p| !p.is_null())
+    });
     if let Some(err) = unplaced
         && !packet.contains_key("position")
-        && !GRAPHIC_KEYS.iter().any(|k| packet.contains_key(*k))
+        && !self_placed
     {
         report_unplaced(gctx, feature, err);
     }
@@ -1720,16 +1778,22 @@ fn build_embedded_packet_next(
     Ok(Value::Object(packet))
 }
 
-/// The CZML graphic properties this writer recognises. A packet carrying one of
-/// them is drawable on its own terms, whatever the feature's geometry says.
+/// The CZML graphic properties that place themselves, each paired with the
+/// property that does the placing.
+///
+/// Every other graphic takes its placement from the containing entity's
+/// `position` — a `point`, `billboard`, `label` or `model` on a packet with no
+/// `position` has nowhere to be drawn. So the presence of one of those says
+/// nothing about whether the entity was placed, and only the pairs below can
+/// stand in for a `position`.
 #[cfg(feature = "new-geometry")]
-const GRAPHIC_KEYS: [&str; 6] = [
-    "point",
-    "billboard",
-    "model",
-    "label",
-    "polygon",
-    "polyline",
+const SELF_PLACING_GRAPHICS: [(&str, &str); 6] = [
+    ("polygon", "positions"),
+    ("polyline", "positions"),
+    ("polylineVolume", "positions"),
+    ("corridor", "positions"),
+    ("wall", "positions"),
+    ("rectangle", "coordinates"),
 ];
 
 /// Build a CZML document from features with embedded `czml.*` attributes
@@ -2349,8 +2413,17 @@ fn strip_epoch_offset_for_availability(ts: &str, epoch: Option<&str>) -> String 
         && let Some(epoch_str) = epoch
         && let Ok(epoch_dt) = chrono::DateTime::parse_from_rfc3339(epoch_str)
     {
-        let result = epoch_dt + chrono::Duration::seconds(offset as i64);
-        return result.to_rfc3339_opts(chrono::SecondsFormat::Secs, true);
+        // Checked, because `offset` comes from a feature attribute. `as i64`
+        // saturates rather than wrapping, so a wild value arrives as
+        // `i64::MAX`, and both `Duration::seconds` and `DateTime + Duration`
+        // panic on their own bounds. A sink that panics takes the whole job
+        // down; the raw string, returned below, is the honest fallback.
+        if let Some(delta) = chrono::Duration::try_seconds(offset as i64)
+            && let Some(result) = epoch_dt.checked_add_signed(delta)
+        {
+            return result.to_rfc3339_opts(chrono::SecondsFormat::Secs, true);
+        }
+        return ts.to_string();
     }
 
     // Handle pure numeric strings like "155" when epoch is provided
@@ -2364,14 +2437,21 @@ fn strip_epoch_offset_for_availability(ts: &str, epoch: Option<&str>) -> String 
         {
             // Preserve fractional seconds by converting to milliseconds
             let millis = (offset * 1000.0) as i64;
-            let result = epoch_dt + chrono::Duration::milliseconds(millis);
-            // Use seconds format for whole seconds, millis for fractional
-            let format = if offset.fract() == 0.0 {
-                chrono::SecondsFormat::Secs
-            } else {
-                chrono::SecondsFormat::Millis
-            };
-            return result.to_rfc3339_opts(format, true);
+            // Checked for the same reason as the offset branch above: a time
+            // value far outside the representable range must degrade to the
+            // raw string, not abort the run.
+            if let Some(result) = chrono::Duration::try_milliseconds(millis)
+                .and_then(|delta| epoch_dt.checked_add_signed(delta))
+            {
+                // Use seconds format for whole seconds, millis for fractional
+                let format = if offset.fract() == 0.0 {
+                    chrono::SecondsFormat::Secs
+                } else {
+                    chrono::SecondsFormat::Millis
+                };
+                return result.to_rfc3339_opts(format, true);
+            }
+            return ts.to_string();
         }
     }
 
@@ -3514,6 +3594,113 @@ mod new_geometry_tests {
         );
     }
 
+    /// One grouped-timeseries point feature: a placeable point, a group key,
+    /// and `time` as its timestamp unless `time` is empty, in which case the
+    /// attribute is left off entirely.
+    fn grouped_point(time: &str, group: &str) -> Feature {
+        let mut f = fixture::point_feature_in(4326);
+        if !time.is_empty() {
+            f.insert(
+                Attribute::new("timestamp"),
+                AttributeValue::String(time.to_string()),
+            );
+        }
+        f.insert(
+            Attribute::new("vehicleId"),
+            AttributeValue::String(group.to_string()),
+        );
+        f
+    }
+
+    #[test]
+    fn a_group_mixing_timed_and_untimed_features_keeps_its_samples_aligned() {
+        // `cartographicDegrees` is read in groups of four on a time-dynamic
+        // entity (time, lon, lat, height) and in threes on a static one. The
+        // untimed branch pushed a bare triple into the same vector the timed
+        // branch filled with quads, so one untimed feature in a group knocked
+        // every later sample out of alignment: the entity flew to garbage
+        // coordinates at garbage times, and nothing was reported.
+        let doc = parse(&fixture::write_timeseries_batch(
+            vec![
+                grouped_point("0", "v1"),
+                grouped_point("", "v1"),
+                grouped_point("60", "v1"),
+            ],
+            "timestamp",
+            "vehicleId",
+        ));
+
+        let entity = doc
+            .iter()
+            .find(|p| p.get("id") == Some(&Value::String("v1".to_string())))
+            .expect("the vehicleId=v1 entity");
+        let samples = entity["position"]["cartographicDegrees"]
+            .as_array()
+            .expect("a sample list");
+
+        assert_eq!(
+            samples.len() % 4,
+            0,
+            "a time-dynamic sample list must be whole quads: {samples:?}"
+        );
+        assert_eq!(
+            samples.len(),
+            8,
+            "the two timed features contribute one sample each: {samples:?}"
+        );
+        assert_eq!(
+            [samples[0].clone(), samples[4].clone()],
+            [serde_json::json!(0.0), serde_json::json!(60.0)],
+            "each quad must begin with its own time: {samples:?}"
+        );
+    }
+
+    #[test]
+    fn a_groups_numeric_times_are_read_the_same_way_as_the_document_clock() {
+        // The entity decided `all_numeric` over *every* feature in the group
+        // while the document clock skipped the untimed ones, so a single
+        // untimed feature made the two disagree: the clock wrote an ISO
+        // interval against the Unix epoch while the entity wrote its times as
+        // JSON strings, which CZML does not accept as sample times.
+        let doc = parse(&fixture::write_timeseries_batch(
+            vec![
+                grouped_point("0", "v1"),
+                grouped_point("", "v1"),
+                grouped_point("60", "v1"),
+            ],
+            "timestamp",
+            "vehicleId",
+        ));
+
+        let entity = doc
+            .iter()
+            .find(|p| p.get("id") == Some(&Value::String("v1".to_string())))
+            .expect("the vehicleId=v1 entity");
+        let position = &entity["position"];
+
+        assert_eq!(
+            position["epoch"],
+            serde_json::json!(UNIX_EPOCH_ISO),
+            "numeric times must resolve against the same epoch the clock uses: {position:?}"
+        );
+        let samples = position["cartographicDegrees"].as_array().unwrap();
+        assert!(
+            samples[0].is_number(),
+            "a numeric time must stay a number, not become a string: {samples:?}"
+        );
+
+        let clock = doc
+            .iter()
+            .find(|p| p.get("id") == Some(&Value::String("document".to_string())))
+            .and_then(|p| p.get("clock"))
+            .expect("the document packet's clock");
+        assert_eq!(
+            clock["interval"],
+            serde_json::json!("1970-01-01T00:00:00Z/1970-01-01T00:01:00Z"),
+            "the clock reads the same times the entity does: {clock:?}"
+        );
+    }
+
     /// Test-only helpers: build features directly against the new geometry
     /// model, then drive a real `CzmlWriter` end to end (factory → `process`
     /// → `finish` → file) and hand back what it wrote.
@@ -3974,6 +4161,183 @@ mod new_geometry_diagnostics_tests {
         assert!(
             handle.inner.drain_summaries().is_empty(),
             "a packet that carries its own graphic is not a placement failure"
+        );
+    }
+
+    /// Build one `preserveRaw`-shaped feature: no geometry at all, and a single
+    /// `czml.*` attribute holding `body` verbatim.
+    fn embedded_feature(key: &str, body: &str) -> Feature {
+        let mut feature =
+            Feature::new_with_attributes_and_geometry(indexmap::IndexMap::new(), NewGeometry::None);
+        feature.insert(
+            Attribute::new(key),
+            AttributeValue::String(body.to_string()),
+        );
+        feature
+    }
+
+    /// Run the embedded path over one feature and hand back the packets and
+    /// whatever was reported, so the placement cases read as one line each.
+    fn embedded_run(feature: Feature) -> (Vec<Value>, Vec<String>, Vec<Option<Disposition>>) {
+        let handle = make_handle();
+        let ctx = context_with_handle(&handle);
+        let mut cache = ReprojectionCache::default();
+        let out =
+            build_embedded_czml_next(&ctx, &[feature], &per_entity_params(), &mut cache).unwrap();
+        let doc: Vec<Value> =
+            serde_json::from_slice(&out).expect("written CZML must be valid JSON");
+        let summaries = handle.inner.drain_summaries();
+        let messages = summaries.iter().map(|s| s.message.clone()).collect();
+        let dispositions = summaries.iter().map(|s| s.effective_disposition).collect();
+        (doc, messages, dispositions)
+    }
+
+    #[test]
+    fn an_embedded_point_graphic_does_not_place_the_entity_so_absent_geometry_is_reported() {
+        // The control for the test above, and the line between them is which
+        // graphics place themselves. A `polygon` carries its own `positions`;
+        // a `point` is drawn at the containing entity's `position`, so a packet
+        // with `point` and no `position` is not drawn anywhere. Treating any
+        // recognised graphic as proof of placement suppressed the diagnostic
+        // for exactly that case and wrote an invisible entity in silence.
+        let (doc, messages, dispositions) = embedded_run(embedded_feature(
+            "czml.point",
+            r#"{"pixelSize":10,"color":{"rgba":[255,0,0,255]}}"#,
+        ));
+
+        assert!(
+            doc.iter().any(|p| p.get("point").is_some()),
+            "the embedded point must survive: {doc:?}"
+        );
+        assert!(
+            doc.iter().all(|p| p.get("position").is_none()),
+            "nothing could place the entity, so it must have no position: {doc:?}"
+        );
+        assert_eq!(messages.len(), 1, "got {messages:?}");
+        assert!(
+            messages[0].contains("czml.empty_geometry"),
+            "got {}",
+            messages[0]
+        );
+        assert_eq!(dispositions[0], Some(Disposition::WarnDrop));
+    }
+
+    #[test]
+    fn an_embedded_polygon_without_positions_is_reported() {
+        // The pair in `SELF_PLACING_GRAPHICS` is a key *and* the property that
+        // does the placing, because a `polygon` is only self-placing when it
+        // actually carries `positions`. A styling-only polygon — the shape a
+        // `preserveRaw` read produces when the source referenced its positions
+        // from elsewhere — places nothing, and must not buy silence.
+        let (doc, messages, _) = embedded_run(embedded_feature(
+            "czml.polygon",
+            r#"{"material":{"solidColor":{"color":{"rgba":[0,255,0,128]}}}}"#,
+        ));
+
+        assert!(
+            doc.iter().all(|p| p.get("position").is_none()),
+            "nothing could place the entity, so it must have no position: {doc:?}"
+        );
+        assert_eq!(messages.len(), 1, "got {messages:?}");
+        assert!(
+            messages[0].contains("czml.empty_geometry"),
+            "got {}",
+            messages[0]
+        );
+    }
+
+    /// A grouped-timeseries point feature, as `new_geometry_tests` builds one,
+    /// repeated here because the two test modules do not share helpers.
+    fn diag_grouped_point(time: &str, group: &str) -> Feature {
+        let mut f = Feature::new_with_attributes_and_geometry(
+            indexmap::IndexMap::new(),
+            NewGeometry::Euclidean3D(Euclidean3DGeometry::Point(Point3D::new(
+                CoordinateFrame::Crs(reearth_flow_geometry::coordinate::EpsgCode::new(4326)),
+                [10.0, 20.0, 0.0],
+            ))),
+        );
+        if !time.is_empty() {
+            f.insert(
+                Attribute::new("timestamp"),
+                AttributeValue::String(time.to_string()),
+            );
+        }
+        f.insert(
+            Attribute::new("vehicleId"),
+            AttributeValue::String(group.to_string()),
+        );
+        f
+    }
+
+    #[test]
+    fn a_groups_untimed_feature_is_reported_not_silently_dropped() {
+        // The sample above cannot be written, so it is dropped — and a drop
+        // this writer makes on its own is exactly what the audit set out to
+        // stop doing in silence.
+        let handle = make_handle();
+        let ctx = context_with_handle(&handle);
+        let mut cache = ReprojectionCache::default();
+        let timed = diag_grouped_point("0", "v1");
+        let untimed = diag_grouped_point("", "v1");
+        let features: Vec<&Feature> = vec![&timed, &untimed];
+
+        let mut params = per_entity_params();
+        params.group_timeseries_by = Some(Attribute::new("vehicleId"));
+
+        let _ = build_entity_packet_next(&ctx, "v1", &features, &params, &mut cache).unwrap();
+
+        let summaries = handle.inner.drain_summaries();
+        assert_eq!(summaries.len(), 1, "got {summaries:?}");
+        assert!(
+            summaries[0].message.contains("czml.untimed_sample"),
+            "got {}",
+            summaries[0].message
+        );
+        assert_eq!(
+            summaries[0].effective_disposition,
+            Some(Disposition::WarnDrop)
+        );
+    }
+
+    #[test]
+    fn an_out_of_range_numeric_time_degrades_instead_of_panicking() {
+        // `timeField` is a user-chosen attribute, so its values are arbitrary.
+        // A nanosecond-since-epoch timestamp, or any value past what a
+        // `DateTime` can hold, used to saturate through `as i64` and panic
+        // inside chrono's `DateTime + TimeDelta` — in a sink's `finish()`,
+        // which takes the whole job down rather than reporting anything.
+        for ts in ["1e30", "-1e30", "1731000000000000000"] {
+            let out = strip_epoch_offset_for_availability(ts, Some("1970-01-01T00:00:00Z"));
+            assert_eq!(out, ts, "an unrepresentable time must come back as itself");
+        }
+
+        // The representable case still converts, so the guard above cannot be
+        // satisfied by giving up on every input.
+        assert_eq!(
+            strip_epoch_offset_for_availability("60", Some("1970-01-01T00:00:00Z")),
+            "1970-01-01T00:01:00Z"
+        );
+    }
+
+    #[test]
+    fn an_embedded_wall_places_the_entity_through_its_own_positions() {
+        // `polygon` and `polyline` are not the whole self-placing family. A
+        // `preserveRaw` read of a real CZML document can carry a `wall`,
+        // `corridor`, `polylineVolume` or `rectangle`, each of which carries
+        // its own coordinates exactly as a polygon does, so none of them is a
+        // placement failure either.
+        let (doc, messages, _) = embedded_run(embedded_feature(
+            "czml.wall",
+            r#"{"positions":{"cartographicDegrees":[139.0,36.0,0,139.1,36.0,0]}}"#,
+        ));
+
+        assert!(
+            doc.iter().any(|p| p.get("wall").is_some()),
+            "the embedded wall must survive: {doc:?}"
+        );
+        assert!(
+            messages.is_empty(),
+            "a wall carries its own positions, so it is placed: {messages:?}"
         );
     }
 }

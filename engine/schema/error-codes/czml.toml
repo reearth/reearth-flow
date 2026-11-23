@@ -52,3 +52,10 @@ category = "geometry"
 default_disposition = "warn_drop"
 message = "skipped geocentric packet because force2D was requested"
 help = "EPSG:4978 has no 2D form and dropping Z from an ECEF coordinate is meaningless, not merely lossy. Turn force2D off, or supply the positions as `cartographicDegrees`."
+
+[[codes]]
+code = "czml.untimed_sample"
+category = "schema"
+default_disposition = "warn_drop"
+message = "dropped sample with no time value from a time-dynamic entity"
+help = "Features grouped by groupTimeseriesBy share one entity, and the entity's positions are written as time-tagged samples. A feature with no value in timeField has no place on that timeline, so its position cannot be written. Give every feature in the group a time value, or group it separately."

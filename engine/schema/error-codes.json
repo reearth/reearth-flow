@@ -238,6 +238,13 @@
     "help": "Interval-scoped property arrays, `reference`/`references` positions and time-tagged `cartesian` positions are not read yet. Use a static `cartographicDegrees`, `cartographicRadians` or `cartesian` value."
   },
   {
+    "code": "czml.untimed_sample",
+    "category": "schema",
+    "defaultDisposition": "warn_drop",
+    "message": "dropped sample with no time value from a time-dynamic entity",
+    "help": "Features grouped by groupTimeseriesBy share one entity, and the entity's positions are written as time-tagged samples. A feature with no value in timeField has no place on that timeline, so its position cannot be written. Give every feature in the group a time value, or group it separately."
+  },
+  {
     "code": "expr.attribute_operation_failed",
     "category": "expression",
     "defaultDisposition": "warn_drop",
