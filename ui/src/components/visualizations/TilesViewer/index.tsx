@@ -221,6 +221,7 @@ const TilesViewer: React.FC<Props> = ({
     container.addEventListener("wheel", keepWheel, { passive: false });
 
     let view: ThreeView<DefaultDescriptions> | undefined;
+    let canvas: HTMLCanvasElement | undefined;
     const tilesetUrls: string[] = [];
     let disposed = false;
 
@@ -246,8 +247,13 @@ const TilesViewer: React.FC<Props> = ({
 
     const start = async () => {
       // The canvas follows the container's size (below), not the window's.
+      canvas = document.createElement("canvas");
+      canvas.style.width = "100%";
+      canvas.style.height = "100%";
+      container.appendChild(canvas);
       const created = new ThreeView<DefaultDescriptions>({
         container,
+        canvas,
         disableAutoResize: true,
         defaultAttribution: false,
       });
@@ -395,6 +401,7 @@ const TilesViewer: React.FC<Props> = ({
       showBasemapRef.current = undefined;
       viewRef.current = undefined;
       view?.dispose();
+      canvas?.remove();
       for (const tilesetUrl of tilesetUrls) URL.revokeObjectURL(tilesetUrl);
     };
   }, [layers, basemaps]);

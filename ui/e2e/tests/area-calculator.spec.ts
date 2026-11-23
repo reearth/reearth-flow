@@ -2,6 +2,7 @@ import * as path from "path";
 
 import { expect, test } from "@playwright/test";
 
+import { expectJobSucceeded } from "../helpers/job";
 import {
   DeploymentsPage,
   uniqueDeploymentDescription,
@@ -44,11 +45,7 @@ test.describe("Area calculator pipeline", { tag: "@pipeline" }, () => {
     test.info().annotations.push({ type: "job-url", description: page.url() });
 
     // Wait for a terminal status; engine cold start can take minutes.
-    const terminalStatus = page
-      .getByText(/^(completed|failed|cancelled)$/)
-      .first();
-    await expect(terminalStatus).toBeVisible({ timeout: 300_000 });
-    await expect(terminalStatus).toHaveText("completed");
+    await expectJobSucceeded(page, 300_000);
 
     // The output artifact is listed asynchronously after completion.
     const outputUrl = page.getByText(/park-areas\.geojson/).first();

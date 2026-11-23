@@ -86,6 +86,8 @@ crate::unsupported!(Csg: ExtractHoles);
 
 // A boolean tree is one logical solid, not a multi-part container.
 crate::unsupported!(Csg: Split);
+#[cfg(feature = "new-geometry")]
+crate::unsupported!(Csg: DecomposeIntoEdgeConnectedParts, DecomposeIntoManifolds);
 
 // The tree is unevaluated, so it has no boundary of its own to re-represent.
 crate::unsupported!(Csg: Coerce);

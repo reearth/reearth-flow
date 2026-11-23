@@ -460,18 +460,11 @@ fn gml_id(
     element: &BytesStart,
     targets: &TargetElements,
 ) -> super::errors::Result<String> {
-    for attr in element.attributes().flatten() {
-        let (ns, local_name) = reader.resolve_attribute(attr.key);
-        if local_name.as_ref() == b"id" && is_in_namespace(&ns, targets.gml_namespace) {
-            let value = attr.unescape_value().map_err(|e| {
-                PlateauProcessorError::GmlNameCodeSpaceValidator(format!(
-                    "Failed to read gml:id: {e}"
-                ))
-            })?;
-            return Ok(value.into_owned());
-        }
-    }
-    Ok(String::new())
+    crate::citygml::gml_id(reader, element, targets.gml_namespace)
+        .map(Option::unwrap_or_default)
+        .map_err(|e| {
+            PlateauProcessorError::GmlNameCodeSpaceValidator(format!("Failed to read gml:id: {e}"))
+        })
 }
 
 #[cfg(test)]

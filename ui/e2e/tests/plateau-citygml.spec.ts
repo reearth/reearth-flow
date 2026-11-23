@@ -2,7 +2,7 @@ import * as path from "path";
 
 import { expect, test } from "@playwright/test";
 
-import { jobOutputArtifactUrl } from "../helpers/job";
+import { expectJobSucceeded, jobOutputArtifactUrl } from "../helpers/job";
 import {
   DeploymentsPage,
   uniqueDeploymentDescription,
@@ -44,11 +44,7 @@ test.describe("PLATEAU CityGML pipeline", { tag: "@pipeline" }, () => {
     });
     test.info().annotations.push({ type: "job-url", description: page.url() });
 
-    const terminalStatus = page
-      .getByText(/^(completed|failed|cancelled)$/)
-      .first();
-    await expect(terminalStatus).toBeVisible({ timeout: 1_380_000 });
-    await expect(terminalStatus).toHaveText("completed");
+    await expectJobSucceeded(page, 1_380_000);
 
     const artifactUrl = await jobOutputArtifactUrl(
       page,
