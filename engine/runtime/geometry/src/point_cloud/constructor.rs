@@ -1,10 +1,8 @@
 //! PointCloud constructors.
 //!
 //! `from_positions` builds the basic case: a single acquisition segment of bare
-//! XYZ points in `f64` encoding — no optional fields, no user attributes — the
-//! shape a plain XYZ reader produces. The richer machinery (RGB / intensity /
-//! normals, `f32` or scaled-`i32` encodings, per-point attribute columns, multiple
-//! segments) is deferred until a reader needs it.
+//! XYZ points in `f64` encoding, with no optional fields or user attributes.
+//! LAS / LAZ input is read by `PointCloud::from_las`.
 
 use std::sync::OnceLock;
 

@@ -3317,6 +3317,31 @@ dependencies = [
 ]
 
 [[package]]
+name = "las"
+version = "0.11.2"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "a8823fdc8209bf345e7ec7586f2e1f5ad0f978899ebb9e637c6d54e0f26cba0b"
+dependencies = [
+ "byteorder",
+ "chrono",
+ "laz",
+ "log",
+ "num-traits",
+ "thiserror 2.0.21",
+ "uuid",
+]
+
+[[package]]
+name = "laz"
+version = "0.13.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "5a1bd8242fad6a61a7520b73d072ddf63dff1f3680e3f5c157b1dc6e8e5ab2ec"
+dependencies = [
+ "byteorder",
+ "num-traits",
+]
+
+[[package]]
 name = "lazy_static"
 version = "1.5.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -5610,6 +5635,7 @@ dependencies = [
  "i_overlay",
  "indexmap 2.14.2",
  "kiddo 6.3.0",
+ "las",
  "nalgebra",
  "num-traits",
  "nusamai-projection",

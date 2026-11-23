@@ -1,10 +1,10 @@
 //! Intermediate-data encoding for the point-cloud leaf: typed per-point
 //! positions in place of each segment's packed byte stream, tagged with the
-//! position encoding. Attribute columns and the acquisition source pass through
-//! unchanged.
+//! position encoding, plus one typed column per present optional field.
+//! Attribute columns and the acquisition source pass through unchanged.
 //!
-//! TODO: represent the optional per-point fields (RGB, intensity, ...). No
-//! reader produces them yet, and a segment carrying them is rejected.
+//! TODO: represent the normal and ring fields. No reader produces them yet, and
+//! a segment carrying them is rejected.
 
 use std::sync::{Arc, OnceLock};
 
@@ -14,7 +14,7 @@ use smallvec::SmallVec;
 
 use crate::coordinate::CoordinateFrame;
 
-use super::{AttributeColumn, PositionEncoding};
+use super::{AttributeColumn, FieldMask, PositionEncoding, bit};
 
 /// A 3D point cloud: one or more acquisition segments sharing a coordinate
 /// frame.
@@ -39,6 +39,29 @@ struct Segment {
     source: Option<Arc<str>>,
     #[cfg_attr(feature = "schema", schemars(title = "Positions"))]
     positions: Positions,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    #[cfg_attr(feature = "schema", schemars(title = "RGB"))]
+    rgb: Option<Vec<[u16; 3]>>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    #[cfg_attr(feature = "schema", schemars(title = "Intensity"))]
+    intensity: Option<Vec<u16>>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    #[cfg_attr(feature = "schema", schemars(title = "Timestamp"))]
+    timestamp: Option<Vec<f64>>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    #[cfg_attr(feature = "schema", schemars(title = "Classification"))]
+    classification: Option<Vec<u8>>,
+    /// Return number in bits 0-3, number of returns in bits 4-7.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    #[cfg_attr(feature = "schema", schemars(title = "Return info"))]
+    return_info: Option<Vec<u8>>,
+    /// In units of 0.006 degrees.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    #[cfg_attr(feature = "schema", schemars(title = "Scan angle"))]
+    scan_angle: Option<Vec<i16>>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    #[cfg_attr(feature = "schema", schemars(title = "Point source ID"))]
+    point_source_id: Option<Vec<u16>>,
     #[serde(default, skip_serializing_if = "IndexMap::is_empty")]
     #[cfg_attr(
         feature = "schema",
@@ -103,6 +126,43 @@ fn encode_positions(seg: &super::Segment) -> Positions {
     }
 }
 
+/// Field `bit` of every point, decoded, or `None` if the segment lacks it.
+fn encode_field<const N: usize, T>(
+    seg: &super::Segment,
+    bit: u16,
+    decode: impl Fn([u8; N]) -> T,
+) -> Option<Vec<T>> {
+    seg.has(bit)
+        .then(|| (0..seg.count).map(|i| decode(seg.field(bit, i))).collect())
+}
+
+/// Write `values` into field `bit` of every point, if present.
+fn decode_field<const N: usize, T>(
+    seg: &mut super::Segment,
+    bit: u16,
+    values: Option<Vec<T>>,
+    encode: impl Fn(T) -> [u8; N],
+) {
+    for (i, v) in values.into_iter().flatten().enumerate() {
+        seg.set_field(bit, i, encode(v));
+    }
+}
+
+fn rgb_from_bytes(b: [u8; 6]) -> [u16; 3] {
+    [
+        u16::from_le_bytes([b[0], b[1]]),
+        u16::from_le_bytes([b[2], b[3]]),
+        u16::from_le_bytes([b[4], b[5]]),
+    ]
+}
+
+fn rgb_to_bytes([r, g, b]: [u16; 3]) -> [u8; 6] {
+    let [r0, r1] = r.to_le_bytes();
+    let [g0, g1] = g.to_le_bytes();
+    let [b0, b1] = b.to_le_bytes();
+    [r0, r1, g0, g1, b0, b1]
+}
+
 /// Pack positions back into the `(encoding, stride, byte stream, count)` a
 /// [`super::Segment`] stores.
 fn decode_positions(positions: Positions) -> (PositionEncoding, u16, Vec<u8>, usize) {
@@ -150,14 +210,22 @@ impl Serialize for super::PointCloud {
     fn serialize<S: Serializer>(&self, serializer: S) -> Result<S::Ok, S::Error> {
         let mut segments = Vec::with_capacity(self.segments.len());
         for seg in &self.segments {
-            if seg.fields != 0 {
+            if seg.has(bit::NORMAL) || seg.has(bit::RING) {
                 return Err(serde::ser::Error::custom(
-                    "point-cloud optional fields are not yet supported by the intermediate-data encoder",
+                    "point-cloud normal and ring fields are not yet supported by the \
+                     intermediate-data encoder",
                 ));
             }
             segments.push(Segment {
                 source: seg.source.clone(),
                 positions: encode_positions(seg),
+                rgb: encode_field(seg, bit::RGB, rgb_from_bytes),
+                intensity: encode_field(seg, bit::INTENSITY, u16::from_le_bytes),
+                timestamp: encode_field(seg, bit::TIMESTAMP, f64::from_le_bytes),
+                classification: encode_field(seg, bit::CLASSIFICATION, |[b]| b),
+                return_info: encode_field(seg, bit::RETURN_INFO, |[b]| b),
+                scan_angle: encode_field(seg, bit::SCAN_ANGLE, i16::from_le_bytes),
+                point_source_id: encode_field(seg, bit::POINT_SOURCE_ID, u16::from_le_bytes),
                 attributes: seg.attributes.clone(),
             });
         }
@@ -180,25 +248,87 @@ impl<'de> Deserialize<'de> for super::PointCloud {
                 // A segment's columns are read by point index, so a column that
                 // disagrees with the point count is rejected here rather than
                 // left to index out of bounds on the first read.
+                let check = |name: &str, len: usize| {
+                    if len == count {
+                        Ok(())
+                    } else {
+                        Err(serde::de::Error::custom(format!(
+                            "{name} has {len} entries but the segment has {count} points"
+                        )))
+                    }
+                };
                 for (name, column) in &s.attributes {
-                    if column.len() != count {
-                        return Err(serde::de::Error::custom(format!(
-                            "attribute column `{name}` has {} entries but the segment has \
-                             {count} points",
-                            column.len()
-                        )));
+                    check(&format!("attribute column `{name}`"), column.len())?;
+                }
+                let mut fields: FieldMask = 0;
+                for (b, name, len) in [
+                    (bit::RGB, "rgb", s.rgb.as_ref().map(Vec::len)),
+                    (
+                        bit::INTENSITY,
+                        "intensity",
+                        s.intensity.as_ref().map(Vec::len),
+                    ),
+                    (
+                        bit::TIMESTAMP,
+                        "timestamp",
+                        s.timestamp.as_ref().map(Vec::len),
+                    ),
+                    (
+                        bit::CLASSIFICATION,
+                        "classification",
+                        s.classification.as_ref().map(Vec::len),
+                    ),
+                    (
+                        bit::RETURN_INFO,
+                        "return_info",
+                        s.return_info.as_ref().map(Vec::len),
+                    ),
+                    (
+                        bit::SCAN_ANGLE,
+                        "scan_angle",
+                        s.scan_angle.as_ref().map(Vec::len),
+                    ),
+                    (
+                        bit::POINT_SOURCE_ID,
+                        "point_source_id",
+                        s.point_source_id.as_ref().map(Vec::len),
+                    ),
+                ] {
+                    if let Some(len) = len {
+                        check(&format!("field `{name}`"), len)?;
+                        fields |= 1 << b;
                     }
                 }
-                Ok(super::Segment {
-                    source: s.source,
-                    position,
-                    fields: 0,
-                    stride,
-                    offsets: [0; 9],
-                    data,
-                    count,
-                    attributes: s.attributes,
-                })
+                if fields == 0 {
+                    return Ok(super::Segment {
+                        source: s.source,
+                        position,
+                        fields,
+                        stride,
+                        offsets: [0; 9],
+                        data,
+                        count,
+                        attributes: s.attributes,
+                    });
+                }
+                let mut seg = super::Segment::zeroed(s.source, position, fields, count);
+                for (i, bytes) in data.chunks_exact(stride as usize).enumerate() {
+                    seg.set_position(i, bytes);
+                }
+                decode_field(&mut seg, bit::RGB, s.rgb, rgb_to_bytes);
+                decode_field(&mut seg, bit::INTENSITY, s.intensity, u16::to_le_bytes);
+                decode_field(&mut seg, bit::TIMESTAMP, s.timestamp, f64::to_le_bytes);
+                decode_field(&mut seg, bit::CLASSIFICATION, s.classification, |b| [b]);
+                decode_field(&mut seg, bit::RETURN_INFO, s.return_info, |b| [b]);
+                decode_field(&mut seg, bit::SCAN_ANGLE, s.scan_angle, i16::to_le_bytes);
+                decode_field(
+                    &mut seg,
+                    bit::POINT_SOURCE_ID,
+                    s.point_source_id,
+                    u16::to_le_bytes,
+                );
+                seg.attributes = s.attributes;
+                Ok(seg)
             })
             .collect::<Result<_, D::Error>>()?;
         Ok(super::PointCloud {
@@ -306,6 +436,67 @@ mod tests {
             segments,
             kdtree: OnceLock::new(),
         });
+    }
+
+    #[test]
+    fn optional_fields_round_trip() {
+        let mut seg = Segment::zeroed(
+            Some(Arc::from("a.las")),
+            PositionEncoding::ScaledI32 {
+                scale: [0.01; 3],
+                offset: [5.0, 6.0, 7.0],
+            },
+            1 << bit::RGB | 1 << bit::TIMESTAMP | 1 << bit::SCAN_ANGLE | 1 << bit::POINT_SOURCE_ID,
+            2,
+        );
+        for i in 0..2 {
+            let n = i as i32 + 1;
+            let mut pos = [0u8; 12];
+            pos[0..4].copy_from_slice(&n.to_le_bytes());
+            pos[4..8].copy_from_slice(&(-n).to_le_bytes());
+            pos[8..12].copy_from_slice(&(10 * n).to_le_bytes());
+            seg.set_position(i, &pos);
+            seg.set_field(bit::RGB, i, rgb_to_bytes([n as u16, 2, 65535]));
+            seg.set_field(bit::TIMESTAMP, i, (0.5 * n as f64).to_le_bytes());
+            seg.set_field(bit::SCAN_ANGLE, i, (-1000 * n as i16).to_le_bytes());
+            seg.set_field(bit::POINT_SOURCE_ID, i, (80 + n as u16).to_le_bytes());
+        }
+        seg.attributes
+            .insert("user".to_string(), AttributeColumn::UInt8(vec![0, 1]));
+        let pc = PointCloud {
+            frame: CoordinateFrame::Euclidean,
+            segments: smallvec::smallvec![seg],
+            kdtree: OnceLock::new(),
+        };
+        let json = serde_json::to_value(&pc).unwrap();
+        assert_eq!(
+            json["segments"][0]["rgb"],
+            serde_json::json!([[1, 2, 65535], [2, 2, 65535]])
+        );
+        assert_eq!(
+            json["segments"][0]["scan_angle"],
+            serde_json::json!([-1000, -2000])
+        );
+        assert!(json["segments"][0].get("intensity").is_none());
+        round_trip(&pc);
+    }
+
+    #[test]
+    fn short_field_column_is_rejected() {
+        let json = r#"{
+            "frame": "Euclidean",
+            "segments": [{
+                "positions": {"F64": [[0.0,0.0,0.0],[1.0,1.0,1.0]]},
+                "intensity": [7]
+            }]
+        }"#;
+        let err = serde_json::from_str::<PointCloud>(json)
+            .unwrap_err()
+            .to_string();
+        assert!(
+            err.contains("field `intensity` has 1 entries but the segment has 2 points"),
+            "unexpected error: {err}"
+        );
     }
 
     /// Columns are read by point index, so a short one would index out of

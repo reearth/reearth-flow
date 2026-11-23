@@ -1562,6 +1562,95 @@
             }
           ]
         },
+        "rgb": {
+          "title": "RGB",
+          "type": [
+            "array",
+            "null"
+          ],
+          "items": {
+            "type": "array",
+            "items": {
+              "type": "integer",
+              "format": "uint16",
+              "minimum": 0.0
+            },
+            "maxItems": 3,
+            "minItems": 3
+          }
+        },
+        "intensity": {
+          "title": "Intensity",
+          "type": [
+            "array",
+            "null"
+          ],
+          "items": {
+            "type": "integer",
+            "format": "uint16",
+            "minimum": 0.0
+          }
+        },
+        "timestamp": {
+          "title": "Timestamp",
+          "type": [
+            "array",
+            "null"
+          ],
+          "items": {
+            "type": "number",
+            "format": "double"
+          }
+        },
+        "classification": {
+          "title": "Classification",
+          "type": [
+            "array",
+            "null"
+          ],
+          "items": {
+            "type": "integer",
+            "format": "uint8",
+            "minimum": 0.0
+          }
+        },
+        "return_info": {
+          "title": "Return info",
+          "description": "Return number in bits 0-3, number of returns in bits 4-7.",
+          "type": [
+            "array",
+            "null"
+          ],
+          "items": {
+            "type": "integer",
+            "format": "uint8",
+            "minimum": 0.0
+          }
+        },
+        "scan_angle": {
+          "title": "Scan angle",
+          "description": "In units of 0.006 degrees.",
+          "type": [
+            "array",
+            "null"
+          ],
+          "items": {
+            "type": "integer",
+            "format": "int16"
+          }
+        },
+        "point_source_id": {
+          "title": "Point source ID",
+          "type": [
+            "array",
+            "null"
+          ],
+          "items": {
+            "type": "integer",
+            "format": "uint16",
+            "minimum": 0.0
+          }
+        },
         "attributes": {
           "title": "Attribute columns",
           "type": "object",
