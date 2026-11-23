@@ -74,20 +74,26 @@ pub(super) fn read_buffer(
         scale: [tx.scale, ty.scale, t.z.scale],
         offset: [tx.offset, ty.offset, t.z.offset],
     };
-    let mut seg = PointBuffer::zeroed(source, position, fields, count);
-
-    let mut start = 0;
-    while start < count {
+    // The count is only the header's claim: reserve for it, but zero and fill
+    // memory batch by batch, so a header claiming more points than the file
+    // holds fails at the end of the stream instead of allocating them all.
+    let mut seg = PointBuffer::with_capacity(source, position, fields, count).ok_or_else(|| {
+        Error::point_cloud_read(format!(
+            "header declares {count} points, more than can be held in memory"
+        ))
+    })?;
+    while seg.count < count {
+        let start = seg.count;
         let n = reader
-            .fill_points(BATCH, &mut batch)
+            .fill_points(BATCH.min((count - start) as u64), &mut batch)
             .map_err(Error::point_cloud_read)? as usize;
         if n == 0 {
             return Err(Error::point_cloud_read(format!(
                 "header declares {count} points but the stream ended after {start}"
             )));
         }
+        seg.extend_zeroed(n);
         copy_batch(&mut seg, start, &batch, swap);
-        start += n;
     }
     Ok(seg)
 }
@@ -468,5 +474,28 @@ pub(super) mod tests {
             write(3, false, &[point(0)]),
         );
         assert!(pc.is_ok());
+    }
+
+    #[test]
+    fn a_header_claiming_more_points_than_the_file_holds_is_rejected() {
+        let mut bytes = write(3, false, &[point(0), point(1)]).into_inner();
+        // Legacy point count at byte 107, LAS 1.4 count at byte 247.
+        bytes[107..111].copy_from_slice(&u32::MAX.to_le_bytes());
+        bytes[247..255].copy_from_slice(&u64::from(u32::MAX).to_le_bytes());
+        let err =
+            PointCloud::from_las(CoordinateFrame::Euclidean, None, Cursor::new(bytes)).unwrap_err();
+        assert!(matches!(err, Error::PointCloudRead(_)), "{err}");
+    }
+
+    #[test]
+    fn an_impossible_point_count_is_rejected_without_allocating() {
+        let mut bytes = write(3, false, &[point(0)]).into_inner();
+        bytes[107..111].copy_from_slice(&0u32.to_le_bytes());
+        // Far beyond memory, but small enough that `las` itself does not
+        // overflow computing where the points end.
+        bytes[247..255].copy_from_slice(&(1u64 << 58).to_le_bytes());
+        let err =
+            PointCloud::from_las(CoordinateFrame::Euclidean, None, Cursor::new(bytes)).unwrap_err();
+        assert!(matches!(err, Error::PointCloudRead(_)), "{err}");
     }
 }

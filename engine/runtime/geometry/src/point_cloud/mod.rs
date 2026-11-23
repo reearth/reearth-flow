@@ -253,6 +253,37 @@ impl PointBuffer {
         }
     }
 
+    /// An empty segment with `fields` present and room reserved for
+    /// `capacity` points, or `None` if that much memory cannot be reserved.
+    /// Reserved memory is not touched until points are added.
+    fn with_capacity(
+        source: Option<Arc<str>>,
+        position: PositionEncoding,
+        fields: FieldMask,
+        capacity: usize,
+    ) -> Option<Self> {
+        let (stride, offsets) = layout(&position, fields);
+        let mut data = Vec::new();
+        data.try_reserve_exact(capacity.checked_mul(stride as usize)?)
+            .ok()?;
+        Some(PointBuffer {
+            source,
+            position,
+            fields,
+            stride,
+            offsets,
+            data,
+            count: 0,
+            attributes: IndexMap::new(),
+        })
+    }
+
+    /// Append `n` zeroed points.
+    fn extend_zeroed(&mut self, n: usize) {
+        self.count += n;
+        self.data.resize(self.count * self.stride as usize, 0);
+    }
+
     /// Whether field `bit` is present.
     fn has(&self, bit: u16) -> bool {
         self.fields & (1 << bit) != 0

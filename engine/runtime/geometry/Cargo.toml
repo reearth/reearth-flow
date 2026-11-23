@@ -26,6 +26,7 @@ schema = ["dep:schemars"]
 
 [dependencies]
 reearth-flow-common.workspace = true
+reearth-flow-storage.workspace = true
 
 flatgeom.workspace = true
 nusamai-projection.workspace = true

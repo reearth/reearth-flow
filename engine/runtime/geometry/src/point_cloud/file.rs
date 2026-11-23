@@ -1,11 +1,14 @@
 //! A segment whose points stay in a LAS / LAZ file until something reads them.
 
 use std::fmt;
-use std::fs::File;
-use std::io::BufReader;
+use std::io::{self, Read, Seek, SeekFrom};
+use std::path::PathBuf;
 use std::sync::{Arc, OnceLock};
 
-use reearth_flow_common::uri::{Protocol, Uri};
+use bytes::Bytes;
+use reearth_flow_common::uri::Uri;
+use reearth_flow_storage::resolve::StorageResolver;
+use reearth_flow_storage::storage::Storage;
 use serde::{Deserialize, Serialize};
 use smallvec::smallvec;
 
@@ -104,14 +107,96 @@ impl fmt::Debug for PointFile {
     }
 }
 
-/// Open a local LAS / LAZ file for reading.
-pub(super) fn open(uri: &Uri) -> std::result::Result<BufReader<File>, String> {
-    if uri.protocol() != Protocol::File {
-        return Err(format!("{uri} is not a local file"));
+/// The storage point files are read through.
+fn storage_resolver() -> &'static StorageResolver {
+    static RESOLVER: OnceLock<StorageResolver> = OnceLock::new();
+    RESOLVER.get_or_init(StorageResolver::new)
+}
+
+/// Open a LAS / LAZ file in any storage the [`StorageResolver`] reaches.
+pub(super) fn open(uri: &Uri) -> std::result::Result<RangeReader, String> {
+    let storage = storage_resolver()
+        .resolve(uri)
+        .map_err(|e| format!("{uri}: {e}"))?;
+    let path = uri.path();
+    let len = storage
+        .head_sync(&path)
+        .map_err(|e| format!("{uri}: {e}"))?
+        .size;
+    Ok(RangeReader {
+        storage,
+        path,
+        len,
+        pos: 0,
+        block: Bytes::new(),
+        block_start: 0,
+        block_size: MIN_BLOCK,
+    })
+}
+
+/// Bytes fetched by the first read, enough for a header and its records.
+const MIN_BLOCK: u64 = 64 * 1024;
+/// Bytes fetched per read once reading is sequential.
+const MAX_BLOCK: u64 = 8 * 1024 * 1024;
+
+/// A file read through ranged requests, one block at a time. A read that
+/// continues where the previous block ended fetches a block twice as large.
+pub(super) struct RangeReader {
+    storage: Arc<Storage>,
+    path: PathBuf,
+    len: u64,
+    pos: u64,
+    block: Bytes,
+    block_start: u64,
+    block_size: u64,
+}
+
+impl Read for RangeReader {
+    fn read(&mut self, out: &mut [u8]) -> io::Result<usize> {
+        if self.pos >= self.len || out.is_empty() {
+            return Ok(0);
+        }
+        let block_end = self.block_start + self.block.len() as u64;
+        if !(self.block_start..block_end).contains(&self.pos) {
+            self.block_size = if self.pos == block_end && !self.block.is_empty() {
+                (self.block_size * 2).min(MAX_BLOCK)
+            } else {
+                MIN_BLOCK
+            };
+            let want = self.block_size.max(out.len() as u64);
+            let end = (self.pos + want).min(self.len);
+            self.block = self
+                .storage
+                .get_range_sync(&self.path, self.pos as usize..end as usize)
+                .map_err(io::Error::other)?;
+            self.block_start = self.pos;
+            if self.block.is_empty() {
+                return Ok(0);
+            }
+        }
+        let at = (self.pos - self.block_start) as usize;
+        let n = out.len().min(self.block.len() - at);
+        out[..n].copy_from_slice(&self.block[at..at + n]);
+        self.pos += n as u64;
+        Ok(n)
     }
-    File::open(uri.as_path())
-        .map(BufReader::new)
-        .map_err(|e| format!("{uri}: {e}"))
+}
+
+impl Seek for RangeReader {
+    fn seek(&mut self, to: SeekFrom) -> io::Result<u64> {
+        let pos = match to {
+            SeekFrom::Start(p) => Some(p),
+            SeekFrom::End(d) => self.len.checked_add_signed(d),
+            SeekFrom::Current(d) => self.pos.checked_add_signed(d),
+        };
+        self.pos = pos.ok_or_else(|| {
+            io::Error::new(
+                io::ErrorKind::InvalidInput,
+                "seek before the start of the file",
+            )
+        })?;
+        Ok(self.pos)
+    }
 }
 
 fn read_header(uri: &Uri) -> std::result::Result<LasHeader, String> {
@@ -180,13 +265,6 @@ mod tests {
     }
 
     #[test]
-    fn a_remote_file_is_not_read() {
-        let file = PointFile::new(Uri::from_str("gs://bucket/a.las").unwrap());
-        let err = file.header().unwrap_err().to_string();
-        assert!(err.contains("not a local file"), "unexpected error: {err}");
-    }
-
-    #[test]
     fn load_reads_the_points_with_the_shift() {
         use crate::coordinate::EpsgCode;
         use crate::point_cloud::las::tests::{geotiff_crs, point, write_with};
@@ -223,5 +301,35 @@ mod tests {
         let err = wrong.load().unwrap_err().to_string();
         assert!(err.contains("EPSG:6677"), "unexpected error: {err}");
         assert!(matches!(wrong.segments[0], Segment::File(_)));
+    }
+
+    #[test]
+    fn range_reader_reads_and_seeks_like_the_file() {
+        let dir = tempfile::tempdir().unwrap();
+        let path = dir.path().join("a.bin");
+        let bytes: Vec<u8> = (0..(MIN_BLOCK * 5)).map(|i| (i % 251) as u8).collect();
+        std::fs::write(&path, &bytes).unwrap();
+        let uri = Uri::from_str(&format!("file://{}", path.display())).unwrap();
+        let mut reader = open(&uri).unwrap();
+
+        // Sequential reads across several growing blocks.
+        let mut all = Vec::new();
+        reader.read_to_end(&mut all).unwrap();
+        assert_eq!(all, bytes);
+
+        // Backward and relative seeks, and a read past the end.
+        let mut buf = [0u8; 10];
+        reader.seek(SeekFrom::Start(3)).unwrap();
+        reader.read_exact(&mut buf).unwrap();
+        assert_eq!(buf, bytes[3..13]);
+        reader.seek(SeekFrom::End(-4)).unwrap();
+        assert_eq!(reader.read(&mut buf).unwrap(), 4);
+        assert_eq!(buf[..4], bytes[bytes.len() - 4..]);
+        assert_eq!(reader.read(&mut buf).unwrap(), 0);
+        assert!(
+            reader
+                .seek(SeekFrom::Current(-(bytes.len() as i64) - 1))
+                .is_err()
+        );
     }
 }
