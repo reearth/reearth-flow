@@ -12,8 +12,11 @@ use indexmap::IndexMap;
 use serde::{Deserialize, Deserializer, Serialize, Serializer};
 use smallvec::SmallVec;
 
+use reearth_flow_common::uri::Uri;
+
 use crate::coordinate::CoordinateFrame;
 
+use super::file::PointFile;
 use super::{AttributeColumn, FieldMask, PositionEncoding, bit};
 
 /// A 3D point cloud: one or more acquisition segments sharing a coordinate
@@ -25,20 +28,29 @@ struct PointCloud {
     #[cfg_attr(feature = "schema", schemars(title = "Coordinate frame"))]
     frame: CoordinateFrame,
     #[cfg_attr(feature = "schema", schemars(title = "Segments"))]
-    segments: Vec<Segment>,
+    segments: Vec<BufferSegment>,
 }
 
-/// One acquisition source's points: their positions in the encoding they are
-/// stored in, plus any per-point attribute columns.
+/// One acquisition source: either `file`, a LAS / LAZ file holding its points,
+/// or its positions in the encoding they are stored in, plus any per-point
+/// fields and attribute columns.
 #[cfg_attr(feature = "schema", derive(schemars::JsonSchema))]
 #[derive(Serialize, Deserialize)]
 #[cfg_attr(feature = "schema", schemars(title = "Acquisition segment"))]
-struct Segment {
+struct BufferSegment {
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    #[cfg_attr(feature = "schema", schemars(with = "Option<String>", title = "File"))]
+    file: Option<Uri>,
+    /// Added to every position read from `file`.
+    #[serde(default, skip_serializing_if = "is_zero")]
+    #[cfg_attr(feature = "schema", schemars(title = "Shift"))]
+    shift: [f64; 3],
     #[serde(default, skip_serializing_if = "Option::is_none")]
     #[cfg_attr(feature = "schema", schemars(title = "Source"))]
     source: Option<Arc<str>>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
     #[cfg_attr(feature = "schema", schemars(title = "Positions"))]
-    positions: Positions,
+    positions: Option<Positions>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     #[cfg_attr(feature = "schema", schemars(title = "RGB"))]
     rgb: Option<Vec<[u16; 3]>>,
@@ -71,6 +83,10 @@ struct Segment {
     attributes: IndexMap<String, AttributeColumn>,
 }
 
+fn is_zero(shift: &[f64; 3]) -> bool {
+    *shift == [0.0; 3]
+}
+
 /// Per-point positions in their stored encoding.
 #[cfg_attr(feature = "schema", derive(schemars::JsonSchema))]
 #[derive(Serialize, Deserialize)]
@@ -85,7 +101,7 @@ enum Positions {
 }
 
 /// Read a segment's positions out of its packed byte stream.
-fn encode_positions(seg: &super::Segment) -> Positions {
+fn encode_positions(seg: &super::PointBuffer) -> Positions {
     let stride = seg.stride as usize;
     match &seg.position {
         PositionEncoding::F64 => Positions::F64(
@@ -128,7 +144,7 @@ fn encode_positions(seg: &super::Segment) -> Positions {
 
 /// Field `bit` of every point, decoded, or `None` if the segment lacks it.
 fn encode_field<const N: usize, T>(
-    seg: &super::Segment,
+    seg: &super::PointBuffer,
     bit: u16,
     decode: impl Fn([u8; N]) -> T,
 ) -> Option<Vec<T>> {
@@ -138,7 +154,7 @@ fn encode_field<const N: usize, T>(
 
 /// Write `values` into field `bit` of every point, if present.
 fn decode_field<const N: usize, T>(
-    seg: &mut super::Segment,
+    seg: &mut super::PointBuffer,
     bit: u16,
     values: Option<Vec<T>>,
     encode: impl Fn(T) -> [u8; N],
@@ -164,7 +180,7 @@ fn rgb_to_bytes([r, g, b]: [u16; 3]) -> [u8; 6] {
 }
 
 /// Pack positions back into the `(encoding, stride, byte stream, count)` a
-/// [`super::Segment`] stores.
+/// [`super::PointBuffer`] stores.
 fn decode_positions(positions: Positions) -> (PositionEncoding, u16, Vec<u8>, usize) {
     match positions {
         Positions::F64(values) => {
@@ -208,27 +224,27 @@ fn decode_positions(positions: Positions) -> (PositionEncoding, u16, Vec<u8>, us
 
 impl Serialize for super::PointCloud {
     fn serialize<S: Serializer>(&self, serializer: S) -> Result<S::Ok, S::Error> {
-        let mut segments = Vec::with_capacity(self.segments.len());
-        for seg in &self.segments {
-            if seg.has(bit::NORMAL) || seg.has(bit::RING) {
-                return Err(serde::ser::Error::custom(
-                    "point-cloud normal and ring fields are not yet supported by the \
-                     intermediate-data encoder",
-                ));
-            }
-            segments.push(Segment {
-                source: seg.source.clone(),
-                positions: encode_positions(seg),
-                rgb: encode_field(seg, bit::RGB, rgb_from_bytes),
-                intensity: encode_field(seg, bit::INTENSITY, u16::from_le_bytes),
-                timestamp: encode_field(seg, bit::TIMESTAMP, f64::from_le_bytes),
-                classification: encode_field(seg, bit::CLASSIFICATION, |[b]| b),
-                return_info: encode_field(seg, bit::RETURN_INFO, |[b]| b),
-                scan_angle: encode_field(seg, bit::SCAN_ANGLE, i16::from_le_bytes),
-                point_source_id: encode_field(seg, bit::POINT_SOURCE_ID, u16::from_le_bytes),
-                attributes: seg.attributes.clone(),
-            });
-        }
+        let segments = self
+            .segments
+            .iter()
+            .map(|seg| match seg {
+                super::Segment::InMemory(buffer) => encode_buffer(buffer),
+                super::Segment::File(file) => Ok(BufferSegment {
+                    file: Some(file.uri().clone()),
+                    shift: file.shift(),
+                    source: None,
+                    positions: None,
+                    rgb: None,
+                    intensity: None,
+                    timestamp: None,
+                    classification: None,
+                    return_info: None,
+                    scan_angle: None,
+                    point_source_id: None,
+                    attributes: IndexMap::new(),
+                }),
+            })
+            .collect::<Result<_, _>>()?;
         PointCloud {
             frame: self.frame.clone(),
             segments,
@@ -237,99 +253,36 @@ impl Serialize for super::PointCloud {
     }
 }
 
+fn encode_buffer<E: serde::ser::Error>(seg: &super::PointBuffer) -> Result<BufferSegment, E> {
+    if seg.has(bit::NORMAL) || seg.has(bit::RING) {
+        return Err(E::custom(
+            "point-cloud normal and ring fields are not yet supported by the \
+             intermediate-data encoder",
+        ));
+    }
+    Ok(BufferSegment {
+        file: None,
+        shift: [0.0; 3],
+        source: seg.source.clone(),
+        positions: Some(encode_positions(seg)),
+        rgb: encode_field(seg, bit::RGB, rgb_from_bytes),
+        intensity: encode_field(seg, bit::INTENSITY, u16::from_le_bytes),
+        timestamp: encode_field(seg, bit::TIMESTAMP, f64::from_le_bytes),
+        classification: encode_field(seg, bit::CLASSIFICATION, |[b]| b),
+        return_info: encode_field(seg, bit::RETURN_INFO, |[b]| b),
+        scan_angle: encode_field(seg, bit::SCAN_ANGLE, i16::from_le_bytes),
+        point_source_id: encode_field(seg, bit::POINT_SOURCE_ID, u16::from_le_bytes),
+        attributes: seg.attributes.clone(),
+    })
+}
+
 impl<'de> Deserialize<'de> for super::PointCloud {
     fn deserialize<D: Deserializer<'de>>(deserializer: D) -> Result<Self, D::Error> {
         let wire = PointCloud::deserialize(deserializer)?;
         let segments: SmallVec<[super::Segment; 1]> = wire
             .segments
             .into_iter()
-            .map(|s| {
-                let (position, stride, data, count) = decode_positions(s.positions);
-                // A segment's columns are read by point index, so a column that
-                // disagrees with the point count is rejected here rather than
-                // left to index out of bounds on the first read.
-                let check = |name: &str, len: usize| {
-                    if len == count {
-                        Ok(())
-                    } else {
-                        Err(serde::de::Error::custom(format!(
-                            "{name} has {len} entries but the segment has {count} points"
-                        )))
-                    }
-                };
-                for (name, column) in &s.attributes {
-                    check(&format!("attribute column `{name}`"), column.len())?;
-                }
-                let mut fields: FieldMask = 0;
-                for (b, name, len) in [
-                    (bit::RGB, "rgb", s.rgb.as_ref().map(Vec::len)),
-                    (
-                        bit::INTENSITY,
-                        "intensity",
-                        s.intensity.as_ref().map(Vec::len),
-                    ),
-                    (
-                        bit::TIMESTAMP,
-                        "timestamp",
-                        s.timestamp.as_ref().map(Vec::len),
-                    ),
-                    (
-                        bit::CLASSIFICATION,
-                        "classification",
-                        s.classification.as_ref().map(Vec::len),
-                    ),
-                    (
-                        bit::RETURN_INFO,
-                        "return_info",
-                        s.return_info.as_ref().map(Vec::len),
-                    ),
-                    (
-                        bit::SCAN_ANGLE,
-                        "scan_angle",
-                        s.scan_angle.as_ref().map(Vec::len),
-                    ),
-                    (
-                        bit::POINT_SOURCE_ID,
-                        "point_source_id",
-                        s.point_source_id.as_ref().map(Vec::len),
-                    ),
-                ] {
-                    if let Some(len) = len {
-                        check(&format!("field `{name}`"), len)?;
-                        fields |= 1 << b;
-                    }
-                }
-                if fields == 0 {
-                    return Ok(super::Segment {
-                        source: s.source,
-                        position,
-                        fields,
-                        stride,
-                        offsets: [0; 9],
-                        data,
-                        count,
-                        attributes: s.attributes,
-                    });
-                }
-                let mut seg = super::Segment::zeroed(s.source, position, fields, count);
-                for (i, bytes) in data.chunks_exact(stride as usize).enumerate() {
-                    seg.set_position(i, bytes);
-                }
-                decode_field(&mut seg, bit::RGB, s.rgb, rgb_to_bytes);
-                decode_field(&mut seg, bit::INTENSITY, s.intensity, u16::to_le_bytes);
-                decode_field(&mut seg, bit::TIMESTAMP, s.timestamp, f64::to_le_bytes);
-                decode_field(&mut seg, bit::CLASSIFICATION, s.classification, |b| [b]);
-                decode_field(&mut seg, bit::RETURN_INFO, s.return_info, |b| [b]);
-                decode_field(&mut seg, bit::SCAN_ANGLE, s.scan_angle, i16::to_le_bytes);
-                decode_field(
-                    &mut seg,
-                    bit::POINT_SOURCE_ID,
-                    s.point_source_id,
-                    u16::to_le_bytes,
-                );
-                seg.attributes = s.attributes;
-                Ok(seg)
-            })
+            .map(decode_segment)
             .collect::<Result<_, D::Error>>()?;
         Ok(super::PointCloud {
             frame: wire.frame,
@@ -337,6 +290,121 @@ impl<'de> Deserialize<'de> for super::PointCloud {
             kdtree: OnceLock::new(),
         })
     }
+}
+
+fn decode_segment<E: serde::de::Error>(s: BufferSegment) -> Result<super::Segment, E> {
+    let Some(uri) = s.file else {
+        return decode_buffer(s).map(super::Segment::InMemory);
+    };
+    let inline = s.source.is_some()
+        || s.positions.is_some()
+        || s.rgb.is_some()
+        || s.intensity.is_some()
+        || s.timestamp.is_some()
+        || s.classification.is_some()
+        || s.return_info.is_some()
+        || s.scan_angle.is_some()
+        || s.point_source_id.is_some()
+        || !s.attributes.is_empty();
+    if inline {
+        return Err(E::custom(
+            "a segment with `file` cannot also carry inline points, fields or columns",
+        ));
+    }
+    let mut file = PointFile::new(uri);
+    file.translate(s.shift);
+    Ok(super::Segment::File(file))
+}
+
+fn decode_buffer<E: serde::de::Error>(s: BufferSegment) -> Result<super::PointBuffer, E> {
+    let Some(positions) = s.positions else {
+        return Err(E::missing_field("positions"));
+    };
+    let (position, stride, data, count) = decode_positions(positions);
+    // A segment's columns are read by point index, so a column that
+    // disagrees with the point count is rejected here rather than
+    // left to index out of bounds on the first read.
+    let check = |name: &str, len: usize| {
+        if len == count {
+            Ok(())
+        } else {
+            Err(E::custom(format!(
+                "{name} has {len} entries but the segment has {count} points"
+            )))
+        }
+    };
+    for (name, column) in &s.attributes {
+        check(&format!("attribute column `{name}`"), column.len())?;
+    }
+    let mut fields: FieldMask = 0;
+    for (b, name, len) in [
+        (bit::RGB, "rgb", s.rgb.as_ref().map(Vec::len)),
+        (
+            bit::INTENSITY,
+            "intensity",
+            s.intensity.as_ref().map(Vec::len),
+        ),
+        (
+            bit::TIMESTAMP,
+            "timestamp",
+            s.timestamp.as_ref().map(Vec::len),
+        ),
+        (
+            bit::CLASSIFICATION,
+            "classification",
+            s.classification.as_ref().map(Vec::len),
+        ),
+        (
+            bit::RETURN_INFO,
+            "return_info",
+            s.return_info.as_ref().map(Vec::len),
+        ),
+        (
+            bit::SCAN_ANGLE,
+            "scan_angle",
+            s.scan_angle.as_ref().map(Vec::len),
+        ),
+        (
+            bit::POINT_SOURCE_ID,
+            "point_source_id",
+            s.point_source_id.as_ref().map(Vec::len),
+        ),
+    ] {
+        if let Some(len) = len {
+            check(&format!("field `{name}`"), len)?;
+            fields |= 1 << b;
+        }
+    }
+    if fields == 0 {
+        return Ok(super::PointBuffer {
+            source: s.source,
+            position,
+            fields,
+            stride,
+            offsets: [0; 9],
+            data,
+            count,
+            attributes: s.attributes,
+        });
+    }
+    let mut seg = super::PointBuffer::zeroed(s.source, position, fields, count);
+    for (i, bytes) in data.chunks_exact(stride as usize).enumerate() {
+        seg.set_position(i, bytes);
+    }
+    decode_field(&mut seg, bit::RGB, s.rgb, rgb_to_bytes);
+    decode_field(&mut seg, bit::INTENSITY, s.intensity, u16::to_le_bytes);
+    decode_field(&mut seg, bit::TIMESTAMP, s.timestamp, f64::to_le_bytes);
+    decode_field(&mut seg, bit::CLASSIFICATION, s.classification, |b| [b]);
+    decode_field(&mut seg, bit::RETURN_INFO, s.return_info, |b| [b]);
+    decode_field(&mut seg, bit::SCAN_ANGLE, s.scan_angle, i16::to_le_bytes);
+    decode_field(
+        &mut seg,
+        bit::POINT_SOURCE_ID,
+        s.point_source_id,
+        u16::to_le_bytes,
+    );
+    seg.attributes = s.attributes;
+    Ok(seg)
 }
 
 #[cfg(feature = "schema")]
@@ -351,8 +419,10 @@ impl schemars::JsonSchema for super::PointCloud {
 
 #[cfg(test)]
 mod tests {
+    use std::str::FromStr;
+
     use super::*;
-    use crate::point_cloud::{PointCloud, Segment};
+    use crate::point_cloud::{PointBuffer, PointCloud};
 
     fn round_trip(pc: &PointCloud) {
         let json = serde_json::to_string(pc).unwrap();
@@ -387,7 +457,7 @@ mod tests {
                 .map(|p| p.map(f32::to_le_bytes))
                 .collect::<Vec<_>>(),
         );
-        let f32_seg = Segment {
+        let f32_seg = PointBuffer {
             source: Some(Arc::from("scan-a")),
             position: PositionEncoding::F32,
             fields: 0,
@@ -414,7 +484,7 @@ mod tests {
             "source_id".to_string(),
             AttributeColumn::String(vec![Some(Arc::from("x")), None]),
         );
-        let i32_seg = Segment {
+        let i32_seg = PointBuffer {
             source: None,
             position: PositionEncoding::ScaledI32 {
                 scale: [0.001, 0.001, 0.001],
@@ -428,9 +498,9 @@ mod tests {
             attributes,
         };
 
-        let mut segments: SmallVec<[Segment; 1]> = SmallVec::new();
-        segments.push(f32_seg);
-        segments.push(i32_seg);
+        let mut segments: SmallVec<[super::super::Segment; 1]> = SmallVec::new();
+        segments.push(f32_seg.into());
+        segments.push(i32_seg.into());
         round_trip(&PointCloud {
             frame: CoordinateFrame::Euclidean,
             segments,
@@ -440,7 +510,7 @@ mod tests {
 
     #[test]
     fn optional_fields_round_trip() {
-        let mut seg = Segment::zeroed(
+        let mut seg = PointBuffer::zeroed(
             Some(Arc::from("a.las")),
             PositionEncoding::ScaledI32 {
                 scale: [0.01; 3],
@@ -465,7 +535,7 @@ mod tests {
             .insert("user".to_string(), AttributeColumn::UInt8(vec![0, 1]));
         let pc = PointCloud {
             frame: CoordinateFrame::Euclidean,
-            segments: smallvec::smallvec![seg],
+            segments: smallvec::smallvec![seg.into()],
             kdtree: OnceLock::new(),
         };
         let json = serde_json::to_value(&pc).unwrap();
@@ -478,6 +548,21 @@ mod tests {
             serde_json::json!([-1000, -2000])
         );
         assert!(json["segments"][0].get("intensity").is_none());
+        round_trip(&pc);
+    }
+
+    #[test]
+    fn file_segment_round_trips_as_its_uri() {
+        let mut pc = PointCloud::from_las_file(
+            CoordinateFrame::Euclidean,
+            Uri::from_str("file:///data/a.las").unwrap(),
+        );
+        crate::ops::Translate::translate(&mut pc, [1.0, 0.0, -2.0]).unwrap();
+        let json = serde_json::to_value(&pc).unwrap();
+        assert_eq!(
+            json["segments"][0],
+            serde_json::json!({"file": "file:///data/a.las", "shift": [1.0, 0.0, -2.0]})
+        );
         round_trip(&pc);
     }
 

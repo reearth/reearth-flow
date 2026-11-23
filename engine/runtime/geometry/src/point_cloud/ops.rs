@@ -1,6 +1,6 @@
 use std::sync::OnceLock;
 
-use super::{AttributeColumn, PointCloud, PositionEncoding, Segment};
+use super::{AttributeColumn, PointBuffer, PointCloud, PositionEncoding, Segment};
 use crate::ops::{Aabb, BoundingBox, Split, Translate, UnsupportedOperation};
 use crate::point::Point3D;
 use crate::{Euclidean3DGeometry, Geometry};
@@ -15,7 +15,7 @@ impl Split for PointCloud {
         &mut self,
         emit: &mut dyn FnMut(Geometry, Attributes),
     ) -> Result<(), UnsupportedOperation> {
-        for seg in &self.segments {
+        for seg in self.buffers("split")? {
             for (i, position) in segment_positions(seg).enumerate() {
                 let mut attributes = Attributes::with_capacity(seg.attributes.len());
                 for (name, column) in &seg.attributes {
@@ -58,12 +58,42 @@ fn number_or_null(x: f64) -> AttributeValue {
 }
 
 impl BoundingBox for PointCloud {
+    /// A file's extent is read from its header, not its points.
     fn bounding_box(&self) -> Result<Aabb, UnsupportedOperation> {
-        let points = self.segments.iter().flat_map(segment_positions);
-        Aabb::from_points_3d(points).ok_or(UnsupportedOperation {
+        let unbounded = UnsupportedOperation {
             geometry: "PointCloud",
             operation: "bounding_box",
-        })
+        };
+        let mut corners = Vec::new();
+        for seg in &self.segments {
+            let Segment::File(file) = seg else { continue };
+            let header = file.header().map_err(|_| UnsupportedOperation {
+                geometry: "PointCloud (unreadable file)",
+                ..unbounded
+            })?;
+            if header.count == 0 {
+                continue;
+            }
+            for mut corner in [header.min, header.max] {
+                if super::las::swaps_xy(&self.frame).map_err(|_| unbounded)? {
+                    corner.swap(0, 1);
+                }
+                for (axis, d) in corner.iter_mut().zip(file.shift()) {
+                    *axis += d;
+                }
+                corners.push(corner);
+            }
+        }
+        let points = self
+            .segments
+            .iter()
+            .filter_map(|seg| match seg {
+                Segment::InMemory(buffer) => Some(buffer),
+                Segment::File(_) => None,
+            })
+            .flat_map(segment_positions)
+            .chain(corners);
+        Aabb::from_points_3d(points).ok_or(unbounded)
     }
 }
 
@@ -73,7 +103,10 @@ impl Translate for PointCloud {
     /// shifted coordinates must still be representable in.
     fn translate(&mut self, delta: [f64; 3]) -> crate::error::Result<()> {
         for seg in self.segments.iter_mut() {
-            translate_segment(seg, delta);
+            match seg {
+                Segment::InMemory(buffer) => translate_segment(buffer, delta),
+                Segment::File(file) => file.translate(delta),
+            }
         }
         self.kdtree = OnceLock::new();
         Ok(())
@@ -83,7 +116,7 @@ impl Translate for PointCloud {
 /// Add `delta` to every position in a segment. A scaled-integer segment moves
 /// its decode offset and leaves the packed bytes untouched; a float segment is
 /// rewritten in place, stride by stride.
-fn translate_segment(seg: &mut Segment, delta: [f64; 3]) {
+fn translate_segment(seg: &mut PointBuffer, delta: [f64; 3]) {
     let stride = seg.stride as usize;
     match &mut seg.position {
         PositionEncoding::ScaledI32 { offset, .. } => {
@@ -117,8 +150,9 @@ fn translate_segment(seg: &mut Segment, delta: [f64; 3]) {
 impl crate::ops::SetElevation for PointCloud {
     /// Keeps each segment's position encoding, as [`Translate`] does.
     fn set_elevation(&mut self, z: f64) -> Result<(), UnsupportedOperation> {
+        self.require_loaded("set_elevation")?;
         for seg in self.segments.iter_mut() {
-            set_segment_elevation(seg, z);
+            set_segment_elevation(seg.buffer_mut("set_elevation")?, z);
         }
         self.kdtree = OnceLock::new();
         Ok(())
@@ -128,7 +162,7 @@ impl crate::ops::SetElevation for PointCloud {
 /// Set every position's z in a segment. A scaled-integer segment packs a zero z
 /// and moves `z` into its decode offset, so the elevation stays exact.
 #[cfg(feature = "new-geometry")]
-fn set_segment_elevation(seg: &mut Segment, z: f64) {
+fn set_segment_elevation(seg: &mut PointBuffer, z: f64) {
     let stride = seg.stride as usize;
     match &mut seg.position {
         PositionEncoding::ScaledI32 { offset, .. } => {
@@ -157,7 +191,7 @@ fn set_segment_elevation(seg: &mut Segment, z: f64) {
 /// position occupies the first bytes of each stride; the encoding fixes the
 /// width and any scale/offset. Reads go through `from_le_bytes`, so a bad
 /// offset is a bounds panic, never UB (mirrors the field-access contract).
-pub(super) fn segment_positions(seg: &Segment) -> impl Iterator<Item = [f64; 3]> + '_ {
+pub(super) fn segment_positions(seg: &PointBuffer) -> impl Iterator<Item = [f64; 3]> + '_ {
     let stride = seg.stride as usize;
     (0..seg.count).map(move |i| {
         let base = i * stride;
@@ -193,12 +227,19 @@ use crate::ops::Elevation;
 
 #[cfg(feature = "new-geometry")]
 impl Elevation for PointCloud {
+    /// `None` while the first point is still in a file.
     fn elevation(&self) -> Option<f64> {
-        self.segments
-            .iter()
-            .flat_map(segment_positions)
-            .next()
-            .map(|p| p[2])
+        for seg in &self.segments {
+            match seg {
+                Segment::InMemory(buffer) => {
+                    if let Some(p) = segment_positions(buffer).next() {
+                        return Some(p[2]);
+                    }
+                }
+                Segment::File(_) => return None,
+            }
+        }
+        None
     }
 }
 
@@ -212,7 +253,7 @@ mod tests {
     /// A segment holding `data` under `position`, with no optional fields or
     /// attribute columns.
     fn segment(position: PositionEncoding, stride: u16, count: usize, data: Vec<u8>) -> Segment {
-        Segment {
+        Segment::InMemory(PointBuffer {
             source: None,
             position,
             fields: 0,
@@ -221,7 +262,7 @@ mod tests {
             data,
             count,
             attributes: IndexMap::new(),
-        }
+        })
     }
 
     fn scaled_i32_segment(scale: [f64; 3], offset: [f64; 3], raw: &[[i32; 3]]) -> Segment {
@@ -250,7 +291,10 @@ mod tests {
     }
 
     fn positions(pc: &PointCloud) -> Vec<[f64; 3]> {
-        pc.segments.iter().flat_map(segment_positions).collect()
+        pc.buffers("test")
+            .unwrap()
+            .flat_map(segment_positions)
+            .collect()
     }
 
     #[test]
@@ -266,7 +310,7 @@ mod tests {
     #[test]
     fn scaled_integer_positions_shift_without_rewriting_the_packed_bytes() {
         let seg = scaled_i32_segment([0.001; 3], [0.0; 3], &[[1000, 2000, 3000]]);
-        let packed = seg.data.clone();
+        let packed = seg.as_buffer().data.clone();
         let mut pc = PointCloud {
             frame: CoordinateFrame::Euclidean,
             segments: smallvec::smallvec![seg],
@@ -274,7 +318,7 @@ mod tests {
         };
         pc.translate([0.5, 0.0, -0.25]).unwrap();
         assert_eq!(positions(&pc), [[1.5, 2.0, 2.75]]);
-        assert_eq!(pc.segments[0].data, packed);
+        assert_eq!(pc.segments[0].as_buffer().data, packed);
     }
 
     #[test]
@@ -287,7 +331,10 @@ mod tests {
         // Exactly representable in `f32`, so the round trip is lossless.
         pc.translate([0.25, 0.5, -1.0]).unwrap();
         assert_eq!(positions(&pc), [[1.75, 3.0, 2.5]]);
-        assert!(matches!(pc.segments[0].position, PositionEncoding::F32));
+        assert!(matches!(
+            pc.segments[0].as_buffer().position,
+            PositionEncoding::F32
+        ));
     }
 
     #[test]
@@ -368,5 +415,19 @@ mod tests {
             [[0.0, 0.0, 2.5], [15.0, 16.0, 2.5], [9.0, 9.0, 2.5]]
         );
         assert!(pc.kdtree.get().is_none());
+    }
+
+    #[test]
+    fn a_file_segment_moves_without_reading_the_file() {
+        let mut pc = PointCloud::from_las_file(
+            CoordinateFrame::Euclidean,
+            reearth_flow_common::uri::Uri::for_test("file:///nonexistent/a.las"),
+        );
+        pc.translate([1.0, 2.0, 3.0]).unwrap();
+        let Segment::File(file) = &pc.segments[0] else {
+            unreachable!()
+        };
+        assert_eq!(file.shift(), [1.0, 2.0, 3.0]);
+        assert!(pc.split(&mut |_, _| {}).is_err());
     }
 }

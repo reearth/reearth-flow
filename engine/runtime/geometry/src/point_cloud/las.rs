@@ -5,10 +5,11 @@ use std::sync::{Arc, OnceLock};
 
 use smallvec::smallvec;
 
-use crate::coordinate::CoordinateFrame;
+use crate::coordinate::{CoordinateFrame, EpsgCode};
 use crate::error::{Error, Result};
+use crate::ops::TwoDimensionalCrs;
 
-use super::{PointCloud, PositionEncoding, Segment, bit};
+use super::{PointBuffer, PointCloud, PositionEncoding, Segment, bit};
 
 /// Degrees per unit of the stored scan angle.
 const SCAN_ANGLE_UNIT: f64 = 0.006;
@@ -23,64 +24,164 @@ impl PointCloud {
     /// Keeps RGB, intensity, GPS time, classification, return number and number
     /// of returns, scan angle and point source ID; other LAS fields are dropped.
     /// A legacy (formats 0-5) scan angle is rounded to 0.006 degrees. `frame` is
-    /// the frame of the file's coordinates; the file's own CRS records are not
-    /// read.
+    /// the frame of the file's coordinates and must agree with the CRS the file
+    /// records, if any. LAS stores easting before northing, so x and y are
+    /// swapped when `frame` is a CRS that stores northing first.
     pub fn from_las<R: Read + Seek + Send + Sync + 'static>(
         frame: CoordinateFrame,
         source: Option<Arc<str>>,
         read: R,
     ) -> Result<Self> {
-        let mut reader = ::las::Reader::new(read).map_err(Error::point_cloud_read)?;
-        let header = reader.header();
-        let format = *header.point_format();
-        let t = *header.transforms();
-        let count = usize::try_from(header.number_of_points())
-            .map_err(|_| Error::point_cloud_read("point count exceeds the address space"))?;
-        let mut batch = ::las::PointDataBuilder::new().for_header(header).build();
-
-        let mut fields = 1 << bit::INTENSITY
-            | 1 << bit::CLASSIFICATION
-            | 1 << bit::RETURN_INFO
-            | 1 << bit::SCAN_ANGLE
-            | 1 << bit::POINT_SOURCE_ID;
-        if format.has_color {
-            fields |= 1 << bit::RGB;
-        }
-        if format.has_gps_time {
-            fields |= 1 << bit::TIMESTAMP;
-        }
-        let position = PositionEncoding::ScaledI32 {
-            scale: [t.x.scale, t.y.scale, t.z.scale],
-            offset: [t.x.offset, t.y.offset, t.z.offset],
-        };
-        let mut seg = Segment::zeroed(source, position, fields, count);
-
-        let mut start = 0;
-        while start < count {
-            let n = reader
-                .fill_points(BATCH, &mut batch)
-                .map_err(Error::point_cloud_read)? as usize;
-            if n == 0 {
-                return Err(Error::point_cloud_read(format!(
-                    "header declares {count} points but the stream ended after {start}"
-                )));
-            }
-            copy_batch(&mut seg, start, &batch);
-            start += n;
-        }
-
+        let reader = ::las::Reader::new(read).map_err(Error::point_cloud_read)?;
+        let seg = read_buffer(reader, &frame, source)?;
         Ok(PointCloud {
             frame,
-            segments: smallvec![seg],
+            segments: smallvec![Segment::InMemory(seg)],
             kdtree: OnceLock::new(),
         })
     }
 }
 
-/// Copy the points of `batch` into `seg` from point `start` on.
-fn copy_batch(seg: &mut Segment, start: usize, batch: &::las::PointData) {
+/// Read every point of `reader` into one segment, after checking the file's
+/// CRS against `frame`.
+pub(super) fn read_buffer(
+    mut reader: ::las::Reader,
+    frame: &CoordinateFrame,
+    source: Option<Arc<str>>,
+) -> Result<PointBuffer> {
+    let header = reader.header();
+    check_crs(header, frame)?;
+    let format = *header.point_format();
+    let t = *header.transforms();
+    let swap = swaps_xy(frame)?;
+    let count = usize::try_from(header.number_of_points())
+        .map_err(|_| Error::point_cloud_read("point count exceeds the address space"))?;
+    let mut batch = ::las::PointDataBuilder::new().for_header(header).build();
+
+    let mut fields = 1 << bit::INTENSITY
+        | 1 << bit::CLASSIFICATION
+        | 1 << bit::RETURN_INFO
+        | 1 << bit::SCAN_ANGLE
+        | 1 << bit::POINT_SOURCE_ID;
+    if format.has_color {
+        fields |= 1 << bit::RGB;
+    }
+    if format.has_gps_time {
+        fields |= 1 << bit::TIMESTAMP;
+    }
+    let (tx, ty) = if swap { (t.y, t.x) } else { (t.x, t.y) };
+    let position = PositionEncoding::ScaledI32 {
+        scale: [tx.scale, ty.scale, t.z.scale],
+        offset: [tx.offset, ty.offset, t.z.offset],
+    };
+    let mut seg = PointBuffer::zeroed(source, position, fields, count);
+
+    let mut start = 0;
+    while start < count {
+        let n = reader
+            .fill_points(BATCH, &mut batch)
+            .map_err(Error::point_cloud_read)? as usize;
+        if n == 0 {
+            return Err(Error::point_cloud_read(format!(
+                "header declares {count} points but the stream ended after {start}"
+            )));
+        }
+        copy_batch(&mut seg, start, &batch, swap);
+        start += n;
+    }
+    Ok(seg)
+}
+
+/// The EPSG code of the CRS a LAS header records, from its GeoTIFF keys or
+/// its WKT. `None` if it records none, or one without an EPSG code.
+fn las_crs(header: &::las::Header) -> Result<Option<EpsgCode>> {
+    if let Some(wkt) = header.get_wkt_crs_bytes() {
+        let wkt = std::str::from_utf8(wkt).map_err(Error::point_cloud_read)?;
+        return Ok(wkt_epsg(wkt.trim_end_matches('\0')));
+    }
+    let Some(geotiff) = header.get_geotiff_crs().map_err(Error::point_cloud_read)? else {
+        return Ok(None);
+    };
+    let epsg = |key: Option<u16>| key.filter(|k| (1024..=32766).contains(k));
+    Ok(epsg(geotiff.get_projected_crs_geo_key_value())
+        .or_else(|| epsg(geotiff.get_geodetic_crs_geo_key_value()))
+        .map(EpsgCode::new))
+}
+
+/// The EPSG code a WKT CRS gives its root object, in either WKT 1
+/// `AUTHORITY["EPSG","6677"]` or WKT 2 `ID["EPSG",6677]` form.
+fn wkt_epsg(wkt: &str) -> Option<EpsgCode> {
+    // The root's own identifier is its last child at depth 1.
+    let mut depth = 0usize;
+    let mut found = None;
+    for (i, c) in wkt.char_indices() {
+        match c {
+            '[' | '(' => depth += 1,
+            ']' | ')' => depth = depth.saturating_sub(1),
+            _ if depth == 1 => {
+                let rest = &wkt[i..];
+                let keyword = ["AUTHORITY[", "ID["]
+                    .into_iter()
+                    .find(|k| rest.len() >= k.len() && rest[..k.len()].eq_ignore_ascii_case(k));
+                if let Some(k) = keyword
+                    && (i == 0 || !wkt.as_bytes()[i - 1].is_ascii_alphanumeric())
+                {
+                    found = Some(&rest[k.len()..]);
+                }
+            }
+            _ => {}
+        }
+    }
+    let body = found?;
+    let body = &body[..body.find(']')?];
+    let mut parts = body.split(',').map(|p| p.trim().trim_matches('"'));
+    let authority = parts.next()?;
+    let code = parts.next()?;
+    authority
+        .eq_ignore_ascii_case("EPSG")
+        .then(|| code.parse::<u16>().ok().map(EpsgCode::new))?
+}
+
+/// Fail if the LAS file records a CRS other than `frame`'s. A file in a 2D
+/// CRS agrees with a 3D `frame` sharing its horizontal CRS.
+fn check_crs(header: &::las::Header, frame: &CoordinateFrame) -> Result<()> {
+    let CoordinateFrame::Crs(expected) = *frame else {
+        return Ok(());
+    };
+    let Some(recorded) = las_crs(header)? else {
+        return Ok(());
+    };
+    if recorded == expected {
+        return Ok(());
+    }
+    let horizontal = |epsg| match crate::ops::crs_demote_to_2d(epsg) {
+        Ok(TwoDimensionalCrs::Code(code)) => Some(code),
+        _ => None,
+    };
+    match (horizontal(recorded), horizontal(expected)) {
+        (Some(a), Some(b)) if a == b => Ok(()),
+        _ => Err(Error::point_cloud_read(format!(
+            "the file records EPSG:{} but its points were declared in EPSG:{}",
+            recorded.get(),
+            expected.get()
+        ))),
+    }
+}
+
+/// Whether `frame` stores northing before easting, the reverse of LAS.
+pub(super) fn swaps_xy(frame: &CoordinateFrame) -> Result<bool> {
+    match frame {
+        CoordinateFrame::Crs(epsg) => Ok(crate::ops::north_axis_index(*epsg)? == 0),
+        CoordinateFrame::Euclidean | CoordinateFrame::Tangent(_) => Ok(false),
+    }
+}
+
+/// Copy the points of `batch` into `seg` from point `start` on, swapping x and
+/// y if `swap`.
+fn copy_batch(seg: &mut PointBuffer, start: usize, batch: &::las::PointData, swap: bool) {
     let xyz = batch.x_raw().zip(batch.y_raw()).zip(batch.z_raw());
     for (i, ((x, y), z)) in (start..).zip(xyz) {
+        let (x, y) = if swap { (y, x) } else { (x, y) };
         let mut bytes = [0u8; 12];
         bytes[0..4].copy_from_slice(&x.to_le_bytes());
         bytes[4..8].copy_from_slice(&y.to_le_bytes());
@@ -121,7 +222,7 @@ fn copy_batch(seg: &mut Segment, start: usize, batch: &::las::PointData) {
 }
 
 #[cfg(test)]
-mod tests {
+pub(super) mod tests {
     use std::io::Cursor;
 
     use ::las::point::{Classification, Format};
@@ -136,7 +237,36 @@ mod tests {
         offset: 1000.0,
     };
 
-    fn point(i: u8) -> Point {
+    /// A GeoTIFF CRS record holding one model type and one CRS key.
+    pub(in crate::point_cloud) fn geotiff_crs(key: u16, epsg: u16) -> ::las::Vlr {
+        let model = if key == 3072 { 1 } else { 2 };
+        let words = [1u16, 1, 0, 2, 1024, 0, 1, model, key, 0, 1, epsg];
+        ::las::Vlr {
+            user_id: "LASF_Projection".into(),
+            record_id: 34735,
+            description: String::new(),
+            data: words.iter().flat_map(|w| w.to_le_bytes()).collect(),
+        }
+    }
+
+    fn wkt_crs(wkt: &str) -> ::las::Vlr {
+        ::las::Vlr {
+            user_id: "LASF_Projection".into(),
+            record_id: 2112,
+            description: String::new(),
+            data: wkt.as_bytes().to_vec(),
+        }
+    }
+
+    fn read_in(epsg: u16, crs: ::las::Vlr) -> Result<PointCloud> {
+        PointCloud::from_las(
+            CoordinateFrame::Crs(EpsgCode::new(epsg)),
+            None,
+            write_with(3, false, &[point(0)], Some(crs)),
+        )
+    }
+
+    pub(in crate::point_cloud) fn point(i: u8) -> Point {
         Point {
             x: 1000.0 + f64::from(i) * 0.5,
             y: -2000.0 + f64::from(i),
@@ -154,7 +284,17 @@ mod tests {
     }
 
     fn write(format: u8, compressed: bool, points: &[Point]) -> Cursor<Vec<u8>> {
+        write_with(format, compressed, points, None)
+    }
+
+    pub(in crate::point_cloud) fn write_with(
+        format: u8,
+        compressed: bool,
+        points: &[Point],
+        crs: Option<::las::Vlr>,
+    ) -> Cursor<Vec<u8>> {
         let mut builder = Builder::from((1, 4));
+        builder.vlrs.extend(crs);
         let mut f = Format::new(format).unwrap();
         f.is_compressed = compressed;
         builder.point_format = f;
@@ -170,7 +310,7 @@ mod tests {
     }
 
     fn check(pc: &PointCloud, points: &[Point], scan_angles: &[i16]) {
-        let seg = &pc.segments[0];
+        let seg = pc.segments[0].as_buffer();
         assert_eq!(seg.count, points.len());
         let positions: Vec<_> = segment_positions(seg).collect();
         for (i, p) in points.iter().enumerate() {
@@ -202,7 +342,7 @@ mod tests {
             write(3, false, &points),
         )
         .unwrap();
-        let seg = &pc.segments[0];
+        let seg = pc.segments[0].as_buffer();
         assert_eq!(seg.source.as_deref(), Some("a.las"));
         assert_eq!(
             seg.position,
@@ -240,7 +380,7 @@ mod tests {
             .collect();
         let pc = PointCloud::from_las(CoordinateFrame::Euclidean, None, write(6, true, &points))
             .unwrap();
-        let seg = &pc.segments[0];
+        let seg = pc.segments[0].as_buffer();
         assert_eq!(seg.fields, 0b1_0111_1010);
         // Extended scan angles are read back as the units the writer stored.
         let angles: Vec<i16> = points
@@ -259,5 +399,74 @@ mod tests {
         )
         .unwrap_err();
         assert!(matches!(err, Error::PointCloudRead(_)));
+    }
+
+    #[test]
+    fn north_first_crs_swaps_easting_and_northing() {
+        // EPSG:6677 (JGD2011 / Japan Plane Rectangular CS IX) stores northing first.
+        let points = [point(0)];
+        let pc = PointCloud::from_las(
+            CoordinateFrame::Crs(crate::coordinate::EpsgCode::new(6677)),
+            None,
+            write(3, false, &points),
+        )
+        .unwrap();
+        let [x, y, z] = segment_positions(pc.segments[0].as_buffer())
+            .next()
+            .unwrap();
+        assert!((x - points[0].y).abs() < 1e-9);
+        assert!((y - points[0].x).abs() < 1e-9);
+        assert!((z - points[0].z).abs() < 1e-9);
+    }
+
+    #[test]
+    fn a_recorded_crs_must_match_the_frame() {
+        assert!(read_in(6677, geotiff_crs(3072, 6677)).is_ok());
+        let err = read_in(6676, geotiff_crs(3072, 6677)).unwrap_err();
+        assert!(matches!(err, Error::PointCloudRead(_)), "{err}");
+        assert!(err.to_string().contains("EPSG:6677"), "{err}");
+    }
+
+    #[test]
+    fn a_2d_file_crs_agrees_with_its_3d_frame() {
+        // EPSG:6697 is JGD2011 + JGD2011 (vertical) height; EPSG:6668 is JGD2011.
+        assert!(read_in(6697, geotiff_crs(2048, 6668)).is_ok());
+        assert!(read_in(6697, geotiff_crs(2048, 4326)).is_err());
+    }
+
+    #[test]
+    fn a_wkt_crs_is_checked_too() {
+        let wkt = r#"PROJCS["JGD2011 / Japan Plane Rectangular CS IX",GEOGCS["JGD2011",AUTHORITY["EPSG","6668"]],UNIT["metre",1,AUTHORITY["EPSG","9001"]],AUTHORITY["EPSG","6677"]]"#;
+        assert!(read_in(6677, wkt_crs(wkt)).is_ok());
+        assert!(read_in(6668, wkt_crs(wkt)).is_err());
+    }
+
+    #[test]
+    fn wkt_epsg_reads_the_root_identifier() {
+        let code = |wkt| wkt_epsg(wkt).map(|e| e.get());
+        assert_eq!(
+            code(r#"PROJCS["a",GEOGCS["b",AUTHORITY["EPSG","6668"]],AUTHORITY["EPSG","6677"]]"#),
+            Some(6677)
+        );
+        assert_eq!(
+            code(r#"PROJCRS["a",BASEGEOGCRS["b",ID["EPSG",6668]],ID["EPSG",6677]]"#),
+            Some(6677)
+        );
+        // Only a nested object carries an identifier.
+        assert_eq!(
+            code(r#"PROJCS["a",GEOGCS["b",AUTHORITY["EPSG","6668"]]]"#),
+            None
+        );
+        assert_eq!(code(r#"PROJCS["a",AUTHORITY["ESRI","102100"]]"#), None);
+    }
+
+    #[test]
+    fn a_file_without_a_crs_takes_the_frame() {
+        let pc = PointCloud::from_las(
+            CoordinateFrame::Crs(EpsgCode::new(6677)),
+            None,
+            write(3, false, &[point(0)]),
+        );
+        assert!(pc.is_ok());
     }
 }

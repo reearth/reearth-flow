@@ -1534,19 +1534,34 @@
           "title": "Segments",
           "type": "array",
           "items": {
-            "$ref": "#/definitions/Segment"
+            "$ref": "#/definitions/BufferSegment"
           }
         }
       }
     },
-    "Segment": {
+    "BufferSegment": {
       "title": "Acquisition segment",
-      "description": "One acquisition source's points: their positions in the encoding they are stored in, plus any per-point attribute columns.",
+      "description": "One acquisition source: either `file`, a LAS / LAZ file holding its points, or its positions in the encoding they are stored in, plus any per-point fields and attribute columns.",
       "type": "object",
-      "required": [
-        "positions"
-      ],
       "properties": {
+        "file": {
+          "title": "File",
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "shift": {
+          "title": "Shift",
+          "description": "Added to every position read from `file`.",
+          "type": "array",
+          "items": {
+            "type": "number",
+            "format": "double"
+          },
+          "maxItems": 3,
+          "minItems": 3
+        },
         "source": {
           "title": "Source",
           "type": [
@@ -1556,9 +1571,12 @@
         },
         "positions": {
           "title": "Positions",
-          "allOf": [
+          "anyOf": [
             {
               "$ref": "#/definitions/Positions"
+            },
+            {
+              "type": "null"
             }
           ]
         },
@@ -1757,7 +1775,7 @@
       ]
     },
     "AttributeColumn": {
-      "description": "Typed column for user-defined per-point attributes (LAS Extra Bytes, PDAL extra dims, etc.). Schema-based: every column has exactly `Segment::count` entries. SoA layout: one `Vec<T>` per attribute, accessed one column at a time.",
+      "description": "Typed column for user-defined per-point attributes (LAS Extra Bytes, PDAL extra dims, etc.). Schema-based: every column has exactly `PointBuffer::count` entries. SoA layout: one `Vec<T>` per attribute, accessed one column at a time.",
       "oneOf": [
         {
           "type": "object",

@@ -704,7 +704,7 @@ fn child_f32(node: &XmlNode, name: &str, default: f32) -> f32 {
 
 /// Resolve a relative `app:imageURI` against the source document into a scheme-aware
 /// [`Uri`] pointing at the image's own location.
-fn resolve_uri(source_url: &Url, image: &str) -> Option<Uri> {
+pub(crate) fn resolve_uri(source_url: &Url, image: &str) -> Option<Uri> {
     let joined = source_url.join(image).ok()?;
     match Uri::try_from(joined) {
         Ok(uri) => Some(uri),

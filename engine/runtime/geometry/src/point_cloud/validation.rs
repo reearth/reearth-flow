@@ -1,5 +1,5 @@
-use super::PointCloud;
 use super::ops::segment_positions;
+use super::{PointCloud, Segment};
 use crate::validation_next::{
     Validate, ValidationParams, ValidationReport, ValidationType, check_duplicate_points,
     check_finite_3d,
@@ -7,9 +7,13 @@ use crate::validation_next::{
 
 // All segments share the cloud's frame; stream each segment's decoded positions
 // rather than materializing the whole cloud. Finiteness and coincident samples
-// (`DuplicatePoints`) are the only checks that apply.
+// (`DuplicatePoints`) are the only checks that apply. Points still in a file
+// are not read, so a cloud with a file segment has no applicable check.
 impl Validate for PointCloud {
     fn applicable_checks(&self) -> &'static [ValidationType] {
+        if self.segments.iter().any(|s| matches!(s, Segment::File(_))) {
+            return &[];
+        }
         &[ValidationType::Finite, ValidationType::DuplicatePoints]
     }
 
@@ -17,7 +21,10 @@ impl Validate for PointCloud {
         ValidationReport::ran(|r| {
             check_finite_3d(
                 &self.frame,
-                self.segments.iter().flat_map(segment_positions),
+                self.buffers("validate")
+                    .into_iter()
+                    .flatten()
+                    .flat_map(segment_positions),
                 r,
             )
         })
@@ -27,7 +34,10 @@ impl Validate for PointCloud {
         ValidationReport::ran(|r| {
             check_duplicate_points(
                 &self.frame,
-                self.segments.iter().flat_map(segment_positions),
+                self.buffers("validate")
+                    .into_iter()
+                    .flatten()
+                    .flat_map(segment_positions),
                 params,
                 r,
             )

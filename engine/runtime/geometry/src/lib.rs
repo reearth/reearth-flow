@@ -703,10 +703,10 @@ impl CountHoles for GeometryCollection {
 
 #[cfg(feature = "new-geometry")]
 impl CountVertices for Geometry {
-    fn count_vertices(&self) -> usize {
+    fn count_vertices(&self) -> crate::error::Result<usize> {
         match self {
             // An absent geometry stores no coordinates.
-            Geometry::None => 0,
+            Geometry::None => Ok(0),
             Geometry::Euclidean2D(g) => g.count_vertices(),
             Geometry::Euclidean3D(g) => g.count_vertices(),
             Geometry::GeometryCollection(c) => c.count_vertices(),
@@ -716,7 +716,7 @@ impl CountVertices for Geometry {
 
 #[cfg(feature = "new-geometry")]
 impl CountVertices for GeometryCollection {
-    fn count_vertices(&self) -> usize {
+    fn count_vertices(&self) -> crate::error::Result<usize> {
         self.members.iter().map(Geometry::count_vertices).sum()
     }
 }

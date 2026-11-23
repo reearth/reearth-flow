@@ -574,15 +574,15 @@ impl CountHoles for PolygonMesh3D {
 // The shared vertex pool, so a corner used by several faces counts once.
 #[cfg(feature = "new-geometry")]
 impl crate::ops::CountVertices for PolygonMesh2D {
-    fn count_vertices(&self) -> usize {
-        self.vertices().len()
+    fn count_vertices(&self) -> crate::error::Result<usize> {
+        Ok(self.vertices().len())
     }
 }
 
 #[cfg(feature = "new-geometry")]
 impl crate::ops::CountVertices for PolygonMesh3D {
-    fn count_vertices(&self) -> usize {
-        self.vertices().len()
+    fn count_vertices(&self) -> crate::error::Result<usize> {
+        Ok(self.vertices().len())
     }
 }
 

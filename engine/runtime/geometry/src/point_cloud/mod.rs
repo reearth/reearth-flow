@@ -19,16 +19,20 @@ use serde::{Deserialize, Serialize};
 use smallvec::SmallVec;
 
 use crate::coordinate::CoordinateFrame;
+use crate::ops::UnsupportedOperation;
+
+use file::PointFile;
 
 mod constructor;
 #[cfg(not(feature = "debug-geom-feature-write"))]
 mod feature_write;
+mod file;
 mod las;
 mod ops;
 #[cfg(feature = "new-geometry")]
 mod validation;
 
-/// Bit positions of the optional primary fields within a [`Segment`]'s
+/// Bit positions of the optional primary fields within a [`PointBuffer`]'s
 /// [`FieldMask`].
 #[allow(dead_code)]
 mod bit {
@@ -105,7 +109,7 @@ fn layout(position: &PositionEncoding, fields: FieldMask) -> (u16, FieldOffsets)
 }
 
 /// Typed column for user-defined per-point attributes (LAS Extra Bytes, PDAL
-/// extra dims, etc.). Schema-based: every column has exactly `Segment::count`
+/// extra dims, etc.). Schema-based: every column has exactly `PointBuffer::count`
 /// entries. SoA layout: one `Vec<T>` per attribute, accessed one column at a
 /// time.
 #[cfg_attr(feature = "schema", derive(schemars::JsonSchema))]
@@ -146,9 +150,66 @@ impl AttributeColumn {
     }
 }
 
+/// One acquisition source.
+#[derive(Serialize, Deserialize, Clone, Debug, PartialEq)]
+enum Segment {
+    /// Points held in memory.
+    InMemory(PointBuffer),
+    /// Points left in a LAS / LAZ file, read on use.
+    File(PointFile),
+}
+
+impl Segment {
+    /// The in-memory points, or an error naming `operation` if the points are
+    /// still in a file.
+    fn buffer(&self, operation: &'static str) -> Result<&PointBuffer, UnsupportedOperation> {
+        match self {
+            Segment::InMemory(buffer) => Ok(buffer),
+            Segment::File(_) => Err(not_loaded(operation)),
+        }
+    }
+
+    /// Mutable [`Segment::buffer`].
+    #[cfg(feature = "new-geometry")]
+    fn buffer_mut(
+        &mut self,
+        operation: &'static str,
+    ) -> Result<&mut PointBuffer, UnsupportedOperation> {
+        match self {
+            Segment::InMemory(buffer) => Ok(buffer),
+            Segment::File(_) => Err(not_loaded(operation)),
+        }
+    }
+}
+
+#[cfg(test)]
+impl Segment {
+    /// The in-memory points; panics on a file segment.
+    fn as_buffer(&self) -> &PointBuffer {
+        match self {
+            Segment::InMemory(buffer) => buffer,
+            Segment::File(file) => panic!("segment is in file {}", file.uri()),
+        }
+    }
+}
+
+impl From<PointBuffer> for Segment {
+    fn from(buffer: PointBuffer) -> Self {
+        Segment::InMemory(buffer)
+    }
+}
+
+/// The error for an operation that needs points still in a file.
+fn not_loaded(operation: &'static str) -> UnsupportedOperation {
+    UnsupportedOperation {
+        geometry: "PointCloud (file-backed)",
+        operation,
+    }
+}
+
 /// One acquisition source's points, carrying only the fields it actually has.
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq)]
-struct Segment {
+struct PointBuffer {
     /// File / acquisition identifier; `None` = synthetic.
     source: Option<Arc<str>>,
     /// XYZ encoding; determines the first bytes of each stride.
@@ -170,7 +231,7 @@ struct Segment {
     attributes: IndexMap<String, AttributeColumn>,
 }
 
-impl Segment {
+impl PointBuffer {
     /// A segment of `count` zeroed points with `fields` present and no
     /// attribute columns.
     fn zeroed(
@@ -180,7 +241,7 @@ impl Segment {
         count: usize,
     ) -> Self {
         let (stride, offsets) = layout(&position, fields);
-        Segment {
+        PointBuffer {
             source,
             position,
             fields,
@@ -241,6 +302,27 @@ impl PointCloud {
     #[inline]
     pub fn frame(&self) -> &CoordinateFrame {
         &self.frame
+    }
+
+    /// An error naming `operation` if any segment is still in a file.
+    fn require_loaded(&self, operation: &'static str) -> Result<(), UnsupportedOperation> {
+        for seg in &self.segments {
+            seg.buffer(operation)?;
+        }
+        Ok(())
+    }
+
+    /// Every segment's in-memory points, or an error naming `operation` if any
+    /// segment is still in a file.
+    fn buffers(
+        &self,
+        operation: &'static str,
+    ) -> Result<impl Iterator<Item = &PointBuffer>, UnsupportedOperation> {
+        self.require_loaded(operation)?;
+        Ok(self.segments.iter().filter_map(|seg| match seg {
+            Segment::InMemory(buffer) => Some(buffer),
+            Segment::File(_) => None,
+        }))
     }
 }
 
@@ -303,11 +385,18 @@ crate::unsupported!(
     Coerce
 );
 
-// Every segment's positions, summed: a cloud is nothing but coordinates.
+// Every segment's positions, summed: a cloud is nothing but coordinates. A
+// file's count comes from its header.
 #[cfg(feature = "new-geometry")]
 impl crate::ops::CountVertices for PointCloud {
-    fn count_vertices(&self) -> usize {
-        self.segments.iter().map(|s| s.count).sum()
+    fn count_vertices(&self) -> crate::error::Result<usize> {
+        self.segments
+            .iter()
+            .map(|seg| match seg {
+                Segment::InMemory(buffer) => Ok(buffer.count),
+                Segment::File(file) => Ok(file.header()?.count as usize),
+            })
+            .sum()
     }
 }
 

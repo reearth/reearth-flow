@@ -109,15 +109,15 @@ crate::unsupported!(LineString3D: CountHoles);
 
 #[cfg(feature = "new-geometry")]
 impl crate::ops::CountVertices for LineString2D {
-    fn count_vertices(&self) -> usize {
-        self.coords().len()
+    fn count_vertices(&self) -> crate::error::Result<usize> {
+        Ok(self.coords().len())
     }
 }
 
 #[cfg(feature = "new-geometry")]
 impl crate::ops::CountVertices for LineString3D {
-    fn count_vertices(&self) -> usize {
-        self.coords().len()
+    fn count_vertices(&self) -> crate::error::Result<usize> {
+        Ok(self.coords().len())
     }
 }
 

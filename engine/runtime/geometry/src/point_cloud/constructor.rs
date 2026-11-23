@@ -11,7 +11,7 @@ use smallvec::SmallVec;
 
 use crate::coordinate::CoordinateFrame;
 
-use super::{PointCloud, PositionEncoding, Segment};
+use super::{PointBuffer, PointCloud, PositionEncoding, Segment};
 
 /// Bytes per point in `f64` XYZ encoding (`3 * size_of::<f64>()`).
 const F64_STRIDE: u16 = 24;
@@ -33,7 +33,7 @@ impl PointCloud {
             count += 1;
         }
         let mut segments = SmallVec::new();
-        segments.push(Segment {
+        segments.push(Segment::InMemory(PointBuffer {
             source: None,
             position: PositionEncoding::F64,
             fields: 0,
@@ -42,7 +42,7 @@ impl PointCloud {
             data,
             count,
             attributes: IndexMap::new(),
-        });
+        }));
         Self {
             frame,
             segments,
@@ -62,7 +62,7 @@ mod tests {
             [[0.0, 0.0, 0.0], [1.0, 2.0, 3.0], [4.0, 5.0, 6.0]],
         );
         assert_eq!(pc.segments.len(), 1);
-        let seg = &pc.segments[0];
+        let seg = pc.segments[0].as_buffer();
         assert_eq!(seg.count, 3);
         assert_eq!(seg.stride, F64_STRIDE);
         assert_eq!(seg.data.len(), 3 * F64_STRIDE as usize);
