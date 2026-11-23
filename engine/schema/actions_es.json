@@ -2137,7 +2137,7 @@
     {
       "name": "CZML Writer",
       "type": "sink",
-      "description": "Escribe entidades en un archivo CZML, o en un archivo por grupo cuando se define `groupBy`. Las entidades que llevan un atributo de tiempo se escriben como entidades dinámicas en el tiempo con muestras de posición marcadas, y el resto como entidades estáticas.",
+      "description": "Escribe entidades en un archivo CZML, o en un archivo por grupo cuando se define `groupBy`. Al definir `timeField` y `groupTimeseriesBy` juntos, cada grupo se fusiona en una sola entidad dinámica en el tiempo con muestras de posición marcadas; `timeField` por sí solo da a cada entidad una posición estática y su propia ventana de disponibilidad. Las entidades sin atributo de tiempo se escriben como entidades estáticas.",
       "parameter": {
         "$schema": "http://json-schema.org/draft-07/schema#",
         "title": "Parámetros de CZML Writer",

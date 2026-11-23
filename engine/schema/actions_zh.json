@@ -2137,7 +2137,7 @@
     {
       "name": "CZML Writer",
       "type": "sink",
-      "description": "将要素写入一个 CZML 文件；设置 `groupBy` 时，按分组各写出一个文件。带时间属性的要素写为带时间标记位置采样的时间动态实体，其余写为静态实体。",
+      "description": "将要素写入一个 CZML 文件；设置 `groupBy` 时，按分组各写出一个文件。同时设置 `timeField` 与 `groupTimeseriesBy` 时，每个分组合并为一个带时间标记位置采样的时间动态实体；仅设置 `timeField` 时，每个要素获得静态位置和各自的可用时间区间。没有时间属性的要素写为静态实体。",
       "parameter": {
         "$schema": "http://json-schema.org/draft-07/schema#",
         "title": "CZML Writer 参数",

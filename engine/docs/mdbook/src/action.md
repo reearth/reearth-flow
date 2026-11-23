@@ -2081,7 +2081,7 @@ Reads geometry and attributes from CZML (Cesium Language) documents. Time-tagged
 ### Type
 * sink
 ### Description
-Writes features to a CZML file for display in Cesium, or to one file per group when `groupBy` is set. Features carrying a time attribute are written as time-dynamic entities with time-tagged position samples, and the rest as static entities.
+Writes features to a CZML file for display in Cesium, or to one file per group when `groupBy` is set. Set `timeField` and `groupTimeseriesBy` together to merge each group into one time-dynamic entity carrying time-tagged position samples; `timeField` alone instead gives every feature a static position and its own availability window. Features with no time attribute are written as static entities.
 ### Parameters
 ```json
 {
