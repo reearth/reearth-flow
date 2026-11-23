@@ -2182,7 +2182,7 @@
           },
           "timeField": {
             "title": "Champ de temps",
-            "description": "Attribut portant le temps de chaque entité, soit un horodatage ISO 8601, soit un nombre de secondes comptées depuis `epoch`. Défini avec `groupTimeseriesBy`, il fusionne un groupe en une seule entité dynamique dans le temps ; défini seul, chaque entité devient une entité dynamique à part entière.",
+            "description": "Attribut portant le temps de chaque entité, soit un horodatage ISO 8601, soit un nombre de secondes comptées depuis `epoch`. Défini avec `groupTimeseriesBy`, il fusionne un groupe en une seule entité dont la position est écrite sous forme d'échantillons horodatés ; défini seul, chaque entité devient une entité à part entière, visible uniquement pendant l'intervalle où tombe son temps.",
             "anyOf": [
               {
                 "$ref": "#/definitions/Attribute"
@@ -2214,7 +2214,7 @@
           },
           "interpolationAlgorithm": {
             "title": "Algorithme d'interpolation",
-            "description": "Manière dont une visionneuse interpole entre les échantillons horodatés. Écrit dans la sortie à titre indicatif ; le moteur lui-même n'interpole jamais.",
+            "description": "Manière dont une visionneuse interpole entre les échantillons horodatés. Écrit dans la sortie à titre indicatif ; le moteur lui-même n'interpole jamais. Ne s'applique qu'aux entités fusionnées par `groupTimeseriesBy`.",
             "default": "linear",
             "allOf": [
               {
@@ -2224,7 +2224,7 @@
           },
           "interpolationDegree": {
             "title": "Degré d'interpolation",
-            "description": "Degré du polynôme d'interpolation, écrit à côté de l'algorithme. L'interpolation linéaire prend 1 ; 5 est courant pour Lagrange.",
+            "description": "Degré du polynôme d'interpolation, écrit à côté de l'algorithme. L'interpolation linéaire prend 1 ; 5 est courant pour Lagrange. Ne s'applique qu'aux entités fusionnées par `groupTimeseriesBy`.",
             "default": 1,
             "type": "integer",
             "format": "uint32",
@@ -2232,7 +2232,7 @@
           },
           "polygonStyle": {
             "title": "Style de polygone",
-            "description": "Couleur de remplissage et extrusion de l'unique polygone que l'écrivain dérive de la géométrie d'une entité. S'applique aux entités dynamiques dans le temps et aux entités relues depuis le CZML ; une entité écrite directement depuis sa géométrie reçoit un paquet par face, avec le seul contour par défaut.",
+            "description": "Couleur de remplissage et extrusion de l'unique polygone que l'écrivain dérive de la géométrie d'une entité. S'applique aux entités fusionnées par `groupTimeseriesBy` et aux entités relues depuis le CZML ; une entité écrite directement depuis sa géométrie reçoit à la place un paquet par face, sans couleur de remplissage, sans extrusion et sans contour.",
             "default": null,
             "anyOf": [
               {

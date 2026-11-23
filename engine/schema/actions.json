@@ -2182,7 +2182,7 @@
           },
           "timeField": {
             "title": "Time Field",
-            "description": "Attribute holding each feature's time, either an ISO 8601 timestamp or a number of seconds counted from `epoch`. Set it together with `groupTimeseriesBy` to merge a group into one time-dynamic entity; set alone, each feature becomes a time-dynamic entity of its own.",
+            "description": "Attribute holding each feature's time, either an ISO 8601 timestamp or a number of seconds counted from `epoch`. Set it together with `groupTimeseriesBy` to merge a group into one entity whose position is written as time-tagged samples; set alone, each feature becomes its own entity, shown only during the interval its time falls in.",
             "anyOf": [
               {
                 "$ref": "#/definitions/Attribute"
@@ -2214,7 +2214,7 @@
           },
           "interpolationAlgorithm": {
             "title": "Interpolation Algorithm",
-            "description": "How a viewer interpolates between the time-tagged samples. Written into the output as a hint; the engine itself never interpolates.",
+            "description": "How a viewer interpolates between the time-tagged samples. Written into the output as a hint; the engine itself never interpolates. Applies only to entities merged by `groupTimeseriesBy`.",
             "default": "linear",
             "allOf": [
               {
@@ -2224,7 +2224,7 @@
           },
           "interpolationDegree": {
             "title": "Interpolation Degree",
-            "description": "Degree of the interpolation polynomial, written alongside the algorithm. Linear interpolation takes 1; 5 is typical for Lagrange.",
+            "description": "Degree of the interpolation polynomial, written alongside the algorithm. Linear interpolation takes 1; 5 is typical for Lagrange. Applies only to entities merged by `groupTimeseriesBy`.",
             "default": 1,
             "type": "integer",
             "format": "uint32",
@@ -2232,7 +2232,7 @@
           },
           "polygonStyle": {
             "title": "Polygon Style",
-            "description": "Fill colour and extrusion for the single polygon the writer derives from a feature's geometry. This applies to time-dynamic entities and to features read back from CZML; a feature written straight from its geometry gets one packet per face, with the default outline only.",
+            "description": "Fill colour and extrusion for the single polygon the writer derives from a feature's geometry. This applies to entities merged by `groupTimeseriesBy` and to features read back from CZML; a feature written straight from its geometry gets one packet per face instead, with no fill colour, extrusion or outline.",
             "default": null,
             "anyOf": [
               {

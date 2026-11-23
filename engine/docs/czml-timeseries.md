@@ -128,7 +128,7 @@ The writer automatically detects the feature format and chooses the appropriate 
 
 ### Embedded Mode (Option B) — Recommended
 
-When features have `czml.timeseries` attributes (from `preserveRaw` reading), the writer reconstructs full CZML packets:
+When any feature carries a `czml.*` attribute (from `preserveRaw` reading), or `timeField` is set without `groupTimeseriesBy`, the writer reconstructs full CZML packets:
 
 - Position with time-tagged `cartographicDegrees` (numeric offsets or ISO strings)
 - Interpolation metadata (`epoch`, `interpolationAlgorithm`, `interpolationDegree`)

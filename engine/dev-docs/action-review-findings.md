@@ -477,7 +477,7 @@ workflow that names it, so no existing workflow broke.
 |---|---|---|
 | Exposed and audited | 89 | — |
 | Exposed, PLATEAU (outside this audit's settled scope) | 25 | n/a |
-| Does not run in the shipped build | 15 | Its new-geometry port landing (Notion FLOW-DEV-182) |
+| Does not run in the shipped build | 15 (stale upper bound, see below) | Its new-geometry port landing (Notion FLOW-DEV-182) |
 | **Pending audit** | **3** | An engine-side §8 pass — the list below |
 | Flagged for removal | 2 | None; they owe an engine-side deletion |
 | Retired on design grounds | 2 | A scope decision, see below |
@@ -489,6 +489,13 @@ every feature and had never been reviewed, and #2553 recorded the move nowhere, 
 list at all. The "does not run" figure drops by one for it, from 16 to 15, but that figure is
 the ledger's own arithmetic and has never been reconciled against the code; see "Deferred:
 reconcile the does-not-run bucket" after the Extruder addendum.
+
+**The 15 is an upper bound, not a count.** Decrementing it is what records a departure, and three
+actions left the bucket without one: `CityGML Writer` (#2355), `CZML Reader` (#2468) and
+`CZML Writer` (#2444) all had their ports merge unrecorded, and each was audited afterwards
+against a figure nobody moved. So the 15 still counts them, and the true figure is 12 — assuming
+no fourth port has done the same, which is exactly what the deferred reconciliation exists to
+settle. Do not read the 15 as arithmetic that balances until that item is done.
 
 **`Bufferer` was re-checked and is now exposed.** It was the one action sitting between buckets:
 its new-geometry port landed in #2370, and it had been reviewed in the Geometry A batch (#2317),
@@ -566,8 +573,9 @@ sub-list is now empty — the next action to join it will be whichever geometry 
 `CityGML Writer`, `CZML Reader` and `CZML Writer` never appeared in this list even though they
 belonged in it: their ports (#2355, #2468, #2444) merged without recording the move, so they were
 found by going back through the merged ports rather than by reading this file. That is the failure
-§7.2 describes, and it has now happened four times. When checking what is pending, read the
-merged geometry ports as well as this list.
+§7.2 describes, and with `Elevation Extractor` and `Extruder` before them it has now happened to
+five actions across five port PRs. When checking what is pending, read the merged geometry ports
+as well as this list.
 
 #### Group E — Root-level `oneOf` restructuring (2 remaining, plus 1 already-audited)
 
@@ -764,7 +772,7 @@ reader needs. Confirmed order today:
 | Reader | Schema order |
 |---|---|
 | Shapefile Reader | `encoding, force2D, allowEmptyPath, dataset, inline` |
-| CZML Reader | `force2d, skipDocumentPacket, timeSampling, dataset, inline` |
+| CZML Reader | `force2D, skipDocumentPacket, timeSampling, dataset, inline` |
 | GeoPackage Reader | `readMode, layerName, force2D, dataset, inline` |
 | OBJ Reader | `parseMaterials, materialFile, triangulate, mergeGroups, includeTexcoords, dataset, inline` |
 | glTF Reader | `mergeMeshes, includeNodes, featureClassAttribute, featureGranularity, dataset, inline` |
@@ -2260,14 +2268,18 @@ CZML Reader: kept and exposed
   diag:    OK on the drop paths: an unsupported position, an INERTIAL cartesian frame and
              `force2D` on a geocentric packet all go through `ctx.report_drop` with a registry
              code, and the packet is skipped rather than silently vanishing.
-  diag:    DEFERRED. A malformed file fails the read with a plain `SourceError`, so it reaches
-             the user as `internal.unclassified`/Fatal even though a bad CZML file is exactly
-             the kind of failure a user can fix. §9 says a source `start()` *can* classify
-             (`CSV Reader` raises `csv.no_data_rows` this way), so this is reachable, not a
-             platform gap. Not done here: the registry has no generic parse code to reuse, so it
-             wants a `czml.parse_failed` alongside `citygml.parse_failed`, and adding a code
-             drags in the manual `schema/error-codes.json` regeneration. TRIGGER: the next PR
-             that adds a CZML error code for any reason takes this one with it.
+  diag:    FIXED. A malformed file used to fail the read with a plain `SourceError`, so it
+             reached the user as `internal.unclassified`/Fatal even though a bad CZML file is
+             exactly the kind of failure a user can fix. §9 says a source `start()` *can*
+             classify (`CSV Reader` raises `csv.no_data_rows` this way), so this was reachable,
+             not a platform gap. Deferred at first because the registry had no generic parse
+             code to reuse and adding one drags in the manual `schema/error-codes.json`
+             regeneration — then the trigger ("the next PR that adds a CZML error code for any
+             reason takes this one with it") fired inside this same PR, which added
+             `czml.untimed_sample`. `czml.parse_failed` now sits alongside
+             `citygml.parse_failed` and is raised at all four failure points in
+             `czml_next::read`, with a test that pins the classification and a passing file as
+             its control.
   name:    OK.
   desc:    OK. Verb-first, two sentences, and it matches what the three strategies actually do.
   params:  FIXED. `force2d` was the only reader on that spelling; `GeoPackage Reader` and
@@ -2396,12 +2408,65 @@ its `interpolationAlgorithm` examples were updated for the camelCase values, `po
 added to its parameter table, and its claim that the writer "falls back to legacy CityGML polygon
 output" was corrected — #2444 replaced that fallback with per-feature geometry packets.
 
-**The does-not-run reconciliation is untouched.** Its trigger is a PR that moves an action into
-or out of that bucket; these two left it when their ports merged in September, so this PR does
-not meet it. The item stays open.
+**The does-not-run reconciliation is still open, and this PR narrowed it.** Its trigger is a PR
+that moves an action into or out of that bucket; these two left it when their ports merged in
+September, so this PR does not meet it. What it did do is name the three departures the 15 never
+recorded (`CityGML Writer`, `CZML Reader`, `CZML Writer`), so the bucket table now says the
+figure is an upper bound and gives 12 as the number to verify when the item is finally done.
 
 **Bucket arithmetic.** Both actions were in no list (owed since #2444 and #2468) and leave pending
-audit in this PR, so pending audit stays at 3, "does not run" stays at 15, and exposed and audited
-rises from 87 to 89. Palette recounted with `grep -c 'true,' base_actions.go`: **114**, of which
+audit in this PR, so pending audit stays at 3, and exposed and audited rises from 87 to 89. The
+"does not run" figure stays written as 15 but is now labelled an upper bound: it still counts
+these two and the `CityGML Writer`, so the real number is 12, pending the reconciliation item. Palette recounted with `grep -c 'true,' base_actions.go`: **114**, of which
 25 are PLATEAU, cross-checked per section comment (Input 13, Output 13, Geometry 27, Attribute 13,
 Feature / Flow 16, Utility 7, PLATEAU 25) with no duplicate keys.
+
+
+### Post-review round — defects found reviewing this PR
+
+A full review of this PR, run across the writer's logic, the generated surface and the audit's
+own claims, found nine defects the audit had missed or created. All are fixed here.
+
+**Two were silent wrong output.** A group where *no* feature carries a time is static, and the
+untimed guard only fired when a sibling had one, so each feature pushed a bare triple into one
+`cartographicDegrees`: Cesium reads a list longer than three as time-tagged quads, so three
+untimed features put the entity at a garbage coordinate at a garbage time. Reachable from a
+misspelled `timeField`, since the grouped path is chosen from the parameters alone. And grouping
+`colorAttribute`, `opacity` and `heightAttribute` under `polygonStyle` left a workflow on the
+flat spelling deserializing clean and writing an unstyled polygon, because `CzmlWriterParam`
+does not deny unknown fields — the one place this PR broke compatibility while keeping `force2d`
+and the uppercase interpolation values working two files away. The flat names are now hidden
+`#[schemars(skip)]` fields that `build()` folds in, so the advertised surface is unchanged.
+
+**Three were silent data loss.** `faces_of` returns `Ok` whenever any face exists, so a feature
+holding both a polygon and a line string never reached `lines_of` and lost the line. A time value
+that is neither a timestamp nor a number went into the file verbatim, where `JulianDate.fromIso8601`
+throws and the whole document fails to load. An areal grouped-timeseries entity discards every
+sample it collected, because a CZML polygon carries its own coordinates and cannot be moved by
+`position` — kept, since animating areal features is a different output, but now reported under
+`czml.areal_samples_dropped` instead of happening in silence.
+
+**Two were descriptions that did not match the code**, which §8 calls a defect in its own right.
+`timeField` promised that setting it alone makes "a time-dynamic entity of its own", but the
+per-entity path writes a *static* position plus an availability window; the maintainer comment at
+`build_embedded_czml_next` said so correctly while the shipped text did not. And `polygonStyle`
+said an unstyled face packet gets "the default outline only" when it gets no outline at all — the
+styled path is the one that adds it. Both corrected in all five languages, along with the two
+interpolation parameters, which are read only on the grouped path and now say so.
+
+**One was an accepted-but-unapplied parameter.** `polygonStyle` does not reach the geometry-only
+path, which is the default one, so the most ordinary configuration there is accepted the block and
+ignored it. The restriction stands, but it now says so once per node under
+`czml.style_not_applied`.
+
+**One was an unvalidated parameter written straight into the output.** `build()` refuses
+`interpolationDegree: 0` on the argument that a bad value "would be written straight into the
+output for a viewer to reject", and `epoch` got no such check: `2024-01-01` is not RFC 3339, so
+every conversion that counts a numeric time from it failed and the file was unusable from a green
+run. Refused in `build()` now, beside the degree.
+
+Four codes were added for this round — `czml.unparsable_time`, `czml.areal_samples_dropped`,
+`czml.style_not_applied` and `czml.parse_failed` — taking the registry from 79 to 83, and
+`czml.untimed_sample`'s help text now covers the static shape as well as the time-dynamic one.
+Every fix is pinned by a test that was mutation-checked: each one was re-run with its fix reverted
+and observed to fail.

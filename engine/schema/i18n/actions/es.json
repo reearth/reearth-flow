@@ -810,11 +810,11 @@
         },
         "interpolationAlgorithm": {
           "title": "Algoritmo de interpolación",
-          "description": "Cómo interpola un visor entre las muestras marcadas en el tiempo. Se escribe en la salida como indicación; el motor nunca interpola por sí mismo."
+          "description": "Cómo interpola un visor entre las muestras marcadas en el tiempo. Se escribe en la salida como indicación; el motor nunca interpola por sí mismo. Solo se aplica a las entidades fusionadas por `groupTimeseriesBy`."
         },
         "interpolationDegree": {
           "title": "Grado de interpolación",
-          "description": "Grado del polinomio de interpolación, escrito junto al algoritmo. La interpolación lineal usa 1; 5 es habitual para Lagrange."
+          "description": "Grado del polinomio de interpolación, escrito junto al algoritmo. La interpolación lineal usa 1; 5 es habitual para Lagrange. Solo se aplica a las entidades fusionadas por `groupTimeseriesBy`."
         },
         "output": {
           "title": "Ruta del archivo de salida",
@@ -822,11 +822,11 @@
         },
         "polygonStyle": {
           "title": "Estilo de polígono",
-          "description": "Color de relleno y extrusión del único polígono que el escritor deriva de la geometría de una entidad. Se aplica a las entidades dinámicas en el tiempo y a las entidades releídas desde CZML; una entidad escrita directamente desde su geometría obtiene un paquete por cara, solo con el contorno predeterminado."
+          "description": "Color de relleno y extrusión del único polígono que el escritor deriva de la geometría de una entidad. Se aplica a las entidades fusionadas por `groupTimeseriesBy` y a las entidades releídas desde CZML; una entidad escrita directamente desde su geometría obtiene en cambio un paquete por cara, sin color de relleno, extrusión ni contorno."
         },
         "timeField": {
           "title": "Campo de tiempo",
-          "description": "Atributo que contiene el tiempo de cada entidad, ya sea una marca de tiempo ISO 8601 o un número de segundos contados desde `epoch`. Defínelo junto con `groupTimeseriesBy` para fusionar un grupo en una sola entidad dinámica en el tiempo; definido en solitario, cada entidad se convierte en una entidad dinámica propia."
+          "description": "Atributo que contiene el tiempo de cada entidad, ya sea una marca de tiempo ISO 8601 o un número de segundos contados desde `epoch`. Defínelo junto con `groupTimeseriesBy` para fusionar un grupo en una sola entidad cuya posición se escribe como muestras marcadas en el tiempo; definido en solitario, cada entidad se convierte en una entidad propia, visible solo durante el intervalo en que cae su tiempo."
         }
       },
       "definitionI18n": {

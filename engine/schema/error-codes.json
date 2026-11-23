@@ -182,6 +182,13 @@
     "help": "Check the file path, and check the header row settings if the file does have data."
   },
   {
+    "code": "czml.areal_samples_dropped",
+    "category": "geometry",
+    "defaultDisposition": "warn_drop",
+    "message": "wrote an areal entity's first footprint and dropped its time samples",
+    "help": "A CZML polygon carries its own coordinates, so an entity drawn as a polygon cannot be moved by its position samples. A group whose features are areal is therefore written as one static footprint, taken from the first feature that could be placed. Group the features as points to animate them, or write one entity per feature."
+  },
+  {
     "code": "czml.empty_geometry",
     "category": "geometry",
     "defaultDisposition": "warn_drop",
@@ -217,11 +224,32 @@
     "help": "CZML Writer only converts CityGML geometry to polygons; route other geometry types to a different writer."
   },
   {
+    "code": "czml.parse_failed",
+    "category": "parse",
+    "defaultDisposition": "fatal",
+    "message": "could not parse the CZML file",
+    "help": "The file is not valid CZML: it must be a JSON array of packets whose first packet has id \"document\". Check that the file is CZML rather than GeoJSON or another JSON format, and that it is not truncated."
+  },
+  {
+    "code": "czml.style_not_applied",
+    "category": "config",
+    "defaultDisposition": "warn_drop",
+    "message": "polygonStyle was set but this batch is written straight from geometry, which it does not reach",
+    "help": "polygonStyle colours and extrudes the single polygon the writer derives for a time-dynamic entity or for a feature read back from CZML. A feature written straight from its geometry gets one packet per face instead, and those faces are not styled. Set timeField, or read the features back through the CZML Reader, to get a styled entity."
+  },
+  {
     "code": "czml.too_many_faces",
     "category": "geometry",
     "defaultDisposition": "warn_drop",
     "message": "skipped feature with more faces than the writer will emit",
     "help": "Each face becomes its own CZML entity, so a finely tessellated surface such as a terrain mesh produces an unusably large file. Simplify or split the geometry before the CZML Writer."
+  },
+  {
+    "code": "czml.unparsable_time",
+    "category": "schema",
+    "defaultDisposition": "warn_drop",
+    "message": "dropped position whose time value is neither a timestamp nor a number",
+    "help": "CZML writes times as ISO 8601 timestamps, or as numbers of seconds counted from an epoch. A timeField value that is neither cannot be written, and writing it unchanged produced a file no viewer could load. Correct the attribute, or point timeField at one that holds a time."
   },
   {
     "code": "czml.unplaceable_frame",
