@@ -241,8 +241,8 @@
     "code": "czml.untimed_sample",
     "category": "schema",
     "defaultDisposition": "warn_drop",
-    "message": "dropped sample with no time value from a time-dynamic entity",
-    "help": "Features grouped by groupTimeseriesBy share one entity, and the entity's positions are written as time-tagged samples. A feature with no value in timeField has no place on that timeline, so its position cannot be written. Give every feature in the group a time value, or group it separately."
+    "message": "dropped position with no time value from a grouped entity",
+    "help": "Features grouped by groupTimeseriesBy share one entity. When some of them carry a value in timeField, the entity's positions are written as time-tagged samples and a feature without one has no place on that timeline. When none of them do, the entity is static and holds a single position, so only the first can be written. Either way the rest are dropped. Give every feature in the group a time value, or group it separately."
   },
   {
     "code": "expr.attribute_operation_failed",

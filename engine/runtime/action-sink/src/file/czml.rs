@@ -97,6 +97,22 @@ impl SinkFactory for CzmlWriterFactory {
             )
             .into());
         };
+        // Before `sanitize`, so a folded-in attribute gets the same expression
+        // unwrapping as one written under `polygonStyle`. Only when no
+        // `polygonStyle` block was given: a params object carrying both
+        // spellings is a half-finished migration, and the new one is what the
+        // user wrote last.
+        if params.polygon_style.is_none()
+            && (params.legacy_color_attribute.is_some()
+                || params.legacy_opacity.is_some()
+                || params.legacy_height_attribute.is_some())
+        {
+            params.polygon_style = Some(PolygonStyleParam {
+                color_attribute: params.legacy_color_attribute.take(),
+                opacity: params.legacy_opacity.unwrap_or_else(default_opacity),
+                height_attribute: params.legacy_height_attribute.take(),
+            });
+        }
         params.sanitize();
         // A degree of 0 is not an interpolation: CZML's own `interpolationDegree`
         // is the degree of the polynomial, so 0 would be written straight into the
@@ -206,6 +222,28 @@ pub(crate) struct CzmlWriterParam {
     /// geometry gets one packet per face, with the default outline only.
     #[serde(default)]
     pub(super) polygon_style: Option<PolygonStyleParam>,
+    // The three styling parameters below sat at the top level until they were
+    // grouped under `polygonStyle` to bring the count to §3.5's guideline.
+    // `CzmlWriterParam` does not deny unknown fields, so a workflow still on
+    // the flat spelling deserialized clean, left `polygon_style` as `None`,
+    // and wrote an unstyled polygon with no error and no warning. These keep
+    // it working, the same answer this action already gives for `force2d` and
+    // for the uppercase interpolation values.
+    //
+    // `#[schemars(skip)]` keeps them out of the schema, and so out of the
+    // palette and `action.md`: the advertised surface stays the eight
+    // parameters the audit designed. `build()` folds them into `polygon_style`
+    // and nothing downstream reads them, so this is the only place the old
+    // spelling exists.
+    #[serde(default, rename = "colorAttribute", skip_serializing)]
+    #[schemars(skip)]
+    pub(super) legacy_color_attribute: Option<Attribute>,
+    #[serde(default, rename = "opacity", skip_serializing)]
+    #[schemars(skip)]
+    pub(super) legacy_opacity: Option<u8>,
+    #[serde(default, rename = "heightAttribute", skip_serializing)]
+    #[schemars(skip)]
+    pub(super) legacy_height_attribute: Option<Attribute>,
 }
 
 /// # Polygon Style
@@ -848,6 +886,21 @@ fn report_unplaced(gctx: &Context, feature: &Feature, err: PlacementError) {
     let _ = ectx.report(placement_draft(err, feature));
 }
 
+/// Report a feature whose position could not be written because it carries no
+/// time value. Both shapes of the problem are the same code: `where` names the
+/// entity and says which of the two it was, since the draft message is the only
+/// place that detail survives (the registry's help text covers both).
+#[cfg(feature = "new-geometry")]
+fn report_untimed_sample(gctx: &Context, feature: &Feature, where_: &str) {
+    let ectx = gctx.as_executor_context(feature.clone(), FEATURES_PORT.clone());
+    let _ = ectx.report(
+        DiagnosticDraft::new(ErrorCode::CzmlUntimedSample).with_message(format!(
+            "dropped position with no time value from {where_}: feature_id={}",
+            feature.id
+        )),
+    );
+}
+
 /// Decide and build every CZML packet for one feature (mode 3: geometry-only
 /// features that are neither grouped-timeseries nor `czml.*`-bearing). Tries
 /// areal geometry first (every face becomes its own polygon packet), then
@@ -1231,20 +1284,31 @@ fn build_entity_packet_next(
                 // sent the entity to garbage coordinates at garbage times.
                 // Dropping the sample is the only valid output; saying so is
                 // what keeps it from being a silent one.
-                let ectx = gctx.as_executor_context((*feature).clone(), FEATURES_PORT.clone());
-                let _ = ectx.report(
-                    DiagnosticDraft::new(ErrorCode::CzmlUntimedSample).with_message(format!(
-                        "dropped sample with no time value from time-dynamic entity \
-                         {entity_id}: feature_id={}",
-                        feature.id
-                    )),
-                );
+                report_untimed_sample(gctx, feature, &format!("time-dynamic entity {entity_id}"));
                 continue;
             }
+            // Nothing in this group carries a time, so the entity is static
+            // and its `cartographicDegrees` is a single [lon, lat, height].
+            // Cesium chooses between the static and time-tagged readings on
+            // length alone (`> 3` means time-tagged), so a second triple does
+            // not add a second position: it reinterprets the whole list as
+            // malformed quads, and the first longitude becomes a time. One
+            // position is all a static entity has, so the first placeable
+            // feature supplies it and the rest are dropped — reported, for
+            // the same reason the time-dynamic branch reports.
             if let Some((lon, lat, height)) = placed {
-                cartographic_degrees.push(serde_json::json!(lon));
-                cartographic_degrees.push(serde_json::json!(lat));
-                cartographic_degrees.push(serde_json::json!(height));
+                if first_sampled.is_none() {
+                    first_sampled = Some(feature);
+                    cartographic_degrees.push(serde_json::json!(lon));
+                    cartographic_degrees.push(serde_json::json!(lat));
+                    cartographic_degrees.push(serde_json::json!(height));
+                } else {
+                    report_untimed_sample(
+                        gctx,
+                        feature,
+                        &format!("static entity {entity_id}, which holds one position"),
+                    );
+                }
             }
             continue;
         }
@@ -1330,7 +1394,12 @@ fn build_entity_packet_next(
                 .map(|(f, _)| *f)
         })
     } else {
-        sorted.first().map(|(f, _)| *f)
+        // Same rule on the static path: the feature whose position was
+        // actually written is the one the entity stands for, so its graphic
+        // and description are the ones that belong to that position. Falling
+        // back to the first in the group only matters when nothing was
+        // placeable, where there is no position to be consistent with.
+        first_sampled.or_else(|| sorted.first().map(|(f, _)| *f))
     };
 
     let name = first_feature
@@ -3634,6 +3703,92 @@ mod new_geometry_tests {
         );
     }
 
+    #[test]
+    fn the_styling_parameters_old_top_level_names_still_apply() {
+        // `colorAttribute`, `opacity` and `heightAttribute` moved under
+        // `polygonStyle` to bring the parameter count to §3.5's guideline.
+        // `CzmlWriterParam` does not deny unknown fields, so a workflow still
+        // on the flat spelling deserialized clean, left `polygon_style` as
+        // `None`, and wrote an unstyled polygon with no error and no warning.
+        // The same PR kept `force2d` and the uppercase interpolation values
+        // working; these get the same treatment.
+        let mut feature =
+            fixture::polygon_timeseries_feature_in(6677, "2024-01-01T00:00:00Z", "v1");
+        feature.insert(
+            Attribute::new("fillColor"),
+            AttributeValue::String("#ffd8c0".to_string()),
+        );
+        feature.insert(
+            Attribute::new("buildingHeight"),
+            AttributeValue::Number(serde_json::Number::from(12)),
+        );
+
+        let doc = parse(&fixture::write_legacy_styled_timeseries_batch(
+            vec![feature],
+            "timestamp",
+            "vehicleId",
+            "fillColor",
+            "buildingHeight",
+        ));
+        let polygon = doc
+            .iter()
+            .find(|p| p.get("id") == Some(&Value::String("v1".to_string())))
+            .and_then(|p| p.get("polygon"))
+            .expect("the vehicleId=v1 entity's polygon");
+
+        assert_eq!(
+            polygon["material"]["solidColor"]["color"]["rgba"],
+            serde_json::json!([255, 216, 192, 120]),
+            "the old top-level colorAttribute and opacity must still reach the \
+             polygon: {polygon:?}"
+        );
+        assert_eq!(
+            polygon["extrudedHeight"],
+            serde_json::json!(12.0),
+            "the old top-level heightAttribute must still reach the polygon: {polygon:?}"
+        );
+    }
+
+    #[test]
+    fn an_explicit_polygon_style_block_wins_over_the_old_top_level_names() {
+        // The flat names are a fallback for workflows written before the
+        // grouping, not a second way to say the same thing. A params object
+        // carrying both is most likely a half-finished migration, and the new
+        // spelling is the one the user last wrote.
+        let mut feature =
+            fixture::polygon_timeseries_feature_in(6677, "2024-01-01T00:00:00Z", "v1");
+        feature.insert(
+            Attribute::new("fillColor"),
+            AttributeValue::String("#ffd8c0".to_string()),
+        );
+
+        let mut extra = HashMap::new();
+        extra.insert("timeField".to_string(), serde_json::json!("timestamp"));
+        extra.insert(
+            "groupTimeseriesBy".to_string(),
+            serde_json::json!("vehicleId"),
+        );
+        extra.insert("colorAttribute".to_string(), serde_json::json!("fillColor"));
+        extra.insert("opacity".to_string(), serde_json::json!(10));
+        extra.insert(
+            "polygonStyle".to_string(),
+            serde_json::json!({ "colorAttribute": "fillColor", "opacity": 200 }),
+        );
+
+        let doc = parse(&fixture::write_batch_with_params(vec![feature], extra));
+        let polygon = doc
+            .iter()
+            .find(|p| p.get("id") == Some(&Value::String("v1".to_string())))
+            .and_then(|p| p.get("polygon"))
+            .expect("the vehicleId=v1 entity's polygon");
+
+        assert_eq!(
+            polygon["material"]["solidColor"]["color"]["rgba"],
+            serde_json::json!([255, 216, 192, 200]),
+            "the polygonStyle block's opacity must win: {polygon:?}"
+        );
+    }
+
     /// One grouped-timeseries point feature: a placeable point, a group key,
     /// and `time` as its timestamp unless `time` is empty, in which case the
     /// attribute is left off entirely.
@@ -3705,6 +3860,76 @@ mod new_geometry_tests {
             [serde_json::json!(0.0), serde_json::json!(60.0)],
             "each quad must begin with its own time: {samples:?}"
         );
+    }
+
+    #[test]
+    fn a_group_where_no_feature_is_timed_writes_exactly_one_static_position() {
+        // The guard that keeps a bare triple out of a time-dynamic list only
+        // fires when some sibling carries a time. When *every* feature in the
+        // group is untimed — a misspelled `timeField`, or an attribute absent
+        // on this group alone — the entity is static, and each feature pushed
+        // its own triple into one `cartographicDegrees`. Cesium chooses
+        // between the static and time-tagged readings on length alone
+        // (`> 3` means time-tagged), so three features produced a 9-element
+        // list read as two-and-a-bit quads: the first longitude became a time.
+        // A static entity holds exactly one position.
+        let doc = parse(&fixture::write_timeseries_batch(
+            vec![
+                grouped_point("", "v1"),
+                grouped_point("", "v1"),
+                grouped_point("", "v1"),
+            ],
+            "timestamp",
+            "vehicleId",
+        ));
+
+        let entity = doc
+            .iter()
+            .find(|p| p.get("id") == Some(&Value::String("v1".to_string())))
+            .expect("the vehicleId=v1 entity");
+        let position = &entity["position"];
+        let samples = position["cartographicDegrees"]
+            .as_array()
+            .expect("a position list");
+
+        assert_eq!(
+            samples.len(),
+            3,
+            "a static entity holds one [lon, lat, height], not one per feature: {samples:?}"
+        );
+        assert!(
+            samples.iter().all(|v| v.is_f64()),
+            "every element of a static position is a coordinate: {samples:?}"
+        );
+        assert!(
+            position.get("interpolationAlgorithm").is_none(),
+            "a static entity carries no interpolation hint: {position}"
+        );
+        assert!(
+            position.get("epoch").is_none(),
+            "a static entity carries no epoch: {position}"
+        );
+    }
+
+    #[test]
+    fn a_single_untimed_feature_still_writes_a_plain_triple() {
+        // The companion to the test above: collapsing to one position must not
+        // turn the ordinary one-feature group into something else.
+        let doc = parse(&fixture::write_timeseries_batch(
+            vec![grouped_point("", "v1")],
+            "timestamp",
+            "vehicleId",
+        ));
+
+        let entity = doc
+            .iter()
+            .find(|p| p.get("id") == Some(&Value::String("v1".to_string())))
+            .expect("the vehicleId=v1 entity");
+        let samples = entity["position"]["cartographicDegrees"]
+            .as_array()
+            .expect("a position list");
+
+        assert_eq!(samples.len(), 3, "one feature, one triple: {samples:?}");
     }
 
     #[test]
@@ -4126,6 +4351,43 @@ mod new_geometry_tests {
             write_batch_with(features, extra)
         }
 
+        /// As [`write_styled_timeseries_batch`], but passing the three styling
+        /// parameters at the top level, where they lived before they were
+        /// grouped under `polygonStyle`.
+        pub(super) fn write_legacy_styled_timeseries_batch(
+            features: Vec<Feature>,
+            time_field: &str,
+            group_timeseries_by: &str,
+            color_attribute: &str,
+            height_attribute: &str,
+        ) -> String {
+            let mut extra = HashMap::new();
+            extra.insert("timeField".to_string(), serde_json::json!(time_field));
+            extra.insert(
+                "groupTimeseriesBy".to_string(),
+                serde_json::json!(group_timeseries_by),
+            );
+            extra.insert(
+                "colorAttribute".to_string(),
+                serde_json::json!(color_attribute),
+            );
+            extra.insert(
+                "heightAttribute".to_string(),
+                serde_json::json!(height_attribute),
+            );
+            extra.insert("opacity".to_string(), serde_json::json!(120));
+            write_batch_with(features, extra)
+        }
+
+        /// [`write_batch_with`] under a name a test can reach, for the cases
+        /// that need a parameter combination no named helper covers.
+        pub(super) fn write_batch_with_params(
+            features: Vec<Feature>,
+            with: HashMap<String, serde_json::Value>,
+        ) -> String {
+            write_batch_with(features, with)
+        }
+
         fn write_batch_with(
             features: Vec<Feature>,
             mut with: HashMap<String, serde_json::Value>,
@@ -4497,6 +4759,49 @@ mod new_geometry_diagnostics_tests {
         assert_eq!(
             summaries[0].effective_disposition,
             Some(Disposition::WarnDrop)
+        );
+    }
+
+    #[test]
+    fn an_all_untimed_groups_extra_positions_are_reported_not_silently_dropped() {
+        // The static side of the same drop. A group where nothing carries a
+        // time collapses to one position, so every feature after the first
+        // loses one — and losing it quietly is what the time-dynamic branch
+        // already refuses to do.
+        let handle = make_handle();
+        let ctx = context_with_handle(&handle);
+        let mut cache = ReprojectionCache::default();
+        let first = diag_grouped_point("", "v1");
+        let second = diag_grouped_point("", "v1");
+        let third = diag_grouped_point("", "v1");
+        let features: Vec<&Feature> = vec![&first, &second, &third];
+
+        let mut params = per_entity_params();
+        params.group_timeseries_by = Some(Attribute::new("vehicleId"));
+
+        let packet = build_entity_packet_next(&ctx, "v1", &features, &params, &mut cache).unwrap();
+
+        let samples = packet["position"]["cartographicDegrees"]
+            .as_array()
+            .expect("a position list");
+        assert_eq!(samples.len(), 3, "one position survives: {samples:?}");
+
+        let summaries = handle.inner.drain_summaries();
+        assert_eq!(summaries.len(), 1, "got {summaries:?}");
+        assert_eq!(
+            summaries[0].aggregated.as_ref().unwrap().count,
+            2,
+            "the two features after the first are each reported: {summaries:?}"
+        );
+        assert!(
+            summaries[0].message.contains("czml.untimed_sample"),
+            "got {}",
+            summaries[0].message
+        );
+        assert_eq!(
+            summaries[0].effective_disposition,
+            Some(Disposition::WarnDrop),
+            "a dropped position must be reported (WarnDrop), not warn()ed"
         );
     }
 
