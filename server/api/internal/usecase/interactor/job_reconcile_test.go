@@ -300,17 +300,22 @@ func TestJob_Cancel_ABatchJobReadsCancelled(t *testing.T) {
 	assert.NotNil(t, got.CompletedAt())
 }
 
-// artifactsFile fails to list artifacts while err is set.
+// artifactsFile fails to list artifacts while err is set, and for its first failFirst calls.
 type artifactsFile struct {
 	*mockCheckStatusFile
-	err     error
-	outputs []string
-	mu      sync.Mutex
+	err       error
+	outputs   []string
+	failFirst int
+	mu        sync.Mutex
 }
 
 func (f *artifactsFile) ListJobArtifacts(context.Context, string) ([]string, error) {
 	f.mu.Lock()
 	defer f.mu.Unlock()
+	if f.failFirst > 0 {
+		f.failFirst--
+		return nil, errors.New("gcs unavailable")
+	}
 	return f.outputs, f.err
 }
 
@@ -447,4 +452,36 @@ func TestJob_startMonitoringIfNeeded_NotifiesAFinishedJobAfterAFailedReconcile(t
 	default:
 		t.Fatal("subscribers were not told the job finished")
 	}
+}
+
+func TestJob_runMonitoringLoop_RecoversArtifactsAndSendsTheWebhook(t *testing.T) {
+	t.Parallel()
+	ctx := context.Background()
+	jobs := memory.NewJob()
+	j := runningTriggerJob(t, jobs, "https://example.com/hook")
+	live := &reconcileLiveStore{event: &gateway.JobCompleteEvent{Timestamp: time.Now(), JobID: j.ID().String(), Result: "success"}}
+	n := &recordingNotifier{}
+	i := newReconcileJob(jobs, live, &reconcileBatch{status: gateway.JobStatusCompleted}, n)
+	i.file = &artifactsFile{mockCheckStatusFile: &mockCheckStatusFile{}, failFirst: 2, outputs: []string{"https://example.com/out.zip"}}
+	i.monitorInterval = 10 * time.Millisecond
+
+	done := make(chan struct{})
+	go func() {
+		i.runMonitoringLoop(ctx, j)
+		close(done)
+	}()
+	select {
+	case <-done:
+	case <-time.After(5 * time.Second):
+		t.Fatal("the loop did not stop after recovering the artifacts")
+	}
+
+	got, err := jobs.FindByID(ctx, j.ID())
+	require.NoError(t, err)
+	assert.Equal(t, job.StatusCompleted, got.Status())
+	assert.False(t, got.ArtifactsPending())
+	assert.Equal(t, []string{"https://example.com/out.zip"}, got.OutputURLs())
+	require.Equal(t, 1, n.count())
+	assert.Equal(t, []string{"https://example.com/out.zip"}, n.sent[0].Outputs)
+	assert.NotNil(t, got.NotifiedAt())
 }

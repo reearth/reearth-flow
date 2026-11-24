@@ -432,7 +432,8 @@ func (i *Job) runMonitoringLoop(ctx context.Context, j *job.Job) {
 				log.Errorfc(ctx, "job: status check failed for job ID %s: %v", jobID, err)
 				continue
 			}
-			if status := currentJob.Status(); status.IsTerminal() {
+			// A finished job with pending artifacts is polled until Reconcile lists them and sends the webhook.
+			if status := currentJob.Status(); status.IsTerminal() && !currentJob.ArtifactsPending() {
 				log.Infof("Job ID %s in terminal state %s, stopping monitoring", jobID, status)
 				return
 			}
