@@ -15,8 +15,6 @@ generate_truth = true
 ".attributes" = "json"
 ".attributes.meshcode" = "string"
 ".uro:BuildingDetailAttribute_uro:surveyYear" = "int"
-".利根川水系大落古利根川（都道府県管理区間）_L2（想定最大規模）_浸水継続時間" = "ignore_both"
-".荒川水系荒川（国管理区間）_L2（想定最大規模）_浸水継続時間" = "ignore_both"
 
 [tests.json_attributes_v2.cesium_bldg_3dtiles_lod1_jgd2024_full]
 path = "cesium_bldg_3dtiles_lod1_jgd2024_full_truth.json"
