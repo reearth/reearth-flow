@@ -1,6 +1,6 @@
 [package]
 name = "plateau-tiles-test"
-version = "0.2.265"
+version = "0.2.266"
 edition.workspace = true
 
 [features]

@@ -1,26 +1,21 @@
 //! PointCloud constructors.
 //!
-//! `from_positions` builds the basic case: a single acquisition segment of bare
-//! XYZ points in `f64` encoding — no optional fields, no user attributes — the
-//! shape a plain XYZ reader produces. The richer machinery (RGB / intensity /
-//! normals, `f32` or scaled-`i32` encodings, per-point attribute columns, multiple
-//! segments) is deferred until a reader needs it.
-
-use std::sync::OnceLock;
+//! `from_positions` builds the basic case: bare XYZ points in `f64` encoding,
+//! with no optional fields or user attributes.
+//! LAS / LAZ input is read by `PointCloud::from_las`.
 
 use indexmap::IndexMap;
-use smallvec::SmallVec;
 
 use crate::coordinate::CoordinateFrame;
 
-use super::{PointCloud, PositionEncoding, Segment};
+use super::{Data, PointBuffer, PointCloud, PositionEncoding};
 
 /// Bytes per point in `f64` XYZ encoding (`3 * size_of::<f64>()`).
 const F64_STRIDE: u16 = 24;
 
 impl PointCloud {
-    /// Build a point cloud from bare XYZ positions: one `f64`-encoded segment with
-    /// no optional fields or attributes.
+    /// Build a point cloud from bare XYZ positions, `f64`-encoded with no
+    /// optional fields or attributes.
     pub fn from_positions(
         frame: CoordinateFrame,
         positions: impl IntoIterator<Item = [f64; 3]>,
@@ -34,8 +29,7 @@ impl PointCloud {
             data.extend_from_slice(&z.to_le_bytes());
             count += 1;
         }
-        let mut segments = SmallVec::new();
-        segments.push(Segment {
+        let data = Data::InMemory(PointBuffer {
             source: None,
             position: PositionEncoding::F64,
             fields: 0,
@@ -45,11 +39,7 @@ impl PointCloud {
             count,
             attributes: IndexMap::new(),
         });
-        Self {
-            frame,
-            segments,
-            kdtree: OnceLock::new(),
-        }
+        Self::new(frame, data)
     }
 }
 
@@ -58,13 +48,12 @@ mod tests {
     use super::*;
 
     #[test]
-    fn from_positions_packs_one_f64_segment() {
+    fn from_positions_packs_f64_points() {
         let pc = PointCloud::from_positions(
             CoordinateFrame::Euclidean,
             [[0.0, 0.0, 0.0], [1.0, 2.0, 3.0], [4.0, 5.0, 6.0]],
         );
-        assert_eq!(pc.segments.len(), 1);
-        let seg = &pc.segments[0];
+        let seg = pc.data.as_buffer();
         assert_eq!(seg.count, 3);
         assert_eq!(seg.stride, F64_STRIDE);
         assert_eq!(seg.data.len(), 3 * F64_STRIDE as usize);

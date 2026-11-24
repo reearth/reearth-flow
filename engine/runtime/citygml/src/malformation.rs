@@ -99,6 +99,27 @@ pub enum MalformationKind {
     ExpectedCurve,
     #[error("citygml geometry: cannot use as a solid boundary")]
     InvalidSolidBoundary,
+    #[error("citygml point cloud: neither pcl:pointFile nor pcl:points")]
+    PointCloudWithoutPoints,
+    /// Carries the `pcl:pointFile` text.
+    #[error("citygml point cloud: pcl:pointFile `{0}` is not a valid URI")]
+    InvalidPointFile(String),
+    /// Carries the `pcl:mimeType` text.
+    #[error("citygml point cloud: pcl:mimeType `{0}` is not LAS or LAZ")]
+    UnsupportedPointFileType(String),
+    /// Carries the `pcl:pointFileSrsName` text.
+    #[error("citygml point cloud: pcl:pointFileSrsName `{0}` is not an EPSG CRS")]
+    InvalidPointFileSrsName(String),
+    /// Carries the referenced `gml:id`.
+    #[error(
+        "citygml point cloud: core:pointCloud references `{0}` by xlink:href, which is not supported, skipped"
+    )]
+    PointCloudReference(String),
+    /// Carries how many references were skipped.
+    #[error(
+        "citygml point cloud: {0} point(s) referenced by xlink:href in pcl:points are not supported, skipped"
+    )]
+    PointCloudPointReferences(usize),
     /// Carries the derived key that was left out; the document's own entry is kept.
     #[error("citygml: generated attribute key `{0}` collides with an existing entry, left out")]
     AttributeKeyCollision(String),

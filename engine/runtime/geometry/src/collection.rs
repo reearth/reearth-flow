@@ -364,7 +364,7 @@ impl crate::ops::CountHoles for Collection3D {
 
 #[cfg(feature = "new-geometry")]
 impl crate::ops::CountVertices for Collection2D {
-    fn count_vertices(&self) -> usize {
+    fn count_vertices(&self) -> crate::error::Result<usize> {
         self.members()
             .iter()
             .map(Euclidean2DGeometry::count_vertices)
@@ -374,7 +374,7 @@ impl crate::ops::CountVertices for Collection2D {
 
 #[cfg(feature = "new-geometry")]
 impl crate::ops::CountVertices for Collection3D {
-    fn count_vertices(&self) -> usize {
+    fn count_vertices(&self) -> crate::error::Result<usize> {
         self.members()
             .iter()
             .map(Euclidean3DGeometry::count_vertices)

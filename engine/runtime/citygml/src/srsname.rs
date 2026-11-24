@@ -74,6 +74,18 @@ pub(super) fn parse_epsg(srs_name: &str) -> Option<EpsgCode> {
     CrsRef::parse(srs_name)?.epsg_code()
 }
 
+/// The EPSG code a `pcl:pointFileSrsName` names. Besides the `srsName`
+/// encodings it accepts the short `EPSG:<code>` form, since the property is a
+/// plain string rather than a GML `srsName`.
+pub(super) fn parse_point_file_epsg(srs_name: &str) -> Option<EpsgCode> {
+    parse_epsg(srs_name).or_else(|| {
+        let (authority, code) = srs_name.split_once(':')?;
+        authority
+            .eq_ignore_ascii_case("EPSG")
+            .then(|| code.parse::<u16>().ok().map(EpsgCode::new))?
+    })
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -117,5 +129,16 @@ mod tests {
         assert_eq!(code("urn:ogc:def:crs,crs:EPSG::6697,crs:EPSG::5773"), None);
         assert_eq!(code("EPSG:6697"), None); // legacy short form is not an OGC identifier
         assert_eq!(code("nonsense"), None);
+    }
+
+    #[test]
+    fn point_file_srs_name_also_takes_the_short_form() {
+        let code = |s| parse_point_file_epsg(s).map(|e| e.get());
+        assert_eq!(code("EPSG:6677"), Some(6677));
+        assert_eq!(code("epsg:6677"), Some(6677));
+        assert_eq!(code("urn:ogc:def:crs:EPSG::6677"), Some(6677));
+        assert_eq!(code("OGC:84"), None);
+        assert_eq!(code("EPSG:6677:1"), None);
+        assert_eq!(code("JGD2011"), None);
     }
 }
