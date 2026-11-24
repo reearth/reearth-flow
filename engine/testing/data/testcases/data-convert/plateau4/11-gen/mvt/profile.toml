@@ -20,7 +20,7 @@ path = "mvt_gen_20_mvt_lod1_truth.json"
 [convs.json.tilejson_lod1]
 flow_path = "40223_koga-shi_city_2024_citygml_1_op_gen_20_mvt_lod1/tilejson.json"
 output_path = "mvt_lod1_tilejson.json"
-generate_truth = false
+generate_truth = true
 json_path = ".vector_layers"
 
 [convs.json.tilejson_lod1.casts."."]

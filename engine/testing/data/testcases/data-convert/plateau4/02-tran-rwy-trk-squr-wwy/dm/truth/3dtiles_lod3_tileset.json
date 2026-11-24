@@ -5,12 +5,28 @@
   "city_name": {},
   "gml_id": {},
   "attributes": {},
+  "gml:name": {},
   "core:creationDate": {},
   "tran:class": {},
   "tran:Track_tran:function": {},
   "tran:function": {},
+  "tran:usage": {},
   "uro:geometrySrcDescLod1": {},
   "uro:lodType": {},
-  "tran:usage": {},
-  "gml:name": {}
+  "__key_order": [
+    "meshcode",
+    "feature_type",
+    "city_code",
+    "city_name",
+    "gml_id",
+    "attributes",
+    "gml:name",
+    "core:creationDate",
+    "tran:class",
+    "tran:Track_tran:function",
+    "tran:function",
+    "tran:usage",
+    "uro:geometrySrcDescLod1",
+    "uro:lodType"
+  ]
 }

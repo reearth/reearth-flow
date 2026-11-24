@@ -23,8 +23,11 @@ path = "cesium_bldg_3dtiles_lod1_jgd2024_full_truth.json"
 [convs.json.tilesets_lod1]
 flow_path = "13421_ogasawara-mura_pref_2025_citygml_1_op_bldg_3dtiles_lod1_jgd2024_full/tileset.json"
 output_path = "3dtiles_lod1_tileset.json"
-generate_truth = false
+generate_truth = true
 json_path = ".properties"
+
+[convs.json.tilesets_lod1.casts]
+"" = "ordered_dict"
 
 [tests.json_attributes_v2.tilesets_lod1]
 path = "3dtiles_lod1_tileset.json"
