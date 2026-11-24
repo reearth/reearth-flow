@@ -182,11 +182,6 @@
       "core:creationDate": "2025-03-21",
       "gen:genericAttribute": [
         {
-          "name": "更新年",
-          "type": "string",
-          "value": "2016"
-        },
-        {
           "name": "計測周辺長",
           "type": "measure",
           "value": "11.16"
@@ -195,6 +190,11 @@
           "name": "建物高さ",
           "type": "measure",
           "value": "3"
+        },
+        {
+          "name": "更新年",
+          "type": "string",
+          "value": "2016"
         }
       ],
       "bldg:usage": "商業施設",
@@ -319,9 +319,9 @@
     "uro:BuildingDetailAttribute_uro:surveyYear": 2021,
     "uro:geometrySrcDescLod1": "公共測量成果",
     "uro:lod1HeightType": "取得不可のため一律値（3m）",
-    "更新年": "2016",
     "計測周辺長": 11.16,
     "建物高さ": 3,
+    "更新年": "2016",
     "_lod": 1,
     "_x": 139.58157434320162,
     "_y": 35.86678690788188,
@@ -353,9 +353,9 @@
       "uro:BuildingDetailAttribute_uro:surveyYear",
       "uro:geometrySrcDescLod1",
       "uro:lod1HeightType",
-      "更新年",
       "計測周辺長",
       "建物高さ",
+      "更新年",
       "_lod",
       "_x",
       "_y",
@@ -377,11 +377,6 @@
       "core:creationDate": "2025-03-21",
       "gen:genericAttribute": [
         {
-          "name": "更新年",
-          "type": "string",
-          "value": "2016"
-        },
-        {
           "name": "計測周辺長",
           "type": "measure",
           "value": "17.14"
@@ -390,6 +385,11 @@
           "name": "建物高さ",
           "type": "measure",
           "value": "3"
+        },
+        {
+          "name": "更新年",
+          "type": "string",
+          "value": "2016"
         }
       ],
       "bldg:usage": "商業施設",
@@ -514,9 +514,9 @@
     "uro:BuildingDetailAttribute_uro:surveyYear": 2021,
     "uro:geometrySrcDescLod1": "公共測量成果",
     "uro:lod1HeightType": "取得不可のため一律値（3m）",
-    "更新年": "2016",
     "計測周辺長": 17.14,
     "建物高さ": 3,
+    "更新年": "2016",
     "_lod": 1,
     "_x": 139.5816483230194,
     "_y": 35.86688913876155,
@@ -548,9 +548,9 @@
       "uro:BuildingDetailAttribute_uro:surveyYear",
       "uro:geometrySrcDescLod1",
       "uro:lod1HeightType",
-      "更新年",
       "計測周辺長",
       "建物高さ",
+      "更新年",
       "_lod",
       "_x",
       "_y",
@@ -572,11 +572,6 @@
       "core:creationDate": "2025-03-21",
       "gen:genericAttribute": [
         {
-          "name": "更新年",
-          "type": "string",
-          "value": "2016"
-        },
-        {
           "name": "計測周辺長",
           "type": "measure",
           "value": "7.58"
@@ -585,6 +580,11 @@
           "name": "建物高さ",
           "type": "measure",
           "value": "3"
+        },
+        {
+          "name": "更新年",
+          "type": "string",
+          "value": "2016"
         }
       ],
       "bldg:usage": "文教厚生施設",
@@ -709,9 +709,9 @@
     "uro:BuildingDetailAttribute_uro:surveyYear": 2021,
     "uro:geometrySrcDescLod1": "公共測量成果",
     "uro:lod1HeightType": "取得不可のため一律値（3m）",
-    "更新年": "2016",
     "計測周辺長": 7.58,
     "建物高さ": 3,
+    "更新年": "2016",
     "_lod": 1,
     "_x": 139.58143860656799,
     "_y": 35.87284181508454,
@@ -743,9 +743,9 @@
       "uro:BuildingDetailAttribute_uro:surveyYear",
       "uro:geometrySrcDescLod1",
       "uro:lod1HeightType",
-      "更新年",
       "計測周辺長",
       "建物高さ",
+      "更新年",
       "_lod",
       "_x",
       "_y",
@@ -767,11 +767,6 @@
       "core:creationDate": "2025-03-21",
       "gen:genericAttribute": [
         {
-          "name": "更新年",
-          "type": "string",
-          "value": "2016"
-        },
-        {
           "name": "計測周辺長",
           "type": "measure",
           "value": "7.77"
@@ -780,6 +775,11 @@
           "name": "建物高さ",
           "type": "measure",
           "value": "3"
+        },
+        {
+          "name": "更新年",
+          "type": "string",
+          "value": "2016"
         }
       ],
       "bldg:usage": "文教厚生施設",
@@ -904,9 +904,9 @@
     "uro:BuildingDetailAttribute_uro:surveyYear": 2021,
     "uro:geometrySrcDescLod1": "公共測量成果",
     "uro:lod1HeightType": "取得不可のため一律値（3m）",
-    "更新年": "2016",
     "計測周辺長": 7.77,
     "建物高さ": 3,
+    "更新年": "2016",
     "_lod": 1,
     "_x": 139.5822742478701,
     "_y": 35.87313122622524,
@@ -938,9 +938,9 @@
       "uro:BuildingDetailAttribute_uro:surveyYear",
       "uro:geometrySrcDescLod1",
       "uro:lod1HeightType",
-      "更新年",
       "計測周辺長",
       "建物高さ",
+      "更新年",
       "_lod",
       "_x",
       "_y",
@@ -962,11 +962,6 @@
       "core:creationDate": "2025-03-21",
       "gen:genericAttribute": [
         {
-          "name": "更新年",
-          "type": "string",
-          "value": "2016"
-        },
-        {
           "name": "計測周辺長",
           "type": "measure",
           "value": "8.57"
@@ -975,6 +970,11 @@
           "name": "建物高さ",
           "type": "measure",
           "value": "3"
+        },
+        {
+          "name": "更新年",
+          "type": "string",
+          "value": "2016"
         }
       ],
       "bldg:usage": "文教厚生施設",
@@ -1099,9 +1099,9 @@
     "uro:BuildingDetailAttribute_uro:surveyYear": 2021,
     "uro:geometrySrcDescLod1": "公共測量成果",
     "uro:lod1HeightType": "取得不可のため一律値（3m）",
-    "更新年": "2016",
     "計測周辺長": 8.57,
     "建物高さ": 3,
+    "更新年": "2016",
     "_lod": 1,
     "_x": 139.5813890959888,
     "_y": 35.87480667289013,
@@ -1133,9 +1133,9 @@
       "uro:BuildingDetailAttribute_uro:surveyYear",
       "uro:geometrySrcDescLod1",
       "uro:lod1HeightType",
-      "更新年",
       "計測周辺長",
       "建物高さ",
+      "更新年",
       "_lod",
       "_x",
       "_y",
@@ -1157,11 +1157,6 @@
       "core:creationDate": "2025-03-21",
       "gen:genericAttribute": [
         {
-          "name": "更新年",
-          "type": "string",
-          "value": "2016"
-        },
-        {
           "name": "計測周辺長",
           "type": "measure",
           "value": "14.6"
@@ -1170,6 +1165,11 @@
           "name": "建物高さ",
           "type": "measure",
           "value": "3"
+        },
+        {
+          "name": "更新年",
+          "type": "string",
+          "value": "2016"
         }
       ],
       "bldg:usage": "文教厚生施設",
@@ -1294,9 +1294,9 @@
     "uro:BuildingDetailAttribute_uro:surveyYear": 2021,
     "uro:geometrySrcDescLod1": "公共測量成果",
     "uro:lod1HeightType": "取得不可のため一律値（3m）",
-    "更新年": "2016",
     "計測周辺長": 14.6,
     "建物高さ": 3,
+    "更新年": "2016",
     "_lod": 1,
     "_x": 139.58133596060816,
     "_y": 35.87462422080567,
@@ -1328,9 +1328,9 @@
       "uro:BuildingDetailAttribute_uro:surveyYear",
       "uro:geometrySrcDescLod1",
       "uro:lod1HeightType",
-      "更新年",
       "計測周辺長",
       "建物高さ",
+      "更新年",
       "_lod",
       "_x",
       "_y",
@@ -1352,11 +1352,6 @@
       "core:creationDate": "2025-03-21",
       "gen:genericAttribute": [
         {
-          "name": "更新年",
-          "type": "string",
-          "value": "2016"
-        },
-        {
           "name": "計測周辺長",
           "type": "measure",
           "value": "14.89"
@@ -1365,6 +1360,11 @@
           "name": "建物高さ",
           "type": "measure",
           "value": "3"
+        },
+        {
+          "name": "更新年",
+          "type": "string",
+          "value": "2016"
         }
       ],
       "bldg:usage": "文教厚生施設",
@@ -1489,9 +1489,9 @@
     "uro:BuildingDetailAttribute_uro:surveyYear": 2021,
     "uro:geometrySrcDescLod1": "公共測量成果",
     "uro:lod1HeightType": "取得不可のため一律値（3m）",
-    "更新年": "2016",
     "計測周辺長": 14.89,
     "建物高さ": 3,
+    "更新年": "2016",
     "_lod": 1,
     "_x": 139.58147322501733,
     "_y": 35.87397734829315,
@@ -1523,9 +1523,9 @@
       "uro:BuildingDetailAttribute_uro:surveyYear",
       "uro:geometrySrcDescLod1",
       "uro:lod1HeightType",
-      "更新年",
       "計測周辺長",
       "建物高さ",
+      "更新年",
       "_lod",
       "_x",
       "_y",
@@ -1547,11 +1547,6 @@
       "core:creationDate": "2025-03-21",
       "gen:genericAttribute": [
         {
-          "name": "更新年",
-          "type": "string",
-          "value": "2016"
-        },
-        {
           "name": "計測周辺長",
           "type": "measure",
           "value": "14.64"
@@ -1560,6 +1555,11 @@
           "name": "建物高さ",
           "type": "measure",
           "value": "3"
+        },
+        {
+          "name": "更新年",
+          "type": "string",
+          "value": "2016"
         }
       ],
       "bldg:usage": "文教厚生施設",
@@ -1684,9 +1684,9 @@
     "uro:BuildingDetailAttribute_uro:surveyYear": 2021,
     "uro:geometrySrcDescLod1": "公共測量成果",
     "uro:lod1HeightType": "取得不可のため一律値（3m）",
-    "更新年": "2016",
     "計測周辺長": 14.64,
     "建物高さ": 3,
+    "更新年": "2016",
     "_lod": 1,
     "_x": 139.58172520130097,
     "_y": 35.873896756155204,
@@ -1718,9 +1718,9 @@
       "uro:BuildingDetailAttribute_uro:surveyYear",
       "uro:geometrySrcDescLod1",
       "uro:lod1HeightType",
-      "更新年",
       "計測周辺長",
       "建物高さ",
+      "更新年",
       "_lod",
       "_x",
       "_y",
@@ -1742,11 +1742,6 @@
       "core:creationDate": "2025-03-21",
       "gen:genericAttribute": [
         {
-          "name": "更新年",
-          "type": "string",
-          "value": "2016"
-        },
-        {
           "name": "計測周辺長",
           "type": "measure",
           "value": "13.74"
@@ -1755,6 +1750,11 @@
           "name": "建物高さ",
           "type": "measure",
           "value": "3"
+        },
+        {
+          "name": "更新年",
+          "type": "string",
+          "value": "2016"
         }
       ],
       "bldg:usage": "文教厚生施設",
@@ -1879,9 +1879,9 @@
     "uro:BuildingDetailAttribute_uro:surveyYear": 2021,
     "uro:geometrySrcDescLod1": "公共測量成果",
     "uro:lod1HeightType": "取得不可のため一律値（3m）",
-    "更新年": "2016",
     "計測周辺長": 13.74,
     "建物高さ": 3,
+    "更新年": "2016",
     "_lod": 1,
     "_x": 139.58246915222685,
     "_y": 35.874997312716154,
@@ -1913,9 +1913,9 @@
       "uro:BuildingDetailAttribute_uro:surveyYear",
       "uro:geometrySrcDescLod1",
       "uro:lod1HeightType",
-      "更新年",
       "計測周辺長",
       "建物高さ",
+      "更新年",
       "_lod",
       "_x",
       "_y",
@@ -1937,11 +1937,6 @@
       "core:creationDate": "2025-03-21",
       "gen:genericAttribute": [
         {
-          "name": "更新年",
-          "type": "string",
-          "value": "2016"
-        },
-        {
           "name": "計測周辺長",
           "type": "measure",
           "value": "14.05"
@@ -1950,6 +1945,11 @@
           "name": "建物高さ",
           "type": "measure",
           "value": "3"
+        },
+        {
+          "name": "更新年",
+          "type": "string",
+          "value": "2016"
         }
       ],
       "bldg:usage": "文教厚生施設",
@@ -2074,9 +2074,9 @@
     "uro:BuildingDetailAttribute_uro:surveyYear": 2021,
     "uro:geometrySrcDescLod1": "公共測量成果",
     "uro:lod1HeightType": "取得不可のため一律値（3m）",
-    "更新年": "2016",
     "計測周辺長": 14.05,
     "建物高さ": 3,
+    "更新年": "2016",
     "_lod": 1,
     "_x": 139.5829250760712,
     "_y": 35.874139109422345,
@@ -2108,9 +2108,9 @@
       "uro:BuildingDetailAttribute_uro:surveyYear",
       "uro:geometrySrcDescLod1",
       "uro:lod1HeightType",
-      "更新年",
       "計測周辺長",
       "建物高さ",
+      "更新年",
       "_lod",
       "_x",
       "_y",
@@ -2132,11 +2132,6 @@
       "core:creationDate": "2025-03-21",
       "gen:genericAttribute": [
         {
-          "name": "更新年",
-          "type": "string",
-          "value": "2016"
-        },
-        {
           "name": "計測周辺長",
           "type": "measure",
           "value": "14.53"
@@ -2145,6 +2140,11 @@
           "name": "建物高さ",
           "type": "measure",
           "value": "3"
+        },
+        {
+          "name": "更新年",
+          "type": "string",
+          "value": "2016"
         }
       ],
       "bldg:usage": "文教厚生施設",
@@ -2269,9 +2269,9 @@
     "uro:BuildingDetailAttribute_uro:surveyYear": 2021,
     "uro:geometrySrcDescLod1": "公共測量成果",
     "uro:lod1HeightType": "取得不可のため一律値（3m）",
-    "更新年": "2016",
     "計測周辺長": 14.53,
     "建物高さ": 3,
+    "更新年": "2016",
     "_lod": 1,
     "_x": 139.58263817686964,
     "_y": 35.874232024174646,
@@ -2303,9 +2303,9 @@
       "uro:BuildingDetailAttribute_uro:surveyYear",
       "uro:geometrySrcDescLod1",
       "uro:lod1HeightType",
-      "更新年",
       "計測周辺長",
       "建物高さ",
+      "更新年",
       "_lod",
       "_x",
       "_y",
@@ -2327,11 +2327,6 @@
       "core:creationDate": "2025-03-21",
       "gen:genericAttribute": [
         {
-          "name": "更新年",
-          "type": "string",
-          "value": "2016"
-        },
-        {
           "name": "計測周辺長",
           "type": "measure",
           "value": "7.98"
@@ -2340,6 +2335,11 @@
           "name": "建物高さ",
           "type": "measure",
           "value": "3"
+        },
+        {
+          "name": "更新年",
+          "type": "string",
+          "value": "2016"
         }
       ],
       "bldg:usage": "文教厚生施設",
@@ -2464,9 +2464,9 @@
     "uro:BuildingDetailAttribute_uro:surveyYear": 2021,
     "uro:geometrySrcDescLod1": "公共測量成果",
     "uro:lod1HeightType": "取得不可のため一律値（3m）",
-    "更新年": "2016",
     "計測周辺長": 7.98,
     "建物高さ": 3,
+    "更新年": "2016",
     "_lod": 1,
     "_x": 139.5800996819317,
     "_y": 35.8730294524273,
@@ -2498,9 +2498,9 @@
       "uro:BuildingDetailAttribute_uro:surveyYear",
       "uro:geometrySrcDescLod1",
       "uro:lod1HeightType",
-      "更新年",
       "計測周辺長",
       "建物高さ",
+      "更新年",
       "_lod",
       "_x",
       "_y",
@@ -2522,11 +2522,6 @@
       "core:creationDate": "2025-03-21",
       "gen:genericAttribute": [
         {
-          "name": "更新年",
-          "type": "string",
-          "value": "2016"
-        },
-        {
           "name": "計測周辺長",
           "type": "measure",
           "value": "14.49"
@@ -2535,6 +2530,11 @@
           "name": "建物高さ",
           "type": "measure",
           "value": "3"
+        },
+        {
+          "name": "更新年",
+          "type": "string",
+          "value": "2016"
         }
       ],
       "bldg:usage": "文教厚生施設",
@@ -2659,9 +2659,9 @@
     "uro:BuildingDetailAttribute_uro:surveyYear": 2021,
     "uro:geometrySrcDescLod1": "公共測量成果",
     "uro:lod1HeightType": "取得不可のため一律値（3m）",
-    "更新年": "2016",
     "計測周辺長": 14.49,
     "建物高さ": 3,
+    "更新年": "2016",
     "_lod": 1,
     "_x": 139.58084587699722,
     "_y": 35.87358651859295,
@@ -2693,9 +2693,9 @@
       "uro:BuildingDetailAttribute_uro:surveyYear",
       "uro:geometrySrcDescLod1",
       "uro:lod1HeightType",
-      "更新年",
       "計測周辺長",
       "建物高さ",
+      "更新年",
       "_lod",
       "_x",
       "_y",
@@ -2717,11 +2717,6 @@
       "core:creationDate": "2025-03-21",
       "gen:genericAttribute": [
         {
-          "name": "更新年",
-          "type": "string",
-          "value": "2016"
-        },
-        {
           "name": "計測周辺長",
           "type": "measure",
           "value": "14.77"
@@ -2730,6 +2725,11 @@
           "name": "建物高さ",
           "type": "measure",
           "value": "3"
+        },
+        {
+          "name": "更新年",
+          "type": "string",
+          "value": "2016"
         }
       ],
       "bldg:usage": "文教厚生施設",
@@ -2854,9 +2854,9 @@
     "uro:BuildingDetailAttribute_uro:surveyYear": 2021,
     "uro:geometrySrcDescLod1": "公共測量成果",
     "uro:lod1HeightType": "取得不可のため一律値（3m）",
-    "更新年": "2016",
     "計測周辺長": 14.77,
     "建物高さ": 3,
+    "更新年": "2016",
     "_lod": 1,
     "_x": 139.5805945614474,
     "_y": 35.873667921038844,
@@ -2888,9 +2888,9 @@
       "uro:BuildingDetailAttribute_uro:surveyYear",
       "uro:geometrySrcDescLod1",
       "uro:lod1HeightType",
-      "更新年",
       "計測周辺長",
       "建物高さ",
+      "更新年",
       "_lod",
       "_x",
       "_y",
@@ -2912,11 +2912,6 @@
       "core:creationDate": "2025-03-21",
       "gen:genericAttribute": [
         {
-          "name": "更新年",
-          "type": "string",
-          "value": "2016"
-        },
-        {
           "name": "計測周辺長",
           "type": "measure",
           "value": "13.54"
@@ -2925,6 +2920,11 @@
           "name": "建物高さ",
           "type": "measure",
           "value": "3"
+        },
+        {
+          "name": "更新年",
+          "type": "string",
+          "value": "2016"
         }
       ],
       "bldg:usage": "文教厚生施設",
@@ -3049,9 +3049,9 @@
     "uro:BuildingDetailAttribute_uro:surveyYear": 2021,
     "uro:geometrySrcDescLod1": "公共測量成果",
     "uro:lod1HeightType": "取得不可のため一律値（3m）",
-    "更新年": "2016",
     "計測周辺長": 13.54,
     "建物高さ": 3,
+    "更新年": "2016",
     "_lod": 1,
     "_x": 139.57930213806998,
     "_y": 35.874444897417156,
@@ -3083,9 +3083,9 @@
       "uro:BuildingDetailAttribute_uro:surveyYear",
       "uro:geometrySrcDescLod1",
       "uro:lod1HeightType",
-      "更新年",
       "計測周辺長",
       "建物高さ",
+      "更新年",
       "_lod",
       "_x",
       "_y",
@@ -3107,11 +3107,6 @@
       "core:creationDate": "2025-03-21",
       "gen:genericAttribute": [
         {
-          "name": "更新年",
-          "type": "string",
-          "value": "2016"
-        },
-        {
           "name": "計測周辺長",
           "type": "measure",
           "value": "7.75"
@@ -3120,6 +3115,11 @@
           "name": "建物高さ",
           "type": "measure",
           "value": "3"
+        },
+        {
+          "name": "更新年",
+          "type": "string",
+          "value": "2016"
         }
       ],
       "bldg:usage": "文教厚生施設",
@@ -3244,9 +3244,9 @@
     "uro:BuildingDetailAttribute_uro:surveyYear": 2021,
     "uro:geometrySrcDescLod1": "公共測量成果",
     "uro:lod1HeightType": "取得不可のため一律値（3m）",
-    "更新年": "2016",
     "計測周辺長": 7.75,
     "建物高さ": 3,
+    "更新年": "2016",
     "_lod": 1,
     "_x": 139.5794949680867,
     "_y": 35.87414195994396,
@@ -3278,9 +3278,9 @@
       "uro:BuildingDetailAttribute_uro:surveyYear",
       "uro:geometrySrcDescLod1",
       "uro:lod1HeightType",
-      "更新年",
       "計測周辺長",
       "建物高さ",
+      "更新年",
       "_lod",
       "_x",
       "_y",
@@ -3302,11 +3302,6 @@
       "core:creationDate": "2025-03-21",
       "gen:genericAttribute": [
         {
-          "name": "更新年",
-          "type": "string",
-          "value": "2016"
-        },
-        {
           "name": "計測周辺長",
           "type": "measure",
           "value": "14.88"
@@ -3315,6 +3310,11 @@
           "name": "建物高さ",
           "type": "measure",
           "value": "3"
+        },
+        {
+          "name": "更新年",
+          "type": "string",
+          "value": "2016"
         }
       ],
       "bldg:usage": "文教厚生施設",
@@ -3439,9 +3439,9 @@
     "uro:BuildingDetailAttribute_uro:surveyYear": 2021,
     "uro:geometrySrcDescLod1": "公共測量成果",
     "uro:lod1HeightType": "取得不可のため一律値（3m）",
-    "更新年": "2016",
     "計測周辺長": 14.88,
     "建物高さ": 3,
+    "更新年": "2016",
     "_lod": 1,
     "_x": 139.5791947582602,
     "_y": 35.8742231213694,
@@ -3473,204 +3473,9 @@
       "uro:BuildingDetailAttribute_uro:surveyYear",
       "uro:geometrySrcDescLod1",
       "uro:lod1HeightType",
-      "更新年",
       "計測周辺長",
       "建物高さ",
-      "_lod",
-      "_x",
-      "_y",
-      "_xmin",
-      "_xmax",
-      "_ymin",
-      "_ymax",
-      "_zmin",
-      "_zmax"
-    ]
-  },
-  "bldg_413f1b20-daef-40c7-8d27-68f1af484e40": {
-    "meshcode": "53396446",
-    "feature_type": "bldg:Building",
-    "city_code": "11106",
-    "city_name": "埼玉県さいたま市桜区",
-    "gml_id": "bldg_413f1b20-daef-40c7-8d27-68f1af484e40",
-    "attributes": {
-      "core:creationDate": "2025-03-21",
-      "gen:genericAttribute": [
-        {
-          "name": "更新年",
-          "type": "string",
-          "value": "2016"
-        },
-        {
-          "name": "計測周辺長",
-          "type": "measure",
-          "value": "14.79"
-        },
-        {
-          "name": "建物高さ",
-          "type": "measure",
-          "value": "3"
-        }
-      ],
-      "bldg:usage": "文教厚生施設",
-      "bldg:usage_code": "422",
-      "bldg:measuredHeight": -9999,
-      "bldg:measuredHeight_uom": "m",
-      "bldg:storeysAboveGround": 1,
-      "uro:DataQualityAttribute": [
-        {
-          "uro:thematicSrcDesc": [
-            "都市計画基礎調査",
-            "その他のGISデータ"
-          ],
-          "uro:thematicSrcDesc_code": [
-            "201",
-            "400"
-          ],
-          "uro:appearanceSrcDescLod2": "未作成",
-          "uro:appearanceSrcDescLod2_code": "99",
-          "uro:geometrySrcDescLod0": "公共測量成果",
-          "uro:geometrySrcDescLod0_code": "000",
-          "uro:geometrySrcDescLod1": "公共測量成果",
-          "uro:geometrySrcDescLod1_code": "000",
-          "uro:geometrySrcDescLod2": "未作成",
-          "uro:geometrySrcDescLod2_code": "999",
-          "uro:lod1HeightType": "取得不可のため一律値（3m）",
-          "uro:lod1HeightType_code": "0",
-          "uro:PublicSurveyDataQualityAttribute": [
-            {
-              "uro:srcScaleLod0": "地図情報レベル1000",
-              "uro:srcScaleLod0_code": "2",
-              "uro:srcScaleLod1": "地図情報レベル1000",
-              "uro:srcScaleLod1_code": "2",
-              "uro:publicSurveySrcDescLod0": "数値地形図データ",
-              "uro:publicSurveySrcDescLod0_code": "023",
-              "uro:publicSurveySrcDescLod1": "数値地形図データ",
-              "uro:publicSurveySrcDescLod1_code": "023"
-            }
-          ]
-        }
-      ],
-      "uro:KeyValuePairAttribute": [
-        {
-          "uro:key": "無壁フラグ",
-          "uro:key_code": "100",
-          "uro:codeValue": "無壁建物",
-          "uro:codeValue_code": "1"
-        },
-        {
-          "uro:key": "防火・準防火地域区分",
-          "uro:key_code": "101",
-          "uro:codeValue": "防火・準防火地域外",
-          "uro:codeValue_code": "3"
-        },
-        {
-          "uro:key": "風致地区区分",
-          "uro:key_code": "102",
-          "uro:codeValue": "風致地区内外",
-          "uro:codeValue_code": "0"
-        },
-        {
-          "uro:key": "建物棟数フラグ",
-          "uro:key_code": "103",
-          "uro:codeValue": "カウントする",
-          "uro:codeValue_code": "0"
-        },
-        {
-          "uro:key": "高さ根拠",
-          "uro:key_code": "104",
-          "uro:codeValue": "航空写真図化_最高高さと数値地形モデルの差",
-          "uro:codeValue_code": "1"
-        }
-      ],
-      "uro:BuildingDetailAttribute": [
-        {
-          "uro:totalFloorArea": 10,
-          "uro:totalFloorArea_uom": "m2",
-          "uro:buildingFootprintArea": 10,
-          "uro:buildingFootprintArea_uom": "m2",
-          "uro:buildingRoofEdgeArea": 10.19,
-          "uro:buildingRoofEdgeArea_uom": "m2",
-          "uro:buildingStructureOrgType": "準耐火",
-          "uro:buildingStructureOrgType_code": "2",
-          "uro:fireproofStructureType": "準耐火造",
-          "uro:fireproofStructureType_code": "1002",
-          "uro:areaClassificationType": "市街化調整区域",
-          "uro:areaClassificationType_code": "23",
-          "uro:districtsAndZonesType": "不明",
-          "uro:districtsAndZonesType_code": "9999",
-          "uro:orgUsage2": "文教厚生施設(B)（博物館、図書館、美術館、公衆浴場、公衆トイレ、公民館、集会所、公営スポーツ施設）",
-          "uro:orgUsage2_code": "18",
-          "uro:specifiedBuildingCoverageRate": -9999,
-          "uro:specifiedFloorAreaRate": -9999,
-          "uro:surveyYear": 2021
-        }
-      ],
-      "uro:BuildingIDAttribute": [
-        {
-          "uro:buildingID": "11106-bldg-361416",
-          "uro:prefecture": "埼玉県",
-          "uro:prefecture_code": "11",
-          "uro:city": "埼玉県さいたま市桜区",
-          "uro:city_code": "11106"
-        }
-      ],
-      "gml:id": "bldg_413f1b20-daef-40c7-8d27-68f1af484e40",
-      "meshcode": "53396446",
-      "feature_type": "bldg:Building"
-    },
-    "core:creationDate": "2025-03-21",
-    "bldg:usage": "文教厚生施設",
-    "bldg:storeysAboveGround": 1,
-    "uro:BuildingIDAttribute_uro:buildingID": "11106-bldg-361416",
-    "uro:BuildingIDAttribute_uro:prefecture": "埼玉県",
-    "uro:BuildingIDAttribute_uro:city": "埼玉県さいたま市桜区",
-    "uro:BuildingDetailAttribute_uro:totalFloorArea": 10,
-    "uro:BuildingDetailAttribute_uro:buildingFootprintArea": 10,
-    "uro:BuildingDetailAttribute_uro:buildingRoofEdgeArea": 10.19,
-    "uro:BuildingDetailAttribute_uro:fireproofStructureType": "準耐火造",
-    "uro:BuildingDetailAttribute_uro:areaClassificationType": "市街化調整区域",
-    "uro:BuildingDetailAttribute_uro:districtsAndZonesType": "不明",
-    "uro:BuildingDetailAttribute_uro:surveyYear": 2021,
-    "uro:geometrySrcDescLod1": "公共測量成果",
-    "uro:lod1HeightType": "取得不可のため一律値（3m）",
-    "更新年": "2016",
-    "計測周辺長": 14.79,
-    "建物高さ": 3,
-    "_lod": 1,
-    "_x": 139.58020513929776,
-    "_y": 35.87439727581858,
-    "_xmin": 139.58017286545086,
-    "_xmax": 139.58023741314466,
-    "_ymin": 35.87437946856633,
-    "_ymax": 35.87441508307083,
-    "_zmin": 4.7,
-    "_zmax": 7.7,
-    "__key_order": [
-      "meshcode",
-      "feature_type",
-      "city_code",
-      "city_name",
-      "gml_id",
-      "attributes",
-      "core:creationDate",
-      "bldg:usage",
-      "bldg:storeysAboveGround",
-      "uro:BuildingIDAttribute_uro:buildingID",
-      "uro:BuildingIDAttribute_uro:prefecture",
-      "uro:BuildingIDAttribute_uro:city",
-      "uro:BuildingDetailAttribute_uro:totalFloorArea",
-      "uro:BuildingDetailAttribute_uro:buildingFootprintArea",
-      "uro:BuildingDetailAttribute_uro:buildingRoofEdgeArea",
-      "uro:BuildingDetailAttribute_uro:fireproofStructureType",
-      "uro:BuildingDetailAttribute_uro:areaClassificationType",
-      "uro:BuildingDetailAttribute_uro:districtsAndZonesType",
-      "uro:BuildingDetailAttribute_uro:surveyYear",
-      "uro:geometrySrcDescLod1",
-      "uro:lod1HeightType",
       "更新年",
-      "計測周辺長",
-      "建物高さ",
       "_lod",
       "_x",
       "_y",
@@ -3692,11 +3497,6 @@
       "core:creationDate": "2025-03-21",
       "gen:genericAttribute": [
         {
-          "name": "更新年",
-          "type": "string",
-          "value": "2016"
-        },
-        {
           "name": "計測周辺長",
           "type": "measure",
           "value": "14.65"
@@ -3705,6 +3505,11 @@
           "name": "建物高さ",
           "type": "measure",
           "value": "3"
+        },
+        {
+          "name": "更新年",
+          "type": "string",
+          "value": "2016"
         }
       ],
       "bldg:usage": "文教厚生施設",
@@ -3829,9 +3634,9 @@
     "uro:BuildingDetailAttribute_uro:surveyYear": 2021,
     "uro:geometrySrcDescLod1": "公共測量成果",
     "uro:lod1HeightType": "取得不可のため一律値（3m）",
-    "更新年": "2016",
     "計測周辺長": 14.65,
     "建物高さ": 3,
+    "更新年": "2016",
     "_lod": 1,
     "_x": 139.58045739945987,
     "_y": 35.8743155593707,
@@ -3863,9 +3668,204 @@
       "uro:BuildingDetailAttribute_uro:surveyYear",
       "uro:geometrySrcDescLod1",
       "uro:lod1HeightType",
-      "更新年",
       "計測周辺長",
       "建物高さ",
+      "更新年",
+      "_lod",
+      "_x",
+      "_y",
+      "_xmin",
+      "_xmax",
+      "_ymin",
+      "_ymax",
+      "_zmin",
+      "_zmax"
+    ]
+  },
+  "bldg_413f1b20-daef-40c7-8d27-68f1af484e40": {
+    "meshcode": "53396446",
+    "feature_type": "bldg:Building",
+    "city_code": "11106",
+    "city_name": "埼玉県さいたま市桜区",
+    "gml_id": "bldg_413f1b20-daef-40c7-8d27-68f1af484e40",
+    "attributes": {
+      "core:creationDate": "2025-03-21",
+      "gen:genericAttribute": [
+        {
+          "name": "計測周辺長",
+          "type": "measure",
+          "value": "14.79"
+        },
+        {
+          "name": "建物高さ",
+          "type": "measure",
+          "value": "3"
+        },
+        {
+          "name": "更新年",
+          "type": "string",
+          "value": "2016"
+        }
+      ],
+      "bldg:usage": "文教厚生施設",
+      "bldg:usage_code": "422",
+      "bldg:measuredHeight": -9999,
+      "bldg:measuredHeight_uom": "m",
+      "bldg:storeysAboveGround": 1,
+      "uro:DataQualityAttribute": [
+        {
+          "uro:thematicSrcDesc": [
+            "都市計画基礎調査",
+            "その他のGISデータ"
+          ],
+          "uro:thematicSrcDesc_code": [
+            "201",
+            "400"
+          ],
+          "uro:appearanceSrcDescLod2": "未作成",
+          "uro:appearanceSrcDescLod2_code": "99",
+          "uro:geometrySrcDescLod0": "公共測量成果",
+          "uro:geometrySrcDescLod0_code": "000",
+          "uro:geometrySrcDescLod1": "公共測量成果",
+          "uro:geometrySrcDescLod1_code": "000",
+          "uro:geometrySrcDescLod2": "未作成",
+          "uro:geometrySrcDescLod2_code": "999",
+          "uro:lod1HeightType": "取得不可のため一律値（3m）",
+          "uro:lod1HeightType_code": "0",
+          "uro:PublicSurveyDataQualityAttribute": [
+            {
+              "uro:srcScaleLod0": "地図情報レベル1000",
+              "uro:srcScaleLod0_code": "2",
+              "uro:srcScaleLod1": "地図情報レベル1000",
+              "uro:srcScaleLod1_code": "2",
+              "uro:publicSurveySrcDescLod0": "数値地形図データ",
+              "uro:publicSurveySrcDescLod0_code": "023",
+              "uro:publicSurveySrcDescLod1": "数値地形図データ",
+              "uro:publicSurveySrcDescLod1_code": "023"
+            }
+          ]
+        }
+      ],
+      "uro:KeyValuePairAttribute": [
+        {
+          "uro:key": "無壁フラグ",
+          "uro:key_code": "100",
+          "uro:codeValue": "無壁建物",
+          "uro:codeValue_code": "1"
+        },
+        {
+          "uro:key": "防火・準防火地域区分",
+          "uro:key_code": "101",
+          "uro:codeValue": "防火・準防火地域外",
+          "uro:codeValue_code": "3"
+        },
+        {
+          "uro:key": "風致地区区分",
+          "uro:key_code": "102",
+          "uro:codeValue": "風致地区内外",
+          "uro:codeValue_code": "0"
+        },
+        {
+          "uro:key": "建物棟数フラグ",
+          "uro:key_code": "103",
+          "uro:codeValue": "カウントする",
+          "uro:codeValue_code": "0"
+        },
+        {
+          "uro:key": "高さ根拠",
+          "uro:key_code": "104",
+          "uro:codeValue": "航空写真図化_最高高さと数値地形モデルの差",
+          "uro:codeValue_code": "1"
+        }
+      ],
+      "uro:BuildingDetailAttribute": [
+        {
+          "uro:totalFloorArea": 10,
+          "uro:totalFloorArea_uom": "m2",
+          "uro:buildingFootprintArea": 10,
+          "uro:buildingFootprintArea_uom": "m2",
+          "uro:buildingRoofEdgeArea": 10.19,
+          "uro:buildingRoofEdgeArea_uom": "m2",
+          "uro:buildingStructureOrgType": "準耐火",
+          "uro:buildingStructureOrgType_code": "2",
+          "uro:fireproofStructureType": "準耐火造",
+          "uro:fireproofStructureType_code": "1002",
+          "uro:areaClassificationType": "市街化調整区域",
+          "uro:areaClassificationType_code": "23",
+          "uro:districtsAndZonesType": "不明",
+          "uro:districtsAndZonesType_code": "9999",
+          "uro:orgUsage2": "文教厚生施設(B)（博物館、図書館、美術館、公衆浴場、公衆トイレ、公民館、集会所、公営スポーツ施設）",
+          "uro:orgUsage2_code": "18",
+          "uro:specifiedBuildingCoverageRate": -9999,
+          "uro:specifiedFloorAreaRate": -9999,
+          "uro:surveyYear": 2021
+        }
+      ],
+      "uro:BuildingIDAttribute": [
+        {
+          "uro:buildingID": "11106-bldg-361416",
+          "uro:prefecture": "埼玉県",
+          "uro:prefecture_code": "11",
+          "uro:city": "埼玉県さいたま市桜区",
+          "uro:city_code": "11106"
+        }
+      ],
+      "gml:id": "bldg_413f1b20-daef-40c7-8d27-68f1af484e40",
+      "meshcode": "53396446",
+      "feature_type": "bldg:Building"
+    },
+    "core:creationDate": "2025-03-21",
+    "bldg:usage": "文教厚生施設",
+    "bldg:storeysAboveGround": 1,
+    "uro:BuildingIDAttribute_uro:buildingID": "11106-bldg-361416",
+    "uro:BuildingIDAttribute_uro:prefecture": "埼玉県",
+    "uro:BuildingIDAttribute_uro:city": "埼玉県さいたま市桜区",
+    "uro:BuildingDetailAttribute_uro:totalFloorArea": 10,
+    "uro:BuildingDetailAttribute_uro:buildingFootprintArea": 10,
+    "uro:BuildingDetailAttribute_uro:buildingRoofEdgeArea": 10.19,
+    "uro:BuildingDetailAttribute_uro:fireproofStructureType": "準耐火造",
+    "uro:BuildingDetailAttribute_uro:areaClassificationType": "市街化調整区域",
+    "uro:BuildingDetailAttribute_uro:districtsAndZonesType": "不明",
+    "uro:BuildingDetailAttribute_uro:surveyYear": 2021,
+    "uro:geometrySrcDescLod1": "公共測量成果",
+    "uro:lod1HeightType": "取得不可のため一律値（3m）",
+    "計測周辺長": 14.79,
+    "建物高さ": 3,
+    "更新年": "2016",
+    "_lod": 1,
+    "_x": 139.58020513929776,
+    "_y": 35.87439727581858,
+    "_xmin": 139.58017286545086,
+    "_xmax": 139.58023741314466,
+    "_ymin": 35.87437946856633,
+    "_ymax": 35.87441508307083,
+    "_zmin": 4.7,
+    "_zmax": 7.7,
+    "__key_order": [
+      "meshcode",
+      "feature_type",
+      "city_code",
+      "city_name",
+      "gml_id",
+      "attributes",
+      "core:creationDate",
+      "bldg:usage",
+      "bldg:storeysAboveGround",
+      "uro:BuildingIDAttribute_uro:buildingID",
+      "uro:BuildingIDAttribute_uro:prefecture",
+      "uro:BuildingIDAttribute_uro:city",
+      "uro:BuildingDetailAttribute_uro:totalFloorArea",
+      "uro:BuildingDetailAttribute_uro:buildingFootprintArea",
+      "uro:BuildingDetailAttribute_uro:buildingRoofEdgeArea",
+      "uro:BuildingDetailAttribute_uro:fireproofStructureType",
+      "uro:BuildingDetailAttribute_uro:areaClassificationType",
+      "uro:BuildingDetailAttribute_uro:districtsAndZonesType",
+      "uro:BuildingDetailAttribute_uro:surveyYear",
+      "uro:geometrySrcDescLod1",
+      "uro:lod1HeightType",
+      "計測周辺長",
+      "建物高さ",
+      "更新年",
       "_lod",
       "_x",
       "_y",
@@ -3887,11 +3887,6 @@
       "core:creationDate": "2025-03-21",
       "gen:genericAttribute": [
         {
-          "name": "更新年",
-          "type": "string",
-          "value": "2016"
-        },
-        {
           "name": "計測周辺長",
           "type": "measure",
           "value": "14.65"
@@ -3900,6 +3895,11 @@
           "name": "建物高さ",
           "type": "measure",
           "value": "3"
+        },
+        {
+          "name": "更新年",
+          "type": "string",
+          "value": "2016"
         }
       ],
       "bldg:usage": "文教厚生施設",
@@ -4024,9 +4024,9 @@
     "uro:BuildingDetailAttribute_uro:surveyYear": 2021,
     "uro:geometrySrcDescLod1": "公共測量成果",
     "uro:lod1HeightType": "取得不可のため一律値（3m）",
-    "更新年": "2016",
     "計測周辺長": 14.65,
     "建物高さ": 3,
+    "更新年": "2016",
     "_lod": 1,
     "_x": 139.58079273475107,
     "_y": 35.87478770978964,
@@ -4058,9 +4058,9 @@
       "uro:BuildingDetailAttribute_uro:surveyYear",
       "uro:geometrySrcDescLod1",
       "uro:lod1HeightType",
-      "更新年",
       "計測周辺長",
       "建物高さ",
+      "更新年",
       "_lod",
       "_x",
       "_y",
@@ -4082,11 +4082,6 @@
       "core:creationDate": "2025-03-21",
       "gen:genericAttribute": [
         {
-          "name": "更新年",
-          "type": "string",
-          "value": "2016"
-        },
-        {
           "name": "計測周辺長",
           "type": "measure",
           "value": "14.7"
@@ -4095,6 +4090,11 @@
           "name": "建物高さ",
           "type": "measure",
           "value": "3"
+        },
+        {
+          "name": "更新年",
+          "type": "string",
+          "value": "2016"
         }
       ],
       "bldg:usage": "文教厚生施設",
@@ -4219,9 +4219,9 @@
     "uro:BuildingDetailAttribute_uro:surveyYear": 2021,
     "uro:geometrySrcDescLod1": "公共測量成果",
     "uro:lod1HeightType": "取得不可のため一律値（3m）",
-    "更新年": "2016",
     "計測周辺長": 14.7,
     "建物高さ": 3,
+    "更新年": "2016",
     "_lod": 1,
     "_x": 139.58108264513803,
     "_y": 35.87470697285188,
@@ -4253,204 +4253,9 @@
       "uro:BuildingDetailAttribute_uro:surveyYear",
       "uro:geometrySrcDescLod1",
       "uro:lod1HeightType",
-      "更新年",
       "計測周辺長",
       "建物高さ",
-      "_lod",
-      "_x",
-      "_y",
-      "_xmin",
-      "_xmax",
-      "_ymin",
-      "_ymax",
-      "_zmin",
-      "_zmax"
-    ]
-  },
-  "bldg_089cc57b-ac3c-4e7f-bfa2-f2d45bae53cd": {
-    "meshcode": "53396446",
-    "feature_type": "bldg:Building",
-    "city_code": "11106",
-    "city_name": "埼玉県さいたま市桜区",
-    "gml_id": "bldg_089cc57b-ac3c-4e7f-bfa2-f2d45bae53cd",
-    "attributes": {
-      "core:creationDate": "2025-03-21",
-      "gen:genericAttribute": [
-        {
-          "name": "更新年",
-          "type": "string",
-          "value": "2016"
-        },
-        {
-          "name": "計測周辺長",
-          "type": "measure",
-          "value": "14.39"
-        },
-        {
-          "name": "建物高さ",
-          "type": "measure",
-          "value": "3"
-        }
-      ],
-      "bldg:usage": "文教厚生施設",
-      "bldg:usage_code": "422",
-      "bldg:measuredHeight": -9999,
-      "bldg:measuredHeight_uom": "m",
-      "bldg:storeysAboveGround": 1,
-      "uro:DataQualityAttribute": [
-        {
-          "uro:thematicSrcDesc": [
-            "都市計画基礎調査",
-            "その他のGISデータ"
-          ],
-          "uro:thematicSrcDesc_code": [
-            "201",
-            "400"
-          ],
-          "uro:appearanceSrcDescLod2": "未作成",
-          "uro:appearanceSrcDescLod2_code": "99",
-          "uro:geometrySrcDescLod0": "公共測量成果",
-          "uro:geometrySrcDescLod0_code": "000",
-          "uro:geometrySrcDescLod1": "公共測量成果",
-          "uro:geometrySrcDescLod1_code": "000",
-          "uro:geometrySrcDescLod2": "未作成",
-          "uro:geometrySrcDescLod2_code": "999",
-          "uro:lod1HeightType": "取得不可のため一律値（3m）",
-          "uro:lod1HeightType_code": "0",
-          "uro:PublicSurveyDataQualityAttribute": [
-            {
-              "uro:srcScaleLod0": "地図情報レベル1000",
-              "uro:srcScaleLod0_code": "2",
-              "uro:srcScaleLod1": "地図情報レベル1000",
-              "uro:srcScaleLod1_code": "2",
-              "uro:publicSurveySrcDescLod0": "数値地形図データ",
-              "uro:publicSurveySrcDescLod0_code": "023",
-              "uro:publicSurveySrcDescLod1": "数値地形図データ",
-              "uro:publicSurveySrcDescLod1_code": "023"
-            }
-          ]
-        }
-      ],
-      "uro:KeyValuePairAttribute": [
-        {
-          "uro:key": "無壁フラグ",
-          "uro:key_code": "100",
-          "uro:codeValue": "無壁建物",
-          "uro:codeValue_code": "1"
-        },
-        {
-          "uro:key": "防火・準防火地域区分",
-          "uro:key_code": "101",
-          "uro:codeValue": "防火・準防火地域外",
-          "uro:codeValue_code": "3"
-        },
-        {
-          "uro:key": "風致地区区分",
-          "uro:key_code": "102",
-          "uro:codeValue": "風致地区内外",
-          "uro:codeValue_code": "0"
-        },
-        {
-          "uro:key": "建物棟数フラグ",
-          "uro:key_code": "103",
-          "uro:codeValue": "カウントしない",
-          "uro:codeValue_code": "1"
-        },
-        {
-          "uro:key": "高さ根拠",
-          "uro:key_code": "104",
-          "uro:codeValue": "航空写真図化_最高高さと数値地形モデルの差",
-          "uro:codeValue_code": "1"
-        }
-      ],
-      "uro:BuildingDetailAttribute": [
-        {
-          "uro:totalFloorArea": 9,
-          "uro:totalFloorArea_uom": "m2",
-          "uro:buildingFootprintArea": 9,
-          "uro:buildingFootprintArea_uom": "m2",
-          "uro:buildingRoofEdgeArea": 9.24,
-          "uro:buildingRoofEdgeArea_uom": "m2",
-          "uro:buildingStructureOrgType": "準耐火",
-          "uro:buildingStructureOrgType_code": "2",
-          "uro:fireproofStructureType": "準耐火造",
-          "uro:fireproofStructureType_code": "1002",
-          "uro:areaClassificationType": "市街化調整区域",
-          "uro:areaClassificationType_code": "23",
-          "uro:districtsAndZonesType": "不明",
-          "uro:districtsAndZonesType_code": "9999",
-          "uro:orgUsage2": "文教厚生施設(B)（博物館、図書館、美術館、公衆浴場、公衆トイレ、公民館、集会所、公営スポーツ施設）",
-          "uro:orgUsage2_code": "18",
-          "uro:specifiedBuildingCoverageRate": -9999,
-          "uro:specifiedFloorAreaRate": -9999,
-          "uro:surveyYear": 2021
-        }
-      ],
-      "uro:BuildingIDAttribute": [
-        {
-          "uro:buildingID": "11106-bldg-358932",
-          "uro:prefecture": "埼玉県",
-          "uro:prefecture_code": "11",
-          "uro:city": "埼玉県さいたま市桜区",
-          "uro:city_code": "11106"
-        }
-      ],
-      "gml:id": "bldg_089cc57b-ac3c-4e7f-bfa2-f2d45bae53cd",
-      "meshcode": "53396446",
-      "feature_type": "bldg:Building"
-    },
-    "core:creationDate": "2025-03-21",
-    "bldg:usage": "文教厚生施設",
-    "bldg:storeysAboveGround": 1,
-    "uro:BuildingIDAttribute_uro:buildingID": "11106-bldg-358932",
-    "uro:BuildingIDAttribute_uro:prefecture": "埼玉県",
-    "uro:BuildingIDAttribute_uro:city": "埼玉県さいたま市桜区",
-    "uro:BuildingDetailAttribute_uro:totalFloorArea": 9,
-    "uro:BuildingDetailAttribute_uro:buildingFootprintArea": 9,
-    "uro:BuildingDetailAttribute_uro:buildingRoofEdgeArea": 9.24,
-    "uro:BuildingDetailAttribute_uro:fireproofStructureType": "準耐火造",
-    "uro:BuildingDetailAttribute_uro:areaClassificationType": "市街化調整区域",
-    "uro:BuildingDetailAttribute_uro:districtsAndZonesType": "不明",
-    "uro:BuildingDetailAttribute_uro:surveyYear": 2021,
-    "uro:geometrySrcDescLod1": "公共測量成果",
-    "uro:lod1HeightType": "取得不可のため一律値（3m）",
-    "更新年": "2016",
-    "計測周辺長": 14.39,
-    "建物高さ": 3,
-    "_lod": 1,
-    "_x": 139.58052057528766,
-    "_y": 35.874875422687396,
-    "_xmin": 139.58049996830152,
-    "_xmax": 139.5805411822738,
-    "_ymin": 35.8748496068114,
-    "_ymax": 35.87490123856338,
-    "_zmin": 5.2,
-    "_zmax": 8.2,
-    "__key_order": [
-      "meshcode",
-      "feature_type",
-      "city_code",
-      "city_name",
-      "gml_id",
-      "attributes",
-      "core:creationDate",
-      "bldg:usage",
-      "bldg:storeysAboveGround",
-      "uro:BuildingIDAttribute_uro:buildingID",
-      "uro:BuildingIDAttribute_uro:prefecture",
-      "uro:BuildingIDAttribute_uro:city",
-      "uro:BuildingDetailAttribute_uro:totalFloorArea",
-      "uro:BuildingDetailAttribute_uro:buildingFootprintArea",
-      "uro:BuildingDetailAttribute_uro:buildingRoofEdgeArea",
-      "uro:BuildingDetailAttribute_uro:fireproofStructureType",
-      "uro:BuildingDetailAttribute_uro:areaClassificationType",
-      "uro:BuildingDetailAttribute_uro:districtsAndZonesType",
-      "uro:BuildingDetailAttribute_uro:surveyYear",
-      "uro:geometrySrcDescLod1",
-      "uro:lod1HeightType",
       "更新年",
-      "計測周辺長",
-      "建物高さ",
       "_lod",
       "_x",
       "_y",
@@ -4472,11 +4277,6 @@
       "core:creationDate": "2025-03-21",
       "gen:genericAttribute": [
         {
-          "name": "更新年",
-          "type": "string",
-          "value": "2016"
-        },
-        {
           "name": "計測周辺長",
           "type": "measure",
           "value": "14.21"
@@ -4485,6 +4285,11 @@
           "name": "建物高さ",
           "type": "measure",
           "value": "3"
+        },
+        {
+          "name": "更新年",
+          "type": "string",
+          "value": "2016"
         }
       ],
       "bldg:usage": "文教厚生施設",
@@ -4609,9 +4414,9 @@
     "uro:BuildingDetailAttribute_uro:surveyYear": 2021,
     "uro:geometrySrcDescLod1": "公共測量成果",
     "uro:lod1HeightType": "取得不可のため一律値（3m）",
-    "更新年": "2016",
     "計測周辺長": 14.21,
     "建物高さ": 3,
+    "更新年": "2016",
     "_lod": 1,
     "_x": 139.58037632649842,
     "_y": 35.8748238327817,
@@ -4643,9 +4448,204 @@
       "uro:BuildingDetailAttribute_uro:surveyYear",
       "uro:geometrySrcDescLod1",
       "uro:lod1HeightType",
-      "更新年",
       "計測周辺長",
       "建物高さ",
+      "更新年",
+      "_lod",
+      "_x",
+      "_y",
+      "_xmin",
+      "_xmax",
+      "_ymin",
+      "_ymax",
+      "_zmin",
+      "_zmax"
+    ]
+  },
+  "bldg_089cc57b-ac3c-4e7f-bfa2-f2d45bae53cd": {
+    "meshcode": "53396446",
+    "feature_type": "bldg:Building",
+    "city_code": "11106",
+    "city_name": "埼玉県さいたま市桜区",
+    "gml_id": "bldg_089cc57b-ac3c-4e7f-bfa2-f2d45bae53cd",
+    "attributes": {
+      "core:creationDate": "2025-03-21",
+      "gen:genericAttribute": [
+        {
+          "name": "計測周辺長",
+          "type": "measure",
+          "value": "14.39"
+        },
+        {
+          "name": "建物高さ",
+          "type": "measure",
+          "value": "3"
+        },
+        {
+          "name": "更新年",
+          "type": "string",
+          "value": "2016"
+        }
+      ],
+      "bldg:usage": "文教厚生施設",
+      "bldg:usage_code": "422",
+      "bldg:measuredHeight": -9999,
+      "bldg:measuredHeight_uom": "m",
+      "bldg:storeysAboveGround": 1,
+      "uro:DataQualityAttribute": [
+        {
+          "uro:thematicSrcDesc": [
+            "都市計画基礎調査",
+            "その他のGISデータ"
+          ],
+          "uro:thematicSrcDesc_code": [
+            "201",
+            "400"
+          ],
+          "uro:appearanceSrcDescLod2": "未作成",
+          "uro:appearanceSrcDescLod2_code": "99",
+          "uro:geometrySrcDescLod0": "公共測量成果",
+          "uro:geometrySrcDescLod0_code": "000",
+          "uro:geometrySrcDescLod1": "公共測量成果",
+          "uro:geometrySrcDescLod1_code": "000",
+          "uro:geometrySrcDescLod2": "未作成",
+          "uro:geometrySrcDescLod2_code": "999",
+          "uro:lod1HeightType": "取得不可のため一律値（3m）",
+          "uro:lod1HeightType_code": "0",
+          "uro:PublicSurveyDataQualityAttribute": [
+            {
+              "uro:srcScaleLod0": "地図情報レベル1000",
+              "uro:srcScaleLod0_code": "2",
+              "uro:srcScaleLod1": "地図情報レベル1000",
+              "uro:srcScaleLod1_code": "2",
+              "uro:publicSurveySrcDescLod0": "数値地形図データ",
+              "uro:publicSurveySrcDescLod0_code": "023",
+              "uro:publicSurveySrcDescLod1": "数値地形図データ",
+              "uro:publicSurveySrcDescLod1_code": "023"
+            }
+          ]
+        }
+      ],
+      "uro:KeyValuePairAttribute": [
+        {
+          "uro:key": "無壁フラグ",
+          "uro:key_code": "100",
+          "uro:codeValue": "無壁建物",
+          "uro:codeValue_code": "1"
+        },
+        {
+          "uro:key": "防火・準防火地域区分",
+          "uro:key_code": "101",
+          "uro:codeValue": "防火・準防火地域外",
+          "uro:codeValue_code": "3"
+        },
+        {
+          "uro:key": "風致地区区分",
+          "uro:key_code": "102",
+          "uro:codeValue": "風致地区内外",
+          "uro:codeValue_code": "0"
+        },
+        {
+          "uro:key": "建物棟数フラグ",
+          "uro:key_code": "103",
+          "uro:codeValue": "カウントしない",
+          "uro:codeValue_code": "1"
+        },
+        {
+          "uro:key": "高さ根拠",
+          "uro:key_code": "104",
+          "uro:codeValue": "航空写真図化_最高高さと数値地形モデルの差",
+          "uro:codeValue_code": "1"
+        }
+      ],
+      "uro:BuildingDetailAttribute": [
+        {
+          "uro:totalFloorArea": 9,
+          "uro:totalFloorArea_uom": "m2",
+          "uro:buildingFootprintArea": 9,
+          "uro:buildingFootprintArea_uom": "m2",
+          "uro:buildingRoofEdgeArea": 9.24,
+          "uro:buildingRoofEdgeArea_uom": "m2",
+          "uro:buildingStructureOrgType": "準耐火",
+          "uro:buildingStructureOrgType_code": "2",
+          "uro:fireproofStructureType": "準耐火造",
+          "uro:fireproofStructureType_code": "1002",
+          "uro:areaClassificationType": "市街化調整区域",
+          "uro:areaClassificationType_code": "23",
+          "uro:districtsAndZonesType": "不明",
+          "uro:districtsAndZonesType_code": "9999",
+          "uro:orgUsage2": "文教厚生施設(B)（博物館、図書館、美術館、公衆浴場、公衆トイレ、公民館、集会所、公営スポーツ施設）",
+          "uro:orgUsage2_code": "18",
+          "uro:specifiedBuildingCoverageRate": -9999,
+          "uro:specifiedFloorAreaRate": -9999,
+          "uro:surveyYear": 2021
+        }
+      ],
+      "uro:BuildingIDAttribute": [
+        {
+          "uro:buildingID": "11106-bldg-358932",
+          "uro:prefecture": "埼玉県",
+          "uro:prefecture_code": "11",
+          "uro:city": "埼玉県さいたま市桜区",
+          "uro:city_code": "11106"
+        }
+      ],
+      "gml:id": "bldg_089cc57b-ac3c-4e7f-bfa2-f2d45bae53cd",
+      "meshcode": "53396446",
+      "feature_type": "bldg:Building"
+    },
+    "core:creationDate": "2025-03-21",
+    "bldg:usage": "文教厚生施設",
+    "bldg:storeysAboveGround": 1,
+    "uro:BuildingIDAttribute_uro:buildingID": "11106-bldg-358932",
+    "uro:BuildingIDAttribute_uro:prefecture": "埼玉県",
+    "uro:BuildingIDAttribute_uro:city": "埼玉県さいたま市桜区",
+    "uro:BuildingDetailAttribute_uro:totalFloorArea": 9,
+    "uro:BuildingDetailAttribute_uro:buildingFootprintArea": 9,
+    "uro:BuildingDetailAttribute_uro:buildingRoofEdgeArea": 9.24,
+    "uro:BuildingDetailAttribute_uro:fireproofStructureType": "準耐火造",
+    "uro:BuildingDetailAttribute_uro:areaClassificationType": "市街化調整区域",
+    "uro:BuildingDetailAttribute_uro:districtsAndZonesType": "不明",
+    "uro:BuildingDetailAttribute_uro:surveyYear": 2021,
+    "uro:geometrySrcDescLod1": "公共測量成果",
+    "uro:lod1HeightType": "取得不可のため一律値（3m）",
+    "計測周辺長": 14.39,
+    "建物高さ": 3,
+    "更新年": "2016",
+    "_lod": 1,
+    "_x": 139.58052057528766,
+    "_y": 35.874875422687396,
+    "_xmin": 139.58049996830152,
+    "_xmax": 139.5805411822738,
+    "_ymin": 35.8748496068114,
+    "_ymax": 35.87490123856338,
+    "_zmin": 5.2,
+    "_zmax": 8.2,
+    "__key_order": [
+      "meshcode",
+      "feature_type",
+      "city_code",
+      "city_name",
+      "gml_id",
+      "attributes",
+      "core:creationDate",
+      "bldg:usage",
+      "bldg:storeysAboveGround",
+      "uro:BuildingIDAttribute_uro:buildingID",
+      "uro:BuildingIDAttribute_uro:prefecture",
+      "uro:BuildingIDAttribute_uro:city",
+      "uro:BuildingDetailAttribute_uro:totalFloorArea",
+      "uro:BuildingDetailAttribute_uro:buildingFootprintArea",
+      "uro:BuildingDetailAttribute_uro:buildingRoofEdgeArea",
+      "uro:BuildingDetailAttribute_uro:fireproofStructureType",
+      "uro:BuildingDetailAttribute_uro:areaClassificationType",
+      "uro:BuildingDetailAttribute_uro:districtsAndZonesType",
+      "uro:BuildingDetailAttribute_uro:surveyYear",
+      "uro:geometrySrcDescLod1",
+      "uro:lod1HeightType",
+      "計測周辺長",
+      "建物高さ",
+      "更新年",
       "_lod",
       "_x",
       "_y",
@@ -4667,11 +4667,6 @@
       "core:creationDate": "2025-03-21",
       "gen:genericAttribute": [
         {
-          "name": "更新年",
-          "type": "string",
-          "value": "2016"
-        },
-        {
           "name": "計測周辺長",
           "type": "measure",
           "value": "14.32"
@@ -4680,6 +4675,11 @@
           "name": "建物高さ",
           "type": "measure",
           "value": "3"
+        },
+        {
+          "name": "更新年",
+          "type": "string",
+          "value": "2016"
         }
       ],
       "bldg:usage": "文教厚生施設",
@@ -4804,9 +4804,9 @@
     "uro:BuildingDetailAttribute_uro:surveyYear": 2021,
     "uro:geometrySrcDescLod1": "公共測量成果",
     "uro:lod1HeightType": "取得不可のため一律値（3m）",
-    "更新年": "2016",
     "計測周辺長": 14.32,
     "建物高さ": 3,
+    "更新年": "2016",
     "_lod": 1,
     "_x": 139.58026938489192,
     "_y": 35.874602284411225,
@@ -4838,9 +4838,9 @@
       "uro:BuildingDetailAttribute_uro:surveyYear",
       "uro:geometrySrcDescLod1",
       "uro:lod1HeightType",
-      "更新年",
       "計測周辺長",
       "建物高さ",
+      "更新年",
       "_lod",
       "_x",
       "_y",
@@ -5035,11 +5035,6 @@
       "core:creationDate": "2025-03-21",
       "gen:genericAttribute": [
         {
-          "name": "更新年",
-          "type": "string",
-          "value": "2021"
-        },
-        {
           "name": "計測周辺長",
           "type": "measure",
           "value": "73.46"
@@ -5048,6 +5043,11 @@
           "name": "建物高さ",
           "type": "measure",
           "value": "6.1"
+        },
+        {
+          "name": "更新年",
+          "type": "string",
+          "value": "2021"
         }
       ],
       "bldg:usage": "運輸倉庫施設",
@@ -5225,9 +5225,9 @@
     "uro:BuildingDetailAttribute_uro:surveyYear": 2021,
     "uro:geometrySrcDescLod1": "公共測量成果",
     "uro:lod1HeightType": "航空写真図化_最高高さ",
-    "更新年": "2021",
     "計測周辺長": 73.46,
     "建物高さ": 6.1,
+    "更新年": "2021",
     "荒川水系荒川（国管理区間）_L1（計画規模）_浸水ランク": "5m以上10m未満",
     "荒川水系荒川（国管理区間）_L1（計画規模）_浸水ランクコード": 4,
     "荒川水系荒川（国管理区間）_L1（計画規模）_浸水深": 5.692,
@@ -5274,9 +5274,9 @@
       "uro:BuildingDetailAttribute_uro:surveyYear",
       "uro:geometrySrcDescLod1",
       "uro:lod1HeightType",
-      "更新年",
       "計測周辺長",
       "建物高さ",
+      "更新年",
       "荒川水系荒川（国管理区間）_L1（計画規模）_浸水ランク",
       "荒川水系荒川（国管理区間）_L1（計画規模）_浸水ランクコード",
       "荒川水系荒川（国管理区間）_L1（計画規模）_浸水深",
@@ -5312,11 +5312,6 @@
       "core:creationDate": "2025-03-21",
       "gen:genericAttribute": [
         {
-          "name": "更新年",
-          "type": "string",
-          "value": "2016"
-        },
-        {
           "name": "計測周辺長",
           "type": "measure",
           "value": "25.3"
@@ -5325,6 +5320,11 @@
           "name": "建物高さ",
           "type": "measure",
           "value": "12"
+        },
+        {
+          "name": "更新年",
+          "type": "string",
+          "value": "2016"
         }
       ],
       "bldg:usage": "供給処理施設",
@@ -5502,9 +5502,9 @@
     "uro:BuildingDetailAttribute_uro:surveyYear": 2021,
     "uro:geometrySrcDescLod1": "公共測量成果",
     "uro:lod1HeightType": "航空写真図化_最高高さ",
-    "更新年": "2016",
     "計測周辺長": 25.3,
     "建物高さ": 12,
+    "更新年": "2016",
     "荒川水系荒川（国管理区間）_L1（計画規模）_浸水ランク": "5m以上10m未満",
     "荒川水系荒川（国管理区間）_L1（計画規模）_浸水ランクコード": 4,
     "荒川水系荒川（国管理区間）_L1（計画規模）_浸水深": 6.203,
@@ -5551,9 +5551,9 @@
       "uro:BuildingDetailAttribute_uro:surveyYear",
       "uro:geometrySrcDescLod1",
       "uro:lod1HeightType",
-      "更新年",
       "計測周辺長",
       "建物高さ",
+      "更新年",
       "荒川水系荒川（国管理区間）_L1（計画規模）_浸水ランク",
       "荒川水系荒川（国管理区間）_L1（計画規模）_浸水ランクコード",
       "荒川水系荒川（国管理区間）_L1（計画規模）_浸水深",
@@ -5589,11 +5589,6 @@
       "core:creationDate": "2025-03-21",
       "gen:genericAttribute": [
         {
-          "name": "更新年",
-          "type": "string",
-          "value": "2016"
-        },
-        {
           "name": "計測周辺長",
           "type": "measure",
           "value": "38.21"
@@ -5602,6 +5597,11 @@
           "name": "建物高さ",
           "type": "measure",
           "value": "5.5"
+        },
+        {
+          "name": "更新年",
+          "type": "string",
+          "value": "2016"
         }
       ],
       "bldg:usage": "供給処理施設",
@@ -5779,9 +5779,9 @@
     "uro:BuildingDetailAttribute_uro:surveyYear": 2021,
     "uro:geometrySrcDescLod1": "公共測量成果",
     "uro:lod1HeightType": "航空写真図化_最高高さ",
-    "更新年": "2016",
     "計測周辺長": 38.21,
     "建物高さ": 5.5,
+    "更新年": "2016",
     "荒川水系荒川（国管理区間）_L1（計画規模）_浸水ランク": "5m以上10m未満",
     "荒川水系荒川（国管理区間）_L1（計画規模）_浸水ランクコード": 4,
     "荒川水系荒川（国管理区間）_L1（計画規模）_浸水深": 6.123,
@@ -5828,9 +5828,9 @@
       "uro:BuildingDetailAttribute_uro:surveyYear",
       "uro:geometrySrcDescLod1",
       "uro:lod1HeightType",
-      "更新年",
       "計測周辺長",
       "建物高さ",
+      "更新年",
       "荒川水系荒川（国管理区間）_L1（計画規模）_浸水ランク",
       "荒川水系荒川（国管理区間）_L1（計画規模）_浸水ランクコード",
       "荒川水系荒川（国管理区間）_L1（計画規模）_浸水深",
@@ -6376,11 +6376,6 @@
       "core:creationDate": "2025-03-21",
       "gen:genericAttribute": [
         {
-          "name": "更新年",
-          "type": "string",
-          "value": "2016"
-        },
-        {
           "name": "計測周辺長",
           "type": "measure",
           "value": "27.34"
@@ -6389,6 +6384,11 @@
           "name": "建物高さ",
           "type": "measure",
           "value": "3.5"
+        },
+        {
+          "name": "更新年",
+          "type": "string",
+          "value": "2016"
         }
       ],
       "bldg:usage": "供給処理施設",
@@ -6564,9 +6564,9 @@
     "uro:BuildingDetailAttribute_uro:surveyYear": 2021,
     "uro:geometrySrcDescLod1": "公共測量成果",
     "uro:lod1HeightType": "航空写真図化_最高高さ",
-    "更新年": "2016",
     "計測周辺長": 27.34,
     "建物高さ": 3.5,
+    "更新年": "2016",
     "荒川水系荒川（国管理区間）_L1（計画規模）_浸水ランク": "5m以上10m未満",
     "荒川水系荒川（国管理区間）_L1（計画規模）_浸水ランクコード": 4,
     "荒川水系荒川（国管理区間）_L1（計画規模）_浸水深": 5.708,
@@ -6612,9 +6612,9 @@
       "uro:BuildingDetailAttribute_uro:surveyYear",
       "uro:geometrySrcDescLod1",
       "uro:lod1HeightType",
-      "更新年",
       "計測周辺長",
       "建物高さ",
+      "更新年",
       "荒川水系荒川（国管理区間）_L1（計画規模）_浸水ランク",
       "荒川水系荒川（国管理区間）_L1（計画規模）_浸水ランクコード",
       "荒川水系荒川（国管理区間）_L1（計画規模）_浸水深",
@@ -6902,11 +6902,6 @@
       "core:creationDate": "2025-03-21",
       "gen:genericAttribute": [
         {
-          "name": "更新年",
-          "type": "string",
-          "value": "2016"
-        },
-        {
           "name": "計測周辺長",
           "type": "measure",
           "value": "7.34"
@@ -6915,6 +6910,11 @@
           "name": "建物高さ",
           "type": "measure",
           "value": "3"
+        },
+        {
+          "name": "更新年",
+          "type": "string",
+          "value": "2016"
         }
       ],
       "bldg:usage": "文教厚生施設",
@@ -7039,9 +7039,9 @@
     "uro:BuildingDetailAttribute_uro:surveyYear": 2021,
     "uro:geometrySrcDescLod1": "公共測量成果",
     "uro:lod1HeightType": "取得不可のため一律値（3m）",
-    "更新年": "2016",
     "計測周辺長": 7.34,
     "建物高さ": 3,
+    "更新年": "2016",
     "_lod": 1,
     "_x": 139.58506588080397,
     "_y": 35.8736778762936,
@@ -7073,9 +7073,9 @@
       "uro:BuildingDetailAttribute_uro:surveyYear",
       "uro:geometrySrcDescLod1",
       "uro:lod1HeightType",
-      "更新年",
       "計測周辺長",
       "建物高さ",
+      "更新年",
       "_lod",
       "_x",
       "_y",
@@ -7097,11 +7097,6 @@
       "core:creationDate": "2025-03-21",
       "gen:genericAttribute": [
         {
-          "name": "更新年",
-          "type": "string",
-          "value": "2021"
-        },
-        {
           "name": "計測周辺長",
           "type": "measure",
           "value": "8.7"
@@ -7110,6 +7105,11 @@
           "name": "建物高さ",
           "type": "measure",
           "value": "3"
+        },
+        {
+          "name": "更新年",
+          "type": "string",
+          "value": "2021"
         }
       ],
       "bldg:usage": "文教厚生施設",
@@ -7234,9 +7234,9 @@
     "uro:BuildingDetailAttribute_uro:surveyYear": 2021,
     "uro:geometrySrcDescLod1": "公共測量成果",
     "uro:lod1HeightType": "取得不可のため一律値（3m）",
-    "更新年": "2021",
     "計測周辺長": 8.7,
     "建物高さ": 3,
+    "更新年": "2021",
     "_lod": 1,
     "_x": 139.58431395986997,
     "_y": 35.8735436873062,
@@ -7268,9 +7268,9 @@
       "uro:BuildingDetailAttribute_uro:surveyYear",
       "uro:geometrySrcDescLod1",
       "uro:lod1HeightType",
-      "更新年",
       "計測周辺長",
       "建物高さ",
+      "更新年",
       "_lod",
       "_x",
       "_y",
@@ -7292,11 +7292,6 @@
       "core:creationDate": "2025-03-21",
       "gen:genericAttribute": [
         {
-          "name": "更新年",
-          "type": "string",
-          "value": "2021"
-        },
-        {
           "name": "計測周辺長",
           "type": "measure",
           "value": "8.77"
@@ -7305,6 +7300,11 @@
           "name": "建物高さ",
           "type": "measure",
           "value": "3"
+        },
+        {
+          "name": "更新年",
+          "type": "string",
+          "value": "2021"
         }
       ],
       "bldg:usage": "文教厚生施設",
@@ -7429,9 +7429,9 @@
     "uro:BuildingDetailAttribute_uro:surveyYear": 2021,
     "uro:geometrySrcDescLod1": "公共測量成果",
     "uro:lod1HeightType": "取得不可のため一律値（3m）",
-    "更新年": "2021",
     "計測周辺長": 8.77,
     "建物高さ": 3,
+    "更新年": "2021",
     "_lod": 1,
     "_x": 139.5843571382253,
     "_y": 35.87352989788464,
@@ -7463,9 +7463,9 @@
       "uro:BuildingDetailAttribute_uro:surveyYear",
       "uro:geometrySrcDescLod1",
       "uro:lod1HeightType",
-      "更新年",
       "計測周辺長",
       "建物高さ",
+      "更新年",
       "_lod",
       "_x",
       "_y",
@@ -7833,11 +7833,6 @@
       "core:creationDate": "2025-03-21",
       "gen:genericAttribute": [
         {
-          "name": "更新年",
-          "type": "string",
-          "value": "2016"
-        },
-        {
           "name": "計測周辺長",
           "type": "measure",
           "value": "7.51"
@@ -7846,6 +7841,11 @@
           "name": "建物高さ",
           "type": "measure",
           "value": "3"
+        },
+        {
+          "name": "更新年",
+          "type": "string",
+          "value": "2016"
         }
       ],
       "bldg:usage": "文教厚生施設",
@@ -7970,9 +7970,9 @@
     "uro:BuildingDetailAttribute_uro:surveyYear": 2021,
     "uro:geometrySrcDescLod1": "公共測量成果",
     "uro:lod1HeightType": "取得不可のため一律値（3m）",
-    "更新年": "2016",
     "計測周辺長": 7.51,
     "建物高さ": 3,
+    "更新年": "2016",
     "_lod": 1,
     "_x": 139.58413993915866,
     "_y": 35.87350384820847,
@@ -8004,9 +8004,9 @@
       "uro:BuildingDetailAttribute_uro:surveyYear",
       "uro:geometrySrcDescLod1",
       "uro:lod1HeightType",
-      "更新年",
       "計測周辺長",
       "建物高さ",
+      "更新年",
       "_lod",
       "_x",
       "_y",
@@ -8028,11 +8028,6 @@
       "core:creationDate": "2025-03-21",
       "gen:genericAttribute": [
         {
-          "name": "更新年",
-          "type": "string",
-          "value": "2021"
-        },
-        {
           "name": "計測周辺長",
           "type": "measure",
           "value": "8.74"
@@ -8041,6 +8036,11 @@
           "name": "建物高さ",
           "type": "measure",
           "value": "3"
+        },
+        {
+          "name": "更新年",
+          "type": "string",
+          "value": "2021"
         }
       ],
       "bldg:usage": "文教厚生施設",
@@ -8165,9 +8165,9 @@
     "uro:BuildingDetailAttribute_uro:surveyYear": 2021,
     "uro:geometrySrcDescLod1": "公共測量成果",
     "uro:lod1HeightType": "取得不可のため一律値（3m）",
-    "更新年": "2021",
     "計測周辺長": 8.74,
     "建物高さ": 3,
+    "更新年": "2021",
     "_lod": 1,
     "_x": 139.58429673945986,
     "_y": 35.87350845449977,
@@ -8199,9 +8199,9 @@
       "uro:BuildingDetailAttribute_uro:surveyYear",
       "uro:geometrySrcDescLod1",
       "uro:lod1HeightType",
-      "更新年",
       "計測周辺長",
       "建物高さ",
+      "更新年",
       "_lod",
       "_x",
       "_y",
@@ -8223,11 +8223,6 @@
       "core:creationDate": "2025-03-21",
       "gen:genericAttribute": [
         {
-          "name": "更新年",
-          "type": "string",
-          "value": "2016"
-        },
-        {
           "name": "計測周辺長",
           "type": "measure",
           "value": "8.75"
@@ -8236,6 +8231,11 @@
           "name": "建物高さ",
           "type": "measure",
           "value": "3"
+        },
+        {
+          "name": "更新年",
+          "type": "string",
+          "value": "2016"
         }
       ],
       "bldg:usage": "文教厚生施設",
@@ -8360,9 +8360,9 @@
     "uro:BuildingDetailAttribute_uro:surveyYear": 2021,
     "uro:geometrySrcDescLod1": "公共測量成果",
     "uro:lod1HeightType": "取得不可のため一律値（3m）",
-    "更新年": "2016",
     "計測周辺長": 8.75,
     "建物高さ": 3,
+    "更新年": "2016",
     "_lod": 1,
     "_x": 139.5848070193597,
     "_y": 35.8745113492002,
@@ -8394,9 +8394,9 @@
       "uro:BuildingDetailAttribute_uro:surveyYear",
       "uro:geometrySrcDescLod1",
       "uro:lod1HeightType",
-      "更新年",
       "計測周辺長",
       "建物高さ",
+      "更新年",
       "_lod",
       "_x",
       "_y",
@@ -8418,11 +8418,6 @@
       "core:creationDate": "2025-03-21",
       "gen:genericAttribute": [
         {
-          "name": "更新年",
-          "type": "string",
-          "value": "2021"
-        },
-        {
           "name": "計測周辺長",
           "type": "measure",
           "value": "8.95"
@@ -8431,6 +8426,11 @@
           "name": "建物高さ",
           "type": "measure",
           "value": "3"
+        },
+        {
+          "name": "更新年",
+          "type": "string",
+          "value": "2021"
         }
       ],
       "bldg:usage": "文教厚生施設",
@@ -8555,9 +8555,9 @@
     "uro:BuildingDetailAttribute_uro:surveyYear": 2021,
     "uro:geometrySrcDescLod1": "公共測量成果",
     "uro:lod1HeightType": "取得不可のため一律値（3m）",
-    "更新年": "2021",
     "計測周辺長": 8.95,
     "建物高さ": 3,
+    "更新年": "2021",
     "_lod": 1,
     "_x": 139.58478575213198,
     "_y": 35.874483813947904,
@@ -8589,9 +8589,9 @@
       "uro:BuildingDetailAttribute_uro:surveyYear",
       "uro:geometrySrcDescLod1",
       "uro:lod1HeightType",
-      "更新年",
       "計測周辺長",
       "建物高さ",
+      "更新年",
       "_lod",
       "_x",
       "_y",
@@ -8613,11 +8613,6 @@
       "core:creationDate": "2025-03-21",
       "gen:genericAttribute": [
         {
-          "name": "更新年",
-          "type": "string",
-          "value": "2021"
-        },
-        {
           "name": "計測周辺長",
           "type": "measure",
           "value": "8.81"
@@ -8626,6 +8621,11 @@
           "name": "建物高さ",
           "type": "measure",
           "value": "3"
+        },
+        {
+          "name": "更新年",
+          "type": "string",
+          "value": "2021"
         }
       ],
       "bldg:usage": "文教厚生施設",
@@ -8750,9 +8750,9 @@
     "uro:BuildingDetailAttribute_uro:surveyYear": 2021,
     "uro:geometrySrcDescLod1": "公共測量成果",
     "uro:lod1HeightType": "取得不可のため一律値（3m）",
-    "更新年": "2021",
     "計測周辺長": 8.81,
     "建物高さ": 3,
+    "更新年": "2021",
     "_lod": 1,
     "_x": 139.58474612194817,
     "_y": 35.87448972737481,
@@ -8784,9 +8784,9 @@
       "uro:BuildingDetailAttribute_uro:surveyYear",
       "uro:geometrySrcDescLod1",
       "uro:lod1HeightType",
-      "更新年",
       "計測周辺長",
       "建物高さ",
+      "更新年",
       "_lod",
       "_x",
       "_y",
@@ -8808,11 +8808,6 @@
       "core:creationDate": "2025-03-21",
       "gen:genericAttribute": [
         {
-          "name": "更新年",
-          "type": "string",
-          "value": "2016"
-        },
-        {
           "name": "計測周辺長",
           "type": "measure",
           "value": "8.07"
@@ -8821,6 +8816,11 @@
           "name": "建物高さ",
           "type": "measure",
           "value": "3"
+        },
+        {
+          "name": "更新年",
+          "type": "string",
+          "value": "2016"
         }
       ],
       "bldg:usage": "文教厚生施設",
@@ -8945,9 +8945,9 @@
     "uro:BuildingDetailAttribute_uro:surveyYear": 2021,
     "uro:geometrySrcDescLod1": "公共測量成果",
     "uro:lod1HeightType": "取得不可のため一律値（3m）",
-    "更新年": "2016",
     "計測周辺長": 8.07,
     "建物高さ": 3,
+    "更新年": "2016",
     "_lod": 1,
     "_x": 139.58496726461982,
     "_y": 35.874459177090955,
@@ -8979,9 +8979,9 @@
       "uro:BuildingDetailAttribute_uro:surveyYear",
       "uro:geometrySrcDescLod1",
       "uro:lod1HeightType",
-      "更新年",
       "計測周辺長",
       "建物高さ",
+      "更新年",
       "_lod",
       "_x",
       "_y",
@@ -9003,11 +9003,6 @@
       "core:creationDate": "2025-03-21",
       "gen:genericAttribute": [
         {
-          "name": "更新年",
-          "type": "string",
-          "value": "2016"
-        },
-        {
           "name": "計測周辺長",
           "type": "measure",
           "value": "8.8"
@@ -9016,6 +9011,11 @@
           "name": "建物高さ",
           "type": "measure",
           "value": "3"
+        },
+        {
+          "name": "更新年",
+          "type": "string",
+          "value": "2016"
         }
       ],
       "bldg:usage": "文教厚生施設",
@@ -9140,9 +9140,9 @@
     "uro:BuildingDetailAttribute_uro:surveyYear": 2021,
     "uro:geometrySrcDescLod1": "公共測量成果",
     "uro:lod1HeightType": "取得不可のため一律値（3m）",
-    "更新年": "2016",
     "計測周辺長": 8.8,
     "建物高さ": 3,
+    "更新年": "2016",
     "_lod": 1,
     "_x": 139.58493298244892,
     "_y": 35.87444373847212,
@@ -9174,9 +9174,9 @@
       "uro:BuildingDetailAttribute_uro:surveyYear",
       "uro:geometrySrcDescLod1",
       "uro:lod1HeightType",
-      "更新年",
       "計測周辺長",
       "建物高さ",
+      "更新年",
       "_lod",
       "_x",
       "_y",
@@ -9198,11 +9198,6 @@
       "core:creationDate": "2025-03-21",
       "gen:genericAttribute": [
         {
-          "name": "更新年",
-          "type": "string",
-          "value": "2016"
-        },
-        {
           "name": "計測周辺長",
           "type": "measure",
           "value": "7.49"
@@ -9211,6 +9206,11 @@
           "name": "建物高さ",
           "type": "measure",
           "value": "3"
+        },
+        {
+          "name": "更新年",
+          "type": "string",
+          "value": "2016"
         }
       ],
       "bldg:usage": "文教厚生施設",
@@ -9335,9 +9335,9 @@
     "uro:BuildingDetailAttribute_uro:surveyYear": 2021,
     "uro:geometrySrcDescLod1": "公共測量成果",
     "uro:lod1HeightType": "取得不可のため一律値（3m）",
-    "更新年": "2016",
     "計測周辺長": 7.49,
     "建物高さ": 3,
+    "更新年": "2016",
     "_lod": 1,
     "_x": 139.58488410754092,
     "_y": 35.87438428448907,
@@ -9369,9 +9369,9 @@
       "uro:BuildingDetailAttribute_uro:surveyYear",
       "uro:geometrySrcDescLod1",
       "uro:lod1HeightType",
-      "更新年",
       "計測周辺長",
       "建物高さ",
+      "更新年",
       "_lod",
       "_x",
       "_y",
