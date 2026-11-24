@@ -94,6 +94,10 @@ type Relay struct {
 	bgWG     sync.WaitGroup
 	bgCancel context.CancelFunc
 
+	// beforeEnqueue, when set, runs in Publish just before an update is queued.
+	// Tests use it to interleave RoomDeactivated.
+	beforeEnqueue func()
+
 	mu     sync.Mutex
 	sink   cluster.Sink
 	ctx    context.Context // delivery lifetime, set in Start
@@ -187,8 +191,9 @@ func (r *Relay) Start(ctx context.Context, sink cluster.Sink) error {
 
 // Publish enqueues one update onto the room's bounded write queue and returns
 // immediately; it must NOT do the XADD inline (that would block the publishing
-// goroutine on a slow Redis). Silent no-op while the room is evicting; a full
-// queue drops + increments DroppedWrites. Returns ErrRelayClosed after Close.
+// goroutine on a slow Redis). An update for a room that is evicting or not active
+// here is written directly (publishLate); a full queue drops + increments
+// DroppedWrites. Returns ErrRelayClosed after Close.
 func (r *Relay) Publish(_ context.Context, out cluster.Outbound) error {
 	r.mu.Lock()
 	if r.closed {
@@ -201,20 +206,22 @@ func (r *Relay) Publish(_ context.Context, out cluster.Outbound) error {
 		r.publishLate(out)
 		return nil
 	}
-	ch := rs.writeCh
-	r.mu.Unlock()
-
-	// Copy the payload: the caller's slice may alias internal buffers, and the
-	// XADD happens later on the writer goroutine.
+	if r.beforeEnqueue != nil {
+		r.beforeEnqueue()
+	}
+	// Enqueue while holding r.mu: RoomDeactivated sets evicting under it before
+	// stopping the writer, so the writer's final drain always sees this item.
+	// Copy the payload: the caller's slice may alias internal buffers.
 	item := writeItem{kind: out.Kind, data: append([]byte(nil), out.Data...)}
 	select {
-	case ch <- item:
-		return nil
+	case rs.writeCh <- item:
+		r.mu.Unlock()
 	default:
+		r.mu.Unlock()
 		r.droppedWrites.Add(1)
 		r.log.Debug("relay write queue full, dropping update", "room", out.Room, "kind", out.Kind.String())
-		return nil
 	}
+	return nil
 }
 
 // DroppedWrites returns the cumulative count of outbound updates dropped on a full

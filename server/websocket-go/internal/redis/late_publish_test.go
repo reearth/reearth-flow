@@ -53,6 +53,36 @@ func TestPublishJustBeforeDeactivateReachesHolders(t *testing.T) {
 	}
 }
 
+// TestPublishRacingDeactivateReachesHolders: an update Publish accepts while
+// RoomDeactivated is starting must be written, not left in a queue whose writer
+// has already made its final drain.
+func TestPublishRacingDeactivateReachesHolders(t *testing.T) {
+	_, mr := newTestClient(t)
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+	const room = "proj1"
+	sinkB := &fakeSink{}
+	relayA := startedRelay(t, ctx, mr.Addr(), &fakeSink{})
+	relayB := startedRelay(t, ctx, mr.Addr(), sinkB)
+	relayA.RoomActivated(room)
+	relayB.RoomActivated(room)
+
+	deactivated := make(chan struct{})
+	relayA.beforeEnqueue = func() {
+		go func() {
+			relayA.RoomDeactivated(room)
+			close(deactivated)
+		}()
+		time.Sleep(100 * time.Millisecond) // let the deactivation run as far as it can
+	}
+	data := []byte{9, 9, 9}
+	if err := relayA.Publish(ctx, cluster.Outbound{Room: room, Kind: cluster.KindSync, Data: data}); err != nil {
+		t.Fatalf("Publish: %v", err)
+	}
+	<-deactivated
+	waitFor(t, 3*time.Second, func() bool { return injected(sinkB, data) })
+}
+
 // TestPublishAfterDeactivateReachesHolders: ygo can hand a room's last update
 // to Publish after RoomDeactivated. It is written late, so an instance still
 // holding the room receives it.
