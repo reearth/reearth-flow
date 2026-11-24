@@ -79,6 +79,9 @@ func TestRelay_EditJustBeforeLeavingReachesOtherInstances(t *testing.T) {
 			return doc.GetText("content").ToString() == want && doc.PendingStats().Items == 0
 		})
 		bob.close()
+		// A connect while the room is still being torn down is dropped; that race
+		// is separate from the one this test covers.
+		waitFor(t, "bob's instance to unload the room", func() bool { return servers[1].ws.GetDoc(versionRoom) == nil })
 	}
 }
 
