@@ -2081,7 +2081,7 @@ Reads geometry and attributes from CZML (Cesium Language) documents. Time-tagged
 ### Type
 * sink
 ### Description
-Writes features to a CZML file for display in Cesium, or to one file per group when `groupBy` is set. Set `timeField` and `groupTimeseriesBy` together to merge each group into one time-dynamic entity carrying time-tagged position samples; `timeField` alone instead gives every feature a static position and its own availability window. Features with no time attribute are written as static entities.
+Writes features to a CZML file for display in Cesium, or to one file per group when `groupBy` is set. With `timeField` and `groupTimeseriesBy` together, each group becomes one entity whose position is written as time-tagged samples, except for areal features, which keep a single footprint. With `timeField` alone, every feature becomes its own entity with a static position and its own availability window. Features with no time attribute are written as static entities.
 ### Parameters
 ```json
 {
@@ -2128,7 +2128,7 @@ Writes features to a CZML file for display in Cesium, or to one file per group w
     },
     "timeField": {
       "title": "Time Field",
-      "description": "Attribute holding each feature's time, either an ISO 8601 timestamp or a number of seconds counted from `epoch`. Set it together with `groupTimeseriesBy` to merge a group into one entity whose position is written as time-tagged samples; set alone, each feature becomes its own entity, shown only during the interval its time falls in.",
+      "description": "Attribute holding each feature's time, either an ISO 8601 timestamp or a number of seconds counted from `epoch`. Set it together with `groupTimeseriesBy` to merge a group into one entity whose position is written as time-tagged samples; set alone, each feature becomes its own entity, limited to the interval its time falls in. Set alone it supplies the timing only, not something to draw: an areal feature is drawn as its polygon, while anything else needs a graphic of its own from a `czml.*` attribute, because a position by itself draws nothing.",
       "anyOf": [
         {
           "$ref": "#/definitions/Attribute"
@@ -2152,7 +2152,7 @@ Writes features to a CZML file for display in Cesium, or to one file per group w
     },
     "epoch": {
       "title": "Epoch",
-      "description": "Base time that numeric `timeField` values count from, as an ISO 8601 timestamp. When omitted and every time value is numeric, the Unix epoch `1970-01-01T00:00:00Z` is used.",
+      "description": "Base time that numeric `timeField` values count from, as an RFC 3339 timestamp carrying a date, a time and a zone, such as `2024-01-01T00:00:00Z`; a bare date like `2024-01-01` is refused. When omitted and every time value is numeric, the Unix epoch `1970-01-01T00:00:00Z` is used.",
       "type": [
         "string",
         "null"

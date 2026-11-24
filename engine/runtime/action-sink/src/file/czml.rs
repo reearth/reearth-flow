@@ -54,7 +54,7 @@ impl SinkFactory for CzmlWriterFactory {
     }
 
     fn description(&self) -> &str {
-        "Writes features to a CZML file for display in Cesium, or to one file per group when `groupBy` is set. Set `timeField` and `groupTimeseriesBy` together to merge each group into one time-dynamic entity carrying time-tagged position samples; `timeField` alone instead gives every feature a static position and its own availability window. Features with no time attribute are written as static entities."
+        "Writes features to a CZML file for display in Cesium, or to one file per group when `groupBy` is set. With `timeField` and `groupTimeseriesBy` together, each group becomes one entity whose position is written as time-tagged samples, except for areal features, which keep a single footprint. With `timeField` alone, every feature becomes its own entity with a static position and its own availability window. Features with no time attribute are written as static entities."
     }
 
     fn parameter_schema(&self) -> Option<schemars::schema::RootSchema> {
@@ -220,15 +220,20 @@ pub(crate) struct CzmlWriterParam {
     /// number of seconds counted from `epoch`. Set it together with
     /// `groupTimeseriesBy` to merge a group into one entity whose position is
     /// written as time-tagged samples; set alone, each feature becomes its own
-    /// entity, shown only during the interval its time falls in.
+    /// entity, limited to the interval its time falls in. Set alone it supplies
+    /// the timing only, not something to draw: an areal feature is drawn as its
+    /// polygon, while anything else needs a graphic of its own from a `czml.*`
+    /// attribute, because a position by itself draws nothing.
     pub(super) time_field: Option<Attribute>,
     /// # Group Timeseries By
     /// Attribute whose value merges features into a single time-dynamic entity,
     /// one entity per distinct value. Has no effect unless `timeField` is set.
     pub(super) group_timeseries_by: Option<Attribute>,
     /// # Epoch
-    /// Base time that numeric `timeField` values count from, as an ISO 8601
-    /// timestamp. When omitted and every time value is numeric, the Unix epoch
+    /// Base time that numeric `timeField` values count from, as an RFC 3339
+    /// timestamp carrying a date, a time and a zone, such as
+    /// `2024-01-01T00:00:00Z`; a bare date like `2024-01-01` is refused. When
+    /// omitted and every time value is numeric, the Unix epoch
     /// `1970-01-01T00:00:00Z` is used.
     pub(super) epoch: Option<String>,
     /// # Interpolation Algorithm
@@ -412,7 +417,9 @@ impl std::fmt::Display for InterpolationAlgorithm {
 /// Parameter-level tests that touch no geometry, so they run in both worlds.
 #[cfg(test)]
 mod param_tests {
+    // Readable diffs on a failing packet or sample array.
     use super::*;
+    use pretty_assertions::assert_eq;
 
     #[test]
     fn the_interpolation_algorithms_old_uppercase_values_still_deserialize() {
@@ -986,17 +993,100 @@ fn report_unplaced(gctx: &Context, feature: &Feature, err: PlacementError) {
     let _ = ectx.report(placement_draft(err, feature));
 }
 
-/// True when CZML can read `s` as a time. Deliberately wider than RFC 3339,
-/// which is all `chrono` parses directly: CZML follows ISO 8601, and a viewer
-/// reads a zone-less date-time as UTC and a bare date as its midnight. Being
-/// stricter here would drop values that reach the file and work.
+/// The instant an ISO 8601 time names, or `None` when `s` names none.
+///
+/// Deliberately wider than RFC 3339, which is all `chrono` parses directly:
+/// CZML follows ISO 8601, and a viewer reads a zone-less date-time as UTC, a
+/// bare date as its midnight, and a `hh:mm` with no seconds as that minute.
+/// Being stricter here drops values that reach the file and work — minute
+/// precision in particular is ordinary ISO 8601 that `parse_from_rfc3339`
+/// refuses, and refusing it here cost a group that had round-tripped before.
+#[cfg(feature = "new-geometry")]
+fn parse_iso_instant(s: &str) -> Option<chrono::DateTime<chrono::Utc>> {
+    use chrono::{NaiveDate, NaiveDateTime, TimeZone};
+
+    if let Ok(dt) = chrono::DateTime::parse_from_rfc3339(s) {
+        return Some(dt.with_timezone(&chrono::Utc));
+    }
+    // An explicit numeric zone at minute precision, in either spelling.
+    for fmt in ["%Y-%m-%dT%H:%M%:z", "%Y-%m-%dT%H:%M%z"] {
+        if let Ok(dt) = chrono::DateTime::parse_from_str(s, fmt) {
+            return Some(dt.with_timezone(&chrono::Utc));
+        }
+    }
+    // `Z` and no zone at all are both read as UTC, so they share these
+    // formats; `parse_from_str` would otherwise need a `%z` for the `Z`.
+    let naive = s
+        .strip_suffix('Z')
+        .or_else(|| s.strip_suffix('z'))
+        .unwrap_or(s);
+    for fmt in [
+        "%Y-%m-%dT%H:%M:%S%.f",
+        "%Y-%m-%dT%H:%M:%S",
+        "%Y-%m-%dT%H:%M",
+    ] {
+        if let Ok(dt) = NaiveDateTime::parse_from_str(naive, fmt) {
+            return Some(chrono::Utc.from_utc_datetime(&dt));
+        }
+    }
+    NaiveDate::parse_from_str(naive, "%Y-%m-%d")
+        .ok()
+        .and_then(|d| d.and_hms_opt(0, 0, 0))
+        .map(|dt| chrono::Utc.from_utc_datetime(&dt))
+}
+
+/// True when CZML can read `s` as a time.
 #[cfg(feature = "new-geometry")]
 fn is_writable_timestamp(s: &str) -> bool {
-    use chrono::{NaiveDate, NaiveDateTime};
-    chrono::DateTime::parse_from_rfc3339(s).is_ok()
-        || NaiveDateTime::parse_from_str(s, "%Y-%m-%dT%H:%M:%S").is_ok()
-        || NaiveDateTime::parse_from_str(s, "%Y-%m-%dT%H:%M:%S%.f").is_ok()
-        || NaiveDate::parse_from_str(s, "%Y-%m-%d").is_ok()
+    parse_iso_instant(s).is_some()
+}
+
+/// The absolute instant a `timeField` value names, or `None` when it names
+/// none that can be written.
+///
+/// Everything downstream of a time value has to agree about *when* it is: the
+/// order the samples are written in, the entity's `availability`, and the
+/// document `clock`. Comparing the strings cannot do that. Against an epoch of
+/// midnight, `"3600"` is 01:00 and `"2024-01-01T02:00:00Z"` is 02:00, yet
+/// `'2' < '3'` sorts the later one first, and an availability built from that
+/// order runs backwards and covers none of the track. Resolving to one instant
+/// before anything is compared is what keeps the answers consistent.
+///
+/// A number resolves only against an epoch, and only while the result is a
+/// time that can be represented: `1e30` is finite, so the arithmetic has to
+/// refuse it rather than saturate into a bound no viewer can read.
+#[cfg(feature = "new-geometry")]
+fn resolve_time_instant(
+    time_str: &str,
+    epoch: Option<&str>,
+) -> Option<chrono::DateTime<chrono::Utc>> {
+    if let Some(dt) = parse_iso_instant(time_str) {
+        return Some(dt);
+    }
+    let offset = match time_str.parse::<f64>() {
+        Ok(n) if n.is_finite() => n,
+        _ => parse_epoch_offset_timestamp(time_str)?,
+    };
+    let epoch_dt = chrono::DateTime::parse_from_rfc3339(epoch?).ok()?;
+    let millis = offset * 1000.0;
+    if !(millis >= i64::MIN as f64 && millis <= i64::MAX as f64) {
+        return None;
+    }
+    chrono::Duration::try_milliseconds(millis as i64)
+        .and_then(|delta| epoch_dt.checked_add_signed(delta))
+        .map(|dt| dt.with_timezone(&chrono::Utc))
+}
+
+/// An instant as CZML wants it written, keeping sub-second precision only
+/// when the instant actually has some.
+#[cfg(feature = "new-geometry")]
+fn instant_to_czml(dt: chrono::DateTime<chrono::Utc>) -> String {
+    let format = if dt.timestamp_subsec_nanos() == 0 {
+        chrono::SecondsFormat::Secs
+    } else {
+        chrono::SecondsFormat::Millis
+    };
+    dt.to_rfc3339_opts(format, true)
 }
 
 /// What this writer will put in the file for a time value that is not part of
@@ -1103,26 +1193,33 @@ fn feature_to_packets_next(
             // exists to stop, one level up. Both are drawn.
             let lines = lines_of(&feature.geometry);
             let mut packets = Vec::with_capacity(faces.len() + lines.len() + 1);
+            // A member that cannot be placed does not condemn its siblings.
+            // Each face and each line carries its own frame, so a collection
+            // can hold a WGS84 polygon beside a line in a local Euclidean
+            // frame; returning early on the line discarded the polygon that
+            // had already been built, which is data the writer used to emit.
+            // Report the failure, keep what placed, and emit nothing only when
+            // nothing placed at all.
+            let mut unplaced = None;
             for face in &faces {
                 match face_packet(cache, face, &parent_id) {
                     Ok(packet) => packets.push(packet),
-                    Err(err) => {
-                        // One face on an unplaceable frame means every other
-                        // face of this feature shares the same fate; skip the
-                        // whole feature rather than writing it half-drawn.
-                        let _ = ectx.report(frame_error_draft(err, feature));
-                        return vec![];
-                    }
+                    Err(err) => unplaced = unplaced.or(Some(err)),
                 }
             }
             for (vertices, frame) in &lines {
                 match polyline_packet(cache, vertices, frame, &parent_id) {
                     Ok(packet) => packets.push(packet),
-                    Err(err) => {
-                        let _ = ectx.report(frame_error_draft(err, feature));
-                        return vec![];
-                    }
+                    Err(err) => unplaced = unplaced.or(Some(err)),
                 }
+            }
+            // Once per feature, like every other diagnostic on this path: a
+            // collection of a thousand unplaceable faces is one problem.
+            if let Some(err) = unplaced {
+                let _ = ectx.report(frame_error_draft(err, feature));
+            }
+            if packets.is_empty() {
+                return vec![];
             }
             packets.insert(0, properties_packet);
             packets
@@ -1144,14 +1241,18 @@ fn feature_to_packets_next(
                 // face gets its own polygon packet above — a `MultiCurve`
                 // must not write only its first member.
                 let mut packets = Vec::with_capacity(lines.len() + 1);
+                let mut unplaced = None;
                 for (vertices, frame) in &lines {
                     match polyline_packet(cache, vertices, frame, &parent_id) {
                         Ok(packet) => packets.push(packet),
-                        Err(err) => {
-                            let _ = ectx.report(frame_error_draft(err, feature));
-                            return vec![];
-                        }
+                        Err(err) => unplaced = unplaced.or(Some(err)),
                     }
+                }
+                if let Some(err) = unplaced {
+                    let _ = ectx.report(frame_error_draft(err, feature));
+                }
+                if packets.is_empty() {
+                    return vec![];
                 }
                 packets.insert(0, properties_packet);
                 packets
@@ -1227,65 +1328,46 @@ fn build_timeseries_czml_next(
         "version": "1.0",
     });
 
-    // Empty time values are skipped here for the same reason the entity skips
-    // them: an attribute that exists but holds `""` is not a time. Keeping it
-    // made `all_numeric` false and then sorted it to the front, so the clock
-    // wrote `currentTime: ""` and `interval: "/60"`, neither of which is the
-    // ISO 8601 CZML requires. A feature whose attribute is *absent* never got
-    // this far, so the two shapes of "no time" now agree.
-    let mut all_timestamps: Vec<String> = Vec::new();
-    for feature in features {
-        if let Some(ts) = feature.get(time_field) {
-            let ts = attribute_value_to_string(ts);
-            if !ts.is_empty() {
-                all_timestamps.push(ts);
-            }
-        }
+    // The clock has to span the instants the entities actually wrote, which
+    // means resolving each group the way that group resolves itself. Whether
+    // times are numeric — and so which epoch a bare `60` counts from — is
+    // decided per entity in `build_entity_packet_next`, so a document holding
+    // one numeric group and one ISO group has two epochs in play. Reading the
+    // whole document as a single population made `all_numeric` false, and the
+    // numeric group's `0` and `60` were then sorted as strings and written
+    // into `currentTime` verbatim, where CZML requires an ISO 8601 instant.
+    //
+    // A value that resolves to no instant is left out for the same reason the
+    // entity drops it: a rejected `n/a` used to sort to the end of the strings
+    // and become the interval's upper bound, after the entity had refused it.
+    let mut instants: Vec<chrono::DateTime<chrono::Utc>> = Vec::new();
+    for group_features in groups.values() {
+        let times: Vec<String> = group_features
+            .iter()
+            .filter_map(|f| f.get(time_field).map(attribute_value_to_string))
+            .filter(|ts| !ts.is_empty())
+            .collect();
+        // The same `any && all` the entity asks, over the same population.
+        let all_numeric = !times.is_empty()
+            && times
+                .iter()
+                .all(|ts| ts.parse::<f64>().is_ok_and(f64::is_finite));
+        let group_epoch = effective_epoch(params.epoch.as_deref(), all_numeric);
+        instants.extend(
+            times
+                .iter()
+                .filter_map(|ts| resolve_time_instant(ts, group_epoch.as_deref())),
+        );
     }
-    if all_timestamps.len() >= 2 {
-        let all_numeric = all_timestamps.iter().all(|ts| {
-            if let Ok(n) = ts.parse::<f64>() {
-                n.is_finite()
-            } else {
-                false
-            }
-        });
+    instants.sort();
 
-        if all_numeric {
-            all_timestamps.sort_by(|a, b| {
-                let na = a.parse::<f64>().unwrap();
-                let nb = b.parse::<f64>().unwrap();
-                na.partial_cmp(&nb).unwrap_or(std::cmp::Ordering::Equal)
-            });
-        } else {
-            all_timestamps.sort();
-        }
-
-        let start = &all_timestamps[0];
-        let end = &all_timestamps[all_timestamps.len() - 1];
-
-        // The same epoch each entity resolves for itself in
-        // `build_entity_packet_next`: an explicit one, else the Unix epoch when
-        // every time value is numeric. This used to require `params.epoch` to be
-        // set, so numeric times with no epoch wrote the raw numbers into
-        // `clock.currentTime` and `clock.interval`, which CZML requires to be
-        // ISO 8601 — while the entities in the same document had already
-        // defaulted to the Unix epoch. One document, two readings of the same
-        // times. `strip_epoch_offset_for_availability` returns an ISO input
-        // untouched, so this is a no-op when the times are already timestamps.
-        let clock_epoch = effective_epoch(params.epoch.as_deref(), all_numeric);
-        let (start_iso, end_iso) = if all_numeric {
-            (
-                strip_epoch_offset_for_availability(start, clock_epoch.as_deref()),
-                strip_epoch_offset_for_availability(end, clock_epoch.as_deref()),
-            )
-        } else {
-            (start.clone(), end.clone())
-        };
-
-        let availability = format!("{start_iso}/{end_iso}");
+    if let (Some(start), Some(end)) = (instants.first(), instants.last())
+        && instants.len() >= 2
+    {
+        let start_iso = instant_to_czml(*start);
+        let end_iso = instant_to_czml(*end);
         doc["clock"] = serde_json::json!({
-            "interval": availability,
+            "interval": format!("{start_iso}/{end_iso}"),
             "currentTime": start_iso,
             "multiplier": 1,
             "range": "LOOP_STOP",
@@ -1398,36 +1480,49 @@ fn build_entity_packet_next(
 
     let epoch = effective_epoch(params.epoch.as_deref(), all_numeric_times);
 
-    let mut sorted = timed;
-    sorted.sort_by(|(_, ta), (_, tb)| {
+    // Resolved once, here, so the order below and the availability bounds
+    // further down are read off the same instant. Sorting the strings put
+    // `2024-01-01T02:00:00Z` before `3600`, which against a midnight epoch is
+    // 01:00 — the later sample first, and an availability window that ran
+    // backwards and covered none of the track.
+    let mut sorted: Vec<(&Feature, String, Option<chrono::DateTime<chrono::Utc>>)> = timed
+        .into_iter()
+        .map(|(f, ts)| {
+            let instant = if ts.is_empty() {
+                None
+            } else {
+                resolve_time_instant(&ts, epoch.as_deref())
+            };
+            (f, ts, instant)
+        })
+        .collect();
+    sorted.sort_by(|(_, ta, ia), (_, tb, ib)| {
         // An untimed feature has no place on the timeline, so it sorts first
-        // and is handled separately below. Comparing it numerically would
-        // parse `""`, which is why this is a match and not a parse.
+        // and is handled separately below. A value that names no instant sorts
+        // last: it is reported and dropped, and sorting it to the front would
+        // let it pick the entity's first sample on its way out.
         match (ta.is_empty(), tb.is_empty()) {
             (true, true) => std::cmp::Ordering::Equal,
             (true, false) => std::cmp::Ordering::Less,
             (false, true) => std::cmp::Ordering::Greater,
-            (false, false) => {
-                if all_numeric_times {
-                    let na = ta.parse::<f64>().unwrap_or(0.0);
-                    let nb = tb.parse::<f64>().unwrap_or(0.0);
-                    na.partial_cmp(&nb).unwrap_or(std::cmp::Ordering::Equal)
-                } else {
-                    ta.cmp(tb)
-                }
-            }
+            (false, false) => match (ia, ib) {
+                (Some(a), Some(b)) => a.cmp(b),
+                (Some(_), None) => std::cmp::Ordering::Less,
+                (None, Some(_)) => std::cmp::Ordering::Greater,
+                (None, None) => std::cmp::Ordering::Equal,
+            },
         }
     });
 
     let mut cartographic_degrees: Vec<Value> = Vec::new();
-    let mut first_time: Option<String> = None;
-    let mut last_time: Option<String> = None;
+    let mut first_instant: Option<chrono::DateTime<chrono::Utc>> = None;
+    let mut last_instant: Option<chrono::DateTime<chrono::Utc>> = None;
     // The feature behind the first sample actually written. Carrying a time
     // value is not enough to be the entity's representative: a timed feature
     // can still fail placement and contribute nothing.
     let mut first_sampled: Option<&Feature> = None;
 
-    for (feature, time_str) in &sorted {
+    for (feature, time_str, instant) in &sorted {
         let time_str = time_str.as_str();
         // Reported once per feature, here, rather than at each of the two uses
         // below: a feature contributes at most one sample, so reporting at the
@@ -1479,12 +1574,17 @@ fn build_entity_packet_next(
             continue;
         }
 
+        // Checked before anything is emitted, because an unresolvable value
+        // must not reach the samples, the availability window or the document
+        // clock. `1e30` is finite, so the old `is_finite` check passed it
+        // straight through to a bound that is not valid CZML.
+        let Some(instant) = *instant else {
+            report_unparsable_time(gctx, feature, time_str);
+            continue;
+        };
+
         let time_value: Value = if all_numeric_times {
             if let Ok(n) = time_str.parse::<f64>() {
-                if !n.is_finite() {
-                    report_unparsable_time(gctx, feature, time_str);
-                    continue;
-                }
                 serde_json::json!(n)
             } else if let Some(offset) = parse_epoch_offset_timestamp(time_str) {
                 serde_json::json!(offset)
@@ -1510,10 +1610,10 @@ fn build_entity_packet_next(
         // Only now: a value that cannot be written must not reach the entity's
         // availability window or the document clock either, or the file is
         // unloadable for the sake of a sample that was never written.
-        if first_time.is_none() {
-            first_time = Some(time_str.to_string());
+        if first_instant.is_none() {
+            first_instant = Some(instant);
         }
-        last_time = Some(time_str.to_string());
+        last_instant = Some(instant);
 
         if let Some((lon, lat, height)) = placed {
             if first_sampled.is_none() {
@@ -1541,12 +1641,12 @@ fn build_entity_packet_next(
         position["epoch"] = serde_json::json!(epoch);
     }
 
-    let availability = match (&first_time, &last_time) {
-        (Some(start), Some(end)) if start != end => {
-            let start_iso = strip_epoch_offset_for_availability(start, epoch.as_deref());
-            let end_iso = strip_epoch_offset_for_availability(end, epoch.as_deref());
-            Some(format!("{start_iso}/{end_iso}"))
-        }
+    let availability = match (first_instant, last_instant) {
+        (Some(start), Some(end)) if start != end => Some(format!(
+            "{}/{}",
+            instant_to_czml(start),
+            instant_to_czml(end)
+        )),
         _ => None,
     };
 
@@ -1572,8 +1672,8 @@ fn build_entity_packet_next(
         first_sampled.or_else(|| {
             sorted
                 .iter()
-                .find(|(_, ts)| !ts.is_empty())
-                .map(|(f, _)| *f)
+                .find(|(_, ts, _)| !ts.is_empty())
+                .map(|(f, _, _)| *f)
         })
     } else {
         // Same rule on the static path: the feature whose position was
@@ -1581,7 +1681,7 @@ fn build_entity_packet_next(
         // and description are the ones that belong to that position. Falling
         // back to the first in the group only matters when nothing was
         // placeable, where there is no position to be consistent with.
-        first_sampled.or_else(|| sorted.first().map(|(f, _)| *f))
+        first_sampled.or_else(|| sorted.first().map(|(f, _, _)| *f))
     };
 
     let name = first_feature
@@ -2730,7 +2830,12 @@ fn strip_epoch_offset_for_availability(ts: &str, epoch: Option<&str>) -> String 
         if let Some(delta) = chrono::Duration::try_seconds(offset as i64)
             && let Some(result) = epoch_dt.checked_add_signed(delta)
         {
-            return result.to_rfc3339_opts(chrono::SecondsFormat::Secs, true);
+            let format = if result.timestamp_subsec_nanos() == 0 {
+                chrono::SecondsFormat::Secs
+            } else {
+                chrono::SecondsFormat::Millis
+            };
+            return result.to_rfc3339_opts(format, true);
         }
         return ts.to_string();
     }
@@ -2752,8 +2857,14 @@ fn strip_epoch_offset_for_availability(ts: &str, epoch: Option<&str>) -> String 
             if let Some(result) = chrono::Duration::try_milliseconds(millis)
                 .and_then(|delta| epoch_dt.checked_add_signed(delta))
             {
-                // Use seconds format for whole seconds, millis for fractional
-                let format = if offset.fract() == 0.0 {
+                // The precision comes from the instant, not the offset. A
+                // whole-second offset against an epoch that carries a
+                // fraction still lands on a fractional instant: with epoch
+                // `…T00:00:00.500Z`, time `0` is 00:00:00.500, and choosing
+                // `Secs` from `offset.fract()` wrote `…T00:00:00Z` — a sample
+                // 500 ms early, and one that can collide with a sample
+                // genuinely written at the whole second.
+                let format = if result.timestamp_subsec_nanos() == 0 {
                     chrono::SecondsFormat::Secs
                 } else {
                     chrono::SecondsFormat::Millis
@@ -3061,7 +3172,9 @@ fn feature_to_packets(ctx: &Context, feature: &Feature) -> Vec<Packet> {
 
 #[cfg(test)]
 mod tests {
+    // Readable diffs on a failing packet or sample array.
     use super::*;
+    use pretty_assertions::assert_eq;
     use reearth_flow_geometry::types::coordinate::Coordinate;
     use reearth_flow_geometry::types::line_string::LineString;
     use reearth_flow_geometry::types::no_value::NoValue;
@@ -3536,6 +3649,8 @@ mod tests {
 
 #[cfg(all(test, not(feature = "new-geometry")))]
 mod diagnostics_tests {
+    // Readable diffs on a failing packet or sample array.
+    use pretty_assertions::assert_eq;
     use std::sync::Arc;
 
     use indexmap::IndexMap;
@@ -3620,7 +3735,9 @@ mod diagnostics_tests {
 
 #[cfg(all(test, feature = "new-geometry"))]
 mod new_geometry_tests {
+    // Readable diffs on a failing packet or sample array.
     use super::*;
+    use pretty_assertions::assert_eq;
 
     /// Parse written CZML as JSON, so a test tells "correctly skipped" apart
     /// from "wrote rubbish" — a substring check on the raw bytes cannot: it
@@ -4407,6 +4524,206 @@ mod new_geometry_tests {
     /// Test-only helpers: build features directly against the new geometry
     /// model, then drive a real `CzmlWriter` end to end (factory → `process`
     /// → `finish` → file) and hand back what it wrote.
+    /// The `v1` entity packet from a written timeseries document.
+    fn entity_of(doc: &[Value], id: &str) -> Value {
+        doc.iter()
+            .find(|p| p.get("id") == Some(&Value::String(id.to_string())))
+            .unwrap_or_else(|| panic!("no entity packet {id:?} in {doc:?}"))
+            .clone()
+    }
+
+    #[test]
+    fn a_minute_precision_timestamp_is_written_not_dropped() {
+        // ISO 8601 allows `hh:mm` with no seconds and Cesium's
+        // `JulianDate.fromIso8601` reads it, but RFC 3339 requires seconds and
+        // `parse_from_rfc3339` is what the validation was built on. Every
+        // branch refused this spelling, so a group that had been written and
+        // read back fine lost both of its positions and came out as an entity
+        // with an empty `cartographicDegrees`.
+        let doc = parse(&fixture::write_timeseries_batch(
+            vec![
+                grouped_point("2024-01-01T00:00Z", "v1"),
+                grouped_point("2024-01-01T00:01Z", "v1"),
+            ],
+            "timestamp",
+            "vehicleId",
+        ));
+        let entity = entity_of(&doc, "v1");
+        let samples = entity["position"]["cartographicDegrees"]
+            .as_array()
+            .expect("cartographicDegrees")
+            .clone();
+        assert_eq!(
+            samples.len(),
+            8,
+            "both minute-precision samples belong in the entity: {entity:?}"
+        );
+        // The bounds are normalized even though the samples keep the spelling
+        // the feature used, because availability is built from the instant.
+        assert_eq!(
+            entity["availability"],
+            serde_json::json!("2024-01-01T00:00:00Z/2024-01-01T00:01:00Z")
+        );
+    }
+
+    #[test]
+    fn a_groups_availability_runs_forward_when_its_times_mix_spellings() {
+        // Against an epoch of midnight, `3600` is 01:00 and the timestamp is
+        // 02:00. The bounds were taken in the order the raw strings sorted in,
+        // and `'2' < '3'` put the later sample first, so the window ran
+        // 02:00 -> 01:00 and covered neither sample.
+        let mut with = HashMap::new();
+        with.insert("timeField".to_string(), serde_json::json!("timestamp"));
+        with.insert(
+            "groupTimeseriesBy".to_string(),
+            serde_json::json!("vehicleId"),
+        );
+        with.insert(
+            "epoch".to_string(),
+            serde_json::json!("2024-01-01T00:00:00Z"),
+        );
+        let doc = parse(&fixture::write_batch_with_params(
+            vec![
+                grouped_point("2024-01-01T02:00:00Z", "v1"),
+                grouped_point("3600", "v1"),
+            ],
+            with,
+        ));
+        let entity = entity_of(&doc, "v1");
+        assert_eq!(
+            entity["availability"],
+            serde_json::json!("2024-01-01T01:00:00Z/2024-01-01T02:00:00Z"),
+            "the window must run from the earlier instant to the later one: {entity:?}"
+        );
+        // And the samples themselves are in that order, earlier one first.
+        let samples = entity["position"]["cartographicDegrees"]
+            .as_array()
+            .expect("cartographicDegrees")
+            .clone();
+        assert_eq!(samples[0], serde_json::json!("2024-01-01T01:00:00Z"));
+    }
+
+    #[test]
+    fn the_document_clock_is_a_timestamp_when_one_group_is_numeric_and_another_is_not() {
+        // Whether times are numeric is decided per entity, but the clock asked
+        // the question of the whole document: one ISO group made the answer
+        // `false`, so the numeric group's `0` was sorted as a string and
+        // written into `currentTime` verbatim. CZML requires an ISO 8601
+        // instant there, so the viewer failed to load the document.
+        let doc = parse(&fixture::write_timeseries_batch(
+            vec![
+                grouped_point("0", "numeric"),
+                grouped_point("60", "numeric"),
+                grouped_point("2024-06-01T00:00:00Z", "iso"),
+                grouped_point("2024-06-01T00:05:00Z", "iso"),
+            ],
+            "timestamp",
+            "vehicleId",
+        ));
+        let current = doc[0]["clock"]["currentTime"]
+            .as_str()
+            .expect("the document clock's currentTime")
+            .to_string();
+        assert!(
+            chrono::DateTime::parse_from_rfc3339(&current).is_ok(),
+            "clock currentTime must be a timestamp, got {current:?}"
+        );
+        // The numeric group counts from the Unix epoch, exactly as its own
+        // entity does, so it is the earlier of the two groups.
+        assert_eq!(current, "1970-01-01T00:00:00Z");
+    }
+
+    #[test]
+    fn a_time_the_entity_refused_is_absent_from_the_clock_too() {
+        // `n/a` sorted to the end of the strings and became the clock's upper
+        // bound after the entity had already reported and dropped it, leaving
+        // a document whose clock named a time nothing was written at.
+        let doc = parse(&fixture::write_timeseries_batch(
+            vec![
+                grouped_point("2024-01-01T00:00:00Z", "v1"),
+                grouped_point("2024-01-01T00:01:00Z", "v1"),
+                grouped_point("n/a", "v1"),
+            ],
+            "timestamp",
+            "vehicleId",
+        ));
+        let text = serde_json::to_string(&doc).expect("serializable");
+        assert!(
+            !text.contains("n/a"),
+            "a time the entity refused must not reach the clock: {text}"
+        );
+        assert_eq!(
+            doc[0]["clock"]["interval"],
+            serde_json::json!("2024-01-01T00:00:00Z/2024-01-01T00:01:00Z")
+        );
+    }
+
+    #[test]
+    fn an_unrepresentable_numeric_time_reaches_neither_the_bounds_nor_the_clock() {
+        // `1e30` is finite, so the finite check passed it. The conversion then
+        // handed back the raw string rather than panicking, and that string
+        // went into the entity's availability and the document clock, giving a
+        // file whose time bounds are not valid CZML.
+        let doc = parse(&fixture::write_timeseries_batch(
+            vec![
+                grouped_point("0", "v1"),
+                grouped_point("60", "v1"),
+                grouped_point("1e30", "v1"),
+            ],
+            "timestamp",
+            "vehicleId",
+        ));
+        let text = serde_json::to_string(&doc).expect("serializable");
+        assert!(
+            !text.contains("1e30"),
+            "an unwritable time must reach no part of the file: {text}"
+        );
+        // Pinned separately from the clock: dropping the sample is the
+        // entity-side half of the same fix, and four elements per sample means
+        // the two writable features are all that is left.
+        let entity = entity_of(&doc, "v1");
+        assert_eq!(
+            entity["position"]["cartographicDegrees"]
+                .as_array()
+                .expect("cartographicDegrees")
+                .len(),
+            8,
+            "only the two writable samples belong in the entity: {entity:?}"
+        );
+    }
+
+    #[test]
+    fn a_fractional_epoch_keeps_its_fraction_for_a_whole_second_offset() {
+        // The written precision was chosen from `offset.fract()`, so time `0`
+        // against an epoch carrying half a second was written as the whole
+        // second: a sample 500 ms early, and one that can collide with a
+        // sample genuinely written at that whole second.
+        assert_eq!(
+            strip_epoch_offset_for_availability("0", Some("2024-01-01T00:00:00.500Z")),
+            "2024-01-01T00:00:00.500Z"
+        );
+    }
+
+    #[test]
+    fn a_collection_keeps_its_polygon_when_a_sibling_line_cannot_be_placed() {
+        // Every face and every line of a collection carries its own frame, so
+        // a placeable polygon can sit beside a line the writer cannot resolve.
+        // Returning early on the line discarded the polygon packet already
+        // built, losing geometry the writer had emitted before lines were
+        // drawn at all.
+        let doc = parse(&fixture::write_batch(vec![
+            fixture::polygon_with_unplaceable_line_in(4326),
+        ]));
+        assert!(
+            doc.iter().any(|p| p.get("polygon").is_some()),
+            "the placeable polygon must still be written: {doc:?}"
+        );
+        assert!(
+            doc.iter().all(|p| p.get("polyline").is_none()),
+            "the unplaceable line must not be written: {doc:?}"
+        );
+    }
+
     mod fixture {
         use std::collections::HashMap;
         use std::str::FromStr;
@@ -4470,6 +4787,30 @@ mod new_geometry_tests {
             ]);
             feature_with(NewGeometry::Euclidean3D(Euclidean3DGeometry::Collection(
                 collection,
+            )))
+        }
+
+        /// A collection whose polygon can be placed and whose line cannot.
+        /// Each member carries its own frame, so this is an ordinary shape
+        /// rather than a contrived one.
+        pub(super) fn polygon_with_unplaceable_line_in(epsg: u16) -> Feature {
+            feature_with(NewGeometry::Euclidean3D(Euclidean3DGeometry::Collection(
+                Collection3D::new([
+                    Euclidean3DGeometry::Polygon(Box::new(Polygon3D::from_rings(
+                        frame(epsg),
+                        [
+                            [0.0, 0.0, 0.0],
+                            [100.0, 0.0, 0.0],
+                            [100.0, 100.0, 0.0],
+                            [0.0, 0.0, 0.0],
+                        ],
+                        std::iter::empty::<Vec<[f64; 3]>>(),
+                    ))),
+                    Euclidean3DGeometry::LineString(LineString3D::from_coords(
+                        CoordinateFrame::default(),
+                        vec![[0.0, 300.0, 0.0], [100.0, 300.0, 0.0]],
+                    )),
+                ]),
             )))
         }
 
@@ -4761,6 +5102,8 @@ mod new_geometry_tests {
 /// the mis-routing survived review in the first place.
 #[cfg(all(test, feature = "new-geometry"))]
 mod new_geometry_diagnostics_tests {
+    // Readable diffs on a failing packet or sample array.
+    use pretty_assertions::assert_eq;
     use std::sync::Arc;
 
     use reearth_flow_diagnostics::Disposition;

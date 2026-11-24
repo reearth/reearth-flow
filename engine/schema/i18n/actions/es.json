@@ -790,7 +790,7 @@
     },
     {
       "name": "CZML Writer",
-      "description": "Escribe entidades en un archivo CZML, o en un archivo por grupo cuando se define `groupBy`. Al definir `timeField` y `groupTimeseriesBy` juntos, cada grupo se fusiona en una sola entidad dinámica en el tiempo con muestras de posición marcadas; `timeField` por sí solo da a cada entidad una posición estática y su propia ventana de disponibilidad. Las entidades sin atributo de tiempo se escriben como entidades estáticas.",
+      "description": "Escribe entidades en un archivo CZML, o en un archivo por grupo cuando se define `groupBy`. Con `timeField` y `groupTimeseriesBy` juntos, cada grupo se convierte en una entidad cuya posición se escribe como muestras marcadas en el tiempo, salvo las entidades de superficie, que conservan un único contorno. Con `timeField` en solitario, cada entidad se convierte en una entidad propia con una posición estática y su propia ventana de disponibilidad. Las entidades sin atributo de tiempo se escriben como entidades estáticas.",
       "parameterI18n": {
         "": {
           "title": "Parámetros de CZML Writer",
@@ -798,7 +798,7 @@
         },
         "epoch": {
           "title": "Época",
-          "description": "Tiempo base desde el que se cuentan los valores numéricos de `timeField`, como marca de tiempo ISO 8601. Si se omite y todos los valores de tiempo son numéricos, se usa la época Unix `1970-01-01T00:00:00Z`."
+          "description": "Tiempo base desde el que se cuentan los valores numéricos de `timeField`, como marca de tiempo RFC 3339 con fecha, hora y zona, por ejemplo `2024-01-01T00:00:00Z`; una fecha sola como `2024-01-01` se rechaza. Si se omite y todos los valores de tiempo son numéricos, se usa la época Unix `1970-01-01T00:00:00Z`."
         },
         "groupBy": {
           "title": "Atributos de agrupación",
@@ -826,7 +826,7 @@
         },
         "timeField": {
           "title": "Campo de tiempo",
-          "description": "Atributo que contiene el tiempo de cada entidad, ya sea una marca de tiempo ISO 8601 o un número de segundos contados desde `epoch`. Defínelo junto con `groupTimeseriesBy` para fusionar un grupo en una sola entidad cuya posición se escribe como muestras marcadas en el tiempo; definido en solitario, cada entidad se convierte en una entidad propia, visible solo durante el intervalo en que cae su tiempo."
+          "description": "Atributo que contiene el tiempo de cada entidad, ya sea una marca de tiempo ISO 8601 o un número de segundos contados desde `epoch`. Defínelo junto con `groupTimeseriesBy` para fusionar un grupo en una sola entidad cuya posición se escribe como muestras marcadas en el tiempo; definido en solitario, cada entidad se convierte en una entidad propia, limitada al intervalo en que cae su tiempo. En solitario solo aporta la temporización, no algo que dibujar: una entidad de superficie se dibuja como su polígono, mientras que cualquier otra necesita su propio gráfico mediante un atributo `czml.*`, porque una posición por sí sola no dibuja nada."
         }
       },
       "definitionI18n": {

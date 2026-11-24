@@ -2137,7 +2137,7 @@
     {
       "name": "CZML Writer",
       "type": "sink",
-      "description": "Écrit les entités dans un fichier CZML, ou dans un fichier par groupe lorsque `groupBy` est défini. En définissant `timeField` et `groupTimeseriesBy` ensemble, chaque groupe est fusionné en une seule entité dynamique dans le temps portant des échantillons de position horodatés ; `timeField` seul donne à chaque entité une position statique et sa propre fenêtre de disponibilité. Les entités sans attribut de temps sont écrites comme entités statiques.",
+      "description": "Écrit les entités dans un fichier CZML, ou dans un fichier par groupe lorsque `groupBy` est défini. Avec `timeField` et `groupTimeseriesBy` ensemble, chaque groupe devient une entité dont la position est écrite sous forme d'échantillons horodatés, sauf les entités surfaciques, qui conservent une seule emprise. Avec `timeField` seul, chaque entité devient une entité à part entière, avec une position statique et sa propre fenêtre de disponibilité. Les entités sans attribut de temps sont écrites comme entités statiques.",
       "parameter": {
         "$schema": "http://json-schema.org/draft-07/schema#",
         "title": "Paramètres de CZML Writer",
@@ -2182,7 +2182,7 @@
           },
           "timeField": {
             "title": "Champ de temps",
-            "description": "Attribut portant le temps de chaque entité, soit un horodatage ISO 8601, soit un nombre de secondes comptées depuis `epoch`. Défini avec `groupTimeseriesBy`, il fusionne un groupe en une seule entité dont la position est écrite sous forme d'échantillons horodatés ; défini seul, chaque entité devient une entité à part entière, visible uniquement pendant l'intervalle où tombe son temps.",
+            "description": "Attribut portant le temps de chaque entité, soit un horodatage ISO 8601, soit un nombre de secondes comptées depuis `epoch`. Défini avec `groupTimeseriesBy`, il fusionne un groupe en une seule entité dont la position est écrite sous forme d'échantillons horodatés ; défini seul, chaque entité devient une entité à part entière, limitée à l'intervalle où tombe son temps. Seul, il ne fournit que la temporisation, pas de quoi dessiner : une entité surfacique est dessinée comme son polygone, tandis que toute autre a besoin de son propre graphique via un attribut `czml.*`, car une position seule ne dessine rien.",
             "anyOf": [
               {
                 "$ref": "#/definitions/Attribute"
@@ -2206,7 +2206,7 @@
           },
           "epoch": {
             "title": "Époque",
-            "description": "Temps de référence à partir duquel les valeurs numériques de `timeField` sont comptées, sous forme d'horodatage ISO 8601. S'il est omis et que toutes les valeurs de temps sont numériques, l'époque Unix `1970-01-01T00:00:00Z` est utilisée.",
+            "description": "Temps de référence à partir duquel les valeurs numériques de `timeField` sont comptées, sous forme d'horodatage RFC 3339 comportant une date, une heure et un fuseau, par exemple `2024-01-01T00:00:00Z` ; une date seule comme `2024-01-01` est refusée. S'il est omis et que toutes les valeurs de temps sont numériques, l'époque Unix `1970-01-01T00:00:00Z` est utilisée.",
             "type": [
               "string",
               "null"
