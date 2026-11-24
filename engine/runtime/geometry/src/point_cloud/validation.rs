@@ -1,4 +1,3 @@
-use super::ops::buffer_positions;
 use super::{Data, PointCloud};
 use crate::validation_next::{
     Validate, ValidationParams, ValidationReport, ValidationType, check_duplicate_points,
@@ -20,10 +19,7 @@ impl Validate for PointCloud {
         ValidationReport::ran(|r| {
             check_finite_3d(
                 &self.frame,
-                self.data
-                    .buffer("validate")
-                    .into_iter()
-                    .flat_map(buffer_positions),
+                self.positions("validate").into_iter().flatten(),
                 r,
             )
         })
@@ -33,10 +29,7 @@ impl Validate for PointCloud {
         ValidationReport::ran(|r| {
             check_duplicate_points(
                 &self.frame,
-                self.data
-                    .buffer("validate")
-                    .into_iter()
-                    .flat_map(buffer_positions),
+                self.positions("validate").into_iter().flatten(),
                 params,
                 r,
             )

@@ -27,6 +27,14 @@ struct PointCloud {
     frame: CoordinateFrame,
     #[cfg_attr(feature = "schema", schemars(title = "Data"))]
     data: Data,
+    /// Per-axis factor on every stored position.
+    #[serde(default = "unit_scale", skip_serializing_if = "is_unit")]
+    #[cfg_attr(feature = "schema", schemars(title = "Scale"))]
+    scale: [f64; 3],
+    /// Added to every stored position after `scale`.
+    #[serde(default, skip_serializing_if = "is_zero")]
+    #[cfg_attr(feature = "schema", schemars(title = "Translation"))]
+    translation: [f64; 3],
 }
 
 /// Either `file`, a LAS / LAZ file holding the points, or their positions in
@@ -39,10 +47,6 @@ struct Data {
     #[serde(default, skip_serializing_if = "Option::is_none")]
     #[cfg_attr(feature = "schema", schemars(with = "Option<String>", title = "File"))]
     file: Option<Uri>,
-    /// Added to every position read from `file`.
-    #[serde(default, skip_serializing_if = "is_zero")]
-    #[cfg_attr(feature = "schema", schemars(title = "Shift"))]
-    shift: [f64; 3],
     #[serde(default, skip_serializing_if = "Option::is_none")]
     #[cfg_attr(feature = "schema", schemars(title = "Source"))]
     source: Option<Arc<str>>,
@@ -81,8 +85,16 @@ struct Data {
     attributes: IndexMap<String, AttributeColumn>,
 }
 
-fn is_zero(shift: &[f64; 3]) -> bool {
-    *shift == [0.0; 3]
+fn unit_scale() -> [f64; 3] {
+    [1.0; 3]
+}
+
+fn is_unit(scale: &[f64; 3]) -> bool {
+    *scale == [1.0; 3]
+}
+
+fn is_zero(translation: &[f64; 3]) -> bool {
+    *translation == [0.0; 3]
 }
 
 /// Per-point positions in their stored encoding.
@@ -226,7 +238,6 @@ impl Serialize for super::PointCloud {
             super::Data::InMemory(buffer) => encode_buffer(buffer)?,
             super::Data::File(file) => Data {
                 file: Some(file.uri().clone()),
-                shift: file.shift(),
                 source: None,
                 positions: None,
                 rgb: None,
@@ -242,6 +253,8 @@ impl Serialize for super::PointCloud {
         PointCloud {
             frame: self.frame.clone(),
             data,
+            scale: self.scale,
+            translation: self.translation,
         }
         .serialize(serializer)
     }
@@ -256,7 +269,6 @@ fn encode_buffer<E: serde::ser::Error>(seg: &super::PointBuffer) -> Result<Data,
     }
     Ok(Data {
         file: None,
-        shift: [0.0; 3],
         source: seg.source.clone(),
         positions: Some(encode_positions(seg)),
         rgb: encode_field(seg, bit::RGB, rgb_from_bytes),
@@ -276,6 +288,8 @@ impl<'de> Deserialize<'de> for super::PointCloud {
         Ok(super::PointCloud {
             frame: wire.frame,
             data: decode_data(wire.data)?,
+            scale: wire.scale,
+            translation: wire.translation,
             kdtree: OnceLock::new(),
         })
     }
@@ -300,9 +314,7 @@ fn decode_data<E: serde::de::Error>(s: Data) -> Result<super::Data, E> {
             "point data with `file` cannot also carry inline points, fields or columns",
         ));
     }
-    let mut file = PointFile::new(uri);
-    file.translate(s.shift);
-    Ok(super::Data::File(file))
+    Ok(super::Data::File(PointFile::new(uri)))
 }
 
 fn decode_buffer<E: serde::de::Error>(s: Data) -> Result<super::PointBuffer, E> {
@@ -453,6 +465,8 @@ mod tests {
                 attributes: IndexMap::new(),
             }
             .into(),
+            scale: [1.0; 3],
+            translation: [0.0; 3],
             kdtree: OnceLock::new(),
         });
 
@@ -482,6 +496,8 @@ mod tests {
                 attributes,
             }
             .into(),
+            scale: [1.0; 3],
+            translation: [0.0; 3],
             kdtree: OnceLock::new(),
         });
     }
@@ -514,6 +530,8 @@ mod tests {
         let pc = PointCloud {
             frame: CoordinateFrame::Euclidean,
             data: seg.into(),
+            scale: [1.0; 3],
+            translation: [0.0; 3],
             kdtree: OnceLock::new(),
         };
         let json = serde_json::to_value(&pc).unwrap();
@@ -536,11 +554,14 @@ mod tests {
             Uri::from_str("file:///data/a.las").unwrap(),
         );
         crate::ops::Translate::translate(&mut pc, [1.0, 0.0, -2.0]).unwrap();
+        pc.scale = [2.0, 2.0, 1.0];
         let json = serde_json::to_value(&pc).unwrap();
         assert_eq!(
             json["data"],
-            serde_json::json!({"file": "file:///data/a.las", "shift": [1.0, 0.0, -2.0]})
+            serde_json::json!({"file": "file:///data/a.las"})
         );
+        assert_eq!(json["translation"], serde_json::json!([1.0, 0.0, -2.0]));
+        assert_eq!(json["scale"], serde_json::json!([2.0, 2.0, 1.0]));
         round_trip(&pc);
     }
 

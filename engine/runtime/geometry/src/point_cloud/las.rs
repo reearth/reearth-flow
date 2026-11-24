@@ -1,7 +1,7 @@
 //! LAS / LAZ reading.
 
 use std::io::{Read, Seek};
-use std::sync::{Arc, OnceLock};
+use std::sync::Arc;
 
 use crate::coordinate::{CoordinateFrame, EpsgCode};
 use crate::error::{Error, Result};
@@ -32,11 +32,7 @@ impl PointCloud {
     ) -> Result<Self> {
         let reader = ::las::Reader::new(read).map_err(Error::point_cloud_read)?;
         let seg = read_buffer(reader, &frame, source)?;
-        Ok(PointCloud {
-            frame,
-            data: Data::InMemory(seg),
-            kdtree: OnceLock::new(),
-        })
+        Ok(PointCloud::new(frame, Data::InMemory(seg)))
     }
 }
 

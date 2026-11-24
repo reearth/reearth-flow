@@ -310,12 +310,17 @@ impl PointBuffer {
     }
 }
 
-/// A 3D point cloud: its points in a frame, plus a lazily-built KD-tree.
+/// A 3D point cloud: its points in a frame, plus a lazily-built KD-tree. A
+/// point's position is its stored position times `scale` plus `translation`.
 #[cfg_attr(feature = "debug-geom-feature-write", derive(Serialize, Deserialize))]
 pub struct PointCloud {
     /// Coordinate frame the points are expressed in.
     frame: CoordinateFrame,
     data: Data,
+    /// Per-axis factor on every stored position.
+    scale: [f64; 3],
+    /// Added to every stored position after `scale`.
+    translation: [f64; 3],
     /// Built lazily on first spatial query, or pre-built explicitly. Not part of
     /// the serialized form, and reset on any mutation. The kiddo alias
     /// `ImmutableKdTree<f64, 3>` has `f64` coords, `u32` content, 3 dimensions,
@@ -330,6 +335,32 @@ impl PointCloud {
     pub fn frame(&self) -> &CoordinateFrame {
         &self.frame
     }
+
+    /// A cloud of `data` in `frame` with no scale or translation.
+    fn new(frame: CoordinateFrame, data: Data) -> Self {
+        PointCloud {
+            frame,
+            data,
+            scale: [1.0; 3],
+            translation: [0.0; 3],
+            kdtree: OnceLock::new(),
+        }
+    }
+
+    /// A stored position with `scale` and `translation` applied.
+    fn place(&self, p: [f64; 3]) -> [f64; 3] {
+        std::array::from_fn(|i| p[i] * self.scale[i] + self.translation[i])
+    }
+
+    /// Every point's position, or an error naming `operation` if the points
+    /// are still in a file.
+    fn positions(
+        &self,
+        operation: &'static str,
+    ) -> Result<impl Iterator<Item = [f64; 3]> + '_, UnsupportedOperation> {
+        let buffer = self.data.buffer(operation)?;
+        Ok(ops::buffer_positions(buffer).map(|p| self.place(p)))
+    }
 }
 
 impl Clone for PointCloud {
@@ -338,6 +369,8 @@ impl Clone for PointCloud {
         PointCloud {
             frame: self.frame.clone(),
             data: self.data.clone(),
+            scale: self.scale,
+            translation: self.translation,
             kdtree: OnceLock::new(),
         }
     }
@@ -346,7 +379,10 @@ impl Clone for PointCloud {
 impl PartialEq for PointCloud {
     fn eq(&self, other: &Self) -> bool {
         // The KD-tree cache is not part of the value.
-        self.frame == other.frame && self.data == other.data
+        self.frame == other.frame
+            && self.data == other.data
+            && self.scale == other.scale
+            && self.translation == other.translation
     }
 }
 
@@ -355,6 +391,8 @@ impl fmt::Debug for PointCloud {
         f.debug_struct("PointCloud")
             .field("frame", &self.frame)
             .field("data", &self.data)
+            .field("scale", &self.scale)
+            .field("translation", &self.translation)
             .field("kdtree", &self.kdtree.get().map(|_| "<built>"))
             .finish()
     }

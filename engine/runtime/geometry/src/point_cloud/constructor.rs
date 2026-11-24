@@ -4,8 +4,6 @@
 //! with no optional fields or user attributes.
 //! LAS / LAZ input is read by `PointCloud::from_las`.
 
-use std::sync::OnceLock;
-
 use indexmap::IndexMap;
 
 use crate::coordinate::CoordinateFrame;
@@ -41,11 +39,7 @@ impl PointCloud {
             count,
             attributes: IndexMap::new(),
         });
-        Self {
-            frame,
-            data,
-            kdtree: OnceLock::new(),
-        }
+        Self::new(frame, data)
     }
 }
 

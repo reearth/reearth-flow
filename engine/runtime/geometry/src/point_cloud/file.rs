@@ -11,7 +11,7 @@ use reearth_flow_storage::resolve::StorageResolver;
 use reearth_flow_storage::storage::Storage;
 use serde::{Deserialize, Serialize};
 
-use super::{Data, PointBuffer, PointCloud, PositionEncoding};
+use super::{Data, PointBuffer, PointCloud};
 use crate::coordinate::CoordinateFrame;
 use crate::error::{Error, Result};
 
@@ -19,9 +19,6 @@ use crate::error::{Error, Result};
 #[derive(Clone, Serialize, Deserialize)]
 pub(super) struct PointFile {
     uri: Uri,
-    /// Added to every position on read, in the cloud's frame.
-    #[serde(default, skip_serializing_if = "is_zero")]
-    shift: [f64; 3],
     /// Read on first use and shared by clones.
     #[serde(skip)]
     header: Arc<OnceLock<std::result::Result<LasHeader, String>>>,
@@ -35,15 +32,10 @@ pub(super) struct LasHeader {
     pub(super) max: [f64; 3],
 }
 
-fn is_zero(shift: &[f64; 3]) -> bool {
-    *shift == [0.0; 3]
-}
-
 impl PointFile {
     pub(super) fn new(uri: Uri) -> Self {
         PointFile {
             uri,
-            shift: [0.0; 3],
             header: Arc::default(),
         }
     }
@@ -52,34 +44,20 @@ impl PointFile {
         &self.uri
     }
 
-    pub(super) fn shift(&self) -> [f64; 3] {
-        self.shift
-    }
-
-    /// Move every position by `delta` without reading the file.
-    pub(super) fn translate(&mut self, delta: [f64; 3]) {
-        for (axis, d) in self.shift.iter_mut().zip(delta) {
-            *axis += d;
-        }
-    }
-
-    /// Read every point into memory, in `frame`, with the shift applied.
-    /// Fails first if the file records a CRS other than `frame`'s.
+    /// Read every point into memory, in `frame`. Fails first if the file
+    /// records a CRS other than `frame`'s.
     fn load(&self, frame: &CoordinateFrame) -> Result<PointBuffer> {
         let uri = &self.uri;
         let reader = ::las::Reader::new(open(uri).map_err(Error::point_cloud_read)?)
             .map_err(|e| Error::point_cloud_read(format!("{uri}: {e}")))?;
-        let mut buffer = super::las::read_buffer(reader, frame, Some(Arc::from(uri.to_string())))
-            .map_err(|e| match e {
-            Error::PointCloudRead(message) => Error::point_cloud_read(format!("{uri}: {message}")),
-            e => e,
-        })?;
-        if let PositionEncoding::ScaledI32 { offset, .. } = &mut buffer.position {
-            for (axis, d) in offset.iter_mut().zip(self.shift) {
-                *axis += d;
-            }
-        }
-        Ok(buffer)
+        super::las::read_buffer(reader, frame, Some(Arc::from(uri.to_string()))).map_err(
+            |e| match e {
+                Error::PointCloudRead(message) => {
+                    Error::point_cloud_read(format!("{uri}: {message}"))
+                }
+                e => e,
+            },
+        )
     }
 
     /// The file's header, read on first call.
@@ -93,16 +71,13 @@ impl PointFile {
 
 impl PartialEq for PointFile {
     fn eq(&self, other: &Self) -> bool {
-        self.uri == other.uri && self.shift == other.shift
+        self.uri == other.uri
     }
 }
 
 impl fmt::Debug for PointFile {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        f.debug_struct("PointFile")
-            .field("uri", &self.uri)
-            .field("shift", &self.shift)
-            .finish()
+        f.debug_struct("PointFile").field("uri", &self.uri).finish()
     }
 }
 
@@ -213,11 +188,7 @@ impl PointCloud {
     /// A point cloud whose points stay in the LAS / LAZ file at `uri` until an
     /// operation needs them. `frame` is the frame of the file's coordinates.
     pub fn from_las_file(frame: CoordinateFrame, uri: Uri) -> Self {
-        PointCloud {
-            frame,
-            data: Data::File(PointFile::new(uri)),
-            kdtree: OnceLock::new(),
-        }
+        PointCloud::new(frame, Data::File(PointFile::new(uri)))
     }
 
     /// Read file-backed points into memory. The file's own CRS, if it records
@@ -249,10 +220,10 @@ mod tests {
     }
 
     #[test]
-    fn load_reads_the_points_with_the_shift() {
+    fn load_reads_the_points_under_the_translation() {
         use crate::coordinate::EpsgCode;
+        use crate::ops::Translate;
         use crate::point_cloud::las::tests::{geotiff_crs, point, write_with};
-        use crate::point_cloud::ops::buffer_positions;
 
         let dir = tempfile::tempdir().unwrap();
         let path = dir.path().join("a.las");
@@ -268,13 +239,10 @@ mod tests {
 
         let mut pc =
             PointCloud::from_las_file(CoordinateFrame::Crs(EpsgCode::new(6677)), uri.clone());
-        let Data::File(file) = &mut pc.data else {
-            unreachable!()
-        };
-        file.translate([1.0, 2.0, 3.0]);
+        pc.translate([1.0, 2.0, 3.0]).unwrap();
         pc.load().unwrap();
         // EPSG:6677 stores northing first.
-        let [x, y, z] = buffer_positions(pc.data.as_buffer()).next().unwrap();
+        let [x, y, z] = pc.positions("test").unwrap().next().unwrap();
         assert!((x - (p.y + 1.0)).abs() < 1e-9);
         assert!((y - (p.x + 2.0)).abs() < 1e-9);
         assert!((z - (p.z + 3.0)).abs() < 1e-9);

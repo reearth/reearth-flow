@@ -1537,6 +1537,28 @@
               "$ref": "#/definitions/Data"
             }
           ]
+        },
+        "scale": {
+          "title": "Scale",
+          "description": "Per-axis factor on every stored position.",
+          "type": "array",
+          "items": {
+            "type": "number",
+            "format": "double"
+          },
+          "maxItems": 3,
+          "minItems": 3
+        },
+        "translation": {
+          "title": "Translation",
+          "description": "Added to every stored position after `scale`.",
+          "type": "array",
+          "items": {
+            "type": "number",
+            "format": "double"
+          },
+          "maxItems": 3,
+          "minItems": 3
         }
       }
     },
@@ -1551,17 +1573,6 @@
             "string",
             "null"
           ]
-        },
-        "shift": {
-          "title": "Shift",
-          "description": "Added to every position read from `file`.",
-          "type": "array",
-          "items": {
-            "type": "number",
-            "format": "double"
-          },
-          "maxItems": 3,
-          "minItems": 3
         },
         "source": {
           "title": "Source",
