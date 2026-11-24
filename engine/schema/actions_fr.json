@@ -2182,7 +2182,7 @@
           },
           "timeField": {
             "title": "Champ de temps",
-            "description": "Attribut portant le temps de chaque entité, soit un horodatage ISO 8601, soit un nombre de secondes comptées depuis `epoch`. Défini avec `groupTimeseriesBy`, il fusionne un groupe en une seule entité dont la position est écrite sous forme d'échantillons horodatés ; défini seul, chaque entité devient une entité à part entière, limitée à l'intervalle où tombe son temps. Seul, il ne fournit que la temporisation, pas de quoi dessiner : une entité surfacique est dessinée comme son polygone, tandis que toute autre a besoin de son propre graphique via un attribut `czml.*`, car une position seule ne dessine rien.",
+            "description": "Attribut portant le temps de chaque entité, soit un horodatage ISO 8601, soit un nombre de secondes comptées depuis `epoch`. Défini avec `groupTimeseriesBy`, un groupe est fusionné en une seule entité dont la position est écrite sous forme d'échantillons horodatés, sauf les entités surfaciques, qui conservent une seule emprise. Défini seul, chaque entité devient une entité à part entière, limitée à l'intervalle où tombe son temps, et ne fournit que la temporisation plutôt que de quoi dessiner : une entité surfacique est dessinée comme son polygone, tandis que toute autre a besoin de son propre graphique via un attribut `czml.*`, car une position seule ne dessine rien.",
             "anyOf": [
               {
                 "$ref": "#/definitions/Attribute"

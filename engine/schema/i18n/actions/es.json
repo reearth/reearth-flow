@@ -826,7 +826,7 @@
         },
         "timeField": {
           "title": "Campo de tiempo",
-          "description": "Atributo que contiene el tiempo de cada entidad, ya sea una marca de tiempo ISO 8601 o un número de segundos contados desde `epoch`. Defínelo junto con `groupTimeseriesBy` para fusionar un grupo en una sola entidad cuya posición se escribe como muestras marcadas en el tiempo; definido en solitario, cada entidad se convierte en una entidad propia, limitada al intervalo en que cae su tiempo. En solitario solo aporta la temporización, no algo que dibujar: una entidad de superficie se dibuja como su polígono, mientras que cualquier otra necesita su propio gráfico mediante un atributo `czml.*`, porque una posición por sí sola no dibuja nada."
+          "description": "Atributo que contiene el tiempo de cada entidad, ya sea una marca de tiempo ISO 8601 o un número de segundos contados desde `epoch`. Definido junto con `groupTimeseriesBy`, un grupo se fusiona en una sola entidad cuya posición se escribe como muestras marcadas en el tiempo, salvo las entidades de superficie, que conservan un único contorno. Definido en solitario, cada entidad se convierte en una entidad propia, limitada al intervalo en que cae su tiempo, y aporta solo la temporización en lugar de algo que dibujar: una entidad de superficie se dibuja como su polígono, mientras que cualquier otra necesita su propio gráfico mediante un atributo `czml.*`, porque una posición por sí sola no dibuja nada."
         }
       },
       "definitionI18n": {

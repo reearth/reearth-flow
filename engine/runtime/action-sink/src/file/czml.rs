@@ -217,12 +217,13 @@ pub(crate) struct CzmlWriterParam {
     pub(super) group_by: Option<Vec<Attribute>>,
     /// # Time Field
     /// Attribute holding each feature's time, either an ISO 8601 timestamp or a
-    /// number of seconds counted from `epoch`. Set it together with
-    /// `groupTimeseriesBy` to merge a group into one entity whose position is
-    /// written as time-tagged samples; set alone, each feature becomes its own
-    /// entity, limited to the interval its time falls in. Set alone it supplies
-    /// the timing only, not something to draw: an areal feature is drawn as its
-    /// polygon, while anything else needs a graphic of its own from a `czml.*`
+    /// number of seconds counted from `epoch`. Set together with
+    /// `groupTimeseriesBy`, a group merges into one entity whose position is
+    /// written as time-tagged samples, except for areal features, which keep a
+    /// single footprint. Set alone, each feature becomes its own entity,
+    /// limited to the interval its time falls in, and supplies the timing only
+    /// rather than something to draw: an areal feature is drawn as its polygon,
+    /// while anything else needs a graphic of its own from a `czml.*`
     /// attribute, because a position by itself draws nothing.
     pub(super) time_field: Option<Attribute>,
     /// # Group Timeseries By
