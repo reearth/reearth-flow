@@ -1101,16 +1101,13 @@ fn writable_time_value(time_str: &str, epoch: Option<&str>) -> Option<Value> {
     if is_writable_timestamp(time_str) {
         return Some(serde_json::json!(time_str));
     }
-    if time_str.parse::<f64>().is_ok_and(f64::is_finite) {
-        let converted = strip_epoch_offset_for_availability(time_str, epoch);
-        // `strip_epoch_offset_for_availability` hands back its input when it
-        // cannot convert — no epoch, or a time outside the representable
-        // range — and that input is the string this branch exists to refuse.
-        if converted != time_str {
-            return Some(serde_json::json!(converted));
-        }
-    }
-    None
+    // Everything else is written as the instant it resolves to, through the
+    // same function the document clock asks. Deciding acceptance twice let the
+    // two disagree: this branch was gated on `parse::<f64>()`, which the
+    // `"<iso>+<N>s"` spelling fails, so the entity dropped that sample while
+    // the clock — which resolves it happily — still stretched its interval to
+    // cover a time nothing had been written at. One rule, so they cannot drift.
+    resolve_time_instant(time_str, epoch).map(|dt| serde_json::json!(instant_to_czml(dt)))
 }
 
 /// Report a feature whose time value names no time, so its position cannot be
@@ -4690,6 +4687,52 @@ mod new_geometry_tests {
                 .len(),
             8,
             "only the two writable samples belong in the entity: {entity:?}"
+        );
+    }
+
+    #[test]
+    fn an_epoch_offset_time_is_accepted_by_the_entity_and_the_clock_alike() {
+        // `<iso>+<N>s` resolved to an instant for the clock but was refused
+        // for the entity, because acceptance was decided twice and the
+        // entity's test was `parse::<f64>()`, which this spelling fails. The
+        // sample was dropped while the clock interval still covered it.
+        let mut with = HashMap::new();
+        with.insert("timeField".to_string(), serde_json::json!("timestamp"));
+        with.insert(
+            "groupTimeseriesBy".to_string(),
+            serde_json::json!("vehicleId"),
+        );
+        with.insert(
+            "epoch".to_string(),
+            serde_json::json!("2024-01-01T00:00:00Z"),
+        );
+        let doc = parse(&fixture::write_batch_with_params(
+            vec![
+                grouped_point("2024-01-01T00:00:00Z+120s", "v1"),
+                grouped_point("2024-01-01T00:00:00Z+240s", "v1"),
+            ],
+            with,
+        ));
+        let entity = entity_of(&doc, "v1");
+        let samples = entity["position"]["cartographicDegrees"]
+            .as_array()
+            .expect("cartographicDegrees")
+            .clone();
+        assert_eq!(
+            samples.len(),
+            8,
+            "both epoch-offset samples belong in the entity: {entity:?}"
+        );
+        // Written as the instant it names, not as the bare offset number.
+        assert_eq!(samples[0], serde_json::json!("2024-01-01T00:02:00Z"));
+        // And the entity's window and the document clock agree about it.
+        assert_eq!(
+            entity["availability"],
+            serde_json::json!("2024-01-01T00:02:00Z/2024-01-01T00:04:00Z")
+        );
+        assert_eq!(
+            doc[0]["clock"]["interval"],
+            serde_json::json!("2024-01-01T00:02:00Z/2024-01-01T00:04:00Z")
         );
     }
 
