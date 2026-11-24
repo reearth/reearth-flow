@@ -170,7 +170,7 @@ func (submittingBatch) SubmitJob(context.Context, id.JobID, string, string, map[
 // unmonitoredJobs starts no monitoring loop, which would poll a real backend.
 type unmonitoredJobs struct{ interfaces.Job }
 
-func (unmonitoredJobs) StartMonitoring(context.Context, *job.Job, *string) error { return nil }
+func (unmonitoredJobs) StartMonitoring(context.Context, *job.Job) error { return nil }
 
 // A refused scheduled run is recorded on its trigger, so its user can see why
 // it did not run, and whether it is still being retried.

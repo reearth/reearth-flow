@@ -83,6 +83,8 @@ func (m *mockCheckStatusRedis) GetJobDiagnostics(ctx context.Context, jobID id.J
 type mockCheckStatusJobRepo struct {
 	job       *job.Job
 	saveCalls int
+	// stored is the status at the last save, as a database column holds it.
+	stored job.Status
 }
 
 func (m *mockCheckStatusJobRepo) FindByID(ctx context.Context, jobID id.JobID) (*job.Job, error) {
@@ -104,7 +106,15 @@ func (m *mockCheckStatusJobRepo) FindByProject(ctx context.Context, projectID id
 func (m *mockCheckStatusJobRepo) Save(ctx context.Context, j *job.Job) error {
 	m.saveCalls++
 	m.job = j
+	m.stored = j.Status()
 	return nil
+}
+
+func (m *mockCheckStatusJobRepo) SaveIfNotTerminal(ctx context.Context, j *job.Job) (bool, error) {
+	if m.stored.IsTerminal() {
+		return false, nil
+	}
+	return true, m.Save(ctx, j)
 }
 
 func (m *mockCheckStatusJobRepo) Filtered(filter repo.WorkspaceFilter) repo.Job {
@@ -265,7 +275,7 @@ func TestJob_RunCloudRunWorker_CancelsARunPastItsLimit(t *testing.T) {
 	}
 }
 
-func TestJob_checkJobStatus_TerminalDiagnosticsMerge(t *testing.T) {
+func TestJob_Reconcile_TerminalDiagnosticsMerge(t *testing.T) {
 	event := loadJobCompleteEventFixture(t)
 	jobID := id.MustJobID(event.JobID)
 	testJob := job.NewJob(jobID, nil, accountsid.NewWorkspaceID(), "")
@@ -276,7 +286,8 @@ func TestJob_checkJobStatus_TerminalDiagnosticsMerge(t *testing.T) {
 
 	i := newCheckStatusJob(jobRepo, diagRepo, redisMock)
 
-	require.NoError(t, i.checkJobStatus(context.Background(), testJob))
+	_, err := i.Reconcile(context.Background(), jobID)
+	require.NoError(t, err)
 
 	assert.Equal(t, 1, diagRepo.saveCalls)
 	assert.Equal(t, jobID, diagRepo.lastJobID)
@@ -295,7 +306,7 @@ func TestJob_checkJobStatus_TerminalDiagnosticsMerge(t *testing.T) {
 	assert.GreaterOrEqual(t, jobRepo.saveCalls, 1)
 }
 
-func TestJob_checkJobStatus_PersistFailure_RetainsEvent(t *testing.T) {
+func TestJob_Reconcile_PersistFailure_RetainsEvent(t *testing.T) {
 	event := loadJobCompleteEventFixture(t)
 	jobID := id.MustJobID(event.JobID)
 	testJob := job.NewJob(jobID, nil, accountsid.NewWorkspaceID(), "")
@@ -306,7 +317,8 @@ func TestJob_checkJobStatus_PersistFailure_RetainsEvent(t *testing.T) {
 
 	i := newCheckStatusJob(jobRepo, diagRepo, redisMock)
 
-	require.NoError(t, i.checkJobStatus(context.Background(), testJob))
+	_, err := i.Reconcile(context.Background(), jobID)
+	require.NoError(t, err)
 
 	assert.Equal(t, 1, diagRepo.saveCalls)
 	// Delete is skipped on failure so a later poll can retry against the same event.
@@ -316,7 +328,7 @@ func TestJob_checkJobStatus_PersistFailure_RetainsEvent(t *testing.T) {
 	assert.GreaterOrEqual(t, jobRepo.saveCalls, 1)
 }
 
-func TestJob_checkJobStatus_OldWireEvent_Unchanged(t *testing.T) {
+func TestJob_Reconcile_OldWireEvent_Unchanged(t *testing.T) {
 	// An engine build predating diagnostics: all three fields absent.
 	jobID := id.NewJobID()
 	testJob := job.NewJob(jobID, nil, accountsid.NewWorkspaceID(), "")
@@ -334,7 +346,8 @@ func TestJob_checkJobStatus_OldWireEvent_Unchanged(t *testing.T) {
 
 	i := newCheckStatusJob(jobRepo, diagRepo, redisMock)
 
-	require.NoError(t, i.checkJobStatus(context.Background(), testJob))
+	_, err := i.Reconcile(context.Background(), jobID)
+	require.NoError(t, err)
 
 	assert.Equal(t, 0, diagRepo.saveCalls)
 	assert.Equal(t, 1, redisMock.deleteCalls)

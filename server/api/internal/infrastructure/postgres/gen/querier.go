@@ -68,6 +68,8 @@ type Querier interface {
 	ListTriggersByIDs(ctx context.Context, dollar_1 []string) ([]Trigger, error)
 	ListWorkerConfigs(ctx context.Context) ([]WorkerConfig, error)
 	ListWorkerConfigsByIDs(ctx context.Context, dollar_1 []string) ([]WorkerConfig, error)
+	// UpsertJob unless the stored status (computed Status() at last save) is terminal; 0 rows = lost.
+	SaveJobIfNotTerminal(ctx context.Context, arg SaveJobIfNotTerminalParams) (int64, error)
 	UpdateTriggerLastRefusal(ctx context.Context, arg UpdateTriggerLastRefusalParams) error
 	UpdateTriggerLastRefusalInWorkspaces(ctx context.Context, arg UpdateTriggerLastRefusalInWorkspacesParams) error
 	UpsertAsset(ctx context.Context, arg UpsertAssetParams) error

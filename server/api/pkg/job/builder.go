@@ -149,3 +149,13 @@ func (b *JobBuilder) Parameters(parameters []*parameter.Parameter) *JobBuilder {
 	b.j.parameters = parameters
 	return b
 }
+
+func (b *JobBuilder) NotificationURL(url *string) *JobBuilder {
+	b.j.SetNotificationURL(url)
+	return b
+}
+
+func (b *JobBuilder) NotifiedAt(t *time.Time) *JobBuilder {
+	b.j.notifiedAt = t
+	return b
+}

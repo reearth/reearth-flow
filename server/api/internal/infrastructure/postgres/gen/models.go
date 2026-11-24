@@ -103,6 +103,8 @@ type Job struct {
 	ScheduledAt       *time.Time
 	Origin            []byte
 	RunBy             *string
+	NotificationUrl   *string
+	NotifiedAt        *time.Time
 }
 
 type JobCompleteEvent struct {

@@ -83,3 +83,8 @@ func TestJob_TriggerAndOrigin(t *testing.T) {
 	t.Parallel()
 	repotest.JobTriggerAndOrigin(t, func(t *testing.T) repo.Job { return connectJobDB(t) })
 }
+
+func TestJob_SaveIfNotTerminal(t *testing.T) {
+	t.Parallel()
+	repotest.JobSaveIfNotTerminal(t, func(t *testing.T) repo.Job { return connectJobDB(t) })
+}

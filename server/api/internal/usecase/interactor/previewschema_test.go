@@ -172,7 +172,7 @@ func (j *previewFakeJob) PreviewSchemaCloudRunWorker(_ *job.Job, p gateway.Probe
 func (j *previewFakeJob) RunCloudRunWorker(_ *job.Job, p gateway.RunJobParam, _ func()) {
 	j.runCalls = append(j.runCalls, p)
 }
-func (j *previewFakeJob) StartMonitoring(context.Context, *job.Job, *string) error {
+func (j *previewFakeJob) StartMonitoring(context.Context, *job.Job) error {
 	j.monitored++
 	return nil
 }
@@ -188,6 +188,9 @@ func (j *previewFakeJob) GetStatus(context.Context, id.JobID) (job.Status, error
 	panic("unused")
 }
 func (j *previewFakeJob) Refresh(context.Context, *job.Job) (*job.Job, error) {
+	panic("unused")
+}
+func (j *previewFakeJob) Reconcile(context.Context, id.JobID) (*job.Job, error) {
 	panic("unused")
 }
 func (j *previewFakeJob) Subscribe(context.Context, id.JobID) (chan job.Status, error) {

@@ -286,6 +286,24 @@ func (r *Job) Save(ctx context.Context, j *job.Job) error {
 	return nil
 }
 
+func (r *Job) SaveIfNotTerminal(ctx context.Context, j *job.Job) (bool, error) {
+	if !r.f.CanWrite(j.Workspace()) {
+		return false, repo.ErrOperationDenied
+	}
+	params, err := jobToParams(j)
+	if err != nil {
+		return false, rerror.ErrInternalByWithContext(ctx, err)
+	}
+	n, err := r.q(ctx).SaveJobIfNotTerminal(ctx, gen.SaveJobIfNotTerminalParams(params))
+	if err != nil {
+		if isScheduledRunConflict(err) {
+			return false, interfaces.ErrScheduledRunInProgress
+		}
+		return false, rerror.ErrInternalByWithContext(ctx, pgxx.WrapError(err))
+	}
+	return n > 0, nil
+}
+
 const jobScheduledRunIndex = "jobs_trigger_id_scheduled_at_idx"
 
 // isScheduledRunConflict reports whether err refused a job because another job
@@ -389,6 +407,8 @@ func jobToParams(j *job.Job) (gen.UpsertJobParams, error) {
 		p.Origin = b
 	}
 	p.RunBy = j.RunBy().StringRef()
+	p.NotificationUrl = j.NotificationURL()
+	p.NotifiedAt = j.NotifiedAt()
 	return p, nil
 }
 
@@ -413,7 +433,9 @@ func jobFromRow(row gen.Job) (*job.Job, error) {
 		StartedAt(row.StartedAt).
 		CompletedAt(row.CompletedAt).
 		MetadataURL(row.MetadataUrl).
-		Debug(row.Debug)
+		Debug(row.Debug).
+		NotificationURL(row.NotificationUrl).
+		NotifiedAt(row.NotifiedAt)
 
 	if row.DeploymentID != nil {
 		did, err := id.DeploymentIDFrom(*row.DeploymentID)

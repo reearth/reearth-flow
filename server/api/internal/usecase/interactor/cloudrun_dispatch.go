@@ -208,10 +208,13 @@ func (i *Job) startRunningOnFirstLog(ctx context.Context, current *job.Job) (log
 		return true, nil
 	}
 	latest.SetStatus(job.StatusRunning)
-	if err := i.jobRepo.Save(ctx, latest); err != nil {
+	saved, err := i.jobRepo.SaveIfNotTerminal(ctx, latest)
+	if err != nil {
 		return true, fmt.Errorf("failed to save started cloud run job %s: %w", current.ID(), err)
 	}
-	i.subscriptions.Notify(latest.ID().String(), latest.Status())
+	if saved {
+		i.subscriptions.Notify(latest.ID().String(), latest.Status())
+	}
 	return true, nil
 }
 
@@ -221,14 +224,10 @@ func (i *Job) failAbandonedDispatch(ctx context.Context, current *job.Job) bool 
 	}
 	log.Warnfc(ctx, "job: %s is still queued but nothing is dispatching it, failing it", current.ID())
 	current.SetStatus(job.StatusFailed)
-	if err := i.jobRepo.Save(ctx, current); err != nil {
+	if _, _, err := i.finalize(ctx, current, nil); err != nil {
 		log.Errorfc(ctx, "job: failed to save abandoned cloud run job %s: %v", current.ID(), err)
 		return false
 	}
-	if err := i.handleJobCompletion(ctx, current); err != nil {
-		log.Errorfc(ctx, "job: completion handling failed for abandoned cloud run job %s: %v", current.ID(), err)
-	}
-	i.subscriptions.Notify(current.ID().String(), current.Status())
 	return true
 }
 

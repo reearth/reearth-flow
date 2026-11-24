@@ -3,8 +3,7 @@ package monitor
 import "context"
 
 type Config struct {
-	Cancel          context.CancelFunc
-	NotificationURL *string
+	Cancel context.CancelFunc
 }
 
 type Registry interface {

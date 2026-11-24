@@ -31,8 +31,10 @@ type JobDocument struct {
 	MetadataURL       string              `bson:"metadataurl"`
 	// Mode is omitempty so pre-existing docs (no mode) load as ModeRun via the
 	// domain's Mode() default.
-	Mode       string   `bson:"mode,omitempty"`
-	OutputURLs []string `bson:"outputurls"`
+	Mode            string     `bson:"mode,omitempty"`
+	OutputURLs      []string   `bson:"outputurls"`
+	NotificationURL *string    `bson:"notificationurl,omitempty"`
+	NotifiedAt      *time.Time `bson:"notifiedat,omitempty"`
 }
 
 // JobOriginDocument is where outside Flow a job was started from.
@@ -149,6 +151,8 @@ func NewJob(j *job.Job) (*JobDocument, string) {
 		MetadataURL:       j.MetadataURL(),
 		Mode:              string(j.Mode()),
 		OutputURLs:        j.OutputURLs(),
+		NotificationURL:   j.NotificationURL(),
+		NotifiedAt:        j.NotifiedAt(),
 	}
 
 	if p := j.Parameters(); len(p) > 0 {
@@ -210,7 +214,9 @@ func (d *JobDocument) Model() (*job.Job, error) {
 		LogsURL(d.LogsURL).
 		WorkerLogsURL(d.WorkerLogsURL).
 		UserFacingLogsURL(d.UserFacingLogsURL).
-		Origin(d.Origin.model())
+		Origin(d.Origin.model()).
+		NotificationURL(d.NotificationURL).
+		NotifiedAt(d.NotifiedAt)
 
 	if d.TriggerID != nil {
 		tid, err := id.TriggerIDFrom(*d.TriggerID)

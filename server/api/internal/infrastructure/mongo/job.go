@@ -366,6 +366,22 @@ func (r *Job) Save(ctx context.Context, j *job.Job) error {
 	return err
 }
 
+var terminalJobStatuses = []string{string(job.StatusCompleted), string(job.StatusFailed), string(job.StatusCancelled)}
+
+// SaveIfNotTerminal upserts unless stored status is terminal; that case hits the unique id index.
+func (r *Job) SaveIfNotTerminal(ctx context.Context, j *job.Job) (bool, error) {
+	doc, jid := mongodoc.NewJob(j)
+	filter := bson.M{"id": jid, "status": bson.M{"$nin": terminalJobStatuses}}
+	res, err := r.client.Client().ReplaceOne(ctx, filter, doc, options.Replace().SetUpsert(true))
+	if mongo.IsDuplicateKeyError(err) || isTransientTxError(err) {
+		return false, nil
+	}
+	if err != nil {
+		return false, rerror.ErrInternalByWithContext(ctx, err)
+	}
+	return res.MatchedCount+res.UpsertedCount > 0, nil
+}
+
 func (r *Job) Remove(ctx context.Context, id id.JobID) error {
 	return r.client.RemoveOne(ctx, bson.M{"id": id.String()})
 }

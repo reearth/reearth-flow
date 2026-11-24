@@ -593,7 +593,7 @@ func (i *Deployment) Execute(ctx context.Context, p interfaces.ExecuteDeployment
 	}
 	logJobEvent(ctx, jobEventSubmitted, j, "trigger", jobTriggerDeployment)
 
-	if err := i.job.StartMonitoring(ctx, j, nil); err != nil {
+	if err := i.job.StartMonitoring(ctx, j); err != nil {
 		return nil, fmt.Errorf("failed to start job monitoring: %v", err)
 	}
 

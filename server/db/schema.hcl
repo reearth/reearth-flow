@@ -512,6 +512,16 @@ table "jobs" {
     type = text
     null = true
   }
+  // Where the job's completion webhook goes, so any server instance can send it.
+  column "notification_url" {
+    type = text
+    null = true
+  }
+  // When the completion webhook was delivered; null until it has been.
+  column "notified_at" {
+    type = timestamptz
+    null = true
+  }
 
   primary_key {
     columns = [column.id]

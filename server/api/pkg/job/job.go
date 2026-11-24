@@ -17,6 +17,11 @@ const (
 	StatusFailed    Status = "FAILED"
 )
 
+// IsTerminal reports whether the status is completed, failed or cancelled.
+func (s Status) IsTerminal() bool {
+	return s == StatusCompleted || s == StatusFailed || s == StatusCancelled
+}
+
 // Mode discriminates how a job was dispatched. Existing run/debug jobs are
 // ModeRun; the preview-schema pipeline tags its jobs ModePreviewSchema so they
 // can be excluded from normal run history listings.
@@ -37,6 +42,8 @@ type ScheduledRun struct {
 type Job struct {
 	startedAt         time.Time
 	completedAt       *time.Time
+	notifiedAt        *time.Time
+	notificationURL   *string
 	scheduledRun      *ScheduledRun
 	trigger           *id.TriggerID
 	origin            *Origin
@@ -246,9 +253,10 @@ func (j *Job) SetGCPJobID(gcpJobID string) {
 	j.gcpJobID = gcpJobID
 }
 
+// SetStatus sets the legacy status and stamps completedAt on finish unless already set.
 func (j *Job) SetStatus(status Status) {
 	j.status = status
-	if status == StatusCompleted || status == StatusFailed {
+	if (status == StatusCompleted || status == StatusFailed) && j.completedAt == nil {
 		now := time.Now()
 		j.completedAt = &now
 	}
@@ -296,4 +304,25 @@ func (j *Job) SetWorkerStatus(workerStatus Status) {
 
 func (j *Job) SetParameters(parameters []*parameter.Parameter) {
 	j.parameters = parameters
+}
+
+// NotificationURL is where the job's completion webhook is sent, if anywhere.
+func (j *Job) NotificationURL() *string {
+	return j.notificationURL
+}
+
+func (j *Job) SetNotificationURL(url *string) {
+	if url != nil && *url == "" {
+		url = nil
+	}
+	j.notificationURL = url
+}
+
+// NotifiedAt is when the completion webhook was delivered, or nil.
+func (j *Job) NotifiedAt() *time.Time {
+	return j.notifiedAt
+}
+
+func (j *Job) SetNotifiedAt(t *time.Time) {
+	j.notifiedAt = t
 }

@@ -45,6 +45,13 @@ func (r *dispatchJobRepo) Save(_ context.Context, j *job.Job) error {
 	return nil
 }
 
+func (r *dispatchJobRepo) SaveIfNotTerminal(ctx context.Context, j *job.Job) (bool, error) {
+	if r.status().IsTerminal() {
+		return false, nil
+	}
+	return true, r.Save(ctx, j)
+}
+
 func (r *dispatchJobRepo) status() job.Status {
 	r.mu.Lock()
 	defer r.mu.Unlock()
@@ -340,7 +347,7 @@ func TestJob_Refresh_FailsAnAbandonedDispatchOnce(t *testing.T) {
 
 		require.NoError(t, err)
 		assert.Equal(t, job.StatusFailed, got.Status())
-		assert.Equal(t, []job.Status{job.StatusFailed, job.StatusFailed}, repo.savedStatuses(), "the failure and its completion handling")
+		assert.Equal(t, []job.Status{job.StatusFailed}, repo.savedStatuses(), "failed in one write")
 	})
 
 	t.Run("refreshing it again writes nothing", func(t *testing.T) {
@@ -374,7 +381,7 @@ func TestJob_Refresh_FailsAnAbandonedDispatchOnce(t *testing.T) {
 		}
 		wg.Wait()
 
-		assert.Equal(t, []job.Status{job.StatusFailed, job.StatusFailed}, repo.savedStatuses())
+		assert.Equal(t, []job.Status{job.StatusFailed}, repo.savedStatuses())
 	})
 
 	t.Run("a job with a live dispatcher is left queued", func(t *testing.T) {
@@ -430,7 +437,7 @@ func TestJob_Refresh_FailsAnAbandonedDispatchOnce(t *testing.T) {
 	})
 }
 
-func TestJob_checkJobStatus_FailsAnAbandonedDispatch(t *testing.T) {
+func TestJob_Reconcile_FailsAnAbandonedDispatch(t *testing.T) {
 	t.Parallel()
 
 	clock := &dispatchClock{t: time.Unix(1_000_000, 0)}
@@ -438,11 +445,11 @@ func TestJob_checkJobStatus_FailsAnAbandonedDispatch(t *testing.T) {
 	repo := newDispatchJobRepo(queued)
 	i := newDispatchJob(repo, &fakeRunWorker{answers: []error{nil}}, newFakeLeases(), clock)
 
-	require.NoError(t, i.checkJobStatus(context.Background(), queued))
-	require.NoError(t, i.checkJobStatus(context.Background(), queued))
+	require.NoError(t, reconcileErr(i.Reconcile(context.Background(), queued.ID())))
+	require.NoError(t, reconcileErr(i.Reconcile(context.Background(), queued.ID())))
 
 	assert.Equal(t, job.StatusFailed, repo.status())
-	assert.Equal(t, []job.Status{job.StatusFailed, job.StatusFailed}, repo.savedStatuses(), "failed by the first check only")
+	assert.Equal(t, []job.Status{job.StatusFailed}, repo.savedStatuses(), "failed by the first check only")
 }
 
 func TestJob_RunCloudRunWorker_StaysQueuedWhileItWaits(t *testing.T) {
@@ -483,7 +490,7 @@ func notified(ch chan job.Status) []job.Status {
 	}
 }
 
-func TestJob_checkJobStatus_AQueuedJobRunsFromItsFirstLog(t *testing.T) {
+func TestJob_Reconcile_AQueuedJobRunsFromItsFirstLog(t *testing.T) {
 	t.Parallel()
 
 	setup := func(t *testing.T, age time.Duration) (*Job, *dispatchJobRepo, *mockCheckStatusRedis, *job.Job, chan job.Status) {
@@ -505,8 +512,8 @@ func TestJob_checkJobStatus_AQueuedJobRunsFromItsFirstLog(t *testing.T) {
 
 		i, repo, _, queued, ch := setup(t, 0)
 
-		require.NoError(t, i.checkJobStatus(context.Background(), queued))
-		require.NoError(t, i.checkJobStatus(context.Background(), queued))
+		require.NoError(t, reconcileErr(i.Reconcile(context.Background(), queued.ID())))
+		require.NoError(t, reconcileErr(i.Reconcile(context.Background(), queued.ID())))
 
 		assert.Equal(t, job.StatusPending, repo.status())
 		assert.Empty(t, repo.savedStatuses())
@@ -517,11 +524,11 @@ func TestJob_checkJobStatus_AQueuedJobRunsFromItsFirstLog(t *testing.T) {
 		t.Parallel()
 
 		i, repo, store, queued, ch := setup(t, 0)
-		require.NoError(t, i.checkJobStatus(context.Background(), queued))
+		require.NoError(t, reconcileErr(i.Reconcile(context.Background(), queued.ID())))
 		store.logs = firstLog(queued)
 
-		require.NoError(t, i.checkJobStatus(context.Background(), queued))
-		require.NoError(t, i.checkJobStatus(context.Background(), queued))
+		require.NoError(t, reconcileErr(i.Reconcile(context.Background(), queued.ID())))
+		require.NoError(t, reconcileErr(i.Reconcile(context.Background(), queued.ID())))
 
 		assert.Equal(t, job.StatusRunning, repo.status())
 		assert.Equal(t, []job.Status{job.StatusRunning}, repo.savedStatuses())
@@ -535,7 +542,7 @@ func TestJob_checkJobStatus_AQueuedJobRunsFromItsFirstLog(t *testing.T) {
 		i, repo, store, queued, ch := setup(t, 0)
 		store.event = &gateway.JobCompleteEvent{JobID: queued.ID().String(), Result: "success"}
 
-		require.NoError(t, i.checkJobStatus(context.Background(), queued))
+		require.NoError(t, reconcileErr(i.Reconcile(context.Background(), queued.ID())))
 
 		assert.Equal(t, job.StatusCompleted, repo.status())
 		assert.NotContains(t, repo.savedStatuses(), job.StatusRunning)
@@ -548,8 +555,8 @@ func TestJob_checkJobStatus_AQueuedJobRunsFromItsFirstLog(t *testing.T) {
 		i, repo, store, queued, _ := setup(t, 2*dispatchLeaseStartupGrace)
 		store.logs = firstLog(queued)
 
-		require.NoError(t, i.checkJobStatus(context.Background(), queued))
-		require.NoError(t, i.checkJobStatus(context.Background(), queued))
+		require.NoError(t, reconcileErr(i.Reconcile(context.Background(), queued.ID())))
+		require.NoError(t, reconcileErr(i.Reconcile(context.Background(), queued.ID())))
 
 		assert.Equal(t, job.StatusRunning, repo.status())
 		assert.Equal(t, []job.Status{job.StatusRunning}, repo.savedStatuses())
@@ -562,7 +569,7 @@ func TestJob_checkJobStatus_AQueuedJobRunsFromItsFirstLog(t *testing.T) {
 		store.logs = firstLog(queued)
 		store.logsErr = fmt.Errorf("live store down")
 
-		require.NoError(t, i.checkJobStatus(context.Background(), queued))
+		require.NoError(t, reconcileErr(i.Reconcile(context.Background(), queued.ID())))
 
 		assert.Equal(t, job.StatusPending, repo.status())
 		assert.Empty(t, notified(ch))
@@ -609,11 +616,11 @@ func TestJob_RunCloudRunWorker_AFinishedRunWaitsForItsResult(t *testing.T) {
 		monitor, repo, store, clock, queued := setup(t)
 		clock.advance(dispatchResultWait - time.Minute)
 
-		require.NoError(t, monitor.checkJobStatus(context.Background(), queued))
+		require.NoError(t, reconcileErr(monitor.Reconcile(context.Background(), queued.ID())))
 		assert.Equal(t, job.StatusPending, repo.status(), "not failed as abandoned while its result is on the way")
 
 		store.event = &gateway.JobCompleteEvent{JobID: queued.ID().String(), Result: "success"}
-		require.NoError(t, monitor.checkJobStatus(context.Background(), queued))
+		require.NoError(t, reconcileErr(monitor.Reconcile(context.Background(), queued.ID())))
 		assert.Equal(t, job.StatusCompleted, repo.status())
 		assert.NotContains(t, repo.savedStatuses(), job.StatusFailed)
 	})
@@ -624,12 +631,12 @@ func TestJob_RunCloudRunWorker_AFinishedRunWaitsForItsResult(t *testing.T) {
 		monitor, repo, _, clock, queued := setup(t)
 		clock.advance(dispatchResultWait + time.Second)
 
-		require.NoError(t, monitor.checkJobStatus(context.Background(), queued))
+		require.NoError(t, reconcileErr(monitor.Reconcile(context.Background(), queued.ID())))
 		assert.Equal(t, job.StatusFailed, repo.status())
 	})
 }
 
-func TestJob_Refresh_LeavesAJobWithAResultToTheMonitoringLoop(t *testing.T) {
+func TestJob_Refresh_FinalizesAQueuedJobWithAResult(t *testing.T) {
 	t.Parallel()
 
 	clock := &dispatchClock{t: time.Unix(1_000_000, 0)}
@@ -641,9 +648,12 @@ func TestJob_Refresh_LeavesAJobWithAResultToTheMonitoringLoop(t *testing.T) {
 	got, err := i.Refresh(context.Background(), queued)
 
 	require.NoError(t, err)
-	assert.Equal(t, job.StatusPending, got.Status())
-	assert.Empty(t, repo.savedStatuses())
+	assert.Equal(t, job.StatusCompleted, got.Status())
+	assert.Equal(t, []job.Status{job.StatusCompleted}, repo.savedStatuses(), "completed, not failed as abandoned")
 }
+
+// reconcileErr drops Reconcile's job so a test can assert on its error alone.
+func reconcileErr(_ *job.Job, err error) error { return err }
 
 type failingRenewals struct {
 	*fakeLeases
@@ -681,7 +691,7 @@ func TestJob_RunCloudRunWorker_ARequestInFlightOutlivesFailedLeaseRenewals(t *te
 
 	other := newDispatchJob(repo, &fakeRunWorker{answers: []error{nil}}, nil, clock)
 	other.usage = leases
-	require.NoError(t, other.checkJobStatus(context.Background(), queued))
+	require.NoError(t, reconcileErr(other.Reconcile(context.Background(), queued.ID())))
 
 	assert.Equal(t, job.StatusPending, repo.status(), "renewals failed for 90 s, but the request is still in flight")
 	assert.Empty(t, repo.savedStatuses())
@@ -702,7 +712,7 @@ func (s *cancelOnLogRead) GetLogs(ctx context.Context, since, until time.Time, j
 	return s.mockCheckStatusRedis.GetLogs(ctx, since, until, jobID)
 }
 
-func TestJob_checkJobStatus_AFirstLogDoesNotUndoACancel(t *testing.T) {
+func TestJob_Reconcile_AFirstLogDoesNotUndoACancel(t *testing.T) {
 	t.Parallel()
 
 	clock := &dispatchClock{t: time.Unix(1_000_000, 0)}
@@ -715,7 +725,7 @@ func TestJob_checkJobStatus_AFirstLogDoesNotUndoACancel(t *testing.T) {
 	}
 	ch := i.subscriptions.Subscribe(queued.ID().String())
 
-	require.NoError(t, i.checkJobStatus(context.Background(), queued))
+	require.NoError(t, reconcileErr(i.Reconcile(context.Background(), queued.ID())))
 
 	assert.Equal(t, job.StatusCancelled, repo.status())
 	assert.Equal(t, []job.Status{job.StatusCancelled}, repo.savedStatuses(), "only the cancel was saved")
@@ -764,5 +774,5 @@ func TestJob_RunCloudRunWorker_StopsWithinOneHoldOfTheWaitLimit(t *testing.T) {
 	waited := clock.now().Sub(queued.StartedAt())
 	assert.GreaterOrEqual(t, waited, runDispatchPolicy.MaxWait)
 	assert.LessOrEqual(t, waited, runDispatchPolicy.MaxWait+cloudRunHold)
-	assert.Equal(t, []job.Status{job.StatusFailed, job.StatusFailed}, repo.savedStatuses(), "failed once: the failure and its completion handling")
+	assert.Equal(t, []job.Status{job.StatusFailed}, repo.savedStatuses(), "failed once")
 }

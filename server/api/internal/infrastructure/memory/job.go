@@ -18,20 +18,26 @@ import (
 
 type Job struct {
 	data map[id.JobID]*job.Job
-	f    repo.WorkspaceFilter
-	lock sync.Mutex
+	// saved is each job's status at its last save; data shares pointers, so it can't tell.
+	saved map[id.JobID]job.Status
+	f     repo.WorkspaceFilter
+	lock  *sync.Mutex
 }
 
 func NewJob() *Job {
 	return &Job{
-		data: map[id.JobID]*job.Job{},
+		data:  map[id.JobID]*job.Job{},
+		saved: map[id.JobID]job.Status{},
+		lock:  &sync.Mutex{},
 	}
 }
 
 func (r *Job) Filtered(f repo.WorkspaceFilter) repo.Job {
 	return &Job{
-		data: r.data,
-		f:    r.f.Merge(f),
+		data:  r.data,
+		saved: r.saved,
+		f:     r.f.Merge(f),
+		lock:  r.lock,
 	}
 }
 
@@ -194,7 +200,27 @@ func (r *Job) Save(ctx context.Context, j *job.Job) error {
 		return interfaces.ErrScheduledRunInProgress
 	}
 	r.data[j.ID()] = j
+	r.saved[j.ID()] = j.Status()
 	return nil
+}
+
+func (r *Job) SaveIfNotTerminal(_ context.Context, j *job.Job) (bool, error) {
+	if !r.f.CanWrite(j.Workspace()) {
+		return false, repo.ErrOperationDenied
+	}
+
+	r.lock.Lock()
+	defer r.lock.Unlock()
+
+	if s, ok := r.saved[j.ID()]; ok && s.IsTerminal() {
+		return false, nil
+	}
+	if r.scheduledRunTaken(j) {
+		return false, interfaces.ErrScheduledRunInProgress
+	}
+	r.data[j.ID()] = j
+	r.saved[j.ID()] = j.Status()
+	return true, nil
 }
 
 // scheduledRunTaken reports whether another job already has j's scheduled run.
@@ -295,6 +321,7 @@ func (r *Job) RemoveByProject(ctx context.Context, projectID id.ProjectID) error
 			continue
 		}
 		delete(r.data, jid)
+		delete(r.saved, jid)
 	}
 	return nil
 }
@@ -305,6 +332,7 @@ func (r *Job) Remove(ctx context.Context, id id.JobID) error {
 
 	if j, ok := r.data[id]; ok && r.f.CanWrite(j.Workspace()) {
 		delete(r.data, id)
+		delete(r.saved, id)
 	}
 	return nil
 }

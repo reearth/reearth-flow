@@ -268,6 +268,8 @@ func (i *Trigger) ExecuteAPITrigger(ctx context.Context, p interfaces.ExecuteAPI
 		j.SetMetadataURL(metadataURL.String())
 	}
 	j.SetParameters(runParameters(deployment.Parameters(), finalVarMap, deployment.Project()))
+	// Stored on the job so any instance can send the webhook.
+	j.SetNotificationURL(p.NotificationURL)
 
 	// Update last triggered time
 	trigger.SetLastTriggered(time.Now())
@@ -306,7 +308,7 @@ func (i *Trigger) ExecuteAPITrigger(ctx context.Context, p interfaces.ExecuteAPI
 	}
 	logJobEvent(ctx, jobEventSubmitted, j, "trigger", jobTrigger, "trigger_id", trigger.ID().String())
 
-	if err := i.job.StartMonitoring(ctx, j, p.NotificationURL); err != nil {
+	if err := i.job.StartMonitoring(ctx, j); err != nil {
 		log.Errorf("Failed to start monitoring for job %s: %v", j.ID(), err)
 		return nil, err
 	}
@@ -464,7 +466,7 @@ func (i *Trigger) ExecuteTimeDrivenTrigger(ctx context.Context, p interfaces.Exe
 	}
 	logJobEvent(ctx, jobEventSubmitted, j, "trigger", jobTriggerSchedule, "trigger_id", trigger.ID().String())
 
-	if err := i.job.StartMonitoring(ctx, j, nil); err != nil {
+	if err := i.job.StartMonitoring(ctx, j); err != nil {
 		log.Errorf("Failed to start monitoring for time-driven job %s: %v", j.ID(), err)
 		return nil, err
 	}
@@ -585,7 +587,7 @@ func (i *Trigger) ExecuteCMSTrigger(ctx context.Context, p interfaces.ExecuteCMS
 	}
 	logJobEvent(ctx, jobEventSubmitted, j, "trigger", jobTriggerCMS, "trigger_id", t.ID().String())
 
-	if err := i.job.StartMonitoring(ctx, j, nil); err != nil {
+	if err := i.job.StartMonitoring(ctx, j); err != nil {
 		log.Errorf("Failed to start monitoring for CMS job %s: %v", j.ID(), err)
 		return nil, err
 	}
