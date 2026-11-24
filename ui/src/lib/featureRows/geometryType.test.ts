@@ -44,7 +44,7 @@ describe("new-format geometry label", () => {
   test("names geometry with no GeoJSON form too", () => {
     const cloud = next({
       Euclidean3D: {
-        PointCloud: { frame: { Crs: 4979 }, segments: [] },
+        PointCloud: { frame: { Crs: 4979 }, data: { positions: { F64: [] } } },
       },
     });
 
