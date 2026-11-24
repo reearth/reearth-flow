@@ -1,6 +1,6 @@
 //! LAS / LAZ reading.
 
-use std::io::{Read, Seek};
+use std::io::{Read, Seek, SeekFrom};
 use std::sync::Arc;
 
 use crate::coordinate::{CoordinateFrame, EpsgCode};
@@ -30,10 +30,37 @@ impl PointCloud {
         source: Option<Arc<str>>,
         read: R,
     ) -> Result<Self> {
-        let reader = ::las::Reader::new(read).map_err(Error::point_cloud_read)?;
+        let reader = open_reader(read)?;
         let seg = read_buffer(reader, &frame, source)?;
         Ok(PointCloud::new(frame, Data::InMemory(seg)))
     }
+}
+
+/// The highest LAS minor version read; later versions change the header.
+const LAS_MAX_MINOR: u8 = 4;
+
+/// A LAS reader over `read`, after rejecting a LAS version other than 1.0 to
+/// 1.4. A stream too short to hold a version, or without the LAS signature,
+/// is left for the LAS reader to reject.
+pub(super) fn open_reader<R: Read + Seek + Send + Sync + 'static>(
+    mut read: R,
+) -> Result<::las::Reader> {
+    let start = read.stream_position().map_err(Error::point_cloud_read)?;
+    // File signature (4), file source ID (2), global encoding (2), GUID (16),
+    // then the major and minor version.
+    let mut prefix = [0u8; 26];
+    let peeked = read.read_exact(&mut prefix);
+    read.seek(SeekFrom::Start(start))
+        .map_err(Error::point_cloud_read)?;
+    if peeked.is_ok() && &prefix[0..4] == b"LASF" {
+        let (major, minor) = (prefix[24], prefix[25]);
+        if major != 1 || minor > LAS_MAX_MINOR {
+            return Err(Error::point_cloud_read(format!(
+                "LAS {major}.{minor} is not supported; only LAS 1.0 to 1.{LAS_MAX_MINOR} can be read"
+            )));
+        }
+    }
+    ::las::Reader::new(read).map_err(Error::point_cloud_read)
 }
 
 /// Read every point of `reader` into a buffer, after checking the file's

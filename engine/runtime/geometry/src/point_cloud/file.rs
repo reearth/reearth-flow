@@ -50,16 +50,17 @@ impl PointFile {
     /// records a CRS other than `frame`'s.
     fn load(&self, frame: &CoordinateFrame) -> Result<PointBuffer> {
         let uri = &self.uri;
-        let reader = ::las::Reader::new(open(uri).map_err(Error::point_cloud_read)?)
-            .map_err(|e| Error::point_cloud_read(format!("{uri}: {e}")))?;
-        super::las::read_buffer(reader, frame, Some(Arc::from(uri.to_string()))).map_err(
-            |e| match e {
+        let reader = open(uri).map_err(Error::point_cloud_read)?;
+        super::las::open_reader(reader)
+            .and_then(|reader| {
+                super::las::read_buffer(reader, frame, Some(Arc::from(uri.to_string())))
+            })
+            .map_err(|e| match e {
                 Error::PointCloudRead(message) => {
                     Error::point_cloud_read(format!("{uri}: {message}"))
                 }
                 e => e,
-            },
-        )
+            })
     }
 
     /// The file's header, read on the first call that succeeds. A failed read
@@ -178,7 +179,10 @@ impl Seek for RangeReader {
 }
 
 fn read_header(uri: &Uri) -> std::result::Result<LasHeader, String> {
-    let reader = ::las::Reader::new(open(uri)?).map_err(|e| format!("{uri}: {e}"))?;
+    let reader = super::las::open_reader(open(uri)?).map_err(|e| match e {
+        Error::PointCloudRead(message) => format!("{uri}: {message}"),
+        e => format!("{uri}: {e}"),
+    })?;
     let header = reader.header();
     let b = header.bounds();
     let crs = super::las::las_crs(header).map_err(|e| format!("{uri}: {e}"))?;
