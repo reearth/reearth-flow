@@ -3,13 +3,11 @@
 use std::io::{Read, Seek};
 use std::sync::{Arc, OnceLock};
 
-use smallvec::smallvec;
-
 use crate::coordinate::{CoordinateFrame, EpsgCode};
 use crate::error::{Error, Result};
 use crate::ops::TwoDimensionalCrs;
 
-use super::{PointBuffer, PointCloud, PositionEncoding, Segment, bit};
+use super::{Data, PointBuffer, PointCloud, PositionEncoding, bit};
 
 /// Degrees per unit of the stored scan angle.
 const SCAN_ANGLE_UNIT: f64 = 0.006;
@@ -18,7 +16,7 @@ const SCAN_ANGLE_UNIT: f64 = 0.006;
 const BATCH: u64 = 65_536;
 
 impl PointCloud {
-    /// Read a LAS or LAZ stream into one segment in its native scaled-integer
+    /// Read a LAS or LAZ stream into memory in its native scaled-integer
     /// encoding.
     ///
     /// Keeps RGB, intensity, GPS time, classification, return number and number
@@ -36,13 +34,13 @@ impl PointCloud {
         let seg = read_buffer(reader, &frame, source)?;
         Ok(PointCloud {
             frame,
-            segments: smallvec![Segment::InMemory(seg)],
+            data: Data::InMemory(seg),
             kdtree: OnceLock::new(),
         })
     }
 }
 
-/// Read every point of `reader` into one segment, after checking the file's
+/// Read every point of `reader` into a buffer, after checking the file's
 /// CRS against `frame`.
 pub(super) fn read_buffer(
     mut reader: ::las::Reader,
@@ -236,7 +234,7 @@ pub(super) mod tests {
     use pretty_assertions::assert_eq;
 
     use super::*;
-    use crate::point_cloud::ops::segment_positions;
+    use crate::point_cloud::ops::buffer_positions;
 
     const T: Transform = Transform {
         scale: 0.001,
@@ -307,9 +305,9 @@ pub(super) mod tests {
     }
 
     fn check(pc: &PointCloud, points: &[Point], scan_angles: &[i16]) {
-        let seg = pc.segments[0].as_buffer();
+        let seg = pc.data.as_buffer();
         assert_eq!(seg.count, points.len());
-        let positions: Vec<_> = segment_positions(seg).collect();
+        let positions: Vec<_> = buffer_positions(seg).collect();
         for (i, p) in points.iter().enumerate() {
             let [x, y, z] = positions[i];
             assert!((x - p.x).abs() < 1e-9 && (y - p.y).abs() < 1e-9 && (z - p.z).abs() < 1e-9);
@@ -339,7 +337,7 @@ pub(super) mod tests {
             write(3, false, &points),
         )
         .unwrap();
-        let seg = pc.segments[0].as_buffer();
+        let seg = pc.data.as_buffer();
         assert_eq!(seg.source.as_deref(), Some("a.las"));
         assert_eq!(
             seg.position,
@@ -377,7 +375,7 @@ pub(super) mod tests {
             .collect();
         let pc = PointCloud::from_las(CoordinateFrame::Euclidean, None, write(6, true, &points))
             .unwrap();
-        let seg = pc.segments[0].as_buffer();
+        let seg = pc.data.as_buffer();
         assert_eq!(seg.fields, 0b1_0111_1010);
         // Extended scan angles are read back as the units the writer stored.
         let angles: Vec<i16> = points

@@ -1,16 +1,15 @@
 //! Intermediate-data encoding for the point-cloud leaf: typed per-point
-//! positions in place of each segment's packed byte stream, tagged with the
+//! positions in place of the packed byte stream, tagged with the
 //! position encoding, plus one typed column per present optional field.
 //! Attribute columns and the acquisition source pass through unchanged.
 //!
 //! TODO: represent the normal and ring fields. No reader produces them yet, and
-//! a segment carrying them is rejected.
+//! a buffer carrying them is rejected.
 
 use std::sync::{Arc, OnceLock};
 
 use indexmap::IndexMap;
 use serde::{Deserialize, Deserializer, Serialize, Serializer};
-use smallvec::SmallVec;
 
 use reearth_flow_common::uri::Uri;
 
@@ -19,25 +18,24 @@ use crate::coordinate::CoordinateFrame;
 use super::file::PointFile;
 use super::{AttributeColumn, FieldMask, PositionEncoding, bit};
 
-/// A 3D point cloud: one or more acquisition segments sharing a coordinate
-/// frame.
+/// A 3D point cloud: its points in a coordinate frame.
 #[cfg_attr(feature = "schema", derive(schemars::JsonSchema))]
 #[derive(Serialize, Deserialize)]
 #[cfg_attr(feature = "schema", schemars(title = "Point cloud"))]
 struct PointCloud {
     #[cfg_attr(feature = "schema", schemars(title = "Coordinate frame"))]
     frame: CoordinateFrame,
-    #[cfg_attr(feature = "schema", schemars(title = "Segments"))]
-    segments: Vec<BufferSegment>,
+    #[cfg_attr(feature = "schema", schemars(title = "Data"))]
+    data: Data,
 }
 
-/// One acquisition source: either `file`, a LAS / LAZ file holding its points,
-/// or its positions in the encoding they are stored in, plus any per-point
-/// fields and attribute columns.
+/// Either `file`, a LAS / LAZ file holding the points, or their positions in
+/// the encoding they are stored in, plus any per-point fields and attribute
+/// columns.
 #[cfg_attr(feature = "schema", derive(schemars::JsonSchema))]
 #[derive(Serialize, Deserialize)]
-#[cfg_attr(feature = "schema", schemars(title = "Acquisition segment"))]
-struct BufferSegment {
+#[cfg_attr(feature = "schema", schemars(title = "Point data"))]
+struct Data {
     #[serde(default, skip_serializing_if = "Option::is_none")]
     #[cfg_attr(feature = "schema", schemars(with = "Option<String>", title = "File"))]
     file: Option<Uri>,
@@ -100,7 +98,7 @@ enum Positions {
     },
 }
 
-/// Read a segment's positions out of its packed byte stream.
+/// Read a buffer's positions out of its packed byte stream.
 fn encode_positions(seg: &super::PointBuffer) -> Positions {
     let stride = seg.stride as usize;
     match &seg.position {
@@ -142,7 +140,7 @@ fn encode_positions(seg: &super::PointBuffer) -> Positions {
     }
 }
 
-/// Field `bit` of every point, decoded, or `None` if the segment lacks it.
+/// Field `bit` of every point, decoded, or `None` if the buffer lacks it.
 fn encode_field<const N: usize, T>(
     seg: &super::PointBuffer,
     bit: u16,
@@ -224,43 +222,39 @@ fn decode_positions(positions: Positions) -> (PositionEncoding, u16, Vec<u8>, us
 
 impl Serialize for super::PointCloud {
     fn serialize<S: Serializer>(&self, serializer: S) -> Result<S::Ok, S::Error> {
-        let segments = self
-            .segments
-            .iter()
-            .map(|seg| match seg {
-                super::Segment::InMemory(buffer) => encode_buffer(buffer),
-                super::Segment::File(file) => Ok(BufferSegment {
-                    file: Some(file.uri().clone()),
-                    shift: file.shift(),
-                    source: None,
-                    positions: None,
-                    rgb: None,
-                    intensity: None,
-                    timestamp: None,
-                    classification: None,
-                    return_info: None,
-                    scan_angle: None,
-                    point_source_id: None,
-                    attributes: IndexMap::new(),
-                }),
-            })
-            .collect::<Result<_, _>>()?;
+        let data = match &self.data {
+            super::Data::InMemory(buffer) => encode_buffer(buffer)?,
+            super::Data::File(file) => Data {
+                file: Some(file.uri().clone()),
+                shift: file.shift(),
+                source: None,
+                positions: None,
+                rgb: None,
+                intensity: None,
+                timestamp: None,
+                classification: None,
+                return_info: None,
+                scan_angle: None,
+                point_source_id: None,
+                attributes: IndexMap::new(),
+            },
+        };
         PointCloud {
             frame: self.frame.clone(),
-            segments,
+            data,
         }
         .serialize(serializer)
     }
 }
 
-fn encode_buffer<E: serde::ser::Error>(seg: &super::PointBuffer) -> Result<BufferSegment, E> {
+fn encode_buffer<E: serde::ser::Error>(seg: &super::PointBuffer) -> Result<Data, E> {
     if seg.has(bit::NORMAL) || seg.has(bit::RING) {
         return Err(E::custom(
             "point-cloud normal and ring fields are not yet supported by the \
              intermediate-data encoder",
         ));
     }
-    Ok(BufferSegment {
+    Ok(Data {
         file: None,
         shift: [0.0; 3],
         source: seg.source.clone(),
@@ -279,22 +273,17 @@ fn encode_buffer<E: serde::ser::Error>(seg: &super::PointBuffer) -> Result<Buffe
 impl<'de> Deserialize<'de> for super::PointCloud {
     fn deserialize<D: Deserializer<'de>>(deserializer: D) -> Result<Self, D::Error> {
         let wire = PointCloud::deserialize(deserializer)?;
-        let segments: SmallVec<[super::Segment; 1]> = wire
-            .segments
-            .into_iter()
-            .map(decode_segment)
-            .collect::<Result<_, D::Error>>()?;
         Ok(super::PointCloud {
             frame: wire.frame,
-            segments,
+            data: decode_data(wire.data)?,
             kdtree: OnceLock::new(),
         })
     }
 }
 
-fn decode_segment<E: serde::de::Error>(s: BufferSegment) -> Result<super::Segment, E> {
+fn decode_data<E: serde::de::Error>(s: Data) -> Result<super::Data, E> {
     let Some(uri) = s.file else {
-        return decode_buffer(s).map(super::Segment::InMemory);
+        return decode_buffer(s).map(super::Data::InMemory);
     };
     let inline = s.source.is_some()
         || s.positions.is_some()
@@ -308,28 +297,28 @@ fn decode_segment<E: serde::de::Error>(s: BufferSegment) -> Result<super::Segmen
         || !s.attributes.is_empty();
     if inline {
         return Err(E::custom(
-            "a segment with `file` cannot also carry inline points, fields or columns",
+            "point data with `file` cannot also carry inline points, fields or columns",
         ));
     }
     let mut file = PointFile::new(uri);
     file.translate(s.shift);
-    Ok(super::Segment::File(file))
+    Ok(super::Data::File(file))
 }
 
-fn decode_buffer<E: serde::de::Error>(s: BufferSegment) -> Result<super::PointBuffer, E> {
+fn decode_buffer<E: serde::de::Error>(s: Data) -> Result<super::PointBuffer, E> {
     let Some(positions) = s.positions else {
         return Err(E::missing_field("positions"));
     };
     let (position, stride, data, count) = decode_positions(positions);
-    // A segment's columns are read by point index, so a column that
-    // disagrees with the point count is rejected here rather than
-    // left to index out of bounds on the first read.
+    // Columns are read by point index, so a column that disagrees with the
+    // point count is rejected here rather than left to index out of bounds on
+    // the first read.
     let check = |name: &str, len: usize| {
         if len == count {
             Ok(())
         } else {
             Err(E::custom(format!(
-                "{name} has {len} entries but the segment has {count} points"
+                "{name} has {len} entries but there are {count} points"
             )))
         }
     };
@@ -431,7 +420,7 @@ mod tests {
     }
 
     #[test]
-    fn f64_segment_round_trips() {
+    fn f64_positions_round_trip() {
         round_trip(&PointCloud::from_positions(
             CoordinateFrame::Euclidean,
             [[0.0, 1.0, 2.0], [4.0, -1.0, 2.0], [1.0, 0.0, 9.0]],
@@ -449,32 +438,25 @@ mod tests {
     }
 
     #[test]
-    fn f32_and_scaled_i32_multi_segment_round_trip() {
+    fn f32_and_scaled_i32_positions_round_trip() {
         let f32_pts = [[1.0f32, 2.0, 3.0], [4.0, 5.0, 6.0]];
-        let f32_data = packed(
-            &f32_pts
-                .iter()
-                .map(|p| p.map(f32::to_le_bytes))
-                .collect::<Vec<_>>(),
-        );
-        let f32_seg = PointBuffer {
-            source: Some(Arc::from("scan-a")),
-            position: PositionEncoding::F32,
-            fields: 0,
-            stride: 12,
-            offsets: [0; 9],
-            data: f32_data,
-            count: 2,
-            attributes: IndexMap::new(),
-        };
+        round_trip(&PointCloud {
+            frame: CoordinateFrame::Euclidean,
+            data: PointBuffer {
+                source: Some(Arc::from("scan-a")),
+                position: PositionEncoding::F32,
+                fields: 0,
+                stride: 12,
+                offsets: [0; 9],
+                data: packed(&f32_pts.map(|p| p.map(f32::to_le_bytes))),
+                count: 2,
+                attributes: IndexMap::new(),
+            }
+            .into(),
+            kdtree: OnceLock::new(),
+        });
 
         let i32_pts = [[10i32, 20, 30], [40, 50, 60]];
-        let i32_data = packed(
-            &i32_pts
-                .iter()
-                .map(|p| p.map(i32::to_le_bytes))
-                .collect::<Vec<_>>(),
-        );
         let mut attributes = IndexMap::new();
         attributes.insert(
             "intensity".to_string(),
@@ -484,26 +466,22 @@ mod tests {
             "source_id".to_string(),
             AttributeColumn::String(vec![Some(Arc::from("x")), None]),
         );
-        let i32_seg = PointBuffer {
-            source: None,
-            position: PositionEncoding::ScaledI32 {
-                scale: [0.001, 0.001, 0.001],
-                offset: [100.0, 200.0, 0.0],
-            },
-            fields: 0,
-            stride: 12,
-            offsets: [0; 9],
-            data: i32_data,
-            count: 2,
-            attributes,
-        };
-
-        let mut segments: SmallVec<[super::super::Segment; 1]> = SmallVec::new();
-        segments.push(f32_seg.into());
-        segments.push(i32_seg.into());
         round_trip(&PointCloud {
             frame: CoordinateFrame::Euclidean,
-            segments,
+            data: PointBuffer {
+                source: None,
+                position: PositionEncoding::ScaledI32 {
+                    scale: [0.001, 0.001, 0.001],
+                    offset: [100.0, 200.0, 0.0],
+                },
+                fields: 0,
+                stride: 12,
+                offsets: [0; 9],
+                data: packed(&i32_pts.map(|p| p.map(i32::to_le_bytes))),
+                count: 2,
+                attributes,
+            }
+            .into(),
             kdtree: OnceLock::new(),
         });
     }
@@ -535,24 +513,24 @@ mod tests {
             .insert("user".to_string(), AttributeColumn::UInt8(vec![0, 1]));
         let pc = PointCloud {
             frame: CoordinateFrame::Euclidean,
-            segments: smallvec::smallvec![seg.into()],
+            data: seg.into(),
             kdtree: OnceLock::new(),
         };
         let json = serde_json::to_value(&pc).unwrap();
         assert_eq!(
-            json["segments"][0]["rgb"],
+            json["data"]["rgb"],
             serde_json::json!([[1, 2, 65535], [2, 2, 65535]])
         );
         assert_eq!(
-            json["segments"][0]["scan_angle"],
+            json["data"]["scan_angle"],
             serde_json::json!([-1000, -2000])
         );
-        assert!(json["segments"][0].get("intensity").is_none());
+        assert!(json["data"].get("intensity").is_none());
         round_trip(&pc);
     }
 
     #[test]
-    fn file_segment_round_trips_as_its_uri() {
+    fn file_data_round_trips_as_its_uri() {
         let mut pc = PointCloud::from_las_file(
             CoordinateFrame::Euclidean,
             Uri::from_str("file:///data/a.las").unwrap(),
@@ -560,7 +538,7 @@ mod tests {
         crate::ops::Translate::translate(&mut pc, [1.0, 0.0, -2.0]).unwrap();
         let json = serde_json::to_value(&pc).unwrap();
         assert_eq!(
-            json["segments"][0],
+            json["data"],
             serde_json::json!({"file": "file:///data/a.las", "shift": [1.0, 0.0, -2.0]})
         );
         round_trip(&pc);
@@ -572,16 +550,16 @@ mod tests {
     fn short_attribute_column_is_rejected() {
         let json = r#"{
             "frame": "Euclidean",
-            "segments": [{
+            "data": {
                 "positions": {"F64": [[0.0,0.0,0.0],[1.0,1.0,1.0],[2.0,2.0,2.0]]},
                 "attributes": {"intensity": {"UInt16": [100, 200]}}
-            }]
+            }
         }"#;
         let err = serde_json::from_str::<PointCloud>(json)
             .unwrap_err()
             .to_string();
         assert!(
-            err.contains("attribute column `intensity` has 2 entries but the segment has 3 points"),
+            err.contains("attribute column `intensity` has 2 entries but there are 3 points"),
             "unexpected error: {err}"
         );
     }
@@ -590,10 +568,10 @@ mod tests {
     fn matching_attribute_column_is_accepted() {
         let json = r#"{
             "frame": "Euclidean",
-            "segments": [{
+            "data": {
                 "positions": {"F64": [[0.0,0.0,0.0],[1.0,1.0,1.0]]},
                 "attributes": {"intensity": {"UInt16": [100, 200]}}
-            }]
+            }
         }"#;
         let pc: PointCloud = serde_json::from_str(json).unwrap();
         round_trip(&pc);

@@ -1,4 +1,4 @@
-//! A segment whose points stay in a LAS / LAZ file until something reads them.
+//! Points that stay in a LAS / LAZ file until something reads them.
 
 use std::fmt;
 use std::io::{self, Read, Seek, SeekFrom};
@@ -10,13 +10,12 @@ use reearth_flow_common::uri::Uri;
 use reearth_flow_storage::resolve::StorageResolver;
 use reearth_flow_storage::storage::Storage;
 use serde::{Deserialize, Serialize};
-use smallvec::smallvec;
 
-use super::{PointBuffer, PointCloud, PositionEncoding, Segment};
+use super::{Data, PointBuffer, PointCloud, PositionEncoding};
 use crate::coordinate::CoordinateFrame;
 use crate::error::{Error, Result};
 
-/// A LAS / LAZ file holding one segment's points.
+/// A LAS / LAZ file holding a point cloud's points.
 #[derive(Clone, Serialize, Deserialize)]
 pub(super) struct PointFile {
     uri: Uri,
@@ -216,20 +215,17 @@ impl PointCloud {
     pub fn from_las_file(frame: CoordinateFrame, uri: Uri) -> Self {
         PointCloud {
             frame,
-            segments: smallvec![Segment::File(PointFile::new(uri))],
+            data: Data::File(PointFile::new(uri)),
             kdtree: OnceLock::new(),
         }
     }
 
-    /// Read every file-backed segment into memory. Each file's own CRS, if it
-    /// records one, is checked against the cloud's frame before its points
-    /// are read.
+    /// Read file-backed points into memory. The file's own CRS, if it records
+    /// one, is checked against the cloud's frame before its points are read.
     pub fn load(&mut self) -> Result<()> {
-        for seg in &mut self.segments {
-            if let Segment::File(file) = seg {
-                *seg = Segment::InMemory(file.load(&self.frame)?);
-                self.kdtree = OnceLock::new();
-            }
+        if let Data::File(file) = &self.data {
+            self.data = Data::InMemory(file.load(&self.frame)?);
+            self.kdtree = OnceLock::new();
         }
         Ok(())
     }
@@ -256,7 +252,7 @@ mod tests {
     fn load_reads_the_points_with_the_shift() {
         use crate::coordinate::EpsgCode;
         use crate::point_cloud::las::tests::{geotiff_crs, point, write_with};
-        use crate::point_cloud::ops::segment_positions;
+        use crate::point_cloud::ops::buffer_positions;
 
         let dir = tempfile::tempdir().unwrap();
         let path = dir.path().join("a.las");
@@ -272,15 +268,13 @@ mod tests {
 
         let mut pc =
             PointCloud::from_las_file(CoordinateFrame::Crs(EpsgCode::new(6677)), uri.clone());
-        let Segment::File(file) = &mut pc.segments[0] else {
+        let Data::File(file) = &mut pc.data else {
             unreachable!()
         };
         file.translate([1.0, 2.0, 3.0]);
         pc.load().unwrap();
         // EPSG:6677 stores northing first.
-        let [x, y, z] = segment_positions(pc.segments[0].as_buffer())
-            .next()
-            .unwrap();
+        let [x, y, z] = buffer_positions(pc.data.as_buffer()).next().unwrap();
         assert!((x - (p.y + 1.0)).abs() < 1e-9);
         assert!((y - (p.x + 2.0)).abs() < 1e-9);
         assert!((z - (p.z + 3.0)).abs() < 1e-9);
@@ -288,7 +282,7 @@ mod tests {
         let mut wrong = PointCloud::from_las_file(CoordinateFrame::Crs(EpsgCode::new(6676)), uri);
         let err = wrong.load().unwrap_err().to_string();
         assert!(err.contains("EPSG:6677"), "unexpected error: {err}");
-        assert!(matches!(wrong.segments[0], Segment::File(_)));
+        assert!(matches!(wrong.data, Data::File(_)));
     }
 
     #[test]

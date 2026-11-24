@@ -5651,7 +5651,6 @@ dependencies = [
  "serde",
  "serde_json",
  "sha2 0.11.1",
- "smallvec",
  "spade",
  "tempfile",
  "thiserror 2.0.21",

@@ -1515,11 +1515,11 @@
     },
     "PointCloud": {
       "title": "Point cloud",
-      "description": "A 3D point cloud: one or more acquisition segments sharing a coordinate frame.",
+      "description": "A 3D point cloud: its points in a coordinate frame.",
       "type": "object",
       "required": [
-        "frame",
-        "segments"
+        "data",
+        "frame"
       ],
       "properties": {
         "frame": {
@@ -1530,18 +1530,19 @@
             }
           ]
         },
-        "segments": {
-          "title": "Segments",
-          "type": "array",
-          "items": {
-            "$ref": "#/definitions/BufferSegment"
-          }
+        "data": {
+          "title": "Data",
+          "allOf": [
+            {
+              "$ref": "#/definitions/Data"
+            }
+          ]
         }
       }
     },
-    "BufferSegment": {
-      "title": "Acquisition segment",
-      "description": "One acquisition source: either `file`, a LAS / LAZ file holding its points, or its positions in the encoding they are stored in, plus any per-point fields and attribute columns.",
+    "Data": {
+      "title": "Point data",
+      "description": "Either `file`, a LAS / LAZ file holding the points, or their positions in the encoding they are stored in, plus any per-point fields and attribute columns.",
       "type": "object",
       "properties": {
         "file": {

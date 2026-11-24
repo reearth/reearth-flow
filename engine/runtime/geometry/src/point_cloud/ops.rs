@@ -1,6 +1,6 @@
 use std::sync::OnceLock;
 
-use super::{AttributeColumn, PointBuffer, PointCloud, PositionEncoding, Segment};
+use super::{AttributeColumn, Data, PointBuffer, PointCloud, PositionEncoding};
 use crate::ops::{Aabb, BoundingBox, Split, Translate, UnsupportedOperation};
 use crate::point::Point3D;
 use crate::{Euclidean3DGeometry, Geometry};
@@ -15,18 +15,17 @@ impl Split for PointCloud {
         &mut self,
         emit: &mut dyn FnMut(Geometry, Attributes),
     ) -> Result<(), UnsupportedOperation> {
-        for seg in self.buffers("split")? {
-            for (i, position) in segment_positions(seg).enumerate() {
-                let mut attributes = Attributes::with_capacity(seg.attributes.len());
-                for (name, column) in &seg.attributes {
-                    attributes.insert(Attribute::new(name.clone()), column_value(column, i));
-                }
-                let point = Point3D::new(self.frame.clone(), position);
-                emit(
-                    Geometry::Euclidean3D(Euclidean3DGeometry::Point(point)),
-                    attributes,
-                );
+        let buffer = self.data.buffer("split")?;
+        for (i, position) in buffer_positions(buffer).enumerate() {
+            let mut attributes = Attributes::with_capacity(buffer.attributes.len());
+            for (name, column) in &buffer.attributes {
+                attributes.insert(Attribute::new(name.clone()), column_value(column, i));
             }
+            let point = Point3D::new(self.frame.clone(), position);
+            emit(
+                Geometry::Euclidean3D(Euclidean3DGeometry::Point(point)),
+                attributes,
+            );
         }
         Ok(())
     }
@@ -64,59 +63,51 @@ impl BoundingBox for PointCloud {
             geometry: "PointCloud",
             operation: "bounding_box",
         };
-        let mut corners = Vec::new();
-        for seg in &self.segments {
-            let Segment::File(file) = seg else { continue };
-            let header = file.header().map_err(|_| UnsupportedOperation {
-                geometry: "PointCloud (unreadable file)",
-                ..unbounded
-            })?;
-            if header.count == 0 {
-                continue;
+        let file = match &self.data {
+            Data::InMemory(buffer) => {
+                return Aabb::from_points_3d(buffer_positions(buffer)).ok_or(unbounded);
             }
-            for mut corner in [header.min, header.max] {
-                if super::las::swaps_xy(&self.frame).map_err(|_| unbounded)? {
-                    corner.swap(0, 1);
-                }
-                for (axis, d) in corner.iter_mut().zip(file.shift()) {
-                    *axis += d;
-                }
-                corners.push(corner);
-            }
+            Data::File(file) => file,
+        };
+        let header = file.header().map_err(|_| UnsupportedOperation {
+            geometry: "PointCloud (unreadable file)",
+            ..unbounded
+        })?;
+        if header.count == 0 {
+            return Err(unbounded);
         }
-        let points = self
-            .segments
-            .iter()
-            .filter_map(|seg| match seg {
-                Segment::InMemory(buffer) => Some(buffer),
-                Segment::File(_) => None,
-            })
-            .flat_map(segment_positions)
-            .chain(corners);
-        Aabb::from_points_3d(points).ok_or(unbounded)
+        let swap = super::las::swaps_xy(&self.frame).map_err(|_| unbounded)?;
+        let corners = [header.min, header.max].map(|mut corner| {
+            if swap {
+                corner.swap(0, 1);
+            }
+            for (axis, d) in corner.iter_mut().zip(file.shift()) {
+                *axis += d;
+            }
+            corner
+        });
+        Aabb::from_points_3d(corners).ok_or(unbounded)
     }
 }
 
 impl Translate for PointCloud {
-    /// Shift every point of every segment, keeping each segment's position
-    /// encoding. An `F32` segment therefore stays at `f32` precision, which the
-    /// shifted coordinates must still be representable in.
+    /// Shift every point, keeping the position encoding. `F32` positions
+    /// therefore stay at `f32` precision, which the shifted coordinates must
+    /// still be representable in.
     fn translate(&mut self, delta: [f64; 3]) -> crate::error::Result<()> {
-        for seg in self.segments.iter_mut() {
-            match seg {
-                Segment::InMemory(buffer) => translate_segment(buffer, delta),
-                Segment::File(file) => file.translate(delta),
-            }
+        match &mut self.data {
+            Data::InMemory(buffer) => translate_buffer(buffer, delta),
+            Data::File(file) => file.translate(delta),
         }
         self.kdtree = OnceLock::new();
         Ok(())
     }
 }
 
-/// Add `delta` to every position in a segment. A scaled-integer segment moves
-/// its decode offset and leaves the packed bytes untouched; a float segment is
+/// Add `delta` to every position in a buffer. Scaled-integer positions move
+/// the decode offset and leave the packed bytes untouched; float positions are
 /// rewritten in place, stride by stride.
-fn translate_segment(seg: &mut PointBuffer, delta: [f64; 3]) {
+fn translate_buffer(seg: &mut PointBuffer, delta: [f64; 3]) {
     let stride = seg.stride as usize;
     match &mut seg.position {
         PositionEncoding::ScaledI32 { offset, .. } => {
@@ -148,21 +139,18 @@ fn translate_segment(seg: &mut PointBuffer, delta: [f64; 3]) {
 
 #[cfg(feature = "new-geometry")]
 impl crate::ops::SetElevation for PointCloud {
-    /// Keeps each segment's position encoding, as [`Translate`] does.
+    /// Keeps the position encoding, as [`Translate`] does.
     fn set_elevation(&mut self, z: f64) -> Result<(), UnsupportedOperation> {
-        self.require_loaded("set_elevation")?;
-        for seg in self.segments.iter_mut() {
-            set_segment_elevation(seg.buffer_mut("set_elevation")?, z);
-        }
+        set_buffer_elevation(self.data.buffer_mut("set_elevation")?, z);
         self.kdtree = OnceLock::new();
         Ok(())
     }
 }
 
-/// Set every position's z in a segment. A scaled-integer segment packs a zero z
-/// and moves `z` into its decode offset, so the elevation stays exact.
+/// Set every position's z in a buffer. Scaled-integer positions pack a zero z
+/// and move `z` into the decode offset, so the elevation stays exact.
 #[cfg(feature = "new-geometry")]
-fn set_segment_elevation(seg: &mut PointBuffer, z: f64) {
+fn set_buffer_elevation(seg: &mut PointBuffer, z: f64) {
     let stride = seg.stride as usize;
     match &mut seg.position {
         PositionEncoding::ScaledI32 { offset, .. } => {
@@ -187,11 +175,11 @@ fn set_segment_elevation(seg: &mut PointBuffer, z: f64) {
     }
 }
 
-/// Decode every point's XYZ from a segment's packed little-endian stride. The
+/// Decode every point's XYZ from a buffer's packed little-endian stride. The
 /// position occupies the first bytes of each stride; the encoding fixes the
 /// width and any scale/offset. Reads go through `from_le_bytes`, so a bad
 /// offset is a bounds panic, never UB (mirrors the field-access contract).
-pub(super) fn segment_positions(seg: &PointBuffer) -> impl Iterator<Item = [f64; 3]> + '_ {
+pub(super) fn buffer_positions(seg: &PointBuffer) -> impl Iterator<Item = [f64; 3]> + '_ {
     let stride = seg.stride as usize;
     (0..seg.count).map(move |i| {
         let base = i * stride;
@@ -227,19 +215,12 @@ use crate::ops::Elevation;
 
 #[cfg(feature = "new-geometry")]
 impl Elevation for PointCloud {
-    /// `None` while the first point is still in a file.
+    /// `None` while the points are still in a file.
     fn elevation(&self) -> Option<f64> {
-        for seg in &self.segments {
-            match seg {
-                Segment::InMemory(buffer) => {
-                    if let Some(p) = segment_positions(buffer).next() {
-                        return Some(p[2]);
-                    }
-                }
-                Segment::File(_) => return None,
-            }
+        match &self.data {
+            Data::InMemory(buffer) => buffer_positions(buffer).next().map(|p| p[2]),
+            Data::File(_) => None,
         }
-        None
     }
 }
 
@@ -250,29 +231,33 @@ mod tests {
     use indexmap::IndexMap;
     use kiddo::ImmutableKdTree;
 
-    /// A segment holding `data` under `position`, with no optional fields or
+    /// A cloud holding `data` under `position`, with no optional fields or
     /// attribute columns.
-    fn segment(position: PositionEncoding, stride: u16, count: usize, data: Vec<u8>) -> Segment {
-        Segment::InMemory(PointBuffer {
-            source: None,
-            position,
-            fields: 0,
-            stride,
-            offsets: [0; 9],
-            data,
-            count,
-            attributes: IndexMap::new(),
-        })
+    fn cloud(position: PositionEncoding, stride: u16, count: usize, data: Vec<u8>) -> PointCloud {
+        PointCloud {
+            frame: CoordinateFrame::Euclidean,
+            data: Data::InMemory(PointBuffer {
+                source: None,
+                position,
+                fields: 0,
+                stride,
+                offsets: [0; 9],
+                data,
+                count,
+                attributes: IndexMap::new(),
+            }),
+            kdtree: OnceLock::new(),
+        }
     }
 
-    fn scaled_i32_segment(scale: [f64; 3], offset: [f64; 3], raw: &[[i32; 3]]) -> Segment {
+    fn scaled_i32_cloud(scale: [f64; 3], offset: [f64; 3], raw: &[[i32; 3]]) -> PointCloud {
         let mut data = Vec::new();
         for point in raw {
             for axis in point {
                 data.extend_from_slice(&axis.to_le_bytes());
             }
         }
-        segment(
+        cloud(
             PositionEncoding::ScaledI32 { scale, offset },
             12,
             raw.len(),
@@ -280,21 +265,18 @@ mod tests {
         )
     }
 
-    fn f32_segment(positions: &[[f32; 3]]) -> Segment {
+    fn f32_cloud(positions: &[[f32; 3]]) -> PointCloud {
         let mut data = Vec::new();
         for point in positions {
             for axis in point {
                 data.extend_from_slice(&axis.to_le_bytes());
             }
         }
-        segment(PositionEncoding::F32, 12, positions.len(), data)
+        cloud(PositionEncoding::F32, 12, positions.len(), data)
     }
 
     fn positions(pc: &PointCloud) -> Vec<[f64; 3]> {
-        pc.buffers("test")
-            .unwrap()
-            .flat_map(segment_positions)
-            .collect()
+        buffer_positions(pc.data.as_buffer()).collect()
     }
 
     #[test]
@@ -309,53 +291,23 @@ mod tests {
 
     #[test]
     fn scaled_integer_positions_shift_without_rewriting_the_packed_bytes() {
-        let seg = scaled_i32_segment([0.001; 3], [0.0; 3], &[[1000, 2000, 3000]]);
-        let packed = seg.as_buffer().data.clone();
-        let mut pc = PointCloud {
-            frame: CoordinateFrame::Euclidean,
-            segments: smallvec::smallvec![seg],
-            kdtree: OnceLock::new(),
-        };
+        let mut pc = scaled_i32_cloud([0.001; 3], [0.0; 3], &[[1000, 2000, 3000]]);
+        let packed = pc.data.as_buffer().data.clone();
         pc.translate([0.5, 0.0, -0.25]).unwrap();
         assert_eq!(positions(&pc), [[1.5, 2.0, 2.75]]);
-        assert_eq!(pc.segments[0].as_buffer().data, packed);
+        assert_eq!(pc.data.as_buffer().data, packed);
     }
 
     #[test]
     fn f32_positions_shift_in_place() {
-        let mut pc = PointCloud {
-            frame: CoordinateFrame::Euclidean,
-            segments: smallvec::smallvec![f32_segment(&[[1.5, 2.5, 3.5]])],
-            kdtree: OnceLock::new(),
-        };
+        let mut pc = f32_cloud(&[[1.5, 2.5, 3.5]]);
         // Exactly representable in `f32`, so the round trip is lossless.
         pc.translate([0.25, 0.5, -1.0]).unwrap();
         assert_eq!(positions(&pc), [[1.75, 3.0, 2.5]]);
         assert!(matches!(
-            pc.segments[0].as_buffer().position,
+            pc.data.as_buffer().position,
             PositionEncoding::F32
         ));
-    }
-
-    #[test]
-    fn every_segment_shifts() {
-        let f64_seg = PointCloud::from_positions(CoordinateFrame::Euclidean, [[0.0, 0.0, 0.0]])
-            .segments
-            .remove(0);
-        let mut pc = PointCloud {
-            frame: CoordinateFrame::Euclidean,
-            segments: smallvec::smallvec![
-                f64_seg,
-                scaled_i32_segment([1.0; 3], [0.0; 3], &[[5, 5, 5]]),
-                f32_segment(&[[9.0, 9.0, 9.0]]),
-            ],
-            kdtree: OnceLock::new(),
-        };
-        pc.translate([1.0, 1.0, 1.0]).unwrap();
-        assert_eq!(
-            positions(&pc),
-            [[1.0, 1.0, 1.0], [6.0, 6.0, 6.0], [10.0, 10.0, 10.0]]
-        );
     }
 
     #[test]
@@ -394,26 +346,23 @@ mod tests {
     fn every_encoding_takes_the_elevation() {
         use crate::ops::SetElevation;
 
-        let f64_seg = PointCloud::from_positions(CoordinateFrame::Euclidean, [[0.0, 0.0, 1.0]])
-            .segments
-            .remove(0);
-        let mut pc = PointCloud {
-            frame: CoordinateFrame::Euclidean,
-            segments: smallvec::smallvec![
-                f64_seg,
-                scaled_i32_segment([0.001; 3], [10.0; 3], &[[5000, 6000, 7000]]),
-                f32_segment(&[[9.0, 9.0, 9.0]]),
-            ],
-            kdtree: OnceLock::new(),
-        };
-        pc.kdtree
-            .set(ImmutableKdTree::new_from_slice(&[[0.0, 0.0, 0.0]]).unwrap())
-            .unwrap();
-        pc.set_elevation(2.5).unwrap();
-        assert_eq!(
-            positions(&pc),
-            [[0.0, 0.0, 2.5], [15.0, 16.0, 2.5], [9.0, 9.0, 2.5]]
-        );
-        assert!(pc.kdtree.get().is_none());
+        for (mut pc, expected) in [
+            (
+                PointCloud::from_positions(CoordinateFrame::Euclidean, [[0.0, 0.0, 1.0]]),
+                [0.0, 0.0, 2.5],
+            ),
+            (
+                scaled_i32_cloud([0.001; 3], [10.0; 3], &[[5000, 6000, 7000]]),
+                [15.0, 16.0, 2.5],
+            ),
+            (f32_cloud(&[[9.0, 9.0, 9.0]]), [9.0, 9.0, 2.5]),
+        ] {
+            pc.kdtree
+                .set(ImmutableKdTree::new_from_slice(&[[0.0, 0.0, 0.0]]).unwrap())
+                .unwrap();
+            pc.set_elevation(2.5).unwrap();
+            assert_eq!(positions(&pc), [expected]);
+            assert!(pc.kdtree.get().is_none());
+        }
     }
 }
