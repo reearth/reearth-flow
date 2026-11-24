@@ -133,7 +133,7 @@ func (a *Adapter) Compact(ctx context.Context, room string, keep int) (int, erro
 				return err
 			}
 			if ps.Items > 0 {
-				a.log.Warn("gcs compact: new base holds parked items; kept updates may supply what they build on",
+				a.log.Debug("gcs compact: new base holds parked items",
 					"room", room, "parked", ps.Items, "awaiting_clients", len(ps.MissingFor), "kept", keep)
 			}
 		}

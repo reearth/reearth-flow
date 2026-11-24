@@ -528,7 +528,7 @@ func (a *Adapter) MaterializeAt(ctx context.Context, room string, v persistence.
 		return nil, err
 	}
 	if ps.Items > 0 {
-		a.log.Warn("gcs materialize: state holds parked items; an edit they build on is missing from storage",
+		a.log.Debug("gcs materialize: state holds parked items; an edit they build on is missing from storage",
 			"room", room, "version", target, "parked", ps.Items, "awaiting_clients", len(ps.MissingFor))
 	}
 	return merged, nil
