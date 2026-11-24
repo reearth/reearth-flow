@@ -44,23 +44,9 @@ pub fn load_cesium_attr(tileset_dir: &Path) -> Result<IndexMap<String, Value>, S
             if let Some(existing) = ret.get(&feature_key) {
                 if existing != &props_value {
                     let existing_path = rel.get(&feature_key).unwrap();
-                    let differing: Vec<String> = match (existing, &props_value) {
-                        (Value::Object(a), Value::Object(b)) => {
-                            let mut keys: Vec<&String> = a
-                                .keys()
-                                .chain(b.keys())
-                                .filter(|k| a.get(*k) != b.get(*k))
-                                .collect();
-                            keys.dedup();
-                            keys.into_iter()
-                                .map(|k| format!("{k}: {:?} vs {:?}", a.get(k), b.get(k)))
-                                .collect()
-                        }
-                        _ => Vec::new(),
-                    };
                     return Err(format!(
-                        "Conflicting feature_key {}: properties differ between {:?} and {:?} (differing keys: {:?})",
-                        feature_key, existing_path, glb_path, differing
+                        "Conflicting feature_key {}: properties differ between {:?} and {:?}",
+                        feature_key, existing_path, glb_path
                     ));
                 }
             } else {
