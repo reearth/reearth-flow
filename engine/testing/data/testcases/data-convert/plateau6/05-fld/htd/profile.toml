@@ -24,7 +24,7 @@ path = "htd_truth.json"
 [convs.json.tileset_htd]
 flow_path = "13997_tokyo_udx-mlit_2026_citygml_1_sample-tokyoCG3_op_htd_13_2_3dtiles_no_texture/tileset.json"
 output_path = "htd_tileset.json"
-generate_truth = false
+generate_truth = true
 json_path = ".properties"
 
 [convs.json.tileset_htd.casts]

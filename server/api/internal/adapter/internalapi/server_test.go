@@ -11,6 +11,7 @@ import (
 	"github.com/reearth/reearth-flow/api/pkg/project"
 	flowv1 "github.com/reearth/reearth-proto/gen/go/flow/v1"
 	"github.com/reearth/reearthx/rerror"
+	"github.com/samber/lo"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"google.golang.org/grpc/codes"
@@ -113,6 +114,59 @@ func TestSearchProjects_Sort(t *testing.T) {
 	_, _, err := searchProjects(withProjects(&fakeProjects{}), interfaces.ProjectSearchParam{},
 		&flowv1.ProjectSort{Field: flowv1.ProjectSortField(99)}, nil)
 	assert.Equal(t, codes.InvalidArgument, status.Code(err))
+}
+
+func TestListProjects_Workspaces(t *testing.T) {
+	t.Parallel()
+
+	a, b := accountsid.NewWorkspaceID(), accountsid.NewWorkspaceID()
+	newFake := func() *fakeProjects {
+		return &fakeProjects{project: project.New().NewID().Workspace(a).MustBuild()}
+	}
+
+	t.Run("workspace_ids searches the list", func(t *testing.T) {
+		t.Parallel()
+		f := newFake()
+
+		res, err := NewServer().ListProjects(withProjects(f), &flowv1.ListProjectsRequest{
+			WorkspaceIds: []string{a.String(), b.String()},
+			Keyword:      lo.ToPtr("k"),
+		})
+		require.NoError(t, err)
+		assert.Len(t, res.GetProjects(), 1)
+		assert.Equal(t, accountsid.WorkspaceIDList{a, b}, f.search.Workspaces)
+		assert.Nil(t, f.search.Workspace)
+		assert.Equal(t, "k", f.search.Keyword, "the other filters still apply")
+	})
+
+	t.Run("workspace_id still searches one workspace", func(t *testing.T) {
+		t.Parallel()
+		f := newFake()
+
+		_, err := NewServer().ListProjects(withProjects(f), &flowv1.ListProjectsRequest{WorkspaceId: a.String()})
+		require.NoError(t, err)
+		assert.Equal(t, &a, f.search.Workspace)
+		assert.Nil(t, f.search.Workspaces)
+	})
+
+	t.Run("invalid requests", func(t *testing.T) {
+		t.Parallel()
+
+		tooMany := make([]string, maxListProjectsWorkspaces+1)
+		for i := range tooMany {
+			tooMany[i] = accountsid.NewWorkspaceID().String()
+		}
+		for name, req := range map[string]*flowv1.ListProjectsRequest{
+			"both set":         {WorkspaceId: a.String(), WorkspaceIds: []string{b.String()}},
+			"malformed id":     {WorkspaceIds: []string{a.String(), "not-an-id"}},
+			"too many":         {WorkspaceIds: tooMany},
+			"neither set":      {},
+			"bad workspace_id": {WorkspaceId: "not-an-id"},
+		} {
+			_, err := NewServer().ListProjects(withProjects(newFake()), req)
+			assert.Equal(t, codes.InvalidArgument, status.Code(err), name)
+		}
+	})
 }
 
 func TestFindProject(t *testing.T) {

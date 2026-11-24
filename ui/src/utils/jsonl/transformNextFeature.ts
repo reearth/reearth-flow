@@ -52,10 +52,9 @@ export type TransformedFeature = {
  * those.
  *
  * None of it is retained, because keeping every parsed record alongside every
- * derived one cost ~3.5x memory (~35 MB to ~123 MB over the panel's
- * 2000-feature `displayLimit`, shaped like PLATEAU CityGML). If it is wanted
- * again, fetch the one selected feature's line on demand rather than retaining
- * all of them.
+ * derived one cost ~3.5x memory (~35 MB to ~123 MB over 2000 features shaped
+ * like PLATEAU CityGML). If it is wanted again, read it from the selected
+ * row's line, which the feature-rows worker keeps.
  */
 
 /** Human-readable coordinate frame, since the EPSG is no longer feature-level. */
@@ -674,16 +673,18 @@ function polygonsOfShell(shell: unknown, swap: boolean): Position[][][] {
   return [];
 }
 
-/** Total points across a point cloud's segments, whatever encoding they use. */
-function countPointCloud(leaf: Record<string, unknown>): number {
-  const segments = (leaf.segments ?? []) as Record<string, unknown>[];
-  return segments.reduce((total, segment) => {
-    const positions = (segment?.positions ?? {}) as Record<string, unknown>;
-    const payload = Object.values(positions)[0];
-    if (Array.isArray(payload)) return total + payload.length;
-    const scaled = (payload as Record<string, unknown>)?.values;
-    return total + (Array.isArray(scaled) ? scaled.length : 0);
-  }, 0);
+/**
+ * A point cloud's point count, whatever encoding its positions use, or
+ * `undefined` if its points are still in a file.
+ */
+function countPointCloud(leaf: Record<string, unknown>): number | undefined {
+  const data = (leaf.data ?? {}) as Record<string, unknown>;
+  if (data.file !== undefined) return undefined;
+  const positions = (data.positions ?? {}) as Record<string, unknown>;
+  const payload = Object.values(positions)[0];
+  if (Array.isArray(payload)) return payload.length;
+  const scaled = (payload as Record<string, unknown>)?.values;
+  return Array.isArray(scaled) ? scaled.length : 0;
 }
 
 /** A count, grouped for the active language — `1,234` and `1.234` differ. */
@@ -699,8 +700,12 @@ function summarize(variant: string | null, value: unknown): string | undefined {
   switch (variant) {
     case "Point":
       return i18n.t("Positions: {{n}}", { n: num(1) });
-    case "PointCloud":
-      return i18n.t("Points: {{n}}", { n: num(countPointCloud(leaf)) });
+    case "PointCloud": {
+      const n = countPointCloud(leaf);
+      return n === undefined
+        ? undefined
+        : i18n.t("Points: {{n}}", { n: num(n) });
+    }
     case "LineString":
       return i18n.t("Vertices: {{n}}", { n: num(count("coords")) });
     case "Polygon":
@@ -790,8 +795,8 @@ function isCoordinateData(value: unknown): boolean {
  * (`Raster::InMemory`), and serde writes those bytes as a JSON array of
  * integers — so after `JSON.parse` a 2 MB texture is a two-million-element JS
  * number array. The reader splits a GLB by `EXT_mesh_features` into one feature
- * per building and re-serializes the texture on each, and the debug panel holds
- * up to 2000 features, so left in place a single textured GLB exhausts the tab.
+ * per building and re-serializes the texture on each, so left in place the
+ * details of one such feature carry millions of numbers.
  *
  * Nothing renders these today, so they are described rather than decoded.
  * Engine PR #2303 left the encoding deliberately open ("UI needs to eagerly

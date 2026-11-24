@@ -17,6 +17,9 @@ pub enum Error {
 
     #[error("Invalid appearance: {0}")]
     InvalidAppearance(String),
+
+    #[error("Point cloud read error: {0}")]
+    PointCloudRead(String),
 }
 
 impl Error {
@@ -35,6 +38,10 @@ impl Error {
     pub fn invalid_appearance<T: ToString>(message: T) -> Self {
         Self::InvalidAppearance(message.to_string())
     }
+
+    pub fn point_cloud_read<T: ToString>(message: T) -> Self {
+        Self::PointCloudRead(message.to_string())
+    }
 }
 
 // implement Eq and PartialEq for Error so that we can compare errors in tests
@@ -45,6 +52,7 @@ impl PartialEq for Error {
             (Self::Projection(a), Self::Projection(b)) => a == b,
             (Self::InvalidGeometry(a), Self::InvalidGeometry(b)) => a == b,
             (Self::InvalidAppearance(a), Self::InvalidAppearance(b)) => a == b,
+            (Self::PointCloudRead(a), Self::PointCloudRead(b)) => a == b,
             _ => false,
         }
     }

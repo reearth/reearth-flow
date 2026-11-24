@@ -2,7 +2,7 @@
  * Describing arbitrary feature values without serializing all of them.
  *
  * Intermediate-data features carry values with no useful upper bound — mesh
- * face lists, point-cloud segments, per-corner UV. Anything that reaches for
+ * face lists, point-cloud positions, per-corner UV. Anything that reaches for
  * `JSON.stringify` on every value it is handed will eventually be handed one of
  * those, so the entry points here measure first and print under a budget when
  * measuring says to.

@@ -272,6 +272,7 @@ func (r *Project) Search(_ context.Context, p interfaces.ProjectSearchParam) ([]
 		switch {
 		case !r.f.CanRead(prj.Workspace()),
 			p.Workspace != nil && prj.Workspace() != *p.Workspace,
+			p.Workspaces != nil && !p.Workspaces.Has(prj.Workspace()),
 			p.Visibility != nil && prj.Visibility() != *p.Visibility,
 			!p.IncludeArchived && prj.IsArchived(),
 			keyword != "" && !strings.Contains(strings.ToLower(prj.Name()), keyword),

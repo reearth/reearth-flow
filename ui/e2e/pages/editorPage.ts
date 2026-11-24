@@ -27,6 +27,7 @@ export class EditorPage {
   readonly debugStatusDot: Locator;
   readonly debugPanel: Locator;
   readonly debugOutputDataButton: Locator;
+  readonly debugLogsViewButton: Locator;
 
   constructor(private page: Page) {
     this.canvas = page.locator(".react-flow");
@@ -68,6 +69,10 @@ export class EditorPage {
     this.debugPanel = page.locator("#middle-bottom-debug-panel");
     this.debugOutputDataButton = this.debugPanel.getByRole("button", {
       name: /Output data \(\d+\)/,
+    });
+    this.debugLogsViewButton = this.debugPanel.getByRole("button", {
+      name: "Workflow Logs",
+      exact: true,
     });
   }
 
@@ -536,6 +541,11 @@ export class EditorPage {
     });
     await expect(startButton).toBeVisible();
     await startButton.click();
+  }
+
+  // A finished run with diagnostics auto-switches the panel to the diagnostics view.
+  async showDebugLogs() {
+    await this.debugLogsViewButton.click();
   }
 
   async waitForDebugRunToComplete(timeout = 300_000) {

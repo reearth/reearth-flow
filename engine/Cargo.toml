@@ -20,7 +20,7 @@ homepage = "https://github.com/reearth/reearth-flow"
 license = "Apache-2.0"
 repository = "https://github.com/reearth/reearth-flow"
 rust-version = "1.99.1" # Remember to update clippy.toml as well
-version = "0.0.672"
+version = "0.0.674"
 
 [profile.dev]
 opt-level = 0
@@ -146,6 +146,7 @@ json-subscriber = "0.3.1"
 jsonpath_lib = "0.3.0"
 kiddo = "6.3.0"
 ktx2-rw = "0.2.4"
+las = { version = "0.11.2", features = ["laz"] }
 nalgebra = "0.35.0"
 num-traits = "0.2.19"
 num_cpus = "1.17.0"

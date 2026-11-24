@@ -463,7 +463,10 @@ mod build_next {
         use super::*;
         use crate::malformation::MalformationKind;
         use crate::parser::CityGmlVersion;
+        use reearth_flow_common::uri::Uri;
         use reearth_flow_geometry::Euclidean3DGeometry;
+        use reearth_flow_geometry::coordinate::CoordinateFrame;
+        use reearth_flow_geometry::point_cloud::PointCloud;
         use reearth_flow_types::CitygmlFeatureExt;
         use url::Url;
 
@@ -726,6 +729,170 @@ mod build_next {
                     "bldg:Building"
                 )]
             );
+        }
+        /// Parse one CityModel holding a Building with `members`, declaring the
+        /// point cloud namespace, and return its features and malformations.
+        fn run_point_cloud(members: &str) -> (Vec<Feature>, Vec<Malformation>) {
+            let xml = format!(
+                r#"<core:CityModel
+                     xmlns:core="http://www.opengis.net/citygml/3.0"
+                     xmlns:bldg="http://www.opengis.net/citygml/building/3.0"
+                     xmlns:pcl="http://www.opengis.net/citygml/pointcloud/3.0"
+                     xmlns:uro="https://www.geospatial.jp/iur/uro/4.0"
+                     xmlns:gml="http://www.opengis.net/gml/3.2"
+                     xmlns:xlink="http://www.w3.org/1999/xlink">
+                   <gml:boundedBy><gml:Envelope srsName="http://www.opengis.net/def/crs/EPSG/0/6697">
+                     <gml:lowerCorner>35 139 0</gml:lowerCorner><gml:upperCorner>36 140 10</gml:upperCorner>
+                   </gml:Envelope></gml:boundedBy>
+                   <core:cityObjectMember><bldg:Building gml:id="b1">{members}</bldg:Building></core:cityObjectMember>
+                 </core:CityModel>"#
+            );
+            let mut parser = Parser::new(CityGmlVersion::V3);
+            parser
+                .parse(
+                    xml.as_bytes(),
+                    &Url::parse("file:///data/udx/bldg/a.gml").unwrap(),
+                )
+                .unwrap();
+            build_features_reporting(parser, &HashSet::new(), &HashMap::new(), None, &[], false)
+        }
+
+        fn point_cloud_member(feature: &Feature) -> (&PointCloud, &Attributes) {
+            let Geometry::GeometryCollection(gc) = &*feature.geometry else {
+                panic!("expected GeometryCollection, got {:?}", feature.geometry);
+            };
+            let i = gc
+                .members()
+                .iter()
+                .position(|m| {
+                    matches!(m, Geometry::Euclidean3D(Euclidean3DGeometry::PointCloud(_)))
+                })
+                .expect("no point cloud member");
+            let Geometry::Euclidean3D(Euclidean3DGeometry::PointCloud(pc)) = &gc.members()[i]
+            else {
+                unreachable!()
+            };
+            (pc, &gc.member_attributes()[i])
+        }
+
+        /// The point cloud named by `pcl:pointFile` becomes a member holding the
+        /// resolved file in `pcl:pointFileSrsName`, and the property stays in the
+        /// attributes.
+        #[test]
+        fn point_file_becomes_a_file_backed_point_cloud() {
+            let (features, malformations) = run_point_cloud(&format!(
+                "<core:lod1Solid><gml:Solid><gml:exterior><gml:Shell>\
+                   <gml:surfaceMember>{TA}</gml:surfaceMember><gml:surfaceMember>{TB}</gml:surfaceMember>\
+                 </gml:Shell></gml:exterior></gml:Solid></core:lod1Solid>\
+                 <core:pointCloud><pcl:PointCloud gml:id=\"pc1\">\
+                   <pcl:mimeType>application/vnd.las</pcl:mimeType>\
+                   <pcl:pointFile>./a_pointcloud/tower.las</pcl:pointFile>\
+                   <pcl:pointFileSrsName>EPSG:6677</pcl:pointFileSrsName>\
+                   <pcl:adeOfPointCloud><uro:PointCloudSpecAttribute><uro:isIntensity>1</uro:isIntensity></uro:PointCloudSpecAttribute></pcl:adeOfPointCloud>\
+                 </pcl:PointCloud></core:pointCloud>"
+            ));
+            assert_eq!(malformations, vec![]);
+            let (pc, attrs) = point_cloud_member(&features[0]);
+            assert_eq!(
+                *pc,
+                PointCloud::from_las_file(
+                    CoordinateFrame::Crs(EpsgCode::new(6677)),
+                    Uri::for_test("file:///data/udx/bldg/a_pointcloud/tower.las"),
+                )
+            );
+            assert_eq!(
+                attrs.get(&Attribute::new(MEMBER_GML_PROPERTY_NAME_KEY)),
+                Some(&AttributeValue::String("pointCloud".into()))
+            );
+            let Some(AttributeValue::Map(property)) = features[0].get("core:pointCloud") else {
+                panic!("core:pointCloud left the attributes");
+            };
+            let Some(AttributeValue::Map(cloud)) = property.get("pcl:PointCloud") else {
+                panic!("pcl:PointCloud left the attributes");
+            };
+            assert_eq!(
+                cloud.get("pcl:pointFile"),
+                Some(&AttributeValue::String("./a_pointcloud/tower.las".into()))
+            );
+        }
+
+        /// Inline `pcl:points` become an in-memory point cloud, and their
+        /// coordinates stay out of the attributes.
+        #[test]
+        fn inline_points_become_an_in_memory_point_cloud() {
+            let (features, _) = run_point_cloud(
+                "<core:pointCloud><pcl:PointCloud>\
+                   <pcl:points><gml:MultiPoint>\
+                     <gml:pointMember><gml:Point><gml:pos>35.1 139.1 1.0</gml:pos></gml:Point></gml:pointMember>\
+                     <gml:pointMember><gml:Point><gml:pos>35.2 139.2 2.0</gml:pos></gml:Point></gml:pointMember>\
+                   </gml:MultiPoint></pcl:points>\
+                 </pcl:PointCloud></core:pointCloud>",
+            );
+            let (pc, _) = point_cloud_member(&features[0]);
+            assert_eq!(
+                *pc,
+                PointCloud::from_positions(
+                    CoordinateFrame::Crs(EpsgCode::new(6697)),
+                    [[35.1, 139.1, 1.0], [35.2, 139.2, 2.0]],
+                )
+            );
+            let Some(AttributeValue::Map(property)) = features[0].get("core:pointCloud") else {
+                panic!("core:pointCloud left the attributes");
+            };
+            assert!(!format!("{property:?}").contains("pcl:points"));
+        }
+
+        /// A point cloud that cannot be read is reported and left out of the
+        /// geometry.
+        #[test]
+        fn unreadable_point_clouds_are_reported() {
+            let cases = [
+                (
+                    "<pcl:mimeType>application/vnd.las</pcl:mimeType>",
+                    MalformationKind::PointCloudWithoutPoints,
+                ),
+                (
+                    "<pcl:mimeType>model/ply</pcl:mimeType><pcl:pointFile>a.ply</pcl:pointFile>",
+                    MalformationKind::UnsupportedPointFileType("model/ply".into()),
+                ),
+                (
+                    "<pcl:pointFile>a.las</pcl:pointFile><pcl:pointFileSrsName>JGD2011</pcl:pointFileSrsName>",
+                    MalformationKind::InvalidPointFileSrsName("JGD2011".into()),
+                ),
+            ];
+            for (content, kind) in cases {
+                let (features, malformations) = run_point_cloud(&format!(
+                    "<core:pointCloud><pcl:PointCloud gml:id=\"pc1\">{content}</pcl:PointCloud></core:pointCloud>"
+                ));
+                assert!(matches!(*features[0].geometry, Geometry::None), "{kind:?}");
+                let found: Vec<_> = malformations
+                    .iter()
+                    .map(|m| (m.kind.clone(), m.location.as_str(), m.file.as_str()))
+                    .collect();
+                assert_eq!(found, vec![(kind, "pc1", "file:///data/udx/bldg/a.gml")]);
+            }
+        }
+
+        /// `xlink:href` references are not resolved; each case is reported.
+        #[test]
+        fn point_cloud_references_are_reported() {
+            let cases = [
+                (
+                    r##"<core:pointCloud xlink:href="#pc0"/>"##,
+                    MalformationKind::PointCloudReference("pc0".into()),
+                ),
+                (
+                    r##"<core:pointCloud><pcl:PointCloud><pcl:points><gml:MultiPoint>
+                         <gml:pointMember xlink:href="#p9"/>
+                       </gml:MultiPoint></pcl:points></pcl:PointCloud></core:pointCloud>"##,
+                    MalformationKind::PointCloudPointReferences(1),
+                ),
+            ];
+            for (member, kind) in cases {
+                let (_, malformations) = run_point_cloud(member);
+                let kinds: Vec<_> = malformations.iter().map(|m| m.kind.clone()).collect();
+                assert_eq!(kinds, vec![kind]);
+            }
         }
     }
 }

@@ -1,6 +1,6 @@
 import { describe, expect, test } from "vitest";
 
-import { analyzeDataType } from "./useStreamingDebugRunQuery";
+import { analyzeDataType } from "./geometryType";
 
 /** A new-format feature carrying one geometry. */
 const next = (geometry: unknown) => ({ id: "1", attributes: {}, geometry });
@@ -44,7 +44,7 @@ describe("new-format geometry label", () => {
   test("names geometry with no GeoJSON form too", () => {
     const cloud = next({
       Euclidean3D: {
-        PointCloud: { frame: { Crs: 4979 }, segments: [] },
+        PointCloud: { frame: { Crs: 4979 }, data: { positions: { F64: [] } } },
       },
     });
 
