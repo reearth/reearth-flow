@@ -10,8 +10,8 @@ INSERT INTO jobs (
   gcp_job_id, logs_url, worker_logs_url, user_facing_logs_url,
   status, batch_status, worker_status,
   started_at, completed_at, metadata_url, output_urls, debug, parameters, mode,
-  trigger_id, scheduled_at, origin, run_by, notification_url, notified_at
-) VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16,$17,$18,$19,$20,$21,$22,$23,$24,$25)
+  trigger_id, scheduled_at, origin, run_by, notification_url, notified_at, artifacts_pending
+) VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16,$17,$18,$19,$20,$21,$22,$23,$24,$25,$26)
 ON CONFLICT (id) DO UPDATE SET
   workspace_id         = EXCLUDED.workspace_id,
   deployment_id        = EXCLUDED.deployment_id,
@@ -36,7 +36,8 @@ ON CONFLICT (id) DO UPDATE SET
   origin               = EXCLUDED.origin,
   run_by               = EXCLUDED.run_by,
   notification_url     = EXCLUDED.notification_url,
-  notified_at          = EXCLUDED.notified_at;
+  notified_at          = EXCLUDED.notified_at,
+  artifacts_pending    = EXCLUDED.artifacts_pending;
 
 -- name: SaveJobIfNotTerminal :execrows
 -- UpsertJob unless the stored status (computed Status() at last save) is terminal; 0 rows = lost.
@@ -45,8 +46,8 @@ INSERT INTO jobs (
   gcp_job_id, logs_url, worker_logs_url, user_facing_logs_url,
   status, batch_status, worker_status,
   started_at, completed_at, metadata_url, output_urls, debug, parameters, mode,
-  trigger_id, scheduled_at, origin, run_by, notification_url, notified_at
-) VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16,$17,$18,$19,$20,$21,$22,$23,$24,$25)
+  trigger_id, scheduled_at, origin, run_by, notification_url, notified_at, artifacts_pending
+) VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16,$17,$18,$19,$20,$21,$22,$23,$24,$25,$26)
 ON CONFLICT (id) DO UPDATE SET
   workspace_id         = EXCLUDED.workspace_id,
   deployment_id        = EXCLUDED.deployment_id,
@@ -71,7 +72,8 @@ ON CONFLICT (id) DO UPDATE SET
   origin               = EXCLUDED.origin,
   run_by               = EXCLUDED.run_by,
   notification_url     = EXCLUDED.notification_url,
-  notified_at          = EXCLUDED.notified_at
+  notified_at          = EXCLUDED.notified_at,
+  artifacts_pending    = EXCLUDED.artifacts_pending
 WHERE jobs.status NOT IN ('COMPLETED', 'FAILED', 'CANCELLED');
 
 -- name: GetJobByScheduledRun :one

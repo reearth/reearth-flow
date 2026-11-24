@@ -65,6 +65,7 @@ type Job struct {
 	workspace         WorkspaceID
 	projectID         *id.ProjectID
 	projectVersion    *int
+	artifactsPending  bool
 }
 
 func NewJob(id ID, deployment *DeploymentID, workspace WorkspaceID, gcpJobID string) *Job {
@@ -325,4 +326,13 @@ func (j *Job) NotifiedAt() *time.Time {
 
 func (j *Job) SetNotifiedAt(t *time.Time) {
 	j.notifiedAt = t
+}
+
+// ArtifactsPending reports whether listing the finished job's outputs failed and must be retried.
+func (j *Job) ArtifactsPending() bool {
+	return j.artifactsPending
+}
+
+func (j *Job) SetArtifactsPending(pending bool) {
+	j.artifactsPending = pending
 }

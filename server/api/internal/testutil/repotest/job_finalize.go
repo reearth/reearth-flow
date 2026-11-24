@@ -95,7 +95,7 @@ func JobSaveIfNotTerminal(t *testing.T, newRepo func(*testing.T) repo.Job) {
 		assert.Equal(t, int32(1), won.Load())
 	})
 
-	t.Run("keeps the webhook URL and when it was sent", func(t *testing.T) {
+	t.Run("keeps the webhook and artifact state", func(t *testing.T) {
 		t.Parallel()
 		r := newRepo(t)
 		jid := id.NewJobID()
@@ -114,11 +114,13 @@ func JobSaveIfNotTerminal(t *testing.T, newRepo func(*testing.T) repo.Job) {
 		done.SetNotificationURL(&url)
 		notifiedAt := startedAt.Add(time.Minute)
 		done.SetNotifiedAt(&notifiedAt)
+		done.SetArtifactsPending(true)
 		require.NoError(t, r.Save(ctx, done))
 
 		got, err = r.FindByID(ctx, jid)
 		require.NoError(t, err)
 		require.NotNil(t, got.NotifiedAt())
 		assert.True(t, notifiedAt.Equal(*got.NotifiedAt()))
+		assert.True(t, got.ArtifactsPending())
 	})
 }

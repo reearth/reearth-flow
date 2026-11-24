@@ -159,3 +159,8 @@ func (b *JobBuilder) NotifiedAt(t *time.Time) *JobBuilder {
 	b.j.notifiedAt = t
 	return b
 }
+
+func (b *JobBuilder) ArtifactsPending(pending bool) *JobBuilder {
+	b.j.artifactsPending = pending
+	return b
+}

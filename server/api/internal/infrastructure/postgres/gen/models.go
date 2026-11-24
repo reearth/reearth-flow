@@ -105,6 +105,7 @@ type Job struct {
 	RunBy             *string
 	NotificationUrl   *string
 	NotifiedAt        *time.Time
+	ArtifactsPending  bool
 }
 
 type JobCompleteEvent struct {

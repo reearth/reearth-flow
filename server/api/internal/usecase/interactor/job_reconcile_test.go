@@ -2,7 +2,9 @@ package interactor
 
 import (
 	"context"
+	"errors"
 	"sync"
+	"sync/atomic"
 	"testing"
 	"time"
 
@@ -23,8 +25,8 @@ import (
 // reconcileLiveStore holds one completion event and drops it when deleted.
 type reconcileLiveStore struct {
 	gateway.LiveStore
-	mu    sync.Mutex
 	event *gateway.JobCompleteEvent
+	mu    sync.Mutex
 }
 
 func (s *reconcileLiveStore) GetJobCompleteEvent(context.Context, id.JobID) (*gateway.JobCompleteEvent, error) {
@@ -49,8 +51,8 @@ func (s *reconcileLiveStore) hasEvent() bool {
 // reconcileBatch reports one Batch status for every job.
 type reconcileBatch struct {
 	gateway.Batch
-	mu     sync.Mutex
 	status gateway.JobStatus
+	mu     sync.Mutex
 }
 
 func (b *reconcileBatch) GetJobStatus(context.Context, string) (gateway.JobStatus, error) {
@@ -68,9 +70,9 @@ func (b *reconcileBatch) set(s gateway.JobStatus) {
 }
 
 type recordingNotifier struct {
-	mu   sync.Mutex
 	sent []notification.Payload
 	urls []string
+	mu   sync.Mutex
 }
 
 func (n *recordingNotifier) Send(url string, p notification.Payload) error {
@@ -296,4 +298,153 @@ func TestJob_Cancel_ABatchJobReadsCancelled(t *testing.T) {
 	require.NoError(t, err)
 	assert.Equal(t, job.StatusCancelled, got.Status())
 	assert.NotNil(t, got.CompletedAt())
+}
+
+// artifactsFile fails to list artifacts while err is set.
+type artifactsFile struct {
+	*mockCheckStatusFile
+	err     error
+	outputs []string
+	mu      sync.Mutex
+}
+
+func (f *artifactsFile) ListJobArtifacts(context.Context, string) ([]string, error) {
+	f.mu.Lock()
+	defer f.mu.Unlock()
+	return f.outputs, f.err
+}
+
+func (f *artifactsFile) setErr(err error) {
+	f.mu.Lock()
+	defer f.mu.Unlock()
+	f.err = err
+}
+
+// flakyFindJobs fails the first FindByID, as a transient database error would.
+type flakyFindJobs struct {
+	repo.Job
+	failed atomic.Bool
+}
+
+func (r *flakyFindJobs) FindByID(ctx context.Context, jid id.JobID) (*job.Job, error) {
+	if r.failed.CompareAndSwap(false, true) {
+		return nil, errors.New("connection reset")
+	}
+	return r.Job.FindByID(ctx, jid)
+}
+
+// finishedTriggerJob is a finished API trigger run whose webhook may not have been sent.
+func finishedTriggerJob(t *testing.T, jobs repo.Job, notifiedAt *time.Time) *job.Job {
+	t.Helper()
+	did := id.NewDeploymentID()
+	url := "https://example.com/hook"
+	completed := job.StatusCompleted
+	completedAt := time.Now().Add(-time.Hour)
+	j := job.New().NewID().Workspace(accountsid.NewWorkspaceID()).Deployment(&did).GCPJobID("gcp-1").
+		Status(job.StatusCompleted).BatchStatus(&completed).WorkerStatus(&completed).
+		StartedAt(completedAt.Add(-time.Hour)).CompletedAt(&completedAt).
+		NotificationURL(&url).NotifiedAt(notifiedAt).MustBuild()
+	require.NoError(t, jobs.Save(context.Background(), j))
+	return j
+}
+
+func TestJob_Reconcile_SendsAnUnsentWebhookForAFinishedJob(t *testing.T) {
+	t.Parallel()
+	jobs := memory.NewJob()
+	j := finishedTriggerJob(t, jobs, nil)
+	n := &recordingNotifier{}
+	i := newReconcileJob(jobs, &reconcileLiveStore{}, nil, n)
+
+	got, err := i.Reconcile(context.Background(), j.ID())
+
+	require.NoError(t, err)
+	assert.Equal(t, 1, n.count())
+	assert.NotNil(t, got.NotifiedAt())
+}
+
+func TestJob_Reconcile_SkipsASentWebhookForAFinishedJob(t *testing.T) {
+	t.Parallel()
+	jobs := memory.NewJob()
+	sent := time.Now().Add(-time.Minute)
+	j := finishedTriggerJob(t, jobs, &sent)
+	n := &recordingNotifier{}
+	i := newReconcileJob(jobs, &reconcileLiveStore{}, nil, n)
+
+	_, err := i.Reconcile(context.Background(), j.ID())
+
+	require.NoError(t, err)
+	assert.Zero(t, n.count())
+}
+
+func TestJob_Reconcile_RetriesDiagnosticsForAFinishedJob(t *testing.T) {
+	t.Parallel()
+	ctx := context.Background()
+	event := loadJobCompleteEventFixture(t)
+	jobID := id.MustJobID(event.JobID)
+	jobs := memory.NewJob()
+	failed := job.StatusFailed
+	completedAt := event.Timestamp
+	require.NoError(t, jobs.Save(ctx, job.New().ID(jobID).Workspace(accountsid.NewWorkspaceID()).
+		Status(job.StatusFailed).WorkerStatus(&failed).StartedAt(completedAt.Add(-time.Hour)).
+		CompletedAt(&completedAt).MustBuild()))
+	live := &reconcileLiveStore{event: &event}
+	diagRepo := &mockDiagnosticsRepo{saveErr: errors.New("mongo down")}
+	i := newReconcileJob(jobs, live, nil, &recordingNotifier{})
+	i.nodeDiagnosticsRepo = diagRepo
+
+	_, err := i.Reconcile(ctx, jobID)
+	require.NoError(t, err)
+	assert.Equal(t, 1, diagRepo.saveCalls)
+	assert.True(t, live.hasEvent(), "the event is kept while diagnostics fail")
+
+	diagRepo.saveErr = nil
+	_, err = i.Reconcile(ctx, jobID)
+	require.NoError(t, err)
+	assert.Equal(t, 2, diagRepo.saveCalls)
+	assert.False(t, live.hasEvent(), "the event is deleted once diagnostics are saved")
+}
+
+func TestJob_Reconcile_RetriesArtifactsBeforeTheWebhook(t *testing.T) {
+	t.Parallel()
+	ctx := context.Background()
+	jobs := memory.NewJob()
+	j := runningTriggerJob(t, jobs, "https://example.com/hook")
+	live := &reconcileLiveStore{event: &gateway.JobCompleteEvent{Timestamp: time.Now(), JobID: j.ID().String(), Result: "success"}}
+	n := &recordingNotifier{}
+	file := &artifactsFile{mockCheckStatusFile: &mockCheckStatusFile{}, err: errors.New("gcs unavailable"), outputs: []string{"https://example.com/out.zip"}}
+	i := newReconcileJob(jobs, live, &reconcileBatch{status: gateway.JobStatusCompleted}, n)
+	i.file = file
+
+	got, err := i.Reconcile(ctx, j.ID())
+	require.NoError(t, err)
+	assert.Equal(t, job.StatusCompleted, got.Status(), "the job finishes even when listing fails")
+	assert.True(t, got.ArtifactsPending())
+	assert.Zero(t, n.count(), "no webhook without outputs")
+
+	file.setErr(nil)
+	got, err = i.Reconcile(ctx, j.ID())
+	require.NoError(t, err)
+	assert.False(t, got.ArtifactsPending())
+	assert.Equal(t, []string{"https://example.com/out.zip"}, got.OutputURLs())
+	require.Equal(t, 1, n.count())
+	assert.Equal(t, []string{"https://example.com/out.zip"}, n.sent[0].Outputs)
+}
+
+func TestJob_startMonitoringIfNeeded_NotifiesAFinishedJobAfterAFailedReconcile(t *testing.T) {
+	t.Parallel()
+	mem := memory.NewJob()
+	j := runningCloudRunJob(t, mem)
+	j.SetStatus(job.StatusCompleted)
+	require.NoError(t, mem.Save(context.Background(), j))
+	i := newReconcileJob(&flakyFindJobs{Job: mem}, &reconcileLiveStore{}, nil, &recordingNotifier{})
+	ch := i.subscriptions.Subscribe(j.ID().String())
+
+	i.startMonitoringIfNeeded(context.Background(), j.ID())
+
+	select {
+	case s := <-ch:
+		assert.Equal(t, job.StatusCompleted, s)
+	default:
+		t.Fatal("subscribers were not told the job finished")
+	}
 }

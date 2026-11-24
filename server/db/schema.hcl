@@ -522,6 +522,11 @@ table "jobs" {
     type = timestamptz
     null = true
   }
+  // Listing the finished job's outputs failed and is retried on the next reconcile.
+  column "artifacts_pending" {
+    type    = boolean
+    default = false
+  }
 
   primary_key {
     columns = [column.id]

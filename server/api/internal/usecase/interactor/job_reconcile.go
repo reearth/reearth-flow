@@ -27,6 +27,7 @@ func (i *Job) reconcileLocked(ctx context.Context, jobID id.JobID) (*job.Job, er
 	}
 	if j.Status().IsTerminal() {
 		// Another call, possibly on another instance, finished it.
+		i.catchUpFinished(ctx, j)
 		i.subscriptions.Notify(jobID.String(), j.Status())
 		return j, nil
 	}
@@ -133,6 +134,32 @@ func (i *Job) finalize(ctx context.Context, j *job.Job, event *gateway.JobComple
 	return j, true, nil
 }
 
+// catchUpFinished retries what finishing a job left undone: diagnostics, artifact listing and the webhook.
+func (i *Job) catchUpFinished(ctx context.Context, j *job.Job) {
+	if i.redis != nil {
+		event, err := i.redis.GetJobCompleteEvent(ctx, j.ID())
+		if err != nil {
+			log.Warnfc(ctx, "job: failed to get the completion event for finished job %s: %v", j.ID(), err)
+		} else if event != nil {
+			if err := i.persistTerminalDiagnostics(ctx, j.ID(), event); err != nil {
+				log.Warnfc(ctx, "job: failed to persist terminal diagnostics for job %s: %v", j.ID(), err)
+			} else if err := i.redis.DeleteJobCompleteEvent(ctx, j.ID()); err != nil {
+				log.Warnfc(ctx, "job: failed to delete the completion event for job %s: %v", j.ID(), err)
+			}
+		}
+	}
+
+	if j.ArtifactsPending() {
+		if err := i.updateJobArtifacts(ctx, j); err != nil {
+			log.Errorfc(ctx, "job: failed to update artifacts for job %s: %v", j.ID(), err)
+		} else if err := i.jobRepo.Save(ctx, j); err != nil {
+			log.Errorfc(ctx, "job: failed to save artifacts for job %s: %v", j.ID(), err)
+		}
+	}
+
+	i.deliverNotification(ctx, j)
+}
+
 // reloadFinished returns the job another writer finished and notifies subscribers.
 func (i *Job) reloadFinished(ctx context.Context, jobID id.JobID) (*job.Job, error) {
 	j, err := i.jobRepo.FindByID(ctx, jobID)
@@ -143,10 +170,10 @@ func (i *Job) reloadFinished(ctx context.Context, jobID id.JobID) (*job.Job, err
 	return j, nil
 }
 
-// deliverNotification sends an undelivered webhook and records it only on success (at-least-once).
+// deliverNotification sends an undelivered webhook once outputs are listed, recording it only on success.
 func (i *Job) deliverNotification(ctx context.Context, j *job.Job) {
 	url := j.NotificationURL()
-	if url == nil || j.NotifiedAt() != nil {
+	if url == nil || j.NotifiedAt() != nil || j.ArtifactsPending() {
 		return
 	}
 	if err := i.sendCompletionNotification(ctx, j, *url); err != nil {

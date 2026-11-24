@@ -443,12 +443,6 @@ func (i *Job) runMonitoringLoop(ctx context.Context, j *job.Job) {
 func (i *Job) updateJobArtifacts(ctx context.Context, j *job.Job) error {
 	jobID := j.ID().String()
 
-	outputs, err := i.file.ListJobArtifacts(ctx, jobID)
-	if err != nil {
-		return fmt.Errorf("failed to list job artifacts: %w", err)
-	}
-	j.SetOutputURLs(outputs)
-
 	logURL := i.file.GetJobLogURL(jobID)
 	if logURL != "" {
 		j.SetLogsURL(logURL)
@@ -464,6 +458,14 @@ func (i *Job) updateJobArtifacts(ctx context.Context, j *job.Job) error {
 		j.SetUserFacingLogsURL(userFacingLogURL)
 	}
 
+	outputs, err := i.file.ListJobArtifacts(ctx, jobID)
+	if err != nil {
+		// Retried by the next reconcile of the finished job.
+		j.SetArtifactsPending(true)
+		return fmt.Errorf("failed to list job artifacts: %w", err)
+	}
+	j.SetOutputURLs(outputs)
+
 	// A preview-schema job's only output is its SchemaReport; surface it via
 	// outputURLs (no dedicated Job field).
 	if j.Mode() == job.ModePreviewSchema {
@@ -472,6 +474,7 @@ func (i *Job) updateJobArtifacts(ctx context.Context, j *job.Job) error {
 		}
 	}
 
+	j.SetArtifactsPending(false)
 	return nil
 }
 
@@ -547,7 +550,8 @@ func (i *Job) Subscribe(ctx context.Context, jobID id.JobID) (chan job.Status, e
 // startMonitoringIfNeeded reconciles the job, sends its status, and watches it if unfinished.
 func (i *Job) startMonitoringIfNeeded(ctx context.Context, jobID id.JobID) {
 	j, err := i.Reconcile(ctx, jobID)
-	if err != nil {
+	reconciled := err == nil
+	if !reconciled {
 		log.Warnfc(ctx, "job: failed to reconcile job %s for a subscription: %v", jobID, err)
 		if j, err = i.jobRepo.FindByID(ctx, jobID); err != nil {
 			log.Errorfc(ctx, "job: failed to find job %s for monitoring: %v", jobID, err)
@@ -555,7 +559,10 @@ func (i *Job) startMonitoringIfNeeded(ctx context.Context, jobID id.JobID) {
 		}
 	}
 	if j.Status().IsTerminal() {
-		// Reconcile has sent the final status.
+		// Reconcile already sent a finished job's status; the fallback read has not.
+		if !reconciled {
+			i.subscriptions.Notify(jobID.String(), j.Status())
+		}
 		return
 	}
 	i.subscriptions.Notify(jobID.String(), j.Status())

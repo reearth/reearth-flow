@@ -20,8 +20,8 @@ type Job struct {
 	data map[id.JobID]*job.Job
 	// saved is each job's status at its last save; data shares pointers, so it can't tell.
 	saved map[id.JobID]job.Status
-	f     repo.WorkspaceFilter
 	lock  *sync.Mutex
+	f     repo.WorkspaceFilter
 }
 
 func NewJob() *Job {

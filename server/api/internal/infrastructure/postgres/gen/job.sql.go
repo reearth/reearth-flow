@@ -53,7 +53,7 @@ func (q *Queries) DeleteJobsByProject(ctx context.Context, projectID *string) er
 }
 
 const getJob = `-- name: GetJob :one
-SELECT id, workspace_id, deployment_id, project_id, project_version, gcp_job_id, logs_url, worker_logs_url, user_facing_logs_url, status, batch_status, worker_status, started_at, completed_at, metadata_url, output_urls, debug, parameters, mode, trigger_id, scheduled_at, origin, run_by, notification_url, notified_at FROM jobs WHERE id = $1
+SELECT id, workspace_id, deployment_id, project_id, project_version, gcp_job_id, logs_url, worker_logs_url, user_facing_logs_url, status, batch_status, worker_status, started_at, completed_at, metadata_url, output_urls, debug, parameters, mode, trigger_id, scheduled_at, origin, run_by, notification_url, notified_at, artifacts_pending FROM jobs WHERE id = $1
 `
 
 func (q *Queries) GetJob(ctx context.Context, id string) (Job, error) {
@@ -85,12 +85,13 @@ func (q *Queries) GetJob(ctx context.Context, id string) (Job, error) {
 		&i.RunBy,
 		&i.NotificationUrl,
 		&i.NotifiedAt,
+		&i.ArtifactsPending,
 	)
 	return i, err
 }
 
 const getJobByScheduledRun = `-- name: GetJobByScheduledRun :one
-SELECT id, workspace_id, deployment_id, project_id, project_version, gcp_job_id, logs_url, worker_logs_url, user_facing_logs_url, status, batch_status, worker_status, started_at, completed_at, metadata_url, output_urls, debug, parameters, mode, trigger_id, scheduled_at, origin, run_by, notification_url, notified_at FROM jobs WHERE trigger_id = $1 AND scheduled_at = $2
+SELECT id, workspace_id, deployment_id, project_id, project_version, gcp_job_id, logs_url, worker_logs_url, user_facing_logs_url, status, batch_status, worker_status, started_at, completed_at, metadata_url, output_urls, debug, parameters, mode, trigger_id, scheduled_at, origin, run_by, notification_url, notified_at, artifacts_pending FROM jobs WHERE trigger_id = $1 AND scheduled_at = $2
 `
 
 type GetJobByScheduledRunParams struct {
@@ -128,12 +129,13 @@ func (q *Queries) GetJobByScheduledRun(ctx context.Context, arg GetJobBySchedule
 		&i.RunBy,
 		&i.NotificationUrl,
 		&i.NotifiedAt,
+		&i.ArtifactsPending,
 	)
 	return i, err
 }
 
 const listJobsByIDs = `-- name: ListJobsByIDs :many
-SELECT id, workspace_id, deployment_id, project_id, project_version, gcp_job_id, logs_url, worker_logs_url, user_facing_logs_url, status, batch_status, worker_status, started_at, completed_at, metadata_url, output_urls, debug, parameters, mode, trigger_id, scheduled_at, origin, run_by, notification_url, notified_at FROM jobs WHERE id = ANY($1::text[])
+SELECT id, workspace_id, deployment_id, project_id, project_version, gcp_job_id, logs_url, worker_logs_url, user_facing_logs_url, status, batch_status, worker_status, started_at, completed_at, metadata_url, output_urls, debug, parameters, mode, trigger_id, scheduled_at, origin, run_by, notification_url, notified_at, artifacts_pending FROM jobs WHERE id = ANY($1::text[])
 `
 
 func (q *Queries) ListJobsByIDs(ctx context.Context, dollar_1 []string) ([]Job, error) {
@@ -171,6 +173,7 @@ func (q *Queries) ListJobsByIDs(ctx context.Context, dollar_1 []string) ([]Job, 
 			&i.RunBy,
 			&i.NotificationUrl,
 			&i.NotifiedAt,
+			&i.ArtifactsPending,
 		); err != nil {
 			return nil, err
 		}
@@ -183,7 +186,7 @@ func (q *Queries) ListJobsByIDs(ctx context.Context, dollar_1 []string) ([]Job, 
 }
 
 const listRunningJobsByWorkspace = `-- name: ListRunningJobsByWorkspace :many
-SELECT id, workspace_id, deployment_id, project_id, project_version, gcp_job_id, logs_url, worker_logs_url, user_facing_logs_url, status, batch_status, worker_status, started_at, completed_at, metadata_url, output_urls, debug, parameters, mode, trigger_id, scheduled_at, origin, run_by, notification_url, notified_at FROM jobs
+SELECT id, workspace_id, deployment_id, project_id, project_version, gcp_job_id, logs_url, worker_logs_url, user_facing_logs_url, status, batch_status, worker_status, started_at, completed_at, metadata_url, output_urls, debug, parameters, mode, trigger_id, scheduled_at, origin, run_by, notification_url, notified_at, artifacts_pending FROM jobs
 WHERE workspace_id = $1
   AND started_at >= $2
   AND status IN ('PENDING', 'RUNNING')
@@ -233,6 +236,7 @@ func (q *Queries) ListRunningJobsByWorkspace(ctx context.Context, arg ListRunnin
 			&i.RunBy,
 			&i.NotificationUrl,
 			&i.NotifiedAt,
+			&i.ArtifactsPending,
 		); err != nil {
 			return nil, err
 		}
@@ -250,8 +254,8 @@ INSERT INTO jobs (
   gcp_job_id, logs_url, worker_logs_url, user_facing_logs_url,
   status, batch_status, worker_status,
   started_at, completed_at, metadata_url, output_urls, debug, parameters, mode,
-  trigger_id, scheduled_at, origin, run_by, notification_url, notified_at
-) VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16,$17,$18,$19,$20,$21,$22,$23,$24,$25)
+  trigger_id, scheduled_at, origin, run_by, notification_url, notified_at, artifacts_pending
+) VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16,$17,$18,$19,$20,$21,$22,$23,$24,$25,$26)
 ON CONFLICT (id) DO UPDATE SET
   workspace_id         = EXCLUDED.workspace_id,
   deployment_id        = EXCLUDED.deployment_id,
@@ -276,7 +280,8 @@ ON CONFLICT (id) DO UPDATE SET
   origin               = EXCLUDED.origin,
   run_by               = EXCLUDED.run_by,
   notification_url     = EXCLUDED.notification_url,
-  notified_at          = EXCLUDED.notified_at
+  notified_at          = EXCLUDED.notified_at,
+  artifacts_pending    = EXCLUDED.artifacts_pending
 WHERE jobs.status NOT IN ('COMPLETED', 'FAILED', 'CANCELLED')
 `
 
@@ -306,6 +311,7 @@ type SaveJobIfNotTerminalParams struct {
 	RunBy             *string
 	NotificationUrl   *string
 	NotifiedAt        *time.Time
+	ArtifactsPending  bool
 }
 
 // UpsertJob unless the stored status (computed Status() at last save) is terminal; 0 rows = lost.
@@ -336,6 +342,7 @@ func (q *Queries) SaveJobIfNotTerminal(ctx context.Context, arg SaveJobIfNotTerm
 		arg.RunBy,
 		arg.NotificationUrl,
 		arg.NotifiedAt,
+		arg.ArtifactsPending,
 	)
 	if err != nil {
 		return 0, err
@@ -349,8 +356,8 @@ INSERT INTO jobs (
   gcp_job_id, logs_url, worker_logs_url, user_facing_logs_url,
   status, batch_status, worker_status,
   started_at, completed_at, metadata_url, output_urls, debug, parameters, mode,
-  trigger_id, scheduled_at, origin, run_by, notification_url, notified_at
-) VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16,$17,$18,$19,$20,$21,$22,$23,$24,$25)
+  trigger_id, scheduled_at, origin, run_by, notification_url, notified_at, artifacts_pending
+) VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16,$17,$18,$19,$20,$21,$22,$23,$24,$25,$26)
 ON CONFLICT (id) DO UPDATE SET
   workspace_id         = EXCLUDED.workspace_id,
   deployment_id        = EXCLUDED.deployment_id,
@@ -375,7 +382,8 @@ ON CONFLICT (id) DO UPDATE SET
   origin               = EXCLUDED.origin,
   run_by               = EXCLUDED.run_by,
   notification_url     = EXCLUDED.notification_url,
-  notified_at          = EXCLUDED.notified_at
+  notified_at          = EXCLUDED.notified_at,
+  artifacts_pending    = EXCLUDED.artifacts_pending
 `
 
 type UpsertJobParams struct {
@@ -404,6 +412,7 @@ type UpsertJobParams struct {
 	RunBy             *string
 	NotificationUrl   *string
 	NotifiedAt        *time.Time
+	ArtifactsPending  bool
 }
 
 func (q *Queries) UpsertJob(ctx context.Context, arg UpsertJobParams) error {
@@ -433,6 +442,7 @@ func (q *Queries) UpsertJob(ctx context.Context, arg UpsertJobParams) error {
 		arg.RunBy,
 		arg.NotificationUrl,
 		arg.NotifiedAt,
+		arg.ArtifactsPending,
 	)
 	return err
 }

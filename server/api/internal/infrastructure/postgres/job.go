@@ -409,6 +409,7 @@ func jobToParams(j *job.Job) (gen.UpsertJobParams, error) {
 	p.RunBy = j.RunBy().StringRef()
 	p.NotificationUrl = j.NotificationURL()
 	p.NotifiedAt = j.NotifiedAt()
+	p.ArtifactsPending = j.ArtifactsPending()
 	return p, nil
 }
 
@@ -435,7 +436,8 @@ func jobFromRow(row gen.Job) (*job.Job, error) {
 		MetadataURL(row.MetadataUrl).
 		Debug(row.Debug).
 		NotificationURL(row.NotificationUrl).
-		NotifiedAt(row.NotifiedAt)
+		NotifiedAt(row.NotifiedAt).
+		ArtifactsPending(row.ArtifactsPending)
 
 	if row.DeploymentID != nil {
 		did, err := id.DeploymentIDFrom(*row.DeploymentID)

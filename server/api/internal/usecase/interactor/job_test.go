@@ -81,10 +81,10 @@ func (m *mockCheckStatusRedis) GetJobDiagnostics(ctx context.Context, jobID id.J
 
 // The shared mockJobRepo panics on Save; these tests need it to work.
 type mockCheckStatusJobRepo struct {
-	job       *job.Job
-	saveCalls int
+	job *job.Job
 	// stored is the status at the last save, as a database column holds it.
-	stored job.Status
+	stored    job.Status
+	saveCalls int
 }
 
 func (m *mockCheckStatusJobRepo) FindByID(ctx context.Context, jobID id.JobID) (*job.Job, error) {
