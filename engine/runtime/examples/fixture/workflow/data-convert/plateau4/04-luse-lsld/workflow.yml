@@ -177,12 +177,17 @@ graphs:
               valueAttribute: featureType
             - attribute: gml_id
               valueAttribute: gmlId
+            - attribute: attributes
+              valueAttribute: attributes
             - attribute: core_creationDate
               expr: |
                 env.get("__value")["core:creationDate"]
             - attribute: urf_validFrom
               expr: |
                 env.get("__value")["urf:validFrom"]
+            - attribute: urf_validFromType
+              expr: |
+                env.get("__value")["urf:validFromType"]
             - attribute: urf_prefecture
               expr: |
                 env.get("__value")["urf:prefecture"]
@@ -207,8 +212,6 @@ graphs:
             - attribute: uro_geometrySrcDescLod1
               expr: |
                 env.get("__value")["uro:DataQualityAttribute_uro:geometrySrcDescLod1"]
-            - attribute: attributes
-              valueAttribute: attributes
             - attribute: sort_order
               expr: |
                 let area_type = env.get("__value")["urf:areaType_code"];

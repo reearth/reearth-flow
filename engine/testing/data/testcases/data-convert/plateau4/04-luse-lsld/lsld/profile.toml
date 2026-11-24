@@ -1,8 +1,17 @@
 citygml_zip_name = "43206_tamana-shi_city_2024_citygml_2_op_lsld.zip"
 
-[tests.mvt_attributes.casts]
+[convs.mvt_attributes.lsld_mvt]
+path = "43206_tamana-shi_city_2024_citygml_2_op_lsld_mvt"
+truth_path = "mvt_lsld_mvt_truth.json"
+generate_truth = true
+
+[convs.mvt_attributes.lsld_mvt.casts]
+"" = "ordered_dict"
 ".attributes" = "json"
 ".attributes.meshcode" = "string"
+
+[tests.json_attributes_v2.mvt_lsld_mvt]
+path = "mvt_lsld_mvt_truth.json"
 
 [tests.mvt_polygons]
 threshold = 0.001

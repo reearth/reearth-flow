@@ -1,17 +1,95 @@
 citygml_zip_name = "13999_tokyo_udx-mlit_2023_citygml_2_sample-takeshiba_op_tun.zip"
 
-[tests.mvt_attributes.casts]
+[convs.cesium_statistics.tun_3dtiles_lod1_jgd2024]
+path = "13999_tokyo_udx-mlit_2023_citygml_2_sample-takeshiba_op_tun_3dtiles_lod1_jgd2024"
+truth_path = "cesium_statistics_tun_3dtiles_lod1_jgd2024_truth.json"
+generate_truth = true
+
+[convs.cesium_statistics.tun_3dtiles_lod2_jgd2024]
+path = "13999_tokyo_udx-mlit_2023_citygml_2_sample-takeshiba_op_tun_3dtiles_lod2_jgd2024"
+truth_path = "cesium_statistics_tun_3dtiles_lod2_jgd2024_truth.json"
+generate_truth = true
+
+[convs.cesium_statistics.tun_3dtiles_lod3_jgd2024]
+path = "13999_tokyo_udx-mlit_2023_citygml_2_sample-takeshiba_op_tun_3dtiles_lod3_jgd2024"
+truth_path = "cesium_statistics_tun_3dtiles_lod3_jgd2024_truth.json"
+generate_truth = true
+
+[convs.cesium_statistics.tun_3dtiles_lod4_jgd2024]
+path = "13999_tokyo_udx-mlit_2023_citygml_2_sample-takeshiba_op_tun_3dtiles_lod4_jgd2024"
+truth_path = "cesium_statistics_tun_3dtiles_lod4_jgd2024_truth.json"
+generate_truth = true
+
+[convs.cesium_attributes.tun_3dtiles_lod1_jgd2024]
+path = "13999_tokyo_udx-mlit_2023_citygml_2_sample-takeshiba_op_tun_3dtiles_lod1_jgd2024"
+truth_path = "cesium_tun_3dtiles_lod1_jgd2024_truth.json"
+generate_truth = true
+
+[convs.cesium_attributes.tun_3dtiles_lod1_jgd2024.casts]
+"" = "ordered_dict"
+".attributes" = "json"
+".attributes.meshcode" = "string"
+
+[tests.json_attributes_v2.cesium_tun_3dtiles_lod1_jgd2024]
+path = "cesium_tun_3dtiles_lod1_jgd2024_truth.json"
+
+[convs.cesium_attributes.tun_3dtiles_lod2_jgd2024]
+path = "13999_tokyo_udx-mlit_2023_citygml_2_sample-takeshiba_op_tun_3dtiles_lod2_jgd2024"
+truth_path = "cesium_tun_3dtiles_lod2_jgd2024_truth.json"
+generate_truth = true
+
+[convs.cesium_attributes.tun_3dtiles_lod2_jgd2024.casts]
+"" = "ordered_dict"
+".attributes" = "json"
+".attributes.meshcode" = "string"
+
+[tests.json_attributes_v2.cesium_tun_3dtiles_lod2_jgd2024]
+path = "cesium_tun_3dtiles_lod2_jgd2024_truth.json"
+
+[convs.cesium_attributes.tun_3dtiles_lod3_jgd2024]
+path = "13999_tokyo_udx-mlit_2023_citygml_2_sample-takeshiba_op_tun_3dtiles_lod3_jgd2024"
+truth_path = "cesium_tun_3dtiles_lod3_jgd2024_truth.json"
+generate_truth = true
+
+[convs.cesium_attributes.tun_3dtiles_lod3_jgd2024.casts]
+"" = "ordered_dict"
+".attributes" = "json"
+".attributes.meshcode" = "string"
+
+[tests.json_attributes_v2.cesium_tun_3dtiles_lod3_jgd2024]
+path = "cesium_tun_3dtiles_lod3_jgd2024_truth.json"
+
+[convs.cesium_attributes.tun_3dtiles_lod4_jgd2024]
+path = "13999_tokyo_udx-mlit_2023_citygml_2_sample-takeshiba_op_tun_3dtiles_lod4_jgd2024"
+truth_path = "cesium_tun_3dtiles_lod4_jgd2024_truth.json"
+generate_truth = true
+
+[convs.cesium_attributes.tun_3dtiles_lod4_jgd2024.casts]
+"" = "ordered_dict"
+".attributes" = "json"
+".attributes.meshcode" = "string"
+
+[tests.json_attributes_v2.cesium_tun_3dtiles_lod4_jgd2024]
+path = "cesium_tun_3dtiles_lod4_jgd2024_truth.json"
+
+[convs.mvt_attributes.tun_dm_geometric_attributes]
+path = "13999_tokyo_udx-mlit_2023_citygml_2_sample-takeshiba_op_tun_dm_geometric_attributes"
+truth_path = "mvt_tun_dm_geometric_attributes_truth.json"
+generate_truth = true
+
+[convs.mvt_attributes.tun_dm_geometric_attributes.casts]
+"" = "ordered_dict"
 ".attributes" = "json"
 ".attributes.meshcode" = "string"
 ".dm_attributes" = "json"
 
-[tests.cesium.casts]
-".attributes" = "json"
-".attributes.meshcode" = "string"
+[tests.json_attributes_v2.mvt_tun_dm_geometric_attributes]
+path = "mvt_tun_dm_geometric_attributes_truth.json"
 
 [tests.mvt_polygons]
 threshold = 0.001
 
 # the lod4 features/subfeatures are further simplified manually to speed up the test
+
 [filter.tree]
 "udx/tun/" = ["53393690_tun_6697_40_op.gml", "53393690_tun_6697_40_appearance/"]

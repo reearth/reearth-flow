@@ -2,7 +2,7 @@ use plateau_tiles_test::conv::cesium as conv_cesium;
 use plateau_tiles_test::conv::cesium_statistics;
 use plateau_tiles_test::conv::mvt;
 use plateau_tiles_test::conv::mvt_png;
-use plateau_tiles_test::file::{extract_zip_to_tmp, zip_dir};
+use plateau_tiles_test::file::{extract_zip_to_tmp, remove_extracted, zip_dir};
 use plateau_tiles_test::profile_config::Convs;
 use serde::Deserialize;
 use std::fs;
@@ -27,14 +27,22 @@ fn run(profile_path: &Path) -> Result<(), String> {
         if !entry.generate_truth {
             continue;
         }
-        let flow_file = truth_dir.join(&entry.flow_path);
+        // `flow_path` is `<output name>/<file>`; the truth dir holds `<output name>.zip`.
+        let (stem, file) = entry
+            .flow_path
+            .split_once('/')
+            .ok_or_else(|| format!("convs.json.{id}: flow_path must be '<name>/<file>'"))?;
+        let zip_path = truth_dir.join(stem).with_extension("zip");
+        let tmp_dir = extract_zip_to_tmp(&zip_path)?;
         let output_path = truth_dir.join(&entry.output_path);
-        plateau_tiles_test::conv::json::write_json(
-            &flow_file,
+        let result = plateau_tiles_test::conv::json::write_json(
+            &tmp_dir.join(file),
             &output_path,
             entry.json_path.as_deref(),
             &entry.casts,
-        )?;
+        );
+        remove_extracted(&tmp_dir);
+        result?;
         println!("wrote json/{} -> {}", id, output_path.display());
     }
 
@@ -49,7 +57,7 @@ fn run(profile_path: &Path) -> Result<(), String> {
         let tmp_dir = extract_zip_to_tmp(&zip_path)?;
         let output_path = truth_dir.join(&entry.truth_path);
         let result = mvt::write_mvt_json(&tmp_dir, &output_path, entry.casts.as_ref());
-        fs::remove_dir_all(&tmp_dir).ok();
+        remove_extracted(&tmp_dir);
         result?;
         println!("wrote mvt_attributes/{} -> {}", id, output_path.display());
     }
@@ -79,7 +87,7 @@ fn run(profile_path: &Path) -> Result<(), String> {
             h,
             entry.stroke,
         );
-        fs::remove_dir_all(&tmp_mvt_dir).ok();
+        remove_extracted(&tmp_mvt_dir);
 
         if let Err(e) = result {
             fs::remove_dir_all(&tmp_png_dir).ok();
@@ -105,7 +113,7 @@ fn run(profile_path: &Path) -> Result<(), String> {
         let tmp_dir = extract_zip_to_tmp(&zip_path)?;
         let output_path = truth_dir.join(&entry.truth_path);
         let result = conv_cesium::write_cesium_json(&tmp_dir, &output_path, entry.casts.as_ref());
-        fs::remove_dir_all(&tmp_dir).ok();
+        remove_extracted(&tmp_dir);
         result?;
         println!(
             "wrote cesium_attributes/{} -> {}",
@@ -125,7 +133,7 @@ fn run(profile_path: &Path) -> Result<(), String> {
         let tmp_dir = extract_zip_to_tmp(&zip_path)?;
         let output_path = truth_dir.join(&entry.truth_path);
         let result = cesium_statistics::write_cesium_statistics(&tmp_dir, &output_path);
-        fs::remove_dir_all(&tmp_dir).ok();
+        remove_extracted(&tmp_dir);
         result?;
         println!(
             "wrote cesium_statistics/{} -> {}",

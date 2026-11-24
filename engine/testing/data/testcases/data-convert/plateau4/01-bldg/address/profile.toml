@@ -9,6 +9,7 @@ truth_path = "cesium_lod1_truth.json"
 generate_truth = true
 
 [convs.cesium_attributes.lod1.casts]
+"" = "ordered_dict"
 ".attributes" = "json"
 ".attributes.meshcode" = "string"
 ".uro:BuildingDetailAttribute_uro:surveyYear" = "int"

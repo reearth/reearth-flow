@@ -1,0 +1,160 @@
+{
+  "tun_0c334c5d-6977-4859-a2a6-ab5859cddffa__dm_E2": {
+    "meshcode": "53393690",
+    "feature_type": "tun:Tunnel",
+    "city_code": "13999",
+    "city_name": "東京都帰属未定地",
+    "gml_id": "tun_0c334c5d-6977-4859-a2a6-ab5859cddffa",
+    "attributes": {
+      "meshcode": "53393690",
+      "feature_type": "tun:Tunnel",
+      "gml:id": "tun_0c334c5d-6977-4859-a2a6-ab5859cddffa",
+      "gml:name": "築地虎ノ門トンネル",
+      "core:creationDate": "2024-03-22",
+      "tun:class": "交通",
+      "tun:class_code": "1000",
+      "tun:function": "道路用トンネル",
+      "tun:function_code": "1010",
+      "uro:ConstructionBaseAttribute": [
+        {
+          "uro:administrator": "東京都"
+        }
+      ],
+      "uro:RiverFloodingRiskAttribute": [
+        {
+          "uro:description": "荒川水系隅田川・新河岸川流域",
+          "uro:description_code": "10",
+          "uro:rank": "5m以上10m未満",
+          "uro:rank_code": "4",
+          "uro:adminType": "都道府県",
+          "uro:adminType_code": "2",
+          "uro:scale": "L2（想定最大規模）",
+          "uro:scale_code": "2"
+        }
+      ],
+      "uro:DmGeometricAttribute": [
+        {
+          "uro:dmCode": "道路のトンネル",
+          "uro:dmCode_code": "2219",
+          "uro:meshCode": "09LD281",
+          "uro:geometryType": "線",
+          "uro:geometryType_code": "E2",
+          "uro:mapLevel": "地図情報レベル2500",
+          "uro:mapLevel_code": "2500",
+          "uro:shapeType": "非区分（下記に該当しない全データ）",
+          "uro:shapeType_code": "0"
+        }
+      ],
+      "uro:DataQualityAttribute": [
+        {
+          "uro:geometrySrcDescLod0": [
+            "都市計画図書",
+            "BIMモデル、CADデータ、設計図、完成図、一般図（平面図、配置図、断面図等）"
+          ],
+          "uro:geometrySrcDescLod0_code": [
+            "202",
+            "500"
+          ],
+          "uro:geometrySrcDescLod1": [
+            "都市計画図書",
+            "BIMモデル、CADデータ、設計図、完成図、一般図（平面図、配置図、断面図等）"
+          ],
+          "uro:geometrySrcDescLod1_code": [
+            "202",
+            "500"
+          ],
+          "uro:geometrySrcDescLod2": [
+            "都市計画図書",
+            "BIMモデル、CADデータ、設計図、完成図、一般図（平面図、配置図、断面図等）"
+          ],
+          "uro:geometrySrcDescLod2_code": [
+            "202",
+            "500"
+          ],
+          "uro:geometrySrcDescLod3": [
+            "都市計画図書",
+            "BIMモデル、CADデータ、設計図、完成図、一般図（平面図、配置図、断面図等）"
+          ],
+          "uro:geometrySrcDescLod3_code": [
+            "202",
+            "500"
+          ],
+          "uro:geometrySrcDescLod4": [
+            "公共測量成果又は基本測量成果",
+            "都市計画図書",
+            "BIMモデル、CADデータ、設計図、完成図、一般図（平面図、配置図、断面図等）"
+          ],
+          "uro:geometrySrcDescLod4_code": [
+            "000",
+            "202",
+            "500"
+          ],
+          "uro:thematicSrcDesc": "その他の資料",
+          "uro:thematicSrcDesc_code": "700",
+          "uro:appearanceSrcDescLod2": "疑似テクスチャ",
+          "uro:appearanceSrcDescLod2_code": "5",
+          "uro:appearanceSrcDescLod3": "疑似テクスチャ",
+          "uro:appearanceSrcDescLod3_code": "5",
+          "uro:appearanceSrcDescLod4": "疑似テクスチャ",
+          "uro:appearanceSrcDescLod4_code": "5",
+          "uro:lodType": "LOD3.0の外形に加え、トンネル内部（内空）を再現する。内空の境界面を床、内壁面又は天井面に区分する。また、内壁等に扉や窓がある場合に区分する。トンネル内部の付属物は取得しない。",
+          "uro:lodType_code": "4.0",
+          "uro:lod1HeightType": "図面から取得した高さ",
+          "uro:lod1HeightType_code": "10"
+        }
+      ]
+    },
+    "core_creationDate": "2024-03-22",
+    "tun_class": "交通",
+    "tun_function": "道路用トンネル",
+    "uro_geometrySrcDescLod1": "都市計画図書",
+    "uro_lodType": "LOD3.0の外形に加え、トンネル内部（内空）を再現する。内空の境界面を床、内壁面又は天井面に区分する。また、内壁等に扉や窓がある場合に区分する。トンネル内部の付属物は取得しない。",
+    "荒川水系隅田川・新河岸川流域（都道府県管理区間）_L2（想定最大規模）_浸水ランク": "5m以上10m未満",
+    "荒川水系隅田川・新河岸川流域（都道府県管理区間）_L2（想定最大規模）_浸水ランクコード": 4,
+    "dm_feature_type": "DmGeometricAttribute",
+    "dm_attributes": {
+      "uro:dmCode": "道路のトンネル",
+      "uro:dmCode_code": "2219",
+      "uro:meshCode": "09LD281",
+      "uro:geometryType": "線",
+      "uro:geometryType_code": "E2",
+      "uro:mapLevel": "地図情報レベル2500",
+      "uro:mapLevel_code": "2500",
+      "uro:shapeType": "非区分（下記に該当しない全データ）",
+      "uro:shapeType_code": "0"
+    },
+    "dm_dmCode": "道路のトンネル",
+    "dm_dmCode_code": "2219",
+    "dm_geometryType": "線",
+    "dm_geometryType_code": "E2",
+    "dm_mapLevel": "地図情報レベル2500",
+    "dm_mapLevel_code": "2500",
+    "dm_shapeType": "非区分（下記に該当しない全データ）",
+    "dm_shapeType_code": "0",
+    "__key_order": [
+      "meshcode",
+      "feature_type",
+      "city_code",
+      "city_name",
+      "gml_id",
+      "attributes",
+      "core_creationDate",
+      "tun_class",
+      "tun_function",
+      "uro_geometrySrcDescLod1",
+      "uro_lodType",
+      "荒川水系隅田川・新河岸川流域（都道府県管理区間）_L2（想定最大規模）_浸水ランク",
+      "荒川水系隅田川・新河岸川流域（都道府県管理区間）_L2（想定最大規模）_浸水ランクコード",
+      "dm_feature_type",
+      "dm_attributes",
+      "dm_dmCode",
+      "dm_dmCode_code",
+      "dm_geometryType",
+      "dm_geometryType_code",
+      "dm_mapLevel",
+      "dm_mapLevel_code",
+      "dm_shapeType",
+      "dm_shapeType_code"
+    ]
+  }
+}

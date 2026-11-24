@@ -1,0 +1,73 @@
+{
+  "gen_dfceb360-1409-4f0f-a2b8-9caf338fec86": {
+    "meshcode": "50304358",
+    "feature_type": "gen:GenericCityObject",
+    "city_code": "40223",
+    "city_name": "福岡県古賀市",
+    "gml_id": "gen_dfceb360-1409-4f0f-a2b8-9caf338fec86",
+    "attributes": {
+      "meshcode": "50304358",
+      "feature_type": "gen:GenericCityObject",
+      "gml:id": "gen_dfceb360-1409-4f0f-a2b8-9caf338fec86",
+      "gml:name": "福岡県開発許可条例に基づく区域指定(開発許可区域)",
+      "gml:name_code": "20",
+      "core:creationDate": "2025-03-31",
+      "gen:genericAttribute": {
+        "告示番号": {
+          "type": "string",
+          "name": "告示番号",
+          "value": "福岡県告示第316号"
+        },
+        "告示年月日": {
+          "type": "date",
+          "name": "告示年月日",
+          "value": "2019-09-27"
+        },
+        "名称": {
+          "type": "string",
+          "name": "名称",
+          "value": "町川原1区指定区域"
+        },
+        "区域の所在": {
+          "type": "string",
+          "name": "区域の所在",
+          "value": "古賀市青柳町・川原の一部"
+        },
+        "区域の面積": {
+          "type": "string",
+          "name": "区域の面積",
+          "value": "266007"
+        },
+        "備考": {
+          "type": "string",
+          "name": "備考",
+          "value": "都市計画法第34条第12号 集落活性化タイプ"
+        }
+      }
+    },
+    "gml_name": "福岡県開発許可条例に基づく区域指定(開発許可区域)",
+    "core_creationDate": "2025-03-31",
+    "告示番号": "福岡県告示第316号",
+    "告示年月日": "2019-09-27",
+    "名称": "町川原1区指定区域",
+    "区域の所在": "古賀市青柳町・川原の一部",
+    "区域の面積": "266007",
+    "備考": "都市計画法第34条第12号 集落活性化タイプ",
+    "__key_order": [
+      "meshcode",
+      "feature_type",
+      "city_code",
+      "city_name",
+      "gml_id",
+      "attributes",
+      "gml_name",
+      "core_creationDate",
+      "告示番号",
+      "告示年月日",
+      "名称",
+      "区域の所在",
+      "区域の面積",
+      "備考"
+    ]
+  }
+}

@@ -1,0 +1,3965 @@
+{
+  "cons_fb13826e-2ed1-42e3-8ed3-a4cafdf6caf0": {
+    "meshcode": "49303414",
+    "city_code": "43206",
+    "city_name": "熊本県玉名市",
+    "feature_type": "uro:OtherConstruction",
+    "gml_id": "cons_fb13826e-2ed1-42e3-8ed3-a4cafdf6caf0",
+    "attributes": {
+      "meshcode": "49303414",
+      "feature_type": "uro:OtherConstruction",
+      "gml:id": "cons_fb13826e-2ed1-42e3-8ed3-a4cafdf6caf0",
+      "core:creationDate": "2024-03-22",
+      "uro:DataQualityAttribute": [
+        {
+          "uro:geometrySrcDescLod1": "未作成",
+          "uro:geometrySrcDescLod1_code": "999",
+          "uro:geometrySrcDescLod3": "公共測量成果又は基本測量成果",
+          "uro:geometrySrcDescLod3_code": "000",
+          "uro:thematicSrcDesc": "公共測量成果又は基本測量成果",
+          "uro:thematicSrcDesc_code": "000",
+          "uro:appearanceSrcDescLod3": [
+            "車載写真レーザ測量システムにより撮影した写真",
+            "手持ちカメラにより撮影した写真"
+          ],
+          "uro:appearanceSrcDescLod3_code": [
+            "3",
+            "4"
+          ],
+          "uro:lodType": "構造物の形状を、主要な部分の外形を構成する特徴点から構成する面を境界面とする立体として表現する。",
+          "uro:lodType_code": "3.0",
+          "uro:PublicSurveyDataQualityAttribute": [
+            {
+              "uro:srcScaleLod3": "地図情報レベル500",
+              "uro:srcScaleLod3_code": "3",
+              "uro:publicSurveySrcDescLod3": "LidarSLAM計測の測量成果",
+              "uro:publicSurveySrcDescLod3_code": "018"
+            }
+          ]
+        }
+      ],
+      "uro:GroundSurface": [
+        {
+          "core:creationDate": "2024-03-22"
+        },
+        {
+          "core:creationDate": "2024-03-22"
+        }
+      ],
+      "uro:RoofSurface": [
+        {
+          "core:creationDate": "2024-03-22"
+        },
+        {
+          "core:creationDate": "2024-03-22"
+        },
+        {
+          "core:creationDate": "2024-03-22"
+        },
+        {
+          "core:creationDate": "2024-03-22"
+        },
+        {
+          "core:creationDate": "2024-03-22"
+        },
+        {
+          "core:creationDate": "2024-03-22"
+        },
+        {
+          "core:creationDate": "2024-03-22"
+        },
+        {
+          "core:creationDate": "2024-03-22"
+        },
+        {
+          "core:creationDate": "2024-03-22"
+        },
+        {
+          "core:creationDate": "2024-03-22"
+        },
+        {
+          "core:creationDate": "2024-03-22"
+        }
+      ],
+      "uro:WallSurface": [
+        {
+          "core:creationDate": "2024-03-22"
+        },
+        {
+          "core:creationDate": "2024-03-22"
+        },
+        {
+          "core:creationDate": "2024-03-22"
+        },
+        {
+          "core:creationDate": "2024-03-22"
+        },
+        {
+          "core:creationDate": "2024-03-22"
+        },
+        {
+          "core:creationDate": "2024-03-22"
+        },
+        {
+          "core:creationDate": "2024-03-22"
+        },
+        {
+          "core:creationDate": "2024-03-22"
+        },
+        {
+          "core:creationDate": "2024-03-22"
+        },
+        {
+          "core:creationDate": "2024-03-22"
+        },
+        {
+          "core:creationDate": "2024-03-22"
+        },
+        {
+          "core:creationDate": "2024-03-22"
+        },
+        {
+          "core:creationDate": "2024-03-22"
+        },
+        {
+          "core:creationDate": "2024-03-22"
+        },
+        {
+          "core:creationDate": "2024-03-22"
+        },
+        {
+          "core:creationDate": "2024-03-22"
+        },
+        {
+          "core:creationDate": "2024-03-22"
+        },
+        {
+          "core:creationDate": "2024-03-22"
+        },
+        {
+          "core:creationDate": "2024-03-22"
+        },
+        {
+          "core:creationDate": "2024-03-22"
+        },
+        {
+          "core:creationDate": "2024-03-22"
+        },
+        {
+          "core:creationDate": "2024-03-22"
+        },
+        {
+          "core:creationDate": "2024-03-22"
+        },
+        {
+          "core:creationDate": "2024-03-22"
+        },
+        {
+          "core:creationDate": "2024-03-22"
+        },
+        {
+          "core:creationDate": "2024-03-22"
+        },
+        {
+          "core:creationDate": "2024-03-22"
+        },
+        {
+          "core:creationDate": "2024-03-22"
+        },
+        {
+          "core:creationDate": "2024-03-22"
+        },
+        {
+          "core:creationDate": "2024-03-22"
+        },
+        {
+          "core:creationDate": "2024-03-22"
+        },
+        {
+          "core:creationDate": "2024-03-22"
+        },
+        {
+          "core:creationDate": "2024-03-22"
+        },
+        {
+          "core:creationDate": "2024-03-22"
+        },
+        {
+          "core:creationDate": "2024-03-22"
+        },
+        {
+          "core:creationDate": "2024-03-22"
+        },
+        {
+          "core:creationDate": "2024-03-22"
+        },
+        {
+          "core:creationDate": "2024-03-22"
+        },
+        {
+          "core:creationDate": "2024-03-22"
+        },
+        {
+          "core:creationDate": "2024-03-22"
+        },
+        {
+          "core:creationDate": "2024-03-22"
+        },
+        {
+          "core:creationDate": "2024-03-22"
+        },
+        {
+          "core:creationDate": "2024-03-22"
+        },
+        {
+          "core:creationDate": "2024-03-22"
+        },
+        {
+          "core:creationDate": "2024-03-22"
+        },
+        {
+          "core:creationDate": "2024-03-22"
+        },
+        {
+          "core:creationDate": "2024-03-22"
+        },
+        {
+          "core:creationDate": "2024-03-22"
+        },
+        {
+          "core:creationDate": "2024-03-22"
+        },
+        {
+          "core:creationDate": "2024-03-22"
+        },
+        {
+          "core:creationDate": "2024-03-22"
+        },
+        {
+          "core:creationDate": "2024-03-22"
+        },
+        {
+          "core:creationDate": "2024-03-22"
+        },
+        {
+          "core:creationDate": "2024-03-22"
+        },
+        {
+          "core:creationDate": "2024-03-22"
+        },
+        {
+          "core:creationDate": "2024-03-22"
+        },
+        {
+          "core:creationDate": "2024-03-22"
+        },
+        {
+          "core:creationDate": "2024-03-22"
+        },
+        {
+          "core:creationDate": "2024-03-22"
+        },
+        {
+          "core:creationDate": "2024-03-22"
+        },
+        {
+          "core:creationDate": "2024-03-22"
+        },
+        {
+          "core:creationDate": "2024-03-22"
+        },
+        {
+          "core:creationDate": "2024-03-22"
+        },
+        {
+          "core:creationDate": "2024-03-22"
+        },
+        {
+          "core:creationDate": "2024-03-22"
+        },
+        {
+          "core:creationDate": "2024-03-22"
+        },
+        {
+          "core:creationDate": "2024-03-22"
+        },
+        {
+          "core:creationDate": "2024-03-22"
+        },
+        {
+          "core:creationDate": "2024-03-22"
+        },
+        {
+          "core:creationDate": "2024-03-22"
+        },
+        {
+          "core:creationDate": "2024-03-22"
+        },
+        {
+          "core:creationDate": "2024-03-22"
+        },
+        {
+          "core:creationDate": "2024-03-22"
+        },
+        {
+          "core:creationDate": "2024-03-22"
+        },
+        {
+          "core:creationDate": "2024-03-22"
+        },
+        {
+          "core:creationDate": "2024-03-22"
+        },
+        {
+          "core:creationDate": "2024-03-22"
+        },
+        {
+          "core:creationDate": "2024-03-22"
+        },
+        {
+          "core:creationDate": "2024-03-22"
+        },
+        {
+          "core:creationDate": "2024-03-22"
+        },
+        {
+          "core:creationDate": "2024-03-22"
+        },
+        {
+          "core:creationDate": "2024-03-22"
+        },
+        {
+          "core:creationDate": "2024-03-22"
+        },
+        {
+          "core:creationDate": "2024-03-22"
+        },
+        {
+          "core:creationDate": "2024-03-22"
+        },
+        {
+          "core:creationDate": "2024-03-22"
+        },
+        {
+          "core:creationDate": "2024-03-22"
+        },
+        {
+          "core:creationDate": "2024-03-22"
+        },
+        {
+          "core:creationDate": "2024-03-22"
+        },
+        {
+          "core:creationDate": "2024-03-22"
+        },
+        {
+          "core:creationDate": "2024-03-22"
+        },
+        {
+          "core:creationDate": "2024-03-22"
+        },
+        {
+          "core:creationDate": "2024-03-22"
+        },
+        {
+          "core:creationDate": "2024-03-22"
+        },
+        {
+          "core:creationDate": "2024-03-22"
+        },
+        {
+          "core:creationDate": "2024-03-22"
+        },
+        {
+          "core:creationDate": "2024-03-22"
+        },
+        {
+          "core:creationDate": "2024-03-22"
+        },
+        {
+          "core:creationDate": "2024-03-22"
+        },
+        {
+          "core:creationDate": "2024-03-22"
+        },
+        {
+          "core:creationDate": "2024-03-22"
+        },
+        {
+          "core:creationDate": "2024-03-22"
+        },
+        {
+          "core:creationDate": "2024-03-22"
+        },
+        {
+          "core:creationDate": "2024-03-22"
+        },
+        {
+          "core:creationDate": "2024-03-22"
+        },
+        {
+          "core:creationDate": "2024-03-22"
+        }
+      ],
+      "uro:class": "護岸",
+      "uro:class_code": "08",
+      "uro:function": "高水護岸",
+      "uro:function_code": "0801"
+    },
+    "core:creationDate": "2024-03-22",
+    "uro:geometrySrcDescLod1": "未作成",
+    "uro:lodType": "構造物の形状を、主要な部分の外形を構成する特徴点から構成する面を境界面とする立体として表現する。",
+    "__key_order": [
+      "meshcode",
+      "city_code",
+      "city_name",
+      "feature_type",
+      "gml_id",
+      "attributes",
+      "core:creationDate",
+      "uro:geometrySrcDescLod1",
+      "uro:lodType"
+    ]
+  },
+  "cons_806a8a7b-44a8-4cff-933a-99fed8542282": {
+    "meshcode": "49303414",
+    "city_code": "43206",
+    "city_name": "熊本県玉名市",
+    "feature_type": "uro:OtherConstruction",
+    "gml_id": "cons_806a8a7b-44a8-4cff-933a-99fed8542282",
+    "attributes": {
+      "meshcode": "49303414",
+      "feature_type": "uro:OtherConstruction",
+      "gml:id": "cons_806a8a7b-44a8-4cff-933a-99fed8542282",
+      "core:creationDate": "2024-03-22",
+      "uro:DataQualityAttribute": [
+        {
+          "uro:geometrySrcDescLod1": "未作成",
+          "uro:geometrySrcDescLod1_code": "999",
+          "uro:geometrySrcDescLod3": "公共測量成果又は基本測量成果",
+          "uro:geometrySrcDescLod3_code": "000",
+          "uro:thematicSrcDesc": "公共測量成果又は基本測量成果",
+          "uro:thematicSrcDesc_code": "000",
+          "uro:appearanceSrcDescLod3": [
+            "車載写真レーザ測量システムにより撮影した写真",
+            "手持ちカメラにより撮影した写真"
+          ],
+          "uro:appearanceSrcDescLod3_code": [
+            "3",
+            "4"
+          ],
+          "uro:lodType": "構造物の形状を、主要な部分の外形を構成する特徴点から構成する面を境界面とする立体として表現する。",
+          "uro:lodType_code": "3.0",
+          "uro:PublicSurveyDataQualityAttribute": [
+            {
+              "uro:srcScaleLod3": "地図情報レベル500",
+              "uro:srcScaleLod3_code": "3",
+              "uro:publicSurveySrcDescLod3": "LidarSLAM計測の測量成果",
+              "uro:publicSurveySrcDescLod3_code": "018"
+            }
+          ]
+        }
+      ],
+      "uro:GroundSurface": [
+        {
+          "core:creationDate": "2024-03-22"
+        }
+      ],
+      "uro:RoofSurface": [
+        {
+          "core:creationDate": "2024-03-22"
+        },
+        {
+          "core:creationDate": "2024-03-22"
+        }
+      ],
+      "uro:WallSurface": [
+        {
+          "core:creationDate": "2024-03-22"
+        },
+        {
+          "core:creationDate": "2024-03-22"
+        },
+        {
+          "core:creationDate": "2024-03-22"
+        },
+        {
+          "core:creationDate": "2024-03-22"
+        },
+        {
+          "core:creationDate": "2024-03-22"
+        },
+        {
+          "core:creationDate": "2024-03-22"
+        },
+        {
+          "core:creationDate": "2024-03-22"
+        },
+        {
+          "core:creationDate": "2024-03-22"
+        },
+        {
+          "core:creationDate": "2024-03-22"
+        },
+        {
+          "core:creationDate": "2024-03-22"
+        },
+        {
+          "core:creationDate": "2024-03-22"
+        },
+        {
+          "core:creationDate": "2024-03-22"
+        },
+        {
+          "core:creationDate": "2024-03-22"
+        },
+        {
+          "core:creationDate": "2024-03-22"
+        },
+        {
+          "core:creationDate": "2024-03-22"
+        },
+        {
+          "core:creationDate": "2024-03-22"
+        }
+      ],
+      "uro:class": "護岸",
+      "uro:class_code": "08",
+      "uro:function": "高水護岸",
+      "uro:function_code": "0801"
+    },
+    "core:creationDate": "2024-03-22",
+    "uro:geometrySrcDescLod1": "未作成",
+    "uro:lodType": "構造物の形状を、主要な部分の外形を構成する特徴点から構成する面を境界面とする立体として表現する。",
+    "__key_order": [
+      "meshcode",
+      "city_code",
+      "city_name",
+      "feature_type",
+      "gml_id",
+      "attributes",
+      "core:creationDate",
+      "uro:geometrySrcDescLod1",
+      "uro:lodType"
+    ]
+  },
+  "cons_bc7810bf-9b28-44bf-93cc-3c18825d2707": {
+    "meshcode": "49303414",
+    "city_code": "43206",
+    "city_name": "熊本県玉名市",
+    "feature_type": "uro:OtherConstruction",
+    "gml_id": "cons_bc7810bf-9b28-44bf-93cc-3c18825d2707",
+    "attributes": {
+      "meshcode": "49303414",
+      "feature_type": "uro:OtherConstruction",
+      "gml:id": "cons_bc7810bf-9b28-44bf-93cc-3c18825d2707",
+      "core:creationDate": "2024-03-22",
+      "uro:DataQualityAttribute": [
+        {
+          "uro:geometrySrcDescLod1": "未作成",
+          "uro:geometrySrcDescLod1_code": "999",
+          "uro:geometrySrcDescLod3": "公共測量成果又は基本測量成果",
+          "uro:geometrySrcDescLod3_code": "000",
+          "uro:thematicSrcDesc": "公共測量成果又は基本測量成果",
+          "uro:thematicSrcDesc_code": "000",
+          "uro:appearanceSrcDescLod3": [
+            "車載写真レーザ測量システムにより撮影した写真",
+            "手持ちカメラにより撮影した写真"
+          ],
+          "uro:appearanceSrcDescLod3_code": [
+            "3",
+            "4"
+          ],
+          "uro:lodType": "構造物の形状を、主要な部分の外形を構成する特徴点から構成する面を境界面とする立体として表現する。",
+          "uro:lodType_code": "3.0",
+          "uro:PublicSurveyDataQualityAttribute": [
+            {
+              "uro:srcScaleLod3": "地図情報レベル500",
+              "uro:srcScaleLod3_code": "3",
+              "uro:publicSurveySrcDescLod3": "LidarSLAM計測の測量成果",
+              "uro:publicSurveySrcDescLod3_code": "018"
+            }
+          ]
+        }
+      ],
+      "uro:GroundSurface": [
+        {
+          "core:creationDate": "2024-03-22"
+        }
+      ],
+      "uro:RoofSurface": [
+        {
+          "core:creationDate": "2024-03-22"
+        },
+        {
+          "core:creationDate": "2024-03-22"
+        },
+        {
+          "core:creationDate": "2024-03-22"
+        },
+        {
+          "core:creationDate": "2024-03-22"
+        },
+        {
+          "core:creationDate": "2024-03-22"
+        }
+      ],
+      "uro:WallSurface": [
+        {
+          "core:creationDate": "2024-03-22"
+        },
+        {
+          "core:creationDate": "2024-03-22"
+        },
+        {
+          "core:creationDate": "2024-03-22"
+        },
+        {
+          "core:creationDate": "2024-03-22"
+        },
+        {
+          "core:creationDate": "2024-03-22"
+        },
+        {
+          "core:creationDate": "2024-03-22"
+        },
+        {
+          "core:creationDate": "2024-03-22"
+        },
+        {
+          "core:creationDate": "2024-03-22"
+        },
+        {
+          "core:creationDate": "2024-03-22"
+        },
+        {
+          "core:creationDate": "2024-03-22"
+        },
+        {
+          "core:creationDate": "2024-03-22"
+        },
+        {
+          "core:creationDate": "2024-03-22"
+        },
+        {
+          "core:creationDate": "2024-03-22"
+        },
+        {
+          "core:creationDate": "2024-03-22"
+        },
+        {
+          "core:creationDate": "2024-03-22"
+        },
+        {
+          "core:creationDate": "2024-03-22"
+        },
+        {
+          "core:creationDate": "2024-03-22"
+        },
+        {
+          "core:creationDate": "2024-03-22"
+        },
+        {
+          "core:creationDate": "2024-03-22"
+        },
+        {
+          "core:creationDate": "2024-03-22"
+        },
+        {
+          "core:creationDate": "2024-03-22"
+        },
+        {
+          "core:creationDate": "2024-03-22"
+        },
+        {
+          "core:creationDate": "2024-03-22"
+        },
+        {
+          "core:creationDate": "2024-03-22"
+        },
+        {
+          "core:creationDate": "2024-03-22"
+        },
+        {
+          "core:creationDate": "2024-03-22"
+        },
+        {
+          "core:creationDate": "2024-03-22"
+        },
+        {
+          "core:creationDate": "2024-03-22"
+        },
+        {
+          "core:creationDate": "2024-03-22"
+        },
+        {
+          "core:creationDate": "2024-03-22"
+        },
+        {
+          "core:creationDate": "2024-03-22"
+        },
+        {
+          "core:creationDate": "2024-03-22"
+        },
+        {
+          "core:creationDate": "2024-03-22"
+        },
+        {
+          "core:creationDate": "2024-03-22"
+        },
+        {
+          "core:creationDate": "2024-03-22"
+        },
+        {
+          "core:creationDate": "2024-03-22"
+        },
+        {
+          "core:creationDate": "2024-03-22"
+        },
+        {
+          "core:creationDate": "2024-03-22"
+        },
+        {
+          "core:creationDate": "2024-03-22"
+        },
+        {
+          "core:creationDate": "2024-03-22"
+        },
+        {
+          "core:creationDate": "2024-03-22"
+        },
+        {
+          "core:creationDate": "2024-03-22"
+        },
+        {
+          "core:creationDate": "2024-03-22"
+        },
+        {
+          "core:creationDate": "2024-03-22"
+        },
+        {
+          "core:creationDate": "2024-03-22"
+        },
+        {
+          "core:creationDate": "2024-03-22"
+        },
+        {
+          "core:creationDate": "2024-03-22"
+        },
+        {
+          "core:creationDate": "2024-03-22"
+        },
+        {
+          "core:creationDate": "2024-03-22"
+        },
+        {
+          "core:creationDate": "2024-03-22"
+        },
+        {
+          "core:creationDate": "2024-03-22"
+        },
+        {
+          "core:creationDate": "2024-03-22"
+        },
+        {
+          "core:creationDate": "2024-03-22"
+        },
+        {
+          "core:creationDate": "2024-03-22"
+        },
+        {
+          "core:creationDate": "2024-03-22"
+        },
+        {
+          "core:creationDate": "2024-03-22"
+        },
+        {
+          "core:creationDate": "2024-03-22"
+        },
+        {
+          "core:creationDate": "2024-03-22"
+        },
+        {
+          "core:creationDate": "2024-03-22"
+        },
+        {
+          "core:creationDate": "2024-03-22"
+        },
+        {
+          "core:creationDate": "2024-03-22"
+        },
+        {
+          "core:creationDate": "2024-03-22"
+        },
+        {
+          "core:creationDate": "2024-03-22"
+        }
+      ],
+      "uro:class": "護岸",
+      "uro:class_code": "08",
+      "uro:function": "高水護岸",
+      "uro:function_code": "0801"
+    },
+    "core:creationDate": "2024-03-22",
+    "uro:geometrySrcDescLod1": "未作成",
+    "uro:lodType": "構造物の形状を、主要な部分の外形を構成する特徴点から構成する面を境界面とする立体として表現する。",
+    "__key_order": [
+      "meshcode",
+      "city_code",
+      "city_name",
+      "feature_type",
+      "gml_id",
+      "attributes",
+      "core:creationDate",
+      "uro:geometrySrcDescLod1",
+      "uro:lodType"
+    ]
+  },
+  "cons_07619f4e-186f-43f7-b12e-1857fdaadfd5": {
+    "meshcode": "49303414",
+    "city_code": "43206",
+    "city_name": "熊本県玉名市",
+    "feature_type": "uro:OtherConstruction",
+    "gml_id": "cons_07619f4e-186f-43f7-b12e-1857fdaadfd5",
+    "attributes": {
+      "meshcode": "49303414",
+      "feature_type": "uro:OtherConstruction",
+      "gml:id": "cons_07619f4e-186f-43f7-b12e-1857fdaadfd5",
+      "core:creationDate": "2024-03-22",
+      "uro:DataQualityAttribute": [
+        {
+          "uro:geometrySrcDescLod1": "未作成",
+          "uro:geometrySrcDescLod1_code": "999",
+          "uro:geometrySrcDescLod3": "公共測量成果又は基本測量成果",
+          "uro:geometrySrcDescLod3_code": "000",
+          "uro:thematicSrcDesc": "公共測量成果又は基本測量成果",
+          "uro:thematicSrcDesc_code": "000",
+          "uro:appearanceSrcDescLod3": [
+            "車載写真レーザ測量システムにより撮影した写真",
+            "手持ちカメラにより撮影した写真"
+          ],
+          "uro:appearanceSrcDescLod3_code": [
+            "3",
+            "4"
+          ],
+          "uro:lodType": "構造物の形状を、主要な部分の外形を構成する特徴点から構成する面を境界面とする立体として表現する。",
+          "uro:lodType_code": "3.0",
+          "uro:PublicSurveyDataQualityAttribute": [
+            {
+              "uro:srcScaleLod3": "地図情報レベル500",
+              "uro:srcScaleLod3_code": "3",
+              "uro:publicSurveySrcDescLod3": "LidarSLAM計測の測量成果",
+              "uro:publicSurveySrcDescLod3_code": "018"
+            }
+          ]
+        }
+      ],
+      "uro:GroundSurface": [
+        {
+          "core:creationDate": "2024-03-22"
+        },
+        {
+          "core:creationDate": "2024-03-22"
+        },
+        {
+          "core:creationDate": "2024-03-22"
+        },
+        {
+          "core:creationDate": "2024-03-22"
+        }
+      ],
+      "uro:RoofSurface": [
+        {
+          "core:creationDate": "2024-03-22"
+        },
+        {
+          "core:creationDate": "2024-03-22"
+        },
+        {
+          "core:creationDate": "2024-03-22"
+        },
+        {
+          "core:creationDate": "2024-03-22"
+        },
+        {
+          "core:creationDate": "2024-03-22"
+        },
+        {
+          "core:creationDate": "2024-03-22"
+        },
+        {
+          "core:creationDate": "2024-03-22"
+        }
+      ],
+      "uro:WallSurface": [
+        {
+          "core:creationDate": "2024-03-22"
+        },
+        {
+          "core:creationDate": "2024-03-22"
+        },
+        {
+          "core:creationDate": "2024-03-22"
+        },
+        {
+          "core:creationDate": "2024-03-22"
+        },
+        {
+          "core:creationDate": "2024-03-22"
+        },
+        {
+          "core:creationDate": "2024-03-22"
+        },
+        {
+          "core:creationDate": "2024-03-22"
+        },
+        {
+          "core:creationDate": "2024-03-22"
+        },
+        {
+          "core:creationDate": "2024-03-22"
+        },
+        {
+          "core:creationDate": "2024-03-22"
+        },
+        {
+          "core:creationDate": "2024-03-22"
+        },
+        {
+          "core:creationDate": "2024-03-22"
+        },
+        {
+          "core:creationDate": "2024-03-22"
+        },
+        {
+          "core:creationDate": "2024-03-22"
+        },
+        {
+          "core:creationDate": "2024-03-22"
+        },
+        {
+          "core:creationDate": "2024-03-22"
+        },
+        {
+          "core:creationDate": "2024-03-22"
+        },
+        {
+          "core:creationDate": "2024-03-22"
+        },
+        {
+          "core:creationDate": "2024-03-22"
+        },
+        {
+          "core:creationDate": "2024-03-22"
+        },
+        {
+          "core:creationDate": "2024-03-22"
+        },
+        {
+          "core:creationDate": "2024-03-22"
+        },
+        {
+          "core:creationDate": "2024-03-22"
+        },
+        {
+          "core:creationDate": "2024-03-22"
+        },
+        {
+          "core:creationDate": "2024-03-22"
+        },
+        {
+          "core:creationDate": "2024-03-22"
+        },
+        {
+          "core:creationDate": "2024-03-22"
+        },
+        {
+          "core:creationDate": "2024-03-22"
+        },
+        {
+          "core:creationDate": "2024-03-22"
+        },
+        {
+          "core:creationDate": "2024-03-22"
+        },
+        {
+          "core:creationDate": "2024-03-22"
+        },
+        {
+          "core:creationDate": "2024-03-22"
+        },
+        {
+          "core:creationDate": "2024-03-22"
+        },
+        {
+          "core:creationDate": "2024-03-22"
+        },
+        {
+          "core:creationDate": "2024-03-22"
+        },
+        {
+          "core:creationDate": "2024-03-22"
+        },
+        {
+          "core:creationDate": "2024-03-22"
+        },
+        {
+          "core:creationDate": "2024-03-22"
+        },
+        {
+          "core:creationDate": "2024-03-22"
+        },
+        {
+          "core:creationDate": "2024-03-22"
+        },
+        {
+          "core:creationDate": "2024-03-22"
+        },
+        {
+          "core:creationDate": "2024-03-22"
+        },
+        {
+          "core:creationDate": "2024-03-22"
+        },
+        {
+          "core:creationDate": "2024-03-22"
+        },
+        {
+          "core:creationDate": "2024-03-22"
+        },
+        {
+          "core:creationDate": "2024-03-22"
+        },
+        {
+          "core:creationDate": "2024-03-22"
+        },
+        {
+          "core:creationDate": "2024-03-22"
+        },
+        {
+          "core:creationDate": "2024-03-22"
+        },
+        {
+          "core:creationDate": "2024-03-22"
+        },
+        {
+          "core:creationDate": "2024-03-22"
+        },
+        {
+          "core:creationDate": "2024-03-22"
+        },
+        {
+          "core:creationDate": "2024-03-22"
+        },
+        {
+          "core:creationDate": "2024-03-22"
+        },
+        {
+          "core:creationDate": "2024-03-22"
+        },
+        {
+          "core:creationDate": "2024-03-22"
+        },
+        {
+          "core:creationDate": "2024-03-22"
+        },
+        {
+          "core:creationDate": "2024-03-22"
+        },
+        {
+          "core:creationDate": "2024-03-22"
+        },
+        {
+          "core:creationDate": "2024-03-22"
+        },
+        {
+          "core:creationDate": "2024-03-22"
+        },
+        {
+          "core:creationDate": "2024-03-22"
+        },
+        {
+          "core:creationDate": "2024-03-22"
+        },
+        {
+          "core:creationDate": "2024-03-22"
+        },
+        {
+          "core:creationDate": "2024-03-22"
+        },
+        {
+          "core:creationDate": "2024-03-22"
+        },
+        {
+          "core:creationDate": "2024-03-22"
+        },
+        {
+          "core:creationDate": "2024-03-22"
+        },
+        {
+          "core:creationDate": "2024-03-22"
+        },
+        {
+          "core:creationDate": "2024-03-22"
+        },
+        {
+          "core:creationDate": "2024-03-22"
+        },
+        {
+          "core:creationDate": "2024-03-22"
+        },
+        {
+          "core:creationDate": "2024-03-22"
+        },
+        {
+          "core:creationDate": "2024-03-22"
+        },
+        {
+          "core:creationDate": "2024-03-22"
+        },
+        {
+          "core:creationDate": "2024-03-22"
+        },
+        {
+          "core:creationDate": "2024-03-22"
+        },
+        {
+          "core:creationDate": "2024-03-22"
+        },
+        {
+          "core:creationDate": "2024-03-22"
+        },
+        {
+          "core:creationDate": "2024-03-22"
+        },
+        {
+          "core:creationDate": "2024-03-22"
+        },
+        {
+          "core:creationDate": "2024-03-22"
+        },
+        {
+          "core:creationDate": "2024-03-22"
+        },
+        {
+          "core:creationDate": "2024-03-22"
+        },
+        {
+          "core:creationDate": "2024-03-22"
+        }
+      ],
+      "uro:class": "護岸",
+      "uro:class_code": "08",
+      "uro:function": "高水護岸",
+      "uro:function_code": "0801"
+    },
+    "core:creationDate": "2024-03-22",
+    "uro:geometrySrcDescLod1": "未作成",
+    "uro:lodType": "構造物の形状を、主要な部分の外形を構成する特徴点から構成する面を境界面とする立体として表現する。",
+    "__key_order": [
+      "meshcode",
+      "city_code",
+      "city_name",
+      "feature_type",
+      "gml_id",
+      "attributes",
+      "core:creationDate",
+      "uro:geometrySrcDescLod1",
+      "uro:lodType"
+    ]
+  },
+  "cons_7f46de0d-d092-425c-9d3b-7ec95e08a7d1": {
+    "meshcode": "49303414",
+    "city_code": "43206",
+    "city_name": "熊本県玉名市",
+    "feature_type": "uro:OtherConstruction",
+    "gml_id": "cons_7f46de0d-d092-425c-9d3b-7ec95e08a7d1",
+    "attributes": {
+      "meshcode": "49303414",
+      "feature_type": "uro:OtherConstruction",
+      "gml:id": "cons_7f46de0d-d092-425c-9d3b-7ec95e08a7d1",
+      "core:creationDate": "2024-03-22",
+      "uro:DataQualityAttribute": [
+        {
+          "uro:geometrySrcDescLod1": "未作成",
+          "uro:geometrySrcDescLod1_code": "999",
+          "uro:geometrySrcDescLod3": "公共測量成果又は基本測量成果",
+          "uro:geometrySrcDescLod3_code": "000",
+          "uro:thematicSrcDesc": "公共測量成果又は基本測量成果",
+          "uro:thematicSrcDesc_code": "000",
+          "uro:appearanceSrcDescLod3": [
+            "車載写真レーザ測量システムにより撮影した写真",
+            "手持ちカメラにより撮影した写真"
+          ],
+          "uro:appearanceSrcDescLod3_code": [
+            "3",
+            "4"
+          ],
+          "uro:lodType": "構造物の形状を、主要な部分の外形を構成する特徴点から構成する面を境界面とする立体として表現する。",
+          "uro:lodType_code": "3.0",
+          "uro:PublicSurveyDataQualityAttribute": [
+            {
+              "uro:srcScaleLod3": "地図情報レベル500",
+              "uro:srcScaleLod3_code": "3",
+              "uro:publicSurveySrcDescLod3": "LidarSLAM計測の測量成果",
+              "uro:publicSurveySrcDescLod3_code": "018"
+            }
+          ]
+        }
+      ],
+      "uro:GroundSurface": [
+        {
+          "core:creationDate": "2024-03-22"
+        }
+      ],
+      "uro:RoofSurface": [
+        {
+          "core:creationDate": "2024-03-22"
+        }
+      ],
+      "uro:WallSurface": [
+        {
+          "core:creationDate": "2024-03-22"
+        },
+        {
+          "core:creationDate": "2024-03-22"
+        },
+        {
+          "core:creationDate": "2024-03-22"
+        },
+        {
+          "core:creationDate": "2024-03-22"
+        },
+        {
+          "core:creationDate": "2024-03-22"
+        },
+        {
+          "core:creationDate": "2024-03-22"
+        },
+        {
+          "core:creationDate": "2024-03-22"
+        },
+        {
+          "core:creationDate": "2024-03-22"
+        },
+        {
+          "core:creationDate": "2024-03-22"
+        },
+        {
+          "core:creationDate": "2024-03-22"
+        },
+        {
+          "core:creationDate": "2024-03-22"
+        },
+        {
+          "core:creationDate": "2024-03-22"
+        }
+      ],
+      "uro:class": "護岸",
+      "uro:class_code": "08",
+      "uro:function": "高水護岸",
+      "uro:function_code": "0801"
+    },
+    "core:creationDate": "2024-03-22",
+    "uro:geometrySrcDescLod1": "未作成",
+    "uro:lodType": "構造物の形状を、主要な部分の外形を構成する特徴点から構成する面を境界面とする立体として表現する。",
+    "__key_order": [
+      "meshcode",
+      "city_code",
+      "city_name",
+      "feature_type",
+      "gml_id",
+      "attributes",
+      "core:creationDate",
+      "uro:geometrySrcDescLod1",
+      "uro:lodType"
+    ]
+  },
+  "cons_d43f4873-c48d-4973-ad41-e2f4bdfeaeb2": {
+    "meshcode": "49303414",
+    "city_code": "43206",
+    "city_name": "熊本県玉名市",
+    "feature_type": "uro:OtherConstruction",
+    "gml_id": "cons_d43f4873-c48d-4973-ad41-e2f4bdfeaeb2",
+    "attributes": {
+      "meshcode": "49303414",
+      "feature_type": "uro:OtherConstruction",
+      "gml:id": "cons_d43f4873-c48d-4973-ad41-e2f4bdfeaeb2",
+      "core:creationDate": "2024-03-22",
+      "uro:DataQualityAttribute": [
+        {
+          "uro:geometrySrcDescLod1": "未作成",
+          "uro:geometrySrcDescLod1_code": "999",
+          "uro:geometrySrcDescLod3": "公共測量成果又は基本測量成果",
+          "uro:geometrySrcDescLod3_code": "000",
+          "uro:thematicSrcDesc": "公共測量成果又は基本測量成果",
+          "uro:thematicSrcDesc_code": "000",
+          "uro:appearanceSrcDescLod3": [
+            "車載写真レーザ測量システムにより撮影した写真",
+            "手持ちカメラにより撮影した写真"
+          ],
+          "uro:appearanceSrcDescLod3_code": [
+            "3",
+            "4"
+          ],
+          "uro:lodType": "構造物の形状を、主要な部分の外形を構成する特徴点から構成する面を境界面とする立体として表現する。",
+          "uro:lodType_code": "3.0",
+          "uro:PublicSurveyDataQualityAttribute": [
+            {
+              "uro:srcScaleLod3": "地図情報レベル500",
+              "uro:srcScaleLod3_code": "3",
+              "uro:publicSurveySrcDescLod3": "LidarSLAM計測の測量成果",
+              "uro:publicSurveySrcDescLod3_code": "018"
+            }
+          ]
+        }
+      ],
+      "uro:GroundSurface": [
+        {
+          "core:creationDate": "2024-03-22"
+        }
+      ],
+      "uro:RoofSurface": [
+        {
+          "core:creationDate": "2024-03-22"
+        },
+        {
+          "core:creationDate": "2024-03-22"
+        },
+        {
+          "core:creationDate": "2024-03-22"
+        },
+        {
+          "core:creationDate": "2024-03-22"
+        }
+      ],
+      "uro:WallSurface": [
+        {
+          "core:creationDate": "2024-03-22"
+        },
+        {
+          "core:creationDate": "2024-03-22"
+        },
+        {
+          "core:creationDate": "2024-03-22"
+        },
+        {
+          "core:creationDate": "2024-03-22"
+        },
+        {
+          "core:creationDate": "2024-03-22"
+        },
+        {
+          "core:creationDate": "2024-03-22"
+        },
+        {
+          "core:creationDate": "2024-03-22"
+        }
+      ],
+      "uro:class": "護岸",
+      "uro:class_code": "08",
+      "uro:function": "高水護岸",
+      "uro:function_code": "0801"
+    },
+    "core:creationDate": "2024-03-22",
+    "uro:geometrySrcDescLod1": "未作成",
+    "uro:lodType": "構造物の形状を、主要な部分の外形を構成する特徴点から構成する面を境界面とする立体として表現する。",
+    "__key_order": [
+      "meshcode",
+      "city_code",
+      "city_name",
+      "feature_type",
+      "gml_id",
+      "attributes",
+      "core:creationDate",
+      "uro:geometrySrcDescLod1",
+      "uro:lodType"
+    ]
+  },
+  "cons_cf2e4800-2fd9-4bc4-9417-dae36a0b2f5b": {
+    "meshcode": "49303414",
+    "city_code": "43206",
+    "city_name": "熊本県玉名市",
+    "feature_type": "uro:OtherConstruction",
+    "gml_id": "cons_cf2e4800-2fd9-4bc4-9417-dae36a0b2f5b",
+    "attributes": {
+      "meshcode": "49303414",
+      "feature_type": "uro:OtherConstruction",
+      "gml:id": "cons_cf2e4800-2fd9-4bc4-9417-dae36a0b2f5b",
+      "core:creationDate": "2024-03-22",
+      "uro:DataQualityAttribute": [
+        {
+          "uro:geometrySrcDescLod1": "未作成",
+          "uro:geometrySrcDescLod1_code": "999",
+          "uro:geometrySrcDescLod3": "公共測量成果又は基本測量成果",
+          "uro:geometrySrcDescLod3_code": "000",
+          "uro:thematicSrcDesc": "公共測量成果又は基本測量成果",
+          "uro:thematicSrcDesc_code": "000",
+          "uro:appearanceSrcDescLod3": [
+            "車載写真レーザ測量システムにより撮影した写真",
+            "手持ちカメラにより撮影した写真"
+          ],
+          "uro:appearanceSrcDescLod3_code": [
+            "3",
+            "4"
+          ],
+          "uro:lodType": "構造物の形状を、主要な部分の外形を構成する特徴点から構成する面を境界面とする立体として表現する。",
+          "uro:lodType_code": "3.0",
+          "uro:PublicSurveyDataQualityAttribute": [
+            {
+              "uro:srcScaleLod3": "地図情報レベル500",
+              "uro:srcScaleLod3_code": "3",
+              "uro:publicSurveySrcDescLod3": "LidarSLAM計測の測量成果",
+              "uro:publicSurveySrcDescLod3_code": "018"
+            }
+          ]
+        }
+      ],
+      "uro:GroundSurface": [
+        {
+          "core:creationDate": "2024-03-22"
+        }
+      ],
+      "uro:RoofSurface": [
+        {
+          "core:creationDate": "2024-03-22"
+        }
+      ],
+      "uro:WallSurface": [
+        {
+          "core:creationDate": "2024-03-22"
+        },
+        {
+          "core:creationDate": "2024-03-22"
+        },
+        {
+          "core:creationDate": "2024-03-22"
+        },
+        {
+          "core:creationDate": "2024-03-22"
+        },
+        {
+          "core:creationDate": "2024-03-22"
+        },
+        {
+          "core:creationDate": "2024-03-22"
+        },
+        {
+          "core:creationDate": "2024-03-22"
+        },
+        {
+          "core:creationDate": "2024-03-22"
+        },
+        {
+          "core:creationDate": "2024-03-22"
+        },
+        {
+          "core:creationDate": "2024-03-22"
+        }
+      ],
+      "uro:class": "護岸",
+      "uro:class_code": "08",
+      "uro:function": "高水護岸",
+      "uro:function_code": "0801"
+    },
+    "core:creationDate": "2024-03-22",
+    "uro:geometrySrcDescLod1": "未作成",
+    "uro:lodType": "構造物の形状を、主要な部分の外形を構成する特徴点から構成する面を境界面とする立体として表現する。",
+    "__key_order": [
+      "meshcode",
+      "city_code",
+      "city_name",
+      "feature_type",
+      "gml_id",
+      "attributes",
+      "core:creationDate",
+      "uro:geometrySrcDescLod1",
+      "uro:lodType"
+    ]
+  },
+  "cons_40e65d76-bbda-4a58-9fea-41f445453cee": {
+    "meshcode": "49303414",
+    "city_code": "43206",
+    "city_name": "熊本県玉名市",
+    "feature_type": "uro:OtherConstruction",
+    "gml_id": "cons_40e65d76-bbda-4a58-9fea-41f445453cee",
+    "attributes": {
+      "meshcode": "49303414",
+      "feature_type": "uro:OtherConstruction",
+      "gml:id": "cons_40e65d76-bbda-4a58-9fea-41f445453cee",
+      "core:creationDate": "2024-03-22",
+      "uro:DataQualityAttribute": [
+        {
+          "uro:geometrySrcDescLod1": "未作成",
+          "uro:geometrySrcDescLod1_code": "999",
+          "uro:geometrySrcDescLod3": "公共測量成果又は基本測量成果",
+          "uro:geometrySrcDescLod3_code": "000",
+          "uro:thematicSrcDesc": "公共測量成果又は基本測量成果",
+          "uro:thematicSrcDesc_code": "000",
+          "uro:appearanceSrcDescLod3": [
+            "車載写真レーザ測量システムにより撮影した写真",
+            "手持ちカメラにより撮影した写真"
+          ],
+          "uro:appearanceSrcDescLod3_code": [
+            "3",
+            "4"
+          ],
+          "uro:lodType": "構造物の形状を、主要な部分の外形を構成する特徴点から構成する面を境界面とする立体として表現する。",
+          "uro:lodType_code": "3.0",
+          "uro:PublicSurveyDataQualityAttribute": [
+            {
+              "uro:srcScaleLod3": "地図情報レベル500",
+              "uro:srcScaleLod3_code": "3",
+              "uro:publicSurveySrcDescLod3": "LidarSLAM計測の測量成果",
+              "uro:publicSurveySrcDescLod3_code": "018"
+            }
+          ]
+        }
+      ],
+      "uro:GroundSurface": [
+        {
+          "core:creationDate": "2024-03-22"
+        },
+        {
+          "core:creationDate": "2024-03-22"
+        }
+      ],
+      "uro:RoofSurface": [
+        {
+          "core:creationDate": "2024-03-22"
+        }
+      ],
+      "uro:WallSurface": [
+        {
+          "core:creationDate": "2024-03-22"
+        },
+        {
+          "core:creationDate": "2024-03-22"
+        },
+        {
+          "core:creationDate": "2024-03-22"
+        },
+        {
+          "core:creationDate": "2024-03-22"
+        },
+        {
+          "core:creationDate": "2024-03-22"
+        },
+        {
+          "core:creationDate": "2024-03-22"
+        },
+        {
+          "core:creationDate": "2024-03-22"
+        },
+        {
+          "core:creationDate": "2024-03-22"
+        },
+        {
+          "core:creationDate": "2024-03-22"
+        },
+        {
+          "core:creationDate": "2024-03-22"
+        },
+        {
+          "core:creationDate": "2024-03-22"
+        },
+        {
+          "core:creationDate": "2024-03-22"
+        },
+        {
+          "core:creationDate": "2024-03-22"
+        },
+        {
+          "core:creationDate": "2024-03-22"
+        },
+        {
+          "core:creationDate": "2024-03-22"
+        },
+        {
+          "core:creationDate": "2024-03-22"
+        },
+        {
+          "core:creationDate": "2024-03-22"
+        },
+        {
+          "core:creationDate": "2024-03-22"
+        },
+        {
+          "core:creationDate": "2024-03-22"
+        },
+        {
+          "core:creationDate": "2024-03-22"
+        },
+        {
+          "core:creationDate": "2024-03-22"
+        },
+        {
+          "core:creationDate": "2024-03-22"
+        },
+        {
+          "core:creationDate": "2024-03-22"
+        },
+        {
+          "core:creationDate": "2024-03-22"
+        },
+        {
+          "core:creationDate": "2024-03-22"
+        },
+        {
+          "core:creationDate": "2024-03-22"
+        },
+        {
+          "core:creationDate": "2024-03-22"
+        }
+      ],
+      "uro:class": "護岸",
+      "uro:class_code": "08",
+      "uro:function": "高水護岸",
+      "uro:function_code": "0801"
+    },
+    "core:creationDate": "2024-03-22",
+    "uro:geometrySrcDescLod1": "未作成",
+    "uro:lodType": "構造物の形状を、主要な部分の外形を構成する特徴点から構成する面を境界面とする立体として表現する。",
+    "__key_order": [
+      "meshcode",
+      "city_code",
+      "city_name",
+      "feature_type",
+      "gml_id",
+      "attributes",
+      "core:creationDate",
+      "uro:geometrySrcDescLod1",
+      "uro:lodType"
+    ]
+  },
+  "cons_27c95565-0694-41d5-936f-3cfd3946374f": {
+    "meshcode": "49303414",
+    "city_code": "43206",
+    "city_name": "熊本県玉名市",
+    "feature_type": "uro:OtherConstruction",
+    "gml_id": "cons_27c95565-0694-41d5-936f-3cfd3946374f",
+    "attributes": {
+      "meshcode": "49303414",
+      "feature_type": "uro:OtherConstruction",
+      "gml:id": "cons_27c95565-0694-41d5-936f-3cfd3946374f",
+      "core:creationDate": "2024-03-22",
+      "uro:DataQualityAttribute": [
+        {
+          "uro:geometrySrcDescLod1": "未作成",
+          "uro:geometrySrcDescLod1_code": "999",
+          "uro:geometrySrcDescLod3": "公共測量成果又は基本測量成果",
+          "uro:geometrySrcDescLod3_code": "000",
+          "uro:thematicSrcDesc": "公共測量成果又は基本測量成果",
+          "uro:thematicSrcDesc_code": "000",
+          "uro:appearanceSrcDescLod3": [
+            "車載写真レーザ測量システムにより撮影した写真",
+            "手持ちカメラにより撮影した写真"
+          ],
+          "uro:appearanceSrcDescLod3_code": [
+            "3",
+            "4"
+          ],
+          "uro:lodType": "構造物の形状を、主要な部分の外形を構成する特徴点から構成する面を境界面とする立体として表現する。",
+          "uro:lodType_code": "3.0",
+          "uro:PublicSurveyDataQualityAttribute": [
+            {
+              "uro:srcScaleLod3": "地図情報レベル500",
+              "uro:srcScaleLod3_code": "3",
+              "uro:publicSurveySrcDescLod3": "LidarSLAM計測の測量成果",
+              "uro:publicSurveySrcDescLod3_code": "018"
+            }
+          ]
+        }
+      ],
+      "uro:GroundSurface": [
+        {
+          "core:creationDate": "2024-03-22"
+        },
+        {
+          "core:creationDate": "2024-03-22"
+        },
+        {
+          "core:creationDate": "2024-03-22"
+        },
+        {
+          "core:creationDate": "2024-03-22"
+        },
+        {
+          "core:creationDate": "2024-03-22"
+        },
+        {
+          "core:creationDate": "2024-03-22"
+        }
+      ],
+      "uro:RoofSurface": [
+        {
+          "core:creationDate": "2024-03-22"
+        },
+        {
+          "core:creationDate": "2024-03-22"
+        },
+        {
+          "core:creationDate": "2024-03-22"
+        },
+        {
+          "core:creationDate": "2024-03-22"
+        },
+        {
+          "core:creationDate": "2024-03-22"
+        }
+      ],
+      "uro:WallSurface": [
+        {
+          "core:creationDate": "2024-03-22"
+        },
+        {
+          "core:creationDate": "2024-03-22"
+        },
+        {
+          "core:creationDate": "2024-03-22"
+        },
+        {
+          "core:creationDate": "2024-03-22"
+        },
+        {
+          "core:creationDate": "2024-03-22"
+        },
+        {
+          "core:creationDate": "2024-03-22"
+        },
+        {
+          "core:creationDate": "2024-03-22"
+        },
+        {
+          "core:creationDate": "2024-03-22"
+        },
+        {
+          "core:creationDate": "2024-03-22"
+        },
+        {
+          "core:creationDate": "2024-03-22"
+        },
+        {
+          "core:creationDate": "2024-03-22"
+        },
+        {
+          "core:creationDate": "2024-03-22"
+        },
+        {
+          "core:creationDate": "2024-03-22"
+        },
+        {
+          "core:creationDate": "2024-03-22"
+        },
+        {
+          "core:creationDate": "2024-03-22"
+        },
+        {
+          "core:creationDate": "2024-03-22"
+        },
+        {
+          "core:creationDate": "2024-03-22"
+        },
+        {
+          "core:creationDate": "2024-03-22"
+        },
+        {
+          "core:creationDate": "2024-03-22"
+        },
+        {
+          "core:creationDate": "2024-03-22"
+        },
+        {
+          "core:creationDate": "2024-03-22"
+        }
+      ],
+      "uro:class": "護岸",
+      "uro:class_code": "08",
+      "uro:function": "高水護岸",
+      "uro:function_code": "0801"
+    },
+    "core:creationDate": "2024-03-22",
+    "uro:geometrySrcDescLod1": "未作成",
+    "uro:lodType": "構造物の形状を、主要な部分の外形を構成する特徴点から構成する面を境界面とする立体として表現する。",
+    "__key_order": [
+      "meshcode",
+      "city_code",
+      "city_name",
+      "feature_type",
+      "gml_id",
+      "attributes",
+      "core:creationDate",
+      "uro:geometrySrcDescLod1",
+      "uro:lodType"
+    ]
+  },
+  "cons_86d8321d-6453-4d83-a08f-43929af20f37": {
+    "meshcode": "49303414",
+    "city_code": "43206",
+    "city_name": "熊本県玉名市",
+    "feature_type": "uro:OtherConstruction",
+    "gml_id": "cons_86d8321d-6453-4d83-a08f-43929af20f37",
+    "attributes": {
+      "meshcode": "49303414",
+      "feature_type": "uro:OtherConstruction",
+      "gml:id": "cons_86d8321d-6453-4d83-a08f-43929af20f37",
+      "core:creationDate": "2024-03-22",
+      "uro:DataQualityAttribute": [
+        {
+          "uro:geometrySrcDescLod1": "未作成",
+          "uro:geometrySrcDescLod1_code": "999",
+          "uro:geometrySrcDescLod3": "公共測量成果又は基本測量成果",
+          "uro:geometrySrcDescLod3_code": "000",
+          "uro:thematicSrcDesc": "公共測量成果又は基本測量成果",
+          "uro:thematicSrcDesc_code": "000",
+          "uro:appearanceSrcDescLod3": [
+            "車載写真レーザ測量システムにより撮影した写真",
+            "手持ちカメラにより撮影した写真"
+          ],
+          "uro:appearanceSrcDescLod3_code": [
+            "3",
+            "4"
+          ],
+          "uro:lodType": "構造物の形状を、主要な部分の外形を構成する特徴点から構成する面を境界面とする立体として表現する。",
+          "uro:lodType_code": "3.0",
+          "uro:PublicSurveyDataQualityAttribute": [
+            {
+              "uro:srcScaleLod3": "地図情報レベル500",
+              "uro:srcScaleLod3_code": "3",
+              "uro:publicSurveySrcDescLod3": "LidarSLAM計測の測量成果",
+              "uro:publicSurveySrcDescLod3_code": "018"
+            }
+          ]
+        }
+      ],
+      "uro:GroundSurface": [
+        {
+          "core:creationDate": "2024-03-22"
+        }
+      ],
+      "uro:RoofSurface": [
+        {
+          "core:creationDate": "2024-03-22"
+        }
+      ],
+      "uro:WallSurface": [
+        {
+          "core:creationDate": "2024-03-22"
+        }
+      ],
+      "uro:class": "護岸",
+      "uro:class_code": "08",
+      "uro:function": "高水護岸",
+      "uro:function_code": "0801"
+    },
+    "core:creationDate": "2024-03-22",
+    "uro:geometrySrcDescLod1": "未作成",
+    "uro:lodType": "構造物の形状を、主要な部分の外形を構成する特徴点から構成する面を境界面とする立体として表現する。",
+    "__key_order": [
+      "meshcode",
+      "city_code",
+      "city_name",
+      "feature_type",
+      "gml_id",
+      "attributes",
+      "core:creationDate",
+      "uro:geometrySrcDescLod1",
+      "uro:lodType"
+    ]
+  },
+  "cons_863340ad-eb6f-4f0a-89bc-d35f81fee7ff": {
+    "meshcode": "49303414",
+    "city_code": "43206",
+    "city_name": "熊本県玉名市",
+    "feature_type": "uro:OtherConstruction",
+    "gml_id": "cons_863340ad-eb6f-4f0a-89bc-d35f81fee7ff",
+    "attributes": {
+      "meshcode": "49303414",
+      "feature_type": "uro:OtherConstruction",
+      "gml:id": "cons_863340ad-eb6f-4f0a-89bc-d35f81fee7ff",
+      "core:creationDate": "2024-03-22",
+      "uro:DataQualityAttribute": [
+        {
+          "uro:geometrySrcDescLod1": "未作成",
+          "uro:geometrySrcDescLod1_code": "999",
+          "uro:geometrySrcDescLod3": "公共測量成果又は基本測量成果",
+          "uro:geometrySrcDescLod3_code": "000",
+          "uro:thematicSrcDesc": "公共測量成果又は基本測量成果",
+          "uro:thematicSrcDesc_code": "000",
+          "uro:appearanceSrcDescLod3": [
+            "車載写真レーザ測量システムにより撮影した写真",
+            "手持ちカメラにより撮影した写真"
+          ],
+          "uro:appearanceSrcDescLod3_code": [
+            "3",
+            "4"
+          ],
+          "uro:lodType": "構造物の形状を、主要な部分の外形を構成する特徴点から構成する面を境界面とする立体として表現する。",
+          "uro:lodType_code": "3.0",
+          "uro:PublicSurveyDataQualityAttribute": [
+            {
+              "uro:srcScaleLod3": "地図情報レベル500",
+              "uro:srcScaleLod3_code": "3",
+              "uro:publicSurveySrcDescLod3": "LidarSLAM計測の測量成果",
+              "uro:publicSurveySrcDescLod3_code": "018"
+            }
+          ]
+        }
+      ],
+      "uro:GroundSurface": [
+        {
+          "core:creationDate": "2024-03-22"
+        },
+        {
+          "core:creationDate": "2024-03-22"
+        }
+      ],
+      "uro:RoofSurface": [
+        {
+          "core:creationDate": "2024-03-22"
+        },
+        {
+          "core:creationDate": "2024-03-22"
+        },
+        {
+          "core:creationDate": "2024-03-22"
+        }
+      ],
+      "uro:WallSurface": [
+        {
+          "core:creationDate": "2024-03-22"
+        },
+        {
+          "core:creationDate": "2024-03-22"
+        },
+        {
+          "core:creationDate": "2024-03-22"
+        },
+        {
+          "core:creationDate": "2024-03-22"
+        },
+        {
+          "core:creationDate": "2024-03-22"
+        },
+        {
+          "core:creationDate": "2024-03-22"
+        },
+        {
+          "core:creationDate": "2024-03-22"
+        },
+        {
+          "core:creationDate": "2024-03-22"
+        },
+        {
+          "core:creationDate": "2024-03-22"
+        },
+        {
+          "core:creationDate": "2024-03-22"
+        },
+        {
+          "core:creationDate": "2024-03-22"
+        },
+        {
+          "core:creationDate": "2024-03-22"
+        },
+        {
+          "core:creationDate": "2024-03-22"
+        },
+        {
+          "core:creationDate": "2024-03-22"
+        },
+        {
+          "core:creationDate": "2024-03-22"
+        },
+        {
+          "core:creationDate": "2024-03-22"
+        },
+        {
+          "core:creationDate": "2024-03-22"
+        },
+        {
+          "core:creationDate": "2024-03-22"
+        },
+        {
+          "core:creationDate": "2024-03-22"
+        },
+        {
+          "core:creationDate": "2024-03-22"
+        },
+        {
+          "core:creationDate": "2024-03-22"
+        },
+        {
+          "core:creationDate": "2024-03-22"
+        },
+        {
+          "core:creationDate": "2024-03-22"
+        },
+        {
+          "core:creationDate": "2024-03-22"
+        },
+        {
+          "core:creationDate": "2024-03-22"
+        },
+        {
+          "core:creationDate": "2024-03-22"
+        },
+        {
+          "core:creationDate": "2024-03-22"
+        },
+        {
+          "core:creationDate": "2024-03-22"
+        },
+        {
+          "core:creationDate": "2024-03-22"
+        },
+        {
+          "core:creationDate": "2024-03-22"
+        },
+        {
+          "core:creationDate": "2024-03-22"
+        },
+        {
+          "core:creationDate": "2024-03-22"
+        },
+        {
+          "core:creationDate": "2024-03-22"
+        },
+        {
+          "core:creationDate": "2024-03-22"
+        },
+        {
+          "core:creationDate": "2024-03-22"
+        },
+        {
+          "core:creationDate": "2024-03-22"
+        },
+        {
+          "core:creationDate": "2024-03-22"
+        },
+        {
+          "core:creationDate": "2024-03-22"
+        },
+        {
+          "core:creationDate": "2024-03-22"
+        },
+        {
+          "core:creationDate": "2024-03-22"
+        },
+        {
+          "core:creationDate": "2024-03-22"
+        },
+        {
+          "core:creationDate": "2024-03-22"
+        },
+        {
+          "core:creationDate": "2024-03-22"
+        },
+        {
+          "core:creationDate": "2024-03-22"
+        },
+        {
+          "core:creationDate": "2024-03-22"
+        },
+        {
+          "core:creationDate": "2024-03-22"
+        },
+        {
+          "core:creationDate": "2024-03-22"
+        },
+        {
+          "core:creationDate": "2024-03-22"
+        }
+      ],
+      "uro:class": "護岸",
+      "uro:class_code": "08",
+      "uro:function": "高水護岸",
+      "uro:function_code": "0801"
+    },
+    "core:creationDate": "2024-03-22",
+    "uro:geometrySrcDescLod1": "未作成",
+    "uro:lodType": "構造物の形状を、主要な部分の外形を構成する特徴点から構成する面を境界面とする立体として表現する。",
+    "__key_order": [
+      "meshcode",
+      "city_code",
+      "city_name",
+      "feature_type",
+      "gml_id",
+      "attributes",
+      "core:creationDate",
+      "uro:geometrySrcDescLod1",
+      "uro:lodType"
+    ]
+  },
+  "cons_688e6c85-47e5-44eb-acf3-11402ccdbd5a": {
+    "meshcode": "49303414",
+    "city_code": "43206",
+    "city_name": "熊本県玉名市",
+    "feature_type": "uro:OtherConstruction",
+    "gml_id": "cons_688e6c85-47e5-44eb-acf3-11402ccdbd5a",
+    "attributes": {
+      "meshcode": "49303414",
+      "feature_type": "uro:OtherConstruction",
+      "gml:id": "cons_688e6c85-47e5-44eb-acf3-11402ccdbd5a",
+      "core:creationDate": "2024-03-22",
+      "uro:DataQualityAttribute": [
+        {
+          "uro:geometrySrcDescLod1": "未作成",
+          "uro:geometrySrcDescLod1_code": "999",
+          "uro:geometrySrcDescLod3": "公共測量成果又は基本測量成果",
+          "uro:geometrySrcDescLod3_code": "000",
+          "uro:thematicSrcDesc": "公共測量成果又は基本測量成果",
+          "uro:thematicSrcDesc_code": "000",
+          "uro:appearanceSrcDescLod3": [
+            "車載写真レーザ測量システムにより撮影した写真",
+            "手持ちカメラにより撮影した写真"
+          ],
+          "uro:appearanceSrcDescLod3_code": [
+            "3",
+            "4"
+          ],
+          "uro:lodType": "構造物の形状を、主要な部分の外形を構成する特徴点から構成する面を境界面とする立体として表現する。",
+          "uro:lodType_code": "3.0",
+          "uro:PublicSurveyDataQualityAttribute": [
+            {
+              "uro:srcScaleLod3": "地図情報レベル500",
+              "uro:srcScaleLod3_code": "3",
+              "uro:publicSurveySrcDescLod3": "LidarSLAM計測の測量成果",
+              "uro:publicSurveySrcDescLod3_code": "018"
+            }
+          ]
+        }
+      ],
+      "uro:GroundSurface": [
+        {
+          "core:creationDate": "2024-03-22"
+        }
+      ],
+      "uro:RoofSurface": [
+        {
+          "core:creationDate": "2024-03-22"
+        }
+      ],
+      "uro:WallSurface": [
+        {
+          "core:creationDate": "2024-03-22"
+        },
+        {
+          "core:creationDate": "2024-03-22"
+        },
+        {
+          "core:creationDate": "2024-03-22"
+        },
+        {
+          "core:creationDate": "2024-03-22"
+        }
+      ],
+      "uro:class": "護岸",
+      "uro:class_code": "08",
+      "uro:function": "高水護岸",
+      "uro:function_code": "0801"
+    },
+    "core:creationDate": "2024-03-22",
+    "uro:geometrySrcDescLod1": "未作成",
+    "uro:lodType": "構造物の形状を、主要な部分の外形を構成する特徴点から構成する面を境界面とする立体として表現する。",
+    "__key_order": [
+      "meshcode",
+      "city_code",
+      "city_name",
+      "feature_type",
+      "gml_id",
+      "attributes",
+      "core:creationDate",
+      "uro:geometrySrcDescLod1",
+      "uro:lodType"
+    ]
+  },
+  "cons_5040e839-df3e-4e44-b1e3-3292bac87729": {
+    "meshcode": "49303414",
+    "city_code": "43206",
+    "city_name": "熊本県玉名市",
+    "feature_type": "uro:OtherConstruction",
+    "gml_id": "cons_5040e839-df3e-4e44-b1e3-3292bac87729",
+    "attributes": {
+      "meshcode": "49303414",
+      "feature_type": "uro:OtherConstruction",
+      "gml:id": "cons_5040e839-df3e-4e44-b1e3-3292bac87729",
+      "core:creationDate": "2024-03-22",
+      "uro:DataQualityAttribute": [
+        {
+          "uro:geometrySrcDescLod1": "未作成",
+          "uro:geometrySrcDescLod1_code": "999",
+          "uro:geometrySrcDescLod3": "公共測量成果又は基本測量成果",
+          "uro:geometrySrcDescLod3_code": "000",
+          "uro:thematicSrcDesc": "公共測量成果又は基本測量成果",
+          "uro:thematicSrcDesc_code": "000",
+          "uro:appearanceSrcDescLod3": [
+            "車載写真レーザ測量システムにより撮影した写真",
+            "手持ちカメラにより撮影した写真"
+          ],
+          "uro:appearanceSrcDescLod3_code": [
+            "3",
+            "4"
+          ],
+          "uro:lodType": "構造物の形状を、主要な部分の外形を構成する特徴点から構成する面を境界面とする立体として表現する。",
+          "uro:lodType_code": "3.0",
+          "uro:PublicSurveyDataQualityAttribute": [
+            {
+              "uro:srcScaleLod3": "地図情報レベル500",
+              "uro:srcScaleLod3_code": "3",
+              "uro:publicSurveySrcDescLod3": "LidarSLAM計測の測量成果",
+              "uro:publicSurveySrcDescLod3_code": "018"
+            }
+          ]
+        }
+      ],
+      "uro:GroundSurface": [
+        {
+          "core:creationDate": "2024-03-22"
+        },
+        {
+          "core:creationDate": "2024-03-22"
+        },
+        {
+          "core:creationDate": "2024-03-22"
+        }
+      ],
+      "uro:RoofSurface": [
+        {
+          "core:creationDate": "2024-03-22"
+        }
+      ],
+      "uro:WallSurface": [
+        {
+          "core:creationDate": "2024-03-22"
+        },
+        {
+          "core:creationDate": "2024-03-22"
+        },
+        {
+          "core:creationDate": "2024-03-22"
+        },
+        {
+          "core:creationDate": "2024-03-22"
+        },
+        {
+          "core:creationDate": "2024-03-22"
+        },
+        {
+          "core:creationDate": "2024-03-22"
+        }
+      ],
+      "uro:class": "護岸",
+      "uro:class_code": "08",
+      "uro:function": "高水護岸",
+      "uro:function_code": "0801"
+    },
+    "core:creationDate": "2024-03-22",
+    "uro:geometrySrcDescLod1": "未作成",
+    "uro:lodType": "構造物の形状を、主要な部分の外形を構成する特徴点から構成する面を境界面とする立体として表現する。",
+    "__key_order": [
+      "meshcode",
+      "city_code",
+      "city_name",
+      "feature_type",
+      "gml_id",
+      "attributes",
+      "core:creationDate",
+      "uro:geometrySrcDescLod1",
+      "uro:lodType"
+    ]
+  },
+  "cons_f13491aa-9057-464d-a36d-8a8a0c5fdbc3": {
+    "meshcode": "49303414",
+    "city_code": "43206",
+    "city_name": "熊本県玉名市",
+    "feature_type": "uro:OtherConstruction",
+    "gml_id": "cons_f13491aa-9057-464d-a36d-8a8a0c5fdbc3",
+    "attributes": {
+      "meshcode": "49303414",
+      "feature_type": "uro:OtherConstruction",
+      "gml:id": "cons_f13491aa-9057-464d-a36d-8a8a0c5fdbc3",
+      "core:creationDate": "2024-03-22",
+      "uro:DataQualityAttribute": [
+        {
+          "uro:geometrySrcDescLod1": "未作成",
+          "uro:geometrySrcDescLod1_code": "999",
+          "uro:geometrySrcDescLod3": "公共測量成果又は基本測量成果",
+          "uro:geometrySrcDescLod3_code": "000",
+          "uro:thematicSrcDesc": "公共測量成果又は基本測量成果",
+          "uro:thematicSrcDesc_code": "000",
+          "uro:appearanceSrcDescLod3": [
+            "車載写真レーザ測量システムにより撮影した写真",
+            "手持ちカメラにより撮影した写真"
+          ],
+          "uro:appearanceSrcDescLod3_code": [
+            "3",
+            "4"
+          ],
+          "uro:lodType": "構造物の形状を、主要な部分の外形を構成する特徴点から構成する面を境界面とする立体として表現する。",
+          "uro:lodType_code": "3.0",
+          "uro:PublicSurveyDataQualityAttribute": [
+            {
+              "uro:srcScaleLod3": "地図情報レベル500",
+              "uro:srcScaleLod3_code": "3",
+              "uro:publicSurveySrcDescLod3": "LidarSLAM計測の測量成果",
+              "uro:publicSurveySrcDescLod3_code": "018"
+            }
+          ]
+        }
+      ],
+      "uro:GroundSurface": [
+        {
+          "core:creationDate": "2024-03-22"
+        },
+        {
+          "core:creationDate": "2024-03-22"
+        }
+      ],
+      "uro:RoofSurface": [
+        {
+          "core:creationDate": "2024-03-22"
+        },
+        {
+          "core:creationDate": "2024-03-22"
+        }
+      ],
+      "uro:WallSurface": [
+        {
+          "core:creationDate": "2024-03-22"
+        },
+        {
+          "core:creationDate": "2024-03-22"
+        },
+        {
+          "core:creationDate": "2024-03-22"
+        },
+        {
+          "core:creationDate": "2024-03-22"
+        },
+        {
+          "core:creationDate": "2024-03-22"
+        },
+        {
+          "core:creationDate": "2024-03-22"
+        },
+        {
+          "core:creationDate": "2024-03-22"
+        },
+        {
+          "core:creationDate": "2024-03-22"
+        },
+        {
+          "core:creationDate": "2024-03-22"
+        },
+        {
+          "core:creationDate": "2024-03-22"
+        }
+      ],
+      "uro:class": "護岸",
+      "uro:class_code": "08",
+      "uro:function": "高水護岸",
+      "uro:function_code": "0801"
+    },
+    "core:creationDate": "2024-03-22",
+    "uro:geometrySrcDescLod1": "未作成",
+    "uro:lodType": "構造物の形状を、主要な部分の外形を構成する特徴点から構成する面を境界面とする立体として表現する。",
+    "__key_order": [
+      "meshcode",
+      "city_code",
+      "city_name",
+      "feature_type",
+      "gml_id",
+      "attributes",
+      "core:creationDate",
+      "uro:geometrySrcDescLod1",
+      "uro:lodType"
+    ]
+  },
+  "cons_a825c147-f0fb-4854-abae-81b4d715b622": {
+    "meshcode": "49303414",
+    "city_code": "43206",
+    "city_name": "熊本県玉名市",
+    "feature_type": "uro:OtherConstruction",
+    "gml_id": "cons_a825c147-f0fb-4854-abae-81b4d715b622",
+    "attributes": {
+      "meshcode": "49303414",
+      "feature_type": "uro:OtherConstruction",
+      "gml:id": "cons_a825c147-f0fb-4854-abae-81b4d715b622",
+      "core:creationDate": "2024-03-22",
+      "uro:DataQualityAttribute": [
+        {
+          "uro:geometrySrcDescLod1": "未作成",
+          "uro:geometrySrcDescLod1_code": "999",
+          "uro:geometrySrcDescLod3": "公共測量成果又は基本測量成果",
+          "uro:geometrySrcDescLod3_code": "000",
+          "uro:thematicSrcDesc": "公共測量成果又は基本測量成果",
+          "uro:thematicSrcDesc_code": "000",
+          "uro:appearanceSrcDescLod3": [
+            "車載写真レーザ測量システムにより撮影した写真",
+            "手持ちカメラにより撮影した写真"
+          ],
+          "uro:appearanceSrcDescLod3_code": [
+            "3",
+            "4"
+          ],
+          "uro:lodType": "構造物の形状を、主要な部分の外形を構成する特徴点から構成する面を境界面とする立体として表現する。",
+          "uro:lodType_code": "3.0",
+          "uro:PublicSurveyDataQualityAttribute": [
+            {
+              "uro:srcScaleLod3": "地図情報レベル500",
+              "uro:srcScaleLod3_code": "3",
+              "uro:publicSurveySrcDescLod3": "LidarSLAM計測の測量成果",
+              "uro:publicSurveySrcDescLod3_code": "018"
+            }
+          ]
+        }
+      ],
+      "uro:GroundSurface": [
+        {
+          "core:creationDate": "2024-03-22"
+        },
+        {
+          "core:creationDate": "2024-03-22"
+        },
+        {
+          "core:creationDate": "2024-03-22"
+        },
+        {
+          "core:creationDate": "2024-03-22"
+        }
+      ],
+      "uro:RoofSurface": [
+        {
+          "core:creationDate": "2024-03-22"
+        },
+        {
+          "core:creationDate": "2024-03-22"
+        },
+        {
+          "core:creationDate": "2024-03-22"
+        },
+        {
+          "core:creationDate": "2024-03-22"
+        }
+      ],
+      "uro:WallSurface": [
+        {
+          "core:creationDate": "2024-03-22"
+        },
+        {
+          "core:creationDate": "2024-03-22"
+        },
+        {
+          "core:creationDate": "2024-03-22"
+        },
+        {
+          "core:creationDate": "2024-03-22"
+        },
+        {
+          "core:creationDate": "2024-03-22"
+        },
+        {
+          "core:creationDate": "2024-03-22"
+        },
+        {
+          "core:creationDate": "2024-03-22"
+        },
+        {
+          "core:creationDate": "2024-03-22"
+        },
+        {
+          "core:creationDate": "2024-03-22"
+        },
+        {
+          "core:creationDate": "2024-03-22"
+        },
+        {
+          "core:creationDate": "2024-03-22"
+        },
+        {
+          "core:creationDate": "2024-03-22"
+        },
+        {
+          "core:creationDate": "2024-03-22"
+        },
+        {
+          "core:creationDate": "2024-03-22"
+        },
+        {
+          "core:creationDate": "2024-03-22"
+        },
+        {
+          "core:creationDate": "2024-03-22"
+        },
+        {
+          "core:creationDate": "2024-03-22"
+        },
+        {
+          "core:creationDate": "2024-03-22"
+        },
+        {
+          "core:creationDate": "2024-03-22"
+        },
+        {
+          "core:creationDate": "2024-03-22"
+        },
+        {
+          "core:creationDate": "2024-03-22"
+        },
+        {
+          "core:creationDate": "2024-03-22"
+        },
+        {
+          "core:creationDate": "2024-03-22"
+        },
+        {
+          "core:creationDate": "2024-03-22"
+        },
+        {
+          "core:creationDate": "2024-03-22"
+        }
+      ],
+      "uro:class": "護岸",
+      "uro:class_code": "08",
+      "uro:function": "高水護岸",
+      "uro:function_code": "0801"
+    },
+    "core:creationDate": "2024-03-22",
+    "uro:geometrySrcDescLod1": "未作成",
+    "uro:lodType": "構造物の形状を、主要な部分の外形を構成する特徴点から構成する面を境界面とする立体として表現する。",
+    "__key_order": [
+      "meshcode",
+      "city_code",
+      "city_name",
+      "feature_type",
+      "gml_id",
+      "attributes",
+      "core:creationDate",
+      "uro:geometrySrcDescLod1",
+      "uro:lodType"
+    ]
+  },
+  "cons_210800bc-6391-441d-9fc7-5faac305f452": {
+    "meshcode": "49303414",
+    "city_code": "43206",
+    "city_name": "熊本県玉名市",
+    "feature_type": "uro:OtherConstruction",
+    "gml_id": "cons_210800bc-6391-441d-9fc7-5faac305f452",
+    "attributes": {
+      "meshcode": "49303414",
+      "feature_type": "uro:OtherConstruction",
+      "gml:id": "cons_210800bc-6391-441d-9fc7-5faac305f452",
+      "core:creationDate": "2024-03-22",
+      "uro:DataQualityAttribute": [
+        {
+          "uro:geometrySrcDescLod1": "未作成",
+          "uro:geometrySrcDescLod1_code": "999",
+          "uro:geometrySrcDescLod3": "公共測量成果又は基本測量成果",
+          "uro:geometrySrcDescLod3_code": "000",
+          "uro:thematicSrcDesc": "公共測量成果又は基本測量成果",
+          "uro:thematicSrcDesc_code": "000",
+          "uro:appearanceSrcDescLod3": [
+            "車載写真レーザ測量システムにより撮影した写真",
+            "手持ちカメラにより撮影した写真"
+          ],
+          "uro:appearanceSrcDescLod3_code": [
+            "3",
+            "4"
+          ],
+          "uro:lodType": "構造物の形状を、主要な部分の外形を構成する特徴点から構成する面を境界面とする立体として表現する。",
+          "uro:lodType_code": "3.0",
+          "uro:PublicSurveyDataQualityAttribute": [
+            {
+              "uro:srcScaleLod3": "地図情報レベル500",
+              "uro:srcScaleLod3_code": "3",
+              "uro:publicSurveySrcDescLod3": "LidarSLAM計測の測量成果",
+              "uro:publicSurveySrcDescLod3_code": "018"
+            }
+          ]
+        }
+      ],
+      "uro:GroundSurface": [
+        {
+          "core:creationDate": "2024-03-22"
+        },
+        {
+          "core:creationDate": "2024-03-22"
+        },
+        {
+          "core:creationDate": "2024-03-22"
+        }
+      ],
+      "uro:RoofSurface": [
+        {
+          "core:creationDate": "2024-03-22"
+        },
+        {
+          "core:creationDate": "2024-03-22"
+        }
+      ],
+      "uro:WallSurface": [
+        {
+          "core:creationDate": "2024-03-22"
+        },
+        {
+          "core:creationDate": "2024-03-22"
+        },
+        {
+          "core:creationDate": "2024-03-22"
+        },
+        {
+          "core:creationDate": "2024-03-22"
+        },
+        {
+          "core:creationDate": "2024-03-22"
+        },
+        {
+          "core:creationDate": "2024-03-22"
+        },
+        {
+          "core:creationDate": "2024-03-22"
+        },
+        {
+          "core:creationDate": "2024-03-22"
+        },
+        {
+          "core:creationDate": "2024-03-22"
+        },
+        {
+          "core:creationDate": "2024-03-22"
+        },
+        {
+          "core:creationDate": "2024-03-22"
+        },
+        {
+          "core:creationDate": "2024-03-22"
+        },
+        {
+          "core:creationDate": "2024-03-22"
+        },
+        {
+          "core:creationDate": "2024-03-22"
+        },
+        {
+          "core:creationDate": "2024-03-22"
+        },
+        {
+          "core:creationDate": "2024-03-22"
+        },
+        {
+          "core:creationDate": "2024-03-22"
+        },
+        {
+          "core:creationDate": "2024-03-22"
+        },
+        {
+          "core:creationDate": "2024-03-22"
+        },
+        {
+          "core:creationDate": "2024-03-22"
+        },
+        {
+          "core:creationDate": "2024-03-22"
+        },
+        {
+          "core:creationDate": "2024-03-22"
+        },
+        {
+          "core:creationDate": "2024-03-22"
+        },
+        {
+          "core:creationDate": "2024-03-22"
+        },
+        {
+          "core:creationDate": "2024-03-22"
+        },
+        {
+          "core:creationDate": "2024-03-22"
+        }
+      ],
+      "uro:class": "護岸",
+      "uro:class_code": "08",
+      "uro:function": "高水護岸",
+      "uro:function_code": "0801"
+    },
+    "core:creationDate": "2024-03-22",
+    "uro:geometrySrcDescLod1": "未作成",
+    "uro:lodType": "構造物の形状を、主要な部分の外形を構成する特徴点から構成する面を境界面とする立体として表現する。",
+    "__key_order": [
+      "meshcode",
+      "city_code",
+      "city_name",
+      "feature_type",
+      "gml_id",
+      "attributes",
+      "core:creationDate",
+      "uro:geometrySrcDescLod1",
+      "uro:lodType"
+    ]
+  },
+  "cons_f85f9c5a-791c-4985-93ae-6cb8680d6c8a": {
+    "meshcode": "49303414",
+    "city_code": "43206",
+    "city_name": "熊本県玉名市",
+    "feature_type": "uro:OtherConstruction",
+    "gml_id": "cons_f85f9c5a-791c-4985-93ae-6cb8680d6c8a",
+    "attributes": {
+      "meshcode": "49303414",
+      "feature_type": "uro:OtherConstruction",
+      "gml:id": "cons_f85f9c5a-791c-4985-93ae-6cb8680d6c8a",
+      "core:creationDate": "2024-03-22",
+      "uro:DataQualityAttribute": [
+        {
+          "uro:geometrySrcDescLod1": "未作成",
+          "uro:geometrySrcDescLod1_code": "999",
+          "uro:geometrySrcDescLod3": "公共測量成果又は基本測量成果",
+          "uro:geometrySrcDescLod3_code": "000",
+          "uro:thematicSrcDesc": "公共測量成果又は基本測量成果",
+          "uro:thematicSrcDesc_code": "000",
+          "uro:appearanceSrcDescLod3": [
+            "車載写真レーザ測量システムにより撮影した写真",
+            "手持ちカメラにより撮影した写真"
+          ],
+          "uro:appearanceSrcDescLod3_code": [
+            "3",
+            "4"
+          ],
+          "uro:lodType": "構造物の形状を、主要な部分の外形を構成する特徴点から構成する面を境界面とする立体として表現する。",
+          "uro:lodType_code": "3.0",
+          "uro:PublicSurveyDataQualityAttribute": [
+            {
+              "uro:srcScaleLod3": "地図情報レベル500",
+              "uro:srcScaleLod3_code": "3",
+              "uro:publicSurveySrcDescLod3": "LidarSLAM計測の測量成果",
+              "uro:publicSurveySrcDescLod3_code": "018"
+            }
+          ]
+        }
+      ],
+      "uro:GroundSurface": [
+        {
+          "core:creationDate": "2024-03-22"
+        },
+        {
+          "core:creationDate": "2024-03-22"
+        },
+        {
+          "core:creationDate": "2024-03-22"
+        },
+        {
+          "core:creationDate": "2024-03-22"
+        }
+      ],
+      "uro:RoofSurface": [
+        {
+          "core:creationDate": "2024-03-22"
+        },
+        {
+          "core:creationDate": "2024-03-22"
+        },
+        {
+          "core:creationDate": "2024-03-22"
+        },
+        {
+          "core:creationDate": "2024-03-22"
+        }
+      ],
+      "uro:WallSurface": [
+        {
+          "core:creationDate": "2024-03-22"
+        },
+        {
+          "core:creationDate": "2024-03-22"
+        },
+        {
+          "core:creationDate": "2024-03-22"
+        },
+        {
+          "core:creationDate": "2024-03-22"
+        },
+        {
+          "core:creationDate": "2024-03-22"
+        },
+        {
+          "core:creationDate": "2024-03-22"
+        },
+        {
+          "core:creationDate": "2024-03-22"
+        },
+        {
+          "core:creationDate": "2024-03-22"
+        },
+        {
+          "core:creationDate": "2024-03-22"
+        },
+        {
+          "core:creationDate": "2024-03-22"
+        },
+        {
+          "core:creationDate": "2024-03-22"
+        },
+        {
+          "core:creationDate": "2024-03-22"
+        },
+        {
+          "core:creationDate": "2024-03-22"
+        },
+        {
+          "core:creationDate": "2024-03-22"
+        },
+        {
+          "core:creationDate": "2024-03-22"
+        },
+        {
+          "core:creationDate": "2024-03-22"
+        }
+      ],
+      "uro:class": "護岸",
+      "uro:class_code": "08",
+      "uro:function": "高水護岸",
+      "uro:function_code": "0801"
+    },
+    "core:creationDate": "2024-03-22",
+    "uro:geometrySrcDescLod1": "未作成",
+    "uro:lodType": "構造物の形状を、主要な部分の外形を構成する特徴点から構成する面を境界面とする立体として表現する。",
+    "__key_order": [
+      "meshcode",
+      "city_code",
+      "city_name",
+      "feature_type",
+      "gml_id",
+      "attributes",
+      "core:creationDate",
+      "uro:geometrySrcDescLod1",
+      "uro:lodType"
+    ]
+  },
+  "cons_0bc8657d-845d-49d3-9cbb-6c404c5c1f86": {
+    "meshcode": "49303414",
+    "city_code": "43206",
+    "city_name": "熊本県玉名市",
+    "feature_type": "uro:OtherConstruction",
+    "gml_id": "cons_0bc8657d-845d-49d3-9cbb-6c404c5c1f86",
+    "attributes": {
+      "meshcode": "49303414",
+      "feature_type": "uro:OtherConstruction",
+      "gml:id": "cons_0bc8657d-845d-49d3-9cbb-6c404c5c1f86",
+      "core:creationDate": "2024-03-22",
+      "uro:DataQualityAttribute": [
+        {
+          "uro:geometrySrcDescLod1": "未作成",
+          "uro:geometrySrcDescLod1_code": "999",
+          "uro:geometrySrcDescLod3": "公共測量成果又は基本測量成果",
+          "uro:geometrySrcDescLod3_code": "000",
+          "uro:thematicSrcDesc": "公共測量成果又は基本測量成果",
+          "uro:thematicSrcDesc_code": "000",
+          "uro:appearanceSrcDescLod3": [
+            "車載写真レーザ測量システムにより撮影した写真",
+            "手持ちカメラにより撮影した写真"
+          ],
+          "uro:appearanceSrcDescLod3_code": [
+            "3",
+            "4"
+          ],
+          "uro:lodType": "構造物の形状を、主要な部分の外形を構成する特徴点から構成する面を境界面とする立体として表現する。",
+          "uro:lodType_code": "3.0",
+          "uro:PublicSurveyDataQualityAttribute": [
+            {
+              "uro:srcScaleLod3": "地図情報レベル500",
+              "uro:srcScaleLod3_code": "3",
+              "uro:publicSurveySrcDescLod3": "LidarSLAM計測の測量成果",
+              "uro:publicSurveySrcDescLod3_code": "018"
+            }
+          ]
+        }
+      ],
+      "uro:GroundSurface": [
+        {
+          "core:creationDate": "2024-03-22"
+        },
+        {
+          "core:creationDate": "2024-03-22"
+        },
+        {
+          "core:creationDate": "2024-03-22"
+        }
+      ],
+      "uro:RoofSurface": [
+        {
+          "core:creationDate": "2024-03-22"
+        },
+        {
+          "core:creationDate": "2024-03-22"
+        },
+        {
+          "core:creationDate": "2024-03-22"
+        },
+        {
+          "core:creationDate": "2024-03-22"
+        },
+        {
+          "core:creationDate": "2024-03-22"
+        },
+        {
+          "core:creationDate": "2024-03-22"
+        },
+        {
+          "core:creationDate": "2024-03-22"
+        },
+        {
+          "core:creationDate": "2024-03-22"
+        },
+        {
+          "core:creationDate": "2024-03-22"
+        },
+        {
+          "core:creationDate": "2024-03-22"
+        },
+        {
+          "core:creationDate": "2024-03-22"
+        }
+      ],
+      "uro:OuterCeilingSurface": [
+        {
+          "core:creationDate": "2024-03-22"
+        },
+        {
+          "core:creationDate": "2024-03-22"
+        },
+        {
+          "core:creationDate": "2024-03-22"
+        }
+      ],
+      "uro:WallSurface": [
+        {
+          "core:creationDate": "2024-03-22"
+        },
+        {
+          "core:creationDate": "2024-03-22"
+        },
+        {
+          "core:creationDate": "2024-03-22"
+        },
+        {
+          "core:creationDate": "2024-03-22"
+        },
+        {
+          "core:creationDate": "2024-03-22"
+        },
+        {
+          "core:creationDate": "2024-03-22"
+        },
+        {
+          "core:creationDate": "2024-03-22"
+        },
+        {
+          "core:creationDate": "2024-03-22"
+        },
+        {
+          "core:creationDate": "2024-03-22"
+        },
+        {
+          "core:creationDate": "2024-03-22"
+        },
+        {
+          "core:creationDate": "2024-03-22"
+        },
+        {
+          "core:creationDate": "2024-03-22"
+        },
+        {
+          "core:creationDate": "2024-03-22"
+        },
+        {
+          "core:creationDate": "2024-03-22"
+        },
+        {
+          "core:creationDate": "2024-03-22"
+        },
+        {
+          "core:creationDate": "2024-03-22"
+        },
+        {
+          "core:creationDate": "2024-03-22"
+        },
+        {
+          "core:creationDate": "2024-03-22"
+        },
+        {
+          "core:creationDate": "2024-03-22"
+        },
+        {
+          "core:creationDate": "2024-03-22"
+        },
+        {
+          "core:creationDate": "2024-03-22"
+        },
+        {
+          "core:creationDate": "2024-03-22"
+        },
+        {
+          "core:creationDate": "2024-03-22"
+        },
+        {
+          "core:creationDate": "2024-03-22"
+        },
+        {
+          "core:creationDate": "2024-03-22"
+        },
+        {
+          "core:creationDate": "2024-03-22"
+        },
+        {
+          "core:creationDate": "2024-03-22"
+        },
+        {
+          "core:creationDate": "2024-03-22"
+        },
+        {
+          "core:creationDate": "2024-03-22"
+        },
+        {
+          "core:creationDate": "2024-03-22"
+        },
+        {
+          "core:creationDate": "2024-03-22"
+        },
+        {
+          "core:creationDate": "2024-03-22"
+        },
+        {
+          "core:creationDate": "2024-03-22"
+        },
+        {
+          "core:creationDate": "2024-03-22"
+        },
+        {
+          "core:creationDate": "2024-03-22"
+        },
+        {
+          "core:creationDate": "2024-03-22"
+        },
+        {
+          "core:creationDate": "2024-03-22"
+        },
+        {
+          "core:creationDate": "2024-03-22"
+        },
+        {
+          "core:creationDate": "2024-03-22"
+        },
+        {
+          "core:creationDate": "2024-03-22"
+        },
+        {
+          "core:creationDate": "2024-03-22"
+        },
+        {
+          "core:creationDate": "2024-03-22"
+        },
+        {
+          "core:creationDate": "2024-03-22"
+        },
+        {
+          "core:creationDate": "2024-03-22"
+        },
+        {
+          "core:creationDate": "2024-03-22"
+        },
+        {
+          "core:creationDate": "2024-03-22"
+        },
+        {
+          "core:creationDate": "2024-03-22"
+        },
+        {
+          "core:creationDate": "2024-03-22"
+        },
+        {
+          "core:creationDate": "2024-03-22"
+        },
+        {
+          "core:creationDate": "2024-03-22"
+        },
+        {
+          "core:creationDate": "2024-03-22"
+        },
+        {
+          "core:creationDate": "2024-03-22"
+        },
+        {
+          "core:creationDate": "2024-03-22"
+        },
+        {
+          "core:creationDate": "2024-03-22"
+        },
+        {
+          "core:creationDate": "2024-03-22"
+        },
+        {
+          "core:creationDate": "2024-03-22"
+        },
+        {
+          "core:creationDate": "2024-03-22"
+        }
+      ],
+      "uro:class": "護岸",
+      "uro:class_code": "08",
+      "uro:function": "高水護岸",
+      "uro:function_code": "0801"
+    },
+    "core:creationDate": "2024-03-22",
+    "uro:geometrySrcDescLod1": "未作成",
+    "uro:lodType": "構造物の形状を、主要な部分の外形を構成する特徴点から構成する面を境界面とする立体として表現する。",
+    "__key_order": [
+      "meshcode",
+      "city_code",
+      "city_name",
+      "feature_type",
+      "gml_id",
+      "attributes",
+      "core:creationDate",
+      "uro:geometrySrcDescLod1",
+      "uro:lodType"
+    ]
+  },
+  "cons_41cad3f3-29c0-4d92-bc0e-642d757ae228": {
+    "meshcode": "49303414",
+    "city_code": "43206",
+    "city_name": "熊本県玉名市",
+    "feature_type": "uro:OtherConstruction",
+    "gml_id": "cons_41cad3f3-29c0-4d92-bc0e-642d757ae228",
+    "attributes": {
+      "meshcode": "49303414",
+      "feature_type": "uro:OtherConstruction",
+      "gml:id": "cons_41cad3f3-29c0-4d92-bc0e-642d757ae228",
+      "core:creationDate": "2024-03-22",
+      "uro:DataQualityAttribute": [
+        {
+          "uro:geometrySrcDescLod1": "未作成",
+          "uro:geometrySrcDescLod1_code": "999",
+          "uro:geometrySrcDescLod3": "公共測量成果又は基本測量成果",
+          "uro:geometrySrcDescLod3_code": "000",
+          "uro:thematicSrcDesc": "公共測量成果又は基本測量成果",
+          "uro:thematicSrcDesc_code": "000",
+          "uro:appearanceSrcDescLod3": [
+            "車載写真レーザ測量システムにより撮影した写真",
+            "手持ちカメラにより撮影した写真"
+          ],
+          "uro:appearanceSrcDescLod3_code": [
+            "3",
+            "4"
+          ],
+          "uro:lodType": "構造物の形状を、主要な部分の外形を構成する特徴点から構成する面を境界面とする立体として表現する。",
+          "uro:lodType_code": "3.0",
+          "uro:PublicSurveyDataQualityAttribute": [
+            {
+              "uro:srcScaleLod3": "地図情報レベル500",
+              "uro:srcScaleLod3_code": "3",
+              "uro:publicSurveySrcDescLod3": "LidarSLAM計測の測量成果",
+              "uro:publicSurveySrcDescLod3_code": "018"
+            }
+          ]
+        }
+      ],
+      "uro:GroundSurface": [
+        {
+          "core:creationDate": "2024-03-22"
+        }
+      ],
+      "uro:RoofSurface": [
+        {
+          "core:creationDate": "2024-03-22"
+        }
+      ],
+      "uro:WallSurface": [
+        {
+          "core:creationDate": "2024-03-22"
+        },
+        {
+          "core:creationDate": "2024-03-22"
+        },
+        {
+          "core:creationDate": "2024-03-22"
+        },
+        {
+          "core:creationDate": "2024-03-22"
+        },
+        {
+          "core:creationDate": "2024-03-22"
+        },
+        {
+          "core:creationDate": "2024-03-22"
+        }
+      ],
+      "uro:class": "護岸",
+      "uro:class_code": "08",
+      "uro:function": "高水護岸",
+      "uro:function_code": "0801"
+    },
+    "core:creationDate": "2024-03-22",
+    "uro:geometrySrcDescLod1": "未作成",
+    "uro:lodType": "構造物の形状を、主要な部分の外形を構成する特徴点から構成する面を境界面とする立体として表現する。",
+    "__key_order": [
+      "meshcode",
+      "city_code",
+      "city_name",
+      "feature_type",
+      "gml_id",
+      "attributes",
+      "core:creationDate",
+      "uro:geometrySrcDescLod1",
+      "uro:lodType"
+    ]
+  },
+  "cons_2eab155b-d5da-4677-ae76-58e189c5da8e": {
+    "meshcode": "49303414",
+    "city_code": "43206",
+    "city_name": "熊本県玉名市",
+    "feature_type": "uro:OtherConstruction",
+    "gml_id": "cons_2eab155b-d5da-4677-ae76-58e189c5da8e",
+    "attributes": {
+      "meshcode": "49303414",
+      "feature_type": "uro:OtherConstruction",
+      "gml:id": "cons_2eab155b-d5da-4677-ae76-58e189c5da8e",
+      "core:creationDate": "2024-03-22",
+      "uro:DataQualityAttribute": [
+        {
+          "uro:geometrySrcDescLod1": "未作成",
+          "uro:geometrySrcDescLod1_code": "999",
+          "uro:geometrySrcDescLod3": "公共測量成果又は基本測量成果",
+          "uro:geometrySrcDescLod3_code": "000",
+          "uro:thematicSrcDesc": "公共測量成果又は基本測量成果",
+          "uro:thematicSrcDesc_code": "000",
+          "uro:appearanceSrcDescLod3": [
+            "車載写真レーザ測量システムにより撮影した写真",
+            "手持ちカメラにより撮影した写真"
+          ],
+          "uro:appearanceSrcDescLod3_code": [
+            "3",
+            "4"
+          ],
+          "uro:lodType": "構造物の形状を、主要な部分の外形を構成する特徴点から構成する面を境界面とする立体として表現する。",
+          "uro:lodType_code": "3.0",
+          "uro:PublicSurveyDataQualityAttribute": [
+            {
+              "uro:srcScaleLod3": "地図情報レベル500",
+              "uro:srcScaleLod3_code": "3",
+              "uro:publicSurveySrcDescLod3": "LidarSLAM計測の測量成果",
+              "uro:publicSurveySrcDescLod3_code": "018"
+            }
+          ]
+        }
+      ],
+      "uro:GroundSurface": [
+        {
+          "core:creationDate": "2024-03-22"
+        }
+      ],
+      "uro:RoofSurface": [
+        {
+          "core:creationDate": "2024-03-22"
+        }
+      ],
+      "uro:WallSurface": [
+        {
+          "core:creationDate": "2024-03-22"
+        }
+      ],
+      "uro:class": "護岸",
+      "uro:class_code": "08",
+      "uro:function": "高水護岸",
+      "uro:function_code": "0801"
+    },
+    "core:creationDate": "2024-03-22",
+    "uro:geometrySrcDescLod1": "未作成",
+    "uro:lodType": "構造物の形状を、主要な部分の外形を構成する特徴点から構成する面を境界面とする立体として表現する。",
+    "__key_order": [
+      "meshcode",
+      "city_code",
+      "city_name",
+      "feature_type",
+      "gml_id",
+      "attributes",
+      "core:creationDate",
+      "uro:geometrySrcDescLod1",
+      "uro:lodType"
+    ]
+  },
+  "cons_b60158b1-905b-483f-90e4-4d2586a7d0c1": {
+    "meshcode": "49303414",
+    "city_code": "43206",
+    "city_name": "熊本県玉名市",
+    "feature_type": "uro:OtherConstruction",
+    "gml_id": "cons_b60158b1-905b-483f-90e4-4d2586a7d0c1",
+    "attributes": {
+      "meshcode": "49303414",
+      "feature_type": "uro:OtherConstruction",
+      "gml:id": "cons_b60158b1-905b-483f-90e4-4d2586a7d0c1",
+      "core:creationDate": "2024-03-22",
+      "uro:DataQualityAttribute": [
+        {
+          "uro:geometrySrcDescLod1": "未作成",
+          "uro:geometrySrcDescLod1_code": "999",
+          "uro:geometrySrcDescLod3": "公共測量成果又は基本測量成果",
+          "uro:geometrySrcDescLod3_code": "000",
+          "uro:thematicSrcDesc": "公共測量成果又は基本測量成果",
+          "uro:thematicSrcDesc_code": "000",
+          "uro:appearanceSrcDescLod3": [
+            "車載写真レーザ測量システムにより撮影した写真",
+            "手持ちカメラにより撮影した写真"
+          ],
+          "uro:appearanceSrcDescLod3_code": [
+            "3",
+            "4"
+          ],
+          "uro:lodType": "構造物の形状を、主要な部分の外形を構成する特徴点から構成する面を境界面とする立体として表現する。",
+          "uro:lodType_code": "3.0",
+          "uro:PublicSurveyDataQualityAttribute": [
+            {
+              "uro:srcScaleLod3": "地図情報レベル500",
+              "uro:srcScaleLod3_code": "3",
+              "uro:publicSurveySrcDescLod3": "LidarSLAM計測の測量成果",
+              "uro:publicSurveySrcDescLod3_code": "018"
+            }
+          ]
+        }
+      ],
+      "uro:GroundSurface": [
+        {
+          "core:creationDate": "2024-03-22"
+        }
+      ],
+      "uro:RoofSurface": [
+        {
+          "core:creationDate": "2024-03-22"
+        },
+        {
+          "core:creationDate": "2024-03-22"
+        }
+      ],
+      "uro:WallSurface": [
+        {
+          "core:creationDate": "2024-03-22"
+        },
+        {
+          "core:creationDate": "2024-03-22"
+        },
+        {
+          "core:creationDate": "2024-03-22"
+        },
+        {
+          "core:creationDate": "2024-03-22"
+        },
+        {
+          "core:creationDate": "2024-03-22"
+        },
+        {
+          "core:creationDate": "2024-03-22"
+        },
+        {
+          "core:creationDate": "2024-03-22"
+        },
+        {
+          "core:creationDate": "2024-03-22"
+        },
+        {
+          "core:creationDate": "2024-03-22"
+        },
+        {
+          "core:creationDate": "2024-03-22"
+        }
+      ],
+      "uro:class": "護岸",
+      "uro:class_code": "08",
+      "uro:function": "高水護岸",
+      "uro:function_code": "0801"
+    },
+    "core:creationDate": "2024-03-22",
+    "uro:geometrySrcDescLod1": "未作成",
+    "uro:lodType": "構造物の形状を、主要な部分の外形を構成する特徴点から構成する面を境界面とする立体として表現する。",
+    "__key_order": [
+      "meshcode",
+      "city_code",
+      "city_name",
+      "feature_type",
+      "gml_id",
+      "attributes",
+      "core:creationDate",
+      "uro:geometrySrcDescLod1",
+      "uro:lodType"
+    ]
+  },
+  "cons_2d801d04-1253-4394-8915-1880beaf96dc": {
+    "meshcode": "49303414",
+    "city_code": "43206",
+    "city_name": "熊本県玉名市",
+    "feature_type": "uro:OtherConstruction",
+    "gml_id": "cons_2d801d04-1253-4394-8915-1880beaf96dc",
+    "attributes": {
+      "meshcode": "49303414",
+      "feature_type": "uro:OtherConstruction",
+      "gml:id": "cons_2d801d04-1253-4394-8915-1880beaf96dc",
+      "core:creationDate": "2024-03-22",
+      "uro:DataQualityAttribute": [
+        {
+          "uro:geometrySrcDescLod1": "未作成",
+          "uro:geometrySrcDescLod1_code": "999",
+          "uro:geometrySrcDescLod3": "公共測量成果又は基本測量成果",
+          "uro:geometrySrcDescLod3_code": "000",
+          "uro:thematicSrcDesc": "公共測量成果又は基本測量成果",
+          "uro:thematicSrcDesc_code": "000",
+          "uro:appearanceSrcDescLod3": [
+            "車載写真レーザ測量システムにより撮影した写真",
+            "手持ちカメラにより撮影した写真"
+          ],
+          "uro:appearanceSrcDescLod3_code": [
+            "3",
+            "4"
+          ],
+          "uro:lodType": "構造物の形状を、主要な部分の外形を構成する特徴点から構成する面を境界面とする立体として表現する。",
+          "uro:lodType_code": "3.0",
+          "uro:PublicSurveyDataQualityAttribute": [
+            {
+              "uro:srcScaleLod3": "地図情報レベル500",
+              "uro:srcScaleLod3_code": "3",
+              "uro:publicSurveySrcDescLod3": "LidarSLAM計測の測量成果",
+              "uro:publicSurveySrcDescLod3_code": "018"
+            }
+          ]
+        }
+      ],
+      "uro:GroundSurface": [
+        {
+          "core:creationDate": "2024-03-22"
+        },
+        {
+          "core:creationDate": "2024-03-22"
+        }
+      ],
+      "uro:RoofSurface": [
+        {
+          "core:creationDate": "2024-03-22"
+        },
+        {
+          "core:creationDate": "2024-03-22"
+        }
+      ],
+      "uro:WallSurface": [
+        {
+          "core:creationDate": "2024-03-22"
+        },
+        {
+          "core:creationDate": "2024-03-22"
+        },
+        {
+          "core:creationDate": "2024-03-22"
+        },
+        {
+          "core:creationDate": "2024-03-22"
+        },
+        {
+          "core:creationDate": "2024-03-22"
+        },
+        {
+          "core:creationDate": "2024-03-22"
+        },
+        {
+          "core:creationDate": "2024-03-22"
+        },
+        {
+          "core:creationDate": "2024-03-22"
+        },
+        {
+          "core:creationDate": "2024-03-22"
+        }
+      ],
+      "uro:class": "護岸",
+      "uro:class_code": "08",
+      "uro:function": "高水護岸",
+      "uro:function_code": "0801"
+    },
+    "core:creationDate": "2024-03-22",
+    "uro:geometrySrcDescLod1": "未作成",
+    "uro:lodType": "構造物の形状を、主要な部分の外形を構成する特徴点から構成する面を境界面とする立体として表現する。",
+    "__key_order": [
+      "meshcode",
+      "city_code",
+      "city_name",
+      "feature_type",
+      "gml_id",
+      "attributes",
+      "core:creationDate",
+      "uro:geometrySrcDescLod1",
+      "uro:lodType"
+    ]
+  },
+  "cons_c6a7e394-8768-4c78-8c09-7fa2593e6332": {
+    "meshcode": "49303414",
+    "city_code": "43206",
+    "city_name": "熊本県玉名市",
+    "feature_type": "uro:OtherConstruction",
+    "gml_id": "cons_c6a7e394-8768-4c78-8c09-7fa2593e6332",
+    "attributes": {
+      "meshcode": "49303414",
+      "feature_type": "uro:OtherConstruction",
+      "gml:id": "cons_c6a7e394-8768-4c78-8c09-7fa2593e6332",
+      "core:creationDate": "2024-03-22",
+      "uro:DataQualityAttribute": [
+        {
+          "uro:geometrySrcDescLod1": "未作成",
+          "uro:geometrySrcDescLod1_code": "999",
+          "uro:geometrySrcDescLod3": "公共測量成果又は基本測量成果",
+          "uro:geometrySrcDescLod3_code": "000",
+          "uro:thematicSrcDesc": "公共測量成果又は基本測量成果",
+          "uro:thematicSrcDesc_code": "000",
+          "uro:appearanceSrcDescLod3": [
+            "車載写真レーザ測量システムにより撮影した写真",
+            "手持ちカメラにより撮影した写真"
+          ],
+          "uro:appearanceSrcDescLod3_code": [
+            "3",
+            "4"
+          ],
+          "uro:lodType": "構造物の形状を、主要な部分の外形を構成する特徴点から構成する面を境界面とする立体として表現する。",
+          "uro:lodType_code": "3.0",
+          "uro:PublicSurveyDataQualityAttribute": [
+            {
+              "uro:srcScaleLod3": "地図情報レベル500",
+              "uro:srcScaleLod3_code": "3",
+              "uro:publicSurveySrcDescLod3": "LidarSLAM計測の測量成果",
+              "uro:publicSurveySrcDescLod3_code": "018"
+            }
+          ]
+        }
+      ],
+      "uro:GroundSurface": [
+        {
+          "core:creationDate": "2024-03-22"
+        }
+      ],
+      "uro:RoofSurface": [
+        {
+          "core:creationDate": "2024-03-22"
+        },
+        {
+          "core:creationDate": "2024-03-22"
+        },
+        {
+          "core:creationDate": "2024-03-22"
+        },
+        {
+          "core:creationDate": "2024-03-22"
+        },
+        {
+          "core:creationDate": "2024-03-22"
+        }
+      ],
+      "uro:WallSurface": [
+        {
+          "core:creationDate": "2024-03-22"
+        },
+        {
+          "core:creationDate": "2024-03-22"
+        },
+        {
+          "core:creationDate": "2024-03-22"
+        },
+        {
+          "core:creationDate": "2024-03-22"
+        },
+        {
+          "core:creationDate": "2024-03-22"
+        },
+        {
+          "core:creationDate": "2024-03-22"
+        },
+        {
+          "core:creationDate": "2024-03-22"
+        },
+        {
+          "core:creationDate": "2024-03-22"
+        },
+        {
+          "core:creationDate": "2024-03-22"
+        },
+        {
+          "core:creationDate": "2024-03-22"
+        },
+        {
+          "core:creationDate": "2024-03-22"
+        },
+        {
+          "core:creationDate": "2024-03-22"
+        },
+        {
+          "core:creationDate": "2024-03-22"
+        },
+        {
+          "core:creationDate": "2024-03-22"
+        },
+        {
+          "core:creationDate": "2024-03-22"
+        },
+        {
+          "core:creationDate": "2024-03-22"
+        },
+        {
+          "core:creationDate": "2024-03-22"
+        },
+        {
+          "core:creationDate": "2024-03-22"
+        },
+        {
+          "core:creationDate": "2024-03-22"
+        },
+        {
+          "core:creationDate": "2024-03-22"
+        },
+        {
+          "core:creationDate": "2024-03-22"
+        },
+        {
+          "core:creationDate": "2024-03-22"
+        },
+        {
+          "core:creationDate": "2024-03-22"
+        },
+        {
+          "core:creationDate": "2024-03-22"
+        },
+        {
+          "core:creationDate": "2024-03-22"
+        },
+        {
+          "core:creationDate": "2024-03-22"
+        },
+        {
+          "core:creationDate": "2024-03-22"
+        },
+        {
+          "core:creationDate": "2024-03-22"
+        },
+        {
+          "core:creationDate": "2024-03-22"
+        },
+        {
+          "core:creationDate": "2024-03-22"
+        },
+        {
+          "core:creationDate": "2024-03-22"
+        },
+        {
+          "core:creationDate": "2024-03-22"
+        },
+        {
+          "core:creationDate": "2024-03-22"
+        },
+        {
+          "core:creationDate": "2024-03-22"
+        }
+      ],
+      "uro:class": "護岸",
+      "uro:class_code": "08",
+      "uro:function": "高水護岸",
+      "uro:function_code": "0801"
+    },
+    "core:creationDate": "2024-03-22",
+    "uro:geometrySrcDescLod1": "未作成",
+    "uro:lodType": "構造物の形状を、主要な部分の外形を構成する特徴点から構成する面を境界面とする立体として表現する。",
+    "__key_order": [
+      "meshcode",
+      "city_code",
+      "city_name",
+      "feature_type",
+      "gml_id",
+      "attributes",
+      "core:creationDate",
+      "uro:geometrySrcDescLod1",
+      "uro:lodType"
+    ]
+  },
+  "cons_d6f94ce7-0a51-4d76-b390-0865797e80c5": {
+    "meshcode": "49303414",
+    "city_code": "43206",
+    "city_name": "熊本県玉名市",
+    "feature_type": "uro:OtherConstruction",
+    "gml_id": "cons_d6f94ce7-0a51-4d76-b390-0865797e80c5",
+    "attributes": {
+      "meshcode": "49303414",
+      "feature_type": "uro:OtherConstruction",
+      "gml:id": "cons_d6f94ce7-0a51-4d76-b390-0865797e80c5",
+      "core:creationDate": "2024-03-22",
+      "uro:DataQualityAttribute": [
+        {
+          "uro:geometrySrcDescLod1": "未作成",
+          "uro:geometrySrcDescLod1_code": "999",
+          "uro:geometrySrcDescLod3": "公共測量成果又は基本測量成果",
+          "uro:geometrySrcDescLod3_code": "000",
+          "uro:thematicSrcDesc": "公共測量成果又は基本測量成果",
+          "uro:thematicSrcDesc_code": "000",
+          "uro:appearanceSrcDescLod3": [
+            "車載写真レーザ測量システムにより撮影した写真",
+            "手持ちカメラにより撮影した写真"
+          ],
+          "uro:appearanceSrcDescLod3_code": [
+            "3",
+            "4"
+          ],
+          "uro:lodType": "構造物の形状を、主要な部分の外形を構成する特徴点から構成する面を境界面とする立体として表現する。",
+          "uro:lodType_code": "3.0",
+          "uro:PublicSurveyDataQualityAttribute": [
+            {
+              "uro:srcScaleLod3": "地図情報レベル500",
+              "uro:srcScaleLod3_code": "3",
+              "uro:publicSurveySrcDescLod3": "LidarSLAM計測の測量成果",
+              "uro:publicSurveySrcDescLod3_code": "018"
+            }
+          ]
+        }
+      ],
+      "uro:GroundSurface": [
+        {
+          "core:creationDate": "2024-03-22"
+        }
+      ],
+      "uro:RoofSurface": [
+        {
+          "core:creationDate": "2024-03-22"
+        }
+      ],
+      "uro:WallSurface": [
+        {
+          "core:creationDate": "2024-03-22"
+        },
+        {
+          "core:creationDate": "2024-03-22"
+        },
+        {
+          "core:creationDate": "2024-03-22"
+        },
+        {
+          "core:creationDate": "2024-03-22"
+        },
+        {
+          "core:creationDate": "2024-03-22"
+        },
+        {
+          "core:creationDate": "2024-03-22"
+        },
+        {
+          "core:creationDate": "2024-03-22"
+        },
+        {
+          "core:creationDate": "2024-03-22"
+        },
+        {
+          "core:creationDate": "2024-03-22"
+        },
+        {
+          "core:creationDate": "2024-03-22"
+        },
+        {
+          "core:creationDate": "2024-03-22"
+        }
+      ],
+      "uro:class": "護岸",
+      "uro:class_code": "08",
+      "uro:function": "高水護岸",
+      "uro:function_code": "0801"
+    },
+    "core:creationDate": "2024-03-22",
+    "uro:geometrySrcDescLod1": "未作成",
+    "uro:lodType": "構造物の形状を、主要な部分の外形を構成する特徴点から構成する面を境界面とする立体として表現する。",
+    "__key_order": [
+      "meshcode",
+      "city_code",
+      "city_name",
+      "feature_type",
+      "gml_id",
+      "attributes",
+      "core:creationDate",
+      "uro:geometrySrcDescLod1",
+      "uro:lodType"
+    ]
+  },
+  "cons_e3a88a0f-cc56-492d-93c6-345a8457aa29": {
+    "meshcode": "49303414",
+    "city_code": "43206",
+    "city_name": "熊本県玉名市",
+    "feature_type": "uro:OtherConstruction",
+    "gml_id": "cons_e3a88a0f-cc56-492d-93c6-345a8457aa29",
+    "attributes": {
+      "meshcode": "49303414",
+      "feature_type": "uro:OtherConstruction",
+      "gml:id": "cons_e3a88a0f-cc56-492d-93c6-345a8457aa29",
+      "core:creationDate": "2024-03-22",
+      "uro:DataQualityAttribute": [
+        {
+          "uro:geometrySrcDescLod1": "未作成",
+          "uro:geometrySrcDescLod1_code": "999",
+          "uro:geometrySrcDescLod3": "公共測量成果又は基本測量成果",
+          "uro:geometrySrcDescLod3_code": "000",
+          "uro:thematicSrcDesc": "公共測量成果又は基本測量成果",
+          "uro:thematicSrcDesc_code": "000",
+          "uro:appearanceSrcDescLod3": [
+            "車載写真レーザ測量システムにより撮影した写真",
+            "手持ちカメラにより撮影した写真"
+          ],
+          "uro:appearanceSrcDescLod3_code": [
+            "3",
+            "4"
+          ],
+          "uro:lodType": "構造物の形状を、主要な部分の外形を構成する特徴点から構成する面を境界面とする立体として表現する。",
+          "uro:lodType_code": "3.0",
+          "uro:PublicSurveyDataQualityAttribute": [
+            {
+              "uro:srcScaleLod3": "地図情報レベル500",
+              "uro:srcScaleLod3_code": "3",
+              "uro:publicSurveySrcDescLod3": "LidarSLAM計測の測量成果",
+              "uro:publicSurveySrcDescLod3_code": "018"
+            }
+          ]
+        }
+      ],
+      "uro:GroundSurface": [
+        {
+          "core:creationDate": "2024-03-22"
+        }
+      ],
+      "uro:RoofSurface": [
+        {
+          "core:creationDate": "2024-03-22"
+        }
+      ],
+      "uro:WallSurface": [
+        {
+          "core:creationDate": "2024-03-22"
+        },
+        {
+          "core:creationDate": "2024-03-22"
+        },
+        {
+          "core:creationDate": "2024-03-22"
+        },
+        {
+          "core:creationDate": "2024-03-22"
+        },
+        {
+          "core:creationDate": "2024-03-22"
+        },
+        {
+          "core:creationDate": "2024-03-22"
+        },
+        {
+          "core:creationDate": "2024-03-22"
+        }
+      ],
+      "uro:class": "護岸",
+      "uro:class_code": "08",
+      "uro:function": "高水護岸",
+      "uro:function_code": "0801"
+    },
+    "core:creationDate": "2024-03-22",
+    "uro:geometrySrcDescLod1": "未作成",
+    "uro:lodType": "構造物の形状を、主要な部分の外形を構成する特徴点から構成する面を境界面とする立体として表現する。",
+    "__key_order": [
+      "meshcode",
+      "city_code",
+      "city_name",
+      "feature_type",
+      "gml_id",
+      "attributes",
+      "core:creationDate",
+      "uro:geometrySrcDescLod1",
+      "uro:lodType"
+    ]
+  },
+  "cons_dabf5481-8ecb-4075-aa53-1a3f822b04ef": {
+    "meshcode": "49303414",
+    "city_code": "43206",
+    "city_name": "熊本県玉名市",
+    "feature_type": "uro:OtherConstruction",
+    "gml_id": "cons_dabf5481-8ecb-4075-aa53-1a3f822b04ef",
+    "attributes": {
+      "meshcode": "49303414",
+      "feature_type": "uro:OtherConstruction",
+      "gml:id": "cons_dabf5481-8ecb-4075-aa53-1a3f822b04ef",
+      "core:creationDate": "2024-03-22",
+      "uro:DataQualityAttribute": [
+        {
+          "uro:geometrySrcDescLod1": "未作成",
+          "uro:geometrySrcDescLod1_code": "999",
+          "uro:geometrySrcDescLod3": "公共測量成果又は基本測量成果",
+          "uro:geometrySrcDescLod3_code": "000",
+          "uro:thematicSrcDesc": "公共測量成果又は基本測量成果",
+          "uro:thematicSrcDesc_code": "000",
+          "uro:appearanceSrcDescLod3": [
+            "車載写真レーザ測量システムにより撮影した写真",
+            "手持ちカメラにより撮影した写真"
+          ],
+          "uro:appearanceSrcDescLod3_code": [
+            "3",
+            "4"
+          ],
+          "uro:lodType": "構造物の形状を、主要な部分の外形を構成する特徴点から構成する面を境界面とする立体として表現する。",
+          "uro:lodType_code": "3.0",
+          "uro:PublicSurveyDataQualityAttribute": [
+            {
+              "uro:srcScaleLod3": "地図情報レベル500",
+              "uro:srcScaleLod3_code": "3",
+              "uro:publicSurveySrcDescLod3": "LidarSLAM計測の測量成果",
+              "uro:publicSurveySrcDescLod3_code": "018"
+            }
+          ]
+        }
+      ],
+      "uro:GroundSurface": [
+        {
+          "core:creationDate": "2024-03-22"
+        }
+      ],
+      "uro:RoofSurface": [
+        {
+          "core:creationDate": "2024-03-22"
+        }
+      ],
+      "uro:WallSurface": [
+        {
+          "core:creationDate": "2024-03-22"
+        },
+        {
+          "core:creationDate": "2024-03-22"
+        },
+        {
+          "core:creationDate": "2024-03-22"
+        },
+        {
+          "core:creationDate": "2024-03-22"
+        },
+        {
+          "core:creationDate": "2024-03-22"
+        }
+      ],
+      "uro:class": "護岸",
+      "uro:class_code": "08",
+      "uro:function": "高水護岸",
+      "uro:function_code": "0801"
+    },
+    "core:creationDate": "2024-03-22",
+    "uro:geometrySrcDescLod1": "未作成",
+    "uro:lodType": "構造物の形状を、主要な部分の外形を構成する特徴点から構成する面を境界面とする立体として表現する。",
+    "__key_order": [
+      "meshcode",
+      "city_code",
+      "city_name",
+      "feature_type",
+      "gml_id",
+      "attributes",
+      "core:creationDate",
+      "uro:geometrySrcDescLod1",
+      "uro:lodType"
+    ]
+  }
+}

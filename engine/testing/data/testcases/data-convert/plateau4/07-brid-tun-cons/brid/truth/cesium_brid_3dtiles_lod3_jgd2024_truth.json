@@ -1,0 +1,167 @@
+{
+  "brid_4f6e2097-d3f0-4859-abaf-c148247ef830": {
+    "meshcode": "49303414",
+    "feature_type": "brid:Bridge",
+    "city_code": "43206",
+    "city_name": "熊本県玉名市",
+    "gml_id": "brid_4f6e2097-d3f0-4859-abaf-c148247ef830",
+    "attributes": {
+      "meshcode": "49303414",
+      "feature_type": "brid:Bridge",
+      "gml:id": "brid_4f6e2097-d3f0-4859-abaf-c148247ef830",
+      "core:creationDate": "2024-03-22",
+      "brid:class": "桁橋",
+      "brid:class_code": "01",
+      "brid:function": "道路橋",
+      "brid:function_code": "01",
+      "uro:DataQualityAttribute": [
+        {
+          "uro:geometrySrcDescLod1": "未作成",
+          "uro:geometrySrcDescLod1_code": "999",
+          "uro:geometrySrcDescLod3": "公共測量成果又は基本測量成果",
+          "uro:geometrySrcDescLod3_code": "000",
+          "uro:thematicSrcDesc": "公共測量成果又は基本測量成果",
+          "uro:thematicSrcDesc_code": "000",
+          "uro:appearanceSrcDescLod3": [
+            "車載写真レーザ測量システムにより撮影した写真",
+            "手持ちカメラにより撮影した写真"
+          ],
+          "uro:appearanceSrcDescLod3_code": [
+            "3",
+            "4"
+          ],
+          "uro:PublicSurveyDataQualityAttribute": [
+            {
+              "uro:srcScaleLod3": "地図情報レベル500",
+              "uro:srcScaleLod3_code": "3",
+              "uro:publicSurveySrcDescLod3": "LidarSLAM計測の測量成果",
+              "uro:publicSurveySrcDescLod3_code": "018"
+            }
+          ]
+        }
+      ]
+    },
+    "core:creationDate": "2024-03-22",
+    "brid:class": "桁橋",
+    "brid:function": "道路橋",
+    "uro:geometrySrcDescLod1": "未作成",
+    "__key_order": [
+      "meshcode",
+      "feature_type",
+      "city_code",
+      "city_name",
+      "gml_id",
+      "attributes",
+      "core:creationDate",
+      "brid:class",
+      "brid:function",
+      "uro:geometrySrcDescLod1"
+    ]
+  },
+  "brid_7d485fee-1019-4628-b58f-62b1557f7625": {
+    "meshcode": "49303414",
+    "feature_type": "brid:Bridge",
+    "city_code": "43206",
+    "city_name": "熊本県玉名市",
+    "gml_id": "brid_7d485fee-1019-4628-b58f-62b1557f7625",
+    "attributes": {
+      "meshcode": "49303414",
+      "feature_type": "brid:Bridge",
+      "gml:id": "brid_7d485fee-1019-4628-b58f-62b1557f7625",
+      "core:creationDate": "2024-03-22",
+      "brid:class": "桁橋",
+      "brid:class_code": "01",
+      "brid:function": "ペデストリアンデッキ",
+      "brid:function_code": "08",
+      "uro:DataQualityAttribute": [
+        {
+          "uro:geometrySrcDescLod1": "未作成",
+          "uro:geometrySrcDescLod1_code": "999",
+          "uro:geometrySrcDescLod3": "公共測量成果又は基本測量成果",
+          "uro:geometrySrcDescLod3_code": "000",
+          "uro:thematicSrcDesc": "公共測量成果又は基本測量成果",
+          "uro:thematicSrcDesc_code": "000",
+          "uro:appearanceSrcDescLod3": "疑似テクスチャ",
+          "uro:appearanceSrcDescLod3_code": "5",
+          "uro:PublicSurveyDataQualityAttribute": [
+            {
+              "uro:srcScaleLod3": "地図情報レベル500",
+              "uro:srcScaleLod3_code": "3",
+              "uro:publicSurveySrcDescLod3": "LidarSLAM計測の測量成果",
+              "uro:publicSurveySrcDescLod3_code": "018"
+            }
+          ]
+        }
+      ]
+    },
+    "core:creationDate": "2024-03-22",
+    "brid:class": "桁橋",
+    "brid:function": "ペデストリアンデッキ",
+    "uro:geometrySrcDescLod1": "未作成",
+    "__key_order": [
+      "meshcode",
+      "feature_type",
+      "city_code",
+      "city_name",
+      "gml_id",
+      "attributes",
+      "core:creationDate",
+      "brid:class",
+      "brid:function",
+      "uro:geometrySrcDescLod1"
+    ]
+  },
+  "brid_e730d42d-cea7-4610-b3bb-5c6b9caa8d87": {
+    "meshcode": "49303414",
+    "feature_type": "brid:Bridge",
+    "city_code": "43206",
+    "city_name": "熊本県玉名市",
+    "gml_id": "brid_e730d42d-cea7-4610-b3bb-5c6b9caa8d87",
+    "attributes": {
+      "meshcode": "49303414",
+      "feature_type": "brid:Bridge",
+      "gml:id": "brid_e730d42d-cea7-4610-b3bb-5c6b9caa8d87",
+      "core:creationDate": "2024-03-22",
+      "brid:class": "桁橋",
+      "brid:class_code": "01",
+      "brid:function": "ペデストリアンデッキ",
+      "brid:function_code": "08",
+      "uro:DataQualityAttribute": [
+        {
+          "uro:geometrySrcDescLod1": "未作成",
+          "uro:geometrySrcDescLod1_code": "999",
+          "uro:geometrySrcDescLod3": "公共測量成果又は基本測量成果",
+          "uro:geometrySrcDescLod3_code": "000",
+          "uro:thematicSrcDesc": "公共測量成果又は基本測量成果",
+          "uro:thematicSrcDesc_code": "000",
+          "uro:appearanceSrcDescLod3": "疑似テクスチャ",
+          "uro:appearanceSrcDescLod3_code": "5",
+          "uro:PublicSurveyDataQualityAttribute": [
+            {
+              "uro:srcScaleLod3": "地図情報レベル500",
+              "uro:srcScaleLod3_code": "3",
+              "uro:publicSurveySrcDescLod3": "LidarSLAM計測の測量成果",
+              "uro:publicSurveySrcDescLod3_code": "018"
+            }
+          ]
+        }
+      ]
+    },
+    "core:creationDate": "2024-03-22",
+    "brid:class": "桁橋",
+    "brid:function": "ペデストリアンデッキ",
+    "uro:geometrySrcDescLod1": "未作成",
+    "__key_order": [
+      "meshcode",
+      "feature_type",
+      "city_code",
+      "city_name",
+      "gml_id",
+      "attributes",
+      "core:creationDate",
+      "brid:class",
+      "brid:function",
+      "uro:geometrySrcDescLod1"
+    ]
+  }
+}

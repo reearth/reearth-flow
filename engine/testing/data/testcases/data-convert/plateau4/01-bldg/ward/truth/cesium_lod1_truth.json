@@ -19,6 +19,28 @@
     "uro:lod1HeightType": "点群から取得_中央値",
     "_lod": 1,
     "_x": 139.71762387464184,
-    "_y": 35.67878158838007
+    "_y": 35.67878158838007,
+    "__key_order": [
+      "meshcode",
+      "feature_type",
+      "city_code",
+      "city_name",
+      "gml_id",
+      "bldg:class",
+      "bldg:usage",
+      "bldg:measuredHeight",
+      "bldg:storeysAboveGround",
+      "bldg:storeysBelowGround",
+      "bldg:address",
+      "uro:BuildingDetailAttribute_uro:fireproofStructureType",
+      "uro:BuildingDetailAttribute_uro:urbanPlanType",
+      "uro:BuildingDetailAttribute_uro:areaClassificationType",
+      "uro:BuildingDetailAttribute_uro:districtsAndZonesType",
+      "uro:BuildingDetailAttribute_uro:landUseType",
+      "uro:lod1HeightType",
+      "_lod",
+      "_x",
+      "_y"
+    ]
   }
 }
