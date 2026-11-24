@@ -35,6 +35,12 @@ struct SurfaceAppearance {
     texture_idx: Option<u32>,
     uv_exterior: Vec<[f64; 2]>,
     uv_interiors: Vec<Vec<[f64; 2]>>,
+    /// The ids the rings were actually written with, carried rather than
+    /// rebuilt from `surface_id`: a ring claims its id like any other element,
+    /// so a collision changes it and `app:textureCoordinates` has to name what
+    /// was written.
+    ext_ring_id: Option<String>,
+    int_ring_ids: Vec<String>,
 }
 
 /// What writing one object tree did that the caller reports.
@@ -103,6 +109,19 @@ pub(super) const CITYGML_2_NAMESPACES: &[(&str, &str)] = &[
     ("xmlns:xsi", "http://www.w3.org/2001/XMLSchema-instance"),
 ];
 
+/// The CityObjectGroup module, declared on the root only in a document that
+/// writes a group, so documents without one keep exactly the root they always
+/// had.
+pub(super) const GROUP_NAMESPACE: (&str, &str) = (
+    "xmlns:grp",
+    "http://www.opengis.net/citygml/cityobjectgroup/2.0",
+);
+
+const GROUP_SCHEMA_LOCATION: &str = concat!(
+    "http://www.opengis.net/citygml/cityobjectgroup/2.0 ",
+    "http://schemas.opengis.net/citygml/cityobjectgroup/2.0/cityObjectGroup.xsd",
+);
+
 /// Paired namespace and schema URLs, in the `http://` spelling PLATEAU's own
 /// documents use. Lets the `XML Validator` action resolve our output.
 const CITYGML_2_SCHEMA_LOCATION: &str = concat!(
@@ -146,12 +165,17 @@ pub struct CityGmlXmlWriter<'a, W: Write> {
     id_counters: HashMap<String, u64>,
     /// `xs:ID` is unique per document, so every id the writer emits is claimed here.
     used_ids: HashSet<String>,
+    /// City object ids claimed ahead of the write by [`Self::claim_object_ids`],
+    /// each taken by the object it was claimed for when that is written.
+    reserved_ids: HashSet<String>,
     /// Surfaces dropped by the LOD1 exclusive-shell rule, reported by the sink so
     /// the drop is visible rather than silent.
     dropped_lod1_surfaces: usize,
     pending_appearances: Vec<(AppearanceBundle, Vec<SurfaceAppearance>)>,
     /// Maps original texture URI strings to relative output paths.
     uri_remap: HashMap<String, String>,
+    /// Whether the root declares the CityObjectGroup module.
+    declares_groups: bool,
     /// The surfaces the tree being written repeats, and the `gml:id` each is
     /// written under. Planned per tree and empty between trees.
     shared: SharedSurfaces,
@@ -171,9 +195,11 @@ impl<'a, W: Write> CityGmlXmlWriter<'a, W> {
             prefixes: Prefixes::citygml2(),
             id_counters: HashMap::new(),
             used_ids: HashSet::new(),
+            reserved_ids: HashSet::new(),
             dropped_lod1_surfaces: 0,
             pending_appearances: Vec::new(),
             uri_remap: HashMap::new(),
+            declares_groups: false,
             shared: SharedSurfaces::default(),
         }
     }
@@ -218,6 +244,66 @@ impl<'a, W: Write> CityGmlXmlWriter<'a, W> {
         id
     }
 
+    /// Claim the `gml:id` of every city object in `objects`, nested ones
+    /// included, in the order [`Self::write_settled_tree`] writes them, and
+    /// set each object's candidate to it. Returns what each source key was
+    /// claimed under, as [`ClaimedIds`].
+    ///
+    /// An `xlink:href` to an object can then name the id the object is written
+    /// with before the object itself is written, as a group listed ahead of
+    /// its members needs: an id the writer mints, or changes because another
+    /// object took it, is known up front.
+    ///
+    /// Takes settled trees, so the walk follows the children as
+    /// [`settle_tree`] sorted them instead of sorting them the same way again:
+    /// two orders that have to agree are one order.
+    pub(super) fn claim_object_ids(&mut self, objects: &mut [SettledNode]) -> ClaimedIds {
+        fn claim<W: Write>(
+            writer: &mut CityGmlXmlWriter<'_, W>,
+            object: &mut SettledNode,
+            claimed: &mut ClaimedIds,
+        ) {
+            let id = writer.claim_gml_id(object.gml_id.as_deref(), &object.class.id_prefix);
+            if let Some(key) = &object.key {
+                claimed.claim(key, &id);
+            }
+            writer.reserved_ids.insert(id.clone());
+            object.gml_id = Some(id);
+            for child in &mut object.children {
+                claim(writer, &mut child.object, claimed);
+            }
+        }
+        let mut claimed = ClaimedIds::default();
+        for object in objects {
+            claim(self, object, &mut claimed);
+        }
+        claimed
+    }
+
+    /// The schema [`Self::set_schema`] bound, or the bare CityGML 2.0 core
+    /// when nothing bound one.
+    fn schema_set(&self) -> Result<&'a SchemaSet, SinkError> {
+        match self.schema {
+            Some(schema) => Ok(schema),
+            None => SchemaSet::core().map_err(|e| {
+                SinkError::CityGmlWriter(format!("the CityGML 2.0 schemas failed to load: {e}"))
+            }),
+        }
+    }
+
+    /// Keep `target`, a `gml:id` a link names that no written object has,
+    /// off every id the writer claims, so the link never names an element it
+    /// did not mean. Call before [`Self::claim_object_ids`].
+    pub fn reserve_link_target(&mut self, target: &str) {
+        self.used_ids.insert(target.to_owned());
+    }
+
+    /// Declare the CityObjectGroup module on the root, for a document that
+    /// writes a group. Call before [`Self::write_header`].
+    pub fn declare_groups(&mut self) {
+        self.declares_groups = true;
+    }
+
     /// Declares every ADE prefix `set_schema` bound, the same table classes
     /// are written with. `ade_locations` pairs each ADE namespace with the
     /// location the output declares for it.
@@ -234,10 +320,17 @@ impl<'a, W: Write> CityGmlXmlWriter<'a, W> {
         for (prefix, uri) in CITYGML_2_NAMESPACES {
             city_model.push_attribute((*prefix, *uri));
         }
+        if self.declares_groups {
+            city_model.push_attribute(GROUP_NAMESPACE);
+        }
         for (prefix, uri) in self.prefixes.ade() {
             city_model.push_attribute((format!("xmlns:{prefix}").as_str(), uri));
         }
         let mut schema_location = CITYGML_2_SCHEMA_LOCATION.to_string();
+        if self.declares_groups {
+            schema_location.push(' ');
+            schema_location.push_str(GROUP_SCHEMA_LOCATION);
+        }
         for (namespace, location) in ade_locations {
             schema_location.push_str(&format!(" {namespace} {location}"));
         }
@@ -318,25 +411,31 @@ impl<'a, W: Write> CityGmlXmlWriter<'a, W> {
         object: ObjectNode,
         appearances: &[Option<&AppearanceBundle>],
     ) -> Result<WriteOutcome, SinkError> {
-        let schema = match self.schema {
-            Some(schema) => schema,
-            None => SchemaSet::core().map_err(|e| {
-                SinkError::CityGmlWriter(format!("the CityGML 2.0 schemas failed to load: {e}"))
-            })?,
-        };
+        let (settled, outcome) = settle_tree(object, self.schema_set()?, &self.prefixes)?;
+        self.write_settled_tree(settled, outcome, appearances)
+    }
 
+    /// Write a tree [`settle_tree`] has already fixed as one
+    /// `core:cityObjectMember`, carrying that call's `outcome` on.
+    ///
+    /// Geometry is settled for the whole tree before anything is written, so
+    /// the shared-geometry plan sees exactly the surfaces that reach the
+    /// document: one dropped by the LOD1 shell rule must not become the target
+    /// of an `xlink:href` nothing resolves. The document settles ahead of its
+    /// header for the same reason, and folds the envelope, the `srsName` and
+    /// the staged images over what these calls write.
+    pub(super) fn write_settled_tree(
+        &mut self,
+        settled: SettledNode,
+        outcome: WriteOutcome,
+        appearances: &[Option<&AppearanceBundle>],
+    ) -> Result<WriteOutcome, SinkError> {
         let mut tree = TreeWrite {
-            schema,
+            schema: self.schema_set()?,
             appearances,
             surfaces: Vec::new(),
-            outcome: WriteOutcome::default(),
+            outcome,
         };
-
-        // Geometry is settled for the whole tree before anything is written,
-        // so the shared-geometry plan sees exactly the surfaces that reach the
-        // document: one dropped by the LOD1 shell rule must not become the
-        // target of an `xlink:href` nothing resolves.
-        let settled = self.settle_node(object, &mut tree)?;
         self.dropped_lod1_surfaces += tree.outcome.lod1_surfaces_dropped.values().sum::<usize>();
 
         // A repeated surface is written in full once, so its `gml:id` has to
@@ -378,77 +477,6 @@ impl<'a, W: Write> CityGmlXmlWriter<'a, W> {
         Ok(tree.outcome)
     }
 
-    /// Settle one object's geometry and that of everything nested in it,
-    /// counting what could not be written, so the tree is fixed before the
-    /// shared-geometry plan looks at it.
-    fn settle_node(
-        &self,
-        object: ObjectNode,
-        tree: &mut TreeWrite<'_, '_>,
-    ) -> Result<SettledNode, SinkError> {
-        let ObjectNode {
-            class,
-            gml_id,
-            geometries,
-            properties,
-            children: nested,
-            source,
-            ..
-        } = object;
-
-        // CityGML declares each class's properties as an `xs:sequence`, so
-        // arrival order is not good enough: geometry, attribute properties and
-        // nested objects share one list and are emitted in schema order. The
-        // class model is the same for every entry, so look it up once; the key
-        // is computed once per entry and the sort stays stable. Placement and
-        // containment numbered the other slots against this same model.
-        let model = tree.schema.class_for_element(&class.element);
-
-        let settled = settle_geometry(geometries, &class, model, tree.schema, &self.prefixes)?;
-        if settled.lod1_surfaces_dropped > 0 {
-            *tree
-                .outcome
-                .lod1_surfaces_dropped
-                .entry(source)
-                .or_insert(0) += settled.lod1_surfaces_dropped;
-        }
-        if settled.not_written > 0 {
-            *tree.outcome.geometry_not_written.entry(source).or_insert(0) += settled.not_written;
-        }
-        if settled.tin_appearance_dropped > 0 {
-            *tree
-                .outcome
-                .tin_appearance_dropped
-                .entry(source)
-                .or_insert(0) += settled.tin_appearance_dropped;
-        }
-
-        let mut children: Vec<SettledChild> = nested
-            .into_iter()
-            .map(|nested| {
-                Ok(SettledChild {
-                    slot: nested.slot,
-                    property: nested.property,
-                    object: self.settle_node(nested.object, tree)?,
-                })
-            })
-            .collect::<Result<_, SinkError>>()?;
-        // Sorted here rather than only at the point of writing, so the
-        // shared-geometry plan meets siblings in the order the document shows
-        // them: of two occurrences equally well placed, the first is the one
-        // written in full.
-        children.sort_by_key(|child| child.slot);
-
-        Ok(SettledNode {
-            class,
-            gml_id,
-            entries: settled.entries,
-            properties,
-            children,
-            source,
-        })
-    }
-
     /// Write one city object element and everything nested in it. `depth` is
     /// how far the object is nested, which decides where a repeated surface is
     /// written in full.
@@ -460,6 +488,7 @@ impl<'a, W: Write> CityGmlXmlWriter<'a, W> {
     ) -> Result<(), SinkError> {
         let SettledNode {
             class,
+            key: _,
             gml_id,
             entries: merged,
             properties,
@@ -469,7 +498,10 @@ impl<'a, W: Write> CityGmlXmlWriter<'a, W> {
 
         let element_name = class.name();
         let mut city_obj_elem = BytesStart::new(element_name.as_str());
-        let obj_id = self.claim_gml_id(gml_id.as_deref(), &class.id_prefix);
+        let obj_id = match gml_id {
+            Some(id) if self.reserved_ids.remove(&id) => id,
+            other => self.claim_gml_id(other.as_deref(), &class.id_prefix),
+        };
         city_obj_elem.push_attribute(("gml:id", obj_id.as_str()));
         self.writer
             .write_event(Event::Start(city_obj_elem))
@@ -903,9 +935,15 @@ impl<'a, W: Write> CityGmlXmlWriter<'a, W> {
             .write_event(Event::Start(polygon))
             .map_err(|e| SinkError::CityGmlWriter(e.to_string()))?;
 
-        // Exterior ring — gets a gml:id when texture is present
+        // Exterior ring — gets a gml:id when texture is present. Claimed, not
+        // just formatted: `reserve_link_target` keeps a dangling link's target
+        // off the ids the writer hands out, and a ring is one of those ids.
+        // Without this a ring could take a reserved target, or an id an object
+        // already holds, and the link would name the ring instead.
         let ext_ring_id = if surface.texture_idx.is_some() {
-            poly_id.as_ref().map(|id| format!("{id}_e"))
+            poly_id
+                .as_ref()
+                .map(|id| self.claim_gml_id(Some(&format!("{id}_e")), "ring"))
         } else {
             None
         };
@@ -918,12 +956,18 @@ impl<'a, W: Write> CityGmlXmlWriter<'a, W> {
             .map_err(|e| SinkError::CityGmlWriter(e.to_string()))?;
 
         // Interior rings
+        let mut int_ring_ids: Vec<String> = Vec::new();
         for (n, interior) in surface.interiors.iter().enumerate() {
             let int_ring_id = if surface.texture_idx.is_some() {
-                poly_id.as_ref().map(|id| format!("{id}_i{n}"))
+                poly_id
+                    .as_ref()
+                    .map(|id| self.claim_gml_id(Some(&format!("{id}_i{n}")), "ring"))
             } else {
                 None
             };
+            if let Some(id) = &int_ring_id {
+                int_ring_ids.push(id.clone());
+            }
             self.writer
                 .write_event(Event::Start(BytesStart::new("gml:interior")))
                 .map_err(|e| SinkError::CityGmlWriter(e.to_string()))?;
@@ -950,6 +994,8 @@ impl<'a, W: Write> CityGmlXmlWriter<'a, W> {
                 texture_idx: surface.texture_idx,
                 uv_exterior: surface.uv_exterior.clone(),
                 uv_interiors: surface.uv_interiors.clone(),
+                ext_ring_id,
+                int_ring_ids,
             });
         }
 
@@ -1144,25 +1190,32 @@ impl<'a, W: Write> CityGmlXmlWriter<'a, W> {
                 .write_event(Event::Start(BytesStart::new("app:TexCoordList")))
                 .map_err(|e| SinkError::CityGmlWriter(e.to_string()))?;
 
-            // Exterior ring UV
-            let ext_ring_id = format!("#{}_e", sa.surface_id);
-            let mut tex_coords = BytesStart::new("app:textureCoordinates");
-            tex_coords.push_attribute(("ring", ext_ring_id.as_str()));
-            self.writer
-                .write_event(Event::Start(tex_coords))
-                .map_err(|e| SinkError::CityGmlWriter(e.to_string()))?;
-            self.writer
-                .write_event(Event::Text(BytesText::new(&format_uv_coords(
-                    &sa.uv_exterior,
-                ))))
-                .map_err(|e| SinkError::CityGmlWriter(e.to_string()))?;
-            self.writer
-                .write_event(Event::End(BytesEnd::new("app:textureCoordinates")))
-                .map_err(|e| SinkError::CityGmlWriter(e.to_string()))?;
+            // Exterior ring UV, named by the id the ring was written with.
+            if let Some(ring) = &sa.ext_ring_id {
+                let ext_ring_id = format!("#{ring}");
+                let mut tex_coords = BytesStart::new("app:textureCoordinates");
+                tex_coords.push_attribute(("ring", ext_ring_id.as_str()));
+                self.writer
+                    .write_event(Event::Start(tex_coords))
+                    .map_err(|e| SinkError::CityGmlWriter(e.to_string()))?;
+                self.writer
+                    .write_event(Event::Text(BytesText::new(&format_uv_coords(
+                        &sa.uv_exterior,
+                    ))))
+                    .map_err(|e| SinkError::CityGmlWriter(e.to_string()))?;
+                self.writer
+                    .write_event(Event::End(BytesEnd::new("app:textureCoordinates")))
+                    .map_err(|e| SinkError::CityGmlWriter(e.to_string()))?;
+            }
 
-            // Interior rings UV
+            // Interior rings UV. A UV list with no ring written for it names
+            // nothing, so it is left out rather than pointed at a ring that is
+            // not in the file.
             for (n, uv_int) in sa.uv_interiors.iter().enumerate() {
-                let int_ring_id = format!("#{}_i{n}", sa.surface_id);
+                let Some(ring) = sa.int_ring_ids.get(n) else {
+                    continue;
+                };
+                let int_ring_id = format!("#{ring}");
                 let mut tex_coords = BytesStart::new("app:textureCoordinates");
                 tex_coords.push_attribute(("ring", int_ring_id.as_str()));
                 self.writer
@@ -1286,27 +1339,163 @@ fn family_property_name(entry: &GeometryEntry) -> String {
     format!("lod{}{}", entry.lod, family)
 }
 
+/// Settle `object`'s geometry and that of everything nested in it, counting
+/// what could not be written: the tree exactly as it will be written.
+///
+/// Free-standing, and not a [`CityGmlXmlWriter`] method, because the document
+/// has to settle every tree before it can build a writer: the writer is
+/// constructed with the `srsName`, and that is folded over the settled
+/// geometry. Settling first is also what lets the envelope, the CRS and the
+/// staged images answer for the geometry that reaches the file rather than
+/// for everything the converter offered.
+pub(super) fn settle_tree(
+    object: ObjectNode,
+    schema: &SchemaSet,
+    prefixes: &Prefixes,
+) -> Result<(SettledNode, WriteOutcome), SinkError> {
+    let mut outcome = WriteOutcome::default();
+    let settled = settle_node(object, schema, prefixes, &mut outcome)?;
+    Ok((settled, outcome))
+}
+
+fn settle_node(
+    object: ObjectNode,
+    schema: &SchemaSet,
+    prefixes: &Prefixes,
+    outcome: &mut WriteOutcome,
+) -> Result<SettledNode, SinkError> {
+    let ObjectNode {
+        class,
+        key,
+        gml_id,
+        geometries,
+        properties,
+        children: nested,
+        source,
+    } = object;
+
+    // CityGML declares each class's properties as an `xs:sequence`, so
+    // arrival order is not good enough: geometry, attribute properties and
+    // nested objects share one list and are emitted in schema order. The
+    // class model is the same for every entry, so look it up once; the key
+    // is computed once per entry and the sort stays stable. Placement and
+    // containment numbered the other slots against this same model.
+    let model = schema.class_for_element(&class.element);
+
+    let settled = settle_geometry(geometries, &class, model, schema, prefixes)?;
+    if settled.lod1_surfaces_dropped > 0 {
+        *outcome.lod1_surfaces_dropped.entry(source).or_insert(0) += settled.lod1_surfaces_dropped;
+    }
+    if settled.not_written > 0 {
+        *outcome.geometry_not_written.entry(source).or_insert(0) += settled.not_written;
+    }
+    if settled.tin_appearance_dropped > 0 {
+        *outcome.tin_appearance_dropped.entry(source).or_insert(0) +=
+            settled.tin_appearance_dropped;
+    }
+
+    let mut children: Vec<SettledChild> = nested
+        .into_iter()
+        .map(|nested| {
+            Ok(SettledChild {
+                slot: nested.slot,
+                property: nested.property,
+                object: settle_node(nested.object, schema, prefixes, outcome)?,
+            })
+        })
+        .collect::<Result<_, SinkError>>()?;
+    // Sorted here rather than only at the point of writing, so the
+    // shared-geometry plan meets siblings in the order the document shows
+    // them: of two occurrences equally well placed, the first is the one
+    // written in full. Everything that walks a settled tree afterwards, id
+    // claiming included, follows this order rather than deriving it again.
+    children.sort_by_key(|child| child.slot);
+
+    Ok(SettledNode {
+        class,
+        key,
+        gml_id,
+        entries: settled.entries,
+        properties,
+        children,
+        source,
+    })
+}
+
+/// The `gml:id` each source key was written under, from
+/// [`CityGmlXmlWriter::claim_object_ids`].
+///
+/// A key belongs to one object: copies of one object are dropped before the
+/// write, so two objects left holding one key are two different objects that
+/// arrived under the same `gml:id`, as two source documents joined into one
+/// output document can. Neither of them owns the key, so the key resolves to
+/// nothing rather than to whichever was claimed first: a link that cannot say
+/// which object it means is kept as it was written, and reported, which is
+/// what a link to an object the document does not write already does.
+#[derive(Debug, Default)]
+pub(super) struct ClaimedIds {
+    by_key: HashMap<String, String>,
+    ambiguous: HashSet<String>,
+}
+
+/// What a link's `gml:id` names among the objects the document writes.
+#[derive(Debug, PartialEq, Eq)]
+pub(super) enum LinkTarget<'a> {
+    /// One written object, which is written with this `gml:id`.
+    Written(&'a str),
+    /// No written object.
+    NotWritten,
+    /// More than one written object, so which is meant cannot be told.
+    Ambiguous,
+}
+
+impl ClaimedIds {
+    /// Record that the object keyed `key` is written with `id`.
+    fn claim(&mut self, key: &str, id: &str) {
+        if self.by_key.contains_key(key) {
+            self.ambiguous.insert(key.to_owned());
+            return;
+        }
+        self.by_key.insert(key.to_owned(), id.to_owned());
+    }
+
+    /// What `key` names among the written objects.
+    pub(super) fn target(&self, key: &str) -> LinkTarget<'_> {
+        if self.ambiguous.contains(key) {
+            return LinkTarget::Ambiguous;
+        }
+        match self.by_key.get(key) {
+            Some(id) => LinkTarget::Written(id),
+            None => LinkTarget::NotWritten,
+        }
+    }
+}
+
 /// One object with its geometry settled, and the objects nested in it the
 /// same way: the tree exactly as it will be written.
 ///
 /// Settling the whole tree first is what lets the shared-geometry plan run
 /// over the surfaces that reach the document rather than over the ones the
 /// converter offered.
-struct SettledNode {
-    class: CityClass,
-    gml_id: Option<String>,
+pub(super) struct SettledNode {
+    pub(super) class: CityClass,
+    /// The key the object was grouped and joined by, carried from
+    /// [`ObjectNode::key`]: ids are claimed per source key after settling.
+    pub(super) key: Option<String>,
+    pub(super) gml_id: Option<String>,
     /// Each on a property the class declares, at most one per property.
-    entries: Vec<GeometryEntry>,
-    properties: Vec<Placed>,
-    children: Vec<SettledChild>,
-    source: usize,
+    pub(super) entries: Vec<GeometryEntry>,
+    pub(super) properties: Vec<Placed>,
+    /// In the order they are written, which is by slot.
+    pub(super) children: Vec<SettledChild>,
+    pub(super) source: usize,
 }
 
 /// A settled object and the parent property it is written inside.
-struct SettledChild {
-    slot: usize,
-    property: QName,
-    object: SettledNode,
+pub(super) struct SettledChild {
+    pub(super) slot: usize,
+    pub(super) property: QName,
+    pub(super) object: SettledNode,
 }
 
 impl SurfaceTree for SettledNode {
@@ -1650,6 +1839,7 @@ fn absorb(held: &mut GeometryEntry, extra: GeometryEntry) -> Option<GeometryEntr
         ) => triangles.extend(more),
         (_, element) => {
             return Some(GeometryEntry {
+                crs: Default::default(),
                 lod: extra.lod,
                 property: extra.property,
                 owner: extra.owner,
@@ -1928,6 +2118,7 @@ mod tests {
     fn duplicate_lod_property_is_merged_into_one_element() {
         let entries = vec![
             GeometryEntry {
+                crs: Default::default(),
                 lod: 2,
                 property: Some("lod2MultiSurface".to_string()),
                 owner: Default::default(),
@@ -1937,6 +2128,7 @@ mod tests {
                 },
             },
             GeometryEntry {
+                crs: Default::default(),
                 lod: 2,
                 property: Some("lod2MultiSurface".to_string()),
                 owner: Default::default(),
@@ -1969,6 +2161,7 @@ mod tests {
     fn duplicate_curve_property_keeps_every_curve() {
         let entries = vec![
             GeometryEntry {
+                crs: Default::default(),
                 lod: 0,
                 property: Some("lod0RoofEdge".to_string()),
                 owner: Default::default(),
@@ -1978,6 +2171,7 @@ mod tests {
                 },
             },
             GeometryEntry {
+                crs: Default::default(),
                 lod: 0,
                 property: Some("lod0RoofEdge".to_string()),
                 owner: Default::default(),
@@ -2020,12 +2214,14 @@ mod tests {
         };
         let entries = vec![
             GeometryEntry {
+                crs: Default::default(),
                 lod: 2,
                 property: Some("lod2Solid".to_string()),
                 owner: Default::default(),
                 element: GmlElement::Solid(solid(triangle())),
             },
             GeometryEntry {
+                crs: Default::default(),
                 lod: 2,
                 property: Some("lod2Solid".to_string()),
                 owner: Default::default(),
@@ -2070,12 +2266,14 @@ mod tests {
     fn shell_entries(lod: u8) -> Vec<GeometryEntry> {
         vec![
             GeometryEntry {
+                crs: Default::default(),
                 lod,
                 property: Some(format!("lod{lod}Solid")),
                 owner: Default::default(),
                 element: GmlElement::Solid(solid_of(triangle())),
             },
             GeometryEntry {
+                crs: Default::default(),
                 lod,
                 property: Some(format!("lod{lod}MultiSurface")),
                 owner: Default::default(),
@@ -2146,6 +2344,7 @@ mod tests {
 
     fn surfaces_at(lod: u8, property: Option<&str>, exterior: Vec<[f64; 3]>) -> GeometryEntry {
         GeometryEntry {
+            crs: Default::default(),
             lod,
             property: property.map(str::to_string),
             owner: Default::default(),
@@ -2158,6 +2357,7 @@ mod tests {
 
     fn solid_at(lod: u8, property: Option<&str>, exterior: Vec<[f64; 3]>) -> GeometryEntry {
         GeometryEntry {
+            crs: Default::default(),
             lod,
             property: property.map(str::to_string),
             owner: Default::default(),
@@ -2464,6 +2664,7 @@ mod tests {
     fn write_building(surfaces: Vec<GmlSurface>, appearance: Option<&AppearanceBundle>) -> String {
         write_entry(
             GeometryEntry {
+                crs: Default::default(),
                 lod: 2,
                 property: None,
                 owner: Default::default(),
@@ -2530,6 +2731,69 @@ mod tests {
             r#"</app:appearanceMember>"#,
         );
         assert_eq!(xml, expected);
+    }
+
+    /// `reserve_link_target` keeps the id a dangling link names off everything
+    /// the writer hands out, and a ring is one of those ids. A ring built as
+    /// `{polygon}_e` sidestepped that, so a link kept as given could end up
+    /// naming an unrelated ring. The texture must then name the ring that was
+    /// actually written, not the one the id was derived from.
+    #[test]
+    fn a_ring_does_not_take_the_id_a_dangling_link_reserved() {
+        let surface = GmlSurface {
+            id: None,
+            exterior: triangle(),
+            interiors: vec![],
+            material_idx: None,
+            texture_idx: Some(0),
+            uv_exterior: vec![[0.0, 0.0], [1.0, 0.0], [0.5, 1.0]],
+            uv_interiors: vec![],
+        };
+        let appearance = AppearanceBundle {
+            theme: None,
+            materials: vec![],
+            textures: vec![GmlTexture {
+                key: "file:///textures/wall.jpg".to_string(),
+                uri: "file:///textures/wall.jpg".to_string(),
+            }],
+        };
+
+        let mut buf = Vec::new();
+        let mut w = CityGmlXmlWriter::new(&mut buf, false, SRS.to_string());
+        // The polygon takes `poly_1`, so its ring would be `poly_1_e`.
+        w.reserve_link_target("poly_1_e");
+        w.write_city_object(
+            &class("bldg:Building"),
+            vec![GeometryEntry {
+                crs: Default::default(),
+                lod: 2,
+                property: None,
+                owner: Default::default(),
+                element: GmlElement::MultiSurface {
+                    id: None,
+                    surfaces: vec![surface],
+                },
+            }],
+            Vec::new(),
+            Some("obj-001"),
+            Some(&appearance),
+        )
+        .unwrap();
+        w.flush_appearances().unwrap();
+        let xml = String::from_utf8(buf).unwrap();
+
+        assert!(
+            !xml.contains(r#"gml:id="poly_1_e""#),
+            "the ring took the id a dangling link reserved: {xml}"
+        );
+        assert!(
+            xml.contains(r#"<gml:LinearRing gml:id="ring_1">"#),
+            "the ring did not fall back to a minted id: {xml}"
+        );
+        assert!(
+            xml.contains(r##"<app:textureCoordinates ring="#ring_1">"##),
+            "the texture does not name the ring that was written: {xml}"
+        );
     }
 
     // ParameterizedTexture
@@ -2656,6 +2920,7 @@ mod tests {
         w.write_city_object(
             &class("bldg:Building"),
             vec![GeometryEntry {
+                crs: Default::default(),
                 lod: 2,
                 property: None,
                 owner: Default::default(),
@@ -2689,6 +2954,7 @@ mod tests {
     #[test]
     fn test_write_solid_with_a_void_shell() {
         let entry = GeometryEntry {
+            crs: Default::default(),
             lod: 1,
             property: None,
             owner: Default::default(),
@@ -2749,6 +3015,7 @@ mod tests {
     #[test]
     fn test_write_multi_solid_of_two_solids() {
         let entry = GeometryEntry {
+            crs: Default::default(),
             lod: 2,
             property: Some("lod2MultiSolid".to_string()),
             owner: Default::default(),
@@ -2824,6 +3091,7 @@ mod tests {
     #[test]
     fn test_multi_solid_property_name_falls_back_to_the_family() {
         let entry = GeometryEntry {
+            crs: Default::default(),
             lod: 3,
             property: None,
             owner: Default::default(),
@@ -2871,6 +3139,7 @@ mod tests {
 
     fn lone_solid(lod: u8, property: Option<&str>) -> GeometryEntry {
         GeometryEntry {
+            crs: Default::default(),
             lod,
             property: property.map(str::to_string),
             owner: Default::default(),
@@ -3072,6 +3341,7 @@ mod tests {
     /// One MultiSurface entry under the source property `property`.
     fn surface_entry(lod: u8, property: &str, surfaces: Vec<GmlSurface>) -> GeometryEntry {
         GeometryEntry {
+            crs: Default::default(),
             lod,
             property: Some(property.to_owned()),
             owner: Default::default(),
@@ -3160,6 +3430,7 @@ mod tests {
             vec![
                 surface_entry(3, "lod3MultiSurface", vec![plain_surface(triangle())]),
                 GeometryEntry {
+                    crs: Default::default(),
                     lod: 2,
                     property: Some("lod2Solid".to_owned()),
                     owner: Default::default(),
@@ -3460,6 +3731,7 @@ mod tests {
                 "dem:BreaklineRelief",
                 None,
                 vec![GeometryEntry {
+                    crs: Default::default(),
                     lod: 2,
                     property: Some("breaklines".to_owned()),
                     owner: Default::default(),
@@ -3510,6 +3782,7 @@ mod tests {
 
     fn tin_entry(triangles: GmlTriangles) -> GeometryEntry {
         GeometryEntry {
+            crs: Default::default(),
             lod: 1,
             property: Some("tin".to_owned()),
             owner: Default::default(),
@@ -3715,6 +3988,7 @@ mod tests {
             "bldg:Building",
             Some("b1"),
             vec![GeometryEntry {
+                crs: Default::default(),
                 lod: 2,
                 property: Some("lod2Solid".to_owned()),
                 owner: Default::default(),
@@ -3765,6 +4039,7 @@ mod tests {
             "bldg:Building",
             Some("b1"),
             vec![GeometryEntry {
+                crs: Default::default(),
                 lod: 2,
                 property: Some("lod2Solid".to_owned()),
                 owner: Default::default(),
@@ -3786,6 +4061,7 @@ mod tests {
             "bldg:Building",
             Some("b1"),
             vec![GeometryEntry {
+                crs: Default::default(),
                 lod: 2,
                 property: Some("lod2Solid".to_owned()),
                 owner: Default::default(),
@@ -3820,6 +4096,7 @@ mod tests {
             "bldg:Building",
             Some("b1"),
             vec![GeometryEntry {
+                crs: Default::default(),
                 lod: 2,
                 property: Some("lod2Solid".to_owned()),
                 owner: Default::default(),
@@ -3871,6 +4148,7 @@ mod tests {
             "bldg:Building",
             Some("b1"),
             vec![GeometryEntry {
+                crs: Default::default(),
                 lod: 2,
                 property: Some("lod2Solid".to_owned()),
                 owner: Default::default(),
@@ -3986,6 +4264,7 @@ mod tests {
             "bldg:Building",
             Some("b1"),
             vec![GeometryEntry {
+                crs: Default::default(),
                 lod: 2,
                 property: Some("lod2Solid".to_owned()),
                 owner: Default::default(),
@@ -4022,6 +4301,7 @@ mod tests {
 
         fn mesh_at(property: Option<&str>, triangles: Vec<GmlSurface>) -> GeometryEntry {
             GeometryEntry {
+                crs: Default::default(),
                 lod: 1,
                 property: property.map(str::to_owned),
                 owner: Default::default(),

@@ -7,7 +7,7 @@ use std::collections::HashMap;
 
 use reearth_flow_citygml::schema::{QName, SchemaSet};
 
-use super::writer::CITYGML_2_NAMESPACES;
+use super::writer::{CITYGML_2_NAMESPACES, GROUP_NAMESPACE};
 
 const CITYGML_CORE_NS: &str = "http://www.opengis.net/citygml/2.0";
 const GENERICS_NS: &str = "http://www.opengis.net/citygml/generics/2.0";
@@ -50,10 +50,12 @@ pub struct Prefixes {
 }
 
 impl Prefixes {
-    /// The CityGML 2.0 prefixes the writer declares on its root, plus `xAL`.
+    /// The CityGML 2.0 prefixes the writer declares on its root, plus `grp`,
+    /// declared only where a group is written, and `xAL`.
     pub fn citygml2() -> Self {
         let mut entries: Vec<(String, String)> = CITYGML_2_NAMESPACES
             .iter()
+            .chain([&GROUP_NAMESPACE])
             .map(|(attribute, uri)| {
                 let prefix = attribute.strip_prefix("xmlns:").unwrap_or(attribute);
                 (prefix.to_string(), uri.to_string())
