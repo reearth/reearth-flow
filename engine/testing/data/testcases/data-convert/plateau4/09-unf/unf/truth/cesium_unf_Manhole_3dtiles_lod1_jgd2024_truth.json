@@ -6,24 +6,24 @@
     "feature_type": "uro:Manhole",
     "gml_id": "unf_mh_001",
     "attributes": {
-      "meshcode": "53393680",
-      "feature_type": "uro:Manhole",
-      "gml:id": "unf_mh_001",
       "core:creationDate": "2024-03-22",
       "frn:class": "値1",
       "frn:class_code": "1",
-      "uro:occupierType": "上水道",
-      "uro:occupierType_code": "1",
       "uro:DataQualityAttribute": [
         {
           "uro:geometrySrcDesc": "その他",
           "uro:geometrySrcDesc_code": "5",
-          "uro:thematicSrcDesc": "その他",
-          "uro:thematicSrcDesc_code": "5",
           "uro:appearanceSrcDesc": "その他",
-          "uro:appearanceSrcDesc_code": "5"
+          "uro:appearanceSrcDesc_code": "5",
+          "uro:thematicSrcDesc": "その他",
+          "uro:thematicSrcDesc_code": "5"
         }
-      ]
+      ],
+      "uro:occupierType": "上水道",
+      "uro:occupierType_code": "1",
+      "gml:id": "unf_mh_001",
+      "meshcode": "53393680",
+      "feature_type": "uro:Manhole"
     },
     "core:creationDate": "2024-03-22",
     "__key_order": [

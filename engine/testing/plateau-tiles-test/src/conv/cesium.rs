@@ -1,6 +1,6 @@
 use crate::align_cesium::load_tileset;
 use crate::cast_config::{convert_casts, CastConfigValue};
-use crate::compare_attributes::{apply_casts_to_value, make_feature_key, normalize_numbers};
+use crate::compare_attributes::{apply_casts_to_value, make_feature_key};
 use crate::tileset::collect_tile_contents;
 use indexmap::IndexMap;
 use reearth_flow_gltf::{extract_feature_properties, parse_gltf};
@@ -38,7 +38,7 @@ pub fn load_cesium_attr(tileset_dir: &Path) -> Result<IndexMap<String, Value>, S
             .map_err(|e| format!("Failed to extract features from {:?}: {}", glb_path, e))?;
 
         for props in features {
-            let props_value = normalize_numbers(Value::Object(props));
+            let props_value = Value::Object(props);
             let feature_key = make_feature_key(&props_value, dir_name);
 
             if let Some(existing) = ret.get(&feature_key) {
@@ -90,7 +90,7 @@ pub fn write_cesium_json(
     let normalized: serde_json::Map<String, Value> = raw
         .into_iter()
         .map(|(feature_key, props)| {
-            let props = normalize_numbers(apply_casts_to_value(props, "", &casts));
+            let props = apply_casts_to_value(props, "", &casts);
             (feature_key, props)
         })
         .collect();

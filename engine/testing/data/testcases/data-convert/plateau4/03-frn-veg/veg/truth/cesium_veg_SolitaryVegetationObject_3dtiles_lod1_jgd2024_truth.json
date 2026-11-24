@@ -162,7 +162,7 @@
     },
     "core:creationDate": "2024-03-19",
     "veg:class": "高木（樹高3m以上）",
-    "veg:height": 8,
+    "veg:height": 8.0,
     "uro:geometrySrcDescLod1": "公共測量成果又は基本測量成果",
     "__key_order": [
       "meshcode",

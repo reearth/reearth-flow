@@ -248,26 +248,6 @@ pub fn apply_cast(cast: &CastConfig, value: Value) -> Value {
     }
 }
 
-/// Canonicalizes numbers: an integral float becomes an integer (`53.0` -> `53`).
-/// Tiles of one tileset (and FME vs flow) can store the same column as integer
-/// or float; this is the single place where that difference is erased, so the
-/// duplicate-feature check and the later comparison can both stay exact.
-pub fn normalize_numbers(value: Value) -> Value {
-    match value {
-        Value::Number(n) => match n.as_f64() {
-            Some(f) if n.is_f64() && f.fract() == 0.0 && f.abs() < 9.0e15 => Value::from(f as i64),
-            _ => Value::Number(n),
-        },
-        Value::Object(map) => Value::Object(
-            map.into_iter()
-                .map(|(k, v)| (k, normalize_numbers(v)))
-                .collect(),
-        ),
-        Value::Array(arr) => Value::Array(arr.into_iter().map(normalize_numbers).collect()),
-        other => other,
-    }
-}
-
 /// Recursively applies casts to a value tree, producing a normalized form.
 /// Used by generate-truth (FME artifacts → truth JSON) and the convs step
 /// (flow MVT → comparison JSON), so both sides are normalized before comparison.
