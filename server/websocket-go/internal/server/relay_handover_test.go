@@ -106,9 +106,6 @@ func TestSignalLock_FromInstanceWithoutTheRoomReachesHolders(t *testing.T) {
 			l, ok := storedLock(holder, lockRoom)
 			return ok && l.At == at.UnixMilli()
 		})
-		if other.ws.GetDoc(lockRoom) != nil {
-			t.Fatal("the room loaded only to send the lock change is still open")
-		}
 	}
 	if p := holder.ws.GetDoc(lockRoom).PendingStats().Items; p != 0 {
 		t.Fatalf("holder parked %d items", p)

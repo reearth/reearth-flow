@@ -99,9 +99,6 @@ type Relay struct {
 	ctx    context.Context // delivery lifetime, set in Start
 	rooms  map[string]*roomState
 	closed bool
-	// forceEvicted records when ForceEvict dropped each room's stream, so a late
-	// update from before a rollback cannot put the rolled-back state back.
-	forceEvicted map[string]time.Time
 }
 
 type roomState struct {
@@ -162,8 +159,6 @@ func New(opts Options) (*Relay, error) {
 		flusher:  fl,
 		latency:  latency.New(log, "redis"),
 		rooms:    make(map[string]*roomState),
-
-		forceEvicted: make(map[string]time.Time),
 	}, nil
 }
 
@@ -202,9 +197,8 @@ func (r *Relay) Publish(_ context.Context, out cluster.Outbound) error {
 	}
 	rs, ok := r.rooms[out.Room]
 	if !ok || rs.evicting {
-		rolledBack := r.forceEvictedRecently(out.Room)
 		r.mu.Unlock()
-		r.publishLate(out, rolledBack)
+		r.publishLate(out)
 		return nil
 	}
 	ch := rs.writeCh
@@ -231,40 +225,17 @@ func (r *Relay) DroppedWrites() uint64 { return r.droppedWrites.Load() }
 // stopped being active here.
 func (r *Relay) LateWrites() uint64 { return r.lateWrites.Load() }
 
-// forceEvictQuarantine is how long after ForceEvict late updates for the room
-// are refused. Late updates follow their room's teardown within milliseconds.
-const forceEvictQuarantine = 10 * time.Second
-
 // lateWriteTimeout bounds one late XADD.
 const lateWriteTimeout = 2 * time.Second
 
 // writeTimeout bounds one batched XADD.
 const writeTimeout = 2 * time.Second
 
-// forceEvictedRecently reports whether ForceEvict dropped room's stream within
-// forceEvictQuarantine. The caller holds r.mu.
-func (r *Relay) forceEvictedRecently(room string) bool {
-	at, ok := r.forceEvicted[room]
-	if !ok {
-		return false
-	}
-	if time.Since(at) > forceEvictQuarantine {
-		delete(r.forceEvicted, room)
-		return false
-	}
-	return true
-}
-
 // publishLate writes a document update that ygo hands over after deactivating
 // its room here, which other instances holding the room still need. NOMKSTREAM
 // skips it once no instance holds the room, when the update is already persisted.
-func (r *Relay) publishLate(out cluster.Outbound, rolledBack bool) {
+func (r *Relay) publishLate(out cluster.Outbound) {
 	if out.Kind != cluster.KindSync {
-		return
-	}
-	if rolledBack {
-		r.droppedWrites.Add(1)
-		r.log.Info("relay dropped a late update for a rolled-back room", "room", out.Room)
 		return
 	}
 	ctx, cancel := context.WithTimeout(context.Background(), lateWriteTimeout)
@@ -816,9 +787,8 @@ func (r *Relay) evict(room string) {
 }
 
 // ForceEvict is the rollback entry point: stop the room's goroutines and
-// unconditionally delete the stream WITHOUT a GCS flush, under the evicting guard
-// so a concurrent Publish/reconnect cannot revive rolled-back state. Idempotent;
-// safe even if the room is not resident.
+// unconditionally delete the stream WITHOUT a GCS flush. Idempotent; safe even if
+// the room is not resident.
 func (r *Relay) ForceEvict(ctx context.Context, room string) error {
 	r.mu.Lock()
 	if r.closed {
@@ -828,12 +798,6 @@ func (r *Relay) ForceEvict(ctx context.Context, room string) error {
 	rs, ok := r.rooms[room]
 	if ok {
 		rs.evicting = true
-	}
-	r.forceEvicted[room] = time.Now()
-	for k, at := range r.forceEvicted {
-		if time.Since(at) > forceEvictQuarantine {
-			delete(r.forceEvicted, k)
-		}
 	}
 	r.mu.Unlock()
 

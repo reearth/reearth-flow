@@ -201,7 +201,7 @@ func TestFlushStripsTransientMetadata(t *testing.T) {
 	}
 
 	// Read doc_v2 alone (as the Rust reader does) and confirm the flag is gone.
-	v1, ok, _, err := a.loadV2(ctx, room)
+	v1, ok, err := a.loadV2(ctx, room)
 	if err != nil || !ok {
 		t.Fatalf("loadV2 ok=%v err=%v", ok, err)
 	}

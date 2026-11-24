@@ -7,6 +7,7 @@ import (
 	"errors"
 	"fmt"
 	"log/slog"
+	"sort"
 	"sync"
 
 	"cloud.google.com/go/storage"
@@ -308,35 +309,59 @@ func docFromV2(v2 []byte) (*crdt.Doc, error) {
 	return doc, nil
 }
 
-// stateFromV2 decodes a stored doc_v2 payload into a V1 update that keeps any
-// parked items, and reports how many there are. A checkpoint from a copy that
-// missed an edit holds parked items whose edit is in the update log, so callers
-// fold the log on top before requireResolved judges the result.
-func stateFromV2(v2 []byte) (v1 []byte, parked int, err error) {
+// stateFromV2 decodes a stored doc_v2 payload into a V1 update, keeping any
+// parked items (the V1 encode carries them along, as Yjs does).
+func stateFromV2(v2 []byte) ([]byte, error) {
 	doc := crdt.New()
 	if err := crdt.ApplyUpdateV2(doc, v2, nil); err != nil {
-		return nil, 0, err
+		return nil, err
 	}
-	// The V1 encode carries parked items along (ygo encodes them as Yjs does).
-	return crdt.EncodeStateAsUpdateV1(doc, nil), doc.PendingStats().Items, nil
+	return crdt.EncodeStateAsUpdateV1(doc, nil), nil
 }
 
-// requireResolved checks merged, a doc_v2 state that held parked items with the
-// update log folded on top, and returns ErrPartialV2Decode when items are still
-// left unintegrated.
-func requireResolved(merged []byte, parked int) error {
-	if parked == 0 {
-		return nil
-	}
+// pendingIn reports the items in the V1 update state that cannot be integrated
+// yet because an edit they build on is missing.
+func pendingIn(state []byte) (crdt.PendingStats, error) {
 	d := crdt.New()
-	if err := crdt.ApplyUpdateV1(d, merged, nil); err != nil {
-		return err
+	if err := crdt.ApplyUpdateV1(d, state, nil); err != nil {
+		return crdt.PendingStats{}, err
 	}
-	if ps := d.PendingStats(); ps.Items > 0 {
-		return fmt.Errorf("%w: %d items left unintegrated even with the update log, awaiting %d clients; refusing to serve an incomplete document",
-			ErrPartialV2Decode, ps.Items, len(ps.MissingFor))
+	return d.PendingStats(), nil
+}
+
+// foldParked folds the update objects at clocks into state when state holds
+// parked items, and returns the result with what is still parked. The checkpoint
+// claims those objects are already in doc_v2, but a doc_v2 written from a copy
+// that missed one of them is not.
+func (a *Adapter) foldParked(ctx context.Context, room DocID, state []byte, updates map[uint32]string, clocks []uint32) ([]byte, crdt.PendingStats, error) {
+	ps, err := pendingIn(state)
+	if err != nil || ps.Items == 0 || len(clocks) == 0 {
+		return state, ps, err
 	}
-	return nil
+	before := ps.Items
+	parts := [][]byte{state}
+	for _, c := range clocks {
+		b, err := a.store.get(ctx, updates[c])
+		if err != nil {
+			return nil, ps, err
+		}
+		parts = append(parts, b)
+	}
+	out, err := crdt.MergeUpdatesV1(parts...)
+	if err != nil {
+		return nil, ps, err
+	}
+	if ps, err = pendingIn(out); err != nil {
+		return nil, ps, err
+	}
+	a.log.Info("gcs: folded checkpointed update objects into a state with parked items", "room", room, "parked_before", before, "parked_after", ps.Items)
+	return out, ps, nil
+}
+
+// clocksUpTo returns the leading clocks of the ascending slice that are <= max.
+func clocksUpTo(sorted []uint32, max uint32) []uint32 {
+	n := sort.Search(len(sorted), func(i int) bool { return sorted[i] > max })
+	return sorted[:n]
 }
 
 // docFromV1 applies a V1 update to a fresh doc and returns it.
@@ -416,25 +441,24 @@ func (a *Adapter) stripTransient(doc *crdt.Doc) {
 }
 
 // loadV2 reads + brotli-decodes + V2-decodes the doc_v2 snapshot into a V1
-// update, reporting how many parked items it holds (see stateFromV2). Returns
-// (nil, false, 0, nil) when absent.
-func (a *Adapter) loadV2(ctx context.Context, room DocID) ([]byte, bool, int, error) {
+// update. Returns (nil, false, nil) when absent.
+func (a *Adapter) loadV2(ctx context.Context, room DocID) ([]byte, bool, error) {
 	b, err := a.getDual(ctx, func(l Layout) string { return l.DocV2Name(room) })
 	if err == errNotFound {
-		return nil, false, 0, nil
+		return nil, false, nil
 	}
 	if err != nil {
-		return nil, false, 0, err
+		return nil, false, err
 	}
 	v2, err := decompressBrotli(b)
 	if err != nil {
-		return nil, false, 0, err
+		return nil, false, err
 	}
-	v1, parked, err := stateFromV2(v2)
+	v1, err := stateFromV2(v2)
 	if err != nil {
-		return nil, false, 0, err
+		return nil, false, err
 	}
-	return v1, true, parked, nil
+	return v1, true, nil
 }
 
 // getDual reads name(primaryLayout); on a Phase-2 miss it falls back to

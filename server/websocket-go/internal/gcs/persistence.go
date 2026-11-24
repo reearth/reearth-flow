@@ -103,13 +103,11 @@ func (a *Adapter) Load(ctx context.Context, room string) (res persistence.LoadRe
 	// layouts, so a cross-layout v1 fallback is not byte-valid).
 	var base []byte
 	primaryHasV2 := false
-	parked := 0
-	if v1, ok, n, err := a.loadPrimaryV2(ctx, room); err != nil {
+	if v1, ok, err := a.loadPrimaryV2(ctx, room); err != nil {
 		return persistence.LoadResult{}, err
 	} else if ok {
 		base = v1
 		primaryHasV2 = true
-		parked = n
 	} else if b, err := a.store.get(ctx, a.layout.DocStateName(room, oid)); err == nil {
 		base = b
 	} else if err != errNotFound {
@@ -187,11 +185,16 @@ func (a *Adapter) Load(ctx context.Context, room string) (res persistence.LoadRe
 	if err != nil {
 		return persistence.LoadResult{}, err
 	}
-	if err := requireResolved(out, parked); err != nil {
+	out, ps, err := a.foldParked(ctx, room, out, updates, clocksUpTo(clocks, cp))
+	if err != nil {
 		return persistence.LoadResult{}, err
 	}
-	if parked > 0 {
-		a.log.Info("gcs load: the update log completed a doc_v2 that held parked items", "room", room, "parked", parked)
+	// Served anyway: the parked items stay in every later encode, so they are
+	// kept until the edit they wait for arrives, whereas refusing withholds the
+	// whole project.
+	if ps.Items > 0 {
+		a.log.Error("gcs load: serving a document with parked items; an edit they build on is missing from storage",
+			"room", room, "parked", ps.Items, "awaiting_clients", len(ps.MissingFor))
 	}
 	return persistence.LoadResult{Update: out, Version: persistence.Version(head)}, nil
 }
@@ -443,7 +446,7 @@ func (a *Adapter) MaterializeAt(ctx context.Context, room string, v persistence.
 	// mirroring Load — otherwise a legacy-only room materializes empty and a
 	// rollback overwrites its real content with an empty snapshot.
 	if a.fallback != nil {
-		_, hasPrimaryV2, _, err := a.loadPrimaryV2(ctx, room)
+		_, hasPrimaryV2, err := a.loadPrimaryV2(ctx, room)
 		if err != nil {
 			return nil, err
 		}
@@ -470,7 +473,6 @@ func (a *Adapter) MaterializeAt(ctx context.Context, room string, v persistence.
 	}
 
 	var parts [][]byte
-	parked := 0
 	// Include the base snapshot when the checkpoint is at or below target. The
 	// base is folded whenever a doc_v2 (or v1 SUB_DOC) exists, NOT only when
 	// cp>0: a legacy-only/backfilled/flushed room has a real base at checkpoint 0,
@@ -478,11 +480,10 @@ func (a *Adapter) MaterializeAt(ctx context.Context, room string, v persistence.
 	// overwrite real content with an empty snapshot. CRDT merge is idempotent, so
 	// folding the full base plus replayed updates never double-applies.
 	if cp <= target {
-		if v1, ok, n, err := a.loadV2(ctx, room); err != nil {
+		if v1, ok, err := a.loadV2(ctx, room); err != nil {
 			return nil, err
 		} else if ok {
 			parts = append(parts, v1)
-			parked = n
 		} else {
 			if b, err := a.store.get(ctx, a.layout.DocStateName(room, oid)); err == nil {
 				parts = append(parts, b)
@@ -497,7 +498,8 @@ func (a *Adapter) MaterializeAt(ctx context.Context, room string, v persistence.
 	if err != nil {
 		return nil, err
 	}
-	for _, c := range sortedClocks(updates) {
+	clocks := sortedClocks(updates)
+	for _, c := range clocks {
 		if c > target {
 			break
 		}
@@ -517,8 +519,17 @@ func (a *Adapter) MaterializeAt(ctx context.Context, room string, v persistence.
 	if err != nil {
 		return nil, err
 	}
-	if err := requireResolved(merged, parked); err != nil {
+	var checkpointed []uint32
+	if cp <= target {
+		checkpointed = clocksUpTo(clocks, cp)
+	}
+	merged, ps, err := a.foldParked(ctx, room, merged, updates, checkpointed)
+	if err != nil {
 		return nil, err
+	}
+	if ps.Items > 0 {
+		a.log.Warn("gcs materialize: state holds parked items; an edit they build on is missing from storage",
+			"room", room, "version", target, "parked", ps.Items, "awaiting_clients", len(ps.MissingFor))
 	}
 	return merged, nil
 }

@@ -78,7 +78,7 @@ func TestPhase2Backfill(t *testing.T) {
 		t.Fatalf("Backfill: %v", err)
 	}
 	// Prefix doc_v2 reproduces the state without the fallback.
-	v1, ok, _, err := p2.loadPrimaryV2(ctx, room)
+	v1, ok, err := p2.loadPrimaryV2(ctx, room)
 	if err != nil || !ok {
 		t.Fatalf("loadPrimaryV2 ok=%v err=%v", ok, err)
 	}

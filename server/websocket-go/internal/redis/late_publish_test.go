@@ -103,38 +103,3 @@ func TestPublishAfterLastDeactivateLeavesNoStream(t *testing.T) {
 		t.Fatalf("DroppedWrites = %d, want 0: nothing is lost", got)
 	}
 }
-
-// TestPublishAfterForceEvictIsDropped: a late update from before a rollback must
-// not put the rolled-back state back into a stream another instance recreated.
-func TestPublishAfterForceEvictIsDropped(t *testing.T) {
-	_, mr := newTestClient(t)
-	ctx, cancel := context.WithCancel(context.Background())
-	defer cancel()
-	const room = "proj1"
-	sinkB := &fakeSink{}
-	relayA := startedRelay(t, ctx, mr.Addr(), &fakeSink{})
-	relayB := startedRelay(t, ctx, mr.Addr(), sinkB)
-	relayA.RoomActivated(room)
-	relayB.RoomActivated(room)
-
-	if err := relayA.ForceEvict(ctx, room); err != nil {
-		t.Fatalf("ForceEvict: %v", err)
-	}
-	// B writes on, recreating the stream.
-	if err := relayB.Publish(ctx, cluster.Outbound{Room: room, Kind: cluster.KindSync, Data: []byte{8}}); err != nil {
-		t.Fatalf("B.Publish: %v", err)
-	}
-	waitFor(t, 3*time.Second, func() bool { return mr.Exists(streamKey(room)) })
-
-	stale := []byte{7, 7, 7}
-	if err := relayA.Publish(ctx, cluster.Outbound{Room: room, Kind: cluster.KindSync, Data: stale}); err != nil {
-		t.Fatalf("A.Publish: %v", err)
-	}
-	if got := relayA.DroppedWrites(); got != 1 {
-		t.Fatalf("DroppedWrites = %d, want 1", got)
-	}
-	time.Sleep(300 * time.Millisecond)
-	if injected(sinkB, stale) {
-		t.Fatal("a late update from before the rollback reached another instance")
-	}
-}
