@@ -145,7 +145,8 @@ graphs:
           typeAttribute: __dm
           inline: !include ../../../../config/plateau6_dm_flat_attributes.json
 
-      # like plateau4, each full tree in the chain also carries its own meshcode, feature_type and gml:id
+      # like plateau4, the feature's full tree holds its ancestors' full trees (root first) under
+      # "ancestors", and each tree also carries its own meshcode, feature_type and gml:id
       - id: 3d2c4fa7-2f82-4ca1-92a4-e46757fa735c
         name: AttributeChainMapper
         type: action
@@ -178,7 +179,12 @@ graphs:
                 for k in f {
                   entry[k] = f[k];
                 }
-                entry["attributes"] = chain;
+                chain.reverse();
+                own = chain.pop();
+                if len(chain) > 0 {
+                  own["ancestors"] = chain;
+                }
+                entry["attributes"] = own;
                 results.append(entry);
               }
               results
