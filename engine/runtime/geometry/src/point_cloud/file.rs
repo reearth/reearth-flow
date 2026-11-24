@@ -12,16 +12,16 @@ use reearth_flow_storage::storage::Storage;
 use serde::{Deserialize, Serialize};
 
 use super::{Data, PointBuffer, PointCloud};
-use crate::coordinate::CoordinateFrame;
+use crate::coordinate::{CoordinateFrame, EpsgCode};
 use crate::error::{Error, Result};
 
 /// A LAS / LAZ file holding a point cloud's points.
 #[derive(Clone, Serialize, Deserialize)]
 pub(super) struct PointFile {
     uri: Uri,
-    /// Read on first use and shared by clones.
+    /// Read on first successful use and shared by clones.
     #[serde(skip)]
-    header: Arc<OnceLock<std::result::Result<LasHeader, String>>>,
+    header: Arc<OnceLock<LasHeader>>,
 }
 
 /// What a LAS header says about its points, in the file's own axis order.
@@ -30,6 +30,8 @@ pub(super) struct LasHeader {
     pub(super) count: u64,
     pub(super) min: [f64; 3],
     pub(super) max: [f64; 3],
+    /// The CRS the file records, if any.
+    pub(super) crs: Option<EpsgCode>,
 }
 
 impl PointFile {
@@ -60,12 +62,14 @@ impl PointFile {
         )
     }
 
-    /// The file's header, read on first call.
+    /// The file's header, read on the first call that succeeds. A failed read
+    /// is not kept, so the next call reads the file again.
     pub(super) fn header(&self) -> Result<&LasHeader> {
-        self.header
-            .get_or_init(|| read_header(&self.uri))
-            .as_ref()
-            .map_err(Error::point_cloud_read)
+        if let Some(header) = self.header.get() {
+            return Ok(header);
+        }
+        let header = read_header(&self.uri).map_err(Error::point_cloud_read)?;
+        Ok(self.header.get_or_init(|| header))
     }
 }
 
@@ -177,10 +181,12 @@ fn read_header(uri: &Uri) -> std::result::Result<LasHeader, String> {
     let reader = ::las::Reader::new(open(uri)?).map_err(|e| format!("{uri}: {e}"))?;
     let header = reader.header();
     let b = header.bounds();
+    let crs = super::las::las_crs(header).map_err(|e| format!("{uri}: {e}"))?;
     Ok(LasHeader {
         count: header.number_of_points(),
         min: [b.min.x, b.min.y, b.min.z],
         max: [b.max.x, b.max.y, b.max.z],
+        crs,
     })
 }
 
@@ -210,19 +216,24 @@ mod tests {
 
     #[cfg(feature = "new-geometry")]
     #[test]
-    fn counting_an_unreadable_file_fails() {
+    fn counting_retries_an_unreadable_file() {
         use crate::ops::CountVertices;
-        let pc = PointCloud::from_las_file(
-            CoordinateFrame::Euclidean,
-            Uri::from_str("file:///nonexistent/a.las").unwrap(),
-        );
+        use crate::point_cloud::las::tests::{point, write_with};
+
+        let dir = tempfile::tempdir().unwrap();
+        let path = dir.path().join("a.las");
+        let uri = Uri::from_str(&format!("file://{}", path.display())).unwrap();
+        let pc = PointCloud::from_las_file(CoordinateFrame::Euclidean, uri);
         assert!(matches!(pc.count_vertices(), Err(Error::PointCloudRead(_))));
+        let bytes = write_with(3, false, &[point(0)], None).into_inner();
+        std::fs::write(&path, bytes).unwrap();
+        assert_eq!(pc.count_vertices().unwrap(), 1);
     }
 
     #[test]
     fn load_reads_the_points_under_the_translation() {
         use crate::coordinate::EpsgCode;
-        use crate::ops::Translate;
+        use crate::ops::{BoundingBox, Translate};
         use crate::point_cloud::las::tests::{geotiff_crs, point, write_with};
 
         let dir = tempfile::tempdir().unwrap();
@@ -248,6 +259,7 @@ mod tests {
         assert!((z - (p.z + 3.0)).abs() < 1e-9);
 
         let mut wrong = PointCloud::from_las_file(CoordinateFrame::Crs(EpsgCode::new(6676)), uri);
+        assert!(wrong.bounding_box().is_err());
         let err = wrong.load().unwrap_err().to_string();
         assert!(err.contains("EPSG:6677"), "unexpected error: {err}");
         assert!(matches!(wrong.data, Data::File(_)));

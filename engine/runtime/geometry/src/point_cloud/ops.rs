@@ -57,7 +57,8 @@ fn number_or_null(x: f64) -> AttributeValue {
 }
 
 impl BoundingBox for PointCloud {
-    /// A file's extent is read from its header, not its points.
+    /// A file's extent is read from its header, not its points, once the CRS
+    /// it records agrees with the frame.
     fn bounding_box(&self) -> Result<Aabb, UnsupportedOperation> {
         let unbounded = UnsupportedOperation {
             geometry: "PointCloud",
@@ -71,6 +72,10 @@ impl BoundingBox for PointCloud {
         };
         let header = file.header().map_err(|_| UnsupportedOperation {
             geometry: "PointCloud (unreadable file)",
+            ..unbounded
+        })?;
+        super::las::check_crs(header.crs, &self.frame).map_err(|_| UnsupportedOperation {
+            geometry: "PointCloud (file in another CRS)",
             ..unbounded
         })?;
         if header.count == 0 {

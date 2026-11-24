@@ -247,12 +247,22 @@ impl Parser {
     /// opened, its path is resolved against the document, and its frame is
     /// `pcl:pointFileSrsName` or, without one, the document's CRS. Inline
     /// `pcl:points` become an in-memory point cloud in the document's CRS.
+    ///
+    /// TODO: resolve `xlink:href` references. A property referencing a point
+    /// cloud and points referenced from `pcl:points` are reported and skipped.
     fn point_cloud_property(
         &mut self,
         prop: &Arc<RawNode>,
     ) -> Option<(Arc<RawNode>, Option<GeomNode>)> {
         if prop.name.1 != CITYGML_NS_30_ID || local_name(&prop.name.0) != "pointCloud" {
             return None;
+        }
+        if let Some(RawChild::Ref(key)) = prop.children.first() {
+            let mut m = Malformation::new(MalformationKind::PointCloudReference(key.1.clone()));
+            m.file = prop.source_url.as_str().to_string();
+            m.location = prop.name.0.clone();
+            self.malformations.push(m);
+            return Some((Arc::clone(prop), None));
         }
         let pcl = self.ns_registry.get(PCL_NS_30)?;
         let is_pcl =
@@ -264,6 +274,12 @@ impl Parser {
         let location = raw_gml_id(cloud).unwrap_or_else(|| cloud.name.0.clone());
         let before = self.malformations.len();
         let geometry = if let Some(points) = pcl_child("points") {
+            let refs = count_refs(points);
+            if refs > 0 {
+                self.malformations.push(Malformation::new(
+                    MalformationKind::PointCloudPointReferences(refs),
+                ));
+            }
             let positions = gather_coords(points, &mut self.malformations);
             Some(PointCloud::from_positions(self.frame(cloud), positions))
         } else if let Some(point_file) = pcl_child("pointFile") {
@@ -645,6 +661,18 @@ fn gather_coords(node: &RawNode, malformations: &mut Vec<Malformation>) -> Vec<[
     let mut out = Vec::new();
     gather_coords_into(node, &mut out, malformations);
     out
+}
+
+/// How many `xlink:href` references `node` holds at any depth.
+fn count_refs(node: &RawNode) -> usize {
+    node.children
+        .iter()
+        .map(|c| match c {
+            RawChild::Ref(_) => 1,
+            RawChild::Element(e) => count_refs(e),
+            _ => 0,
+        })
+        .sum()
 }
 
 /// Collect every coordinate under `node` into `out`, descending through wrappers

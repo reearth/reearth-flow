@@ -44,7 +44,7 @@ pub(super) fn read_buffer(
     source: Option<Arc<str>>,
 ) -> Result<PointBuffer> {
     let header = reader.header();
-    check_crs(header, frame)?;
+    check_crs(las_crs(header)?, frame)?;
     let format = *header.point_format();
     let t = *header.transforms();
     let swap = swaps_xy(frame)?;
@@ -94,7 +94,7 @@ pub(super) fn read_buffer(
 
 /// The EPSG code of the CRS a LAS header records, from its GeoTIFF keys or
 /// its WKT. `None` if it records none, or one without an EPSG code.
-fn las_crs(header: &::las::Header) -> Result<Option<EpsgCode>> {
+pub(super) fn las_crs(header: &::las::Header) -> Result<Option<EpsgCode>> {
     if let Some(wkt) = header.get_wkt_crs_bytes() {
         let wkt = std::str::from_utf8(wkt).map_err(Error::point_cloud_read)?;
         return Ok(wkt_epsg(wkt.trim_end_matches('\0')));
@@ -109,31 +109,39 @@ fn las_crs(header: &::las::Header) -> Result<Option<EpsgCode>> {
 }
 
 /// The EPSG code a WKT CRS gives its root object, in either WKT 1
-/// `AUTHORITY["EPSG","6677"]` or WKT 2 `ID["EPSG",6677]` form.
+/// `AUTHORITY["EPSG","6677"]` or WKT 2 `ID["EPSG",6677]` form, with brackets
+/// or parentheses.
 fn wkt_epsg(wkt: &str) -> Option<EpsgCode> {
-    // The root's own identifier is its last child at depth 1.
+    let bytes = wkt.as_bytes();
+    // The root's own identifier is its last child at depth 1. Quoted text is
+    // skipped; a doubled quote inside it toggles twice and stays quoted.
     let mut depth = 0usize;
+    let mut quoted = false;
     let mut found = None;
-    for (i, c) in wkt.char_indices() {
-        match c {
-            '[' | '(' => depth += 1,
-            ']' | ')' => depth = depth.saturating_sub(1),
-            _ if depth == 1 => {
-                let rest = &wkt[i..];
-                let keyword = ["AUTHORITY[", "ID["]
-                    .into_iter()
-                    .find(|k| rest.len() >= k.len() && rest[..k.len()].eq_ignore_ascii_case(k));
-                if let Some(k) = keyword
-                    && (i == 0 || !wkt.as_bytes()[i - 1].is_ascii_alphanumeric())
-                {
-                    found = Some(&rest[k.len()..]);
+    for (i, &b) in bytes.iter().enumerate() {
+        match b {
+            b'"' => quoted = !quoted,
+            _ if quoted => {}
+            b'[' | b'(' => depth += 1,
+            b']' | b')' => depth = depth.saturating_sub(1),
+            _ if depth == 1 && (i == 0 || !bytes[i - 1].is_ascii_alphanumeric()) => {
+                for keyword in [b"AUTHORITY".as_slice(), b"ID"] {
+                    let end = i + keyword.len();
+                    if bytes
+                        .get(i..end)
+                        .is_some_and(|w| w.eq_ignore_ascii_case(keyword))
+                        && matches!(bytes.get(end), Some(b'[' | b'('))
+                    {
+                        found = Some(end + 1);
+                    }
                 }
             }
             _ => {}
         }
     }
-    let body = found?;
-    let body = &body[..body.find(']')?];
+    // Follows an ASCII delimiter, so it is a char boundary.
+    let body = &wkt[found?..];
+    let body = &body[..body.find([']', ')'])?];
     let mut parts = body.split(',').map(|p| p.trim().trim_matches('"'));
     let authority = parts.next()?;
     let code = parts.next()?;
@@ -142,13 +150,15 @@ fn wkt_epsg(wkt: &str) -> Option<EpsgCode> {
         .then(|| code.parse::<u16>().ok().map(EpsgCode::new))?
 }
 
-/// Fail if the LAS file records a CRS other than `frame`'s. A file in a 2D
-/// CRS agrees with a 3D `frame` sharing its horizontal CRS.
-fn check_crs(header: &::las::Header, frame: &CoordinateFrame) -> Result<()> {
+/// Fail if a LAS file recording the CRS `recorded` holds points not in
+/// `frame`. A file in a 2D CRS agrees with a 3D `frame` sharing its horizontal
+/// CRS; a file in a 3D CRS must match exactly, since its heights are in that
+/// CRS's vertical datum.
+pub(super) fn check_crs(recorded: Option<EpsgCode>, frame: &CoordinateFrame) -> Result<()> {
     let CoordinateFrame::Crs(expected) = *frame else {
         return Ok(());
     };
-    let Some(recorded) = las_crs(header)? else {
+    let Some(recorded) = recorded else {
         return Ok(());
     };
     if recorded == expected {
@@ -159,7 +169,7 @@ fn check_crs(header: &::las::Header, frame: &CoordinateFrame) -> Result<()> {
         _ => None,
     };
     match (horizontal(recorded), horizontal(expected)) {
-        (Some(a), Some(b)) if a == b => Ok(()),
+        (Some(a), Some(b)) if a == b && a == recorded => Ok(()),
         _ => Err(Error::point_cloud_read(format!(
             "the file records EPSG:{} but its points were declared in EPSG:{}",
             recorded.get(),
@@ -386,6 +396,8 @@ pub(super) mod tests {
         assert!(read_in(6677, geotiff_crs(3072, 6677)).is_ok());
         // EPSG:6668 is the horizontal part of EPSG:6697.
         assert!(read_in(6697, geotiff_crs(2048, 6668)).is_ok());
+        // A 3D file's heights are in its own vertical datum.
+        assert!(read_in(6668, geotiff_crs(2048, 6697)).is_err());
         let err = read_in(6676, geotiff_crs(3072, 6677)).unwrap_err();
         assert!(err.to_string().contains("EPSG:6677"), "{err}");
     }
@@ -407,6 +419,11 @@ pub(super) mod tests {
             None
         );
         assert_eq!(code(r#"PROJCS["a",AUTHORITY["ESRI","102100"]]"#), None);
+        // Parentheses, and a quoted name holding a bracket and non-ASCII text.
+        assert_eq!(
+            code(r#"PROJCRS("Survey [west 30°",ID("EPSG",6677))"#),
+            Some(6677)
+        );
     }
 
     #[test]

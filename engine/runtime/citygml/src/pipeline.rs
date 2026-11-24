@@ -739,7 +739,8 @@ mod build_next {
                      xmlns:bldg="http://www.opengis.net/citygml/building/3.0"
                      xmlns:pcl="http://www.opengis.net/citygml/pointcloud/3.0"
                      xmlns:uro="https://www.geospatial.jp/iur/uro/4.0"
-                     xmlns:gml="http://www.opengis.net/gml/3.2">
+                     xmlns:gml="http://www.opengis.net/gml/3.2"
+                     xmlns:xlink="http://www.w3.org/1999/xlink">
                    <gml:boundedBy><gml:Envelope srsName="http://www.opengis.net/def/crs/EPSG/0/6697">
                      <gml:lowerCorner>35 139 0</gml:lowerCorner><gml:upperCorner>36 140 10</gml:upperCorner>
                    </gml:Envelope></gml:boundedBy>
@@ -869,6 +870,28 @@ mod build_next {
                     .map(|m| (m.kind.clone(), m.location.as_str(), m.file.as_str()))
                     .collect();
                 assert_eq!(found, vec![(kind, "pc1", "file:///data/udx/bldg/a.gml")]);
+            }
+        }
+
+        /// `xlink:href` references are not resolved; each case is reported.
+        #[test]
+        fn point_cloud_references_are_reported() {
+            let cases = [
+                (
+                    r##"<core:pointCloud xlink:href="#pc0"/>"##,
+                    MalformationKind::PointCloudReference("pc0".into()),
+                ),
+                (
+                    r##"<core:pointCloud><pcl:PointCloud><pcl:points><gml:MultiPoint>
+                         <gml:pointMember xlink:href="#p9"/>
+                       </gml:MultiPoint></pcl:points></pcl:PointCloud></core:pointCloud>"##,
+                    MalformationKind::PointCloudPointReferences(1),
+                ),
+            ];
+            for (member, kind) in cases {
+                let (_, malformations) = run_point_cloud(member);
+                let kinds: Vec<_> = malformations.iter().map(|m| m.kind.clone()).collect();
+                assert_eq!(kinds, vec![kind]);
             }
         }
     }
