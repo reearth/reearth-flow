@@ -8,7 +8,7 @@ citygml_zip_name = "13104_shinjuku-ku_pref_2025_citygml_1_op_bldg.zip"
 [convs.cesium_attributes.lod1]
 path = "13104_shinjuku-ku_pref_2025_citygml_1_op_bldg_3dtiles_lod1_jgd2024"
 truth_path = "cesium_lod1_truth.json"
-generate_truth = false
+generate_truth = true
 
 [convs.cesium_attributes.lod1.casts]
 "" = "ordered_dict"
@@ -17,7 +17,7 @@ generate_truth = false
 [convs.cesium_attributes.lod2]
 path = "13104_shinjuku-ku_pref_2025_citygml_1_op_bldg_3dtiles_lod2_jgd2024_full"
 truth_path = "cesium_lod2_truth.json"
-generate_truth = false
+generate_truth = true
 
 [convs.cesium_attributes.lod2.casts]
 "" = "ordered_dict"
