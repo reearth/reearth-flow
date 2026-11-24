@@ -1,5 +1,5 @@
 {
-  "description": "Test T03 for plateau6",
+  "description": "Test T03 and xlinks with no referent for plateau6",
   "workflowPath": "quality-check/plateau6/01-common/workflow.yml",
   "workflowVariables": [
     {
@@ -34,7 +34,7 @@
     }
   ],
   "expectedOutput": {
-    "expectedFile": "01_共通_T03エラー.csv"
+    "expectedFile": ["01_共通_T03エラー.csv", "01_共通_xlink参照先なし.csv"]
   },
   "summaryOutput": {
     "errorCountSummary": {

@@ -5,7 +5,7 @@
      of its boundary surfaces, and its two building units refer by xlink:href to
      its building room.
 
-     Errors (3):
+     T03 errors (3):
      - A gml:surfaceMember of the LOD2 solid refers to the building itself,
        bldg_f036798c-4381-4af2-97fc-e78d8fe34001, instead of the roof polygon. A surface member must be a
        surface.
@@ -14,6 +14,9 @@
      - The bldg:buildingRoom of the building unit unit_9c4e1b7a-3f2d-4a6e-8b5c-0d1e7f3a6b92
        refers to the other building unit, unit_2e9d7a15-4c3b-4e8f-b6a1-7f0c9d2e5a83. A building room must be a
        bldg:BuildingRoom.
+     Xlink with no referent (1):
+     - A gml:surfaceMember of the LOD2 solid refers to
+       poly_ffaa06df-721a-40df-8b75-d67675907578, which does not exist.
 
      Correct:
      - The other 4 gml:surfaceMember of the LOD2 solid each refer to a
@@ -251,6 +254,7 @@ urn:oasis:names:tc:ciq:xal:3 ../../schemas/citygml/xAL/3.0/xAL.xsd">
 							<gml:surfaceMember xlink:href="#poly_c14a7e93-6f2b-4d05-8a1c-3e7b9d0f2c66"/>
 							<gml:surfaceMember xlink:href="#poly_71f0d2a8-4b6c-4e39-9d57-a2c8e1b3f095"/>
 							<gml:surfaceMember xlink:href="#bldg_f036798c-4381-4af2-97fc-e78d8fe34001"/>
+							<gml:surfaceMember xlink:href="#poly_ffaa06df-721a-40df-8b75-d67675907578"/>
 						</gml:Shell>
 					</gml:exterior>
 				</gml:Solid>
