@@ -616,7 +616,7 @@ describe("3D geometry becomes a summary", () => {
         Euclidean3D: {
           PointCloud: {
             frame: { Crs: 4979 },
-            segments: [{ positions: { F64: [[0, 0, 0]] } }],
+            data: { positions: { F64: [[0, 0, 0]] } },
           },
         },
       }),
@@ -633,40 +633,29 @@ describe("3D geometry becomes a summary", () => {
     expect(csg.geometry).toMatchObject({ type: "Boolean combination" });
   });
 
-  test("counts point-cloud points across segments and encodings", () => {
-    const result = transformNextFeature(
-      feature({
-        Euclidean3D: {
-          PointCloud: {
-            frame: { Crs: 4979 },
-            segments: [
-              {
-                positions: {
-                  F64: [
-                    [0, 0, 0],
-                    [1, 1, 1],
-                  ],
-                },
-              },
-              {
-                positions: {
-                  ScaledI32: {
-                    scale: [1, 1, 1],
-                    offset: [0, 0, 0],
-                    values: [[1, 2, 3]],
-                  },
-                },
-              },
+  test("counts scaled-integer points, and none still in a file", () => {
+    const cloud = (data: unknown) =>
+      transformNextFeature(
+        feature({
+          Euclidean3D: { PointCloud: { frame: { Crs: 4979 }, data } },
+        }),
+      ).geometry as { summary?: string };
+
+    expect(
+      cloud({
+        positions: {
+          ScaledI32: {
+            scale: [1, 1, 1],
+            offset: [0, 0, 0],
+            values: [
+              [1, 2, 3],
+              [4, 5, 6],
             ],
           },
         },
-      }),
-    );
-
-    expect(result.geometry).toMatchObject({
-      type: "Point cloud",
-      summary: "Points: 3",
-    });
+      }).summary,
+    ).toBe("Points: 2");
+    expect(cloud({ file: "file:///data/a.las" }).summary).toBeUndefined();
   });
 
   test("names the boolean operation of a CSG geometry", () => {
@@ -687,13 +676,11 @@ describe("3D geometry becomes a summary", () => {
           Euclidean3D: {
             PointCloud: {
               frame: { Crs: 4979 },
-              segments: [
-                {
-                  positions: {
-                    F64: Array.from({ length: 12_000 }, () => [0, 0, 0]),
-                  },
+              data: {
+                positions: {
+                  F64: Array.from({ length: 12_000 }, () => [0, 0, 0]),
                 },
-              ],
+              },
             },
           },
         }),

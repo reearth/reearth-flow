@@ -8,7 +8,6 @@ mod ffi;
 pub(crate) mod grids;
 
 pub use ffi::ReprojectionCache;
-#[cfg(feature = "new-geometry")]
 pub(crate) use ffi::north_axis_index;
 pub(crate) use ffi::{TwoDimensionalCrs, axis_order_sign, crs_demote_to_2d, crs_is_linear};
 // Reached from outside the crate: the readers and writers of formats that

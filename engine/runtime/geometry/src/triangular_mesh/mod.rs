@@ -246,15 +246,15 @@ crate::unsupported!(TriangularMesh3D: CountHoles);
 // The shared vertex pool, so a corner used by several triangles counts once.
 #[cfg(feature = "new-geometry")]
 impl crate::ops::CountVertices for TriangularMesh2D {
-    fn count_vertices(&self) -> usize {
-        self.vertices().len()
+    fn count_vertices(&self) -> crate::error::Result<usize> {
+        Ok(self.vertices().len())
     }
 }
 
 #[cfg(feature = "new-geometry")]
 impl crate::ops::CountVertices for TriangularMesh3D {
-    fn count_vertices(&self) -> usize {
-        self.vertices().len()
+    fn count_vertices(&self) -> crate::error::Result<usize> {
+        Ok(self.vertices().len())
     }
 }
 

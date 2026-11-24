@@ -11,7 +11,6 @@
 use std::collections::{HashMap, HashSet};
 use std::sync::Arc;
 
-use reearth_flow_common::uri::Uri;
 use reearth_flow_geometry::appearance::{
     ChannelId, Material, PhongMaterial, Raster, Sampler, Side, Texture, ThemeId, UvSource, WrapMode,
 };
@@ -21,7 +20,7 @@ use url::Url;
 
 use super::parser::{RawNode, RawRegistry};
 use super::resolver::FaceIds;
-use super::utils::{XmlChild, XmlNode, local_name};
+use super::utils::{XmlChild, XmlNode, local_name, resolve_uri};
 use super::xlink;
 
 /// A geometry id qualified by the source file it belongs to: `(file_url, gml_id)`.
@@ -461,6 +460,7 @@ fn index_texture(texture: &XmlNode, theme: &str, index: &mut AppearanceIndex) {
         return;
     };
     let Some(uri) = resolve_uri(&texture.source_url, &image) else {
+        tracing::warn!("citygml appearance: invalid image uri {image}");
         return;
     };
     warn_unsupported_texture_fields(texture, index);
@@ -700,19 +700,6 @@ fn child_f32(node: &XmlNode, name: &str, default: f32) -> f32 {
     child_text(node, name)
         .and_then(|t| t.parse().ok())
         .unwrap_or(default)
-}
-
-/// Resolve a relative `app:imageURI` against the source document into a scheme-aware
-/// [`Uri`] pointing at the image's own location.
-fn resolve_uri(source_url: &Url, image: &str) -> Option<Uri> {
-    let joined = source_url.join(image).ok()?;
-    match Uri::try_from(joined) {
-        Ok(uri) => Some(uri),
-        Err(e) => {
-            tracing::warn!("citygml appearance: invalid image uri {image}: {e}");
-            None
-        }
-    }
 }
 
 /// Parse whitespace-separated `u v` pairs; `None` if any token is unparseable or
