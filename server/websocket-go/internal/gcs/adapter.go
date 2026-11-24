@@ -7,6 +7,7 @@ import (
 	"errors"
 	"fmt"
 	"log/slog"
+	"sort"
 	"sync"
 
 	"cloud.google.com/go/storage"
@@ -308,6 +309,61 @@ func docFromV2(v2 []byte) (*crdt.Doc, error) {
 	return doc, nil
 }
 
+// stateFromV2 decodes a stored doc_v2 payload into a V1 update, keeping any
+// parked items (the V1 encode carries them along, as Yjs does).
+func stateFromV2(v2 []byte) ([]byte, error) {
+	doc := crdt.New()
+	if err := crdt.ApplyUpdateV2(doc, v2, nil); err != nil {
+		return nil, err
+	}
+	return crdt.EncodeStateAsUpdateV1(doc, nil), nil
+}
+
+// pendingIn reports the items in the V1 update state that cannot be integrated
+// yet because an edit they build on is missing.
+func pendingIn(state []byte) (crdt.PendingStats, error) {
+	d := crdt.New()
+	if err := crdt.ApplyUpdateV1(d, state, nil); err != nil {
+		return crdt.PendingStats{}, err
+	}
+	return d.PendingStats(), nil
+}
+
+// foldParked folds the update objects at clocks into state when state holds
+// parked items, and returns the result with what is still parked. The checkpoint
+// claims those objects are already in doc_v2, but a doc_v2 written from a copy
+// that missed one of them is not.
+func (a *Adapter) foldParked(ctx context.Context, room DocID, state []byte, updates map[uint32]string, clocks []uint32) ([]byte, crdt.PendingStats, error) {
+	ps, err := pendingIn(state)
+	if err != nil || ps.Items == 0 || len(clocks) == 0 {
+		return state, ps, err
+	}
+	before := ps.Items
+	parts := [][]byte{state}
+	for _, c := range clocks {
+		b, err := a.store.get(ctx, updates[c])
+		if err != nil {
+			return nil, ps, err
+		}
+		parts = append(parts, b)
+	}
+	out, err := crdt.MergeUpdatesV1(parts...)
+	if err != nil {
+		return nil, ps, err
+	}
+	if ps, err = pendingIn(out); err != nil {
+		return nil, ps, err
+	}
+	a.log.Info("gcs: folded checkpointed update objects into a state with parked items", "room", room, "parked_before", before, "parked_after", ps.Items)
+	return out, ps, nil
+}
+
+// clocksUpTo returns the leading clocks of the ascending slice that are <= max.
+func clocksUpTo(sorted []uint32, max uint32) []uint32 {
+	n := sort.Search(len(sorted), func(i int) bool { return sorted[i] > max })
+	return sorted[:n]
+}
+
 // docFromV1 applies a V1 update to a fresh doc and returns it.
 func docFromV1(v1 []byte) (*crdt.Doc, error) {
 	d := crdt.New()
@@ -398,11 +454,11 @@ func (a *Adapter) loadV2(ctx context.Context, room DocID) ([]byte, bool, error) 
 	if err != nil {
 		return nil, false, err
 	}
-	doc, err := docFromV2(v2)
+	v1, err := stateFromV2(v2)
 	if err != nil {
 		return nil, false, err
 	}
-	return crdt.EncodeStateAsUpdateV1(doc, nil), true, nil
+	return v1, true, nil
 }
 
 // getDual reads name(primaryLayout); on a Phase-2 miss it falls back to

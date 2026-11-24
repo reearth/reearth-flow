@@ -125,6 +125,17 @@ func (a *Adapter) Compact(ctx context.Context, room string, keep int) (int, erro
 			if err != nil {
 				return err
 			}
+			// The objects about to be deleted must all be in the new base, including
+			// the checkpointed ones a parked doc_v2 may be missing.
+			var ps crdt.PendingStats
+			newBase, ps, err = a.foldParked(ctx, room, newBase, updates, clocksUpTo(clocks[:foldUpto], cp))
+			if err != nil {
+				return err
+			}
+			if ps.Items > 0 {
+				a.log.Debug("gcs compact: new base holds parked items",
+					"room", room, "parked", ps.Items, "awaiting_clients", len(ps.MissingFor), "kept", keep)
+			}
 		}
 		// Write the new base before deleting any update (abort-without-loss).
 		if err := a.writeV2Snapshot(ctx, room, oid, newBase); err != nil {
