@@ -56,6 +56,7 @@ type DataTableProps<TData extends RowData, TValue> = {
   noResultsMessage?: string;
   onRowClick?: (row: TData) => void;
   onRowDoubleClick?: (row: TData) => void;
+  isRowSelected?: (row: TData) => boolean;
   onSortChange?: (value: string) => void;
   setCurrentPage?: (page: number) => void;
   setCurrentOrderDir?: (order: OrderDirection) => void;
@@ -83,6 +84,7 @@ function DataTable<TData extends RowData, TValue>({
   noResultsMessage,
   onRowClick,
   onRowDoubleClick,
+  isRowSelected,
   setCurrentPage,
   setCurrentOrderDir,
   onSortChange,
@@ -276,10 +278,16 @@ function DataTable<TData extends RowData, TValue>({
                         key={row.id}
                         className={flush ? undefined : "bg-secondary"}
                         data-state={
-                          row.getIsSelected() ? "selected" : undefined
+                          (
+                            isRowSelected
+                              ? isRowSelected(row.original)
+                              : row.getIsSelected()
+                          )
+                            ? "selected"
+                            : undefined
                         }
                         onClick={() => {
-                          row.toggleSelected();
+                          if (!isRowSelected) row.toggleSelected();
                           onRowClick?.(row.original);
                         }}
                         onDoubleClick={() => {

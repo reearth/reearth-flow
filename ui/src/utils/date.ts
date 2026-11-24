@@ -10,3 +10,8 @@ export const formatRelativeTime = (
   lang?: string,
   now: Date = new Date(),
 ) => intlFormatDistance(new Date(input), now, { locale: lang });
+
+export const isWithinLastMinute = (
+  input: string | Date,
+  now: Date = new Date(),
+) => Math.abs(now.getTime() - new Date(input).getTime()) < 60_000;

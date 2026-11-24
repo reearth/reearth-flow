@@ -26,10 +26,10 @@ struct Bucket {
 impl Bucket {
     fn record(&mut self, feature_id: Option<Uuid>) {
         self.count += 1;
-        if let Some(id) = feature_id {
-            if self.sample_feature_ids.len() < SAMPLE_FEATURE_ID_CAP {
-                self.sample_feature_ids.push(id);
-            }
+        if let Some(id) = feature_id
+            && self.sample_feature_ids.len() < SAMPLE_FEATURE_ID_CAP
+        {
+            self.sample_feature_ids.push(id);
         }
     }
 

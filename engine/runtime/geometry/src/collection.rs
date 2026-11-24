@@ -265,6 +265,10 @@ impl Reproject for Collection3D {
 
 // Tessellation is defined per-primitive, not over a collection.
 crate::unsupported!(Collection2D: Triangulate);
+#[cfg(feature = "new-geometry")]
+crate::unsupported!(Collection2D: DecomposeIntoEdgeConnectedParts, DecomposeIntoManifolds);
+#[cfg(feature = "new-geometry")]
+crate::unsupported!(Collection3D: DecomposeIntoEdgeConnectedParts, DecomposeIntoManifolds);
 crate::unsupported!(Collection3D: Triangulate);
 
 impl crate::ops::ConvertFrame for Collection2D {
@@ -555,7 +559,7 @@ mod grid_impl {
     use super::{Collection2D, Collection3D};
     use crate::coordinate::CoordinateFrame;
     use crate::ops::grid::{
-        geometry_area_xy, CellCoverage, DivideByGrid, GridCell, GridDivideError, GridSpec,
+        CellCoverage, DivideByGrid, GridCell, GridDivideError, GridSpec, geometry_area_xy,
     };
     use crate::{Euclidean2DGeometry, Euclidean3DGeometry, Geometry};
 

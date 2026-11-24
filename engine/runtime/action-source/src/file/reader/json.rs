@@ -1,6 +1,6 @@
 use bytes::Bytes;
 use indexmap::IndexMap;
-use reearth_flow_runtime::node::{IngestionMessage, Port, FEATURES_PORT};
+use reearth_flow_runtime::node::{FEATURES_PORT, IngestionMessage, Port};
 use reearth_flow_types::{AttributeValue, Feature};
 use tokio::sync::mpsc::Sender;
 

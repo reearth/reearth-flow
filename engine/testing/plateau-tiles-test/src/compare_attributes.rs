@@ -31,35 +31,35 @@ pub fn make_feature_key(props: &Value, path: Option<&str>) -> String {
     };
 
     // For risk types, use path/rank_code as the key
-    if let Some(p) = path {
-        if is_risk_type(p) {
-            for key in [
-                "uro:rank_code",
-                "urc:rank_code",
-                "uro:rankOrg_code",
-                "urc:rankOrg_code",
-            ] {
-                let code = getter(key);
-                if !code.is_empty() {
-                    return format!("{}/{}", p, code);
-                }
+    if let Some(p) = path
+        && is_risk_type(p)
+    {
+        for key in [
+            "uro:rank_code",
+            "urc:rank_code",
+            "uro:rankOrg_code",
+            "urc:rankOrg_code",
+        ] {
+            let code = getter(key);
+            if !code.is_empty() {
+                return format!("{}/{}", p, code);
             }
-            panic!("both rank_code and rankOrg_code are missing in {}", p);
         }
+        panic!("both rank_code and rankOrg_code are missing in {}", p);
     }
 
     // Extract gml_id from props if present
     let gml_id = getter("gml_id");
 
     // Check if this is a DmGeometricAttribute feature
-    if let Some(dm_feature_type) = props.get("dm_feature_type").and_then(|v| v.as_str()) {
-        if dm_feature_type == "DmGeometricAttribute" {
-            // Use dm_geometryType_code as discriminator for DM features
-            if let Some(dm_geometry_type_code) =
-                props.get("dm_geometryType_code").and_then(|v| v.as_str())
-            {
-                return format!("{}__dm_{}", gml_id, dm_geometry_type_code);
-            }
+    if let Some(dm_feature_type) = props.get("dm_feature_type").and_then(|v| v.as_str())
+        && dm_feature_type == "DmGeometricAttribute"
+    {
+        // Use dm_geometryType_code as discriminator for DM features
+        if let Some(dm_geometry_type_code) =
+            props.get("dm_geometryType_code").and_then(|v| v.as_str())
+        {
+            return format!("{}__dm_{}", gml_id, dm_geometry_type_code);
         }
     }
     gml_id.to_string()
@@ -140,17 +140,16 @@ fn get_nested_impl<'a>(obj: &'a Value, tokens: &[String]) -> Option<&'a Value> {
     let token = &tokens[0];
     if token.starts_with('[') && token.ends_with(']') {
         let idx_str = &token[1..token.len() - 1];
-        if let Ok(idx) = idx_str.parse::<usize>() {
-            if let Some(arr) = obj.as_array() {
-                if let Some(value) = arr.get(idx) {
-                    return get_nested_impl(value, &tokens[1..]);
-                }
-            }
-        }
-    } else if let Some(obj_map) = obj.as_object() {
-        if let Some(value) = obj_map.get(token) {
+        if let Ok(idx) = idx_str.parse::<usize>()
+            && let Some(arr) = obj.as_array()
+            && let Some(value) = arr.get(idx)
+        {
             return get_nested_impl(value, &tokens[1..]);
         }
+    } else if let Some(obj_map) = obj.as_object()
+        && let Some(value) = obj_map.get(token)
+    {
+        return get_nested_impl(value, &tokens[1..]);
     }
 
     None
@@ -213,10 +212,10 @@ pub fn apply_cast(cast: &CastConfig, value: Value) -> Value {
             if let Some(arr) = value.as_array() {
                 let mut map = serde_json::Map::new();
                 for item in arr {
-                    if let Some(k) = get_nested(item, dict_key) {
-                        if let Some(k_str) = k.as_str() {
-                            map.insert(k_str.to_string(), item.clone());
-                        }
+                    if let Some(k) = get_nested(item, dict_key)
+                        && let Some(k_str) = k.as_str()
+                    {
+                        map.insert(k_str.to_string(), item.clone());
                     }
                 }
                 Value::Object(map)
@@ -225,7 +224,20 @@ pub fn apply_cast(cast: &CastConfig, value: Value) -> Value {
             }
         }
         CastConfig::IgnoreBoth => Value::Null,
-        CastConfig::OrderedDict => value,
+        // Records the key order as a "__key_order" entry so that the unordered comparison
+        // also catches a reorder. Conversion-only: nested paths are left unchanged.
+        CastConfig::OrderedDict => match value {
+            Value::Object(mut map) => {
+                let order = map.keys().cloned().map(Value::String).collect();
+                assert!(
+                    map.insert("__key_order".to_string(), Value::Array(order))
+                        .is_none(),
+                    "ordered_dict: the object already has a \"__key_order\" key"
+                );
+                Value::Object(map)
+            }
+            other => other,
+        },
     }
 }
 
@@ -363,10 +375,10 @@ impl AttributeComparer {
 
         // Type checking with tolerance
         if !self.types_match(&v1, &v2) {
-            if let Some(v2_bool) = v2.as_bool() {
-                if self.value_as_bool(&v1) == Some(v2_bool) {
-                    return;
-                }
+            if let Some(v2_bool) = v2.as_bool()
+                && self.value_as_bool(&v1) == Some(v2_bool)
+            {
+                return;
             }
             self.mismatches
                 .push((self.identifier.clone(), key.to_string(), v1, v2));
@@ -407,24 +419,20 @@ impl AttributeComparer {
             }
             _ => {
                 // Check if we should compare as floats with tolerance
-                if let Some(CastConfig::Float { epsilon }) = self.casts.get(key) {
-                    if let (Some(f1), Some(f2)) = (v1.as_f64(), v2.as_f64()) {
-                        let matches = if let Some(eps) = epsilon {
-                            (f1 - f2).abs() <= *eps
-                        } else {
-                            f1 == f2 // Exact match when no epsilon provided
-                        };
+                if let Some(CastConfig::Float { epsilon }) = self.casts.get(key)
+                    && let (Some(f1), Some(f2)) = (v1.as_f64(), v2.as_f64())
+                {
+                    let matches = if let Some(eps) = epsilon {
+                        (f1 - f2).abs() <= *eps
+                    } else {
+                        f1 == f2 // Exact match when no epsilon provided
+                    };
 
-                        if !matches {
-                            self.mismatches.push((
-                                self.identifier.clone(),
-                                key.to_string(),
-                                v1,
-                                v2,
-                            ));
-                        }
-                        return;
+                    if !matches {
+                        self.mismatches
+                            .push((self.identifier.clone(), key.to_string(), v1, v2));
                     }
+                    return;
                 }
 
                 if v1 != v2 {
@@ -506,6 +514,28 @@ pub fn analyze_attributes(
 mod tests {
     use super::*;
     use serde_json::json;
+
+    #[test]
+    fn test_ordered_dict_cast_at_conversion_records_key_order() {
+        let mut casts = HashMap::new();
+        casts.insert("".to_string(), CastConfig::OrderedDict);
+        let convert = |v: Value| apply_casts_to_value(v, "", &casts);
+
+        let a = convert(json!({"a": 1, "b": 2}));
+        let b = convert(json!({"b": 2, "a": 1}));
+        assert_eq!(a["__key_order"], json!(["a", "b"]));
+        // the plain comparison now sees the reorder
+        assert!(analyze_attributes("test", &a, &b, HashMap::new(), HashMap::new()).is_err());
+        assert!(analyze_attributes("test", &a, &a, HashMap::new(), HashMap::new()).is_ok());
+    }
+
+    #[test]
+    #[should_panic(expected = "already has a \"__key_order\" key")]
+    fn test_ordered_dict_cast_panics_on_key_order_collision() {
+        let mut casts = HashMap::new();
+        casts.insert("".to_string(), CastConfig::OrderedDict);
+        apply_casts_to_value(json!({"__key_order": 1, "a": 0}), "", &casts);
+    }
 
     #[test]
     fn test_ordered_dict_order_mismatch() {

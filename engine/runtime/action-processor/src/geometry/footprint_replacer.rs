@@ -17,7 +17,7 @@ use reearth_flow_runtime::{
     event::EventHub,
     executor_operation::{ExecutorContext, NodeContext},
     forwarder::ProcessorChannelForwarder,
-    node::{Port, Processor, ProcessorFactory, FEATURES_PORT, REJECTED_PORT},
+    node::{FEATURES_PORT, Port, Processor, ProcessorFactory, REJECTED_PORT},
 };
 #[cfg(not(feature = "new-geometry"))]
 use reearth_flow_types::{CityGmlGeometry, Feature, GeometryValue};
@@ -304,17 +304,27 @@ impl Processor for FootprintReplacer {
                 fw.send(ctx.new_with_feature_and_port(feature.clone(), REJECTED_PORT.clone()));
             }
             GeometryValue::FlowGeometry3D(geom) => {
-                if let Some(footprint) = create_footprint_from_geometry3d(feature, geom) {
-                    fw.send(ctx.new_with_feature_and_port(footprint, FOOTPRINT_PORT.clone()));
-                } else {
-                    fw.send(ctx.new_with_feature_and_port(feature.clone(), REJECTED_PORT.clone()));
+                match create_footprint_from_geometry3d(feature, geom) {
+                    Some(footprint) => {
+                        fw.send(ctx.new_with_feature_and_port(footprint, FOOTPRINT_PORT.clone()));
+                    }
+                    _ => {
+                        fw.send(
+                            ctx.new_with_feature_and_port(feature.clone(), REJECTED_PORT.clone()),
+                        );
+                    }
                 }
             }
             GeometryValue::CityGmlGeometry(citygml) => {
-                if let Some(footprint) = create_footprint_from_citygml(feature, citygml) {
-                    fw.send(ctx.new_with_feature_and_port(footprint, FOOTPRINT_PORT.clone()));
-                } else {
-                    fw.send(ctx.new_with_feature_and_port(feature.clone(), REJECTED_PORT.clone()));
+                match create_footprint_from_citygml(feature, citygml) {
+                    Some(footprint) => {
+                        fw.send(ctx.new_with_feature_and_port(footprint, FOOTPRINT_PORT.clone()));
+                    }
+                    _ => {
+                        fw.send(
+                            ctx.new_with_feature_and_port(feature.clone(), REJECTED_PORT.clone()),
+                        );
+                    }
                 }
             }
             _ => {

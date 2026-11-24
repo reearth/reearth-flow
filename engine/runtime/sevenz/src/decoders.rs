@@ -2,7 +2,7 @@ use std::io::Read;
 
 use byteorder::{LittleEndian, ReadBytesExt};
 
-use lzma_rust::{lzma2_get_memery_usage, LZMA2Reader, LZMAReader};
+use lzma_rust::{LZMA2Reader, LZMAReader, lzma2_get_memery_usage};
 
 use crate::{archive::SevenZMethod, error::Error, folder::Coder};
 

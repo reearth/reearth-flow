@@ -12,6 +12,7 @@ import (
 	"github.com/reearth/reearth-flow/websocket-go/internal/config"
 	"github.com/reearth/reearth-flow/websocket-go/internal/gcs"
 	redisrelay "github.com/reearth/reearth-flow/websocket-go/internal/redis"
+	"github.com/reearth/reearth-flow/websocket-go/internal/versions"
 )
 
 func redisCfg(t *testing.T) *config.Config {
@@ -192,5 +193,111 @@ func TestMemoryBackendIsHealthy(t *testing.T) {
 	}
 	if err := locks.Probe(context.Background()); err != nil {
 		t.Errorf("memory probe = %v, want healthy", err)
+	}
+}
+
+func TestPresenceComesFromASharedStore(t *testing.T) {
+	t.Parallel()
+
+	t.Run("redis", func(t *testing.T) {
+		t.Parallel()
+
+		r, err := NewRelay(redisCfg(t), nil, nil, nil)
+		if err != nil {
+			t.Fatalf("NewRelay: %v", err)
+		}
+		defer func() { _ = r.Close() }()
+		if Presence(r) == nil {
+			t.Error("the redis relay has no presence")
+		}
+	})
+
+	t.Run("memory", func(t *testing.T) {
+		t.Parallel()
+
+		r, err := NewRelay(&config.Config{CoordBackend: config.BackendMemory}, nil, nil, nil)
+		if err != nil {
+			t.Fatalf("NewRelay: %v", err)
+		}
+		defer func() { _ = r.Close() }()
+		if Presence(r) != nil {
+			t.Error("the in-memory relay reports presence; only the local instance holds its rooms")
+		}
+	})
+}
+
+// TestRedisChangeStoreSharesTheLockStore: every instance must reach the same
+// change records, so the store rides the backend the instances coordinate on.
+func TestRedisChangeStoreSharesTheLockStore(t *testing.T) {
+	t.Parallel()
+
+	cfg := redisCfg(t)
+	locks, err := NewLocker(cfg, "instance-test")
+	if err != nil {
+		t.Fatalf("NewLocker: %v", err)
+	}
+	defer func() { _ = locks.Close() }()
+	a, err := NewChangeStore(cfg, locks)
+	if err != nil {
+		t.Fatalf("NewChangeStore: %v", err)
+	}
+	other, err := NewLocker(cfg, "instance-other")
+	if err != nil {
+		t.Fatalf("NewLocker: %v", err)
+	}
+	defer func() { _ = other.Close() }()
+	b, err := NewChangeStore(cfg, other)
+	if err != nil {
+		t.Fatalf("NewChangeStore: %v", err)
+	}
+
+	ctx := context.Background()
+	e := versions.NewEdits()
+	e.FirstAt, e.LastAt = time.Now(), time.Now()
+	if err := a.Mark(ctx, "p1", versions.Record{"u": e}); err != nil {
+		t.Fatal(err)
+	}
+	if _, ok, err := b.Take(ctx, "p1"); !ok || err != nil {
+		t.Fatalf("the other instance's Take = %v, %v; want the record", ok, err)
+	}
+}
+
+func TestMemoryChangeStore(t *testing.T) {
+	t.Parallel()
+
+	cfg := &config.Config{CoordBackend: config.BackendMemory}
+	locks, err := NewLocker(cfg, "instance-test")
+	if err != nil {
+		t.Fatal(err)
+	}
+	s, err := NewChangeStore(cfg, locks)
+	if err != nil || s == nil {
+		t.Fatalf("NewChangeStore = %v, %v", s, err)
+	}
+}
+
+func TestChangeStoreNeedsTheBackendHandle(t *testing.T) {
+	t.Parallel()
+
+	for _, backend := range []string{config.BackendRedis, config.BackendPostgres} {
+		if _, err := NewChangeStore(&config.Config{CoordBackend: backend}, &Locks{}); err == nil {
+			t.Errorf("%s: NewChangeStore without the lock store's handle succeeded", backend)
+		}
+	}
+}
+
+func TestCatchUpComesFromASharedStore(t *testing.T) {
+	t.Parallel()
+
+	if CatchUp(cluster.NewMemRelay()) != nil {
+		t.Fatal("the in-memory relay has no catch-up to wait for")
+	}
+	r, err := redisrelay.New(redisrelay.Options{Addr: miniredis.RunT(t).Addr()})
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer func() { _ = r.Close() }()
+	if CatchUp(r) == nil {
+		t.Fatal("the Redis relay must offer its catch-up")
 	}
 }

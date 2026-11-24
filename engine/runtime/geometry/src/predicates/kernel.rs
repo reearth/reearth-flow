@@ -14,7 +14,7 @@
 //! All sign decisions go through the robust predicates; only *constructed* points
 //! (the intersection coordinates) are f64-rounded.
 
-use robust::{orient2d as robust_orient2d, orient3d as robust_orient3d, Coord, Coord3D};
+use robust::{Coord, Coord3D, orient2d as robust_orient2d, orient3d as robust_orient3d};
 
 /// The orientation of an ordered point triple, from the robust sign of the
 /// signed area (2D) or signed volume (3D).

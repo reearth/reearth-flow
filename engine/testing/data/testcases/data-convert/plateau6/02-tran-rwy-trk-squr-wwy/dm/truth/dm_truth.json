@@ -1,6 +1,10 @@
 {
   "trk_c2138494-83e0-41b4-bfc1-609ca229aba2__dm_E2": {
-    "dm_attributes": "{\"urc:dmCode\":\"徒歩道\",\"urc:dmCode_code\":\"2103\",\"urc:geometryType\":\"線\",\"urc:geometryType_code\":\"E2\",\"urc:mapLevel\":\"地図情報レベル2500\",\"urc:mapLevel_code\":\"2500\",\"urc:shapeType\":\"非区分（下記に該当しない全データ）\",\"urc:shapeType_code\":\"0\"}",
+    "meshcode": "54401008",
+    "feature_type": "tran:Track",
+    "city_code": "08220",
+    "city_name": "茨城県つくば市",
+    "gml_id": "trk_c2138494-83e0-41b4-bfc1-609ca229aba2",
     "attributes": [
       {
         "meshcode": "54401008",
@@ -69,13 +73,10 @@
         "tran:function_code": "1"
       }
     ],
-    "meshcode": "54401008",
-    "city_name": "茨城県つくば市",
     "core:creationDate": "2024-03-19T00:00:00",
     "tran:class": "道路",
     "tran:function": "徒歩道",
     "urc:lodType": "2cm以上の高低差に応じて車道部・歩道部・島の高さを表現",
-    "lod": 0,
     "dm_dmCode": "徒歩道",
     "dm_dmCode_code": "2103",
     "dm_geometryType": "線",
@@ -84,9 +85,29 @@
     "dm_mapLevel_code": "2500",
     "dm_shapeType": "非区分（下記に該当しない全データ）",
     "dm_shapeType_code": "0",
-    "feature_type": "tran:Track",
-    "gml_id": "trk_c2138494-83e0-41b4-bfc1-609ca229aba2",
-    "city_code": "08220",
-    "dm_feature_type": "DmGeometricAttribute"
+    "dm_attributes": "{\"urc:dmCode\":\"徒歩道\",\"urc:dmCode_code\":\"2103\",\"urc:geometryType\":\"線\",\"urc:geometryType_code\":\"E2\",\"urc:mapLevel\":\"地図情報レベル2500\",\"urc:mapLevel_code\":\"2500\",\"urc:shapeType\":\"非区分（下記に該当しない全データ）\",\"urc:shapeType_code\":\"0\"}",
+    "dm_feature_type": "DmGeometricAttribute",
+    "__key_order": [
+      "meshcode",
+      "feature_type",
+      "city_code",
+      "city_name",
+      "gml_id",
+      "attributes",
+      "core:creationDate",
+      "tran:class",
+      "tran:function",
+      "urc:lodType",
+      "dm_dmCode",
+      "dm_dmCode_code",
+      "dm_geometryType",
+      "dm_geometryType_code",
+      "dm_mapLevel",
+      "dm_mapLevel_code",
+      "dm_shapeType",
+      "dm_shapeType_code",
+      "dm_attributes",
+      "dm_feature_type"
+    ]
   }
 }

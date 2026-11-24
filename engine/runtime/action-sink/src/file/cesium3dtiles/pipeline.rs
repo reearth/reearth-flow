@@ -3,8 +3,8 @@ use std::{
     fs,
     io::BufWriter,
     sync::{
-        mpsc::{self},
         Arc, Mutex,
+        mpsc::{self},
     },
 };
 
@@ -25,7 +25,7 @@ use tempfile::tempdir;
 use super::slice::slice_to_tiles;
 use super::tiling;
 use super::tiling::{TileContent, TileTree};
-use crate::atlas::{build_atlas_geometry, GltfFeature};
+use crate::atlas::{GltfFeature, build_atlas_geometry};
 use crate::file::mvt::tileid::TileIdMethod;
 
 type FeatureBuffer<T> = (u64, Option<String>, Vec<T>);
@@ -537,11 +537,7 @@ pub(super) fn tile_writing_stage(
                     (key.clone(), serde_json::Value::Object(obj))
                 })
                 .collect();
-            if props.is_empty() {
-                None
-            } else {
-                Some(props)
-            }
+            if props.is_empty() { None } else { Some(props) }
         }
     };
 

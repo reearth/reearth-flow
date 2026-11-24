@@ -178,8 +178,29 @@ nodes:
     with:
       filterType: geometryType
 
+  # L11 (planarity): LOD1 faces are checked against a tighter thickness than the
+  # higher LODs.
+  - id: de000000-0000-4000-8000-000000000055
+    name: FeatureFilterLod1
+    type: action
+    action: Feature Filter
+    with:
+      conditions:
+        - expr:
+            type: flowExpr
+            value: attributes.get("lod") == 1
+          outputPort: lod1
+
+  - id: de000000-0000-4000-8000-000000000056
+    name: SurfaceChecksLod1
+    type: subGraph
+    subGraphId: c4000000-0000-4000-8000-000000000000
+    with:
+      planarityThreshold:
+        maxHeight: 0.001
+
   - id: de000000-0000-4000-8000-000000000010
-    name: SurfaceChecksLod1To3
+    name: SurfaceChecksLod2To3
     type: subGraph
     subGraphId: c4000000-0000-4000-8000-000000000000
     with:
@@ -479,20 +500,11 @@ nodes:
           expr:
             type: flowExpr
             value: attributes.get("__citygml_gml_id", "")
-        # Reaching this mapper already means the face is wound the wrong way, so
-        # the count and the two labels are fixed.
+        # L10 (per-boundary orientation): one row per misoriented boundary.
         - attribute: "エラー数"
-          expr:
-            type: flowExpr
-            value: "1"
+          valueAttribute: issueCount
         - attribute: "エラー内容"
-          expr:
-            type: string
-            value: Incorrect Orientation
-        - attribute: "面の向き"
-          expr:
-            type: string
-            value: right_hand_rule
+          valueAttribute: issue
 
   - id: de000000-0000-4000-8000-000000000018
     name: OrientationCsvWriter
@@ -529,17 +541,9 @@ nodes:
         - attribute: lod
           valueAttribute: lod
         - attribute: issue
-          expr:
-            type: string
-            value: Incorrect Orientation
+          valueAttribute: issue
         - attribute: issueCount
-          expr:
-            type: flowExpr
-            value: "1"
-        - attribute: orientation
-          expr:
-            type: string
-            value: right_hand_rule
+          valueAttribute: issueCount
 
   - id: de000000-0000-4000-8000-00000000001a
     name: OrientationGeoJsonWriter
@@ -551,13 +555,6 @@ nodes:
         value: |
           "error_geometry/" + variables["packagePrefixes"][attributes["folder"]] + "_面の向き不正.geojson"
       writeCrs: true
-
-  # The original workspace has no orientation check above LOD0, so the port is
-  # consumed rather than left dangling.
-  - id: de000000-0000-4000-8000-00000000001b
-    name: IncorrectOrientationSink
-    type: action
-    action: Noop Sink
 
   # --- Solid boundary checks ---
   - id: de000000-0000-4000-8000-00000000001c
@@ -1571,8 +1568,35 @@ edges:
     toPort: features
   - id: de000000-0000-4000-8000-000100000014
     from: de000000-0000-4000-8000-00000000000f
-    to: de000000-0000-4000-8000-000000000010
+    to: de000000-0000-4000-8000-000000000055
     fromPort: surface
+    toPort: features
+  - id: de000000-0000-4000-8000-000100000080
+    from: de000000-0000-4000-8000-000000000055
+    to: de000000-0000-4000-8000-000000000056
+    fromPort: lod1
+    toPort: features
+  - id: de000000-0000-4000-8000-000100000081
+    from: de000000-0000-4000-8000-000000000055
+    to: de000000-0000-4000-8000-000000000010
+    fromPort: unfiltered
+    toPort: features
+
+  # LOD1 surface checks share every output of the LOD2-3 ones
+  - id: de000000-0000-4000-8000-000100000082
+    from: de000000-0000-4000-8000-000000000056
+    to: de000000-0000-4000-8000-000000000011
+    fromPort: invalidSurface
+    toPort: features
+  - id: de000000-0000-4000-8000-000100000083
+    from: de000000-0000-4000-8000-000000000056
+    to: de000000-0000-4000-8000-000000000013
+    fromPort: invalidSurface
+    toPort: features
+  - id: de000000-0000-4000-8000-000100000084
+    from: de000000-0000-4000-8000-000000000056
+    to: de000000-0000-4000-8000-000000000015
+    fromPort: issueLocation
     toPort: features
 
   # Face errors
@@ -1626,7 +1650,7 @@ edges:
   - id: de000000-0000-4000-8000-00010000001e
     from: de000000-0000-4000-8000-00000000000e
     to: de000000-0000-4000-8000-000000000017
-    fromPort: incorrectOrientation
+    fromPort: incorrectOrientationUpward
     toPort: features
   - id: de000000-0000-4000-8000-00010000001f
     from: de000000-0000-4000-8000-000000000017
@@ -1636,17 +1660,12 @@ edges:
   - id: de000000-0000-4000-8000-000100000020
     from: de000000-0000-4000-8000-00000000000e
     to: de000000-0000-4000-8000-000000000019
-    fromPort: incorrectOrientation
+    fromPort: incorrectOrientationUpward
     toPort: features
   - id: de000000-0000-4000-8000-000100000021
     from: de000000-0000-4000-8000-000000000019
     to: de000000-0000-4000-8000-00000000001a
     fromPort: features
-    toPort: features
-  - id: de000000-0000-4000-8000-000100000022
-    from: de000000-0000-4000-8000-000000000010
-    to: de000000-0000-4000-8000-00000000001b
-    fromPort: incorrectOrientation
     toPort: features
 
   # Solid checks

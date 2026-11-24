@@ -6,6 +6,9 @@ RUN apk add --update --no-cache git ca-certificates build-base
 
 WORKDIR /reearth-flow
 
+# The shared schema module is replaced to ../db, so it has to be in place
+# before go mod download can resolve it.
+COPY server/db/ /db/
 COPY server/subscriber/go.mod server/subscriber/go.sum /reearth-flow/
 RUN go mod download
 

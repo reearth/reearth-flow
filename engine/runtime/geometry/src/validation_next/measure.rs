@@ -5,7 +5,7 @@
 //! only their comparisons against caller thresholds decide anything.
 
 use super::face_orientation::stored_normal;
-use super::{open_ring, DegenerateThresholds, PlanarityThreshold, ValidationReport};
+use super::{DegenerateThresholds, PlanarityThreshold, ValidationReport, open_ring};
 use crate::algorithm::convex_hull::quick_hull_3d;
 use crate::coordinate::CoordinateFrame;
 use crate::line_string::{LineString2D, LineString3D};

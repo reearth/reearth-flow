@@ -1,9 +1,9 @@
 use std::io::Read;
 use std::time::Duration;
 
-use reearth_flow_http::{read_to_end_capped, BlockingHttpClient, HttpClientBuilder};
-use reqwest::header::HeaderMap;
+use reearth_flow_http::{BlockingHttpClient, HttpClientBuilder, read_to_end_capped};
 use reqwest::Method;
+use reqwest::header::HeaderMap;
 
 use super::body::BodyContent;
 use super::errors::{HttpProcessorError, Result};
@@ -145,10 +145,10 @@ fn read_body_capped(
         return Ok(body);
     };
 
-    if let Some(len) = content_length {
-        if len > max_size {
-            return Err(size_exceeded(len, max_size));
-        }
+    if let Some(len) = content_length
+        && len > max_size
+    {
+        return Err(size_exceeded(len, max_size));
     }
 
     read_to_end_capped(reader, max_size)

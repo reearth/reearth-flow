@@ -6,6 +6,7 @@ import (
 	"sort"
 	"strings"
 	"sync"
+	"time"
 
 	accountsid "github.com/reearth/reearth-accounts/server/pkg/id"
 	"github.com/reearth/reearth-flow/api/internal/usecase/interfaces"
@@ -239,6 +240,18 @@ func (r *Project) SetStar(_ context.Context, pid id.ProjectID, uid accountsid.Us
 	return nil
 }
 
+func (r *Project) RecordEdit(_ context.Context, pid id.ProjectID, at time.Time, by *accountsid.UserID) error {
+	r.lock.Lock()
+	defer r.lock.Unlock()
+
+	p, ok := r.data[pid]
+	if !ok || !r.f.CanWrite(p.Workspace()) {
+		return rerror.ErrNotFound
+	}
+	p.RecordEdit(at, by)
+	return nil
+}
+
 func (r *Project) Remove(ctx context.Context, id id.ProjectID) error {
 	r.lock.Lock()
 	defer r.lock.Unlock()
@@ -259,6 +272,7 @@ func (r *Project) Search(_ context.Context, p interfaces.ProjectSearchParam) ([]
 		switch {
 		case !r.f.CanRead(prj.Workspace()),
 			p.Workspace != nil && prj.Workspace() != *p.Workspace,
+			p.Workspaces != nil && !p.Workspaces.Has(prj.Workspace()),
 			p.Visibility != nil && prj.Visibility() != *p.Visibility,
 			!p.IncludeArchived && prj.IsArchived(),
 			keyword != "" && !strings.Contains(strings.ToLower(prj.Name()), keyword),

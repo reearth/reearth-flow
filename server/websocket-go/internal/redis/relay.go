@@ -109,6 +109,11 @@ type roomState struct {
 
 	// lastID is the per-reader stream cursor, advanced past self-filtered entries.
 	lastID string
+
+	// caughtUp is closed once the reader has replayed the stream as it stood
+	// when the room was activated; done when the reader stops.
+	caughtUp chan struct{}
+	done     chan struct{}
 }
 
 var _ interface {
@@ -211,6 +216,62 @@ func (r *Relay) Publish(_ context.Context, out cluster.Outbound) error {
 // write queue.
 func (r *Relay) DroppedWrites() uint64 { return r.droppedWrites.Load() }
 
+// ErrRoomNotActive is what WaitCaughtUp returns for a room this instance does
+// not hold, or stops holding while waiting.
+var ErrRoomNotActive = errors.New("websocket-go/redis: room not active on this instance")
+
+// caughtUpPoll is how often WaitCaughtUp checks the reader's cursor.
+const caughtUpPoll = 5 * time.Millisecond
+
+// WaitCaughtUp waits until this instance's reader has applied every entry the
+// room's stream held when it was called, so the room's document holds every
+// update other instances had published by then.
+func (r *Relay) WaitCaughtUp(ctx context.Context, room string) error {
+	r.mu.Lock()
+	rs, ok := r.rooms[room]
+	active := ok && !rs.evicting
+	r.mu.Unlock()
+	if !active {
+		return ErrRoomNotActive
+	}
+	head, err := r.client.XRevRangeN(ctx, streamKey(room), "+", "-", 1).Result()
+	if err != nil {
+		return err
+	}
+	select {
+	case <-rs.caughtUp:
+	case <-rs.done:
+		return ErrRoomNotActive
+	case <-ctx.Done():
+		return ctx.Err()
+	}
+	if len(head) == 0 {
+		return nil
+	}
+	target := head[0].ID
+	for {
+		r.mu.Lock()
+		cur := rs.lastID
+		r.mu.Unlock()
+		if !streamIDBefore(cur, target) {
+			return nil
+		}
+		select {
+		case <-rs.done:
+			return ErrRoomNotActive
+		case <-ctx.Done():
+			return ctx.Err()
+		case <-time.After(caughtUpPoll):
+		}
+	}
+}
+
+// ActiveInstances counts the instances holding room, by their heartbeats.
+func (r *Relay) ActiveInstances(ctx context.Context, room string) (int, error) {
+	n, err := getActiveInstances(ctx, r.client, room, activeTimeoutSecs)
+	return int(n), err
+}
+
 // RoomActivated starts the per-room subscriber + heartbeat and refreshes the
 // stream EXPIRE. Catch-up replay of the existing stream is performed by the
 // reader goroutine (NOT inline here): ygo invokes RoomActivated while holding its
@@ -230,9 +291,11 @@ func (r *Relay) RoomActivated(room string) {
 	}
 	ctx, cancel := context.WithCancel(r.ctx)
 	rs := &roomState{
-		cancel:  cancel,
-		lastID:  "0",
-		writeCh: make(chan writeItem, writeQueueCap),
+		cancel:   cancel,
+		lastID:   "0",
+		writeCh:  make(chan writeItem, writeQueueCap),
+		caughtUp: make(chan struct{}),
+		done:     make(chan struct{}),
 	}
 	r.rooms[room] = rs
 	sink := r.sink
@@ -386,6 +449,7 @@ func (r *Relay) hasEntriesBelow(ctx context.Context, key string, minMs int64) (b
 // route sync/awareness to the sink, and advance last-id past filtered entries too.
 func (r *Relay) readLoop(ctx context.Context, room string, rs *roomState, sink cluster.Sink) {
 	defer rs.wg.Done()
+	defer close(rs.done)
 
 	var lastID string
 	for {
@@ -406,6 +470,7 @@ func (r *Relay) readLoop(ctx context.Context, room string, rs *roomState, sink c
 	r.mu.Lock()
 	rs.lastID = lastID
 	r.mu.Unlock()
+	close(rs.caughtUp)
 
 	for {
 		if ctx.Err() != nil {
@@ -654,7 +719,7 @@ func (r *Relay) evict(room string) {
 		return
 	}
 	// Last instance: flush GCS first, then safe-delete the stream.
-	if err := r.flusher.FlushRoom(ctx, room); err != nil {
+	if err := flushLastInstance(ctx, r.flusher, room); err != nil {
 		r.log.Debug("relay GCS flush failed", "room", room, "err", err)
 		// Do NOT delete the stream on flush failure — un-persisted updates would be
 		// lost; a reconnect re-replays.

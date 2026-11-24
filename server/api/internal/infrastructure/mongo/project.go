@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"regexp"
 	"strings"
+	"time"
 
 	"go.mongodb.org/mongo-driver/bson"
 	"go.mongodb.org/mongo-driver/bson/primitive"
@@ -251,6 +252,9 @@ func (r *Project) Search(ctx context.Context, p interfaces.ProjectSearchParam) (
 	if p.Workspace != nil {
 		and = append(and, bson.M{"workspace": p.Workspace.String()})
 	}
+	if p.Workspaces != nil {
+		and = append(and, bson.M{"workspace": bson.M{"$in": p.Workspaces.Strings()}})
+	}
 	if r.f.Readable != nil {
 		and = append(and, bson.M{"workspace": bson.M{"$in": r.f.Readable.Strings()}})
 	}
@@ -318,6 +322,25 @@ func (r *Project) SetStar(ctx context.Context, pid id.ProjectID, uid accountsid.
 	}
 	filter := applyWorkspaceFilter(bson.M{"id": pid.String()}, r.f.Readable)
 	res, err := r.client.Client().UpdateOne(ctx, filter, bson.M{op: bson.M{"starredby": uid.String()}})
+	if err != nil {
+		return rerror.ErrInternalByWithContext(ctx, err)
+	}
+	if res.MatchedCount == 0 {
+		return rerror.ErrNotFound
+	}
+	return nil
+}
+
+// RecordEdit stamps updatedat and updatedby with one pipeline update. Every
+// field in a $set stage reads the document as it was, so updatedby changes
+// exactly when updatedat moves.
+func (r *Project) RecordEdit(ctx context.Context, pid id.ProjectID, at time.Time, by *accountsid.UserID) error {
+	later := bson.M{"$gt": bson.A{at, "$updatedat"}}
+	update := bson.A{bson.M{"$set": bson.M{
+		"updatedby": bson.M{"$cond": bson.A{later, by.StringRef(), "$updatedby"}},
+		"updatedat": bson.M{"$max": bson.A{"$updatedat", at}},
+	}}}
+	res, err := r.client.Client().UpdateOne(ctx, r.writeFilter(bson.M{"id": pid.String()}), update)
 	if err != nil {
 		return rerror.ErrInternalByWithContext(ctx, err)
 	}

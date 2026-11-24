@@ -8,7 +8,7 @@ use reearth_flow_common::{dir, zip};
 use reearth_flow_runtime::errors::BoxedError;
 use reearth_flow_runtime::event::EventHub;
 use reearth_flow_runtime::executor_operation::{ExecutorContext, NodeContext};
-use reearth_flow_runtime::node::{Port, Sink, SinkFactory, FEATURES_PORT};
+use reearth_flow_runtime::node::{FEATURES_PORT, Port, Sink, SinkFactory};
 use reearth_flow_types::{AttributeValue, Code};
 use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};

@@ -1221,7 +1221,7 @@ fn report_misoriented_hole(
 /// every hole of an exterior beyond those limits;
 /// only a degenerate ring is not, being the degeneracy check's to report
 /// (see [`report_misoriented_hole`]). The position is the offending hole
-/// ring.
+/// ring, attributed to the hole as [`IssuePart::Ring`].
 pub(crate) fn check_face_orientation_3d<'a>(
     frame: &CoordinateFrame,
     exterior: &[[f64; 3]],
@@ -1234,8 +1234,10 @@ pub(crate) fn check_face_orientation_3d<'a>(
         return;
     }
     let ext = ExteriorOrientation::new(OrientationFrame::of(frame), exterior);
-    for hole in holes {
-        report_misoriented_hole(frame, ext.as_ref().map_err(|why| *why), hole, report);
+    for (i, hole) in holes.enumerate() {
+        report.record_part(IssuePart::Ring(i + 1), |r| {
+            report_misoriented_hole(frame, ext.as_ref().map_err(|why| *why), hole, r)
+        });
     }
 }
 

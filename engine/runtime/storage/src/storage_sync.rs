@@ -11,8 +11,8 @@ use reearth_flow_common::uri::Uri;
 
 use tracing::debug;
 
-use crate::storage::format_object_store_error;
 use crate::storage::Storage;
+use crate::storage::format_object_store_error;
 
 impl Storage {
     /// Direct sync write to the storage backend.

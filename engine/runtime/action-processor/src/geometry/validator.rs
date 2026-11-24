@@ -14,10 +14,10 @@ use reearth_flow_runtime::{
     event::EventHub,
     executor_operation::{ExecutorContext, NodeContext},
     forwarder::ProcessorChannelForwarder,
-    node::{Port, Processor, ProcessorFactory, FEATURES_PORT},
+    node::{FEATURES_PORT, Port, Processor, ProcessorFactory},
 };
 #[cfg(not(feature = "new-geometry"))]
-use reearth_flow_types::{geometry::CityGmlGeometry, GeometryValue};
+use reearth_flow_types::{GeometryValue, geometry::CityGmlGeometry};
 use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
@@ -420,10 +420,10 @@ impl Processor for GeometryValidator {
         ctx: ExecutorContext,
         fw: &ProcessorChannelForwarder,
     ) -> Result<(), BoxedError> {
-        use reearth_flow_geometry::validation_next::{
-            frame_skips, validate_with, IssuePart, ValidationParams, ValidationResult,
-        };
         use reearth_flow_geometry::Geometry;
+        use reearth_flow_geometry::validation_next::{
+            IssuePart, ValidationParams, ValidationResult, frame_skips, validate_with,
+        };
         use reearth_flow_types::AttributeValue;
 
         use super::extractor::encode_geometry;
@@ -829,9 +829,11 @@ mod tests {
             located[0].get(Attribute::new("validationRing")),
             Some(&AttributeValue::Number(1.into()))
         );
-        assert!(located[0]
-            .get(Attribute::new("validationRingPair"))
-            .is_none());
+        assert!(
+            located[0]
+                .get(Attribute::new("validationRingPair"))
+                .is_none()
+        );
     }
 
     #[test]

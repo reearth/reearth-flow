@@ -2,7 +2,7 @@ use super::{TriangularMesh2D, TriangularMesh3D, TriangularMesh3DData};
 use crate::coordinate::{CoordinateFrame, EpsgCode};
 use crate::ops::reproject::{transform_coords_2d, transform_coords_3d};
 use crate::ops::{
-    lift_coords, Aabb, BoundingBox, Reproject, ReprojectionCache, UnsupportedOperation,
+    Aabb, BoundingBox, Reproject, ReprojectionCache, UnsupportedOperation, lift_coords,
 };
 
 use reearth_flow_common::attribute::Attributes;
@@ -106,7 +106,7 @@ impl Reproject for TriangularMesh3D {
     }
 }
 
-use crate::ops::{plan_frame_step, translate_2d, translate_3d, ConvertFrame, FrameStep, Translate};
+use crate::ops::{ConvertFrame, FrameStep, Translate, plan_frame_step, translate_2d, translate_3d};
 
 impl Translate for TriangularMesh2D {
     fn translate(&mut self, delta: [f64; 3]) -> crate::error::Result<()> {
@@ -160,7 +160,7 @@ impl ConvertFrame for TriangularMesh3D {
     }
 }
 
-use crate::ops::{area_2d, emit_triangles_3d, ExtractHoles, ExtractedPart};
+use crate::ops::{ExtractHoles, ExtractedPart, area_2d, emit_triangles_3d};
 
 // A triangle mesh is an aggregate of faces, so it deaggregates like a polygon
 // mesh. A triangle carries no interior ring, so every part is an outer shell.
@@ -482,8 +482,8 @@ mod grid_impl {
         Appearance, ChannelId, FaceBinding, Side, ThemeBinding, UvSet, UvSource,
     };
     use crate::ops::grid::{
-        clip_to_window, faces_area_xy, CellCoverage, Corner, DivideByGrid, ExteriorWinding,
-        GridCell, GridDivideError, GridSpec,
+        CellCoverage, Corner, DivideByGrid, ExteriorWinding, GridCell, GridDivideError, GridSpec,
+        clip_to_window, faces_area_xy,
     };
     use crate::ops::{Aabb, BoundingBox};
     use crate::{Euclidean2DGeometry, Euclidean3DGeometry, Geometry};
@@ -873,9 +873,9 @@ impl TriangularMesh3DData {
 }
 
 #[cfg(feature = "new-geometry")]
-use crate::ops::area::{ring_surface_area, triangle_area_2d, triangle_area_sum_3d};
-#[cfg(feature = "new-geometry")]
 use crate::ops::Area;
+#[cfg(feature = "new-geometry")]
+use crate::ops::area::{ring_surface_area, triangle_area_2d, triangle_area_sum_3d};
 
 #[cfg(feature = "new-geometry")]
 impl Area for TriangularMesh2D {
@@ -907,7 +907,7 @@ impl Area for TriangularMesh3D {
 }
 
 use crate::ops::boundary::{Boundary, ExtractBoundary};
-use crate::ops::{surface_boundary_2d, surface_boundary_3d, BoundaryEdges};
+use crate::ops::{BoundaryEdges, surface_boundary_2d, surface_boundary_3d};
 
 fn triangle_boundary_edges(triangles: impl Iterator<Item = [u32; 3]>) -> BoundaryEdges {
     let mut edges = BoundaryEdges::new();
@@ -1152,5 +1152,130 @@ mod tests {
                 max: [2.0, 2.0]
             }
         );
+    }
+}
+
+#[cfg(feature = "new-geometry")]
+mod decompose {
+    use super::{TriangularMesh2D, TriangularMesh3D};
+    use crate::ops::decompose::{
+        DecomposedParts, FaceIndex, MeshFaces, Part, Partition, decompose,
+    };
+    use crate::ops::{
+        DecomposeIntoEdgeConnectedParts, DecomposeIntoManifolds, UnsupportedOperation,
+    };
+    use crate::{Euclidean2DGeometry, Euclidean3DGeometry, Geometry};
+
+    /// The triangles of a mesh as flat buffers, three corners per face.
+    fn faces<'a, const N: usize>(
+        vertices: &'a [[f64; N]],
+        triangles: impl Iterator<Item = [u32; 3]>,
+        appearance: &'a Option<crate::appearance::Appearance>,
+    ) -> MeshFaces<'a, N> {
+        let indices: Vec<u32> = triangles.flatten().collect();
+        MeshFaces {
+            vertices,
+            face_ends: (1..=indices.len() / 3).map(|t| t * 3).collect(),
+            hole_starts: Vec::new(),
+            indices,
+            appearance,
+        }
+    }
+
+    impl TriangularMesh2D {
+        /// The parts under `partition`, each with the faces it holds.
+        pub(crate) fn decompose_parts(&self, partition: Partition) -> DecomposedParts {
+            let mesh = faces(self.vertices(), self.triangles(), self.appearance());
+            if mesh.face_ends.is_empty() {
+                return Vec::new();
+            }
+            let Some(parts) = decompose(&mesh, partition) else {
+                return vec![(
+                    Geometry::Euclidean2D(Euclidean2DGeometry::TriangularMesh(Box::new(
+                        self.clone(),
+                    ))),
+                    (0..mesh.face_ends.len()).map(FaceIndex::new).collect(),
+                )];
+            };
+            parts
+                .into_iter()
+                .map(|part: Part<2>| {
+                    let mut mesh = TriangularMesh2D::from_parts(
+                        self.frame().clone(),
+                        part.vertices,
+                        part.indices,
+                    )
+                    .expect("the triangles of a valid mesh make a valid mesh");
+                    mesh.set_elevation(self.elevation());
+                    mesh.set_raw_appearance(part.appearance);
+                    (
+                        Geometry::Euclidean2D(Euclidean2DGeometry::TriangularMesh(Box::new(mesh))),
+                        part.faces.into_iter().map(FaceIndex::new).collect(),
+                    )
+                })
+                .collect()
+        }
+    }
+
+    impl TriangularMesh3D {
+        /// The parts under `partition`, each with the faces it holds.
+        pub(crate) fn decompose_parts(&self, partition: Partition) -> DecomposedParts {
+            let mesh = faces(self.vertices(), self.triangles(), self.appearance());
+            if mesh.face_ends.is_empty() {
+                return Vec::new();
+            }
+            let Some(parts) = decompose(&mesh, partition) else {
+                return vec![(
+                    Geometry::Euclidean3D(Euclidean3DGeometry::TriangularMesh(Box::new(
+                        self.clone(),
+                    ))),
+                    (0..mesh.face_ends.len()).map(FaceIndex::new).collect(),
+                )];
+            };
+            parts
+                .into_iter()
+                .map(|part: Part<3>| {
+                    let mut mesh = TriangularMesh3D::from_parts(
+                        self.frame().clone(),
+                        part.vertices,
+                        part.indices,
+                    )
+                    .expect("the triangles of a valid mesh make a valid mesh");
+                    mesh.set_raw_appearance(part.appearance);
+                    (
+                        Geometry::Euclidean3D(Euclidean3DGeometry::TriangularMesh(Box::new(mesh))),
+                        part.faces.into_iter().map(FaceIndex::new).collect(),
+                    )
+                })
+                .collect()
+        }
+    }
+
+    impl DecomposeIntoEdgeConnectedParts for TriangularMesh2D {
+        fn decompose_into_edge_connected_parts(
+            &self,
+        ) -> Result<DecomposedParts, UnsupportedOperation> {
+            Ok(self.decompose_parts(Partition::EdgeConnected))
+        }
+    }
+
+    impl DecomposeIntoEdgeConnectedParts for TriangularMesh3D {
+        fn decompose_into_edge_connected_parts(
+            &self,
+        ) -> Result<DecomposedParts, UnsupportedOperation> {
+            Ok(self.decompose_parts(Partition::EdgeConnected))
+        }
+    }
+
+    impl DecomposeIntoManifolds for TriangularMesh2D {
+        fn decompose_into_manifolds(&self) -> Result<DecomposedParts, UnsupportedOperation> {
+            Ok(self.decompose_parts(Partition::Manifold))
+        }
+    }
+
+    impl DecomposeIntoManifolds for TriangularMesh3D {
+        fn decompose_into_manifolds(&self) -> Result<DecomposedParts, UnsupportedOperation> {
+            Ok(self.decompose_parts(Partition::Manifold))
+        }
     }
 }

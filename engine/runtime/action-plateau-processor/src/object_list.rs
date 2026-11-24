@@ -149,7 +149,7 @@ pub(crate) struct ObjectListValue {
 
 impl From<AttributeValue> for ObjectListValue {
     fn from(value: AttributeValue) -> Self {
-        let map = value
+        value
             .as_map()
             .map(|map| {
                 let required = map
@@ -179,8 +179,7 @@ impl From<AttributeValue> for ObjectListValue {
                     conditional,
                 }
             })
-            .unwrap_or_default();
-        map
+            .unwrap_or_default()
     }
 }
 

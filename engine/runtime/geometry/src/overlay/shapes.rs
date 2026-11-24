@@ -22,10 +22,10 @@ use i_overlay::float::single::SingleFloatOverlay;
 
 use crate::coordinate::CoordinateFrame;
 use crate::line_string::LineString2D;
-use crate::polygon::signed_area_2d;
 use crate::polygon::Polygon2D;
+use crate::polygon::signed_area_2d;
 use crate::predicates::relate::boundary::union_boundary_rings;
-use crate::predicates::view::{polygon2d_rings, Leaf2D, RingView};
+use crate::predicates::view::{Leaf2D, RingView, polygon2d_rings};
 
 use super::leaf_type_name;
 

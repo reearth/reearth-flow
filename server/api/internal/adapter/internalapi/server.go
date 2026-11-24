@@ -37,16 +37,37 @@ func NewServer() *Server {
 
 // Projects
 
+// maxListProjectsWorkspaces caps workspace_ids in one ListProjects call.
+const maxListProjectsWorkspaces = 100
+
 func (s *Server) ListProjects(ctx context.Context, req *flowv1.ListProjectsRequest) (*flowv1.ListProjectsResponse, error) {
-	wid, err := parseWorkspaceID(req.GetWorkspaceId())
-	if err != nil {
-		return nil, err
-	}
 	param := interfaces.ProjectSearchParam{
-		Workspace:       &wid,
 		Keyword:         req.GetKeyword(),
 		Topics:          req.GetTopics(),
 		IncludeArchived: req.GetIncludeArchived(),
+	}
+	if raw := req.GetWorkspaceIds(); len(raw) > 0 {
+		if req.GetWorkspaceId() != "" {
+			return nil, invalidArgument("set workspace_id or workspace_ids, not both")
+		}
+		if len(raw) > maxListProjectsWorkspaces {
+			return nil, invalidArgument(fmt.Sprintf("at most %d workspace_ids", maxListProjectsWorkspaces))
+		}
+		wids := make(accountsid.WorkspaceIDList, 0, len(raw))
+		for _, s := range raw {
+			wid, err := accountsid.WorkspaceIDFrom(s)
+			if err != nil {
+				return nil, invalidArgument("invalid workspace_id " + strconv.Quote(s))
+			}
+			wids = append(wids, wid)
+		}
+		param.Workspaces = wids
+	} else {
+		wid, err := parseWorkspaceID(req.GetWorkspaceId())
+		if err != nil {
+			return nil, err
+		}
+		param.Workspace = &wid
 	}
 	if req.Visibility != nil {
 		v, ok := fromVisibility(req.GetVisibility())

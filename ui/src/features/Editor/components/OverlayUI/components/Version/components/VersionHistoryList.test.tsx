@@ -12,12 +12,16 @@ describe("VersionHistoryList", () => {
       label: "auto",
       timestamp: "2026-07-30T09:00:00Z",
       size: 100,
+      contributors: [],
+      contributorCount: 0,
     },
     {
       snapshotNumber: 2,
       label: "before migration",
       timestamp: "2026-07-30T10:00:00Z",
       size: 120,
+      contributors: [],
+      contributorCount: 0,
     },
   ];
 
@@ -60,6 +64,46 @@ describe("VersionHistoryList", () => {
     expect(screen.getByText("Autosaved")).toBeInTheDocument();
     // The user-named row keeps its own label.
     expect(screen.getByText("before migration")).toBeInTheDocument();
+  });
+
+  test("names the versions saved by an action, never by their code", () => {
+    render(
+      <VersionHistoryList
+        snapshots={[
+          {
+            snapshotNumber: 3,
+            label: "save",
+            timestamp: "2026-11-18T01:00:00Z",
+            size: 1,
+            contributors: [],
+            contributorCount: 0,
+          },
+          {
+            snapshotNumber: 4,
+            label: "run",
+            timestamp: "2026-11-18T02:00:00Z",
+            size: 1,
+            contributors: [],
+            contributorCount: 0,
+          },
+          {
+            snapshotNumber: 5,
+            label: "deploy",
+            timestamp: "2026-11-18T03:00:00Z",
+            size: 1,
+            contributors: [],
+            contributorCount: 0,
+          },
+        ]}
+      />,
+    );
+
+    expect(screen.getByText("Saved")).toBeInTheDocument();
+    expect(screen.getByText("Debug run")).toBeInTheDocument();
+    expect(screen.getByText("Deployed")).toBeInTheDocument();
+    for (const code of ["save", "run", "deploy"]) {
+      expect(screen.queryByText(code)).not.toBeInTheDocument();
+    }
   });
 
   test("selecting a row reports that row's snapshotNumber", () => {

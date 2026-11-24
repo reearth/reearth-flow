@@ -20,8 +20,7 @@ import {
   VariableRow,
 } from "@flow/components";
 import { Button } from "@flow/components/buttons/BaseButton";
-import AssetsDialog from "@flow/features/AssetsDialog";
-import CmsIntegrationDialog from "@flow/features/CmsIntegrationDialog";
+import AssetPickerDialog from "@flow/features/AssetPickerDialog";
 import {
   getDefaultValue,
   inferWorkflowVariableType,
@@ -29,11 +28,7 @@ import {
 import { useWorkflowVars } from "@flow/hooks";
 import { useT } from "@flow/lib/i18n";
 import type { AppColumnDef } from "@flow/lib/table/features";
-import type {
-  AnyWorkflowVariable,
-  Asset,
-  TriggerVariableConfig,
-} from "@flow/types";
+import type { AnyWorkflowVariable, TriggerVariableConfig } from "@flow/types";
 import { isEmptyVariableValue } from "@flow/utils";
 import type { WorkflowVariable } from "@flow/utils/fromEngineWorkflow/deconstructedEngineWorkflow";
 
@@ -51,8 +46,6 @@ type TriggerWorkflowVariablesMappingDialogProps = {
   onConfirm: (workflowVariables: any[]) => void;
   onCancel: () => void;
 };
-
-type DialogOptions = "assets" | "cms" | undefined;
 
 // A required variable left without a value: runs would be refused. A cleared
 // field falls back to the deployment's default.
@@ -148,15 +141,13 @@ const TriggerWorkflowVariablesMappingDialog: React.FC<
     onOpenChange(false);
   };
 
-  const [showDialog, setShowDialog] = useState<DialogOptions>(undefined);
+  const [showAssetPicker, setShowAssetPicker] = useState(false);
   const [activeVariableIndex, setActiveVariableIndex] = useState<number>(0);
   const [activeArrayItemIndex, setActiveArrayItemIndex] = useState<number>(0);
   const [showVariableDialog, setShowVariableDialog] = useState(false);
 
-  const handleDialogOpen = (dialog: DialogOptions) => {
-    setShowDialog(dialog);
-  };
-  const handleDialogClose = () => setShowDialog(undefined);
+  const handleDialogOpen = () => setShowAssetPicker(true);
+  const handleDialogClose = () => setShowAssetPicker(false);
   const handleVariableDialogOpen = useCallback(
     (variableIndex: number, arrayItemIndex = 0) => {
       setActiveVariableIndex(variableIndex);
@@ -169,28 +160,15 @@ const TriggerWorkflowVariablesMappingDialog: React.FC<
     () => setShowVariableDialog(false),
     [],
   );
-  const handleAssetDoubleClick = (asset: Asset) => {
+  const handleAssetSelect = (url: string) => {
     const mapping = variableMappings[activeVariableIndex];
     if (Array.isArray(mapping?.defaultValue)) {
       const newArray = [...mapping.defaultValue];
-      newArray[activeArrayItemIndex] = asset.url;
+      newArray[activeArrayItemIndex] = url;
       handleDefaultValueChange(activeVariableIndex, newArray);
     } else {
-      handleDefaultValueChange(activeVariableIndex, asset.url);
+      handleDefaultValueChange(activeVariableIndex, url);
     }
-    handleVariableDialogClose();
-  };
-
-  const handleCmsItemValue = (cmsItemAssetUrl: string) => {
-    const mapping = variableMappings[activeVariableIndex];
-    if (Array.isArray(mapping?.defaultValue)) {
-      const newArray = [...mapping.defaultValue];
-      newArray[activeArrayItemIndex] = cmsItemAssetUrl;
-      handleDefaultValueChange(activeVariableIndex, newArray);
-    } else {
-      handleDefaultValueChange(activeVariableIndex, cmsItemAssetUrl);
-    }
-    handleDialogClose();
     handleVariableDialogClose();
   };
 
@@ -353,16 +331,10 @@ const TriggerWorkflowVariablesMappingDialog: React.FC<
         </div>
       </DialogContent>
 
-      {showDialog === "assets" && (
-        <AssetsDialog
+      {showAssetPicker && (
+        <AssetPickerDialog
           onDialogClose={handleDialogClose}
-          onAssetSelect={handleAssetDoubleClick}
-        />
-      )}
-      {showDialog === "cms" && (
-        <CmsIntegrationDialog
-          onDialogClose={handleDialogClose}
-          onCmsItemValue={handleCmsItemValue}
+          onSelect={handleAssetSelect}
         />
       )}
     </Dialog>

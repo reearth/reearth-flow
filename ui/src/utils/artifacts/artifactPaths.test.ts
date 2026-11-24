@@ -3,7 +3,9 @@ import { describe, expect, test } from "vitest";
 import {
   folderArchiveName,
   groupArtifactsByFolder,
+  toArchiveBaseName,
   toArtifactFiles,
+  toSuggestedArchiveName,
 } from "./artifactPaths";
 
 const root = "https://example.com/artifacts/job-id/artifacts";
@@ -84,13 +86,69 @@ describe("groupArtifactsByFolder", () => {
 
 describe("folderArchiveName", () => {
   test("names an archive after the folder it holds", () => {
-    expect(folderArchiveName("job_abc", "out.geojson")).toBe(
-      "job_abc_out.geojson.zip",
-    );
+    expect(folderArchiveName("out.geojson")).toBe("out.geojson");
   });
 
   // A `/` cannot appear in a file name.
   test("flattens a nested folder path", () => {
-    expect(folderArchiveName("job_abc", "a/b/c")).toBe("job_abc_a_b_c.zip");
+    expect(folderArchiveName("udx/bldg")).toBe("udx_bldg");
+  });
+});
+
+describe("toArchiveBaseName", () => {
+  test("keeps an ordinary name, spaces and non-Latin text included", () => {
+    expect(toArchiveBaseName("東京 建物 2026")).toBe("東京 建物 2026");
+  });
+
+  test("trims surrounding whitespace", () => {
+    expect(toArchiveBaseName("  results  ")).toBe("results");
+  });
+
+  // The extension is added on save, so a typed one would be doubled.
+  test("drops a typed .zip extension", () => {
+    expect(toArchiveBaseName("results.ZIP")).toBe("results");
+  });
+
+  test("replaces characters a file system refuses", () => {
+    expect(toArchiveBaseName('a/b\\c:d*e?f"g<h>i|j')).toBe(
+      "a_b_c_d_e_f_g_h_i_j",
+    );
+  });
+
+  test("drops trailing dots and spaces", () => {
+    expect(toArchiveBaseName("results. .")).toBe("results");
+  });
+
+  test("leaves nothing for a blank name or only dots", () => {
+    expect(toArchiveBaseName("   ")).toBe("");
+    expect(toArchiveBaseName(".zip")).toBe("");
+    expect(toArchiveBaseName("..")).toBe("");
+  });
+});
+
+describe("toSuggestedArchiveName", () => {
+  test("joins words and drops brackets so the name needs no quoting", () => {
+    expect(
+      toSuggestedArchiveName(
+        "Shapefile to CityGML (PLATEAU bldg LOD1) (import)",
+      ),
+    ).toBe("Shapefile_to_CityGML_PLATEAU_bldg_LOD1_import");
+  });
+
+  test("keeps letters in any script", () => {
+    expect(toSuggestedArchiveName("東京 建物　2026")).toBe("東京_建物_2026");
+  });
+
+  test("keeps dots, hyphens and underscores inside the name", () => {
+    expect(toSuggestedArchiveName("out.geojson")).toBe("out.geojson");
+    expect(toSuggestedArchiveName("job_1a2b-3c")).toBe("job_1a2b-3c");
+  });
+
+  test("does not start or end with a separator", () => {
+    expect(toSuggestedArchiveName("(draft) results!")).toBe("draft_results");
+  });
+
+  test("leaves nothing when no letter or digit is left", () => {
+    expect(toSuggestedArchiveName("(!)")).toBe("");
   });
 });

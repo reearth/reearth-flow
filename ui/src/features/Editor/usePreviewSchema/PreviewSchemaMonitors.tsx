@@ -14,11 +14,12 @@ type MonitorProps = {
   probe: RunningSchemaProbe;
   accessToken?: string;
   onComplete: (nodeId: string, job: Job) => void;
-  onError: (nodeId: string) => void;
+  onError: (nodeId: string, jobId: string) => void;
 };
 
 // Watches one in-flight probe job via the jobStatus subscription; on a terminal
 // status, fetches the job once for its outputURLs and reports it exactly once.
+// Watching only reads: whether the outcome is written is up to the caller.
 const PreviewSchemaJobMonitor: React.FC<MonitorProps> = ({
   probe,
   accessToken,
@@ -77,7 +78,7 @@ const PreviewSchemaJobMonitor: React.FC<MonitorProps> = ({
     // is stale — fail it rather than spin forever.
     if (isFetched && !job) {
       settledRef.current = true;
-      onError(nodeId);
+      onError(nodeId, jobId);
       return;
     }
     if (!job) return;
@@ -86,9 +87,9 @@ const PreviewSchemaJobMonitor: React.FC<MonitorProps> = ({
       onComplete(nodeId, job);
     } else if (job.status === "failed" || job.status === "cancelled") {
       settledRef.current = true;
-      onError(nodeId);
+      onError(nodeId, jobId);
     }
-  }, [job, isFetched, nodeId, onComplete, onError]);
+  }, [job, isFetched, nodeId, jobId, onComplete, onError]);
 
   return null;
 };
@@ -96,7 +97,7 @@ const PreviewSchemaJobMonitor: React.FC<MonitorProps> = ({
 type Props = {
   probes: RunningSchemaProbe[];
   onComplete: (nodeId: string, job: Job) => void;
-  onError: (nodeId: string) => void;
+  onError: (nodeId: string, jobId: string) => void;
 };
 
 const PreviewSchemaMonitors: React.FC<Props> = ({

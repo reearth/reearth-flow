@@ -53,8 +53,9 @@ const DebugPanel: React.FC = () => {
     selectedDataURL,
     dataURLs,
     outputDataForDownload,
-    selectedOutputData,
-    selectedFeatureId,
+    archiveName,
+    rows,
+    selectedRow,
     selectedFeature,
     canOpenIn3D,
     modelViewRequest,
@@ -69,7 +70,6 @@ const DebugPanel: React.FC = () => {
     handlePickRow,
     pickedUnloadedRow,
     loadedRowCount,
-    formattedData,
     handleFullscreenExpand,
     handleFullscreenExit,
     handleExpand,
@@ -79,8 +79,6 @@ const DebugPanel: React.FC = () => {
     handleRemoveDataURL,
     handleRowSingleClick,
     handleRowDoubleClick,
-    detectedGeometryType,
-    totalFeatures,
   } = useHooks();
   const t = useT();
   const [tabValue, setTabValue] = useState("debug-logs");
@@ -98,12 +96,27 @@ const DebugPanel: React.FC = () => {
     },
     [mapControls],
   );
-  const showingRowOverMap = rowOverMap && !!selectedFeature;
+  const flyOnLoadRow = useRef<number | null>(null);
+  useEffect(() => {
+    const pending = flyOnLoadRow.current;
+    if (pending === null) return;
+    if (pending !== selectedRow) {
+      flyOnLoadRow.current = null;
+      return;
+    }
+    if (selectedFeature?._row === pending) {
+      flyOnLoadRow.current = null;
+      flyToRow(selectedFeature);
+    }
+  }, [selectedRow, selectedFeature, flyToRow]);
+
+  const hasSelection = selectedRow !== null;
+  const showingRowOverMap = rowOverMap && hasSelection;
   // Once nothing is selected, the next row starts on the map again.
-  const [hadSelection, setHadSelection] = useState(!!selectedFeature);
-  if (hadSelection !== !!selectedFeature) {
-    setHadSelection(!!selectedFeature);
-    if (!selectedFeature) setRowOverMap(false);
+  const [hadSelection, setHadSelection] = useState(hasSelection);
+  if (hadSelection !== hasSelection) {
+    setHadSelection(hasSelection);
+    if (!hasSelection) setRowOverMap(false);
   }
 
   // The selected row, as its details or as a 3D model.
@@ -189,7 +202,7 @@ const DebugPanel: React.FC = () => {
               <div className="ml-2 h-full w-1 border-l" />
               <OutputDataDownload
                 outputData={outputDataForDownload}
-                archiveName={`job_${debugJobId}`}
+                archiveName={archiveName}
               />
             </div>
             {/* <div className="absolute left-1/2 mr-[120px] flex h-full translate-x-1/2 items-center justify-center gap-2">
@@ -317,20 +330,24 @@ const DebugPanel: React.FC = () => {
                   </div>
                   <div className="min-h-0 flex-1">
                     <TableViewer
-                      fileContent={selectedOutputData}
-                      selectedFeatureId={selectedFeatureId}
+                      rows={rows}
+                      selectedRow={selectedRow}
                       onSingleClick={handleRowSingleClick}
-                      onDoubleClick={(row: any) => {
+                      onDoubleClick={(row) => {
                         handleRowDoubleClick(row);
-                        if (mapViewRequest) flyToRow(row);
+                        if (!mapViewRequest) {
+                          flyOnLoadRow.current = null;
+                        } else if (selectedFeature?._row === row._row) {
+                          flyOnLoadRow.current = null;
+                          flyToRow(selectedFeature);
+                        } else {
+                          flyOnLoadRow.current = row._row;
+                        }
                       }}
-                      detectedGeometryType={detectedGeometryType || undefined}
-                      totalFeatures={totalFeatures || undefined}
-                      formattedData={formattedData}
                     />
                   </div>
                 </ResizablePanel>
-                {(mapViewRequest || selectedFeature) && (
+                {(mapViewRequest || hasSelection) && (
                   <>
                     {!minimized && (
                       <ResizableHandle className="mx-2 w-1" withHandle />

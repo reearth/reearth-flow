@@ -3034,7 +3034,7 @@
           },
           "adeSchemas": {
             "title": "ADEスキーマ",
-            "description": "クラスとプロパティを書き出せるアプリケーションドメイン拡張（ADE、例: PLATEAUのi-UR）。各項目はFlowに組み込まれたモジュール、またはパスで指定するXSDのどちらか。地物が使うADEはすべて指定する。指定しないADEのクラスは`gen:GenericCityObject`として書き出し、その中に入れ子になったオブジェクトはトップレベルのオブジェクトとして書き出し、そのプロパティは書き出さない",
+            "description": "クラスとプロパティを書き出せるアプリケーションドメイン拡張（ADE、例: PLATEAUのi-UR）。各項目で接頭辞（例: `uro`）、名前空間、XSDの場所を指定する。地物が使うADEはすべて指定する。指定しないADEのクラスは`gen:GenericCityObject`として書き出し、その中に入れ子になったオブジェクトはトップレベルのオブジェクトとして書き出す",
             "default": null,
             "type": [
               "array",
@@ -3162,161 +3162,56 @@
           },
           "AdeSchema": {
             "title": "ADE Schema",
-            "description": "An Application Domain Extension the writer can write classes and properties from, and where its schema comes from.",
-            "oneOf": [
-              {
-                "title": "組み込みモジュール",
-                "description": "スキーマがFlowに組み込まれたモジュール（例: i-UR 3.2 都市オブジェクト）",
+            "description": "An Application Domain Extension the writer can write classes from.",
+            "type": "object",
+            "required": [
+              "namespace",
+              "prefix",
+              "schemaLocation"
+            ],
+            "properties": {
+              "prefix": {
+                "title": "接頭辞",
+                "description": "ADEの接頭辞（例: `uro`）。CityGML 2.0の接頭辞は使えない",
+                "type": "string"
+              },
+              "namespace": {
+                "title": "名前空間",
+                "description": "ADEの名前空間。XSDの`targetNamespace`と同じ値",
+                "type": "string"
+              },
+              "schemaLocation": {
+                "title": "スキーマの場所",
+                "description": "ADEのXSDを読み込む場所を表すパスまたは式。公式のi-URスキーマのような`https://`のURL、または`file://`か`gs://`のパスで指定する。相対パスでインポートされるスキーマは同じ場所から読み込み、OGCスキーマのインポートにはFlowに組み込まれた写しを使う",
                 "type": "object",
+                "format": "code",
                 "required": [
-                  "module",
-                  "type"
+                  "type",
+                  "value"
                 ],
                 "properties": {
                   "type": {
                     "type": "string",
                     "enum": [
-                      "builtIn"
+                      "flowExpr",
+                      "string"
                     ]
                   },
-                  "module": {
-                    "title": "モジュール",
-                    "description": "組み込みモジュール。ADE、モジュール、バージョンで名付ける（例: `iur-uro-3.2`）。名前空間はそのスキーマで決まる",
-                    "allOf": [
-                      {
-                        "$ref": "#/definitions/BuiltInAde"
-                      }
-                    ]
-                  },
-                  "prefix": {
-                    "title": "接頭辞",
-                    "description": "地物がこのモジュールに使う接頭辞。モジュール本来の接頭辞（例: `iur-uro-3.2`の`uro`）と異なる場合に指定する。CityGML 2.0の接頭辞は使えない",
-                    "default": null,
-                    "type": [
-                      "string",
-                      "null"
-                    ]
-                  },
-                  "declaredLocation": {
-                    "title": "出力に記載する場所",
-                    "description": "出力の`xsi:schemaLocation`にこのモジュールの場所として書く値。省略時はPLATEAUのデータセットがスキーマを置く場所（例: `../../schemas/iur/uro/3.2/urbanObject.xsd`）",
-                    "default": null,
-                    "type": [
-                      "string",
-                      "null"
-                    ]
+                  "value": {
+                    "type": "string"
                   }
                 }
               },
-              {
-                "title": "スキーマファイル",
-                "description": "XSDをパスから読み込むADE",
-                "type": "object",
-                "required": [
-                  "namespace",
-                  "prefix",
-                  "schemaLocation",
-                  "type"
-                ],
-                "properties": {
-                  "type": {
-                    "type": "string",
-                    "enum": [
-                      "file"
-                    ]
-                  },
-                  "prefix": {
-                    "title": "接頭辞",
-                    "description": "ADEの接頭辞（例: `uro`）。CityGML 2.0の接頭辞は使えない",
-                    "type": "string"
-                  },
-                  "namespace": {
-                    "title": "名前空間",
-                    "description": "ADEの名前空間。XSDの`targetNamespace`と同じ値",
-                    "type": "string"
-                  },
-                  "schemaLocation": {
-                    "title": "スキーマの場所",
-                    "description": "ADEのXSDを読み込む場所（`file://`または`gs://`のパス）を表すパスまたは式。相対パスでインポートされるスキーマは同じ場所から読み込み、OGCスキーマのインポートにはFlowに組み込まれた写しを使う",
-                    "type": "object",
-                    "format": "code",
-                    "required": [
-                      "type",
-                      "value"
-                    ],
-                    "properties": {
-                      "type": {
-                        "type": "string",
-                        "enum": [
-                          "flowExpr",
-                          "string"
-                        ]
-                      },
-                      "value": {
-                        "type": "string"
-                      }
-                    }
-                  },
-                  "declaredLocation": {
-                    "title": "出力に記載する場所",
-                    "description": "出力の`xsi:schemaLocation`にこの名前空間の場所として書く値（例: 公式URL、出力からの相対パス）。省略時は`schemaLocation`",
-                    "default": null,
-                    "type": [
-                      "string",
-                      "null"
-                    ]
-                  }
-                }
-              }
-            ]
-          },
-          "BuiltInAde": {
-            "title": "Built-in ADE Module",
-            "description": "An ADE schema module built into Flow, named after its ADE, module and version.",
-            "oneOf": [
-              {
-                "title": "i-UR 3.0 都市オブジェクト（uro）",
-                "type": "string",
-                "enum": [
-                  "iur-uro-3.0"
-                ]
-              },
-              {
-                "title": "i-UR 3.1 都市オブジェクト（uro）",
-                "type": "string",
-                "enum": [
-                  "iur-uro-3.1"
-                ]
-              },
-              {
-                "title": "i-UR 3.2 都市オブジェクト（uro）",
-                "type": "string",
-                "enum": [
-                  "iur-uro-3.2"
-                ]
-              },
-              {
-                "title": "i-UR 3.0 都市機能（urf）",
-                "type": "string",
-                "enum": [
-                  "iur-urf-3.0"
-                ]
-              },
-              {
-                "title": "i-UR 3.1 都市機能（urf）",
-                "type": "string",
-                "enum": [
-                  "iur-urf-3.1"
-                ]
-              },
-              {
-                "title": "i-UR 3.2 都市機能（urf）",
-                "type": "string",
-                "enum": [
-                  "iur-urf-3.2"
+              "declaredLocation": {
+                "title": "出力に記載する場所",
+                "description": "出力の`xsi:schemaLocation`にこの名前空間の場所として書く値（例: 公式URL、出力からの相対パス）。省略時は`schemaLocation`",
+                "default": null,
+                "type": [
+                  "string",
+                  "null"
                 ]
               }
-            ]
+            }
           }
         }
       },
@@ -10082,6 +9977,129 @@
       ]
     },
     {
+      "name": "Mesh Merger",
+      "type": "processor",
+      "description": "グループ化属性の値が同じ地物のポリゴンとメッシュを、各面をそのまま保ってメッシュに統合し、グループごと、またはその連結部分ごとに1つの地物を出力する。統合されるポリゴンとメッシュ（コレクション内のものを含む）がすべて三角形メッシュなら三角形メッシュ、それ以外はポリゴンメッシュになる。",
+      "parameter": {
+        "$schema": "http://json-schema.org/draft-07/schema#",
+        "title": "メッシュ統合のパラメータ",
+        "description": "どの地物をまとめて統合するか、結果をどう分けるか、どの属性を保持するかを設定する。",
+        "type": "object",
+        "properties": {
+          "groupBy": {
+            "title": "グループ化属性",
+            "description": "まとめて統合する地物を決める属性。すべての属性値が一致する地物が1つのグループになる。省略した場合はすべての地物が1つのグループに属する。属性を収集する場合、`__members` は収集した値を保持するため含められない。",
+            "default": null,
+            "type": [
+              "array",
+              "null"
+            ],
+            "items": {
+              "$ref": "#/definitions/Attribute"
+            }
+          },
+          "attributeAccumulation": {
+            "title": "属性の保持",
+            "description": "統合後の各地物が保持する属性。その地物に統合された地物から取られる。",
+            "default": "useOneFeature",
+            "allOf": [
+              {
+                "$ref": "#/definitions/AttributeAccumulation"
+              }
+            ]
+          },
+          "granularity": {
+            "title": "出力単位",
+            "description": "各グループを出力地物にどこまで細かく分けるか。",
+            "default": "group",
+            "allOf": [
+              {
+                "$ref": "#/definitions/Granularity"
+              }
+            ]
+          }
+        },
+        "definitions": {
+          "Attribute": {
+            "type": "string"
+          },
+          "AttributeAccumulation": {
+            "title": "Attribute Accumulation",
+            "description": "Which attributes a merged feature keeps.",
+            "oneOf": [
+              {
+                "title": "グループ化属性のみ保持",
+                "description": "グループ化属性のみを保持し、それ以外はすべて破棄する。",
+                "type": "string",
+                "enum": [
+                  "groupAttributesOnly"
+                ]
+              },
+              {
+                "title": "属性を収集",
+                "description": "グループ化属性を保持し、統合された各地物のそれ以外の属性を、到着順に地物ごとに1つのマップを持つ配列として `__members` に書き込む。",
+                "type": "string",
+                "enum": [
+                  "collectAttributes"
+                ]
+              },
+              {
+                "title": "1つの地物の属性を使用",
+                "description": "最初に統合された地物の属性を保持し、残りを破棄する。",
+                "type": "string",
+                "enum": [
+                  "useOneFeature"
+                ]
+              }
+            ]
+          },
+          "Granularity": {
+            "description": "How finely each group is divided into output features.",
+            "oneOf": [
+              {
+                "title": "グループ",
+                "description": "グループごとに1つのメッシュを出力する。",
+                "type": "string",
+                "enum": [
+                  "group"
+                ]
+              },
+              {
+                "title": "辺で連結した部分",
+                "description": "座標が完全に一致する辺でつながった面のまとまりごとに1つのメッシュを出力する。頂点のみで接する面は別のメッシュになる。",
+                "type": "string",
+                "enum": [
+                  "edgeConnectedPart"
+                ]
+              },
+              {
+                "title": "多様体部分",
+                "description": "辺で連結した部分をさらに分け、メッシュのどの辺も接する面が1つか2つになるようにする。1つの辺に3つ以上の面が接する場合、その辺でつながったままになるのは2つの面だけである。",
+                "type": "string",
+                "enum": [
+                  "manifoldPart"
+                ]
+              }
+            ]
+          }
+        }
+      },
+      "builtin": true,
+      "inputPorts": [
+        "features"
+      ],
+      "outputPorts": [
+        "features",
+        "rejected"
+      ],
+      "categories": [
+        "Geometry"
+      ],
+      "tags": [
+        "aggregation"
+      ]
+    },
+    {
       "name": "Neighbor Finder",
       "type": "processor",
       "description": "空間的な近接性に基づいて、各基本地物に対して最も近い候補地物を見つける",
@@ -11411,6 +11429,7 @@
         "type": "object",
         "properties": {
           "codelistsPath": {
+            "title": "Codelists Path",
             "description": "フォールバックのコードリストディレクトリパス式。GML ファイルからの相対位置にコードリストが見つからない場合、codeSpace 参照を解決するベースディレクトリとして使用される。",
             "type": [
               "object",
@@ -12589,6 +12608,7 @@
         "type": "object",
         "properties": {
           "codelistsPath": {
+            "title": "Codelists Path",
             "description": "フォールバックのコードリストディレクトリパス式。GML ファイルからの相対位置にコードリストが見つからない場合、codeSpace 参照を解決するベースディレクトリとして使用される。",
             "type": [
               "object",
@@ -12622,45 +12642,6 @@
         "features",
         "rejected",
         "duplicateGmlIdStats"
-      ],
-      "categories": [
-        "PLATEAU"
-      ],
-      "tags": []
-    },
-    {
-      "name": "PLATEAU6.FloodingAreaSurfaceGenerator",
-      "type": "processor",
-      "description": "Merges the triangles of flood zone bodies into connected areas and rebuilds each area as one triangulated surface, constrained to the area's outline and filled with sparse points sampled from the original surface. Emits one feature per area, carrying the attributes of the first body in its group. All input must be in one coordinate frame; the action fails otherwise.",
-      "parameter": {
-        "$schema": "http://json-schema.org/draft-07/schema#",
-        "title": "Flooding Area Surface Generator Parameters",
-        "description": "Which bodies are merged into one surface.",
-        "type": "object",
-        "properties": {
-          "groupBy": {
-            "title": "Group By",
-            "description": "Attributes whose values partition the bodies: only bodies with the same values are merged. Empty (the default) merges every body together.",
-            "default": [],
-            "type": "array",
-            "items": {
-              "$ref": "#/definitions/Attribute"
-            }
-          }
-        },
-        "definitions": {
-          "Attribute": {
-            "type": "string"
-          }
-        }
-      },
-      "builtin": false,
-      "inputPorts": [
-        "features"
-      ],
-      "outputPorts": [
-        "features",
-        "rejected"
       ],
       "categories": [
         "PLATEAU"

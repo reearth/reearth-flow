@@ -29,6 +29,7 @@ import { getIconFileType } from "./utils";
 type Props = {
   asset: Asset;
   readonly?: boolean;
+  selected?: boolean;
   isDeleting?: boolean;
   onCopyUrlToClipBoard: (url: string) => void;
   onAssetDownload: (
@@ -37,17 +38,20 @@ type Props = {
   ) => void;
   setAssetToBeDeleted: (asset: string | undefined) => void;
   setAssetToBeEdited: (asset: Asset | undefined) => void;
+  onClick?: (asset: Asset) => void;
   onDoubleClick?: (asset: Asset) => void;
 };
 
 const AssetCard: React.FC<Props> = ({
   asset,
   readonly,
+  selected,
   isDeleting,
   onCopyUrlToClipBoard,
   onAssetDownload,
   setAssetToBeDeleted,
   setAssetToBeEdited,
+  onClick,
   onDoubleClick,
 }) => {
   const t = useT();
@@ -66,8 +70,18 @@ const AssetCard: React.FC<Props> = ({
 
   return (
     <Card
-      className="group relative cursor-pointer border-transparent bg-card hover:border-border"
+      className={`group relative cursor-pointer bg-card hover:border-border ${selected ? "border-primary ring-1 ring-primary" : "border-transparent"}`}
       key={id}
+      role="button"
+      tabIndex={0}
+      aria-pressed={selected}
+      onKeyDown={(e) => {
+        if (e.target !== e.currentTarget) return;
+        if (e.key !== "Enter" && e.key !== " ") return;
+        e.preventDefault();
+        onClick?.(asset);
+      }}
+      onClick={() => onClick?.(asset)}
       onDoubleClick={readonly ? undefined : handleDoubleClick}>
       <CardContent className="flex items-start justify-center p-2">
         {fileIcon ? (

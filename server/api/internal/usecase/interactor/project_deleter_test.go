@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"testing"
+	"time"
 
 	"github.com/reearth/reearth-flow/api/internal/infrastructure/memory"
 	"github.com/reearth/reearth-flow/api/internal/usecase/interfaces"
@@ -44,6 +45,30 @@ func (r *retryableProjectRepo) Remove(ctx context.Context, pid id.ProjectID) err
 type mockWebsocketClient struct {
 	deleteDocumentFunc func(ctx context.Context, docID string) error
 	deletedDocIDs      []string
+	// lockCalls records SetProjectLock; lockErrs are returned in turn.
+	lockCalls []lockSignal
+	lockErrs  []error
+	// lockBudgets records how long each SetProjectLock call had left.
+	lockBudgets []time.Duration
+}
+
+type lockSignal struct {
+	changedAt time.Time
+	docID     string
+	locked    bool
+}
+
+func (m *mockWebsocketClient) SetProjectLock(ctx context.Context, docID string, locked bool, changedAt time.Time) error {
+	m.lockCalls = append(m.lockCalls, lockSignal{docID: docID, locked: locked, changedAt: changedAt})
+	if deadline, ok := ctx.Deadline(); ok {
+		m.lockBudgets = append(m.lockBudgets, time.Until(deadline))
+	}
+	if len(m.lockErrs) == 0 {
+		return nil
+	}
+	err := m.lockErrs[0]
+	m.lockErrs = m.lockErrs[1:]
+	return err
 }
 
 func (m *mockWebsocketClient) DeleteDocument(ctx context.Context, docID string) error {
@@ -80,6 +105,9 @@ func (m *mockWebsocketClient) Rollback(context.Context, string, int) (*ws.Docume
 	return nil, nil
 }
 func (m *mockWebsocketClient) FlushToGCS(context.Context, string) error { return nil }
+func (m *mockWebsocketClient) SaveVersion(context.Context, string, string) (bool, error) {
+	return false, nil
+}
 func (m *mockWebsocketClient) CreateSnapshot(context.Context, string, int, string) (*ws.Document, error) {
 	return nil, nil
 }

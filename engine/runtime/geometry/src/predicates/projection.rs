@@ -39,11 +39,11 @@ use crate::polygon_mesh::{PolygonMesh2D, PolygonMesh3D};
 use crate::triangular_mesh::TriangularMesh2D;
 use crate::{Euclidean2DGeometry, Geometry};
 
-use super::kernel::{orient2d, Orientation};
+use super::kernel::{Orientation, orient2d};
 use super::kernel3d::{collinear_3d, coplanar, drop_axis};
-use super::relate::{relate_2d, IntersectionMatrix};
-use super::view::{flatten_2d, Leaf2D};
-use super::view3d::{flatten_3d, flatten_geometry_3d, Leaf3D};
+use super::relate::{IntersectionMatrix, relate_2d};
+use super::view::{Leaf2D, flatten_2d};
+use super::view3d::{Leaf3D, flatten_3d, flatten_geometry_3d};
 use super::{PredicateError, Result};
 
 /// The DE-9IM matrix of two mutually coplanar 3D geometries, related in their
@@ -394,7 +394,7 @@ mod tests {
     use crate::polygon::Polygon3D;
     use crate::polygon_mesh::PolygonMesh3D;
     use crate::predicates::relate::relate;
-    use crate::predicates::test3d::{box_solid, e, g3, solid_geometry, Rng};
+    use crate::predicates::test3d::{Rng, box_solid, e, g3, solid_geometry};
     use crate::triangular_mesh::TriangularMesh3D;
     use pretty_assertions::assert_eq;
 

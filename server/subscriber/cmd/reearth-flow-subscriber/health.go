@@ -26,6 +26,7 @@ func NewHealthChecker(
 	redisClient *redis.Client,
 	mongoClient *mongo.Client,
 	pubsubClient *pubsub.Client,
+	postgresPing func(context.Context) error,
 ) *HealthChecker {
 	checks := []health.Config{}
 
@@ -35,6 +36,16 @@ func NewHealthChecker(
 			Timeout:   time.Second * 5,
 			SkipOnErr: false,
 			Check:     healthRedis.New(healthRedis.Config{DSN: conf.RedisURL}),
+		})
+	}
+
+	// The live store when LiveBackend is postgres; nil otherwise.
+	if postgresPing != nil {
+		checks = append(checks, health.Config{
+			Name:      "postgres",
+			Timeout:   time.Second * 5,
+			SkipOnErr: false,
+			Check:     postgresPing,
 		})
 	}
 

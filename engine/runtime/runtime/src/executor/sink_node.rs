@@ -3,7 +3,7 @@ use std::{
     fmt::Debug,
     io::BufRead,
     mem::swap,
-    sync::{atomic::AtomicU64, Arc},
+    sync::{Arc, atomic::AtomicU64},
     time,
 };
 
@@ -19,7 +19,7 @@ use reearth_flow_diagnostics::Diagnostic;
 
 use crate::{
     builder_dag::NodeKind,
-    errors::{to_node_error, ExecutionError, NodeErrorKind},
+    errors::{ExecutionError, NodeErrorKind, to_node_error},
     event::{Event, EventHub, NodeMetrics},
     executor_operation::{ExecutorContext, ExecutorOperation, NodeContext},
     kvs::KvStore,
@@ -417,12 +417,11 @@ impl<F: Future + Unpin + Debug> ReceiverLoop for SinkNode<F> {
         *self.summaries_sink.lock() = summaries;
 
         // A reject-shard flush failure doesn't override a real finish() error, but does fail the node if finish() itself succeeded.
-        if let Some((rows, overflow)) = self.diagnostics.drain_reject_rows() {
-            if let Err(e) = self.flush_reject_shard(rows, overflow) {
-                if result.is_ok() {
-                    result = Err(e);
-                }
-            }
+        if let Some((rows, overflow)) = self.diagnostics.drain_reject_rows()
+            && let Err(e) = self.flush_reject_shard(rows, overflow)
+            && result.is_ok()
+        {
+            result = Err(e);
         }
 
         self.event_hub.send(Event::SinkFinished {

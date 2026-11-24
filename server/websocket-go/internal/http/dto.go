@@ -63,6 +63,14 @@ type RollbackRequest struct {
 	Version uint64 `json:"version"`
 }
 
+// LockRequest is the POST /api/document/{id}/lock body: the project's lock
+// state and when it changed, in Unix milliseconds. A later change wins over an
+// earlier one whatever order they arrive in.
+type LockRequest struct {
+	Locked    bool  `json:"locked"`
+	ChangedAt int64 `json:"changedAt"`
+}
+
 // CreateSnapshotRequest is the POST /api/document/snapshot body (doc_id in body only).
 type CreateSnapshotRequest struct {
 	DocID   string `json:"doc_id"`
@@ -86,11 +94,29 @@ type SnapshotItem struct {
 	Label     string `json:"label"`
 	Timestamp string `json:"timestamp"`
 	Size      int64  `json:"size"`
+	// Contributors are the users who edited the document since the previous
+	// version, LastEditor the one who edited last. ContributorCount can exceed
+	// len(Contributors): the stored list is cut to fit object metadata, keeping
+	// the last editor. Empty for snapshots saved without attribution.
+	Contributors     []string `json:"contributors"`
+	ContributorCount int      `json:"contributorCount"`
+	LastEditor       string   `json:"lastEditor,omitempty"`
 }
 
 // SaveSnapshotRequest is the POST body for creating a named snapshot.
 type SaveSnapshotRequest struct {
 	Label string `json:"label"`
+}
+
+// SaveVersionRequest is the POST /api/document/{id}/versions body.
+type SaveVersionRequest struct {
+	Label string `json:"label"`
+}
+
+// SaveVersionResponse reports whether a version was saved, and its id.
+type SaveVersionResponse struct {
+	Saved      bool  `json:"saved"`
+	SnapshotID int64 `json:"snapshotId,omitempty"`
 }
 
 // SnapshotStateResponse is one snapshot's stored state. Deliberately not

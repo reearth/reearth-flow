@@ -1,9 +1,9 @@
 use crate::{
     algorithm::{
+        GeoNum,
         convex_hull::trivial_hull,
         kernels::{Orientation, RobustKernel},
         utils::{least_and_greatest_index, partition_slice},
-        GeoNum,
     },
     types::{
         coordinate::{Coordinate, Coordinate2D, Coordinate3D},

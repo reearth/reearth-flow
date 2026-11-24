@@ -1,5 +1,5 @@
 use nusamai_citygml::GeometryRef;
-use nusamai_citygml::{object::ObjectStereotype, GeometryType, Value};
+use nusamai_citygml::{GeometryType, Value, object::ObjectStereotype};
 use nusamai_plateau::Entity;
 use reearth_flow_geometry::types::coordinate::Coordinate3D;
 use reearth_flow_geometry::types::line_string::LineString3D;

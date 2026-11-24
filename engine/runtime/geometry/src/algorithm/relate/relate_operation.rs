@@ -1,11 +1,11 @@
 use parking_lot::RwLock;
 
+use crate::algorithm::GeoFloat;
 use crate::algorithm::bounding_rect::BoundingRect;
 use crate::algorithm::coordinate_position::{CoordPos, CoordinatePosition};
 use crate::algorithm::dimensions::{Dimensions, HasDimensions};
 use crate::algorithm::geometry_cow::GeometryCow;
 use crate::algorithm::intersects::Intersects;
-use crate::algorithm::GeoFloat;
 use crate::types::coordinate::Coordinate;
 
 use super::geomgraph::index::SegmentIntersector;

@@ -234,10 +234,8 @@ export default ({
 
   const isReadOnly = isLocked || isReaderRestricted;
 
-  const { sharingUrl, handleProjectShare } = useProjectShare({
-    currentProject,
-    yDoc,
-  });
+  const { sharingUrl, handleProjectShare, handleProjectShareOpen } =
+    useProjectShare({ currentProject });
 
   const handleLayoutChange = useCallback(
     (algorithm: Algorithm, direction: Direction, applyToAll: boolean) => {
@@ -254,6 +252,8 @@ export default ({
     refetchWorkflowVariables,
     handleDebugRunStart,
     handleFromSelectedNodeDebugRunStart,
+    handleToSelectedNodeDebugRunStart,
+    canDebugRunFromNode,
     handleDebugRunStop,
     handleResetDebugRunWorkflowVariables,
     loadExternalDebugJob,
@@ -266,6 +266,7 @@ export default ({
   const { staleNodeIds } = useGraphStaleness({ yWorkflows, undoManager });
   const {
     schemaProbes,
+    schemaProbeOutcomes,
     readerAttributeSuggestions,
     handleNodeParamsSaved,
     handleProbeComplete,
@@ -512,6 +513,7 @@ export default ({
     handleWorkflowDeployment,
     sharingUrl,
     handleProjectShare,
+    handleProjectShareOpen,
     handleCurrentProjectExport,
     handleWorkflowAdd: handleYWorkflowAdd,
     handleWorkflowChange: handleCurrentWorkflowIdChange,
@@ -536,9 +538,12 @@ export default ({
     handleDeleteDialogClose,
     handleDebugRunStart,
     handleFromSelectedNodeDebugRunStart,
+    handleToSelectedNodeDebugRunStart,
+    canDebugRunFromNode,
     handleDebugRunStop,
     handleResetDebugRunWorkflowVariables,
     schemaProbes,
+    schemaProbeOutcomes,
     readerAttributeSuggestions,
     handleNodeParamsSaved,
     handleProbeComplete,

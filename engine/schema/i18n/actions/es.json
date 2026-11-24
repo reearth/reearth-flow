@@ -1079,7 +1079,7 @@
         },
         "adeSchemas": {
           "title": "ADE Schemas",
-          "description": "Extensiones de dominio de aplicación (ADE), como i-UR de PLATEAU, cuyas clases y propiedades se pueden escribir; cada una es un módulo integrado en Flow o un XSD indicado por ruta. Incluya todas las ADE que usan las entidades: una clase de una ADE no incluida se escribe como `gen:GenericCityObject`, los objetos anidados en ella como objetos de nivel superior, y sus propiedades se omiten."
+          "description": "Extensiones de dominio de aplicación (ADE), como i-UR de PLATEAU, cuyas clases y propiedades se pueden escribir; cada una indica su prefijo (como `uro`), su espacio de nombres y la ubicación de su XSD. Incluya todas las ADE que usan las entidades: una clase de una ADE no incluida se escribe como `gen:GenericCityObject`, y los objetos anidados en ella como objetos de nivel superior."
         },
         "attributeKeys": {
           "title": "Attribute Keys",
@@ -1107,6 +1107,24 @@
         }
       },
       "definitionI18n": {
+        "AdeSchema": {
+          "declaredLocation": {
+            "title": "Declared Location",
+            "description": "Schema location written into the output's `xsi:schemaLocation` for this namespace, such as the official URL or a path relative to the output. Defaults to `schemaLocation`."
+          },
+          "namespace": {
+            "title": "Namespace",
+            "description": "The ADE's namespace, as declared by its XSD's `targetNamespace`."
+          },
+          "prefix": {
+            "title": "Prefix",
+            "description": "Prefix for the ADE, such as `uro`. It cannot reuse a CityGML 2.0 prefix."
+          },
+          "schemaLocation": {
+            "title": "Schema Location",
+            "description": "Path or expression for where to read the ADE's XSD, as an `https://` URL such as the official i-UR schema, or a `file://` or `gs://` path. Schemas it imports by relative path are read from beside it. Imports of the OGC schemas come from the copy built into Flow."
+          }
+        },
         "AttributeKeys": {
           "cityGmlAttributes": {
             "title": "CityGML Attributes",
@@ -1139,70 +1157,6 @@
           "parentGmlId": {
             "title": "gml:id del padre",
             "description": "Atributo de la entidad que contiene el gml:id del objeto bajo el que se anida la entidad: otra entidad, o un objeto anidado dentro de ella, emparejado por gml:id. Una entidad cuyo padre no se encuentra o no puede contenerla se escribe como objeto de nivel superior y se notifica. Por defecto es `__citygml_parent_gml_id`."
-          }
-        }
-      },
-      "enumI18n": {
-        "AdeSchema": {
-          "builtIn": {
-            "title": "Built-in Module",
-            "description": "Un módulo cuyo esquema está integrado en Flow, como i-UR 3.2 Urban Object.",
-            "properties": {
-              "declaredLocation": {
-                "title": "Declared Location",
-                "description": "Ubicación del esquema que se escribe en `xsi:schemaLocation` de la salida para este módulo. Por defecto, donde la guarda un conjunto de datos de PLATEAU, como `../../schemas/iur/uro/3.2/urbanObject.xsd`."
-              },
-              "module": {
-                "title": "Module",
-                "description": "El módulo integrado, nombrado según su ADE, módulo y versión, como `iur-uro-3.2`. Su espacio de nombres lo fija su esquema."
-              },
-              "prefix": {
-                "title": "Prefix",
-                "description": "Prefijo que usan las entidades para este módulo, cuando no es el propio del módulo, como `uro` para `iur-uro-3.2`. No puede reutilizar un prefijo de CityGML 2.0."
-              }
-            }
-          },
-          "file": {
-            "title": "Schema File",
-            "description": "Una ADE cuyo XSD se lee desde una ruta.",
-            "properties": {
-              "declaredLocation": {
-                "title": "Declared Location",
-                "description": "Ubicación del esquema que se escribe en `xsi:schemaLocation` de la salida para este espacio de nombres, como la URL oficial o una ruta relativa a la salida. Por defecto, `schemaLocation`."
-              },
-              "namespace": {
-                "title": "Namespace",
-                "description": "El espacio de nombres de la ADE, tal como lo declara el `targetNamespace` de su XSD."
-              },
-              "prefix": {
-                "title": "Prefix",
-                "description": "Prefijo de la ADE, como `uro`. No puede reutilizar un prefijo de CityGML 2.0."
-              },
-              "schemaLocation": {
-                "title": "Schema Location",
-                "description": "Ruta o expresión de dónde leer el XSD de la ADE, como ruta `file://` o `gs://`. Los esquemas que importa por ruta relativa se leen junto a él, y las importaciones de los esquemas OGC usan la copia integrada en Flow."
-              }
-            }
-          }
-        },
-        "BuiltInAde": {
-          "iur-urf-3.0": {
-            "title": "i-UR 3.0 Urban Function (urf)"
-          },
-          "iur-urf-3.1": {
-            "title": "i-UR 3.1 Urban Function (urf)"
-          },
-          "iur-urf-3.2": {
-            "title": "i-UR 3.2 Urban Function (urf)"
-          },
-          "iur-uro-3.0": {
-            "title": "i-UR 3.0 Urban Object (uro)"
-          },
-          "iur-uro-3.1": {
-            "title": "i-UR 3.1 Urban Object (uro)"
-          },
-          "iur-uro-3.2": {
-            "title": "i-UR 3.2 Urban Object (uro)"
           }
         }
       }
@@ -3402,6 +3356,58 @@
       }
     },
     {
+      "name": "Mesh Merger",
+      "description": "Fusiona en mallas los polígonos y mallas de las entidades que comparten los mismos valores de atributos de agrupación, conservando cada cara tal cual, y emite una entidad por grupo o por cada parte conectada de este. El resultado es una malla triangular cuando todos los polígonos y mallas fusionados en ella, incluidos los de las colecciones, son mallas triangulares, y una malla poligonal en caso contrario.",
+      "parameterI18n": {
+        "": {
+          "title": "Parámetros del fusionador de mallas",
+          "description": "Define qué entidades se fusionan juntas, cómo se divide el resultado y qué atributos conserva."
+        },
+        "attributeAccumulation": {
+          "title": "Acumulación de atributos",
+          "description": "Qué atributos conserva cada entidad fusionada, tomados de las entidades fusionadas en ella."
+        },
+        "granularity": {
+          "title": "Granularidad",
+          "description": "Con qué detalle se divide cada grupo en entidades de salida."
+        },
+        "groupBy": {
+          "title": "Atributos de agrupación",
+          "description": "Atributos cuyos valores deciden qué entidades se fusionan juntas; las entidades que coinciden en todos ellos forman un grupo. Si se omiten, todas las entidades pertenecen a un único grupo. No puede incluir `__members` cuando se recopilan atributos, ya que ese atributo contiene los valores recopilados."
+        }
+      },
+      "enumI18n": {
+        "AttributeAccumulation": {
+          "collectAttributes": {
+            "title": "Recopilar atributos",
+            "description": "Conserva los atributos de agrupación y escribe los demás atributos de cada entidad fusionada en `__members`, un arreglo con un mapa por entidad en orden de llegada."
+          },
+          "groupAttributesOnly": {
+            "title": "Conservar solo los atributos de agrupación",
+            "description": "Conserva solo los atributos de agrupación y descarta todo lo demás."
+          },
+          "useOneFeature": {
+            "title": "Usar atributos de una entidad",
+            "description": "Conserva los atributos de la primera entidad fusionada y descarta el resto."
+          }
+        },
+        "Granularity": {
+          "edgeConnectedPart": {
+            "title": "Parte conectada por aristas",
+            "description": "Emite una malla por cada conjunto de caras conectadas por aristas con coordenadas exactamente iguales. Las caras que solo se tocan en un vértice forman mallas separadas."
+          },
+          "group": {
+            "title": "Grupo",
+            "description": "Emite una malla por grupo."
+          },
+          "manifoldPart": {
+            "title": "Parte variedad",
+            "description": "Divide aún más cada parte conectada por aristas para que cada arista de una malla limite con una o dos de sus caras. Cuando varias caras coinciden en una arista, solo dos de ellas permanecen unidas allí."
+          }
+        }
+      }
+    },
+    {
       "name": "Neighbor Finder",
       "description": "Encuentra las entidades candidatas más cercanas para cada entidad base basándose en proximidad espacial",
       "parameterI18n": {
@@ -3853,6 +3859,7 @@
           "description": "Configuration for validating domain of definition of CityGML features."
         },
         "codelistsPath": {
+          "title": "Codelists Path",
           "description": "Fallback codelists directory path expression. When codelists files are not found at the location relative to the GML file, this path will be used as the base directory for resolving codeSpace references."
         }
       }
@@ -4125,20 +4132,8 @@
           "description": "Configuration for validating domain of definition of CityGML features."
         },
         "codelistsPath": {
+          "title": "Codelists Path",
           "description": "Fallback codelists directory path expression. When codelists files are not found at the location relative to the GML file, this path will be used as the base directory for resolving codeSpace references."
-        }
-      }
-    },
-    {
-      "name": "PLATEAU6.FloodingAreaSurfaceGenerator",
-      "parameterI18n": {
-        "": {
-          "title": "Flooding Area Surface Generator Parameters",
-          "description": "Which bodies are merged into one surface."
-        },
-        "groupBy": {
-          "title": "Group By",
-          "description": "Attributes whose values partition the bodies: only bodies with the same values are merged. Empty (the default) merges every body together."
         }
       }
     },

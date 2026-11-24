@@ -84,6 +84,7 @@ func TestErrorPresenter_CodesTheErrorsClientsHandle(t *testing.T) {
 		{interfaces.ErrViewsUnavailable, "VIEWS_UNAVAILABLE"},
 		{interfaces.ErrRenderTimedOut, "VIEW_RENDER_TIMED_OUT"},
 		{interfaces.ErrViewWorkersBusy, "VIEW_WORKERS_BUSY"},
+		{interfaces.ErrProjectLocked, "PROJECT_LOCKED"},
 	}
 	for _, dev := range []bool{false, true} {
 		present := errorPresenter(dev)

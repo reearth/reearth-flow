@@ -2967,7 +2967,7 @@ Writes features to one or more CityGML 2.0 files, or to a zip archive of them, w
     },
     "adeSchemas": {
       "title": "ADE Schemas",
-      "description": "Application Domain Extensions (ADEs) such as PLATEAU i-UR whose classes and properties may be written, each either a module built into Flow or an XSD given by path. List every ADE the features use: a class from an ADE left out is written as `gen:GenericCityObject`, the objects nested in it as top-level objects, and its properties are left out.",
+      "description": "Application Domain Extensions (ADEs) such as PLATEAU i-UR whose classes and properties may be written, each naming its prefix (such as `uro`), namespace and XSD location. List every ADE the features use: a class from an ADE left out is written as `gen:GenericCityObject`, and the objects nested in it as top-level objects.",
       "default": null,
       "type": [
         "array",
@@ -3095,161 +3095,56 @@ Writes features to one or more CityGML 2.0 files, or to a zip archive of them, w
     },
     "AdeSchema": {
       "title": "ADE Schema",
-      "description": "An Application Domain Extension the writer can write classes and properties from, and where its schema comes from.",
-      "oneOf": [
-        {
-          "title": "Built-in Module",
-          "description": "A module whose schema is built into Flow, such as i-UR 3.2 Urban Object.",
+      "description": "An Application Domain Extension the writer can write classes from.",
+      "type": "object",
+      "required": [
+        "namespace",
+        "prefix",
+        "schemaLocation"
+      ],
+      "properties": {
+        "prefix": {
+          "title": "Prefix",
+          "description": "Prefix for the ADE, such as `uro`. It cannot reuse a CityGML 2.0 prefix.",
+          "type": "string"
+        },
+        "namespace": {
+          "title": "Namespace",
+          "description": "The ADE's namespace, as declared by its XSD's `targetNamespace`.",
+          "type": "string"
+        },
+        "schemaLocation": {
+          "title": "Schema Location",
+          "description": "Path or expression for where to read the ADE's XSD, as an `https://` URL such as the official i-UR schema, or a `file://` or `gs://` path. Schemas it imports by relative path are read from beside it. Imports of the OGC schemas come from the copy built into Flow.",
           "type": "object",
+          "format": "code",
           "required": [
-            "module",
-            "type"
+            "type",
+            "value"
           ],
           "properties": {
             "type": {
               "type": "string",
               "enum": [
-                "builtIn"
+                "flowExpr",
+                "string"
               ]
             },
-            "module": {
-              "title": "Module",
-              "description": "The built-in module, named after its ADE, module and version, such as `iur-uro-3.2`. Its namespace is fixed by its schema.",
-              "allOf": [
-                {
-                  "$ref": "#/definitions/BuiltInAde"
-                }
-              ]
-            },
-            "prefix": {
-              "title": "Prefix",
-              "description": "Prefix the features use for this module, when it is not the module's own, such as `uro` for `iur-uro-3.2`. It cannot reuse a CityGML 2.0 prefix.",
-              "default": null,
-              "type": [
-                "string",
-                "null"
-              ]
-            },
-            "declaredLocation": {
-              "title": "Declared Location",
-              "description": "Schema location written into the output's `xsi:schemaLocation` for this module. Defaults to where a PLATEAU dataset keeps it, such as `../../schemas/iur/uro/3.2/urbanObject.xsd`.",
-              "default": null,
-              "type": [
-                "string",
-                "null"
-              ]
+            "value": {
+              "type": "string"
             }
           }
         },
-        {
-          "title": "Schema File",
-          "description": "An ADE whose XSD is read from a path.",
-          "type": "object",
-          "required": [
-            "namespace",
-            "prefix",
-            "schemaLocation",
-            "type"
-          ],
-          "properties": {
-            "type": {
-              "type": "string",
-              "enum": [
-                "file"
-              ]
-            },
-            "prefix": {
-              "title": "Prefix",
-              "description": "Prefix for the ADE, such as `uro`. It cannot reuse a CityGML 2.0 prefix.",
-              "type": "string"
-            },
-            "namespace": {
-              "title": "Namespace",
-              "description": "The ADE's namespace, as declared by its XSD's `targetNamespace`.",
-              "type": "string"
-            },
-            "schemaLocation": {
-              "title": "Schema Location",
-              "description": "Path or expression for where to read the ADE's XSD, as a `file://` or `gs://` path. Schemas it imports by relative path are read from beside it, and imports of the OGC schemas come from the copy built into Flow.",
-              "type": "object",
-              "format": "code",
-              "required": [
-                "type",
-                "value"
-              ],
-              "properties": {
-                "type": {
-                  "type": "string",
-                  "enum": [
-                    "flowExpr",
-                    "string"
-                  ]
-                },
-                "value": {
-                  "type": "string"
-                }
-              }
-            },
-            "declaredLocation": {
-              "title": "Declared Location",
-              "description": "Schema location written into the output's `xsi:schemaLocation` for this namespace, such as the official URL or a path relative to the output. Defaults to `schemaLocation`.",
-              "default": null,
-              "type": [
-                "string",
-                "null"
-              ]
-            }
-          }
-        }
-      ]
-    },
-    "BuiltInAde": {
-      "title": "Built-in ADE Module",
-      "description": "An ADE schema module built into Flow, named after its ADE, module and version.",
-      "oneOf": [
-        {
-          "title": "i-UR 3.0 Urban Object (uro)",
-          "type": "string",
-          "enum": [
-            "iur-uro-3.0"
-          ]
-        },
-        {
-          "title": "i-UR 3.1 Urban Object (uro)",
-          "type": "string",
-          "enum": [
-            "iur-uro-3.1"
-          ]
-        },
-        {
-          "title": "i-UR 3.2 Urban Object (uro)",
-          "type": "string",
-          "enum": [
-            "iur-uro-3.2"
-          ]
-        },
-        {
-          "title": "i-UR 3.0 Urban Function (urf)",
-          "type": "string",
-          "enum": [
-            "iur-urf-3.0"
-          ]
-        },
-        {
-          "title": "i-UR 3.1 Urban Function (urf)",
-          "type": "string",
-          "enum": [
-            "iur-urf-3.1"
-          ]
-        },
-        {
-          "title": "i-UR 3.2 Urban Function (urf)",
-          "type": "string",
-          "enum": [
-            "iur-urf-3.2"
+        "declaredLocation": {
+          "title": "Declared Location",
+          "description": "Schema location written into the output's `xsi:schemaLocation` for this namespace, such as the official URL or a path relative to the output. Defaults to `schemaLocation`.",
+          "default": null,
+          "type": [
+            "string",
+            "null"
           ]
         }
-      ]
+      }
     }
   }
 }
@@ -9825,6 +9720,126 @@ Writes features to Mapbox Vector Tiles (MVT) format.
 ### Category
 * Output
 
+## Mesh Merger
+### Type
+* processor
+### Description
+Merges the polygons and meshes of features that share the same grouping attribute values into meshes, keeping every face as it is, and emits one feature per group or per connected part of it. The result is a triangular mesh when every polygon and mesh merged into it is a triangular mesh, including those inside collections, and a polygon mesh otherwise.
+### Parameters
+```json
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "Mesh Merger Parameters",
+  "description": "Sets which features are merged together, how the result is divided, and which attributes it keeps.",
+  "type": "object",
+  "properties": {
+    "groupBy": {
+      "title": "Group By Attributes",
+      "description": "Attributes whose values decide which features merge together; features matching on all of them form one group. When omitted, every feature belongs to a single group. Cannot include `__members` when attributes are collected, since that attribute holds the collected values.",
+      "default": null,
+      "type": [
+        "array",
+        "null"
+      ],
+      "items": {
+        "$ref": "#/definitions/Attribute"
+      }
+    },
+    "attributeAccumulation": {
+      "title": "Attribute Accumulation",
+      "description": "Which attributes each merged feature keeps, taken from the features merged into it.",
+      "default": "useOneFeature",
+      "allOf": [
+        {
+          "$ref": "#/definitions/AttributeAccumulation"
+        }
+      ]
+    },
+    "granularity": {
+      "title": "Granularity",
+      "description": "How finely each group is divided into output features.",
+      "default": "group",
+      "allOf": [
+        {
+          "$ref": "#/definitions/Granularity"
+        }
+      ]
+    }
+  },
+  "definitions": {
+    "Attribute": {
+      "type": "string"
+    },
+    "AttributeAccumulation": {
+      "title": "Attribute Accumulation",
+      "description": "Which attributes a merged feature keeps.",
+      "oneOf": [
+        {
+          "title": "Keep Group Attributes Only",
+          "description": "Keeps only the grouping attributes, discarding everything else.",
+          "type": "string",
+          "enum": [
+            "groupAttributesOnly"
+          ]
+        },
+        {
+          "title": "Collect Attributes",
+          "description": "Keeps the grouping attributes and writes the other attributes of every merged feature to `__members`, an array with one map per feature in arrival order.",
+          "type": "string",
+          "enum": [
+            "collectAttributes"
+          ]
+        },
+        {
+          "title": "Use Attributes From One Feature",
+          "description": "Keeps the attributes of the first merged feature and discards the rest.",
+          "type": "string",
+          "enum": [
+            "useOneFeature"
+          ]
+        }
+      ]
+    },
+    "Granularity": {
+      "description": "How finely each group is divided into output features.",
+      "oneOf": [
+        {
+          "title": "Group",
+          "description": "Emits one mesh per group.",
+          "type": "string",
+          "enum": [
+            "group"
+          ]
+        },
+        {
+          "title": "Edge-Connected Part",
+          "description": "Emits one mesh per set of faces connected through edges with exactly equal coordinates. Faces meeting at a vertex alone become separate meshes.",
+          "type": "string",
+          "enum": [
+            "edgeConnectedPart"
+          ]
+        },
+        {
+          "title": "Manifold Part",
+          "description": "Divides each edge-connected part further, so that every edge of a mesh borders one or two of its faces. Where more faces meet at one edge, two of them stay joined there.",
+          "type": "string",
+          "enum": [
+            "manifoldPart"
+          ]
+        }
+      ]
+    }
+  }
+}
+```
+### Input Ports
+* features
+### Output Ports
+* features
+* rejected
+### Category
+* Geometry
+
 ## Neighbor Finder
 ### Type
 * processor
@@ -11102,7 +11117,8 @@ Validates domain of definition of CityGML features
   "type": "object",
   "properties": {
     "codelistsPath": {
-      "description": "Fallback codelists directory path expression. When codelists files are not found at the location relative to the GML file, this path will be used as the base directory for resolving codeSpace references.",
+      "title": "Codelists Path",
+      "description": "Expression for the URI of a directory of codelist files, evaluated for each input feature. The codelists are read from it when the first input feature has no `dirCodelists` attribute or its directory does not exist; without either, the action fails. A codeSpace found neither under `dirCodelists` nor relative to the city GML is looked up in it by the file name of the codeSpace.",
       "type": [
         "object",
         "null"
@@ -12258,7 +12274,8 @@ Validates domain of definition of CityGML features
   "type": "object",
   "properties": {
     "codelistsPath": {
-      "description": "Fallback codelists directory path expression. When codelists files are not found at the location relative to the GML file, this path will be used as the base directory for resolving codeSpace references.",
+      "title": "Codelists Path",
+      "description": "Expression for the URI of a directory of codelist files, evaluated for each input feature. The codelists are read from it when the first input feature has no `dirCodelists` attribute or its directory does not exist; without either, the action fails. A codeSpace found neither under `dirCodelists` nor relative to the city GML is looked up in it by the file name of the codeSpace.",
       "type": [
         "object",
         "null"
@@ -12290,44 +12307,6 @@ Validates domain of definition of CityGML features
 * features
 * rejected
 * duplicateGmlIdStats
-### Category
-* PLATEAU
-
-## PLATEAU6.FloodingAreaSurfaceGenerator
-### Type
-* processor
-### Description
-Merges the triangles of flood zone bodies into connected areas and rebuilds each area as one triangulated surface, constrained to the area's outline and filled with sparse points sampled from the original surface. Emits one feature per area, carrying the attributes of the first body in its group. All input must be in one coordinate frame; the action fails otherwise.
-### Parameters
-```json
-{
-  "$schema": "http://json-schema.org/draft-07/schema#",
-  "title": "Flooding Area Surface Generator Parameters",
-  "description": "Which bodies are merged into one surface.",
-  "type": "object",
-  "properties": {
-    "groupBy": {
-      "title": "Group By",
-      "description": "Attributes whose values partition the bodies: only bodies with the same values are merged. Empty (the default) merges every body together.",
-      "default": [],
-      "type": "array",
-      "items": {
-        "$ref": "#/definitions/Attribute"
-      }
-    }
-  },
-  "definitions": {
-    "Attribute": {
-      "type": "string"
-    }
-  }
-}
-```
-### Input Ports
-* features
-### Output Ports
-* features
-* rejected
 ### Category
 * PLATEAU
 

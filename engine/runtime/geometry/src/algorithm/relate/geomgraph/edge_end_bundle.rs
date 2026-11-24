@@ -1,5 +1,5 @@
 use crate::{
-    algorithm::{coordinate_position::CoordPos, GeoFloat},
+    algorithm::{GeoFloat, coordinate_position::CoordPos},
     types::coordinate::Coordinate,
 };
 

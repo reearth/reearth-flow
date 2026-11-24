@@ -181,7 +181,7 @@ func TestDeployment_KeepsTheProjectParameters(t *testing.T) {
 		f := newParamFixture(t)
 		f.param(t, "second", 1, false, "b")
 		f.param(t, "first", 0, true, "a")
-		i := NewDeployment(f.repo, f.gw, f.job, f.perm)
+		i := NewDeployment(f.repo, f.gw, f.job, f.perm, nil)
 		pid := f.project.ID()
 
 		d, err := i.Create(f.ctx, interfaces.CreateDeploymentParam{
@@ -196,7 +196,7 @@ func TestDeployment_KeepsTheProjectParameters(t *testing.T) {
 	t.Run("a deploy without a project keeps none", func(t *testing.T) {
 		f := newParamFixture(t)
 		f.param(t, "first", 0, false, "a")
-		i := NewDeployment(f.repo, f.gw, f.job, f.perm)
+		i := NewDeployment(f.repo, f.gw, f.job, f.perm, nil)
 
 		d, err := i.Create(f.ctx, interfaces.CreateDeploymentParam{
 			Workspace: f.ws, Workflow: &file.File{Path: "workflow.json"}, Description: "d",
@@ -209,7 +209,7 @@ func TestDeployment_KeepsTheProjectParameters(t *testing.T) {
 	t.Run("only a new workflow file refreshes them", func(t *testing.T) {
 		f := newParamFixture(t)
 		original := f.param(t, "first", 0, false, "deployed")
-		i := NewDeployment(f.repo, f.gw, f.job, f.perm)
+		i := NewDeployment(f.repo, f.gw, f.job, f.perm, nil)
 		pid := f.project.ID()
 		d, err := i.Create(f.ctx, interfaces.CreateDeploymentParam{
 			Workspace: f.ws, Project: &pid, Workflow: &file.File{Path: "workflow.json"}, Description: "d",
@@ -235,7 +235,7 @@ func TestDeployment_KeepsTheProjectParameters(t *testing.T) {
 	t.Run("editing the project's variable leaves the deployed one as it was", func(t *testing.T) {
 		f := newParamFixture(t)
 		original := f.param(t, "first", 0, false, "deployed")
-		i := NewDeployment(f.repo, f.gw, f.job, f.perm)
+		i := NewDeployment(f.repo, f.gw, f.job, f.perm, nil)
 		pid := f.project.ID()
 		d, err := i.Create(f.ctx, interfaces.CreateDeploymentParam{
 			Workspace: f.ws, Project: &pid, Workflow: &file.File{Path: "workflow.json"}, Description: "d",
@@ -256,7 +256,7 @@ func TestDeployment_KeepsTheProjectParameters(t *testing.T) {
 		f := newParamFixture(t)
 		other := project.New().NewID().Workspace(accountsid.NewWorkspaceID()).Name("other").MustBuild()
 		require.NoError(t, f.repo.Project.Save(f.ctx, other))
-		i := NewDeployment(f.repo, f.gw, f.job, f.perm)
+		i := NewDeployment(f.repo, f.gw, f.job, f.perm, nil)
 		pid := other.ID()
 
 		_, err := i.Create(f.ctx, interfaces.CreateDeploymentParam{
@@ -271,7 +271,7 @@ func TestDeployment_KeepsTheProjectParameters(t *testing.T) {
 		files := &removingFile{}
 		f.gw.File = files
 		f.repo.Parameter = failingParameters{Parameter: f.repo.Parameter}
-		i := NewDeployment(f.repo, f.gw, f.job, f.perm)
+		i := NewDeployment(f.repo, f.gw, f.job, f.perm, nil)
 		pid := f.project.ID()
 
 		_, err := i.Create(f.ctx, interfaces.CreateDeploymentParam{
@@ -288,7 +288,7 @@ func TestDeployment_KeepsTheProjectParameters(t *testing.T) {
 		files := &removingFile{}
 		f.gw.File = files
 		f.repo.Transaction = usecasex.NewTransactor(&usecasex.NopTransaction{CommitError: errCommitFailed}, 0)
-		i := NewDeployment(f.repo, f.gw, f.job, f.perm)
+		i := NewDeployment(f.repo, f.gw, f.job, f.perm, nil)
 		pid := f.project.ID()
 
 		_, err := i.Create(f.ctx, interfaces.CreateDeploymentParam{
@@ -338,7 +338,7 @@ func TestDeployment_ExecuteSubmitsThePlansRunTime(t *testing.T) {
 
 	f := newParamFixture(t)
 	d := f.deployment(t)
-	i := NewDeployment(f.repo, f.gw, f.job, f.perm)
+	i := NewDeployment(f.repo, f.gw, f.job, f.perm, nil)
 
 	_, err := i.Execute(f.ctx, interfaces.ExecuteDeploymentParam{DeploymentID: d.ID()})
 
@@ -357,7 +357,7 @@ func TestDeployment_ExecuteKeepsTheRunWhenTheSubmitIsAmbiguous(t *testing.T) {
 		f.gw.UsageCounter = usage
 		d := f.deployment(t)
 
-		_, err := NewDeployment(f.repo, f.gw, f.job, f.perm).Execute(f.ctx, interfaces.ExecuteDeploymentParam{DeploymentID: d.ID()})
+		_, err := NewDeployment(f.repo, f.gw, f.job, f.perm, nil).Execute(f.ctx, interfaces.ExecuteDeploymentParam{DeploymentID: d.ID()})
 
 		assert.ErrorIs(t, err, interfaces.ErrJobCreationFailed)
 		require.Len(t, usage.keys, 1)
@@ -381,7 +381,7 @@ func TestDeployment_ExecuteRequiresRequiredVariables(t *testing.T) {
 	t.Run("an empty required default refuses the run before the plan is asked", func(t *testing.T) {
 		f := newParamFixture(t)
 		d := f.deployment(t, f.param(t, "area", 0, true, ""))
-		i := NewDeployment(f.repo, f.gw, f.job, f.perm)
+		i := NewDeployment(f.repo, f.gw, f.job, f.perm, nil)
 
 		_, err := i.Execute(f.ctx, interfaces.ExecuteDeploymentParam{DeploymentID: d.ID()})
 
@@ -393,7 +393,7 @@ func TestDeployment_ExecuteRequiresRequiredVariables(t *testing.T) {
 	t.Run("a filled required default runs", func(t *testing.T) {
 		f := newParamFixture(t)
 		d := f.deployment(t, f.param(t, "area", 0, true, "tokyo"))
-		i := NewDeployment(f.repo, f.gw, f.job, f.perm)
+		i := NewDeployment(f.repo, f.gw, f.job, f.perm, nil)
 
 		_, err := i.Execute(f.ctx, interfaces.ExecuteDeploymentParam{DeploymentID: d.ID()})
 
@@ -606,7 +606,7 @@ func TestDeployment_ExecuteWithVariables(t *testing.T) {
 	t.Run("an override reaches the worker over the default", func(t *testing.T) {
 		f := newParamFixture(t)
 		d := f.deployment(t, f.param(t, "area", 0, false, "tokyo"), f.param(t, "lang", 1, false, "ja"))
-		i := NewDeployment(f.repo, f.gw, f.job, f.perm)
+		i := NewDeployment(f.repo, f.gw, f.job, f.perm, nil)
 
 		_, err := i.Execute(f.ctx, interfaces.ExecuteDeploymentParam{
 			DeploymentID: d.ID(),
@@ -622,7 +622,7 @@ func TestDeployment_ExecuteWithVariables(t *testing.T) {
 	t.Run("the job records the values it ran with", func(t *testing.T) {
 		f := newParamFixture(t)
 		d := f.deployment(t, f.param(t, "area", 0, false, "tokyo"), f.param(t, "lang", 1, false, "ja"))
-		i := NewDeployment(f.repo, f.gw, f.job, f.perm)
+		i := NewDeployment(f.repo, f.gw, f.job, f.perm, nil)
 
 		_, _ = i.Execute(f.ctx, interfaces.ExecuteDeploymentParam{
 			DeploymentID: d.ID(),
@@ -638,7 +638,7 @@ func TestDeployment_ExecuteWithVariables(t *testing.T) {
 	t.Run("without overrides the job records the defaults and the worker gets none", func(t *testing.T) {
 		f := newParamFixture(t)
 		d := f.deployment(t, f.param(t, "area", 0, false, "tokyo"))
-		i := NewDeployment(f.repo, f.gw, f.job, f.perm)
+		i := NewDeployment(f.repo, f.gw, f.job, f.perm, nil)
 
 		_, _ = i.Execute(f.ctx, interfaces.ExecuteDeploymentParam{DeploymentID: d.ID()})
 
@@ -651,7 +651,7 @@ func TestDeployment_ExecuteWithVariables(t *testing.T) {
 		f := newParamFixture(t)
 		d := f.deploymentWithFile(t, map[string]any{"area": "nagoya", "extra": "x"},
 			f.param(t, "area", 0, false, "tokyo"), f.param(t, "lang", 1, false, "ja"))
-		i := NewDeployment(f.repo, f.gw, f.job, f.perm)
+		i := NewDeployment(f.repo, f.gw, f.job, f.perm, nil)
 
 		_, _ = i.Execute(f.ctx, interfaces.ExecuteDeploymentParam{DeploymentID: d.ID()})
 
@@ -666,7 +666,7 @@ func TestDeployment_ExecuteWithVariables(t *testing.T) {
 		f := newParamFixture(t)
 		d := f.deployment(t, f.param(t, "area", 0, false, "tokyo"))
 		clear(f.files.workflows)
-		i := NewDeployment(f.repo, f.gw, f.job, f.perm)
+		i := NewDeployment(f.repo, f.gw, f.job, f.perm, nil)
 
 		_, err := i.Execute(f.ctx, interfaces.ExecuteDeploymentParam{DeploymentID: d.ID()})
 
@@ -680,7 +680,7 @@ func TestDeployment_ExecuteWithVariables(t *testing.T) {
 	t.Run("an override can fill a required variable with no default", func(t *testing.T) {
 		f := newParamFixture(t)
 		d := f.deployment(t, f.param(t, "area", 0, true, ""))
-		i := NewDeployment(f.repo, f.gw, f.job, f.perm)
+		i := NewDeployment(f.repo, f.gw, f.job, f.perm, nil)
 
 		_, err := i.Execute(f.ctx, interfaces.ExecuteDeploymentParam{
 			DeploymentID: d.ID(),
@@ -695,7 +695,7 @@ func TestDeployment_ExecuteWithVariables(t *testing.T) {
 	t.Run("an override that clears a required variable refuses the run", func(t *testing.T) {
 		f := newParamFixture(t)
 		d := f.deployment(t, f.param(t, "area", 0, true, "tokyo"))
-		i := NewDeployment(f.repo, f.gw, f.job, f.perm)
+		i := NewDeployment(f.repo, f.gw, f.job, f.perm, nil)
 
 		_, err := i.Execute(f.ctx, interfaces.ExecuteDeploymentParam{
 			DeploymentID: d.ID(),
@@ -709,7 +709,7 @@ func TestDeployment_ExecuteWithVariables(t *testing.T) {
 	t.Run("an unknown key refuses the run before the plan is asked", func(t *testing.T) {
 		f := newParamFixture(t)
 		d := f.deployment(t, f.param(t, "area", 0, false, "tokyo"))
-		i := NewDeployment(f.repo, f.gw, f.job, f.perm)
+		i := NewDeployment(f.repo, f.gw, f.job, f.perm, nil)
 
 		_, err := i.Execute(f.ctx, interfaces.ExecuteDeploymentParam{
 			DeploymentID: d.ID(),
@@ -730,7 +730,7 @@ func TestDeployment_ExecuteWithVariables(t *testing.T) {
 			Type(parameter.TypeNumber).DefaultValue(1.0).Build()
 		require.NoError(t, err)
 		d := f.deployment(t, count)
-		i := NewDeployment(f.repo, f.gw, f.job, f.perm)
+		i := NewDeployment(f.repo, f.gw, f.job, f.perm, nil)
 
 		// The client sent it as text; the deployment says it is a number.
 		_, _ = i.Execute(f.ctx, interfaces.ExecuteDeploymentParam{
@@ -747,7 +747,7 @@ func TestDeployment_ExecuteWithVariables(t *testing.T) {
 			Type(parameter.TypeNumber).DefaultValue(1.0).Build()
 		require.NoError(t, err)
 		d := f.deployment(t, count)
-		i := NewDeployment(f.repo, f.gw, f.job, f.perm)
+		i := NewDeployment(f.repo, f.gw, f.job, f.perm, nil)
 
 		_, err = i.Execute(f.ctx, interfaces.ExecuteDeploymentParam{
 			DeploymentID: d.ID(),

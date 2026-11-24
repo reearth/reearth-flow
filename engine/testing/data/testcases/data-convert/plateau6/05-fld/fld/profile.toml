@@ -19,6 +19,7 @@ generate_truth = true
 
 [convs.cesium_attributes.natl_l1.casts]
 ".attributes" = "json"
+"" = "ordered_dict"
 
 [tests.json_attributes_v2.natl_l1]
 path = "natl_l1_truth.json"
@@ -30,6 +31,7 @@ generate_truth = true
 
 [convs.cesium_attributes.pref_l2.casts]
 ".attributes" = "json"
+"" = "ordered_dict"
 
 [tests.json_attributes_v2.pref_l2]
 path = "pref_l2_truth.json"

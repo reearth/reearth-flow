@@ -1,11 +1,11 @@
-use std::collections::{hash_map::Entry, HashMap};
+use std::collections::{HashMap, hash_map::Entry};
 use std::io::BufRead;
 use std::sync::Arc;
 
 use indexmap::IndexMap;
+use quick_xml::NsReader;
 use quick_xml::events::Event;
 use quick_xml::name::ResolveResult;
-use quick_xml::NsReader;
 use reearth_flow_types::{Attribute, AttributeValue, Attributes, CitygmlFeatureExt, Feature};
 use url::Url;
 
@@ -13,8 +13,8 @@ use super::codespace::CodelistResolver;
 pub use super::coordinate_handling::CoordinateHandling;
 pub use super::utils::CityGmlVersion;
 use super::utils::{
-    gml_id_attr, hoisted_attributes, local_name as utils_local_name, xlink_href_attr, ElementGroup,
-    NamespaceRegistry, NsId, QName, XmlChild, XmlNode, EMPTY_NS_ID, XLINK_NS_ID,
+    EMPTY_NS_ID, ElementGroup, NamespaceRegistry, NsId, QName, XLINK_NS_ID, XmlChild, XmlNode,
+    gml_id_attr, hoisted_attributes, local_name as utils_local_name, xlink_href_attr,
 };
 
 pub(super) type RawNodeKey = (String, String); // (file_url, gml_id)
@@ -44,7 +44,9 @@ pub enum ParseError {
     Malformed(String),
     #[error("No CityModel root element found")]
     NoCityModel,
-    #[error("CityModel root element doesn't match the expected CityGML version {expected:?}: found tag {found}")]
+    #[error(
+        "CityModel root element doesn't match the expected CityGML version {expected:?}: found tag {found}"
+    )]
     VersionMismatch {
         expected: CityGmlVersion,
         found: String,
@@ -110,7 +112,7 @@ impl Parser {
                 OwnedEvent::Start { name, .. }
                     if local_name(&name.0) == "CityModel" && name.1 == core_ns_id =>
                 {
-                    break
+                    break;
                 }
                 OwnedEvent::Start { name, .. } if local_name(&name.0) == "CityModel" => {
                     return Err(ParseError::VersionMismatch {
@@ -514,7 +516,7 @@ mod tests {
     use reearth_flow_types::CitygmlFeatureExt;
     use url::Url;
 
-    use crate::utils::{test_url, XmlChild, XmlNode, EMPTY_NS_ID, GML_NS_ID};
+    use crate::utils::{EMPTY_NS_ID, GML_NS_ID, XmlChild, XmlNode, test_url};
 
     fn dummy_url() -> Url {
         Url::parse("file:///test.gml").unwrap()

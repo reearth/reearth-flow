@@ -11,22 +11,21 @@ use nusamai_projection::vshift::Jgd2011ToWgs84;
 use serde::{Deserialize, Serialize};
 use std::hash::{Hash, Hasher};
 
+use crate::algorithm::GeoFloat;
 use crate::algorithm::contains::Contains;
 use crate::algorithm::coords_iter::CoordsIter;
-use crate::algorithm::line_intersection::{line_intersection, LineIntersection};
+use crate::algorithm::line_intersection::{LineIntersection, line_intersection};
 use crate::algorithm::utils::{
-    denormalize_vertices, normalize_vertices, normalize_vertices_2d,
-    normalize_vertices_2d_with_params, normalize_vertices_with_params, NormalizationResult2D,
-    NormalizationResult3D,
+    NormalizationResult2D, NormalizationResult3D, denormalize_vertices, normalize_vertices,
+    normalize_vertices_2d, normalize_vertices_2d_with_params, normalize_vertices_with_params,
 };
-use crate::algorithm::GeoFloat;
 
 use super::conversion::geojson::create_polygon_type;
 use super::coordinate::Coordinate;
 use super::coordnum::{CoordFloat, CoordNum};
 use super::face::Face;
 use super::line::Line;
-use super::line_string::{from_line_string_5d, LineString, LineString2D, LineString3D};
+use super::line_string::{LineString, LineString2D, LineString3D, from_line_string_5d};
 use super::no_value::NoValue;
 use super::point::{Point2D, Point3D};
 use super::rect::Rect;

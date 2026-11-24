@@ -10,6 +10,7 @@ generate_truth = true
 ".attributes.meshcode" = "string"
 ".attributes.urf:notificationNumber" = "string"
 ".attributes.urf:finalNotificationNumber" = "string"
+"" = "ordered_dict"
 
 [tests.json_attributes_v2.district_development_plan_lod1]
 path = "district_development_plan_lod1_truth.json"

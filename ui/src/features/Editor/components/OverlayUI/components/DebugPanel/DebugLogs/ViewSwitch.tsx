@@ -36,6 +36,7 @@ const ViewSwitch: React.FC<Props> = ({
         size="icon"
         variant={view === "logs" ? "default" : "outline"}
         tooltipText={t("Workflow Logs")}
+        aria-label={t("Workflow Logs")}
         onClick={() => onViewChange("logs")}
         icon={<ListDashesIcon />}
       />

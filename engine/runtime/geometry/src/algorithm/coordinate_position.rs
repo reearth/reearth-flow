@@ -8,11 +8,11 @@ use crate::types::rect::Rect;
 use crate::types::triangle::Triangle;
 use crate::types::{coordinate::Coordinate, line::Line, line_string::LineString, point::Point};
 
+use super::GeoNum;
 use super::dimensions::HasDimensions;
 use super::geometry_cow::GeometryCow;
 use super::intersects::*;
 use super::kernels::{Orientation, RobustKernel};
-use super::GeoNum;
 
 #[derive(PartialEq, Eq, Clone, Copy, Debug)]
 pub enum CoordPos {

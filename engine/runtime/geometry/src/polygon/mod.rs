@@ -24,7 +24,7 @@ mod predicates;
 #[cfg(feature = "new-geometry")]
 mod validation;
 
-pub use constructor::{state, PolygonBuilder2D, PolygonBuilder3D, PolygonFace};
+pub use constructor::{PolygonBuilder2D, PolygonBuilder3D, PolygonFace, state};
 
 /// A planar polygon face in 2D space, lying at a single optional elevation.
 #[cfg_attr(feature = "debug-geom-feature-write", derive(Serialize, Deserialize))]
@@ -202,6 +202,10 @@ impl Polygon3D {
 // A polygon is a single face, not a multi-part container.
 crate::unsupported!(Polygon2D: Split);
 crate::unsupported!(Polygon3D: Split);
+#[cfg(feature = "new-geometry")]
+crate::unsupported!(Polygon2D: DecomposeIntoEdgeConnectedParts, DecomposeIntoManifolds);
+#[cfg(feature = "new-geometry")]
+crate::unsupported!(Polygon3D: DecomposeIntoEdgeConnectedParts, DecomposeIntoManifolds);
 
 #[cfg(test)]
 mod tests {

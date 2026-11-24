@@ -132,11 +132,7 @@ where
             total - get_linestring_area3d(next).abs()
         });
 
-        if is_negative {
-            -area
-        } else {
-            area
-        }
+        if is_negative { -area } else { area }
     }
 
     fn unsigned_area3d(&self) -> T {

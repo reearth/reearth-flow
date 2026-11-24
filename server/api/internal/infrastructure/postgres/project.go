@@ -5,6 +5,7 @@ import (
 	"errors"
 	"fmt"
 	"strings"
+	"time"
 
 	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgconn"
@@ -195,6 +196,9 @@ func (r *Project) Search(ctx context.Context, p interfaces.ProjectSearchParam) (
 	if p.Workspace != nil {
 		where = append(where, "workspace_id = "+arg(p.Workspace.String()))
 	}
+	if p.Workspaces != nil {
+		where = append(where, "workspace_id = ANY("+arg(p.Workspaces.Strings())+"::text[])")
+	}
 	if r.f.Readable != nil {
 		where = append(where, "workspace_id = ANY("+arg(r.f.Readable.Strings())+"::text[])")
 	}
@@ -301,6 +305,29 @@ func (r *Project) SetStar(ctx context.Context, pid id.ProjectID, uid accountsid.
 	if r.f.Readable != nil {
 		query += ` AND workspace_id = ANY($3::text[])`
 		args = append(args, r.f.Readable.Strings())
+	}
+
+	tag, err := r.c.DB(ctx).Exec(ctx, query, args...)
+	if err != nil {
+		return rerror.ErrInternalByWithContext(ctx, pgxx.WrapError(err))
+	}
+	if tag.RowsAffected() == 0 {
+		return rerror.ErrNotFound
+	}
+	return nil
+}
+
+// RecordEdit stamps updated_at and updated_by in place. Every SET expression
+// reads the row as it was, so updated_by changes exactly when updated_at moves.
+func (r *Project) RecordEdit(ctx context.Context, pid id.ProjectID, at time.Time, by *accountsid.UserID) error {
+	query := `UPDATE projects SET
+		updated_by = CASE WHEN $2 > updated_at THEN $3 ELSE updated_by END,
+		updated_at = GREATEST(updated_at, $2)
+		WHERE id = $1`
+	args := []any{pid.String(), at, by.StringRef()}
+	if r.f.Writable != nil {
+		query += ` AND workspace_id = ANY($4::text[])`
+		args = append(args, r.f.Writable.Strings())
 	}
 
 	tag, err := r.c.DB(ctx).Exec(ctx, query, args...)

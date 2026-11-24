@@ -90,8 +90,13 @@ type OverlayUIProps = {
   onProjectExport: () => void;
   sharingUrl?: string;
   onProjectShare: (share: boolean) => void;
+  onProjectShareOpen: () => void;
   onDebugRunStart: () => Promise<void>;
   onDebugRunStartFromSelectedNode?: (
+    node?: Node,
+    nodes?: Node[],
+  ) => Promise<void>;
+  onDebugRunStartToSelectedNode?: (
     node?: Node,
     nodes?: Node[],
   ) => Promise<void>;
@@ -149,8 +154,10 @@ const OverlayUI: React.FC<OverlayUIProps> = ({
   sharingUrl,
   onProjectExport,
   onProjectShare,
+  onProjectShareOpen,
   onDebugRunStart,
   onDebugRunStartFromSelectedNode,
+  onDebugRunStartToSelectedNode,
   onDebugRunStop,
   onResetDebugRunWorkflowVariables,
   onDebugRunJoin,
@@ -252,6 +259,7 @@ const OverlayUI: React.FC<OverlayUIProps> = ({
               onDebugRunJoin={onDebugRunJoin}
               onDebugRunStart={onDebugRunStart}
               onDebugRunStartFromSelectedNode={onDebugRunStartFromSelectedNode}
+              onDebugRunStartToSelectedNode={onDebugRunStartToSelectedNode}
               onDebugRunStop={onDebugRunStop}
               onResetDebugRunWorkflowVariables={
                 onResetDebugRunWorkflowVariables
@@ -271,6 +279,7 @@ const OverlayUI: React.FC<OverlayUIProps> = ({
               onDialogClose={handleDialogClose}
               sharingUrl={sharingUrl}
               onProjectShare={onProjectShare}
+              onProjectShareOpen={onProjectShareOpen}
               onProjectExport={onProjectExport}
               onWorkflowDeployment={onWorkflowDeployment}
               onProjectLockChange={onProjectLockChange}

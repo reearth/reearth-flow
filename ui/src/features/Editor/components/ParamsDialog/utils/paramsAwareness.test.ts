@@ -3,7 +3,8 @@
  * These pin the two things that move through it: that a patch lands where it
  * says it does, and that the root path is a real path rather than "no path".
  */
-import { describe, expect, it } from "vitest";
+import { describe, expect, it, vi } from "vitest";
+import * as Y from "yjs";
 
 import { parsePathKey } from "@flow/lib/schemaForm";
 
@@ -12,8 +13,9 @@ import {
   changedFieldPath,
   diffToPatch,
   nextSeq,
+  removeClientDraft,
 } from "./paramsAwareness";
-import type { DraftPatch } from "./paramsAwareness";
+import type { DraftPatch, NodeDrafts } from "./paramsAwareness";
 
 const drafts = (paramsPatch: DraftPatch["paramsPatch"]) => ({
   someClient: { paramsPatch },
@@ -377,5 +379,52 @@ describe("diffToPatch", () => {
       "paramsPatch",
     );
     expect(merged).toEqual({ inline: { "bldg.part": 2 } });
+  });
+});
+
+describe("removeClientDraft", () => {
+  const setup = (nodeDrafts: NodeDrafts) => {
+    const doc = new Y.Doc();
+    const yDrafts = doc.getMap<NodeDrafts | undefined>("paramDrafts");
+    yDrafts.set("node", nodeDrafts);
+    const updates = vi.fn();
+    doc.on("update", updates);
+    return { yDrafts, updates };
+  };
+  const draft: DraftPatch = {
+    paramsPatch: { a: { value: 1, updatedAt: 0, seq: 1 } },
+  };
+
+  it("writes nothing when this client holds no draft for the node", () => {
+    const { yDrafts, updates } = setup({ other: draft });
+
+    removeClientDraft(yDrafts, "node", "me");
+
+    expect(updates).not.toHaveBeenCalled();
+    expect(yDrafts.get("node")).toEqual({ other: draft });
+  });
+
+  it("writes nothing when the node has no drafts at all", () => {
+    const { yDrafts, updates } = setup({ other: draft });
+
+    removeClientDraft(yDrafts, "another-node", "me");
+
+    expect(updates).not.toHaveBeenCalled();
+  });
+
+  it("keeps the other clients' drafts when removing this client's", () => {
+    const { yDrafts } = setup({ me: draft, other: draft });
+
+    removeClientDraft(yDrafts, "node", "me");
+
+    expect(yDrafts.get("node")).toEqual({ other: draft });
+  });
+
+  it("drops the node's entry when this client held the only draft", () => {
+    const { yDrafts } = setup({ me: draft });
+
+    removeClientDraft(yDrafts, "node", "me");
+
+    expect(yDrafts.has("node")).toBe(false);
   });
 });

@@ -22,7 +22,7 @@
 //!
 //! The optional elevation of 2D leaves is ignored throughout.
 
-use super::kernel::{coord_pos_relative_to_edges, point_on_segment, same_direction, CoordPos};
+use super::kernel::{CoordPos, coord_pos_relative_to_edges, point_on_segment, same_direction};
 use super::view::{AreaView, FaceView, Leaf2D, Operand2D, RingView};
 use crate::Euclidean2DGeometry;
 
@@ -94,11 +94,7 @@ fn max_pos(a: CoordPos, b: CoordPos) -> CoordPos {
             CoordPos::Inside => 2,
         }
     }
-    if rank(a) >= rank(b) {
-        a
-    } else {
-        b
-    }
+    if rank(a) >= rank(b) { a } else { b }
 }
 
 /// Whether the coordinate lies anywhere on the chain (interior or endpoint).

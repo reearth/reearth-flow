@@ -168,13 +168,13 @@ fn leaf_dimensions(leaf: &Leaf2D<'_>) -> Dimensions {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::Euclidean2DGeometry;
     use crate::coordinate::CoordinateFrame;
     use crate::line_string::LineString2D;
     use crate::point::Point2D;
     use crate::polygon::Polygon2D;
     use crate::polygon_mesh::PolygonMesh2D;
     use crate::predicates::view::flatten_2d;
-    use crate::Euclidean2DGeometry;
     use pretty_assertions::assert_eq;
 
     fn e() -> CoordinateFrame {

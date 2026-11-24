@@ -100,6 +100,16 @@ nodes:
     subGraphId: b1000000-0000-4000-8000-000000000000
 
   # --- Surface checks ---
+  # L11 (planarity): LOD1 faces are checked against a tighter thickness than the
+  # higher LODs.
+  - id: d6000000-0000-4000-8000-00000000003f
+    name: SurfaceChecksLod1
+    type: subGraph
+    subGraphId: c4000000-0000-4000-8000-000000000000
+    with:
+      planarityThreshold:
+        maxHeight: 0.001
+
   - id: d6000000-0000-4000-8000-00000000000a
     name: SurfaceChecks
     type: subGraph
@@ -385,13 +395,6 @@ nodes:
         value: |
           "error_geometry/" + variables["packagePrefixes"][attributes["folder"]] + "_面のエラー位置.geojson"
       writeCrs: true
-
-  # The original workspace has no orientation check for frn / veg, so the port
-  # is consumed rather than left dangling.
-  - id: d6000000-0000-4000-8000-000000000012
-    name: IncorrectOrientationSink
-    type: action
-    action: Noop Sink
 
   # --- L14: solid boundary checks ---
   - id: d6000000-0000-4000-8000-000000000013
@@ -1135,7 +1138,7 @@ edges:
 
   - id: d6000000-0000-4000-8000-00010000000b
     from: d6000000-0000-4000-8000-000000000009
-    to: d6000000-0000-4000-8000-00000000000a
+    to: d6000000-0000-4000-8000-00000000003f
     fromPort: lod1
     toPort: features
   - id: d6000000-0000-4000-8000-00010000000c
@@ -1147,6 +1150,23 @@ edges:
     from: d6000000-0000-4000-8000-000000000009
     to: d6000000-0000-4000-8000-00000000000a
     fromPort: lod3
+    toPort: features
+
+  # LOD1 surface checks share every output of the other LODs' ones
+  - id: d6000000-0000-4000-8000-00010000005b
+    from: d6000000-0000-4000-8000-00000000003f
+    to: d6000000-0000-4000-8000-00000000000c
+    fromPort: invalidSurface
+    toPort: features
+  - id: d6000000-0000-4000-8000-00010000005c
+    from: d6000000-0000-4000-8000-00000000003f
+    to: d6000000-0000-4000-8000-00000000000e
+    fromPort: invalidSurface
+    toPort: features
+  - id: d6000000-0000-4000-8000-00010000005d
+    from: d6000000-0000-4000-8000-00000000003f
+    to: d6000000-0000-4000-8000-000000000010
+    fromPort: issueLocation
     toPort: features
 
   # Surface checks -> result CSV
@@ -1181,11 +1201,6 @@ edges:
     from: d6000000-0000-4000-8000-000000000010
     to: d6000000-0000-4000-8000-000000000011
     fromPort: features
-    toPort: features
-  - id: d6000000-0000-4000-8000-000100000014
-    from: d6000000-0000-4000-8000-00000000000a
-    to: d6000000-0000-4000-8000-000000000012
-    fromPort: incorrectOrientation
     toPort: features
 
   # LOD splitter -> solid checks

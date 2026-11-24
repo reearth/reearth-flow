@@ -3,10 +3,10 @@ use crate::coordinate::{CoordinateFrame, EpsgCode};
 use crate::index::IndexBuffer;
 use crate::ops::reproject::{transform_coords_2d, transform_coords_3d};
 use crate::ops::triangulation::{
-    expand_appearance, triangulate_2d, triangulate_3d, Cache, Triangulated,
+    Cache, Triangulated, expand_appearance, triangulate_2d, triangulate_3d,
 };
 use crate::ops::{
-    lift_coords, Aabb, BoundingBox, Reproject, ReprojectionCache, Triangulate, UnsupportedOperation,
+    Aabb, BoundingBox, Reproject, ReprojectionCache, Triangulate, UnsupportedOperation, lift_coords,
 };
 use crate::triangular_mesh::{TriangularMesh2D, TriangularMesh3D, TriangularMesh3DData};
 use crate::{Euclidean2DGeometry, Euclidean3DGeometry, Geometry};
@@ -114,7 +114,7 @@ impl Reproject for PolygonMesh3D {
     }
 }
 
-use crate::ops::{plan_frame_step, translate_2d, translate_3d, ConvertFrame, FrameStep, Translate};
+use crate::ops::{ConvertFrame, FrameStep, Translate, plan_frame_step, translate_2d, translate_3d};
 
 impl Translate for PolygonMesh2D {
     fn translate(&mut self, delta: [f64; 3]) -> crate::error::Result<()> {
@@ -554,7 +554,7 @@ impl PolygonMesh2D {
 }
 
 use crate::ops::{
-    emit_face_2d, emit_face_3d, CountHoles, ExtractHoles, ExtractedPart, RemoveAppearance,
+    CountHoles, ExtractHoles, ExtractedPart, RemoveAppearance, emit_face_2d, emit_face_3d,
 };
 
 // `interior_offsets` already spans every face, so the mesh-wide count is its
@@ -734,7 +734,7 @@ mod grid_impl {
     use std::collections::BTreeMap;
 
     use super::{PolygonMesh2D, PolygonMesh3D, PolygonMesh3DData};
-    use crate::appearance::{face_appearance, Appearance, UvSource};
+    use crate::appearance::{Appearance, UvSource, face_appearance};
     use crate::coordinate::CoordinateFrame;
     use crate::ops::grid::{CellCoverage, DivideByGrid, GridCell, GridDivideError, GridSpec};
     use crate::polygon::{Polygon2D, Polygon3D};
@@ -1087,9 +1087,9 @@ impl PolygonMesh3DData {
 }
 
 #[cfg(feature = "new-geometry")]
-use crate::ops::area::polygon_3d_surface_area;
-#[cfg(feature = "new-geometry")]
 use crate::ops::Area;
+#[cfg(feature = "new-geometry")]
+use crate::ops::area::polygon_3d_surface_area;
 
 #[cfg(feature = "new-geometry")]
 impl Area for PolygonMesh2D {
@@ -1111,7 +1111,7 @@ impl Area for PolygonMesh3D {
 }
 
 use crate::ops::boundary::{Boundary, ExtractBoundary};
-use crate::ops::{surface_boundary_2d, surface_boundary_3d, BoundaryEdges};
+use crate::ops::{BoundaryEdges, surface_boundary_2d, surface_boundary_3d};
 
 fn csr_boundary_edges(
     face_indices: &IndexBuffer<1>,
@@ -1256,11 +1256,11 @@ impl crate::ops::Extrude for PolygonMesh3D {
             for ring in std::iter::once(&v.exterior).chain(v.interiors) {
                 let mut coords = ring.coords.to_vec();
                 corners.extend(ring.corners.clone());
-                if let (Some(&first), Some(last)) = (coords.first(), coords.last()) {
-                    if first != *last {
-                        coords.push(first);
-                        corners.push(ring.corners.start);
-                    }
+                if let (Some(&first), Some(last)) = (coords.first(), coords.last())
+                    && first != *last
+                {
+                    coords.push(first);
+                    corners.push(ring.corners.start);
                 }
                 rings.push(coords);
             }
@@ -1637,5 +1637,141 @@ mod tests {
                 max: [2.0, 2.0]
             }
         );
+    }
+}
+
+#[cfg(feature = "new-geometry")]
+mod decompose {
+    use super::{PolygonMesh2D, PolygonMesh3D};
+    use crate::index::IndexBuffer;
+    use crate::ops::decompose::{
+        DecomposedParts, FaceIndex, MeshFaces, Part, Partition, decompose,
+    };
+    use crate::ops::merge::internal_boundaries;
+    use crate::ops::{
+        DecomposeIntoEdgeConnectedParts, DecomposeIntoManifolds, UnsupportedOperation,
+    };
+    use crate::{Euclidean2DGeometry, Euclidean3DGeometry, Geometry};
+
+    /// The faces of a CSR mesh as flat buffers.
+    fn faces<'a, const N: usize>(
+        vertices: &'a [[f64; N]],
+        (indices, offsets, interiors): (&IndexBuffer<1>, &IndexBuffer<1>, &IndexBuffer<1>),
+        appearance: &'a Option<crate::appearance::Appearance>,
+    ) -> MeshFaces<'a, N> {
+        let indices: Vec<u32> = indices.iter_u32().map(|[i]| i).collect();
+        let mut face_ends: Vec<usize> = Vec::new();
+        if !indices.is_empty() {
+            face_ends.extend(offsets.iter_u32().map(|[o]| o as usize));
+            face_ends.push(indices.len());
+        }
+        MeshFaces {
+            vertices,
+            hole_starts: interiors.iter_u32().map(|[o]| o as usize).collect(),
+            indices,
+            face_ends,
+            appearance,
+        }
+    }
+
+    impl PolygonMesh2D {
+        /// The parts under `partition`, each with the faces it holds.
+        pub(crate) fn decompose_parts(&self, partition: Partition) -> DecomposedParts {
+            let mesh = faces(self.vertices(), self.csr_buffers(), self.appearance());
+            if mesh.face_ends.is_empty() {
+                return Vec::new();
+            }
+            let Some(parts) = decompose(&mesh, partition) else {
+                return vec![(
+                    Geometry::Euclidean2D(Euclidean2DGeometry::PolygonMesh(Box::new(self.clone()))),
+                    (0..mesh.face_ends.len()).map(FaceIndex::new).collect(),
+                )];
+            };
+            parts
+                .into_iter()
+                .map(|part: Part<2>| {
+                    let mut mesh = PolygonMesh2D::from_raw_parts(
+                        self.frame().clone(),
+                        part.vertices,
+                        part.indices,
+                        internal_boundaries(&part.face_ends),
+                        part.interior_offsets,
+                    )
+                    .expect("the faces of a valid mesh make a valid mesh");
+                    mesh.set_elevation(self.elevation());
+                    *mesh.appearance_mut() = part.appearance;
+                    (
+                        Geometry::Euclidean2D(Euclidean2DGeometry::PolygonMesh(Box::new(mesh))),
+                        part.faces.into_iter().map(FaceIndex::new).collect(),
+                    )
+                })
+                .collect()
+        }
+    }
+
+    impl PolygonMesh3D {
+        /// The parts under `partition`, each with the faces it holds.
+        pub(crate) fn decompose_parts(&self, partition: Partition) -> DecomposedParts {
+            let mesh = faces(
+                self.vertices(),
+                self.data().csr_buffers(),
+                self.appearance(),
+            );
+            if mesh.face_ends.is_empty() {
+                return Vec::new();
+            }
+            let Some(parts) = decompose(&mesh, partition) else {
+                return vec![(
+                    Geometry::Euclidean3D(Euclidean3DGeometry::PolygonMesh(Box::new(self.clone()))),
+                    (0..mesh.face_ends.len()).map(FaceIndex::new).collect(),
+                )];
+            };
+            parts
+                .into_iter()
+                .map(|part: Part<3>| {
+                    let mut mesh = PolygonMesh3D::from_raw_parts(
+                        self.frame().clone(),
+                        part.vertices,
+                        part.indices,
+                        internal_boundaries(&part.face_ends),
+                        part.interior_offsets,
+                    )
+                    .expect("the faces of a valid mesh make a valid mesh");
+                    *mesh.appearance_mut() = part.appearance;
+                    (
+                        Geometry::Euclidean3D(Euclidean3DGeometry::PolygonMesh(Box::new(mesh))),
+                        part.faces.into_iter().map(FaceIndex::new).collect(),
+                    )
+                })
+                .collect()
+        }
+    }
+
+    impl DecomposeIntoEdgeConnectedParts for PolygonMesh2D {
+        fn decompose_into_edge_connected_parts(
+            &self,
+        ) -> Result<DecomposedParts, UnsupportedOperation> {
+            Ok(self.decompose_parts(Partition::EdgeConnected))
+        }
+    }
+
+    impl DecomposeIntoEdgeConnectedParts for PolygonMesh3D {
+        fn decompose_into_edge_connected_parts(
+            &self,
+        ) -> Result<DecomposedParts, UnsupportedOperation> {
+            Ok(self.decompose_parts(Partition::EdgeConnected))
+        }
+    }
+
+    impl DecomposeIntoManifolds for PolygonMesh2D {
+        fn decompose_into_manifolds(&self) -> Result<DecomposedParts, UnsupportedOperation> {
+            Ok(self.decompose_parts(Partition::Manifold))
+        }
+    }
+
+    impl DecomposeIntoManifolds for PolygonMesh3D {
+        fn decompose_into_manifolds(&self) -> Result<DecomposedParts, UnsupportedOperation> {
+            Ok(self.decompose_parts(Partition::Manifold))
+        }
     }
 }

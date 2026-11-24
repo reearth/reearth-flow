@@ -173,8 +173,29 @@ nodes:
 
   # --- Face checks of the solids ---
   # The faces of a solid also take the face checks, as the original does.
+  # L11 (planarity): LOD1 faces are checked against a tighter thickness than the
+  # higher LODs.
+  - id: dd000000-0000-4000-8000-000000000064
+    name: FeatureFilterLod1Solid
+    type: action
+    action: Feature Filter
+    with:
+      conditions:
+        - expr:
+            type: flowExpr
+            value: attributes["lod"] == 1
+          outputPort: lod1
+
+  - id: dd000000-0000-4000-8000-000000000065
+    name: SurfaceChecksLod1Solid
+    type: subGraph
+    subGraphId: c4000000-0000-4000-8000-000000000000
+    with:
+      planarityThreshold:
+        maxHeight: 0.001
+
   - id: dd000000-0000-4000-8000-00000000000f
-    name: SurfaceChecksLod1To2
+    name: SurfaceChecksLod2Solid
     type: subGraph
     subGraphId: c4000000-0000-4000-8000-000000000000
     with:
@@ -303,13 +324,6 @@ nodes:
         value: |
           "error_geometry/" + variables["packagePrefixes"][attributes["folder"]] + "_LOD1-2境界面のエラー位置.geojson"
       writeCrs: true
-
-  # The original workspace has no orientation check, so the port is consumed
-  # rather than left dangling.
-  - id: dd000000-0000-4000-8000-000000000016
-    name: IncorrectOrientationSink
-    type: action
-    action: Noop Sink
 
   # --- Face checks of the surfaces ---
   - id: dd000000-0000-4000-8000-000000000017
@@ -1705,8 +1719,34 @@ edges:
   # Face checks of the LOD1 and LOD2 solids
   - id: dd000000-0000-4000-8000-000100000017
     from: dd000000-0000-4000-8000-00000000000c
-    to: dd000000-0000-4000-8000-00000000000f
+    to: dd000000-0000-4000-8000-000000000064
     fromPort: solid
+    toPort: features
+  - id: dd000000-0000-4000-8000-0001000000bc
+    from: dd000000-0000-4000-8000-000000000064
+    to: dd000000-0000-4000-8000-000000000065
+    fromPort: lod1
+    toPort: features
+  - id: dd000000-0000-4000-8000-0001000000bd
+    from: dd000000-0000-4000-8000-000000000064
+    to: dd000000-0000-4000-8000-00000000000f
+    fromPort: unfiltered
+    toPort: features
+  # LOD1 face checks share every output of the LOD2 ones
+  - id: dd000000-0000-4000-8000-0001000000be
+    from: dd000000-0000-4000-8000-000000000065
+    to: dd000000-0000-4000-8000-000000000010
+    fromPort: invalidSurface
+    toPort: features
+  - id: dd000000-0000-4000-8000-0001000000bf
+    from: dd000000-0000-4000-8000-000000000065
+    to: dd000000-0000-4000-8000-000000000012
+    fromPort: invalidSurface
+    toPort: features
+  - id: dd000000-0000-4000-8000-0001000000c0
+    from: dd000000-0000-4000-8000-000000000065
+    to: dd000000-0000-4000-8000-000000000014
+    fromPort: issueLocation
     toPort: features
   - id: dd000000-0000-4000-8000-000100000018
     from: dd000000-0000-4000-8000-00000000000f
@@ -1737,11 +1777,6 @@ edges:
     from: dd000000-0000-4000-8000-000000000014
     to: dd000000-0000-4000-8000-000000000015
     fromPort: features
-    toPort: features
-  - id: dd000000-0000-4000-8000-00010000001e
-    from: dd000000-0000-4000-8000-00000000000f
-    to: dd000000-0000-4000-8000-000000000016
-    fromPort: incorrectOrientation
     toPort: features
 
   # Face checks of the LOD2 and LOD3 surfaces
@@ -1804,11 +1839,6 @@ edges:
     from: dd000000-0000-4000-8000-00000000001c
     to: dd000000-0000-4000-8000-00000000001d
     fromPort: features
-    toPort: features
-  - id: dd000000-0000-4000-8000-00010000002b
-    from: dd000000-0000-4000-8000-000000000017
-    to: dd000000-0000-4000-8000-000000000016
-    fromPort: incorrectOrientation
     toPort: features
 
   # Solid checks
