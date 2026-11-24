@@ -202,9 +202,10 @@ func TestPublishForUnknownRoomIsNoOp(t *testing.T) {
 	}
 }
 
-// TestRoomActivatedIsIdempotent: ygo may re-activate a resident room, and a second
-// set of goroutines per activation would double every write and leak on shutdown.
-func TestRoomActivatedIsIdempotent(t *testing.T) {
+// TestRepeatedActivationsShareTheRoomsGoroutines: ygo can activate a room again
+// before deactivating the one it replaces, and a second set of goroutines per
+// activation would double every write and leak on shutdown.
+func TestRepeatedActivationsShareTheRoomsGoroutines(t *testing.T) {
 	pool := newPool(t)
 
 	peerSink := &fakeSink{}

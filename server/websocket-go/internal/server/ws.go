@@ -4,6 +4,7 @@ package server
 
 import (
 	"context"
+	"errors"
 	"log/slog"
 	"net/http"
 	"sync"
@@ -62,11 +63,54 @@ func New(cfg *config.Config) *Server {
 	s.ws.MaxConnections = cfg.MaxConnections
 	s.ws.MaxPeersPerRoom = cfg.MaxPeersPerRoom
 	s.ws.MaxRooms = cfg.MaxRooms
+	s.ws.RoomIdleTimeout = cfg.RoomIdleTimeout
 	if cfg.SlowPeerResync {
 		s.ws.SlowPeerPolicy = ygws.SlowPeerResync
 	}
 	s.enableProjectLock()
 	return s
+}
+
+// closeRoomPasses bounds how often Shutdown closes rooms that were loaded again
+// while it closed them.
+const closeRoomPasses = 3
+
+// Shutdown closes every room, so each is let go as when its last peer leaves,
+// then shuts the provider down. ygo's own Shutdown leaves rooms with no peers
+// loaded, and the relay would never hear that this instance let them go.
+func (s *Server) Shutdown(ctx context.Context) error {
+	s.closeRooms(ctx)
+	return s.ws.Shutdown(ctx)
+}
+
+// closeRooms closes every loaded room in parallel until none is left, ctx ends
+// or closeRoomPasses runs out. A reconnect or a relay entry can load a room
+// again while it is closed.
+func (s *Server) closeRooms(ctx context.Context) {
+	for range closeRoomPasses {
+		rooms := s.ws.Rooms()
+		if len(rooms) == 0 {
+			return
+		}
+		var wg sync.WaitGroup
+		for _, room := range rooms {
+			wg.Go(func() {
+				if err := s.ws.CloseRoom(room, true); err != nil && !errors.Is(err, ygws.ErrRoomNotFound) {
+					s.log.Warn("closing a room at shutdown failed", "room", room, "err", err)
+				}
+			})
+		}
+		done := make(chan struct{})
+		go func() {
+			wg.Wait()
+			close(done)
+		}()
+		select {
+		case <-done:
+		case <-ctx.Done():
+			return
+		}
+	}
 }
 
 // WSProvider exposes the underlying ygo provider for cluster/persistence hooks.
