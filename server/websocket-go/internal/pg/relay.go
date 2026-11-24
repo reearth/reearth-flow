@@ -290,6 +290,13 @@ func (r *Relay) Publish(_ context.Context, out cluster.Outbound) error {
 	rs, ok := r.rooms[out.Room]
 	if !ok || rs.evicting {
 		r.mu.Unlock()
+		if out.Kind == cluster.KindSync {
+			// ygo hands a room's last updates to Publish while tearing the room
+			// down, after RoomDeactivated. Instances still holding the room miss
+			// this one until they reload it.
+			r.droppedWrites.Add(1)
+			r.log.Warn("relay dropped an update for a room no longer active here", "room", out.Room)
+		}
 		return nil
 	}
 	ch := rs.writeCh
@@ -308,7 +315,8 @@ func (r *Relay) Publish(_ context.Context, out cluster.Outbound) error {
 	}
 }
 
-// DroppedWrites returns the cumulative count of updates dropped on a full queue.
+// DroppedWrites returns the cumulative count of updates dropped on a full queue
+// or for a room no longer active here.
 func (r *Relay) DroppedWrites() uint64 { return r.droppedWrites.Load() }
 
 // ErrRoomNotActive is what WaitCaughtUp returns for a room this instance does

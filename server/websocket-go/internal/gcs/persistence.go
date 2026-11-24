@@ -103,11 +103,13 @@ func (a *Adapter) Load(ctx context.Context, room string) (res persistence.LoadRe
 	// layouts, so a cross-layout v1 fallback is not byte-valid).
 	var base []byte
 	primaryHasV2 := false
-	if v1, ok, err := a.loadPrimaryV2(ctx, room); err != nil {
+	parked := 0
+	if v1, ok, n, err := a.loadPrimaryV2(ctx, room); err != nil {
 		return persistence.LoadResult{}, err
 	} else if ok {
 		base = v1
 		primaryHasV2 = true
+		parked = n
 	} else if b, err := a.store.get(ctx, a.layout.DocStateName(room, oid)); err == nil {
 		base = b
 	} else if err != errNotFound {
@@ -184,6 +186,12 @@ func (a *Adapter) Load(ctx context.Context, room string) (res persistence.LoadRe
 	out, err := crdt.MergeUpdatesV1(parts...)
 	if err != nil {
 		return persistence.LoadResult{}, err
+	}
+	if err := requireResolved(out, parked); err != nil {
+		return persistence.LoadResult{}, err
+	}
+	if parked > 0 {
+		a.log.Info("gcs load: the update log completed a doc_v2 that held parked items", "room", room, "parked", parked)
 	}
 	return persistence.LoadResult{Update: out, Version: persistence.Version(head)}, nil
 }
@@ -435,7 +443,7 @@ func (a *Adapter) MaterializeAt(ctx context.Context, room string, v persistence.
 	// mirroring Load — otherwise a legacy-only room materializes empty and a
 	// rollback overwrites its real content with an empty snapshot.
 	if a.fallback != nil {
-		_, hasPrimaryV2, err := a.loadPrimaryV2(ctx, room)
+		_, hasPrimaryV2, _, err := a.loadPrimaryV2(ctx, room)
 		if err != nil {
 			return nil, err
 		}
@@ -462,6 +470,7 @@ func (a *Adapter) MaterializeAt(ctx context.Context, room string, v persistence.
 	}
 
 	var parts [][]byte
+	parked := 0
 	// Include the base snapshot when the checkpoint is at or below target. The
 	// base is folded whenever a doc_v2 (or v1 SUB_DOC) exists, NOT only when
 	// cp>0: a legacy-only/backfilled/flushed room has a real base at checkpoint 0,
@@ -469,10 +478,11 @@ func (a *Adapter) MaterializeAt(ctx context.Context, room string, v persistence.
 	// overwrite real content with an empty snapshot. CRDT merge is idempotent, so
 	// folding the full base plus replayed updates never double-applies.
 	if cp <= target {
-		if v1, ok, err := a.loadV2(ctx, room); err != nil {
+		if v1, ok, n, err := a.loadV2(ctx, room); err != nil {
 			return nil, err
 		} else if ok {
 			parts = append(parts, v1)
+			parked = n
 		} else {
 			if b, err := a.store.get(ctx, a.layout.DocStateName(room, oid)); err == nil {
 				parts = append(parts, b)
@@ -503,7 +513,14 @@ func (a *Adapter) MaterializeAt(ctx context.Context, room string, v persistence.
 	if len(parts) == 0 {
 		return nil, nil // empty state
 	}
-	return crdt.MergeUpdatesV1(parts...)
+	merged, err := crdt.MergeUpdatesV1(parts...)
+	if err != nil {
+		return nil, err
+	}
+	if err := requireResolved(merged, parked); err != nil {
+		return nil, err
+	}
+	return merged, nil
 }
 
 // CaptureSnapshot stores a named snapshot of state and returns the current head

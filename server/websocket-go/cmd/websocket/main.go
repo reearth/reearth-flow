@@ -17,7 +17,6 @@ import (
 	"time"
 
 	"cloud.google.com/go/storage"
-	"github.com/reearth/ygo/crdt"
 	"google.golang.org/api/option"
 
 	"github.com/reearth/reearth-flow/websocket-go/internal/auth"
@@ -340,13 +339,7 @@ func buildPersistence(ctx context.Context, cfg *config.Config) (*persistence, er
 	flusher := gcs.NewFlusher(gcs.FlusherOptions{
 		Adapter: adapter,
 		Locker:  locks.Locker,
-		StateOf: func(room string) []byte {
-			doc := srv.WSProvider().GetDoc(room)
-			if doc == nil {
-				return nil
-			}
-			return crdt.EncodeStateAsUpdateV1(doc, nil)
-		},
+		StateOf: srv.CheckpointState,
 	})
 
 	return &persistence{

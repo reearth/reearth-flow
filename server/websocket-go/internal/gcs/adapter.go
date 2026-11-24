@@ -308,6 +308,37 @@ func docFromV2(v2 []byte) (*crdt.Doc, error) {
 	return doc, nil
 }
 
+// stateFromV2 decodes a stored doc_v2 payload into a V1 update that keeps any
+// parked items, and reports how many there are. A checkpoint from a copy that
+// missed an edit holds parked items whose edit is in the update log, so callers
+// fold the log on top before requireResolved judges the result.
+func stateFromV2(v2 []byte) (v1 []byte, parked int, err error) {
+	doc := crdt.New()
+	if err := crdt.ApplyUpdateV2(doc, v2, nil); err != nil {
+		return nil, 0, err
+	}
+	// The V1 encode carries parked items along (ygo encodes them as Yjs does).
+	return crdt.EncodeStateAsUpdateV1(doc, nil), doc.PendingStats().Items, nil
+}
+
+// requireResolved checks merged, a doc_v2 state that held parked items with the
+// update log folded on top, and returns ErrPartialV2Decode when items are still
+// left unintegrated.
+func requireResolved(merged []byte, parked int) error {
+	if parked == 0 {
+		return nil
+	}
+	d := crdt.New()
+	if err := crdt.ApplyUpdateV1(d, merged, nil); err != nil {
+		return err
+	}
+	if ps := d.PendingStats(); ps.Items > 0 {
+		return fmt.Errorf("%w: %d items left unintegrated even with the update log, awaiting %d clients; refusing to serve an incomplete document",
+			ErrPartialV2Decode, ps.Items, len(ps.MissingFor))
+	}
+	return nil
+}
+
 // docFromV1 applies a V1 update to a fresh doc and returns it.
 func docFromV1(v1 []byte) (*crdt.Doc, error) {
 	d := crdt.New()
@@ -385,24 +416,25 @@ func (a *Adapter) stripTransient(doc *crdt.Doc) {
 }
 
 // loadV2 reads + brotli-decodes + V2-decodes the doc_v2 snapshot into a V1
-// update. Returns (nil, false, nil) when absent.
-func (a *Adapter) loadV2(ctx context.Context, room DocID) ([]byte, bool, error) {
+// update, reporting how many parked items it holds (see stateFromV2). Returns
+// (nil, false, 0, nil) when absent.
+func (a *Adapter) loadV2(ctx context.Context, room DocID) ([]byte, bool, int, error) {
 	b, err := a.getDual(ctx, func(l Layout) string { return l.DocV2Name(room) })
 	if err == errNotFound {
-		return nil, false, nil
+		return nil, false, 0, nil
 	}
 	if err != nil {
-		return nil, false, err
+		return nil, false, 0, err
 	}
 	v2, err := decompressBrotli(b)
 	if err != nil {
-		return nil, false, err
+		return nil, false, 0, err
 	}
-	doc, err := docFromV2(v2)
+	v1, parked, err := stateFromV2(v2)
 	if err != nil {
-		return nil, false, err
+		return nil, false, 0, err
 	}
-	return crdt.EncodeStateAsUpdateV1(doc, nil), true, nil
+	return v1, true, parked, nil
 }
 
 // getDual reads name(primaryLayout); on a Phase-2 miss it falls back to

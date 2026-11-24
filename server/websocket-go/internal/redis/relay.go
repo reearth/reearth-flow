@@ -79,8 +79,12 @@ type Relay struct {
 	log      *slog.Logger
 	flusher  Flusher
 
-	// droppedWrites counts outbound updates dropped on a full write queue.
+	// droppedWrites counts outbound updates dropped on a full write queue, or
+	// arriving for a room that is no longer active here and could not be written.
 	droppedWrites atomic.Uint64
+	// lateWrites counts updates written after their room stopped being active
+	// here; see publishLate.
+	lateWrites atomic.Uint64
 
 	latency *latency.Recorder
 
@@ -95,6 +99,9 @@ type Relay struct {
 	ctx    context.Context // delivery lifetime, set in Start
 	rooms  map[string]*roomState
 	closed bool
+	// forceEvicted records when ForceEvict dropped each room's stream, so a late
+	// update from before a rollback cannot put the rolled-back state back.
+	forceEvicted map[string]time.Time
 }
 
 type roomState struct {
@@ -155,6 +162,8 @@ func New(opts Options) (*Relay, error) {
 		flusher:  fl,
 		latency:  latency.New(log, "redis"),
 		rooms:    make(map[string]*roomState),
+
+		forceEvicted: make(map[string]time.Time),
 	}, nil
 }
 
@@ -193,7 +202,9 @@ func (r *Relay) Publish(_ context.Context, out cluster.Outbound) error {
 	}
 	rs, ok := r.rooms[out.Room]
 	if !ok || rs.evicting {
+		rolledBack := r.forceEvictedRecently(out.Room)
 		r.mu.Unlock()
+		r.publishLate(out, rolledBack)
 		return nil
 	}
 	ch := rs.writeCh
@@ -213,8 +224,69 @@ func (r *Relay) Publish(_ context.Context, out cluster.Outbound) error {
 }
 
 // DroppedWrites returns the cumulative count of outbound updates dropped on a full
-// write queue.
+// write queue, or for a room no longer active here that could not be written.
 func (r *Relay) DroppedWrites() uint64 { return r.droppedWrites.Load() }
+
+// LateWrites returns the cumulative count of updates written after their room
+// stopped being active here.
+func (r *Relay) LateWrites() uint64 { return r.lateWrites.Load() }
+
+// forceEvictQuarantine is how long after ForceEvict late updates for the room
+// are refused. Late updates follow their room's teardown within milliseconds.
+const forceEvictQuarantine = 10 * time.Second
+
+// lateWriteTimeout bounds one late XADD.
+const lateWriteTimeout = 2 * time.Second
+
+// writeTimeout bounds one batched XADD.
+const writeTimeout = 2 * time.Second
+
+// forceEvictedRecently reports whether ForceEvict dropped room's stream within
+// forceEvictQuarantine. The caller holds r.mu.
+func (r *Relay) forceEvictedRecently(room string) bool {
+	at, ok := r.forceEvicted[room]
+	if !ok {
+		return false
+	}
+	if time.Since(at) > forceEvictQuarantine {
+		delete(r.forceEvicted, room)
+		return false
+	}
+	return true
+}
+
+// publishLate writes a document update that ygo hands over after deactivating
+// its room here, which other instances holding the room still need. NOMKSTREAM
+// skips it once no instance holds the room, when the update is already persisted.
+func (r *Relay) publishLate(out cluster.Outbound, rolledBack bool) {
+	if out.Kind != cluster.KindSync {
+		return
+	}
+	if rolledBack {
+		r.droppedWrites.Add(1)
+		r.log.Info("relay dropped a late update for a rolled-back room", "room", out.Room)
+		return
+	}
+	ctx, cancel := context.WithTimeout(context.Background(), lateWriteTimeout)
+	defer cancel()
+	ts := strconv.FormatInt(time.Now().UnixMilli(), 10)
+	err := r.client.XAdd(ctx, &goredis.XAddArgs{
+		Stream:     streamKey(out.Room),
+		NoMkStream: true,
+		ID:         "*",
+		Values:     xaddValuesTS(msgTypeSync, out.Data, r.clientID, ts),
+	}).Err()
+	switch {
+	case errors.Is(err, goredis.Nil):
+		// No stream: no instance holds the room.
+	case err != nil:
+		r.droppedWrites.Add(1)
+		r.log.Warn("relay could not write a late update; instances holding the room miss it until they reload it",
+			"room", out.Room, "err", err)
+	default:
+		r.lateWrites.Add(1)
+	}
+}
 
 // ErrRoomNotActive is what WaitCaughtUp returns for a room this instance does
 // not hold, or stops holding while waiting.
@@ -572,10 +644,17 @@ func (r *Relay) writeLoop(ctx context.Context, room string, rs *roomState) {
 			return
 		case first := <-rs.writeCh:
 			batch := r.collectBatch(rs, first)
-			if err := pipelineXAdd(ctx, r.client, key, r.clientID, batch); err != nil {
-				if ctx.Err() == nil {
-					r.log.Debug("relay batched XADD failed", "room", room, "count", len(batch), "err", err)
-				}
+			// The batch is off the queue, so drainRemaining will not see it. Write
+			// it even when RoomDeactivated cancels ctx meanwhile: a room's last
+			// edits are published just before it is deactivated, and losing them
+			// leaves every later edit that builds on them unappliable elsewhere.
+			wctx, cancel := context.WithTimeout(context.WithoutCancel(ctx), writeTimeout)
+			err := pipelineXAdd(wctx, r.client, key, r.clientID, batch)
+			cancel()
+			if err != nil {
+				r.droppedWrites.Add(uint64(len(batch)))
+				r.log.Warn("relay batched XADD failed; instances holding the room miss these updates until they reload it",
+					"room", room, "count", len(batch), "err", err)
 			}
 		}
 	}
@@ -641,7 +720,9 @@ func (r *Relay) drainRemaining(room, key string, rs *roomState) {
 			end++
 		}
 		if err := pipelineXAdd(ctx, r.client, key, r.clientID, pending[:end]); err != nil {
-			r.log.Debug("relay drain XADD failed", "room", room, "count", end, "err", err)
+			r.droppedWrites.Add(uint64(end))
+			r.log.Warn("relay drain XADD failed; instances holding the room miss these updates until they reload it",
+				"room", room, "count", end, "err", err)
 		}
 		pending = pending[end:]
 	}
@@ -747,6 +828,12 @@ func (r *Relay) ForceEvict(ctx context.Context, room string) error {
 	rs, ok := r.rooms[room]
 	if ok {
 		rs.evicting = true
+	}
+	r.forceEvicted[room] = time.Now()
+	for k, at := range r.forceEvicted {
+		if time.Since(at) > forceEvictQuarantine {
+			delete(r.forceEvicted, k)
+		}
 	}
 	r.mu.Unlock()
 

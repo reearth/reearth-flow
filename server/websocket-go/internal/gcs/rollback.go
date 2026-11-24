@@ -97,10 +97,12 @@ func (a *Adapter) Compact(ctx context.Context, room string, keep int) (int, erro
 			return err
 		}
 		var parts [][]byte
-		if v1, ok, err := a.loadV2(ctx, room); err != nil {
+		parked := 0
+		if v1, ok, n, err := a.loadV2(ctx, room); err != nil {
 			return err
 		} else if ok {
 			parts = append(parts, v1)
+			parked = n
 		} else {
 			if b, err := a.store.get(ctx, a.layout.DocStateName(room, oid)); err == nil {
 				parts = append(parts, b)
@@ -123,6 +125,11 @@ func (a *Adapter) Compact(ctx context.Context, room string, keep int) (int, erro
 		if len(parts) > 0 {
 			newBase, err = crdt.MergeUpdatesV1(parts...)
 			if err != nil {
+				return err
+			}
+			// Only the folded updates count here: the ones kept after cutoff
+			// are not in newBase, so a doc_v2 that needs them stays as it is.
+			if err := requireResolved(newBase, parked); err != nil {
 				return err
 			}
 		}

@@ -42,7 +42,7 @@ func (a *Adapter) Backfill(ctx context.Context, room string) error {
 	}
 
 	// Verify state-vector equality before the prefix is trusted.
-	newV1, _, err := a.loadPrimaryV2(ctx, room)
+	newV1, _, _, err := a.loadPrimaryV2(ctx, room)
 	if err != nil {
 		return err
 	}
@@ -138,23 +138,23 @@ func (a *Adapter) foldLegacyUpdatesOID(ctx context.Context, room string, oid uin
 }
 
 // loadPrimaryV2 reads + decodes the primary (prefix) doc_v2 only, no fallback.
-func (a *Adapter) loadPrimaryV2(ctx context.Context, room string) ([]byte, bool, error) {
+func (a *Adapter) loadPrimaryV2(ctx context.Context, room string) ([]byte, bool, int, error) {
 	b, err := a.store.get(ctx, a.layout.DocV2Name(room))
 	if err == errNotFound {
-		return nil, false, nil
+		return nil, false, 0, nil
 	}
 	if err != nil {
-		return nil, false, err
+		return nil, false, 0, err
 	}
 	v2, err := decompressBrotli(b)
 	if err != nil {
-		return nil, false, err
+		return nil, false, 0, err
 	}
-	doc, err := docFromV2(v2)
+	v1, parked, err := stateFromV2(v2)
 	if err != nil {
-		return nil, false, err
+		return nil, false, 0, err
 	}
-	return crdt.EncodeStateAsUpdateV1(doc, nil), true, nil
+	return v1, true, parked, nil
 }
 
 // legacyHeadClock returns the highest legacy-root update clock for room, used as
