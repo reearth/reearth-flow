@@ -11,7 +11,8 @@ use std::collections::hash_map::Entry;
 use std::collections::{BTreeSet, HashMap, HashSet};
 
 use fastxml::schema::types::{
-    CompiledSchema, ComplexType, ContentModel, ElementDef, NsName, Particle, TypeDef,
+    CompiledSchema, ComplexType, ContentModel, DerivationMethod, ElementDef, NsName, Particle,
+    TypeDef,
 };
 use once_cell::sync::Lazy;
 use quick_xml::{NsReader, events::Event};
@@ -572,7 +573,7 @@ fn declared_name(element: &ElementDef) -> NsName {
 }
 
 /// Calls `f` on each child element declaration of `complex_type` and of its
-/// base types, until `f` returns true.
+/// base types up to the first restriction, until `f` returns true.
 fn for_each_child<'s>(
     schema: &'s CompiledSchema,
     complex_type: &'s ComplexType,
@@ -590,7 +591,8 @@ fn for_each_child<'s>(
             Some(particle) => particle_children(particle, f),
             None => content_children(&complex_type.content).iter().any(&mut *f),
         };
-        if done {
+        // A restriction restates the whole content, so its base adds no children.
+        if done || complex_type.derivation == Some(DerivationMethod::Restriction) {
             return;
         }
         current = match schema.complex_base_def(complex_type) {
@@ -637,8 +639,9 @@ mod tests {
     const GML_NS: &str = "http://www.opengis.net/gml/3.2";
     const BLDG_NS: &str = "http://www.opengis.net/citygml/building/3.0";
 
-    /// A building subdivision holds `bldg:buildingRoom` through its base type,
-    /// and a traffic space refers to others by `gml:ReferenceType`.
+    /// A building subdivision holds `bldg:buildingRoom` and properties of
+    /// types derived by restriction through its base type, and a traffic
+    /// space refers to others by `gml:ReferenceType`.
     fn schema() -> CompiledSchema {
         let gml = br#"<xs:schema xmlns:xs="http://www.w3.org/2001/XMLSchema"
             xmlns:gml="http://www.opengis.net/gml/3.2"
@@ -685,9 +688,30 @@ mod tests {
             <xs:complexType name="BuildingRoomPropertyType">
                 <xs:sequence minOccurs="0"><xs:element ref="bldg:BuildingRoom"/></xs:sequence>
             </xs:complexType>
+            <xs:element name="BuildingFurniture" substitutionGroup="core:AbstractCityObject"/>
+            <xs:complexType name="SpacePropertyType">
+                <xs:choice minOccurs="0">
+                    <xs:element ref="bldg:BuildingRoom"/>
+                    <xs:element ref="bldg:BuildingFurniture"/>
+                </xs:choice>
+            </xs:complexType>
+            <xs:complexType name="RoomPropertyType">
+                <xs:complexContent>
+                    <xs:restriction base="bldg:SpacePropertyType">
+                        <xs:choice minOccurs="0"><xs:element ref="bldg:BuildingRoom"/></xs:choice>
+                    </xs:restriction>
+                </xs:complexContent>
+            </xs:complexType>
+            <xs:complexType name="EmptySpacePropertyType">
+                <xs:complexContent>
+                    <xs:restriction base="bldg:SpacePropertyType"/>
+                </xs:complexContent>
+            </xs:complexType>
             <xs:complexType name="AbstractBuildingSubdivisionType">
                 <xs:sequence>
                     <xs:element name="buildingRoom" type="bldg:BuildingRoomPropertyType" minOccurs="0"/>
+                    <xs:element name="room" type="bldg:RoomPropertyType" minOccurs="0"/>
+                    <xs:element name="emptySpace" type="bldg:EmptySpacePropertyType" minOccurs="0"/>
                 </xs:sequence>
             </xs:complexType>
             <xs:complexType name="BuildingUnitType">
@@ -784,6 +808,26 @@ mod tests {
                 bldg("buildingRoom"),
                 bldg("BuildingUnit"),
                 TargetMatch::Mismatches,
+            ),
+            // A property whose type is derived by restriction, which holds
+            // none of the elements its base type drops.
+            (
+                bldg("BuildingUnit"),
+                bldg("room"),
+                bldg("BuildingRoom"),
+                TargetMatch::Matches,
+            ),
+            (
+                bldg("BuildingUnit"),
+                bldg("room"),
+                bldg("BuildingFurniture"),
+                TargetMatch::Mismatches,
+            ),
+            (
+                bldg("BuildingUnit"),
+                bldg("emptySpace"),
+                bldg("BuildingRoom"),
+                TargetMatch::Unresolved,
             ),
             // A property of `gml:ReferenceType`.
             (
