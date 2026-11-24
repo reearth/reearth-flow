@@ -226,16 +226,9 @@ pub fn apply_cast(cast: &CastConfig, value: Value) -> Value {
         CastConfig::IgnoreBoth => Value::Null,
         // Records the key order as a "__key_order" entry so that the unordered comparison
         // also catches a reorder. Conversion-only: nested paths are left unchanged.
-        // Keys with a null value are left out: the comparison treats a null value and a
-        // missing key as equal, and writers differ in whether they emit the key at all
-        // (a tile table can carry a no-data row for a column that another writer omits).
         CastConfig::OrderedDict => match value {
             Value::Object(mut map) => {
-                let order = map
-                    .iter()
-                    .filter(|(_, v)| !v.is_null())
-                    .map(|(k, _)| Value::String(k.clone()))
-                    .collect();
+                let order = map.keys().cloned().map(Value::String).collect();
                 assert!(
                     map.insert("__key_order".to_string(), Value::Array(order))
                         .is_none(),
@@ -550,31 +543,15 @@ mod tests {
     }
 
     #[test]
-    fn test_ordered_dict_cast_ignores_null_valued_keys() {
-        let mut casts = HashMap::new();
-        casts.insert("".to_string(), CastConfig::OrderedDict);
-        let convert = |v: Value| apply_casts_to_value(v, "", &casts);
-
-        // a key that is null in one writer's output and absent in the other's is not an order difference
-        let with_null = convert(json!({"a": 1, "b": null, "c": 3}));
-        let without = convert(json!({"a": 1, "c": 3}));
-        assert_eq!(with_null["__key_order"], json!(["a", "c"]));
-        assert!(
-            analyze_attributes("test", &without, &with_null, HashMap::new(), HashMap::new())
-                .is_ok()
-        );
-    }
-
-    #[test]
-    fn test_ordered_dict_order_follows_the_casts_of_the_keys() {
+    fn test_ordered_dict_order_is_recorded_after_the_casts_of_the_keys() {
         let mut casts = HashMap::new();
         casts.insert("".to_string(), CastConfig::OrderedDict);
         casts.insert(".b".to_string(), CastConfig::IgnoreBoth);
 
-        // `ignore_both` nulls `b`, so it is not part of the recorded order
+        // `ignore_both` nulls `b`; it keeps its place in the recorded order
         let converted = apply_casts_to_value(json!({"a": 1, "b": 2, "c": 3}), "", &casts);
         assert_eq!(converted["b"], Value::Null);
-        assert_eq!(converted["__key_order"], json!(["a", "c"]));
+        assert_eq!(converted["__key_order"], json!(["a", "b", "c"]));
     }
 
     #[test]
