@@ -88,3 +88,8 @@ func TestJob_SaveIfNotTerminal(t *testing.T) {
 	t.Parallel()
 	repotest.JobSaveIfNotTerminal(t, func(t *testing.T) repo.Job { return connectJobDB(t) })
 }
+
+func TestJob_ClaimNotification(t *testing.T) {
+	t.Parallel()
+	repotest.JobClaimNotification(t, func(t *testing.T) repo.Job { return connectJobDB(t) })
+}

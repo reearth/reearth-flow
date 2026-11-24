@@ -20,24 +20,28 @@ type Job struct {
 	data map[id.JobID]*job.Job
 	// saved is each job's status at its last save; data shares pointers, so it can't tell.
 	saved map[id.JobID]job.Status
-	lock  *sync.Mutex
-	f     repo.WorkspaceFilter
+	// claims is until when each job's webhook delivery is held.
+	claims map[id.JobID]time.Time
+	lock   *sync.Mutex
+	f      repo.WorkspaceFilter
 }
 
 func NewJob() *Job {
 	return &Job{
-		data:  map[id.JobID]*job.Job{},
-		saved: map[id.JobID]job.Status{},
-		lock:  &sync.Mutex{},
+		data:   map[id.JobID]*job.Job{},
+		saved:  map[id.JobID]job.Status{},
+		claims: map[id.JobID]time.Time{},
+		lock:   &sync.Mutex{},
 	}
 }
 
 func (r *Job) Filtered(f repo.WorkspaceFilter) repo.Job {
 	return &Job{
-		data:  r.data,
-		saved: r.saved,
-		f:     r.f.Merge(f),
-		lock:  r.lock,
+		data:   r.data,
+		saved:  r.saved,
+		claims: r.claims,
+		f:      r.f.Merge(f),
+		lock:   r.lock,
 	}
 }
 
@@ -323,6 +327,32 @@ func (r *Job) RemoveByProject(ctx context.Context, projectID id.ProjectID) error
 		delete(r.data, jid)
 		delete(r.saved, jid)
 	}
+	return nil
+}
+
+func (r *Job) ClaimNotification(_ context.Context, jid id.JobID, now, until time.Time) (bool, error) {
+	r.lock.Lock()
+	defer r.lock.Unlock()
+
+	j, ok := r.data[jid]
+	if !ok || j.NotifiedAt() != nil {
+		return false, nil
+	}
+	if c, ok := r.claims[jid]; ok && !c.Before(now) {
+		return false, nil
+	}
+	r.claims[jid] = until
+	return true, nil
+}
+
+func (r *Job) MarkNotified(_ context.Context, jid id.JobID, at time.Time) error {
+	r.lock.Lock()
+	defer r.lock.Unlock()
+
+	if j, ok := r.data[jid]; ok {
+		j.SetNotifiedAt(&at)
+	}
+	delete(r.claims, jid)
 	return nil
 }
 

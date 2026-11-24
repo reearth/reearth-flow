@@ -124,3 +124,84 @@ func JobSaveIfNotTerminal(t *testing.T, newRepo func(*testing.T) repo.Job) {
 		assert.True(t, got.ArtifactsPending())
 	})
 }
+
+// JobClaimNotification checks one webhook claim is live at a time, lapses, and ends once the webhook is marked sent.
+func JobClaimNotification(t *testing.T, newRepo func(*testing.T) repo.Job) {
+	t.Helper()
+	ctx := context.Background()
+	now := time.Now().UTC().Truncate(time.Second)
+	saved := func(t *testing.T, r repo.Job) *job.Job {
+		t.Helper()
+		url := "https://example.com/hook"
+		j := job.New().NewID().Workspace(accountsid.NewWorkspaceID()).Status(job.StatusCompleted).
+			StartedAt(now).NotificationURL(&url).MustBuild()
+		require.NoError(t, r.Save(ctx, j))
+		return j
+	}
+
+	t.Run("a live claim blocks others until it lapses", func(t *testing.T) {
+		t.Parallel()
+		r := newRepo(t)
+		j := saved(t, r)
+
+		won, err := r.ClaimNotification(ctx, j.ID(), now, now.Add(time.Minute))
+		require.NoError(t, err)
+		assert.True(t, won)
+
+		won, err = r.ClaimNotification(ctx, j.ID(), now.Add(30*time.Second), now.Add(90*time.Second))
+		require.NoError(t, err)
+		assert.False(t, won, "the first claim is still live")
+
+		won, err = r.ClaimNotification(ctx, j.ID(), now.Add(2*time.Minute), now.Add(3*time.Minute))
+		require.NoError(t, err)
+		assert.True(t, won, "the first claim has lapsed")
+	})
+
+	t.Run("concurrent claims let one instance send", func(t *testing.T) {
+		t.Parallel()
+		r := newRepo(t)
+		j := saved(t, r)
+
+		var won atomic.Int32
+		var wg sync.WaitGroup
+		for range 8 {
+			wg.Go(func() {
+				ok, err := r.ClaimNotification(ctx, j.ID(), now, now.Add(time.Minute))
+				assert.NoError(t, err)
+				if ok {
+					won.Add(1)
+				}
+			})
+		}
+		wg.Wait()
+
+		assert.Equal(t, int32(1), won.Load())
+	})
+
+	t.Run("a sent webhook cannot be claimed", func(t *testing.T) {
+		t.Parallel()
+		r := newRepo(t)
+		j := saved(t, r)
+		_, err := r.ClaimNotification(ctx, j.ID(), now, now.Add(time.Minute))
+		require.NoError(t, err)
+		sentAt := now.Add(time.Second)
+
+		require.NoError(t, r.MarkNotified(ctx, j.ID(), sentAt))
+
+		got, err := r.FindByID(ctx, j.ID())
+		require.NoError(t, err)
+		require.NotNil(t, got.NotifiedAt())
+		assert.True(t, sentAt.Equal(*got.NotifiedAt()))
+		assert.Equal(t, job.StatusCompleted, got.Status(), "nothing else changes")
+		won, err := r.ClaimNotification(ctx, j.ID(), now.Add(time.Hour), now.Add(2*time.Hour))
+		require.NoError(t, err)
+		assert.False(t, won)
+	})
+
+	t.Run("an unknown job cannot be claimed", func(t *testing.T) {
+		t.Parallel()
+		won, err := newRepo(t).ClaimNotification(ctx, id.NewJobID(), now, now.Add(time.Minute))
+		require.NoError(t, err)
+		assert.False(t, won)
+	})
+}

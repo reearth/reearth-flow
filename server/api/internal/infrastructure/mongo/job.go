@@ -30,12 +30,15 @@ type Job struct {
 	// admission holds one document per workspace whose version every job
 	// admitted by SaveIfRunningBelow increments.
 	admission *mongox.ClientCollection
+	// notifyClaims holds one document per job whose webhook an instance is sending; job saves replace whole documents.
+	notifyClaims *mongox.ClientCollection
 }
 
 func NewJob(client *mongox.Client) repo.Job {
 	return &Job{
-		client:    client.WithCollection("job"),
-		admission: client.WithCollection("jobAdmission"),
+		client:       client.WithCollection("job"),
+		admission:    client.WithCollection("jobAdmission"),
+		notifyClaims: client.WithCollection("jobNotifyClaim"),
 	}
 }
 
@@ -45,9 +48,11 @@ func (r *Job) Init(ctx context.Context) error {
 	}
 	// Created up front so the first admission, which may run in a transaction,
 	// never has to create it implicitly.
-	coll := r.admission.Client()
-	if err := coll.Database().CreateCollection(ctx, coll.Name()); err != nil && !isNamespaceExists(err) {
-		return err
+	for _, c := range []*mongox.ClientCollection{r.admission, r.notifyClaims} {
+		coll := c.Client()
+		if err := coll.Database().CreateCollection(ctx, coll.Name()); err != nil && !isNamespaceExists(err) {
+			return err
+		}
 	}
 	return nil
 }
@@ -380,6 +385,38 @@ func (r *Job) SaveIfNotTerminal(ctx context.Context, j *job.Job) (bool, error) {
 		return false, rerror.ErrInternalByWithContext(ctx, err)
 	}
 	return res.MatchedCount+res.UpsertedCount > 0, nil
+}
+
+// ClaimNotification upserts the claim only while it has lapsed; a live claim makes the insert hit the unique _id.
+func (r *Job) ClaimNotification(ctx context.Context, jid id.JobID, now, until time.Time) (bool, error) {
+	n, err := r.client.Client().CountDocuments(ctx, bson.M{"id": jid.String(), "notifiedat": nil})
+	if err != nil {
+		return false, rerror.ErrInternalByWithContext(ctx, err)
+	}
+	if n == 0 {
+		return false, nil
+	}
+	_, err = r.notifyClaims.Client().UpdateOne(ctx,
+		bson.M{"_id": jid.String(), "until": bson.M{"$lt": now}},
+		bson.M{"$set": bson.M{"until": until}},
+		options.Update().SetUpsert(true))
+	if mongo.IsDuplicateKeyError(err) || isTransientTxError(err) {
+		return false, nil
+	}
+	if err != nil {
+		return false, rerror.ErrInternalByWithContext(ctx, err)
+	}
+	return true, nil
+}
+
+func (r *Job) MarkNotified(ctx context.Context, jid id.JobID, at time.Time) error {
+	if _, err := r.client.Client().UpdateOne(ctx, bson.M{"id": jid.String()}, bson.M{"$set": bson.M{"notifiedat": at}}); err != nil {
+		return rerror.ErrInternalByWithContext(ctx, err)
+	}
+	if _, err := r.notifyClaims.Client().DeleteOne(ctx, bson.M{"_id": jid.String()}); err != nil {
+		log.Warnfc(ctx, "mongo: job %s: could not drop its webhook claim, it lapses on its own: %v", jid, err)
+	}
+	return nil
 }
 
 func (r *Job) Remove(ctx context.Context, id id.JobID) error {

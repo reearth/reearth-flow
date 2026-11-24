@@ -304,6 +304,21 @@ func (r *Job) SaveIfNotTerminal(ctx context.Context, j *job.Job) (bool, error) {
 	return n > 0, nil
 }
 
+func (r *Job) ClaimNotification(ctx context.Context, jid id.JobID, now, until time.Time) (bool, error) {
+	n, err := r.q(ctx).ClaimJobNotification(ctx, gen.ClaimJobNotificationParams{ID: jid.String(), Until: until, Now: now})
+	if err != nil {
+		return false, rerror.ErrInternalByWithContext(ctx, pgxx.WrapError(err))
+	}
+	return n > 0, nil
+}
+
+func (r *Job) MarkNotified(ctx context.Context, jid id.JobID, at time.Time) error {
+	if err := r.q(ctx).MarkJobNotified(ctx, gen.MarkJobNotifiedParams{ID: jid.String(), NotifiedAt: &at}); err != nil {
+		return rerror.ErrInternalByWithContext(ctx, pgxx.WrapError(err))
+	}
+	return nil
+}
+
 const jobScheduledRunIndex = "jobs_trigger_id_scheduled_at_idx"
 
 // isScheduledRunConflict reports whether err refused a job because another job

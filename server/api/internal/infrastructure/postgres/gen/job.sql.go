@@ -10,6 +10,27 @@ import (
 	"time"
 )
 
+const claimJobNotification = `-- name: ClaimJobNotification :execrows
+UPDATE jobs SET notify_claimed_until = $1::timestamptz
+WHERE id = $2 AND notified_at IS NULL
+  AND (notify_claimed_until IS NULL OR notify_claimed_until < $3::timestamptz)
+`
+
+type ClaimJobNotificationParams struct {
+	Until time.Time
+	ID    string
+	Now   time.Time
+}
+
+// Takes the webhook delivery unless it was sent or another claim is still live.
+func (q *Queries) ClaimJobNotification(ctx context.Context, arg ClaimJobNotificationParams) (int64, error) {
+	result, err := q.db.Exec(ctx, claimJobNotification, arg.Until, arg.ID, arg.Now)
+	if err != nil {
+		return 0, err
+	}
+	return result.RowsAffected(), nil
+}
+
 const countRunningJobsByWorkspace = `-- name: CountRunningJobsByWorkspace :one
 SELECT count(*) FROM jobs
 WHERE workspace_id = $1
@@ -53,7 +74,7 @@ func (q *Queries) DeleteJobsByProject(ctx context.Context, projectID *string) er
 }
 
 const getJob = `-- name: GetJob :one
-SELECT id, workspace_id, deployment_id, project_id, project_version, gcp_job_id, logs_url, worker_logs_url, user_facing_logs_url, status, batch_status, worker_status, started_at, completed_at, metadata_url, output_urls, debug, parameters, mode, trigger_id, scheduled_at, origin, run_by, notification_url, notified_at, artifacts_pending FROM jobs WHERE id = $1
+SELECT id, workspace_id, deployment_id, project_id, project_version, gcp_job_id, logs_url, worker_logs_url, user_facing_logs_url, status, batch_status, worker_status, started_at, completed_at, metadata_url, output_urls, debug, parameters, mode, trigger_id, scheduled_at, origin, run_by, notification_url, notified_at, artifacts_pending, notify_claimed_until FROM jobs WHERE id = $1
 `
 
 func (q *Queries) GetJob(ctx context.Context, id string) (Job, error) {
@@ -86,12 +107,13 @@ func (q *Queries) GetJob(ctx context.Context, id string) (Job, error) {
 		&i.NotificationUrl,
 		&i.NotifiedAt,
 		&i.ArtifactsPending,
+		&i.NotifyClaimedUntil,
 	)
 	return i, err
 }
 
 const getJobByScheduledRun = `-- name: GetJobByScheduledRun :one
-SELECT id, workspace_id, deployment_id, project_id, project_version, gcp_job_id, logs_url, worker_logs_url, user_facing_logs_url, status, batch_status, worker_status, started_at, completed_at, metadata_url, output_urls, debug, parameters, mode, trigger_id, scheduled_at, origin, run_by, notification_url, notified_at, artifacts_pending FROM jobs WHERE trigger_id = $1 AND scheduled_at = $2
+SELECT id, workspace_id, deployment_id, project_id, project_version, gcp_job_id, logs_url, worker_logs_url, user_facing_logs_url, status, batch_status, worker_status, started_at, completed_at, metadata_url, output_urls, debug, parameters, mode, trigger_id, scheduled_at, origin, run_by, notification_url, notified_at, artifacts_pending, notify_claimed_until FROM jobs WHERE trigger_id = $1 AND scheduled_at = $2
 `
 
 type GetJobByScheduledRunParams struct {
@@ -130,12 +152,13 @@ func (q *Queries) GetJobByScheduledRun(ctx context.Context, arg GetJobBySchedule
 		&i.NotificationUrl,
 		&i.NotifiedAt,
 		&i.ArtifactsPending,
+		&i.NotifyClaimedUntil,
 	)
 	return i, err
 }
 
 const listJobsByIDs = `-- name: ListJobsByIDs :many
-SELECT id, workspace_id, deployment_id, project_id, project_version, gcp_job_id, logs_url, worker_logs_url, user_facing_logs_url, status, batch_status, worker_status, started_at, completed_at, metadata_url, output_urls, debug, parameters, mode, trigger_id, scheduled_at, origin, run_by, notification_url, notified_at, artifacts_pending FROM jobs WHERE id = ANY($1::text[])
+SELECT id, workspace_id, deployment_id, project_id, project_version, gcp_job_id, logs_url, worker_logs_url, user_facing_logs_url, status, batch_status, worker_status, started_at, completed_at, metadata_url, output_urls, debug, parameters, mode, trigger_id, scheduled_at, origin, run_by, notification_url, notified_at, artifacts_pending, notify_claimed_until FROM jobs WHERE id = ANY($1::text[])
 `
 
 func (q *Queries) ListJobsByIDs(ctx context.Context, dollar_1 []string) ([]Job, error) {
@@ -174,6 +197,7 @@ func (q *Queries) ListJobsByIDs(ctx context.Context, dollar_1 []string) ([]Job, 
 			&i.NotificationUrl,
 			&i.NotifiedAt,
 			&i.ArtifactsPending,
+			&i.NotifyClaimedUntil,
 		); err != nil {
 			return nil, err
 		}
@@ -186,7 +210,7 @@ func (q *Queries) ListJobsByIDs(ctx context.Context, dollar_1 []string) ([]Job, 
 }
 
 const listRunningJobsByWorkspace = `-- name: ListRunningJobsByWorkspace :many
-SELECT id, workspace_id, deployment_id, project_id, project_version, gcp_job_id, logs_url, worker_logs_url, user_facing_logs_url, status, batch_status, worker_status, started_at, completed_at, metadata_url, output_urls, debug, parameters, mode, trigger_id, scheduled_at, origin, run_by, notification_url, notified_at, artifacts_pending FROM jobs
+SELECT id, workspace_id, deployment_id, project_id, project_version, gcp_job_id, logs_url, worker_logs_url, user_facing_logs_url, status, batch_status, worker_status, started_at, completed_at, metadata_url, output_urls, debug, parameters, mode, trigger_id, scheduled_at, origin, run_by, notification_url, notified_at, artifacts_pending, notify_claimed_until FROM jobs
 WHERE workspace_id = $1
   AND started_at >= $2
   AND status IN ('PENDING', 'RUNNING')
@@ -237,6 +261,7 @@ func (q *Queries) ListRunningJobsByWorkspace(ctx context.Context, arg ListRunnin
 			&i.NotificationUrl,
 			&i.NotifiedAt,
 			&i.ArtifactsPending,
+			&i.NotifyClaimedUntil,
 		); err != nil {
 			return nil, err
 		}
@@ -246,6 +271,20 @@ func (q *Queries) ListRunningJobsByWorkspace(ctx context.Context, arg ListRunnin
 		return nil, err
 	}
 	return items, nil
+}
+
+const markJobNotified = `-- name: MarkJobNotified :exec
+UPDATE jobs SET notified_at = $2, notify_claimed_until = NULL WHERE id = $1
+`
+
+type MarkJobNotifiedParams struct {
+	ID         string
+	NotifiedAt *time.Time
+}
+
+func (q *Queries) MarkJobNotified(ctx context.Context, arg MarkJobNotifiedParams) error {
+	_, err := q.db.Exec(ctx, markJobNotified, arg.ID, arg.NotifiedAt)
+	return err
 }
 
 const saveJobIfNotTerminal = `-- name: SaveJobIfNotTerminal :execrows

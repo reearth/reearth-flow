@@ -527,6 +527,11 @@ table "jobs" {
     type    = boolean
     default = false
   }
+  // Until when one instance holds the webhook delivery; job saves never write it.
+  column "notify_claimed_until" {
+    type = timestamptz
+    null = true
+  }
 
   primary_key {
     columns = [column.id]

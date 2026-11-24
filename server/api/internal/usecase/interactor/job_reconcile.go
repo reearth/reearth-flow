@@ -170,19 +170,32 @@ func (i *Job) reloadFinished(ctx context.Context, jobID id.JobID) (*job.Job, err
 	return j, nil
 }
 
-// deliverNotification sends an undelivered webhook once outputs are listed, recording it only on success.
+// notificationClaimLease is how long one instance holds a webhook delivery; longer than the notifier's 30s timeout.
+const notificationClaimLease = time.Minute
+
+// deliverNotification sends an unsent webhook once outputs are listed; a claim keeps instances from sending it twice.
 func (i *Job) deliverNotification(ctx context.Context, j *job.Job) {
 	url := j.NotificationURL()
 	if url == nil || j.NotifiedAt() != nil || j.ArtifactsPending() {
 		return
 	}
+	now := time.Now()
+	claimed, err := i.jobRepo.ClaimNotification(ctx, j.ID(), now, now.Add(notificationClaimLease))
+	if err != nil {
+		log.Errorfc(ctx, "job: failed to claim the completion webhook for job %s: %v", j.ID(), err)
+		return
+	}
+	if !claimed {
+		return
+	}
 	if err := i.sendCompletionNotification(ctx, j, *url); err != nil {
+		// The claim lapses, so a later reconcile retries.
 		log.Errorfc(ctx, "job: failed to send the completion webhook for job %s: %v", j.ID(), err)
 		return
 	}
-	now := time.Now()
-	j.SetNotifiedAt(&now)
-	if err := i.jobRepo.Save(ctx, j); err != nil {
+	sentAt := time.Now()
+	j.SetNotifiedAt(&sentAt)
+	if err := i.jobRepo.MarkNotified(ctx, j.ID(), sentAt); err != nil {
 		log.Errorfc(ctx, "job: sent the completion webhook for job %s but could not record it: %v", j.ID(), err)
 	}
 }

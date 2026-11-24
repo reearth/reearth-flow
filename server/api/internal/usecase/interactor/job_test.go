@@ -110,6 +110,15 @@ func (m *mockCheckStatusJobRepo) Save(ctx context.Context, j *job.Job) error {
 	return nil
 }
 
+func (m *mockCheckStatusJobRepo) ClaimNotification(context.Context, id.JobID, time.Time, time.Time) (bool, error) {
+	return true, nil
+}
+
+func (m *mockCheckStatusJobRepo) MarkNotified(_ context.Context, _ id.JobID, at time.Time) error {
+	m.job.SetNotifiedAt(&at)
+	return nil
+}
+
 func (m *mockCheckStatusJobRepo) SaveIfNotTerminal(ctx context.Context, j *job.Job) (bool, error) {
 	if m.stored.IsTerminal() {
 		return false, nil

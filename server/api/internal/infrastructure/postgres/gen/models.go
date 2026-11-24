@@ -80,32 +80,33 @@ type EdgeExecution struct {
 }
 
 type Job struct {
-	ID                string
-	WorkspaceID       string
-	DeploymentID      *string
-	ProjectID         *string
-	ProjectVersion    *int32
-	GcpJobID          string
-	LogsUrl           string
-	WorkerLogsUrl     string
-	UserFacingLogsUrl string
-	Status            string
-	BatchStatus       *string
-	WorkerStatus      *string
-	StartedAt         time.Time
-	CompletedAt       *time.Time
-	MetadataUrl       string
-	OutputUrls        []byte
-	Debug             *bool
-	Parameters        []byte
-	Mode              string
-	TriggerID         *string
-	ScheduledAt       *time.Time
-	Origin            []byte
-	RunBy             *string
-	NotificationUrl   *string
-	NotifiedAt        *time.Time
-	ArtifactsPending  bool
+	ID                 string
+	WorkspaceID        string
+	DeploymentID       *string
+	ProjectID          *string
+	ProjectVersion     *int32
+	GcpJobID           string
+	LogsUrl            string
+	WorkerLogsUrl      string
+	UserFacingLogsUrl  string
+	Status             string
+	BatchStatus        *string
+	WorkerStatus       *string
+	StartedAt          time.Time
+	CompletedAt        *time.Time
+	MetadataUrl        string
+	OutputUrls         []byte
+	Debug              *bool
+	Parameters         []byte
+	Mode               string
+	TriggerID          *string
+	ScheduledAt        *time.Time
+	Origin             []byte
+	RunBy              *string
+	NotificationUrl    *string
+	NotifiedAt         *time.Time
+	ArtifactsPending   bool
+	NotifyClaimedUntil *time.Time
 }
 
 type JobCompleteEvent struct {

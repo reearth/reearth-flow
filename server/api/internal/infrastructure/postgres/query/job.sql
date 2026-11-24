@@ -106,3 +106,12 @@ WHERE workspace_id = $1
   AND debug = true
   AND mode <> 'preview-schema'
 ORDER BY started_at;
+
+-- name: ClaimJobNotification :execrows
+-- Takes the webhook delivery unless it was sent or another claim is still live.
+UPDATE jobs SET notify_claimed_until = sqlc.arg(until)::timestamptz
+WHERE id = sqlc.arg(id) AND notified_at IS NULL
+  AND (notify_claimed_until IS NULL OR notify_claimed_until < sqlc.arg(now)::timestamptz);
+
+-- name: MarkJobNotified :exec
+UPDATE jobs SET notified_at = $2, notify_claimed_until = NULL WHERE id = $1;

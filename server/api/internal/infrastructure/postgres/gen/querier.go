@@ -9,6 +9,8 @@ import (
 )
 
 type Querier interface {
+	// Takes the webhook delivery unless it was sent or another claim is still live.
+	ClaimJobNotification(ctx context.Context, arg ClaimJobNotificationParams) (int64, error)
 	CountEnabledTriggersByWorkspace(ctx context.Context, workspaceID string) (int64, error)
 	CountProjectsByWorkspace(ctx context.Context, workspaceID string) (int64, error)
 	CountPublicProjectsByWorkspace(ctx context.Context, workspaceID string) (int64, error)
@@ -68,6 +70,7 @@ type Querier interface {
 	ListTriggersByIDs(ctx context.Context, dollar_1 []string) ([]Trigger, error)
 	ListWorkerConfigs(ctx context.Context) ([]WorkerConfig, error)
 	ListWorkerConfigsByIDs(ctx context.Context, dollar_1 []string) ([]WorkerConfig, error)
+	MarkJobNotified(ctx context.Context, arg MarkJobNotifiedParams) error
 	// UpsertJob unless the stored status (computed Status() at last save) is terminal; 0 rows = lost.
 	SaveJobIfNotTerminal(ctx context.Context, arg SaveJobIfNotTerminalParams) (int64, error)
 	UpdateTriggerLastRefusal(ctx context.Context, arg UpdateTriggerLastRefusalParams) error
