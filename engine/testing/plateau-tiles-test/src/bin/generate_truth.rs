@@ -28,14 +28,22 @@ fn run(profile_path: &Path) -> Result<(), String> {
         if !entry.generate_truth {
             continue;
         }
-        let flow_file = truth_dir.join(&entry.flow_path);
+        // `flow_path` is `<output name>/<file>`; the truth dir holds `<output name>.zip`.
+        let (stem, file) = entry
+            .flow_path
+            .split_once('/')
+            .ok_or_else(|| format!("convs.json.{id}: flow_path must be '<name>/<file>'"))?;
+        let zip_path = truth_dir.join(stem).with_extension("zip");
+        let tmp_dir = extract_zip_to_tmp(&zip_path)?;
         let output_path = truth_dir.join(&entry.output_path);
-        plateau_tiles_test::conv::json::write_json(
-            &flow_file,
+        let result = plateau_tiles_test::conv::json::write_json(
+            &tmp_dir.join(file),
             &output_path,
             entry.json_path.as_deref(),
             &entry.casts,
-        )?;
+        );
+        fs::remove_dir_all(&tmp_dir).ok();
+        result?;
         println!("wrote json/{} -> {}", id, output_path.display());
     }
 
