@@ -264,7 +264,6 @@ fn axis_order_sign_uncached(epsg: EpsgCode) -> Result<i8> {
 /// Process-wide memoization of the stored index of each CRS's north axis,
 /// keyed by EPSG code. Like the orientation sign, it is fixed for the process,
 /// and only successful lookups are cached.
-#[cfg(feature = "new-geometry")]
 fn north_axis_cache() -> &'static RwLock<HashMap<EpsgCode, usize>> {
     static CACHE: OnceLock<RwLock<HashMap<EpsgCode, usize>>> = OnceLock::new();
     CACHE.get_or_init(|| RwLock::new(HashMap::new()))
@@ -277,7 +276,6 @@ fn north_axis_cache() -> &'static RwLock<HashMap<EpsgCode, usize>> {
 /// is unknown, its axes are not axis-aligned, or none runs north-south.
 ///
 /// Memoized per EPSG code.
-#[cfg(feature = "new-geometry")]
 pub(crate) fn north_axis_index(epsg: EpsgCode) -> Result<usize> {
     if let Some(&index) = north_axis_cache().read().get(&epsg) {
         return Ok(index);

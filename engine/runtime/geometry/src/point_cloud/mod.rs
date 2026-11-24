@@ -5,9 +5,9 @@
 //! primary attributes are first-class. The type is 3D only.
 //!
 //! The primary-field buffer is a safe abstraction, not a reinterpreted blob:
-//! `data` is a packed little-endian byte stream with no alignment guarantee, so
-//! every read decodes through `from_le_bytes` and every write through
-//! `to_le_bytes`. No `unsafe` is used on the field-access path, so a miscomputed
+//! `PointBuffer::data` is a packed little-endian byte stream with no alignment
+//! guarantee, so every read decodes through `from_le_bytes` and every write
+//! through `to_le_bytes`. No `unsafe` is used on the field-access path, so a miscomputed
 //! offset is a bounds panic, never undefined behavior.
 
 use std::fmt;
@@ -16,20 +16,23 @@ use std::sync::{Arc, OnceLock};
 use indexmap::IndexMap;
 use kiddo::ImmutableKdTree;
 use serde::{Deserialize, Serialize};
-use smallvec::SmallVec;
 
 use crate::coordinate::CoordinateFrame;
+use crate::ops::UnsupportedOperation;
+
+use file::PointFile;
 
 mod constructor;
 #[cfg(not(feature = "debug-geom-feature-write"))]
 mod feature_write;
+mod file;
+mod las;
 mod ops;
 #[cfg(feature = "new-geometry")]
 mod validation;
 
-/// Bit positions of the optional primary fields within a [`Segment`]'s
-/// [`FieldMask`]. Private to this module: the full field-bit layout, not all of
-/// which are referenced until the per-field accessors land.
+/// Bit positions of the optional primary fields within a [`PointBuffer`]'s
+/// [`FieldMask`].
 #[allow(dead_code)]
 mod bit {
     pub const RGB: u16 = 0;
@@ -43,7 +46,7 @@ mod bit {
     pub const POINT_SOURCE_ID: u16 = 8;
 }
 
-/// XYZ storage format: a segment-level switch, invisible to the public API.
+/// XYZ storage format: a buffer-level switch, invisible to the public API.
 /// All public accessors decode to `f64` regardless of the variant stored.
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq)]
 enum PositionEncoding {
@@ -60,13 +63,52 @@ enum PositionEncoding {
     },
 }
 
-/// Bit `i` set => optional field `i` is present in this segment.
+/// Bit `i` set => optional field `i` is present in this buffer.
 type FieldMask = u16;
 /// Byte offset of each field within the stride, indexed by bit.
 type FieldOffsets = [u16; 9];
 
+/// Bytes of each optional field, indexed by bit; `0` = not yet supported.
+///
+/// - RGB: `[u16; 3]`
+/// - INTENSITY: `u16`
+/// - TIMESTAMP: `f64` (GPS time)
+/// - CLASSIFICATION: `u8` (ASPRS class)
+/// - RETURN_INFO: `u8`, return number in bits 0-3, number of returns in bits 4-7
+/// - SCAN_ANGLE: `i16`, in units of 0.006 degrees
+/// - POINT_SOURCE_ID: `u16`
+const FIELD_SIZE: [u16; 9] = [6, 2, 0, 8, 1, 1, 2, 0, 2];
+
+impl PositionEncoding {
+    /// Bytes of one position.
+    fn size(&self) -> u16 {
+        match self {
+            PositionEncoding::F64 => 24,
+            PositionEncoding::F32 | PositionEncoding::ScaledI32 { .. } => 12,
+        }
+    }
+}
+
+/// Stride and per-field offsets for `fields` after a position of `position`,
+/// fields in bit order.
+///
+/// # Panics
+/// If `fields` has a bit with no size in [`FIELD_SIZE`].
+fn layout(position: &PositionEncoding, fields: FieldMask) -> (u16, FieldOffsets) {
+    let mut offsets = [0; 9];
+    let mut stride = position.size();
+    for (b, size) in FIELD_SIZE.iter().enumerate() {
+        if fields & (1 << b) != 0 {
+            assert!(*size != 0, "point-cloud field bit {b} is not supported");
+            offsets[b] = stride;
+            stride += size;
+        }
+    }
+    (stride, offsets)
+}
+
 /// Typed column for user-defined per-point attributes (LAS Extra Bytes, PDAL
-/// extra dims, etc.). Schema-based: every column has exactly `Segment::count`
+/// extra dims, etc.). Schema-based: every column has exactly `PointBuffer::count`
 /// entries. SoA layout: one `Vec<T>` per attribute, accessed one column at a
 /// time.
 #[cfg_attr(feature = "schema", derive(schemars::JsonSchema))]
@@ -88,8 +130,7 @@ enum AttributeColumn {
 
 #[cfg(not(feature = "debug-geom-feature-write"))]
 impl AttributeColumn {
-    /// Entries in this column, which every segment requires to equal its
-    /// `count`.
+    /// Entries in this column, which must equal the buffer's `count`.
     fn len(&self) -> usize {
         match self {
             AttributeColumn::UInt8(v) => v.len(),
@@ -107,9 +148,66 @@ impl AttributeColumn {
     }
 }
 
-/// One acquisition source's points, carrying only the fields it actually has.
+/// Where a point cloud's points are held.
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq)]
-struct Segment {
+enum Data {
+    /// Points held in memory.
+    InMemory(PointBuffer),
+    /// Points left in a LAS / LAZ file, read on use.
+    File(PointFile),
+}
+
+impl Data {
+    /// The in-memory points, or an error naming `operation` if the points are
+    /// still in a file.
+    fn buffer(&self, operation: &'static str) -> Result<&PointBuffer, UnsupportedOperation> {
+        match self {
+            Data::InMemory(buffer) => Ok(buffer),
+            Data::File(_) => Err(not_loaded(operation)),
+        }
+    }
+
+    /// Mutable [`Data::buffer`].
+    #[cfg(feature = "new-geometry")]
+    fn buffer_mut(
+        &mut self,
+        operation: &'static str,
+    ) -> Result<&mut PointBuffer, UnsupportedOperation> {
+        match self {
+            Data::InMemory(buffer) => Ok(buffer),
+            Data::File(_) => Err(not_loaded(operation)),
+        }
+    }
+}
+
+#[cfg(test)]
+impl Data {
+    /// The in-memory points; panics on file data.
+    fn as_buffer(&self) -> &PointBuffer {
+        match self {
+            Data::InMemory(buffer) => buffer,
+            Data::File(file) => panic!("points are in file {}", file.uri()),
+        }
+    }
+}
+
+impl From<PointBuffer> for Data {
+    fn from(buffer: PointBuffer) -> Self {
+        Data::InMemory(buffer)
+    }
+}
+
+/// The error for an operation that needs points still in a file.
+fn not_loaded(operation: &'static str) -> UnsupportedOperation {
+    UnsupportedOperation {
+        geometry: "PointCloud (file-backed)",
+        operation,
+    }
+}
+
+/// Points held in memory, carrying only the fields they actually have.
+#[derive(Serialize, Deserialize, Clone, Debug, PartialEq)]
+struct PointBuffer {
     /// File / acquisition identifier; `None` = synthetic.
     source: Option<Arc<str>>,
     /// XYZ encoding; determines the first bytes of each stride.
@@ -131,14 +229,98 @@ struct Segment {
     attributes: IndexMap<String, AttributeColumn>,
 }
 
-/// A 3D point cloud: one or more acquisition [`Segment`]s sharing a frame, plus
-/// a lazily-built global KD-tree.
+impl PointBuffer {
+    /// A buffer of `count` zeroed points with `fields` present and no
+    /// attribute columns.
+    fn zeroed(
+        source: Option<Arc<str>>,
+        position: PositionEncoding,
+        fields: FieldMask,
+        count: usize,
+    ) -> Self {
+        let (stride, offsets) = layout(&position, fields);
+        PointBuffer {
+            source,
+            position,
+            fields,
+            stride,
+            offsets,
+            data: vec![0; count * stride as usize],
+            count,
+            attributes: IndexMap::new(),
+        }
+    }
+
+    /// An empty buffer with `fields` present and room reserved for
+    /// `capacity` points, or `None` if that much memory cannot be reserved.
+    /// Reserved memory is not touched until points are added.
+    fn with_capacity(
+        source: Option<Arc<str>>,
+        position: PositionEncoding,
+        fields: FieldMask,
+        capacity: usize,
+    ) -> Option<Self> {
+        let (stride, offsets) = layout(&position, fields);
+        let mut data = Vec::new();
+        data.try_reserve_exact(capacity.checked_mul(stride as usize)?)
+            .ok()?;
+        Some(PointBuffer {
+            source,
+            position,
+            fields,
+            stride,
+            offsets,
+            data,
+            count: 0,
+            attributes: IndexMap::new(),
+        })
+    }
+
+    /// Append `n` zeroed points.
+    fn extend_zeroed(&mut self, n: usize) {
+        self.count += n;
+        self.data.resize(self.count * self.stride as usize, 0);
+    }
+
+    /// Whether field `bit` is present.
+    fn has(&self, bit: u16) -> bool {
+        self.fields & (1 << bit) != 0
+    }
+
+    /// The bytes of field `bit` of point `i`.
+    #[cfg_attr(feature = "debug-geom-feature-write", allow(dead_code))]
+    fn field<const N: usize>(&self, bit: u16, i: usize) -> [u8; N] {
+        debug_assert!(self.has(bit) && FIELD_SIZE[bit as usize] as usize == N);
+        let at = i * self.stride as usize + self.offsets[bit as usize] as usize;
+        self.data[at..at + N].try_into().unwrap()
+    }
+
+    /// Overwrite field `bit` of point `i`.
+    fn set_field<const N: usize>(&mut self, bit: u16, i: usize, bytes: [u8; N]) {
+        debug_assert!(self.has(bit) && FIELD_SIZE[bit as usize] as usize == N);
+        let at = i * self.stride as usize + self.offsets[bit as usize] as usize;
+        self.data[at..at + N].copy_from_slice(&bytes);
+    }
+
+    /// Overwrite the position bytes of point `i`.
+    fn set_position(&mut self, i: usize, bytes: &[u8]) {
+        debug_assert_eq!(bytes.len(), self.position.size() as usize);
+        let at = i * self.stride as usize;
+        self.data[at..at + bytes.len()].copy_from_slice(bytes);
+    }
+}
+
+/// A 3D point cloud: its points in a frame, plus a lazily-built KD-tree. A
+/// point's position is its stored position times `scale` plus `translation`.
 #[cfg_attr(feature = "debug-geom-feature-write", derive(Serialize, Deserialize))]
 pub struct PointCloud {
-    /// Coordinate frame all segments are expressed in.
+    /// Coordinate frame the points are expressed in.
     frame: CoordinateFrame,
-    /// One segment inline (no heap allocation) is the common case.
-    segments: SmallVec<[Segment; 1]>,
+    data: Data,
+    /// Per-axis factor on every stored position.
+    scale: [f64; 3],
+    /// Added to every stored position after `scale`.
+    translation: [f64; 3],
     /// Built lazily on first spatial query, or pre-built explicitly. Not part of
     /// the serialized form, and reset on any mutation. The kiddo alias
     /// `ImmutableKdTree<f64, 3>` has `f64` coords, `u32` content, 3 dimensions,
@@ -148,10 +330,36 @@ pub struct PointCloud {
 }
 
 impl PointCloud {
-    /// The coordinate frame every segment is expressed in.
+    /// The coordinate frame the points are expressed in.
     #[inline]
     pub fn frame(&self) -> &CoordinateFrame {
         &self.frame
+    }
+
+    /// A cloud of `data` in `frame` with no scale or translation.
+    fn new(frame: CoordinateFrame, data: Data) -> Self {
+        PointCloud {
+            frame,
+            data,
+            scale: [1.0; 3],
+            translation: [0.0; 3],
+            kdtree: OnceLock::new(),
+        }
+    }
+
+    /// A stored position with `scale` and `translation` applied.
+    fn place(&self, p: [f64; 3]) -> [f64; 3] {
+        std::array::from_fn(|i| p[i] * self.scale[i] + self.translation[i])
+    }
+
+    /// Every point's position, or an error naming `operation` if the points
+    /// are still in a file.
+    fn positions(
+        &self,
+        operation: &'static str,
+    ) -> Result<impl Iterator<Item = [f64; 3]> + '_, UnsupportedOperation> {
+        let buffer = self.data.buffer(operation)?;
+        Ok(ops::buffer_positions(buffer).map(|p| self.place(p)))
     }
 }
 
@@ -160,7 +368,9 @@ impl Clone for PointCloud {
         // The KD-tree is a derived cache, rebuilt lazily; a clone starts fresh.
         PointCloud {
             frame: self.frame.clone(),
-            segments: self.segments.clone(),
+            data: self.data.clone(),
+            scale: self.scale,
+            translation: self.translation,
             kdtree: OnceLock::new(),
         }
     }
@@ -169,7 +379,10 @@ impl Clone for PointCloud {
 impl PartialEq for PointCloud {
     fn eq(&self, other: &Self) -> bool {
         // The KD-tree cache is not part of the value.
-        self.frame == other.frame && self.segments == other.segments
+        self.frame == other.frame
+            && self.data == other.data
+            && self.scale == other.scale
+            && self.translation == other.translation
     }
 }
 
@@ -177,7 +390,9 @@ impl fmt::Debug for PointCloud {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         f.debug_struct("PointCloud")
             .field("frame", &self.frame)
-            .field("segments", &self.segments)
+            .field("data", &self.data)
+            .field("scale", &self.scale)
+            .field("translation", &self.translation)
             .field("kdtree", &self.kdtree.get().map(|_| "<built>"))
             .finish()
     }
@@ -214,11 +429,14 @@ crate::unsupported!(
     Coerce
 );
 
-// Every segment's positions, summed: a cloud is nothing but coordinates.
+// A cloud is nothing but coordinates. A file's count comes from its header.
 #[cfg(feature = "new-geometry")]
 impl crate::ops::CountVertices for PointCloud {
-    fn count_vertices(&self) -> usize {
-        self.segments.iter().map(|s| s.count).sum()
+    fn count_vertices(&self) -> crate::error::Result<usize> {
+        match &self.data {
+            Data::InMemory(buffer) => Ok(buffer.count),
+            Data::File(file) => Ok(file.header()?.count as usize),
+        }
     }
 }
 

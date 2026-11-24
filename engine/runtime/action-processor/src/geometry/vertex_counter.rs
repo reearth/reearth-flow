@@ -115,7 +115,9 @@ impl Processor for VertexCounter {
             fw.send(ctx.new_with_feature_and_port(ctx.feature.clone(), FEATURES_PORT.clone()));
             return Ok(());
         }
-        let count = geometry.count_vertices();
+        let count = geometry
+            .count_vertices()
+            .map_err(|e| GeometryProcessorError::VertexCounter(e.to_string()))?;
         let mut feature = ctx.feature.clone();
         feature.attributes_mut().insert(
             self.output_attribute.clone(),

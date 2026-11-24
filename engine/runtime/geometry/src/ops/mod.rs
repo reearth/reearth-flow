@@ -69,7 +69,6 @@ pub use grid::{
 };
 pub use hole::{CountHoles, ExtractHoles, ExtractedPart};
 pub(crate) use hole::{area_2d, emit_face_2d, emit_face_3d, emit_triangles_3d};
-#[cfg(feature = "new-geometry")]
 pub(crate) use reproject::north_axis_index;
 pub use reproject::{Reproject, ReprojectionCache};
 pub(crate) use reproject::{

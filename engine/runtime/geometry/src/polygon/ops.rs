@@ -381,19 +381,19 @@ use crate::validation_next::open_ring;
 // A ring's closing vertex repeats its first one, so it is not counted.
 #[cfg(feature = "new-geometry")]
 impl crate::ops::CountVertices for Polygon2D {
-    fn count_vertices(&self) -> usize {
-        polygon2d_rings(self)
+    fn count_vertices(&self) -> crate::error::Result<usize> {
+        Ok(polygon2d_rings(self)
             .map(|ring| open_ring(ring).len())
-            .sum()
+            .sum())
     }
 }
 
 #[cfg(feature = "new-geometry")]
 impl crate::ops::CountVertices for Polygon3D {
-    fn count_vertices(&self) -> usize {
-        polygon3d_rings(self)
+    fn count_vertices(&self) -> crate::error::Result<usize> {
+        Ok(polygon3d_rings(self)
             .map(|ring| open_ring(ring).len())
-            .sum()
+            .sum())
     }
 }
 

@@ -171,11 +171,11 @@ impl CountHoles for Solid {
 impl crate::ops::CountVertices for Solid {
     /// The vertex pools of the exterior and every interior shell, summed. Each
     /// shell keeps its own pool, so a coordinate on two shells counts twice.
-    fn count_vertices(&self) -> usize {
-        std::iter::once(&self.exterior)
+    fn count_vertices(&self) -> crate::error::Result<usize> {
+        Ok(std::iter::once(&self.exterior)
             .chain(self.interiors.iter())
             .map(|shell| shell.vertices().len())
-            .sum()
+            .sum())
     }
 }
 

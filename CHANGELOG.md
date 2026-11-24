@@ -2,6 +2,125 @@
 
 All notable changes to this project will be documented in this file.
 
+## 0.1.0-alpha.38 - 2026-11-24
+
+### Server
+
+#### 🚀 Features
+
+- Accept workspace_ids in internal ListProjects ([#2747](https://github.com/reearth/reearth-flow/pull/2747)) [`04a2fb`](https://github.com/reearth/reearth-flow/commit/04a2fb)
+- Search projects across a list of workspaces ([#2736](https://github.com/reearth/reearth-flow/pull/2736)) [`d702c4`](https://github.com/reearth/reearth-flow/commit/d702c4)
+- Add a Postgres backend for job live data (logs, diagnostics, job-complete) ([#2653](https://github.com/reearth/reearth-flow/pull/2653)) [`c5d063`](https://github.com/reearth/reearth-flow/commit/c5d063)
+- Save workflow versions on save, run and deploy, and stamp projects from them ([#2720](https://github.com/reearth/reearth-flow/pull/2720)) [`32dfe9`](https://github.com/reearth/reearth-flow/commit/32dfe9)
+- Take write access from open sessions when a project is locked ([#2700](https://github.com/reearth/reearth-flow/pull/2700)) [`f6e32c`](https://github.com/reearth/reearth-flow/commit/f6e32c)
+- Enforce project lock on the workflow document ([#2699](https://github.com/reearth/reearth-flow/pull/2699)) [`995b1b`](https://github.com/reearth/reearth-flow/commit/995b1b)
+
+#### 🔧 Bug Fixes
+
+- Bump otel and gorilla&#x2F;websocket to clear govulncheck in websocket-go ([#2749](https://github.com/reearth/reearth-flow/pull/2749)) [`a11ddc`](https://github.com/reearth/reearth-flow/commit/a11ddc)
+- Keep the newer project lock when two instances change it at once ([#2733](https://github.com/reearth/reearth-flow/pull/2733)) [`4d268d`](https://github.com/reearth/reearth-flow/commit/4d268d)
+
+#### Miscellaneous Tasks
+
+- Bump ygo to v1.57.1 in websocket-go ([#2732](https://github.com/reearth/reearth-flow/pull/2732)) [`3558c8`](https://github.com/reearth/reearth-flow/commit/3558c8)
+
+### Misc
+
+#### 🚀 Features
+
+- Add mesh merger ([#2731](https://github.com/reearth/reearth-flow/pull/2731)) [`56523e`](https://github.com/reearth/reearth-flow/commit/56523e)
+
+#### 🔧 Bug Fixes
+
+- No retriangulation in fld ([#2740](https://github.com/reearth/reearth-flow/pull/2740)) [`e63f98`](https://github.com/reearth/reearth-flow/commit/e63f98)
+- Tell the user whether saving created a new version ([#2726](https://github.com/reearth/reearth-flow/pull/2726)) [`0046cf`](https://github.com/reearth/reearth-flow/commit/0046cf)
+- Limiting scope for texture cache and increasing the decoded raster size limit ([#2717](https://github.com/reearth/reearth-flow/pull/2717)) [`2b2c07`](https://github.com/reearth/reearth-flow/commit/2b2c07)
+- Support bad repeat uv ([#2715](https://github.com/reearth/reearth-flow/pull/2715)) [`b0b448`](https://github.com/reearth/reearth-flow/commit/b0b448)
+- Opaque atlas background ([#2714](https://github.com/reearth/reearth-flow/pull/2714)) [`07ddfe`](https://github.com/reearth/reearth-flow/commit/07ddfe)
+- Cli and worker respects num-threads argument ([#2712](https://github.com/reearth/reearth-flow/pull/2712)) [`2a4e3f`](https://github.com/reearth/reearth-flow/commit/2a4e3f)
+- Stop flushing each time in decompressor ([#2711](https://github.com/reearth/reearth-flow/pull/2711)) [`b03503`](https://github.com/reearth/reearth-flow/commit/b03503)
+
+### engine
+
+#### 🚀 Features
+
+- Build local CityGML Writer zip archives in place ([#2696](https://github.com/reearth/reearth-flow/pull/2696)) [`cfd48f`](https://github.com/reearth/reearth-flow/commit/cfd48f)
+- Check plateau6 LOD1 planarity at 0.001m and LOD2-3 at 0.03m ([#2710](https://github.com/reearth/reearth-flow/pull/2710)) [`9f8c1f`](https://github.com/reearth/reearth-flow/commit/9f8c1f)
+- Check plateau6 L10 orientation per polygon boundary ([#2704](https://github.com/reearth/reearth-flow/pull/2704)) [`33aa75`](https://github.com/reearth/reearth-flow/commit/33aa75)
+- Read CityGML Writer ADE schemas over https instead of built-in i-UR ([#2694](https://github.com/reearth/reearth-flow/pull/2694)) [`ee1ee6`](https://github.com/reearth/reearth-flow/commit/ee1ee6)
+- Implement XAL Address processing in PLATEAU6 ([#2686](https://github.com/reearth/reearth-flow/pull/2686)) [`388507`](https://github.com/reearth/reearth-flow/commit/388507)
+
+#### 🔧 Bug Fixes
+
+- PLATEAU6 attribute order preservation ([#2718](https://github.com/reearth/reearth-flow/pull/2718)) [`884a3e`](https://github.com/reearth/reearth-flow/commit/884a3e)
+
+#### 📖 Documentation
+
+- State the modification and license of PLATEAU test data ([#2729](https://github.com/reearth/reearth-flow/pull/2729)) [`36b72f`](https://github.com/reearth/reearth-flow/commit/36b72f)
+
+#### ✨ Refactor
+
+- Split DomainOfDefinitionValidator and fix cross-file xlinks ([#2739](https://github.com/reearth/reearth-flow/pull/2739)) [`836a8b`](https://github.com/reearth/reearth-flow/commit/836a8b)
+
+#### Miscellaneous Tasks
+
+- Migrate to Rust edition 2024 ([#2693](https://github.com/reearth/reearth-flow/pull/2693)) [`81a826`](https://github.com/reearth/reearth-flow/commit/81a826)
+
+### ui
+
+#### 🚀 Features
+
+- Show every feature in the data preview table ([#2741](https://github.com/reearth/reearth-flow/pull/2741)) [`58d80d`](https://github.com/reearth/reearth-flow/commit/58d80d)
+- Add run to selected action ([#2721](https://github.com/reearth/reearth-flow/pull/2721)) [`f2fa86`](https://github.com/reearth/reearth-flow/commit/f2fa86)
+- Add FLOW early access disclaimer and banner ([#2725](https://github.com/reearth/reearth-flow/pull/2725)) [`5e83fb`](https://github.com/reearth/reearth-flow/commit/5e83fb)
+- Add cms asset selection ([#2719](https://github.com/reearth/reearth-flow/pull/2719)) [`2310f7`](https://github.com/reearth/reearth-flow/commit/2310f7)
+- Read the project lock from the project, not the shared document ([#2701](https://github.com/reearth/reearth-flow/pull/2701)) [`2d4d3b`](https://github.com/reearth/reearth-flow/commit/2d4d3b)
+- Let users name output ZIP downloads ([#2697](https://github.com/reearth/reearth-flow/pull/2697)) [`971dcc`](https://github.com/reearth/reearth-flow/commit/971dcc)
+
+#### 🔧 Bug Fixes
+
+- Repair e2e assertions broken by recent UI changes ([#2737](https://github.com/reearth/reearth-flow/pull/2737)) [`fab0d5`](https://github.com/reearth/reearth-flow/commit/fab0d5)
+- Prevent download logs until job has finished and fix filtering ([#2742](https://github.com/reearth/reearth-flow/pull/2742)) [`1554f1`](https://github.com/reearth/reearth-flow/commit/1554f1)
+- Refetch versions each time the version dialog opens ([#2723](https://github.com/reearth/reearth-flow/pull/2723)) [`503e91`](https://github.com/reearth/reearth-flow/commit/503e91)
+- Stop writing to the workflow document without a user action ([#2722](https://github.com/reearth/reearth-flow/pull/2722)) [`33f6a6`](https://github.com/reearth/reearth-flow/commit/33f6a6)
+- Revert the trigger toggle when enabling is refused ([#2713](https://github.com/reearth/reearth-flow/pull/2713)) [`bd8ac0`](https://github.com/reearth/reearth-flow/commit/bd8ac0)
+- Stop mirroring the sharing token into the Yjs doc ([#2707](https://github.com/reearth/reearth-flow/pull/2707)) [`8a62ab`](https://github.com/reearth/reearth-flow/commit/8a62ab)
+- Stop rewriting the project lock on every project open ([#2706](https://github.com/reearth/reearth-flow/pull/2706)) [`002f07`](https://github.com/reearth/reearth-flow/commit/002f07)
+- Stop writing to the Yjs doc when nothing changed ([#2698](https://github.com/reearth/reearth-flow/pull/2698)) [`79db48`](https://github.com/reearth/reearth-flow/commit/79db48)
+
+#### Miscellaneous Tasks
+
+- Move the nginx base image to 1.31 (CVE-2026-123007) ([#2734](https://github.com/reearth/reearth-flow/pull/2734)) [`322a7f`](https://github.com/reearth/reearth-flow/commit/322a7f)
+- Update papers, buildings and terrain icons ([#2702](https://github.com/reearth/reearth-flow/pull/2702)) [`1f2d5f`](https://github.com/reearth/reearth-flow/commit/1f2d5f)
+
+### ui, server
+
+#### 🚀 Features
+
+- Show contributors on each version in the version history ([#2727](https://github.com/reearth/reearth-flow/pull/2727)) [`fc9250`](https://github.com/reearth/reearth-flow/commit/fc9250)
+
+### websocket
+
+#### 🚀 Features
+
+- Save workflow versions from user edits ([#2716](https://github.com/reearth/reearth-flow/pull/2716)) [`4dc0f8`](https://github.com/reearth/reearth-flow/commit/4dc0f8)
+
+### 
+
+#### 🚀 Features
+
+- Add mesh merger ([#2731](https://github.com/reearth/reearth-flow/pull/2731)) [`56523e`](https://github.com/reearth/reearth-flow/commit/56523e)
+
+#### 🔧 Bug Fixes
+
+- No retriangulation in fld ([#2740](https://github.com/reearth/reearth-flow/pull/2740)) [`e63f98`](https://github.com/reearth/reearth-flow/commit/e63f98)
+- Tell the user whether saving created a new version ([#2726](https://github.com/reearth/reearth-flow/pull/2726)) [`0046cf`](https://github.com/reearth/reearth-flow/commit/0046cf)
+- Limiting scope for texture cache and increasing the decoded raster size limit ([#2717](https://github.com/reearth/reearth-flow/pull/2717)) [`2b2c07`](https://github.com/reearth/reearth-flow/commit/2b2c07)
+- Support bad repeat uv ([#2715](https://github.com/reearth/reearth-flow/pull/2715)) [`b0b448`](https://github.com/reearth/reearth-flow/commit/b0b448)
+- Opaque atlas background ([#2714](https://github.com/reearth/reearth-flow/pull/2714)) [`07ddfe`](https://github.com/reearth/reearth-flow/commit/07ddfe)
+- Cli and worker respects num-threads argument ([#2712](https://github.com/reearth/reearth-flow/pull/2712)) [`2a4e3f`](https://github.com/reearth/reearth-flow/commit/2a4e3f)
+- Stop flushing each time in decompressor ([#2711](https://github.com/reearth/reearth-flow/pull/2711)) [`b03503`](https://github.com/reearth/reearth-flow/commit/b03503)
+
 ## 0.1.0-alpha.37 - 2026-11-16
 
 ### Server
