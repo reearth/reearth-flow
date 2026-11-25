@@ -149,13 +149,15 @@ type storedState struct {
 	empty bool
 }
 
-// marks are the checkpoint and the rollback ceiling. Every writer that folds the
-// update log into doc_v2 or prunes it changes one of them before deleting
-// anything.
+// marks are the checkpoint, the rollback ceiling and doc_v2's generation. Every
+// writer that rewrites doc_v2, folds the update log or prunes it changes one of them.
 type marks struct {
 	cp      uint32
 	ceil    uint32
 	hasCeil bool
+	// v2Gen catches a rollback whose later appends brought cp and the ceiling
+	// back to the values read before it.
+	v2Gen int64
 }
 
 func (a *Adapter) readMarks(ctx context.Context, room DocID) (marks, error) {
@@ -167,7 +169,11 @@ func (a *Adapter) readMarks(ctx context.Context, room DocID) (marks, error) {
 	if err != nil {
 		return marks{}, err
 	}
-	return marks{cp: cp, ceil: ceil, hasCeil: hasCeil}, nil
+	gen, err := a.store.generation(ctx, a.layout.DocV2Name(room))
+	if err != nil {
+		return marks{}, err
+	}
+	return marks{cp: cp, ceil: ceil, hasCeil: hasCeil, v2Gen: gen}, nil
 }
 
 // readState reads doc_v2 (or the v1 base) and the update objects above the

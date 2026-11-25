@@ -216,6 +216,54 @@ func TestLoad_ACompactionDuringTheReadIsNotLost(t *testing.T) {
 	}
 }
 
+// TestLoad_ARollbackDuringTheReadIsNotServed: a rollback lands while Load reads,
+// and the appends after it bring the checkpoint back to the value Load first read.
+// Load must not serve the doc_v2 it read before the rollback.
+func TestLoad_ARollbackDuringTheReadIsNotServed(t *testing.T) {
+	t.Parallel()
+	ctx := context.Background()
+	a := newParkedTestAdapter(t)
+	fs := fillers(t, 10)
+	appendAll(t, a, fs...) // clock 10 checkpoints
+	rolled := crdt.New()
+	for _, f := range fs[:5] {
+		if err := crdt.ApplyUpdateV1(rolled, f, nil); err != nil {
+			t.Fatal(err)
+		}
+	}
+	later := crdt.New(crdt.WithClientID(4))
+	g := later.GetMap("g")
+	var laterUps [][]byte
+	for i := 0; i < 5; i++ {
+		sv := later.StateVector()
+		later.Transact(func(txn *crdt.Transaction) { g.Set(txn, "k", "after") })
+		laterUps = append(laterUps, crdt.EncodeStateAsUpdateV1(later, sv))
+	}
+	fired := false
+	a.afterReadBase = func() {
+		if fired {
+			return
+		}
+		fired = true
+		if err := a.PruneAfter(ctx, "room", 5, crdt.EncodeStateAsUpdateV1(rolled, nil)); err != nil {
+			t.Error(err)
+		}
+		appendAll(t, a, laterUps...) // clocks 6..10; clock 10 checkpoints again
+	}
+	state := mustLoad(t, a)
+	a.afterReadBase = nil
+	if v := fillerValue(t, state); v != 4 {
+		t.Fatalf("f.k = %v, want 4; Load served the state from before the rollback", v)
+	}
+	d, err := docFromV1(state)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if v, _ := d.GetMap("g").Get("k"); v != "after" {
+		t.Fatalf("g.k = %v, want \"after\"; the edits after the rollback are missing", v)
+	}
+}
+
 // TestSnapshotFromStore_NeverWritesAStateACheckpointOvertook: a writer that
 // ignores the doc lock checkpoints while the rebuild reads. The rebuild may fail,
 // but must not write the doc_v2 it read before that checkpoint.

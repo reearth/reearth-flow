@@ -2,7 +2,9 @@ package server
 
 import (
 	"context"
+	"sync"
 	"testing"
+	"time"
 
 	"github.com/fsouza/fake-gcs-server/fakestorage"
 	"github.com/reearth/ygo/crdt"
@@ -27,6 +29,17 @@ func TestUnload_KeepsTheUpdateLog(t *testing.T) {
 		t.Fatal(err)
 	}
 	s := NewWithPersistence(context.Background(), testConfig(), adapter)
+	// ygo runs the unload compaction before OnUnloadDocument, but after the room
+	// has left its map.
+	unloaded := make(chan struct{})
+	var once sync.Once
+	unload := s.ws.OnUnloadDocument
+	s.ws.OnUnloadDocument = func(ctx context.Context, room string) {
+		unload(ctx, room)
+		if room == versionRoom {
+			once.Do(func() { close(unloaded) })
+		}
+	}
 
 	c := dialE2E(t, httptestServer(t, s), versionRoom, 101)
 	c.completeHandshake()
@@ -35,7 +48,11 @@ func TestUnload_KeepsTheUpdateLog(t *testing.T) {
 	}
 	waitFor(t, "the edits", func() bool { return serverText(s, versionRoom) == "abc" })
 	c.close()
-	waitFor(t, "the room to unload", func() bool { return s.ws.GetDoc(versionRoom) == nil })
+	select {
+	case <-unloaded:
+	case <-time.After(10 * time.Second):
+		t.Fatal("the room never unloaded")
+	}
 
 	vs, err := adapter.ListVersions(context.Background(), versionRoom)
 	if err != nil {

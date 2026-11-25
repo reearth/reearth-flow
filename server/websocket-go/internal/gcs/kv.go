@@ -33,6 +33,19 @@ func (s kv) get(ctx context.Context, name string) ([]byte, error) {
 	return io.ReadAll(r)
 }
 
+// generation is the object's GCS generation, which changes on every rewrite, or
+// 0 when it does not exist.
+func (s kv) generation(ctx context.Context, name string) (int64, error) {
+	attrs, err := s.bucket.Object(name).Attrs(ctx)
+	if errors.Is(err, storage.ErrObjectNotExist) {
+		return 0, nil
+	}
+	if err != nil {
+		return 0, err
+	}
+	return attrs.Generation, nil
+}
+
 func (s kv) put(ctx context.Context, name string, data []byte) error {
 	w := s.bucket.Object(name).NewWriter(ctx)
 	if _, err := w.Write(data); err != nil {
