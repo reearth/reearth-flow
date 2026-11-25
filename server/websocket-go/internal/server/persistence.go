@@ -10,17 +10,23 @@ import (
 	"github.com/reearth/reearth-flow/websocket-go/internal/config"
 )
 
-// keepUpdateVersions is how many update objects ygo's unload compaction keeps per
-// room. They are the history the recovery view lists, and a source for edits a
-// checkpoint missed.
-const keepUpdateVersions = 300
-
 // legacyAdapter wraps p for ygo. ygo compacts on every room unload with the
-// adapter's KeepVersions, and 0 would keep the whole update log.
-func legacyAdapter(ctx context.Context, p persistence.VersionedPersistence) *persistence.LegacyAdapter {
+// adapter's KeepVersions, and 0 would keep the whole update log. The retention
+// is cfg.KeepUpdates, the same one the admin cleanup routes trim to, so neither
+// undoes the other.
+func legacyAdapter(ctx context.Context, cfg *config.Config, p persistence.VersionedPersistence) *persistence.LegacyAdapter {
 	la := persistence.NewLegacyAdapterContext(ctx, p)
-	la.KeepVersions = keepUpdateVersions
+	la.KeepVersions = keepUpdatesOf(cfg)
 	return la
+}
+
+// keepUpdatesOf is cfg.KeepUpdates, falling back to the default for a config
+// built without it (tests construct literals).
+func keepUpdatesOf(cfg *config.Config) int {
+	if cfg == nil || cfg.KeepUpdates < 1 {
+		return config.DefaultKeepUpdates
+	}
+	return cfg.KeepUpdates
 }
 
 // NewWithPersistence builds a Server whose ygo provider loads and stores room
@@ -29,7 +35,7 @@ func legacyAdapter(ctx context.Context, p persistence.VersionedPersistence) *per
 func NewWithPersistence(ctx context.Context, cfg *config.Config, p persistence.VersionedPersistence) *Server {
 	s := &Server{
 		cfg: cfg,
-		ws:  ygws.NewServerWithPersistence(legacyAdapter(ctx, p)),
+		ws:  ygws.NewServerWithPersistence(legacyAdapter(ctx, cfg, p)),
 		log: slog.Default(),
 	}
 	s.ws.AllowedOrigins = cfg.Origins

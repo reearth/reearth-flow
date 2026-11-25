@@ -357,8 +357,10 @@ func TestCleanupUpdates(t *testing.T) {
 	store := &fakeStore{}
 	h := newTestRouter(store)
 	rec := do(t, h, "POST", "/api/document/proj1/cleanup", "")
-	if rec.Code != 200 || store.cleanupKeep != 10 {
-		t.Fatalf("status=%d keep=%d", rec.Code, store.cleanupKeep)
+	// Was 10, now the retention shared with ygo's unload compaction: a cleanup
+	// that kept fewer would discard entries the recovery view lists.
+	if rec.Code != 200 || store.cleanupKeep != defaultKeepUpdates {
+		t.Fatalf("status=%d keep=%d, want keep=%d", rec.Code, store.cleanupKeep, defaultKeepUpdates)
 	}
 }
 
@@ -378,8 +380,8 @@ func TestAdminCleanup(t *testing.T) {
 	store := &fakeStore{}
 	h := newTestRouter(store)
 	rec := do(t, h, "POST", "/api/admin/cleanup", "")
-	if rec.Code != 200 || !store.cleanupAll || store.cleanupKeep != 10 {
-		t.Fatalf("status=%d all=%v keep=%d", rec.Code, store.cleanupAll, store.cleanupKeep)
+	if rec.Code != 200 || !store.cleanupAll || store.cleanupKeep != defaultKeepUpdates {
+		t.Fatalf("status=%d all=%v keep=%d, want keep=%d", rec.Code, store.cleanupAll, store.cleanupKeep, defaultKeepUpdates)
 	}
 }
 
@@ -492,4 +494,52 @@ func TestCreateSnapshotRefusesAVersionTheStoreCannotRebuild(t *testing.T) {
 	if rec.Code != http.StatusConflict {
 		t.Errorf("status = %d, want %d", rec.Code, http.StatusConflict)
 	}
+}
+
+// TestCleanupRoutesTrimToTheConfiguredRetention: the cleanup routes and ygo's
+// unload compaction must trim a room's update log to the same number. They used
+// to differ, 10 here against 300 on unload, so one admin cleanup would have
+// discarded all but 10 of the entries the recovery view lists.
+func TestCleanupRoutesTrimToTheConfiguredRetention(t *testing.T) {
+	t.Parallel()
+
+	t.Run("per document", func(t *testing.T) {
+		t.Parallel()
+
+		store := &fakeStore{}
+		h := NewRouter(Deps{Store: store, KeepUpdates: 42})
+		if rec := do(t, h, "POST", "/api/document/proj1/cleanup", ""); rec.Code != http.StatusOK {
+			t.Fatalf("status = %d, want 200", rec.Code)
+		}
+		if store.cleanupKeep != 42 {
+			t.Errorf("Compact keep = %d, want 42", store.cleanupKeep)
+		}
+	})
+
+	t.Run("admin cleanup", func(t *testing.T) {
+		t.Parallel()
+
+		store := &fakeStore{}
+		h := NewRouter(Deps{Store: store, KeepUpdates: 42})
+		if rec := do(t, h, "POST", "/api/admin/cleanup", ""); rec.Code != http.StatusOK {
+			t.Fatalf("status = %d, want 200", rec.Code)
+		}
+		if store.cleanupKeep != 42 {
+			t.Errorf("CleanupAll keep = %d, want 42", store.cleanupKeep)
+		}
+	})
+
+	t.Run("unset falls back to the shared default, never zero", func(t *testing.T) {
+		t.Parallel()
+
+		store := &fakeStore{}
+		h := NewRouter(Deps{Store: store})
+		if rec := do(t, h, "POST", "/api/document/proj1/cleanup", ""); rec.Code != http.StatusOK {
+			t.Fatalf("status = %d, want 200", rec.Code)
+		}
+		// Zero would reach the store as "keep every update" and never trim.
+		if store.cleanupKeep != defaultKeepUpdates {
+			t.Errorf("Compact keep = %d, want %d", store.cleanupKeep, defaultKeepUpdates)
+		}
+	})
 }

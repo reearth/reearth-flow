@@ -303,16 +303,31 @@ func TestAutoVersioningDefaultsAndOverrides(t *testing.T) {
 	if c.KeepSnapshots != defaultKeepSnapshots {
 		t.Errorf("KeepSnapshots = %d, want %d", c.KeepSnapshots, defaultKeepSnapshots)
 	}
+	if c.KeepUpdates != DefaultKeepUpdates {
+		t.Errorf("KeepUpdates = %d, want %d", c.KeepUpdates, DefaultKeepUpdates)
+	}
 
 	clearEnv(t)
 	t.Setenv("REEARTH_FLOW_AUTO_VERSION_EVERY", "45s")
 	t.Setenv("REEARTH_FLOW_KEEP_SNAPSHOTS", "7")
+	t.Setenv("REEARTH_FLOW_KEEP_UPDATES", "500")
 	c = Load()
 	if c.AutoVersionEvery != 45*time.Second {
 		t.Errorf("AutoVersionEvery = %v, want 45s", c.AutoVersionEvery)
 	}
 	if c.KeepSnapshots != 7 {
 		t.Errorf("KeepSnapshots = %d, want 7", c.KeepSnapshots)
+	}
+	if c.KeepUpdates != 500 {
+		t.Errorf("KeepUpdates = %d, want 500", c.KeepUpdates)
+	}
+
+	// 0 would reach the store as "keep every update" and never trim, so it must
+	// fall back to the default rather than survive Load.
+	clearEnv(t)
+	t.Setenv("REEARTH_FLOW_KEEP_UPDATES", "0")
+	if c = Load(); c.KeepUpdates != DefaultKeepUpdates {
+		t.Errorf("KeepUpdates = %d for \"0\", want the default %d", c.KeepUpdates, DefaultKeepUpdates)
 	}
 
 	// "0" is the documented way to disable auto-versioning and must survive Load.

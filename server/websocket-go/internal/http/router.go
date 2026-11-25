@@ -16,8 +16,17 @@ import (
 	"github.com/reearth/reearth-flow/websocket-go/internal/versions"
 )
 
-// keepUpdates is the update-object retention count for the cleanup routes.
-const keepUpdates = 10
+// defaultKeepUpdates is the retention the cleanup routes fall back to when Deps
+// carries none, which production never does: main passes config.KeepUpdates,
+// whose own default is config.DefaultKeepUpdates. Spelt out rather than
+// imported, to keep this package independent of the config package.
+//
+// It matters that it is not lower than the retention ygo's unload compaction
+// uses, or whichever ran last would silently undo the other. These routes kept
+// 10 while the unload compaction keeps 300, so one admin cleanup discarded all
+// but 10 of the entries the recovery view lists. Never 0, which reaches the
+// store as "keep every update".
+const defaultKeepUpdates = 300
 
 // ErrNotFound signals a missing document. The Load handler maps it to 404.
 var ErrNotFound = errors.New("document not found")
@@ -102,21 +111,29 @@ type Deps struct {
 	Signaler  Signaler  // optional
 	Versioner Versioner // optional: without it, POST .../versions answers 501
 	Logger    *slog.Logger
+	// KeepUpdates is the update-object retention the cleanup routes trim to.
+	// Below 1 selects defaultKeepUpdates; pass config.Config.KeepUpdates so the
+	// routes and ygo's unload compaction share one retention.
+	KeepUpdates int
 }
 
 type router struct {
-	store     DocStore
-	signaler  Signaler
-	versioner Versioner
-	log       *slog.Logger
+	store       DocStore
+	signaler    Signaler
+	versioner   Versioner
+	log         *slog.Logger
+	keepUpdates int
 }
 
 // NewRouter builds the HTTP document API. It does NOT apply the X-API-Secret
 // middleware — wrap the returned handler with RequireAPISecret at the edge.
 func NewRouter(d Deps) http.Handler {
-	r := &router{store: d.Store, signaler: d.Signaler, versioner: d.Versioner, log: d.Logger}
+	r := &router{store: d.Store, signaler: d.Signaler, versioner: d.Versioner, log: d.Logger, keepUpdates: d.KeepUpdates}
 	if r.log == nil {
 		r.log = slog.Default()
+	}
+	if r.keepUpdates < 1 {
+		r.keepUpdates = defaultKeepUpdates
 	}
 	mux := http.NewServeMux()
 	mux.HandleFunc("GET /api/document/{id}", r.getLatest)
@@ -395,7 +412,7 @@ func (r *router) importDocument(w http.ResponseWriter, req *http.Request) {
 
 func (r *router) cleanupUpdates(w http.ResponseWriter, req *http.Request) {
 	id := req.PathValue("id")
-	deleted, err := r.store.Compact(req.Context(), id, keepUpdates)
+	deleted, err := r.store.Compact(req.Context(), id, r.keepUpdates)
 	if err != nil {
 		r.fail(w, "cleanup failed", err, "doc", id)
 		return
@@ -549,7 +566,7 @@ func (r *router) deleteDocument(w http.ResponseWriter, req *http.Request) {
 }
 
 func (r *router) adminCleanup(w http.ResponseWriter, req *http.Request) {
-	deleted, err := r.store.CleanupAll(req.Context(), keepUpdates)
+	deleted, err := r.store.CleanupAll(req.Context(), r.keepUpdates)
 	if err != nil {
 		r.fail(w, "admin cleanup failed", err)
 		return
