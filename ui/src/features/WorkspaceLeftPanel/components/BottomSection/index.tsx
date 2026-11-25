@@ -2,9 +2,7 @@ import {
   ArrowUpRightIcon,
   BookIcon,
   CaretRightIcon,
-  CopyrightIcon,
   FileTextIcon,
-  GavelIcon,
   KeyboardIcon,
   PaletteIcon,
 } from "@phosphor-icons/react";
@@ -14,15 +12,12 @@ import { useHotkeys } from "react-hotkeys-hook";
 import {
   DropdownMenu,
   DropdownMenuContent,
-  DropdownMenuItem,
   DropdownMenuTrigger,
 } from "@flow/components";
 import { config } from "@flow/config";
 import { AttributionsDialog } from "@flow/features/common/AttributionsDialog";
-import {
-  menuRowClass,
-  ThemeLanguageMenu,
-} from "@flow/features/common/ThemeLanguageMenu";
+import { LegalMenuItems } from "@flow/features/common/LegalMenuItems";
+import { ThemeLanguageMenu } from "@flow/features/common/ThemeLanguageMenu";
 import KeyboardShortcutDialog from "@flow/features/KeyboardShortcutDialog";
 import { GENERAL_HOT_KEYS } from "@flow/global-constants";
 import { useT } from "@flow/lib/i18n";
@@ -35,7 +30,7 @@ const flyoutClass = "flex w-[220px] flex-col gap-0.5";
 
 const BottomSection: React.FC = () => {
   const t = useT();
-  const { documentationUrl, tosUrl } = config();
+  const { documentationUrl } = config();
 
   const [openShortcutDialog, setOpenShortcutDialog] = useState(false);
   const [openAttributionsDialog, setOpenAttributionsDialog] = useState(false);
@@ -92,21 +87,9 @@ const BottomSection: React.FC = () => {
             side="right"
             align="end"
             sideOffset={8}>
-            {tosUrl && (
-              <DropdownMenuItem
-                className={menuRowClass}
-                onClick={openLinkInNewTab(tosUrl)}>
-                <GavelIcon weight="light" />
-                <p className="flex-1 truncate">{t("Terms of Service")}</p>
-                <ArrowUpRightIcon weight="light" />
-              </DropdownMenuItem>
-            )}
-            <DropdownMenuItem
-              className={menuRowClass}
-              onClick={() => setOpenAttributionsDialog(true)}>
-              <CopyrightIcon weight="light" />
-              <p className="flex-1 truncate">{t("Attributions")}</p>
-            </DropdownMenuItem>
+            <LegalMenuItems
+              onAttributionsOpen={() => setOpenAttributionsDialog(true)}
+            />
           </DropdownMenuContent>
         </DropdownMenu>
       </div>
