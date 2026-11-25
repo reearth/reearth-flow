@@ -1,0 +1,4 @@
+Index,Folder,Filename,XPath,XML Tag,xlink:href,ref XPath,ref Tag,ref gml:id
+1,bldg,54377074_bldg_6697_op.gml,bldg:Building/core:lod2Solid/gml:Solid/gml:exterior/gml:Shell/gml:surfaceMember,gml:surfaceMember,#ring_8d2f4b61-0c7e-4a93-b5d8-1e6f2a9c4b07,bldg:Building/core:boundary/con:WallSurface/core:lod2MultiSurface/gml:MultiSurface/gml:surfaceMember/gml:Polygon/gml:exterior/gml:LinearRing,gml:LinearRing,ring_8d2f4b61-0c7e-4a93-b5d8-1e6f2a9c4b07
+1,bldg,54377074_bldg_6697_op.gml,bldg:Building/core:lod2Solid/gml:Solid/gml:exterior/gml:Shell/gml:surfaceMember,gml:surfaceMember,#bldg_f036798c-4381-4af2-97fc-e78d8fe34001,bldg:Building,bldg:Building,bldg_f036798c-4381-4af2-97fc-e78d8fe34001
+1,bldg,54377074_bldg_6697_op.gml,bldg:Building/bldg:buildingSubdivision/bldg:BuildingUnit/bldg:buildingRoom,bldg:buildingRoom,#unit_2e9d7a15-4c3b-4e8f-b6a1-7f0c9d2e5a83,bldg:Building/bldg:buildingSubdivision/bldg:BuildingUnit,bldg:BuildingUnit,unit_2e9d7a15-4c3b-4e8f-b6a1-7f0c9d2e5a83

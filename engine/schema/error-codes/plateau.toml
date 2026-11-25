@@ -2,8 +2,8 @@
 code = "plateau.application_schema_unavailable"
 category = "schema"
 default_disposition = "warn_drop"
-message = "could not read or compile the XSDs the city GML names; checked the objectlist without them"
-help = "Without the XSDs, a nested city object the objectlist does not define is not reported. Check that the xsi:schemaLocation of the city GML points to schemas that can be read, such as the schemas folder of the package."
+message = "could not read or compile the XSDs the city GML names; checked the objectlist and the xlink targets without them"
+help = "Without the XSDs, a nested city object the objectlist does not define is not reported, and for CityGML 3.0 the type of an xlink target is not checked. Check that the xsi:schemaLocation of the city GML points to schemas that can be read, such as the schemas folder of the package."
 
 [[codes]]
 code = "plateau.objectlist_prefix_unknown"
@@ -11,3 +11,10 @@ category = "schema"
 default_disposition = "warn_drop"
 message = "objectlist rows use a prefix with no namespace URI, so no element matches them"
 help = "The prefix is not one of the CityGML or i-UR prefixes of the PLATEAU generation the workflow checks. Check the prefix in the objectlist, or use the workflow for the generation the objectlist is written for."
+
+[[codes]]
+code = "plateau.xlink_target_unresolved"
+category = "schema"
+default_disposition = "warn_drop"
+message = "the XSDs give no target type of an association an xlink uses; did not check the type of its targets"
+help = "The type of the property holding the xlink:href has no element content, and the association is not one whose target the check knows. Check that the property is one of the CityGML 3.0 or i-UR application schema."
