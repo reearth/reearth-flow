@@ -93,7 +93,8 @@ impl Query {
 
     /// Every result of the query, in document order.
     pub(super) fn select<'a>(&self, attributes: &'a Attributes) -> Vec<&'a AttributeValue> {
-        let mut results: Vec<&AttributeValue> = attributes.get(self.root.as_str()).into_iter().collect();
+        let mut results: Vec<&AttributeValue> =
+            attributes.get(self.root.as_str()).into_iter().collect();
         for step in &self.steps {
             results = match step {
                 Step::Key(key) => results
@@ -275,7 +276,9 @@ mod tests {
 
     #[test]
     fn rejects_malformed_queries() {
-        for query in ["", "   ", "[0]", "a [0]", "a[1]", "a[-1]", "a[", "a[*", "a]", "a[0]b"] {
+        for query in [
+            "", "   ", "[0]", "a [0]", "a[1]", "a[-1]", "a[", "a[*", "a]", "a[0]b",
+        ] {
             assert!(Query::parse(query).is_err(), "{query:?} should be rejected");
         }
     }
