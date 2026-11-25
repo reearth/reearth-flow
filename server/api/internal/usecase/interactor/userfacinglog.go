@@ -50,7 +50,7 @@ func (li *UserFacingLogInteractor) GetUserFacingLogs(ctx context.Context, since 
 	if j != nil {
 		wsIDs = append(wsIDs, j.Workspace())
 	}
-	if err := li.checkPermission(ctx, rbac.ActionAny, wsIDs...); err != nil {
+	if err := li.checkPermission(ctx, rbac.ActionRead, wsIDs...); err != nil {
 		return nil, err
 	}
 
@@ -77,7 +77,7 @@ func (li *UserFacingLogInteractor) Subscribe(ctx context.Context, jobID id.JobID
 	if j != nil {
 		wsIDs = append(wsIDs, j.Workspace())
 	}
-	if err := li.checkPermission(ctx, rbac.ActionAny, wsIDs...); err != nil {
+	if err := li.checkPermission(ctx, rbac.ActionRead, wsIDs...); err != nil {
 		return nil, err
 	}
 

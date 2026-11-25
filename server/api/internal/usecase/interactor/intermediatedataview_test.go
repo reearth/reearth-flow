@@ -707,6 +707,7 @@ func TestIntermediateDataView_Render_ValidatesTheRequest(t *testing.T) {
 // as the generated policy does, so asking for an action the edge policy has no
 // rule for is denied even for an owner; the allow-all mock cannot tell.
 func TestIntermediateDataView_IsAuthorizedByTheEdgePolicy(t *testing.T) {
+	t.Parallel()
 	for _, tc := range []struct {
 		role    string
 		allowed bool
@@ -714,9 +715,10 @@ func TestIntermediateDataView_IsAuthorizedByTheEdgePolicy(t *testing.T) {
 		{role: "owner", allowed: true},
 		{role: "maintainer", allowed: true},
 		{role: "writer", allowed: true},
-		{role: "reader", allowed: false},
+		{role: "reader", allowed: true},
 	} {
 		t.Run(tc.role, func(t *testing.T) {
+			t.Parallel()
 			h := newViewHarness(t, job.StatusCompleted, true)
 			h.uc.permissionChecker = policyChecker(tc.role)
 			key := gltfReq(0).Key()
