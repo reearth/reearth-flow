@@ -30,7 +30,7 @@ type Job struct {
 	// admission holds one document per workspace whose version every job
 	// admitted by SaveIfRunningBelow increments.
 	admission *mongox.ClientCollection
-	// notifyClaims holds one document per job whose webhook an instance is sending; job saves replace whole documents.
+	// notifyClaims holds each webhook's claim and sent flag in one document, since job saves replace whole job documents.
 	notifyClaims *mongox.ClientCollection
 }
 
@@ -387,17 +387,10 @@ func (r *Job) SaveIfNotTerminal(ctx context.Context, j *job.Job) (bool, error) {
 	return res.MatchedCount+res.UpsertedCount > 0, nil
 }
 
-// ClaimNotification upserts the claim only while it has lapsed; a live claim makes the insert hit the unique _id.
+// ClaimNotification is one upsert on the claim document; a sent or live claim makes the insert hit the unique _id.
 func (r *Job) ClaimNotification(ctx context.Context, jid id.JobID, now, until time.Time) (bool, error) {
-	n, err := r.client.Client().CountDocuments(ctx, bson.M{"id": jid.String(), "notifiedat": nil})
-	if err != nil {
-		return false, rerror.ErrInternalByWithContext(ctx, err)
-	}
-	if n == 0 {
-		return false, nil
-	}
-	_, err = r.notifyClaims.Client().UpdateOne(ctx,
-		bson.M{"_id": jid.String(), "until": bson.M{"$lt": now}},
+	_, err := r.notifyClaims.Client().UpdateOne(ctx,
+		bson.M{"_id": jid.String(), "sent": bson.M{"$ne": true}, "until": bson.M{"$lt": now}},
 		bson.M{"$set": bson.M{"until": until}},
 		options.Update().SetUpsert(true))
 	if mongo.IsDuplicateKeyError(err) || isTransientTxError(err) {
@@ -409,12 +402,13 @@ func (r *Job) ClaimNotification(ctx context.Context, jid id.JobID, now, until ti
 	return true, nil
 }
 
+// MarkNotified flags the claim document sent first: it, not the job's notifiedat, decides whether a claim succeeds.
 func (r *Job) MarkNotified(ctx context.Context, jid id.JobID, at time.Time) error {
-	if _, err := r.client.Client().UpdateOne(ctx, bson.M{"id": jid.String()}, bson.M{"$set": bson.M{"notifiedat": at}}); err != nil {
+	if _, err := r.notifyClaims.Client().UpdateOne(ctx, bson.M{"_id": jid.String()}, bson.M{"$set": bson.M{"sent": true}}, options.Update().SetUpsert(true)); err != nil {
 		return rerror.ErrInternalByWithContext(ctx, err)
 	}
-	if _, err := r.notifyClaims.Client().DeleteOne(ctx, bson.M{"_id": jid.String()}); err != nil {
-		log.Warnfc(ctx, "mongo: job %s: could not drop its webhook claim, it lapses on its own: %v", jid, err)
+	if _, err := r.client.Client().UpdateOne(ctx, bson.M{"id": jid.String()}, bson.M{"$set": bson.M{"notifiedat": at}}); err != nil {
+		return rerror.ErrInternalByWithContext(ctx, err)
 	}
 	return nil
 }

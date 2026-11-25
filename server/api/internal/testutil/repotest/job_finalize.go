@@ -198,9 +198,19 @@ func JobClaimNotification(t *testing.T, newRepo func(*testing.T) repo.Job) {
 		assert.False(t, won)
 	})
 
-	t.Run("an unknown job cannot be claimed", func(t *testing.T) {
+	t.Run("a stale save cannot make a sent webhook claimable", func(t *testing.T) {
 		t.Parallel()
-		won, err := newRepo(t).ClaimNotification(ctx, id.NewJobID(), now, now.Add(time.Minute))
+		r := newRepo(t)
+		j := saved(t, r)
+		stale := job.New().ID(j.ID()).Workspace(j.Workspace()).Status(job.StatusCompleted).
+			StartedAt(now).NotificationURL(j.NotificationURL()).MustBuild()
+		_, err := r.ClaimNotification(ctx, j.ID(), now, now.Add(time.Minute))
+		require.NoError(t, err)
+		require.NoError(t, r.MarkNotified(ctx, j.ID(), now.Add(time.Second)))
+
+		require.NoError(t, r.Save(ctx, stale))
+
+		won, err := r.ClaimNotification(ctx, j.ID(), now.Add(time.Hour), now.Add(2*time.Hour))
 		require.NoError(t, err)
 		assert.False(t, won)
 	})

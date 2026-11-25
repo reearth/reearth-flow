@@ -334,10 +334,6 @@ func (r *Job) ClaimNotification(_ context.Context, jid id.JobID, now, until time
 	r.lock.Lock()
 	defer r.lock.Unlock()
 
-	j, ok := r.data[jid]
-	if !ok || j.NotifiedAt() != nil {
-		return false, nil
-	}
 	if c, ok := r.claims[jid]; ok && !c.Before(now) {
 		return false, nil
 	}
@@ -352,7 +348,8 @@ func (r *Job) MarkNotified(_ context.Context, jid id.JobID, at time.Time) error 
 	if j, ok := r.data[jid]; ok {
 		j.SetNotifiedAt(&at)
 	}
-	delete(r.claims, jid)
+	// Held for good, so a stale save that clears notifiedAt cannot make it claimable again.
+	r.claims[jid] = time.Date(9999, 12, 31, 0, 0, 0, 0, time.UTC)
 	return nil
 }
 

@@ -485,3 +485,36 @@ func TestJob_runMonitoringLoop_RecoversArtifactsAndSendsTheWebhook(t *testing.T)
 	assert.Equal(t, []string{"https://example.com/out.zip"}, n.sent[0].Outputs)
 	assert.NotNil(t, got.NotifiedAt())
 }
+
+// deadlineFile records the deadline the webhook's log checks run under.
+type deadlineFile struct {
+	*mockCheckStatusFile
+	deadline time.Time
+	mu       sync.Mutex
+}
+
+func (f *deadlineFile) CheckJobLogExists(ctx context.Context, _ string) (bool, error) {
+	f.mu.Lock()
+	defer f.mu.Unlock()
+	f.deadline, _ = ctx.Deadline()
+	return false, nil
+}
+
+func TestJob_deliverNotification_FitsWithinTheClaim(t *testing.T) {
+	t.Parallel()
+	jobs := memory.NewJob()
+	j := finishedTriggerJob(t, jobs, nil)
+	n := &recordingNotifier{}
+	i := newReconcileJob(jobs, &reconcileLiveStore{}, nil, n)
+	file := &deadlineFile{mockCheckStatusFile: &mockCheckStatusFile{}}
+	i.file = file
+	start := time.Now()
+
+	_, err := i.Reconcile(context.Background(), j.ID())
+
+	require.NoError(t, err)
+	require.Equal(t, 1, n.count())
+	require.False(t, file.deadline.IsZero(), "the log checks have a deadline")
+	assert.WithinDuration(t, start.Add(notificationPreflightTimeout), file.deadline, 5*time.Second)
+	assert.Less(t, notificationPreflightTimeout+notification.SendTimeout, notificationClaimLease)
+}

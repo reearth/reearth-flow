@@ -12,6 +12,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/google/uuid"
 	accountsid "github.com/reearth/reearth-accounts/server/pkg/id"
 	"github.com/reearth/reearth-flow/api/internal/app"
 	"github.com/reearth/reearth-flow/api/internal/app/config"
@@ -96,7 +97,7 @@ func TestJobReconcile(t *testing.T) {
 	}
 
 	putEvent := func(jid id.JobID, result string, at time.Time) {
-		b, _ := json.Marshal(gateway.JobCompleteEvent{Timestamp: at, JobID: jid.String(), WorkflowID: "wf", Result: result})
+		b, _ := json.Marshal(gateway.JobCompleteEvent{Timestamp: at, JobID: jid.String(), WorkflowID: uuid.NewString(), Result: result})
 		_, err := pool.Exec(ctx, `INSERT INTO job_complete_events (job_id, data) VALUES ($1, $2)`, jid.String(), string(b))
 		require.NoError(t, err)
 	}

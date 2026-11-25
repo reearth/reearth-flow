@@ -274,7 +274,7 @@ func (q *Queries) ListRunningJobsByWorkspace(ctx context.Context, arg ListRunnin
 }
 
 const markJobNotified = `-- name: MarkJobNotified :exec
-UPDATE jobs SET notified_at = $2, notify_claimed_until = NULL WHERE id = $1
+UPDATE jobs SET notified_at = $2, notify_claimed_until = '9999-12-31T00:00:00Z' WHERE id = $1
 `
 
 type MarkJobNotifiedParams struct {
@@ -282,6 +282,7 @@ type MarkJobNotifiedParams struct {
 	NotifiedAt *time.Time
 }
 
+// The claim is held for good, so a stale job save that clears notified_at cannot make it claimable again.
 func (q *Queries) MarkJobNotified(ctx context.Context, arg MarkJobNotifiedParams) error {
 	_, err := q.db.Exec(ctx, markJobNotified, arg.ID, arg.NotifiedAt)
 	return err

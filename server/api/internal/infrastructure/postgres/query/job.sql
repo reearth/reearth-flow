@@ -114,4 +114,5 @@ WHERE id = sqlc.arg(id) AND notified_at IS NULL
   AND (notify_claimed_until IS NULL OR notify_claimed_until < sqlc.arg(now)::timestamptz);
 
 -- name: MarkJobNotified :exec
-UPDATE jobs SET notified_at = $2, notify_claimed_until = NULL WHERE id = $1;
+-- The claim is held for good, so a stale job save that clears notified_at cannot make it claimable again.
+UPDATE jobs SET notified_at = $2, notify_claimed_until = '9999-12-31T00:00:00Z' WHERE id = $1;

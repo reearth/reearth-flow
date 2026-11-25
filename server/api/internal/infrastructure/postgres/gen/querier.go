@@ -70,6 +70,7 @@ type Querier interface {
 	ListTriggersByIDs(ctx context.Context, dollar_1 []string) ([]Trigger, error)
 	ListWorkerConfigs(ctx context.Context) ([]WorkerConfig, error)
 	ListWorkerConfigsByIDs(ctx context.Context, dollar_1 []string) ([]WorkerConfig, error)
+	// The claim is held for good, so a stale job save that clears notified_at cannot make it claimable again.
 	MarkJobNotified(ctx context.Context, arg MarkJobNotifiedParams) error
 	// UpsertJob unless the stored status (computed Status() at last save) is terminal; 0 rows = lost.
 	SaveJobIfNotTerminal(ctx context.Context, arg SaveJobIfNotTerminalParams) (int64, error)
