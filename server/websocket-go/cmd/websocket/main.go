@@ -184,7 +184,7 @@ func run() error {
 	// Drain WebSocket peers first, then stop accepting HTTP. Rooms the drain
 	// releases are saved as versions on the way out, so let those saves, and
 	// any other save in progress, finish, and then their API notices.
-	if err := srv.WSProvider().Shutdown(savesCtx); err != nil {
+	if err := srv.Shutdown(savesCtx); err != nil {
 		log.Warn("ws provider shutdown", "err", err)
 	}
 	err = httpSrv.Shutdown(savesCtx)

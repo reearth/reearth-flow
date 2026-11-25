@@ -188,6 +188,18 @@ func TestSlowPeerResyncDefaultAndOverride(t *testing.T) {
 	}
 }
 
+func TestRoomIdleTimeoutDefaultAndOverride(t *testing.T) {
+	clearEnv(t)
+	if c := Load(); c.RoomIdleTimeout != time.Minute {
+		t.Errorf("RoomIdleTimeout default = %v, want 1m", c.RoomIdleTimeout)
+	}
+
+	t.Setenv("REEARTH_FLOW_ROOM_IDLE_TIMEOUT", "0")
+	if c := Load(); c.RoomIdleTimeout != 0 {
+		t.Errorf("RoomIdleTimeout with env=0 = %v, want 0", c.RoomIdleTimeout)
+	}
+}
+
 func TestOTLPDefaults(t *testing.T) {
 	clearEnv(t)
 	c := Load()
@@ -360,6 +372,7 @@ func clearEnv(t *testing.T) {
 		"REEARTH_FLOW_OTEL_MAX_EXPORT_BATCH_SIZE",
 		"REEARTH_FLOW_OTEL_MAX_QUEUE_SIZE",
 		"REEARTH_FLOW_SLOW_PEER_RESYNC",
+		"REEARTH_FLOW_ROOM_IDLE_TIMEOUT",
 		"REEARTH_FLOW_AUTO_VERSION_EVERY",
 		"REEARTH_FLOW_KEEP_SNAPSHOTS",
 		"REEARTH_FLOW_COORD_BACKEND",
