@@ -2,8 +2,11 @@ package gcs
 
 import (
 	"context"
+	"sync"
 	"testing"
 
+	"github.com/alicebob/miniredis/v2"
+	goredis "github.com/redis/go-redis/v9"
 	"github.com/reearth/ygo/crdt"
 )
 
@@ -225,5 +228,100 @@ func TestSnapshotFromStore_NeverWritesAStateACheckpointOvertook(t *testing.T) {
 	a.afterReadBase = nil
 	if v := fillerValue(t, mustLoad(t, a)); v != 9 {
 		t.Fatalf("f.k = %v, want 9", v)
+	}
+}
+
+// twoInstances returns two adapters on one bucket, each with its own Redis
+// locker owner, as two websocket instances have.
+func twoInstances(t *testing.T) (*Adapter, *Adapter) {
+	t.Helper()
+	client, bucket := newFakeGCS(t)
+	mr := miniredis.RunT(t)
+	rc := goredis.NewClient(&goredis.Options{Addr: mr.Addr()})
+	t.Cleanup(func() { _ = rc.Close() })
+	var out [2]*Adapter
+	for i, owner := range []string{"instance-1", "instance-2"} {
+		a, err := New(Options{Client: client, Bucket: bucket, Locker: NewRedisLocker(rc, owner)})
+		if err != nil {
+			t.Fatal(err)
+		}
+		out[i] = a
+	}
+	return out[0], out[1]
+}
+
+// TestCompact_TwoInstancesLeaveTheLogConsistent: every instance that held a room
+// compacts it when it unloads its copy, in turn or at the same time. The log,
+// checkpoint and doc_v2 must agree afterwards, and later appends must load.
+func TestCompact_TwoInstancesLeaveTheLogConsistent(t *testing.T) {
+	t.Parallel()
+	for _, tc := range []struct {
+		name     string
+		together bool
+	}{{"in turn", false}, {"at once", true}} {
+		t.Run(tc.name, func(t *testing.T) {
+			t.Parallel()
+			ctx := context.Background()
+			a1, a2 := twoInstances(t)
+			first, second := editPair(t)
+			appendAll(t, a1, first)
+			appendAll(t, a2, second)
+			for i, f := range fillers(t, 25) { // clocks 3..27; checkpoints at 10 and 20
+				appendAll(t, []*Adapter{a1, a2}[i%2], f)
+			}
+
+			var n [2]int
+			var errs [2]error
+			if tc.together {
+				var wg sync.WaitGroup
+				for i, a := range []*Adapter{a1, a2} {
+					wg.Add(1)
+					go func() {
+						defer wg.Done()
+						n[i], errs[i] = a.Compact(ctx, "room", 5)
+					}()
+				}
+				wg.Wait()
+			} else {
+				n[0], errs[0] = a1.Compact(ctx, "room", 5)
+				n[1], errs[1] = a2.Compact(ctx, "room", 5)
+			}
+			if errs[0] != nil || errs[1] != nil || n[0]+n[1] != 22 {
+				t.Fatalf("Compact = %v %v, %v; want 22 deleted between them", n[0], n[1], errs)
+			}
+
+			if cp, err := a1.checkpoint(ctx, "room"); err != nil || cp != 22 {
+				t.Fatalf("checkpoint = %d, %v; want 22", cp, err)
+			}
+			for _, a := range []*Adapter{a1, a2} {
+				vs, err := a.ListVersions(ctx, "room")
+				if err != nil || len(vs) != 5 || vs[0].Version != 27 || vs[4].Version != 23 {
+					t.Fatalf("versions = %v, %v; want clocks 23..27", vs, err)
+				}
+			}
+			base, _, err := a1.loadPrimaryV2(ctx, "room")
+			if err != nil {
+				t.Fatal(err)
+			}
+			if got, parked := loaded(t, base, "t"); got != "ab" || parked != 0 {
+				t.Fatalf("doc_v2: %q with %d parked, want \"ab\" and none", got, parked)
+			}
+			// doc_v2 must hold every deleted update (clock 22 set f.k to 19); it may hold kept ones too.
+			if v := fillerValue(t, base); v < 19 {
+				t.Fatalf("doc_v2 f.k = %v, want at least 19 (clock 22)", v)
+			}
+
+			extra := fillers(t, 26)[25]
+			appendAll(t, a2, extra)
+			for _, a := range []*Adapter{a1, a2} {
+				state := mustLoad(t, a)
+				if got, parked := loaded(t, state, "t"); got != "ab" || parked != 0 {
+					t.Fatalf("Load: %q with %d parked, want \"ab\" and none", got, parked)
+				}
+				if v := fillerValue(t, state); v != 25 {
+					t.Fatalf("Load f.k = %v, want 25", v)
+				}
+			}
+		})
 	}
 }
