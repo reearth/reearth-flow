@@ -100,7 +100,7 @@ func (i *Deployment) Fetch(ctx context.Context, ids []id.DeploymentID) ([]*deplo
 	}
 	deployments := alignToRequestedIDs(ids, got, nil, (*deployment.Deployment).ID)
 
-	if err := authorizeFetchByWorkspace(ctx, i.checkPermission, rbac.ActionAny, deployments, nil, (*deployment.Deployment).Workspace); err != nil {
+	if err := authorizeFetchByWorkspace(ctx, i.checkPermission, rbac.ActionRead, deployments, nil, (*deployment.Deployment).Workspace); err != nil {
 		return nil, err
 	}
 
@@ -108,7 +108,7 @@ func (i *Deployment) Fetch(ctx context.Context, ids []id.DeploymentID) ([]*deplo
 }
 
 func (i *Deployment) FindByWorkspace(ctx context.Context, id accountsid.WorkspaceID, p *interfaces.PaginationParam, keyword *string) ([]*deployment.Deployment, *interfaces.PageBasedInfo, error) {
-	if err := i.checkPermission(ctx, rbac.ActionAny, id); err != nil {
+	if err := i.checkPermission(ctx, rbac.ActionRead, id); err != nil {
 		return nil, nil, err
 	}
 
@@ -123,7 +123,7 @@ func (i *Deployment) FindByProject(ctx context.Context, id id.ProjectID) (*deplo
 	if project == nil {
 		return nil, fmt.Errorf("project not found: %s", id)
 	}
-	if err := i.checkPermission(ctx, rbac.ActionAny, project.Workspace()); err != nil {
+	if err := i.checkPermission(ctx, rbac.ActionRead, project.Workspace()); err != nil {
 		return nil, err
 	}
 
@@ -135,7 +135,7 @@ func (i *Deployment) FindByProject(ctx context.Context, id id.ProjectID) (*deplo
 // Projects in a workspace the caller can't see are simply omitted from the result.
 func (i *Deployment) FindByProjects(ctx context.Context, ids []id.ProjectID) (map[id.ProjectID]*deployment.Deployment, error) {
 	if len(ids) == 0 {
-		if err := i.checkPermission(ctx, rbac.ActionAny); err != nil {
+		if err := i.checkPermission(ctx, rbac.ActionRead); err != nil {
 			return nil, err
 		}
 		return map[id.ProjectID]*deployment.Deployment{}, nil
@@ -156,7 +156,7 @@ func (i *Deployment) FindByProjects(ctx context.Context, ids []id.ProjectID) (ma
 
 	result := make(map[id.ProjectID]*deployment.Deployment, len(projects))
 	for ws, pids := range byWorkspace {
-		if err := i.checkPermission(ctx, rbac.ActionAny, ws); err != nil {
+		if err := i.checkPermission(ctx, rbac.ActionRead, ws); err != nil {
 			continue // caller can't see this workspace; omit its projects' deployments
 		}
 		for _, pid := range pids {
@@ -177,7 +177,7 @@ func (i *Deployment) FindByProjects(ctx context.Context, ids []id.ProjectID) (ma
 }
 
 func (i *Deployment) FindByVersion(ctx context.Context, wsID accountsid.WorkspaceID, projectID *id.ProjectID, version string) (*deployment.Deployment, error) {
-	if err := i.checkPermission(ctx, rbac.ActionAny, wsID); err != nil {
+	if err := i.checkPermission(ctx, rbac.ActionRead, wsID); err != nil {
 		return nil, err
 	}
 
@@ -185,7 +185,7 @@ func (i *Deployment) FindByVersion(ctx context.Context, wsID accountsid.Workspac
 }
 
 func (i *Deployment) FindHead(ctx context.Context, wsID accountsid.WorkspaceID, projectID *id.ProjectID) (*deployment.Deployment, error) {
-	if err := i.checkPermission(ctx, rbac.ActionAny, wsID); err != nil {
+	if err := i.checkPermission(ctx, rbac.ActionRead, wsID); err != nil {
 		return nil, err
 	}
 
@@ -193,7 +193,7 @@ func (i *Deployment) FindHead(ctx context.Context, wsID accountsid.WorkspaceID, 
 }
 
 func (i *Deployment) FindVersions(ctx context.Context, wsID accountsid.WorkspaceID, projectID *id.ProjectID) ([]*deployment.Deployment, error) {
-	if err := i.checkPermission(ctx, rbac.ActionAny, wsID); err != nil {
+	if err := i.checkPermission(ctx, rbac.ActionRead, wsID); err != nil {
 		return nil, err
 	}
 

@@ -183,7 +183,7 @@ func (i *Parameter) Fetch(ctx context.Context, ids id.ParameterIDList) (*paramet
 	}
 
 	if params == nil || len(*params) == 0 {
-		if err := i.checkPermission(ctx, rbac.ActionAny); err != nil {
+		if err := i.checkPermission(ctx, rbac.ActionRead); err != nil {
 			return nil, err
 		}
 		return parameter.NewParameterList(make([]*parameter.Parameter, len(ids))), nil
@@ -226,7 +226,7 @@ func (i *Parameter) Fetch(ctx context.Context, ids id.ParameterIDList) (*paramet
 		}
 		permitted, checked := verdicts[ws]
 		if !checked {
-			err := i.checkPermission(ctx, rbac.ActionAny, ws)
+			err := i.checkPermission(ctx, rbac.ActionRead, ws)
 			if err != nil && !errors.Is(err, interfaces.ErrOperationDenied) {
 				return nil, err
 			}
@@ -256,7 +256,7 @@ func (i *Parameter) FetchByProject(ctx context.Context, pid id.ProjectID) (*para
 	if proj == nil {
 		return nil, rerror.ErrNotFound
 	}
-	if err := i.checkPermission(ctx, rbac.ActionAny, proj.Workspace()); err != nil {
+	if err := i.checkPermission(ctx, rbac.ActionRead, proj.Workspace()); err != nil {
 		return nil, err
 	}
 
@@ -269,7 +269,7 @@ func (i *Parameter) FetchByProject(ctx context.Context, pid id.ProjectID) (*para
 // Projects in a workspace the caller can't see are simply omitted from the result.
 func (i *Parameter) FetchByProjects(ctx context.Context, ids []id.ProjectID) (map[id.ProjectID]*parameter.ParameterList, error) {
 	if len(ids) == 0 {
-		if err := i.checkPermission(ctx, rbac.ActionAny); err != nil {
+		if err := i.checkPermission(ctx, rbac.ActionRead); err != nil {
 			return nil, err
 		}
 		return map[id.ProjectID]*parameter.ParameterList{}, nil
@@ -290,7 +290,7 @@ func (i *Parameter) FetchByProjects(ctx context.Context, ids []id.ProjectID) (ma
 
 	result := make(map[id.ProjectID]*parameter.ParameterList, len(projects))
 	for ws, pids := range byWorkspace {
-		if err := i.checkPermission(ctx, rbac.ActionAny, ws); err != nil {
+		if err := i.checkPermission(ctx, rbac.ActionRead, ws); err != nil {
 			continue // caller can't see this workspace; omit its projects' parameters
 		}
 		for _, pid := range pids {

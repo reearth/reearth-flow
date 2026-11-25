@@ -30,12 +30,13 @@ const (
 )
 
 const (
-	ActionRead   = "read"
-	ActionList   = "list"
-	ActionCreate = "create"
-	ActionEdit   = "edit"
-	ActionDelete = "delete"
-	ActionAny    = "any"
+	ActionRead          = "read"
+	ActionList          = "list"
+	ActionCreate        = "create"
+	ActionEdit          = "edit"
+	ActionDelete        = "delete"
+	ActionAny           = "any"
+	ActionManageMembers = "manageMembers"
 )
 
 const (
@@ -47,69 +48,67 @@ const (
 )
 
 // DefineResources returns the flow RBAC policy as declarative resource rules.
-// reearthx's generator.GeneratePolicies builds and sorts these into Cerbos
-// policies (action ordering is deterministic via the generator), so only the
-// resource→action→roles mapping matters here.
-//
-// Role vocabulary matches the accounts system and the UI: owner, maintainer,
-// writer, reader, self. The backend previously used "editor", which is not a
-// real workspace role (the accounts roles are owner/maintainer/writer/reader),
-// so writers were effectively ungranted.
+// reearthx's generator.GeneratePolicies builds Cerbos policies from these, and
+// each action matches its own key only: ActionAny is not a wildcard.
 func DefineResources() []generator.ResourceRule {
-	// Project content, deploy/run/debug and execution-data actions are granted to
-	// writers, maintainers and owners. Per the Flow user-stories RBAC spec,
-	// deploying a project and listing runs are Writer(Editor) + Maintainer + Owner,
-	// and owner ⊇ maintainer is a universal invariant. These were previously
-	// maintainer-only, which denied workspace owners and writers.
-	writerMaintainerOwner := map[string]generator.ActionRule{
-		ActionAny: {Roles: []string{roleWriter, roleMaintainer, roleOwner}},
+	allRoles := []string{roleReader, roleWriter, roleMaintainer, roleOwner}
+	writerUp := []string{roleWriter, roleMaintainer, roleOwner}
+	maintainerUp := []string{roleMaintainer, roleOwner}
+
+	readAllWrite := func(writers []string) map[string]generator.ActionRule {
+		return map[string]generator.ActionRule{
+			ActionRead: {Roles: allRoles},
+			ActionAny:  {Roles: writers},
+		}
 	}
-	// Privileged project-level actions (e.g. public sharing) are limited to
-	// maintainers and owners (no writer).
-	maintainerOwner := map[string]generator.ActionRule{
-		ActionAny: {Roles: []string{roleMaintainer, roleOwner}},
+	anyAction := func(roles []string) map[string]generator.ActionRule {
+		return map[string]generator.ActionRule{ActionAny: {Roles: roles}}
 	}
+
 	return []generator.ResourceRule{
-		{Resource: ResourceAsset, Actions: writerMaintainerOwner},
-		{Resource: ResourceCMSAsset, Actions: writerMaintainerOwner},
-		{Resource: ResourceCMSItem, Actions: writerMaintainerOwner},
-		{Resource: ResourceCMSModel, Actions: writerMaintainerOwner},
-		{Resource: ResourceCMSProject, Actions: writerMaintainerOwner},
-		{Resource: ResourceDeployment, Actions: writerMaintainerOwner},
-		{Resource: ResourceEdge, Actions: writerMaintainerOwner},
-		{Resource: ResourceJob, Actions: writerMaintainerOwner},
-		{Resource: ResourceLog, Actions: writerMaintainerOwner},
-		{Resource: ResourceNode, Actions: writerMaintainerOwner},
-		{Resource: ResourceParameter, Actions: writerMaintainerOwner},
-		{Resource: ResourceProject, Actions: map[string]generator.ActionRule{
-			ActionList:   {Roles: []string{roleSelf, roleMaintainer}},
-			ActionRead:   {Roles: []string{roleReader, roleWriter, roleMaintainer, roleOwner}},
-			ActionCreate: {Roles: []string{roleMaintainer, roleOwner}},
-			ActionEdit:   {Roles: []string{roleMaintainer, roleOwner}},
-			ActionDelete: {Roles: []string{roleMaintainer, roleOwner}},
-			ActionAny:    {Roles: []string{roleWriter, roleOwner, roleMaintainer}},
+		{Resource: ResourceAsset, Actions: readAllWrite(writerUp)},
+		{Resource: ResourceCMSAsset, Actions: anyAction(writerUp)},
+		{Resource: ResourceCMSItem, Actions: anyAction(writerUp)},
+		{Resource: ResourceCMSModel, Actions: anyAction(writerUp)},
+		{Resource: ResourceCMSProject, Actions: anyAction(writerUp)},
+		{Resource: ResourceDeployment, Actions: readAllWrite(maintainerUp)},
+		{Resource: ResourceEdge, Actions: readAllWrite(writerUp)},
+		{Resource: ResourceJob, Actions: readAllWrite(writerUp)},
+		{Resource: ResourceLog, Actions: map[string]generator.ActionRule{
+			ActionRead: {Roles: allRoles},
 		}},
-		{Resource: ResourceProjectAccess, Actions: maintainerOwner},
+		{Resource: ResourceNode, Actions: anyAction(writerUp)},
+		{Resource: ResourceParameter, Actions: readAllWrite(writerUp)},
+		{Resource: ResourceProject, Actions: map[string]generator.ActionRule{
+			ActionList:   {Roles: []string{roleSelf}},
+			ActionRead:   {Roles: allRoles},
+			ActionCreate: {Roles: maintainerUp},
+			ActionEdit:   {Roles: maintainerUp},
+			ActionDelete: {Roles: maintainerUp},
+			ActionAny:    {Roles: writerUp},
+		}},
+		{Resource: ResourceProjectAccess, Actions: anyAction(maintainerUp)},
 		{Resource: ResourceProjectDocument, Actions: map[string]generator.ActionRule{
-			ActionRead:   {Roles: []string{roleReader, roleWriter, roleMaintainer, roleOwner}},
-			ActionEdit:   {Roles: []string{roleWriter, roleMaintainer, roleOwner}},
-			ActionDelete: {Roles: []string{roleMaintainer, roleOwner}},
+			ActionRead:   {Roles: allRoles},
+			ActionEdit:   {Roles: writerUp},
+			ActionDelete: {Roles: maintainerUp},
 		}},
 		{Resource: ResourceTrigger, Actions: map[string]generator.ActionRule{
-			ActionCreate: {Roles: []string{roleMaintainer, roleOwner}},
-			ActionEdit:   {Roles: []string{roleMaintainer, roleOwner}},
-			ActionDelete: {Roles: []string{roleMaintainer, roleOwner}},
-			ActionAny:    {Roles: []string{roleSelf, roleMaintainer}},
+			ActionRead:   {Roles: allRoles},
+			ActionCreate: {Roles: maintainerUp},
+			ActionEdit:   {Roles: maintainerUp},
+			ActionDelete: {Roles: maintainerUp},
 		}},
 		{Resource: ResourceUser, Actions: map[string]generator.ActionRule{
 			ActionRead: {Roles: []string{roleSelf, roleMaintainer}},
 			ActionEdit: {Roles: []string{roleSelf, roleMaintainer}},
 		}},
 		{Resource: ResourceWorkspace, Actions: map[string]generator.ActionRule{
-			ActionList:   {Roles: []string{roleSelf, roleMaintainer}},
-			ActionCreate: {Roles: []string{roleSelf, roleMaintainer}},
-			ActionEdit:   {Roles: []string{roleOwner, roleMaintainer}},
-			ActionDelete: {Roles: []string{roleOwner, roleMaintainer}},
+			ActionList:          {Roles: []string{roleSelf, roleMaintainer}},
+			ActionCreate:        {Roles: []string{roleSelf, roleMaintainer}},
+			ActionEdit:          {Roles: []string{roleOwner}},
+			ActionDelete:        {Roles: []string{roleOwner}},
+			ActionManageMembers: {Roles: maintainerUp},
 		}},
 	}
 }
