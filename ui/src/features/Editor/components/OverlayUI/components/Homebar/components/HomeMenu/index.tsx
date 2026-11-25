@@ -28,6 +28,7 @@ import {
   FlowLogo,
 } from "@flow/components";
 import { config } from "@flow/config";
+import { AttributionsDialog } from "@flow/features/common/AttributionsDialog";
 import { AccountUpdateDialog } from "@flow/features/common/UserMenu/AccountUpdateDialog";
 import KeyboardShortcutDialog from "@flow/features/KeyboardShortcutDialog";
 import { GENERAL_HOT_KEYS } from "@flow/global-constants";
@@ -35,8 +36,6 @@ import { useDoubleClick } from "@flow/hooks";
 import { useAuth } from "@flow/lib/auth";
 import { useT } from "@flow/lib/i18n";
 import { dashboardAccountUrl, openLinkInNewTab } from "@flow/utils";
-
-import { AttributionsDialog } from "./AttributionsDialog";
 
 type Props = {
   className?: string;

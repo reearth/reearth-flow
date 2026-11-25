@@ -1,14 +1,10 @@
 import {
   ArrowUpRightIcon,
-  BookIcon,
   ChatCircleTextIcon,
-  FileTextIcon,
-  KeyboardIcon,
   SignOutIcon,
   UserIcon,
 } from "@phosphor-icons/react";
 import { useState } from "react";
-import { useHotkeys } from "react-hotkeys-hook";
 
 import {
   Avatar,
@@ -21,8 +17,6 @@ import {
   DropdownMenuTrigger,
 } from "@flow/components";
 import { config } from "@flow/config";
-import KeyboardShortcutDialog from "@flow/features/KeyboardShortcutDialog";
-import { GENERAL_HOT_KEYS } from "@flow/global-constants";
 import { useAuth } from "@flow/lib/auth";
 import { useUser } from "@flow/lib/gql";
 import { useT } from "@flow/lib/i18n";
@@ -49,15 +43,10 @@ const UserMenu: React.FC<Props> = ({
   const { me } = useGetMe();
 
   const [openAccountUpdateDialog, setOpenAccountUpdateDialog] = useState(false);
-  const [openShortcutDialog, setOpenShortcutDialog] = useState(false);
 
-  const { tosUrl, documentationUrl, feedbackUrl } = config();
-
-  const handleTosPageOpen = openLinkInNewTab(tosUrl ?? "");
-  const handleDocumentationPageOpen = openLinkInNewTab(documentationUrl ?? "");
   // With a Dashboard, the account is managed there.
   const externalAccountUrl = dashboardAccountUrl();
-  useHotkeys(GENERAL_HOT_KEYS, () => setOpenShortcutDialog(true));
+  const { feedbackUrl } = config();
   return (
     <>
       <DropdownMenu>
@@ -72,79 +61,45 @@ const UserMenu: React.FC<Props> = ({
           </div>
         </DropdownMenuTrigger>
         <DropdownMenuContent
-          className="min-w-[175px]"
+          className="flex w-[220px] flex-col gap-0.5"
           side={dropdownPosition}
           align={dropdownAlign}
           sideOffset={dropdownOffset ?? 4}>
-          <div className="mb-2 rounded p-2">
-            <p className="text-xs font-thin">{t("Username: ")}</p>
-            <p className="truncate px-2 text-sm">{me?.name ?? me?.email}</p>
+          <div className="flex flex-col gap-0.5 px-3 py-1.5">
+            <p className="truncate text-sm">{me?.name ?? me?.email}</p>
+            {me?.name && me.email && (
+              <p className="truncate text-xs font-light text-muted-foreground">
+                {me.email}
+              </p>
+            )}
           </div>
-          <DropdownMenuSeparator />
+          <DropdownMenuSeparator className="mx-0 my-0" />
           <DropdownMenuItem
-            className="justify-between gap-4"
+            className="gap-3 rounded-md px-3 py-[5px] font-light"
             onClick={
               externalAccountUrl
                 ? openLinkInNewTab(externalAccountUrl)
                 : () => setOpenAccountUpdateDialog(true)
             }>
-            <div className="flex items-center gap-3 whitespace-nowrap">
-              <UserIcon weight="light" />
-              <p>{t("Account Settings")}</p>
-            </div>
+            <UserIcon weight="light" />
+            <p className="flex-1 truncate">{t("Account Settings")}</p>
             {externalAccountUrl && <ArrowUpRightIcon weight="light" />}
           </DropdownMenuItem>
-          <DropdownMenuItem
-            className="justify-between gap-4"
-            disabled={!feedbackUrl}
-            onClick={feedbackUrl ? openLinkInNewTab(feedbackUrl) : () => {}}>
-            <div className="flex items-center gap-3 whitespace-nowrap">
+          {feedbackUrl && (
+            <DropdownMenuItem
+              className="gap-3 rounded-md px-3 py-[5px] font-light"
+              onClick={openLinkInNewTab(feedbackUrl)}>
               <ChatCircleTextIcon weight="light" />
-              <p>{t("Share Feedback")}</p>
-            </div>
-            <ArrowUpRightIcon weight="light" />
-          </DropdownMenuItem>
-          <DropdownMenuItem
-            className="justify-between gap-4"
-            onClick={() => setOpenShortcutDialog(true)}>
-            <div className="flex items-center gap-3 whitespace-nowrap">
-              <KeyboardIcon weight="light" />
-              <p>{t("Keyboard Shortcuts")}</p>
-            </div>
-            <span className="size-4 shrink-0" />
-          </DropdownMenuItem>
-          <DropdownMenuSeparator />
-          {tosUrl && (
-            <DropdownMenuItem
-              className="justify-between gap-4"
-              onClick={handleTosPageOpen}>
-              <div className="flex items-center gap-3 whitespace-nowrap">
-                <FileTextIcon weight="light" />
-                <p>{t("Terms of Service")}</p>
-              </div>
+              <p className="flex-1 truncate">{t("Share Feedback")}</p>
               <ArrowUpRightIcon weight="light" />
             </DropdownMenuItem>
           )}
-          {documentationUrl && (
-            <DropdownMenuItem
-              className="justify-between gap-4"
-              onClick={handleDocumentationPageOpen}>
-              <div className="flex items-center gap-3 whitespace-nowrap">
-                <BookIcon weight="light" />
-                <p>{t("Documentation")}</p>
-              </div>
-              <ArrowUpRightIcon weight="light" />
-            </DropdownMenuItem>
-          )}
-          <DropdownMenuSeparator />
+          <DropdownMenuSeparator className="mx-0 my-0" />
           <DropdownMenuItem
-            className="justify-between gap-4 text-warning"
+            className="gap-3 rounded-md px-3 py-[5px] text-warning"
             onClick={handleLogout}>
-            <div className="flex items-center gap-3 whitespace-nowrap">
-              <SignOutIcon weight="light" className="text-warning" />
-              <p>{t("Log Out")}</p>
-            </div>
-            <span className="size-4 shrink-0" />
+            <SignOutIcon weight="light" className="text-warning" />
+            <p className="flex-1 truncate">{t("Log Out")}</p>
           </DropdownMenuItem>
         </DropdownMenuContent>
       </DropdownMenu>
@@ -152,12 +107,6 @@ const UserMenu: React.FC<Props> = ({
         <AccountUpdateDialog
           isOpen={openAccountUpdateDialog}
           onOpenChange={setOpenAccountUpdateDialog}
-        />
-      )}
-      {openShortcutDialog && (
-        <KeyboardShortcutDialog
-          isOpen={openShortcutDialog}
-          onOpenChange={setOpenShortcutDialog}
         />
       )}
     </>
