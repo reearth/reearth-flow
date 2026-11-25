@@ -1,0 +1,874 @@
+{
+  "tran:Square": [
+    {
+      "destinationPath": "__flat gml:name",
+      "sourcePath": "attributes gml:name"
+    },
+    {
+      "destinationPath": "__flat core:creationDate",
+      "sourcePath": "attributes core:creationDate"
+    },
+    {
+      "destinationPath": "__flat tran:class",
+      "sourcePath": "attributes tran:class"
+    },
+    {
+      "destinationPath": "__flat tran:function",
+      "sourcePath": "attributes tran:function"
+    },
+    {
+      "destinationPath": "__flat uro:SquareUrbanPlanAttribute_uro:prefecture",
+      "sourcePath": "attributes tran:adeOfSquare uro:SquareUrbanPlanAttribute uro:prefecture"
+    },
+    {
+      "destinationPath": "__flat uro:SquareUrbanPlanAttribute_uro:city",
+      "sourcePath": "attributes tran:adeOfSquare uro:SquareUrbanPlanAttribute uro:city"
+    },
+    {
+      "destinationPath": "__flat uro:SquareUrbanPlanAttribute_uro:urbanPlanningAreaName",
+      "sourcePath": "attributes tran:adeOfSquare uro:SquareUrbanPlanAttribute uro:urbanPlanningAreaName"
+    },
+    {
+      "destinationPath": "__flat uro:SquareUrbanPlanAttribute_uro:enforcer",
+      "sourcePath": "attributes tran:adeOfSquare uro:SquareUrbanPlanAttribute uro:enforcer"
+    },
+    {
+      "destinationPath": "__flat uro:SquareUrbanPlanAttribute_uro:dateOfDecision",
+      "sourcePath": "attributes tran:adeOfSquare uro:SquareUrbanPlanAttribute uro:dateOfDecision"
+    },
+    {
+      "destinationPath": "__flat uro:SquareUrbanPlanAttribute_uro:dateOfRevision",
+      "sourcePath": "attributes tran:adeOfSquare uro:SquareUrbanPlanAttribute uro:dateOfRevision"
+    },
+    {
+      "destinationPath": "__flat uro:SquareUrbanPlanAttribute_uro:areaPlanned",
+      "sourcePath": "attributes tran:adeOfSquare uro:SquareUrbanPlanAttribute uro:areaPlanned",
+      "dataType": "float"
+    },
+    {
+      "destinationPath": "__flat uro:SquareUrbanPlanAttribute_uro:areaInService",
+      "sourcePath": "attributes tran:adeOfSquare uro:SquareUrbanPlanAttribute uro:areaInService",
+      "dataType": "float"
+    },
+    {
+      "destinationPath": "__flat uro:SquareUrbanPlanAttribute_uro:remarks",
+      "sourcePath": "attributes tran:adeOfSquare uro:SquareUrbanPlanAttribute uro:remarks"
+    },
+    {
+      "destinationPath": "__flat uro:SquareUrbanPlanAttribute_uro:status",
+      "sourcePath": "attributes tran:adeOfSquare uro:SquareUrbanPlanAttribute uro:status"
+    },
+    {
+      "destinationPath": "__flat uro:SquareUrbanPlanAttribute_uro:areaImproved",
+      "sourcePath": "attributes tran:adeOfSquare uro:SquareUrbanPlanAttribute uro:areaImproved",
+      "dataType": "float"
+    },
+    {
+      "destinationPath": "__flat uro:SquareUrbanPlanAttribute_uro:areaCompleted",
+      "sourcePath": "attributes tran:adeOfSquare uro:SquareUrbanPlanAttribute uro:areaCompleted",
+      "dataType": "float"
+    },
+    {
+      "destinationPath": "__flat uro:SquareUrbanPlanAttribute_uro:projectStartDate",
+      "sourcePath": "attributes tran:adeOfSquare uro:SquareUrbanPlanAttribute uro:projectStartDate"
+    },
+    {
+      "destinationPath": "__flat uro:SquareUrbanPlanAttribute_uro:projectEndDate",
+      "sourcePath": "attributes tran:adeOfSquare uro:SquareUrbanPlanAttribute uro:projectEndDate"
+    },
+    {
+      "destinationPath": "__flat uro:SquareUrbanPlanAttribute_uro:isCompleted",
+      "sourcePath": "attributes tran:adeOfSquare uro:SquareUrbanPlanAttribute uro:isCompleted"
+    },
+    {
+      "destinationPath": "__flat uro:SquareUrbanPlanAttribute_uro:isAuthorized",
+      "sourcePath": "attributes tran:adeOfSquare uro:SquareUrbanPlanAttribute uro:isAuthorized"
+    },
+    {
+      "destinationPath": "__flat uro:SquareUrbanPlanAttribute_uro:purpose",
+      "sourcePath": "attributes tran:adeOfSquare uro:SquareUrbanPlanAttribute uro:purpose"
+    },
+    {
+      "destinationPath": "__flat uro:SquareUrbanPlanAttribute_uro:note",
+      "sourcePath": "attributes tran:adeOfSquare uro:SquareUrbanPlanAttribute uro:note"
+    },
+    {
+      "destinationPath": "__flat uro:StationSquareAttribute_uro:prefecture",
+      "sourcePath": "attributes tran:adeOfSquare uro:StationSquareAttribute uro:prefecture"
+    },
+    {
+      "destinationPath": "__flat uro:StationSquareAttribute_uro:city",
+      "sourcePath": "attributes tran:adeOfSquare uro:StationSquareAttribute uro:city"
+    },
+    {
+      "destinationPath": "__flat uro:StationSquareAttribute_uro:urbanPlanningAreaName",
+      "sourcePath": "attributes tran:adeOfSquare uro:StationSquareAttribute uro:urbanPlanningAreaName"
+    },
+    {
+      "destinationPath": "__flat uro:StationSquareAttribute_uro:enforcer",
+      "sourcePath": "attributes tran:adeOfSquare uro:StationSquareAttribute uro:enforcer"
+    },
+    {
+      "destinationPath": "__flat uro:StationSquareAttribute_uro:dateOfDecision",
+      "sourcePath": "attributes tran:adeOfSquare uro:StationSquareAttribute uro:dateOfDecision"
+    },
+    {
+      "destinationPath": "__flat uro:StationSquareAttribute_uro:dateOfRevision",
+      "sourcePath": "attributes tran:adeOfSquare uro:StationSquareAttribute uro:dateOfRevision"
+    },
+    {
+      "destinationPath": "__flat uro:StationSquareAttribute_uro:areaPlanned",
+      "sourcePath": "attributes tran:adeOfSquare uro:StationSquareAttribute uro:areaPlanned",
+      "dataType": "float"
+    },
+    {
+      "destinationPath": "__flat uro:StationSquareAttribute_uro:areaInService",
+      "sourcePath": "attributes tran:adeOfSquare uro:StationSquareAttribute uro:areaInService",
+      "dataType": "float"
+    },
+    {
+      "destinationPath": "__flat uro:StationSquareAttribute_uro:remarks",
+      "sourcePath": "attributes tran:adeOfSquare uro:StationSquareAttribute uro:remarks"
+    },
+    {
+      "destinationPath": "__flat uro:StationSquareAttribute_uro:status",
+      "sourcePath": "attributes tran:adeOfSquare uro:StationSquareAttribute uro:status"
+    },
+    {
+      "destinationPath": "__flat uro:StationSquareAttribute_uro:areaImproved",
+      "sourcePath": "attributes tran:adeOfSquare uro:StationSquareAttribute uro:areaImproved",
+      "dataType": "float"
+    },
+    {
+      "destinationPath": "__flat uro:StationSquareAttribute_uro:areaCompleted",
+      "sourcePath": "attributes tran:adeOfSquare uro:StationSquareAttribute uro:areaCompleted",
+      "dataType": "float"
+    },
+    {
+      "destinationPath": "__flat uro:StationSquareAttribute_uro:projectStartDate",
+      "sourcePath": "attributes tran:adeOfSquare uro:StationSquareAttribute uro:projectStartDate"
+    },
+    {
+      "destinationPath": "__flat uro:StationSquareAttribute_uro:projectEndDate",
+      "sourcePath": "attributes tran:adeOfSquare uro:StationSquareAttribute uro:projectEndDate"
+    },
+    {
+      "destinationPath": "__flat uro:StationSquareAttribute_uro:isCompleted",
+      "sourcePath": "attributes tran:adeOfSquare uro:StationSquareAttribute uro:isCompleted"
+    },
+    {
+      "destinationPath": "__flat uro:StationSquareAttribute_uro:isAuthorized",
+      "sourcePath": "attributes tran:adeOfSquare uro:StationSquareAttribute uro:isAuthorized"
+    },
+    {
+      "destinationPath": "__flat uro:StationSquareAttribute_uro:purpose",
+      "sourcePath": "attributes tran:adeOfSquare uro:StationSquareAttribute uro:purpose"
+    },
+    {
+      "destinationPath": "__flat uro:StationSquareAttribute_uro:note",
+      "sourcePath": "attributes tran:adeOfSquare uro:StationSquareAttribute uro:note"
+    },
+    {
+      "destinationPath": "__flat uro:StationSquareAttribute_uro:station",
+      "sourcePath": "attributes tran:adeOfSquare uro:StationSquareAttribute uro:station"
+    },
+    {
+      "destinationPath": "__flat uro:StationSquareAttribute_uro:route",
+      "sourcePath": "attributes tran:adeOfSquare uro:StationSquareAttribute uro:route"
+    },
+    {
+      "destinationPath": "__flat uro:StationSquareAttribute_uro:railwayType",
+      "sourcePath": "attributes tran:adeOfSquare uro:StationSquareAttribute uro:railwayType"
+    },
+    {
+      "destinationPath": "__flat uro:TerminalAttribute_uro:prefecture",
+      "sourcePath": "attributes tran:adeOfSquare uro:TerminalAttribute uro:prefecture"
+    },
+    {
+      "destinationPath": "__flat uro:TerminalAttribute_uro:city",
+      "sourcePath": "attributes tran:adeOfSquare uro:TerminalAttribute uro:city"
+    },
+    {
+      "destinationPath": "__flat uro:TerminalAttribute_uro:urbanPlanningAreaName",
+      "sourcePath": "attributes tran:adeOfSquare uro:TerminalAttribute uro:urbanPlanningAreaName"
+    },
+    {
+      "destinationPath": "__flat uro:TerminalAttribute_uro:enforcer",
+      "sourcePath": "attributes tran:adeOfSquare uro:TerminalAttribute uro:enforcer"
+    },
+    {
+      "destinationPath": "__flat uro:TerminalAttribute_uro:dateOfDecision",
+      "sourcePath": "attributes tran:adeOfSquare uro:TerminalAttribute uro:dateOfDecision"
+    },
+    {
+      "destinationPath": "__flat uro:TerminalAttribute_uro:dateOfRevision",
+      "sourcePath": "attributes tran:adeOfSquare uro:TerminalAttribute uro:dateOfRevision"
+    },
+    {
+      "destinationPath": "__flat uro:TerminalAttribute_uro:areaPlanned",
+      "sourcePath": "attributes tran:adeOfSquare uro:TerminalAttribute uro:areaPlanned",
+      "dataType": "float"
+    },
+    {
+      "destinationPath": "__flat uro:TerminalAttribute_uro:areaInService",
+      "sourcePath": "attributes tran:adeOfSquare uro:TerminalAttribute uro:areaInService",
+      "dataType": "float"
+    },
+    {
+      "destinationPath": "__flat uro:TerminalAttribute_uro:remarks",
+      "sourcePath": "attributes tran:adeOfSquare uro:TerminalAttribute uro:remarks"
+    },
+    {
+      "destinationPath": "__flat uro:TerminalAttribute_uro:status",
+      "sourcePath": "attributes tran:adeOfSquare uro:TerminalAttribute uro:status"
+    },
+    {
+      "destinationPath": "__flat uro:TerminalAttribute_uro:areaImproved",
+      "sourcePath": "attributes tran:adeOfSquare uro:TerminalAttribute uro:areaImproved",
+      "dataType": "float"
+    },
+    {
+      "destinationPath": "__flat uro:TerminalAttribute_uro:areaCompleted",
+      "sourcePath": "attributes tran:adeOfSquare uro:TerminalAttribute uro:areaCompleted",
+      "dataType": "float"
+    },
+    {
+      "destinationPath": "__flat uro:TerminalAttribute_uro:projectStartDate",
+      "sourcePath": "attributes tran:adeOfSquare uro:TerminalAttribute uro:projectStartDate"
+    },
+    {
+      "destinationPath": "__flat uro:TerminalAttribute_uro:projectEndDate",
+      "sourcePath": "attributes tran:adeOfSquare uro:TerminalAttribute uro:projectEndDate"
+    },
+    {
+      "destinationPath": "__flat uro:TerminalAttribute_uro:isCompleted",
+      "sourcePath": "attributes tran:adeOfSquare uro:TerminalAttribute uro:isCompleted"
+    },
+    {
+      "destinationPath": "__flat uro:TerminalAttribute_uro:isAuthorized",
+      "sourcePath": "attributes tran:adeOfSquare uro:TerminalAttribute uro:isAuthorized"
+    },
+    {
+      "destinationPath": "__flat uro:TerminalAttribute_uro:purpose",
+      "sourcePath": "attributes tran:adeOfSquare uro:TerminalAttribute uro:purpose"
+    },
+    {
+      "destinationPath": "__flat uro:TerminalAttribute_uro:note",
+      "sourcePath": "attributes tran:adeOfSquare uro:TerminalAttribute uro:note"
+    },
+    {
+      "destinationPath": "__flat uro:TerminalAttribute_uro:terminalType",
+      "sourcePath": "attributes tran:adeOfSquare uro:TerminalAttribute uro:terminalType"
+    },
+    {
+      "destinationPath": "__flat uro:TerminalAttribute_uro:structure",
+      "sourcePath": "attributes tran:adeOfSquare uro:TerminalAttribute uro:structure"
+    },
+    {
+      "destinationPath": "__flat uro:TerminalAttribute_uro:numberOfBerthsPlanned",
+      "sourcePath": "attributes tran:adeOfSquare uro:TerminalAttribute uro:numberOfBerthsPlanned",
+      "dataType": "int"
+    },
+    {
+      "destinationPath": "__flat uro:TerminalAttribute_uro:numberOfBerthsInService",
+      "sourcePath": "attributes tran:adeOfSquare uro:TerminalAttribute uro:numberOfBerthsInService",
+      "dataType": "int"
+    },
+    {
+      "destinationPath": "__flat uro:TerminalAttribute_uro:userType",
+      "sourcePath": "attributes tran:adeOfSquare uro:TerminalAttribute uro:userType"
+    },
+    {
+      "destinationPath": "__flat urc:geometrySrcDescLod1",
+      "sourcePath": "attributes core:adeOfAbstractCityObject urc:DataQualityAttribute urc:geometrySrcDescLod1"
+    },
+    {
+      "destinationPath": "__flat urc:lodType",
+      "sourcePath": "attributes core:adeOfAbstractCityObject urc:DataQualityAttribute urc:lodType"
+    }
+  ],
+  "tran:TrafficArea": [
+    {
+      "destinationPath": "__flat gml:name",
+      "sourcePath": "attributes ancestors gml:name"
+    },
+    {
+      "destinationPath": "__flat core:creationDate",
+      "sourcePath": "attributes ancestors core:creationDate"
+    },
+    {
+      "destinationPath": "__flat tran:class",
+      "sourcePath": "attributes ancestors tran:class"
+    },
+    {
+      "destinationPath": "__flat tran:function",
+      "sourcePath": "attributes tran:function"
+    },
+    {
+      "destinationPath": "__flat urc:geometrySrcDescLod1",
+      "sourcePath": "attributes ancestors core:adeOfAbstractCityObject urc:DataQualityAttribute urc:geometrySrcDescLod1"
+    },
+    {
+      "destinationPath": "__flat urc:lodType",
+      "sourcePath": "attributes ancestors core:adeOfAbstractCityObject urc:DataQualityAttribute urc:lodType"
+    },
+    {
+      "destinationPath": "__flat tran:Square_tran:function",
+      "sourcePath": "attributes ancestors tran:function"
+    },
+    {
+      "destinationPath": "__flat uro:SquareUrbanPlanAttribute_uro:prefecture",
+      "sourcePath": "attributes ancestors tran:adeOfSquare uro:SquareUrbanPlanAttribute uro:prefecture"
+    },
+    {
+      "destinationPath": "__flat uro:SquareUrbanPlanAttribute_uro:city",
+      "sourcePath": "attributes ancestors tran:adeOfSquare uro:SquareUrbanPlanAttribute uro:city"
+    },
+    {
+      "destinationPath": "__flat uro:SquareUrbanPlanAttribute_uro:urbanPlanningAreaName",
+      "sourcePath": "attributes ancestors tran:adeOfSquare uro:SquareUrbanPlanAttribute uro:urbanPlanningAreaName"
+    },
+    {
+      "destinationPath": "__flat uro:SquareUrbanPlanAttribute_uro:enforcer",
+      "sourcePath": "attributes ancestors tran:adeOfSquare uro:SquareUrbanPlanAttribute uro:enforcer"
+    },
+    {
+      "destinationPath": "__flat uro:SquareUrbanPlanAttribute_uro:dateOfDecision",
+      "sourcePath": "attributes ancestors tran:adeOfSquare uro:SquareUrbanPlanAttribute uro:dateOfDecision"
+    },
+    {
+      "destinationPath": "__flat uro:SquareUrbanPlanAttribute_uro:dateOfRevision",
+      "sourcePath": "attributes ancestors tran:adeOfSquare uro:SquareUrbanPlanAttribute uro:dateOfRevision"
+    },
+    {
+      "destinationPath": "__flat uro:SquareUrbanPlanAttribute_uro:areaPlanned",
+      "sourcePath": "attributes ancestors tran:adeOfSquare uro:SquareUrbanPlanAttribute uro:areaPlanned",
+      "dataType": "float"
+    },
+    {
+      "destinationPath": "__flat uro:SquareUrbanPlanAttribute_uro:areaInService",
+      "sourcePath": "attributes ancestors tran:adeOfSquare uro:SquareUrbanPlanAttribute uro:areaInService",
+      "dataType": "float"
+    },
+    {
+      "destinationPath": "__flat uro:SquareUrbanPlanAttribute_uro:remarks",
+      "sourcePath": "attributes ancestors tran:adeOfSquare uro:SquareUrbanPlanAttribute uro:remarks"
+    },
+    {
+      "destinationPath": "__flat uro:SquareUrbanPlanAttribute_uro:status",
+      "sourcePath": "attributes ancestors tran:adeOfSquare uro:SquareUrbanPlanAttribute uro:status"
+    },
+    {
+      "destinationPath": "__flat uro:SquareUrbanPlanAttribute_uro:areaImproved",
+      "sourcePath": "attributes ancestors tran:adeOfSquare uro:SquareUrbanPlanAttribute uro:areaImproved",
+      "dataType": "float"
+    },
+    {
+      "destinationPath": "__flat uro:SquareUrbanPlanAttribute_uro:areaCompleted",
+      "sourcePath": "attributes ancestors tran:adeOfSquare uro:SquareUrbanPlanAttribute uro:areaCompleted",
+      "dataType": "float"
+    },
+    {
+      "destinationPath": "__flat uro:SquareUrbanPlanAttribute_uro:projectStartDate",
+      "sourcePath": "attributes ancestors tran:adeOfSquare uro:SquareUrbanPlanAttribute uro:projectStartDate"
+    },
+    {
+      "destinationPath": "__flat uro:SquareUrbanPlanAttribute_uro:projectEndDate",
+      "sourcePath": "attributes ancestors tran:adeOfSquare uro:SquareUrbanPlanAttribute uro:projectEndDate"
+    },
+    {
+      "destinationPath": "__flat uro:SquareUrbanPlanAttribute_uro:isCompleted",
+      "sourcePath": "attributes ancestors tran:adeOfSquare uro:SquareUrbanPlanAttribute uro:isCompleted"
+    },
+    {
+      "destinationPath": "__flat uro:SquareUrbanPlanAttribute_uro:isAuthorized",
+      "sourcePath": "attributes ancestors tran:adeOfSquare uro:SquareUrbanPlanAttribute uro:isAuthorized"
+    },
+    {
+      "destinationPath": "__flat uro:SquareUrbanPlanAttribute_uro:purpose",
+      "sourcePath": "attributes ancestors tran:adeOfSquare uro:SquareUrbanPlanAttribute uro:purpose"
+    },
+    {
+      "destinationPath": "__flat uro:SquareUrbanPlanAttribute_uro:note",
+      "sourcePath": "attributes ancestors tran:adeOfSquare uro:SquareUrbanPlanAttribute uro:note"
+    },
+    {
+      "destinationPath": "__flat uro:StationSquareAttribute_uro:prefecture",
+      "sourcePath": "attributes ancestors tran:adeOfSquare uro:StationSquareAttribute uro:prefecture"
+    },
+    {
+      "destinationPath": "__flat uro:StationSquareAttribute_uro:city",
+      "sourcePath": "attributes ancestors tran:adeOfSquare uro:StationSquareAttribute uro:city"
+    },
+    {
+      "destinationPath": "__flat uro:StationSquareAttribute_uro:urbanPlanningAreaName",
+      "sourcePath": "attributes ancestors tran:adeOfSquare uro:StationSquareAttribute uro:urbanPlanningAreaName"
+    },
+    {
+      "destinationPath": "__flat uro:StationSquareAttribute_uro:enforcer",
+      "sourcePath": "attributes ancestors tran:adeOfSquare uro:StationSquareAttribute uro:enforcer"
+    },
+    {
+      "destinationPath": "__flat uro:StationSquareAttribute_uro:dateOfDecision",
+      "sourcePath": "attributes ancestors tran:adeOfSquare uro:StationSquareAttribute uro:dateOfDecision"
+    },
+    {
+      "destinationPath": "__flat uro:StationSquareAttribute_uro:dateOfRevision",
+      "sourcePath": "attributes ancestors tran:adeOfSquare uro:StationSquareAttribute uro:dateOfRevision"
+    },
+    {
+      "destinationPath": "__flat uro:StationSquareAttribute_uro:areaPlanned",
+      "sourcePath": "attributes ancestors tran:adeOfSquare uro:StationSquareAttribute uro:areaPlanned",
+      "dataType": "float"
+    },
+    {
+      "destinationPath": "__flat uro:StationSquareAttribute_uro:areaInService",
+      "sourcePath": "attributes ancestors tran:adeOfSquare uro:StationSquareAttribute uro:areaInService",
+      "dataType": "float"
+    },
+    {
+      "destinationPath": "__flat uro:StationSquareAttribute_uro:remarks",
+      "sourcePath": "attributes ancestors tran:adeOfSquare uro:StationSquareAttribute uro:remarks"
+    },
+    {
+      "destinationPath": "__flat uro:StationSquareAttribute_uro:status",
+      "sourcePath": "attributes ancestors tran:adeOfSquare uro:StationSquareAttribute uro:status"
+    },
+    {
+      "destinationPath": "__flat uro:StationSquareAttribute_uro:areaImproved",
+      "sourcePath": "attributes ancestors tran:adeOfSquare uro:StationSquareAttribute uro:areaImproved",
+      "dataType": "float"
+    },
+    {
+      "destinationPath": "__flat uro:StationSquareAttribute_uro:areaCompleted",
+      "sourcePath": "attributes ancestors tran:adeOfSquare uro:StationSquareAttribute uro:areaCompleted",
+      "dataType": "float"
+    },
+    {
+      "destinationPath": "__flat uro:StationSquareAttribute_uro:projectStartDate",
+      "sourcePath": "attributes ancestors tran:adeOfSquare uro:StationSquareAttribute uro:projectStartDate"
+    },
+    {
+      "destinationPath": "__flat uro:StationSquareAttribute_uro:projectEndDate",
+      "sourcePath": "attributes ancestors tran:adeOfSquare uro:StationSquareAttribute uro:projectEndDate"
+    },
+    {
+      "destinationPath": "__flat uro:StationSquareAttribute_uro:isCompleted",
+      "sourcePath": "attributes ancestors tran:adeOfSquare uro:StationSquareAttribute uro:isCompleted"
+    },
+    {
+      "destinationPath": "__flat uro:StationSquareAttribute_uro:isAuthorized",
+      "sourcePath": "attributes ancestors tran:adeOfSquare uro:StationSquareAttribute uro:isAuthorized"
+    },
+    {
+      "destinationPath": "__flat uro:StationSquareAttribute_uro:purpose",
+      "sourcePath": "attributes ancestors tran:adeOfSquare uro:StationSquareAttribute uro:purpose"
+    },
+    {
+      "destinationPath": "__flat uro:StationSquareAttribute_uro:note",
+      "sourcePath": "attributes ancestors tran:adeOfSquare uro:StationSquareAttribute uro:note"
+    },
+    {
+      "destinationPath": "__flat uro:StationSquareAttribute_uro:station",
+      "sourcePath": "attributes ancestors tran:adeOfSquare uro:StationSquareAttribute uro:station"
+    },
+    {
+      "destinationPath": "__flat uro:StationSquareAttribute_uro:route",
+      "sourcePath": "attributes ancestors tran:adeOfSquare uro:StationSquareAttribute uro:route"
+    },
+    {
+      "destinationPath": "__flat uro:StationSquareAttribute_uro:railwayType",
+      "sourcePath": "attributes ancestors tran:adeOfSquare uro:StationSquareAttribute uro:railwayType"
+    },
+    {
+      "destinationPath": "__flat uro:TerminalAttribute_uro:prefecture",
+      "sourcePath": "attributes ancestors tran:adeOfSquare uro:TerminalAttribute uro:prefecture"
+    },
+    {
+      "destinationPath": "__flat uro:TerminalAttribute_uro:city",
+      "sourcePath": "attributes ancestors tran:adeOfSquare uro:TerminalAttribute uro:city"
+    },
+    {
+      "destinationPath": "__flat uro:TerminalAttribute_uro:urbanPlanningAreaName",
+      "sourcePath": "attributes ancestors tran:adeOfSquare uro:TerminalAttribute uro:urbanPlanningAreaName"
+    },
+    {
+      "destinationPath": "__flat uro:TerminalAttribute_uro:enforcer",
+      "sourcePath": "attributes ancestors tran:adeOfSquare uro:TerminalAttribute uro:enforcer"
+    },
+    {
+      "destinationPath": "__flat uro:TerminalAttribute_uro:dateOfDecision",
+      "sourcePath": "attributes ancestors tran:adeOfSquare uro:TerminalAttribute uro:dateOfDecision"
+    },
+    {
+      "destinationPath": "__flat uro:TerminalAttribute_uro:dateOfRevision",
+      "sourcePath": "attributes ancestors tran:adeOfSquare uro:TerminalAttribute uro:dateOfRevision"
+    },
+    {
+      "destinationPath": "__flat uro:TerminalAttribute_uro:areaPlanned",
+      "sourcePath": "attributes ancestors tran:adeOfSquare uro:TerminalAttribute uro:areaPlanned",
+      "dataType": "float"
+    },
+    {
+      "destinationPath": "__flat uro:TerminalAttribute_uro:areaInService",
+      "sourcePath": "attributes ancestors tran:adeOfSquare uro:TerminalAttribute uro:areaInService",
+      "dataType": "float"
+    },
+    {
+      "destinationPath": "__flat uro:TerminalAttribute_uro:remarks",
+      "sourcePath": "attributes ancestors tran:adeOfSquare uro:TerminalAttribute uro:remarks"
+    },
+    {
+      "destinationPath": "__flat uro:TerminalAttribute_uro:status",
+      "sourcePath": "attributes ancestors tran:adeOfSquare uro:TerminalAttribute uro:status"
+    },
+    {
+      "destinationPath": "__flat uro:TerminalAttribute_uro:areaImproved",
+      "sourcePath": "attributes ancestors tran:adeOfSquare uro:TerminalAttribute uro:areaImproved",
+      "dataType": "float"
+    },
+    {
+      "destinationPath": "__flat uro:TerminalAttribute_uro:areaCompleted",
+      "sourcePath": "attributes ancestors tran:adeOfSquare uro:TerminalAttribute uro:areaCompleted",
+      "dataType": "float"
+    },
+    {
+      "destinationPath": "__flat uro:TerminalAttribute_uro:projectStartDate",
+      "sourcePath": "attributes ancestors tran:adeOfSquare uro:TerminalAttribute uro:projectStartDate"
+    },
+    {
+      "destinationPath": "__flat uro:TerminalAttribute_uro:projectEndDate",
+      "sourcePath": "attributes ancestors tran:adeOfSquare uro:TerminalAttribute uro:projectEndDate"
+    },
+    {
+      "destinationPath": "__flat uro:TerminalAttribute_uro:isCompleted",
+      "sourcePath": "attributes ancestors tran:adeOfSquare uro:TerminalAttribute uro:isCompleted"
+    },
+    {
+      "destinationPath": "__flat uro:TerminalAttribute_uro:isAuthorized",
+      "sourcePath": "attributes ancestors tran:adeOfSquare uro:TerminalAttribute uro:isAuthorized"
+    },
+    {
+      "destinationPath": "__flat uro:TerminalAttribute_uro:purpose",
+      "sourcePath": "attributes ancestors tran:adeOfSquare uro:TerminalAttribute uro:purpose"
+    },
+    {
+      "destinationPath": "__flat uro:TerminalAttribute_uro:note",
+      "sourcePath": "attributes ancestors tran:adeOfSquare uro:TerminalAttribute uro:note"
+    },
+    {
+      "destinationPath": "__flat uro:TerminalAttribute_uro:terminalType",
+      "sourcePath": "attributes ancestors tran:adeOfSquare uro:TerminalAttribute uro:terminalType"
+    },
+    {
+      "destinationPath": "__flat uro:TerminalAttribute_uro:structure",
+      "sourcePath": "attributes ancestors tran:adeOfSquare uro:TerminalAttribute uro:structure"
+    },
+    {
+      "destinationPath": "__flat uro:TerminalAttribute_uro:numberOfBerthsPlanned",
+      "sourcePath": "attributes ancestors tran:adeOfSquare uro:TerminalAttribute uro:numberOfBerthsPlanned",
+      "dataType": "int"
+    },
+    {
+      "destinationPath": "__flat uro:TerminalAttribute_uro:numberOfBerthsInService",
+      "sourcePath": "attributes ancestors tran:adeOfSquare uro:TerminalAttribute uro:numberOfBerthsInService",
+      "dataType": "int"
+    },
+    {
+      "destinationPath": "__flat uro:TerminalAttribute_uro:userType",
+      "sourcePath": "attributes ancestors tran:adeOfSquare uro:TerminalAttribute uro:userType"
+    }
+  ],
+  "tran:AuxiliaryTrafficArea": [
+    {
+      "destinationPath": "__flat gml:name",
+      "sourcePath": "attributes ancestors gml:name"
+    },
+    {
+      "destinationPath": "__flat core:creationDate",
+      "sourcePath": "attributes ancestors core:creationDate"
+    },
+    {
+      "destinationPath": "__flat tran:class",
+      "sourcePath": "attributes ancestors tran:class"
+    },
+    {
+      "destinationPath": "__flat tran:function",
+      "sourcePath": "attributes tran:function"
+    },
+    {
+      "destinationPath": "__flat urc:geometrySrcDescLod1",
+      "sourcePath": "attributes ancestors core:adeOfAbstractCityObject urc:DataQualityAttribute urc:geometrySrcDescLod1"
+    },
+    {
+      "destinationPath": "__flat urc:lodType",
+      "sourcePath": "attributes ancestors core:adeOfAbstractCityObject urc:DataQualityAttribute urc:lodType"
+    },
+    {
+      "destinationPath": "__flat tran:Square_tran:function",
+      "sourcePath": "attributes ancestors tran:function"
+    },
+    {
+      "destinationPath": "__flat uro:SquareUrbanPlanAttribute_uro:prefecture",
+      "sourcePath": "attributes ancestors tran:adeOfSquare uro:SquareUrbanPlanAttribute uro:prefecture"
+    },
+    {
+      "destinationPath": "__flat uro:SquareUrbanPlanAttribute_uro:city",
+      "sourcePath": "attributes ancestors tran:adeOfSquare uro:SquareUrbanPlanAttribute uro:city"
+    },
+    {
+      "destinationPath": "__flat uro:SquareUrbanPlanAttribute_uro:urbanPlanningAreaName",
+      "sourcePath": "attributes ancestors tran:adeOfSquare uro:SquareUrbanPlanAttribute uro:urbanPlanningAreaName"
+    },
+    {
+      "destinationPath": "__flat uro:SquareUrbanPlanAttribute_uro:enforcer",
+      "sourcePath": "attributes ancestors tran:adeOfSquare uro:SquareUrbanPlanAttribute uro:enforcer"
+    },
+    {
+      "destinationPath": "__flat uro:SquareUrbanPlanAttribute_uro:dateOfDecision",
+      "sourcePath": "attributes ancestors tran:adeOfSquare uro:SquareUrbanPlanAttribute uro:dateOfDecision"
+    },
+    {
+      "destinationPath": "__flat uro:SquareUrbanPlanAttribute_uro:dateOfRevision",
+      "sourcePath": "attributes ancestors tran:adeOfSquare uro:SquareUrbanPlanAttribute uro:dateOfRevision"
+    },
+    {
+      "destinationPath": "__flat uro:SquareUrbanPlanAttribute_uro:areaPlanned",
+      "sourcePath": "attributes ancestors tran:adeOfSquare uro:SquareUrbanPlanAttribute uro:areaPlanned",
+      "dataType": "float"
+    },
+    {
+      "destinationPath": "__flat uro:SquareUrbanPlanAttribute_uro:areaInService",
+      "sourcePath": "attributes ancestors tran:adeOfSquare uro:SquareUrbanPlanAttribute uro:areaInService",
+      "dataType": "float"
+    },
+    {
+      "destinationPath": "__flat uro:SquareUrbanPlanAttribute_uro:remarks",
+      "sourcePath": "attributes ancestors tran:adeOfSquare uro:SquareUrbanPlanAttribute uro:remarks"
+    },
+    {
+      "destinationPath": "__flat uro:SquareUrbanPlanAttribute_uro:status",
+      "sourcePath": "attributes ancestors tran:adeOfSquare uro:SquareUrbanPlanAttribute uro:status"
+    },
+    {
+      "destinationPath": "__flat uro:SquareUrbanPlanAttribute_uro:areaImproved",
+      "sourcePath": "attributes ancestors tran:adeOfSquare uro:SquareUrbanPlanAttribute uro:areaImproved",
+      "dataType": "float"
+    },
+    {
+      "destinationPath": "__flat uro:SquareUrbanPlanAttribute_uro:areaCompleted",
+      "sourcePath": "attributes ancestors tran:adeOfSquare uro:SquareUrbanPlanAttribute uro:areaCompleted",
+      "dataType": "float"
+    },
+    {
+      "destinationPath": "__flat uro:SquareUrbanPlanAttribute_uro:projectStartDate",
+      "sourcePath": "attributes ancestors tran:adeOfSquare uro:SquareUrbanPlanAttribute uro:projectStartDate"
+    },
+    {
+      "destinationPath": "__flat uro:SquareUrbanPlanAttribute_uro:projectEndDate",
+      "sourcePath": "attributes ancestors tran:adeOfSquare uro:SquareUrbanPlanAttribute uro:projectEndDate"
+    },
+    {
+      "destinationPath": "__flat uro:SquareUrbanPlanAttribute_uro:isCompleted",
+      "sourcePath": "attributes ancestors tran:adeOfSquare uro:SquareUrbanPlanAttribute uro:isCompleted"
+    },
+    {
+      "destinationPath": "__flat uro:SquareUrbanPlanAttribute_uro:isAuthorized",
+      "sourcePath": "attributes ancestors tran:adeOfSquare uro:SquareUrbanPlanAttribute uro:isAuthorized"
+    },
+    {
+      "destinationPath": "__flat uro:SquareUrbanPlanAttribute_uro:purpose",
+      "sourcePath": "attributes ancestors tran:adeOfSquare uro:SquareUrbanPlanAttribute uro:purpose"
+    },
+    {
+      "destinationPath": "__flat uro:SquareUrbanPlanAttribute_uro:note",
+      "sourcePath": "attributes ancestors tran:adeOfSquare uro:SquareUrbanPlanAttribute uro:note"
+    },
+    {
+      "destinationPath": "__flat uro:StationSquareAttribute_uro:prefecture",
+      "sourcePath": "attributes ancestors tran:adeOfSquare uro:StationSquareAttribute uro:prefecture"
+    },
+    {
+      "destinationPath": "__flat uro:StationSquareAttribute_uro:city",
+      "sourcePath": "attributes ancestors tran:adeOfSquare uro:StationSquareAttribute uro:city"
+    },
+    {
+      "destinationPath": "__flat uro:StationSquareAttribute_uro:urbanPlanningAreaName",
+      "sourcePath": "attributes ancestors tran:adeOfSquare uro:StationSquareAttribute uro:urbanPlanningAreaName"
+    },
+    {
+      "destinationPath": "__flat uro:StationSquareAttribute_uro:enforcer",
+      "sourcePath": "attributes ancestors tran:adeOfSquare uro:StationSquareAttribute uro:enforcer"
+    },
+    {
+      "destinationPath": "__flat uro:StationSquareAttribute_uro:dateOfDecision",
+      "sourcePath": "attributes ancestors tran:adeOfSquare uro:StationSquareAttribute uro:dateOfDecision"
+    },
+    {
+      "destinationPath": "__flat uro:StationSquareAttribute_uro:dateOfRevision",
+      "sourcePath": "attributes ancestors tran:adeOfSquare uro:StationSquareAttribute uro:dateOfRevision"
+    },
+    {
+      "destinationPath": "__flat uro:StationSquareAttribute_uro:areaPlanned",
+      "sourcePath": "attributes ancestors tran:adeOfSquare uro:StationSquareAttribute uro:areaPlanned",
+      "dataType": "float"
+    },
+    {
+      "destinationPath": "__flat uro:StationSquareAttribute_uro:areaInService",
+      "sourcePath": "attributes ancestors tran:adeOfSquare uro:StationSquareAttribute uro:areaInService",
+      "dataType": "float"
+    },
+    {
+      "destinationPath": "__flat uro:StationSquareAttribute_uro:remarks",
+      "sourcePath": "attributes ancestors tran:adeOfSquare uro:StationSquareAttribute uro:remarks"
+    },
+    {
+      "destinationPath": "__flat uro:StationSquareAttribute_uro:status",
+      "sourcePath": "attributes ancestors tran:adeOfSquare uro:StationSquareAttribute uro:status"
+    },
+    {
+      "destinationPath": "__flat uro:StationSquareAttribute_uro:areaImproved",
+      "sourcePath": "attributes ancestors tran:adeOfSquare uro:StationSquareAttribute uro:areaImproved",
+      "dataType": "float"
+    },
+    {
+      "destinationPath": "__flat uro:StationSquareAttribute_uro:areaCompleted",
+      "sourcePath": "attributes ancestors tran:adeOfSquare uro:StationSquareAttribute uro:areaCompleted",
+      "dataType": "float"
+    },
+    {
+      "destinationPath": "__flat uro:StationSquareAttribute_uro:projectStartDate",
+      "sourcePath": "attributes ancestors tran:adeOfSquare uro:StationSquareAttribute uro:projectStartDate"
+    },
+    {
+      "destinationPath": "__flat uro:StationSquareAttribute_uro:projectEndDate",
+      "sourcePath": "attributes ancestors tran:adeOfSquare uro:StationSquareAttribute uro:projectEndDate"
+    },
+    {
+      "destinationPath": "__flat uro:StationSquareAttribute_uro:isCompleted",
+      "sourcePath": "attributes ancestors tran:adeOfSquare uro:StationSquareAttribute uro:isCompleted"
+    },
+    {
+      "destinationPath": "__flat uro:StationSquareAttribute_uro:isAuthorized",
+      "sourcePath": "attributes ancestors tran:adeOfSquare uro:StationSquareAttribute uro:isAuthorized"
+    },
+    {
+      "destinationPath": "__flat uro:StationSquareAttribute_uro:purpose",
+      "sourcePath": "attributes ancestors tran:adeOfSquare uro:StationSquareAttribute uro:purpose"
+    },
+    {
+      "destinationPath": "__flat uro:StationSquareAttribute_uro:note",
+      "sourcePath": "attributes ancestors tran:adeOfSquare uro:StationSquareAttribute uro:note"
+    },
+    {
+      "destinationPath": "__flat uro:StationSquareAttribute_uro:station",
+      "sourcePath": "attributes ancestors tran:adeOfSquare uro:StationSquareAttribute uro:station"
+    },
+    {
+      "destinationPath": "__flat uro:StationSquareAttribute_uro:route",
+      "sourcePath": "attributes ancestors tran:adeOfSquare uro:StationSquareAttribute uro:route"
+    },
+    {
+      "destinationPath": "__flat uro:StationSquareAttribute_uro:railwayType",
+      "sourcePath": "attributes ancestors tran:adeOfSquare uro:StationSquareAttribute uro:railwayType"
+    },
+    {
+      "destinationPath": "__flat uro:TerminalAttribute_uro:prefecture",
+      "sourcePath": "attributes ancestors tran:adeOfSquare uro:TerminalAttribute uro:prefecture"
+    },
+    {
+      "destinationPath": "__flat uro:TerminalAttribute_uro:city",
+      "sourcePath": "attributes ancestors tran:adeOfSquare uro:TerminalAttribute uro:city"
+    },
+    {
+      "destinationPath": "__flat uro:TerminalAttribute_uro:urbanPlanningAreaName",
+      "sourcePath": "attributes ancestors tran:adeOfSquare uro:TerminalAttribute uro:urbanPlanningAreaName"
+    },
+    {
+      "destinationPath": "__flat uro:TerminalAttribute_uro:enforcer",
+      "sourcePath": "attributes ancestors tran:adeOfSquare uro:TerminalAttribute uro:enforcer"
+    },
+    {
+      "destinationPath": "__flat uro:TerminalAttribute_uro:dateOfDecision",
+      "sourcePath": "attributes ancestors tran:adeOfSquare uro:TerminalAttribute uro:dateOfDecision"
+    },
+    {
+      "destinationPath": "__flat uro:TerminalAttribute_uro:dateOfRevision",
+      "sourcePath": "attributes ancestors tran:adeOfSquare uro:TerminalAttribute uro:dateOfRevision"
+    },
+    {
+      "destinationPath": "__flat uro:TerminalAttribute_uro:areaPlanned",
+      "sourcePath": "attributes ancestors tran:adeOfSquare uro:TerminalAttribute uro:areaPlanned",
+      "dataType": "float"
+    },
+    {
+      "destinationPath": "__flat uro:TerminalAttribute_uro:areaInService",
+      "sourcePath": "attributes ancestors tran:adeOfSquare uro:TerminalAttribute uro:areaInService",
+      "dataType": "float"
+    },
+    {
+      "destinationPath": "__flat uro:TerminalAttribute_uro:remarks",
+      "sourcePath": "attributes ancestors tran:adeOfSquare uro:TerminalAttribute uro:remarks"
+    },
+    {
+      "destinationPath": "__flat uro:TerminalAttribute_uro:status",
+      "sourcePath": "attributes ancestors tran:adeOfSquare uro:TerminalAttribute uro:status"
+    },
+    {
+      "destinationPath": "__flat uro:TerminalAttribute_uro:areaImproved",
+      "sourcePath": "attributes ancestors tran:adeOfSquare uro:TerminalAttribute uro:areaImproved",
+      "dataType": "float"
+    },
+    {
+      "destinationPath": "__flat uro:TerminalAttribute_uro:areaCompleted",
+      "sourcePath": "attributes ancestors tran:adeOfSquare uro:TerminalAttribute uro:areaCompleted",
+      "dataType": "float"
+    },
+    {
+      "destinationPath": "__flat uro:TerminalAttribute_uro:projectStartDate",
+      "sourcePath": "attributes ancestors tran:adeOfSquare uro:TerminalAttribute uro:projectStartDate"
+    },
+    {
+      "destinationPath": "__flat uro:TerminalAttribute_uro:projectEndDate",
+      "sourcePath": "attributes ancestors tran:adeOfSquare uro:TerminalAttribute uro:projectEndDate"
+    },
+    {
+      "destinationPath": "__flat uro:TerminalAttribute_uro:isCompleted",
+      "sourcePath": "attributes ancestors tran:adeOfSquare uro:TerminalAttribute uro:isCompleted"
+    },
+    {
+      "destinationPath": "__flat uro:TerminalAttribute_uro:isAuthorized",
+      "sourcePath": "attributes ancestors tran:adeOfSquare uro:TerminalAttribute uro:isAuthorized"
+    },
+    {
+      "destinationPath": "__flat uro:TerminalAttribute_uro:purpose",
+      "sourcePath": "attributes ancestors tran:adeOfSquare uro:TerminalAttribute uro:purpose"
+    },
+    {
+      "destinationPath": "__flat uro:TerminalAttribute_uro:note",
+      "sourcePath": "attributes ancestors tran:adeOfSquare uro:TerminalAttribute uro:note"
+    },
+    {
+      "destinationPath": "__flat uro:TerminalAttribute_uro:terminalType",
+      "sourcePath": "attributes ancestors tran:adeOfSquare uro:TerminalAttribute uro:terminalType"
+    },
+    {
+      "destinationPath": "__flat uro:TerminalAttribute_uro:structure",
+      "sourcePath": "attributes ancestors tran:adeOfSquare uro:TerminalAttribute uro:structure"
+    },
+    {
+      "destinationPath": "__flat uro:TerminalAttribute_uro:numberOfBerthsPlanned",
+      "sourcePath": "attributes ancestors tran:adeOfSquare uro:TerminalAttribute uro:numberOfBerthsPlanned",
+      "dataType": "int"
+    },
+    {
+      "destinationPath": "__flat uro:TerminalAttribute_uro:numberOfBerthsInService",
+      "sourcePath": "attributes ancestors tran:adeOfSquare uro:TerminalAttribute uro:numberOfBerthsInService",
+      "dataType": "int"
+    },
+    {
+      "destinationPath": "__flat uro:TerminalAttribute_uro:userType",
+      "sourcePath": "attributes ancestors tran:adeOfSquare uro:TerminalAttribute uro:userType"
+    }
+  ]
+}
