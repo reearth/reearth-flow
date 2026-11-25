@@ -101,6 +101,10 @@ type Relay struct {
 	// successor and writing its heartbeat (test injection only).
 	beforeRestore func()
 
+	// presenceMu makes a restore for a successor and that successor's own removal
+	// of the heartbeat happen one after the other. It is taken before mu, never after.
+	presenceMu sync.Mutex
+
 	mu     sync.Mutex
 	sink   cluster.Sink
 	ctx    context.Context // delivery lifetime, set in Start
@@ -122,13 +126,6 @@ type roomState struct {
 	// replayed is closed once a replay finishes with none asked for since it
 	// began; nil when no replay is pending.
 	replayed chan struct{}
-
-	// prev is the evicting state this one replaced. This state's eviction waits
-	// for prev's, so the last eviction removes the instance's heartbeat and cursor.
-	prev *roomState
-	// evicted is closed once this state's eviction has finished.
-	evicted     chan struct{}
-	evictedOnce sync.Once
 
 	// writeCh is the bounded outbound queue; Publish enqueues non-blockingly.
 	writeCh chan writeItem
@@ -390,10 +387,6 @@ func (r *Relay) RoomActivated(room string) {
 		writeCh:     make(chan writeItem, writeQueueCap),
 		caughtUp:    make(chan struct{}),
 		done:        make(chan struct{}),
-		evicted:     make(chan struct{}),
-	}
-	if ok {
-		rs.prev = old
 	}
 	r.rooms[room] = rs
 	sink := r.sink
@@ -809,16 +802,11 @@ func (r *Relay) RoomDeactivated(room string) {
 	}
 	// Refuse Publish for the whole critical section so no XADD races the DEL.
 	rs.evicting = true
-	prev := rs.prev
-	rs.prev = nil
 	r.mu.Unlock()
 
 	rs.cancel()
 	rs.wg.Wait()
 
-	if prev != nil {
-		r.waitEvicted(room, prev)
-	}
 	r.evict(room, rs)
 
 	r.mu.Lock()
@@ -828,20 +816,6 @@ func (r *Relay) RoomDeactivated(room string) {
 		delete(r.rooms, room)
 	}
 	r.mu.Unlock()
-	rs.markEvicted()
-}
-
-func (rs *roomState) markEvicted() { rs.evictedOnce.Do(func() { close(rs.evicted) }) }
-
-// waitEvicted waits, at most evictTimeout, for the eviction of the state that
-// rs replaced. It never runs on that eviction's own goroutines, which never
-// deactivate a room.
-func (r *Relay) waitEvicted(room string, prev *roomState) {
-	select {
-	case <-prev.evicted:
-	case <-time.After(evictTimeout):
-		r.log.Warn("relay stopped waiting for the room's previous eviction", "room", room)
-	}
 }
 
 // successor returns the live state that replaced rs while rs was evicting.
@@ -857,7 +831,10 @@ func (r *Relay) successor(room string, rs *roomState) (*roomState, bool) {
 
 // restoreSuccessor re-registers the heartbeat and cursor of a state that
 // replaced rs, which rs's eviction removed because both share this instance's id.
+// Holding presenceMu throughout means a successor that leaves removes them after this.
 func (r *Relay) restoreSuccessor(ctx context.Context, room string, rs *roomState) {
+	r.presenceMu.Lock()
+	defer r.presenceMu.Unlock()
 	next, ok := r.successor(room, rs)
 	if !ok {
 		return
@@ -892,6 +869,7 @@ func (r *Relay) evict(room string, rs *roomState) {
 	ctx, cancel := context.WithTimeout(context.Background(), evictTimeout)
 	defer cancel()
 	defer r.restoreSuccessor(ctx, room, rs)
+	r.presenceMu.Lock()
 	last, err := removeHeartbeat(ctx, r.client, room, r.clientID)
 	if err != nil {
 		r.log.Debug("relay remove heartbeat failed", "room", room, "err", err)
@@ -901,6 +879,7 @@ func (r *Relay) evict(room string, rs *roomState) {
 	if err := dropCursor(ctx, r.client, room, r.clientID); err != nil {
 		r.log.Debug("relay drop cursor failed", "room", room, "err", err)
 	}
+	r.presenceMu.Unlock()
 	if !last {
 		return
 	}
@@ -952,15 +931,16 @@ func (r *Relay) ForceEvict(ctx context.Context, room string) error {
 	r.mu.Unlock()
 
 	if ok {
-		defer rs.markEvicted()
 		rs.cancel()
 		rs.wg.Wait()
 	}
 
+	r.presenceMu.Lock()
 	_, _ = removeHeartbeat(ctx, r.client, room, r.clientID)
 	if err := r.client.Del(ctx, cursorsKey(room)).Err(); err != nil {
 		r.log.Debug("relay force-evict cursors DEL failed", "room", room, "err", err)
 	}
+	r.presenceMu.Unlock()
 	if err := r.client.Del(ctx, streamKey(room)).Err(); err != nil {
 		r.log.Debug("relay force-evict DEL failed", "room", room, "err", err)
 		return err

@@ -78,10 +78,15 @@ type reactivatingSink struct {
 	err error
 }
 
-func newReactivatingSink(t *testing.T, trigger byte) *reactivatingSink {
-	s := &reactivatingSink{trigger: trigger, abort: make(chan struct{}), done: make(chan struct{})}
+func newReactivatingSink(trigger byte) *reactivatingSink {
+	return &reactivatingSink{trigger: trigger, abort: make(chan struct{}), done: make(chan struct{})}
+}
+
+// attach binds the sink to relay. Call it after relay's Close is registered with
+// t.Cleanup, so the abort runs before Close waits for the reader.
+func (s *reactivatingSink) attach(t *testing.T, relay *Relay) {
+	s.relay = relay
 	t.Cleanup(func() { close(s.abort) })
-	return s
 }
 
 func (s *reactivatingSink) Inject(ctx context.Context, in cluster.Inbound) error {
@@ -168,10 +173,10 @@ func TestActivationDuringEvictionKeepsTheInstanceLive(t *testing.T) {
 
 	flusher := &fakeFlusher{}
 	relay := mustRelay(t, mr.Addr())
-	defer func() { _ = relay.Close() }()
+	t.Cleanup(func() { _ = relay.Close() })
 	relay.flusher = flusher
-	sink := newReactivatingSink(t, 9)
-	sink.relay = relay
+	sink := newReactivatingSink(9)
+	sink.attach(t, relay)
 	if err := relay.Start(ctx, sink); err != nil {
 		t.Fatal(err)
 	}
@@ -232,9 +237,9 @@ func TestSuccessorLeavingDuringTheRestoreLeavesNoHeartbeat(t *testing.T) {
 	const room = "proj1"
 
 	relay := mustRelay(t, mr.Addr())
-	defer func() { _ = relay.Close() }()
-	sink := newReactivatingSink(t, 9)
-	sink.relay = relay
+	t.Cleanup(func() { _ = relay.Close() })
+	sink := newReactivatingSink(9)
+	sink.attach(t, relay)
 	if err := relay.Start(ctx, sink); err != nil {
 		t.Fatal(err)
 	}

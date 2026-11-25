@@ -152,6 +152,10 @@ type Relay struct {
 	// injection only).
 	beforePass atomic.Pointer[func()]
 
+	// presenceMu makes a restore for a successor and that successor's own removal
+	// of the heartbeat happen one after the other. It is taken before mu, never after.
+	presenceMu sync.Mutex
+
 	mu     sync.Mutex
 	sink   cluster.Sink
 	ctx    context.Context
@@ -173,13 +177,6 @@ type roomState struct {
 	// replayed is closed once a replay finishes with none asked for since it
 	// began; nil when no replay is pending.
 	replayed chan struct{}
-
-	// prev is the evicting state this one replaced. This state's eviction waits
-	// for prev's, so the last eviction removes the instance's heartbeat.
-	prev *roomState
-	// evicted is closed once this state's eviction has finished.
-	evicted     chan struct{}
-	evictedOnce sync.Once
 
 	// writeCh is the bounded outbound queue; Publish enqueues non-blockingly.
 	writeCh chan writeItem
@@ -455,10 +452,6 @@ func (r *Relay) RoomActivated(room string) {
 		wake:        make(chan struct{}, 1),
 		caughtUp:    make(chan struct{}),
 		done:        make(chan struct{}),
-		evicted:     make(chan struct{}),
-	}
-	if ok {
-		rs.prev = old
 	}
 	r.rooms[room] = rs
 	sink := r.sink
@@ -491,16 +484,11 @@ func (r *Relay) RoomDeactivated(room string) {
 	}
 	// Refuse Publish for the whole critical section so no INSERT races the DELETE.
 	rs.evicting = true
-	prev := rs.prev
-	rs.prev = nil
 	r.mu.Unlock()
 
 	rs.cancel()
 	rs.wg.Wait()
 
-	if prev != nil {
-		r.waitEvicted(room, prev)
-	}
 	r.evict(room, rs)
 
 	r.mu.Lock()
@@ -510,20 +498,6 @@ func (r *Relay) RoomDeactivated(room string) {
 		delete(r.rooms, room)
 	}
 	r.mu.Unlock()
-	rs.markEvicted()
-}
-
-func (rs *roomState) markEvicted() { rs.evictedOnce.Do(func() { close(rs.evicted) }) }
-
-// waitEvicted waits, at most evictTimeout, for the eviction of the state that
-// rs replaced. It never runs on that eviction's own goroutines, which never
-// deactivate a room.
-func (r *Relay) waitEvicted(room string, prev *roomState) {
-	select {
-	case <-prev.evicted:
-	case <-time.After(evictTimeout):
-		r.log.Warn("relay stopped waiting for the room's previous eviction", "room", room)
-	}
 }
 
 // replaced reports whether a live state replaced rs while rs was evicting.
@@ -535,8 +509,11 @@ func (r *Relay) replaced(room string, rs *roomState) bool {
 }
 
 // restoreSuccessor re-stamps the heartbeat of a state that replaced rs, which
-// rs's eviction removed because both share this instance's id.
+// rs's eviction removed because both share this instance's id. Holding presenceMu
+// throughout means a successor that leaves removes the heartbeat after this.
 func (r *Relay) restoreSuccessor(ctx context.Context, room string, rs *roomState) {
+	r.presenceMu.Lock()
+	defer r.presenceMu.Unlock()
 	if !r.replaced(room, rs) {
 		return
 	}
@@ -598,16 +575,17 @@ func (r *Relay) ForceEvict(ctx context.Context, room string) error {
 		r.mu.Unlock()
 
 		if resident {
-			defer rs.markEvicted()
 			rs.cancel()
 			// Deliberately NOT under r.mu: readLoop can be inside sink.Inject, which
 			// re-enters ygo, and ygo calls RoomActivated under its own rooms lock.
 			rs.wg.Wait()
 		}
 
+		r.presenceMu.Lock()
 		if _, err := r.q.Exec(ctx, removeHeartbeatSQL, room, r.clientID); err != nil {
 			r.log.Debug("relay force-evict heartbeat removal failed", "room", room, "err", err)
 		}
+		r.presenceMu.Unlock()
 		if _, err := r.q.Exec(ctx, forceDeleteSQL, room); err != nil {
 			r.log.Debug("relay force-evict delete failed", "room", room, "err", err)
 			return err
@@ -645,9 +623,11 @@ func (r *Relay) evict(room string, rs *roomState) {
 	defer cancel()
 	defer r.restoreSuccessor(ctx, room, rs)
 
+	r.presenceMu.Lock()
 	if _, err := r.q.Exec(ctx, removeHeartbeatSQL, room, r.clientID); err != nil {
 		r.log.Debug("relay remove heartbeat failed", "room", room, "err", err)
 	}
+	r.presenceMu.Unlock()
 
 	active, err := r.activeInstances(ctx, room)
 	if err != nil {
