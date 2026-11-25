@@ -49,6 +49,20 @@ func newParkedTestAdapter(t *testing.T) *Adapter {
 	return a
 }
 
+// writeOldCheckpoint writes state as doc_v2 outright, as builds before union
+// checkpoints did.
+func writeOldCheckpoint(t *testing.T, a *Adapter, room string, state []byte) {
+	t.Helper()
+	ctx := context.Background()
+	oid, err := a.oidFor(ctx, room)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := a.writeV2Snapshot(ctx, room, oid, state); err != nil {
+		t.Fatal(err)
+	}
+}
+
 // loaded decodes a V1 state and returns the text named name with the number of
 // parked items.
 func loaded(t *testing.T, state []byte, name string) (string, int) {
@@ -73,9 +87,7 @@ func TestLoad_UpdateLogCompletesAParkedDocV2(t *testing.T) {
 	if _, err := a.AppendUpdate(ctx, "room", first); err != nil {
 		t.Fatal(err)
 	}
-	if err := a.FlushSnapshot(ctx, "room", parkedState(t, second)); err != nil {
-		t.Fatal(err)
-	}
+	writeOldCheckpoint(t, a, "room", parkedState(t, second))
 
 	lr, err := a.Load(ctx, "room")
 	if err != nil {
@@ -167,7 +179,8 @@ func appendEdits(t *testing.T, n int) [][]byte {
 
 // TestLoad_OpensProjectsAlreadyBrokenByAParkedCheckpoint covers the doc_v2 an
 // earlier build wrote from a copy that missed one edit: every case opens, and
-// completely whenever the missing edit still exists as an update object.
+// completely whenever the missing edit still exists as an update object or a
+// compaction folded it in.
 func TestLoad_OpensProjectsAlreadyBrokenByAParkedCheckpoint(t *testing.T) {
 	t.Parallel()
 
@@ -175,8 +188,8 @@ func TestLoad_OpensProjectsAlreadyBrokenByAParkedCheckpoint(t *testing.T) {
 	cases := []struct {
 		name string
 		skip int // index of the edit the copy missed; its clock is skip+1
-		// compactBefore runs an unload compaction (keep=0, as ygo does) before
-		// the bad checkpoint, which folds and deletes every update object.
+		// compactBefore runs a compaction keeping only the newest update before
+		// the bad checkpoint, which folds and deletes the missing edit's object.
 		compactBefore bool
 		// compactAfter runs it after the bad checkpoint.
 		compactAfter bool
@@ -200,7 +213,7 @@ func TestLoad_OpensProjectsAlreadyBrokenByAParkedCheckpoint(t *testing.T) {
 				}
 			}
 			if c.compactBefore {
-				if _, err := a.Compact(ctx, "room", 0); err != nil {
+				if _, err := a.Compact(ctx, "room", 1); err != nil {
 					t.Fatal(err)
 				}
 			}
@@ -215,11 +228,9 @@ func TestLoad_OpensProjectsAlreadyBrokenByAParkedCheckpoint(t *testing.T) {
 			if copyB.PendingStats().Items == 0 {
 				t.Fatal("setup: the copy parked nothing")
 			}
-			if err := a.FlushSnapshot(ctx, "room", crdt.EncodeStateAsUpdateV1(copyB, nil)); err != nil {
-				t.Fatal(err)
-			}
+			writeOldCheckpoint(t, a, "room", crdt.EncodeStateAsUpdateV1(copyB, nil))
 			if c.compactAfter {
-				if _, err := a.Compact(ctx, "room", 0); err != nil {
+				if _, err := a.Compact(ctx, "room", 1); err != nil {
 					t.Fatalf("Compact: %v", err)
 				}
 			}

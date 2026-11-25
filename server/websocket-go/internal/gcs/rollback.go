@@ -4,7 +4,6 @@ import (
 	"context"
 	"errors"
 
-	"github.com/reearth/ygo/crdt"
 	"github.com/reearth/ygo/persistence"
 )
 
@@ -70,8 +69,12 @@ func (a *Adapter) deleteUpdatesAfter(ctx context.Context, room DocID, oid, targe
 
 // Compact folds the oldest updates into the base snapshot, keeping at most `keep`
 // recent updates and advancing the checkpoint monotonically. No-op when ≤ keep
-// updates exist. The new base is written before any update is deleted.
+// updates exist, and when keep ≤ 0, which ygo's stores read as "keep every
+// update". The new base is written before any update is deleted.
 func (a *Adapter) Compact(ctx context.Context, room string, keep int) (int, error) {
+	if keep <= 0 {
+		return 0, nil
+	}
 	if err := a.validate(room); err != nil {
 		return 0, err
 	}
@@ -92,56 +95,33 @@ func (a *Adapter) Compact(ctx context.Context, room string, keep int) (int, erro
 		foldUpto := len(clocks) - keep // fold clocks[0:foldUpto] into the base
 		cutoff := clocks[foldUpto-1]   // highest clock folded in
 
-		cp, err := a.checkpoint(ctx, room)
+		st, err := a.readState(ctx, room, oid)
 		if err != nil {
 			return err
 		}
-		var parts [][]byte
-		if v1, ok, err := a.loadV2(ctx, room); err != nil {
+		m, err := a.readMarks(ctx, room)
+		if err != nil {
 			return err
-		} else if ok {
-			parts = append(parts, v1)
-		} else {
-			if b, err := a.store.get(ctx, a.layout.DocStateName(room, oid)); err == nil {
-				parts = append(parts, b)
-			} else if err != errNotFound {
-				return err
-			}
 		}
-		for i := 0; i < foldUpto; i++ {
-			c := clocks[i]
-			if c <= cp {
+		// readState applied the objects above the checkpoint. The checkpointed ones
+		// go in too: a doc_v2 written before checkpoints were unions can lack one.
+		for _, c := range clocks[:foldUpto] {
+			if c > m.cp || (m.hasCeil && c > m.ceil) {
 				continue
 			}
-			b, err := a.store.get(ctx, updates[c])
-			if err != nil {
+			if err := a.applyObject(ctx, st.doc, updates[c]); err != nil {
 				return err
 			}
-			parts = append(parts, b)
 		}
-		var newBase []byte
-		if len(parts) > 0 {
-			newBase, err = crdt.MergeUpdatesV1(parts...)
-			if err != nil {
-				return err
-			}
-			// The objects about to be deleted must all be in the new base, including
-			// the checkpointed ones a parked doc_v2 may be missing.
-			var ps crdt.PendingStats
-			newBase, ps, err = a.foldParked(ctx, room, newBase, updates, clocksUpTo(clocks[:foldUpto], cp))
-			if err != nil {
-				return err
-			}
-			if ps.Items > 0 {
-				a.log.Debug("gcs compact: new base holds parked items",
-					"room", room, "parked", ps.Items, "awaiting_clients", len(ps.MissingFor), "kept", keep)
-			}
+		if ps := st.doc.PendingStats(); ps.Items > 0 {
+			a.log.Debug("gcs compact: new base holds parked items",
+				"room", room, "parked", ps.Items, "awaiting_clients", len(ps.MissingFor), "kept", keep)
 		}
 		// Write the new base before deleting any update (abort-without-loss).
-		if err := a.writeV2Snapshot(ctx, room, oid, newBase); err != nil {
+		if err := a.writeV2Doc(ctx, room, oid, st.doc); err != nil {
 			return err
 		}
-		if cutoff > cp {
+		if cutoff > m.cp {
 			if err := a.store.put(ctx, a.layout.CheckpointName(room), be32(cutoff)); err != nil {
 				return err
 			}
@@ -157,18 +137,15 @@ func (a *Adapter) Compact(ctx context.Context, room string, keep int) (int, erro
 	return deleted, err
 }
 
-// compactToCheckpoint is the every-10th-clock inline compaction: refresh the
-// base (SUB_DOC/SUB_STATE_VEC + doc_v2) from the materialized state and bump the
-// checkpoint to clock. It does not delete update objects.
+// compactToCheckpoint is the every-10th-clock inline compaction: rewrite the
+// base (SUB_DOC/SUB_STATE_VEC + doc_v2) from the stored state and bump the
+// checkpoint to clock. It does not delete update objects. The caller holds
+// gcsDocLockKey.
 //
 // Intentional deviation: this also writes doc_v2 (Rust writes it only on
 // flush/snapshot). The name and encoding are byte-identical, so it is a safe extra.
 func (a *Adapter) compactToCheckpoint(ctx context.Context, room DocID, oid, clock uint32) error {
-	state, err := a.MaterializeAt(ctx, room, persistence.Version(clock))
-	if err != nil {
-		return err
-	}
-	if err := a.writeV2Snapshot(ctx, room, oid, state); err != nil {
+	if err := a.writeUnion(ctx, room, oid, nil); err != nil {
 		return err
 	}
 	cp, err := a.checkpoint(ctx, room)

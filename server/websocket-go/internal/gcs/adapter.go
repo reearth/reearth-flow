@@ -50,6 +50,9 @@ type Adapter struct {
 	// beforeUpdatePut, when set, runs between choosing an update's clock and
 	// writing it (test injection only).
 	beforeUpdatePut func(clock uint32)
+	// afterReadBase, when set, runs in readState between reading doc_v2 and
+	// listing the update log (test injection only).
+	afterReadBase func()
 
 	// oidCache memoizes allocated OIDs per room. Phase 2 pins OID=0.
 	oidCache map[string]uint32
@@ -319,43 +322,22 @@ func stateFromV2(v2 []byte) ([]byte, error) {
 	return crdt.EncodeStateAsUpdateV1(doc, nil), nil
 }
 
-// pendingIn reports the items in the V1 update state that cannot be integrated
-// yet because an edit they build on is missing.
-func pendingIn(state []byte) (crdt.PendingStats, error) {
-	d := crdt.New()
-	if err := crdt.ApplyUpdateV1(d, state, nil); err != nil {
-		return crdt.PendingStats{}, err
+// foldParked applies the update objects at clocks to doc when doc holds parked
+// items. The checkpoint claims those objects are already in doc_v2, but a doc_v2
+// written from a copy that missed one of them is not.
+func (a *Adapter) foldParked(ctx context.Context, room DocID, doc *crdt.Doc, updates map[uint32]string, clocks []uint32) error {
+	before := doc.PendingStats().Items
+	if before == 0 || len(clocks) == 0 {
+		return nil
 	}
-	return d.PendingStats(), nil
-}
-
-// foldParked folds the update objects at clocks into state when state holds
-// parked items, and returns the result with what is still parked. The checkpoint
-// claims those objects are already in doc_v2, but a doc_v2 written from a copy
-// that missed one of them is not.
-func (a *Adapter) foldParked(ctx context.Context, room DocID, state []byte, updates map[uint32]string, clocks []uint32) ([]byte, crdt.PendingStats, error) {
-	ps, err := pendingIn(state)
-	if err != nil || ps.Items == 0 || len(clocks) == 0 {
-		return state, ps, err
-	}
-	before := ps.Items
-	parts := [][]byte{state}
 	for _, c := range clocks {
-		b, err := a.store.get(ctx, updates[c])
-		if err != nil {
-			return nil, ps, err
+		if err := a.applyObject(ctx, doc, updates[c]); err != nil {
+			return err
 		}
-		parts = append(parts, b)
 	}
-	out, err := crdt.MergeUpdatesV1(parts...)
-	if err != nil {
-		return nil, ps, err
-	}
-	if ps, err = pendingIn(out); err != nil {
-		return nil, ps, err
-	}
-	a.log.Info("gcs: folded checkpointed update objects into a state with parked items", "room", room, "parked_before", before, "parked_after", ps.Items)
-	return out, ps, nil
+	a.log.Info("gcs: folded checkpointed update objects into a state with parked items",
+		"room", room, "parked_before", before, "parked_after", doc.PendingStats().Items)
+	return nil
 }
 
 // clocksUpTo returns the leading clocks of the ascending slice that are <= max.
@@ -377,12 +359,19 @@ func docFromV1(v1 []byte) (*crdt.Doc, error) {
 }
 
 // writeV2Snapshot writes state (a V1 update) as the brotli(V2) doc_v2 object and
-// refreshes the v1 SUB_DOC + SUB_STATE_VEC so both representations agree.
+// refreshes the v1 SUB_DOC + SUB_STATE_VEC so both representations agree. It
+// replaces doc_v2 outright; only rollback and backfill write this way.
 func (a *Adapter) writeV2Snapshot(ctx context.Context, room DocID, oid uint32, v1State []byte) error {
 	doc, err := docFromV1(v1State)
 	if err != nil {
 		return err
 	}
+	return a.writeV2Doc(ctx, room, oid, doc)
+}
+
+// writeV2Doc writes doc as doc_v2, SUB_DOC and SUB_STATE_VEC. It strips the
+// transient keys from doc first.
+func (a *Adapter) writeV2Doc(ctx context.Context, room DocID, oid uint32, doc *crdt.Doc) error {
 	// Strip ephemeral UI keys (e.g. metadata.rollbackInProgress) before persisting:
 	// they ride the CRDT for live broadcast but must never survive in doc_v2, which
 	// the Rust reader loads on its own with no tail updates to clear them.

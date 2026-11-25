@@ -79,6 +79,10 @@ func (a *Adapter) snapshotPrefix(room DocID) string {
 	return legacySnapshotPrefix(room)
 }
 
+// loadAttempts bounds Load's unlocked reads of a state other writers keep
+// changing; the last attempt holds gcsDocLockKey.
+const loadAttempts = 4
+
 // Load returns the latest merged state for room (v2-first → v1 fallback), folding
 // any tail update objects on top.
 //
@@ -98,105 +102,196 @@ func (a *Adapter) Load(ctx context.Context, room string) (res persistence.LoadRe
 	if err != nil {
 		return persistence.LoadResult{}, err
 	}
-
-	// v2-first → v1 SUB_DOC fallback, primary layout only (the OID differs between
-	// layouts, so a cross-layout v1 fallback is not byte-valid).
-	var base []byte
-	primaryHasV2 := false
-	if v1, ok, err := a.loadPrimaryV2(ctx, room); err != nil {
-		return persistence.LoadResult{}, err
-	} else if ok {
-		base = v1
-		primaryHasV2 = true
-	} else if b, err := a.store.get(ctx, a.layout.DocStateName(room, oid)); err == nil {
-		base = b
-	} else if err != errNotFound {
-		return persistence.LoadResult{}, err
-	}
-
-	updates, err := a.listUpdates(ctx, room, oid)
+	st, err := a.readStateRetrying(ctx, room, oid)
 	if err != nil {
 		return persistence.LoadResult{}, err
+	}
+	if st.empty {
+		return persistence.LoadResult{Version: persistence.Version(st.head)}, nil
+	}
+	// Served anyway: the parked items stay in every later encode, so they are
+	// kept until the edit they wait for arrives, whereas refusing withholds the
+	// whole project.
+	if ps := st.doc.PendingStats(); ps.Items > 0 {
+		a.log.Error("gcs load: serving a document with parked items; an edit they build on is missing from storage",
+			"room", room, "parked", ps.Items, "awaiting_clients", len(ps.MissingFor))
+	}
+	return persistence.LoadResult{Update: crdt.EncodeStateAsUpdateV1(st.doc, nil), Version: persistence.Version(st.head)}, nil
+}
+
+// readStateRetrying reads the stored state without the doc lock, retrying while
+// a writer changes it underneath, and takes the lock for the last attempt.
+func (a *Adapter) readStateRetrying(ctx context.Context, room DocID, oid uint32) (storedState, error) {
+	for attempt := 1; attempt < loadAttempts; attempt++ {
+		st, err := a.readState(ctx, room, oid)
+		if !errors.Is(err, errStateMoved) {
+			return st, err
+		}
+	}
+	var st storedState
+	err := a.locker.WithLock(ctx, gcsDocLockKey(room), func(ctx context.Context) error {
+		var err error
+		st, err = a.readState(ctx, room, oid)
+		return err
+	})
+	return st, err
+}
+
+// errStateMoved reports that a writer changed the room's stored state while it
+// was being read without the doc lock.
+var errStateMoved = errors.New("gcs: stored state changed while it was read")
+
+// storedState is a room's stored state decoded into one document.
+type storedState struct {
+	doc  *crdt.Doc
+	head uint32
+	// empty means nothing is stored for the room.
+	empty bool
+}
+
+// marks are the checkpoint and the rollback ceiling. Every writer that folds the
+// update log into doc_v2 or prunes it changes one of them before deleting
+// anything.
+type marks struct {
+	cp      uint32
+	ceil    uint32
+	hasCeil bool
+}
+
+func (a *Adapter) readMarks(ctx context.Context, room DocID) (marks, error) {
+	cp, err := a.checkpoint(ctx, room)
+	if err != nil {
+		return marks{}, err
+	}
+	ceil, hasCeil, err := a.ceiling(ctx, room)
+	if err != nil {
+		return marks{}, err
+	}
+	return marks{cp: cp, ceil: ceil, hasCeil: hasCeil}, nil
+}
+
+// readState reads doc_v2 (or the v1 base) and the update objects above the
+// checkpoint into one document, adding the checkpointed objects when items are
+// left parked. Without gcsDocLockKey a concurrent writer can change what it
+// reads, which it reports as errStateMoved.
+func (a *Adapter) readState(ctx context.Context, room DocID, oid uint32) (storedState, error) {
+	before, err := a.readMarks(ctx, room)
+	if err != nil {
+		return storedState{}, err
+	}
+	doc := crdt.New()
+	hasBase := false
+	if b, err := a.store.get(ctx, a.layout.DocV2Name(room)); err == nil {
+		v2, err := decompressBrotli(b)
+		if err != nil {
+			return storedState{}, err
+		}
+		if err := crdt.ApplyUpdateV2(doc, v2, nil); err != nil {
+			return storedState{}, err
+		}
+		hasBase = true
+	} else if err != errNotFound {
+		return storedState{}, err
+	} else if b, err := a.store.get(ctx, a.layout.DocStateName(room, oid)); err == nil {
+		// v1 SUB_DOC fallback, primary layout only: the OID differs between
+		// layouts, so a cross-layout v1 fallback is not byte-valid.
+		if err := crdt.ApplyUpdateV1(doc, b, nil); err != nil {
+			return storedState{}, err
+		}
+		hasBase = len(b) > 0
+	} else if err != errNotFound {
+		return storedState{}, err
+	}
+	if a.afterReadBase != nil {
+		a.afterReadBase()
+	}
+	updates, err := a.listUpdates(ctx, room, oid)
+	if err != nil {
+		return storedState{}, err
+	}
+	m, err := a.readMarks(ctx, room)
+	if err != nil {
+		return storedState{}, err
+	}
+	if m != before {
+		return storedState{}, errStateMoved
 	}
 
 	// Phase-2 dual-read: when the primary prefix holds nothing, materialize the
 	// legacy-root state for the same validated doc id. Never folds across layouts.
-	if !primaryHasV2 && len(base) == 0 && len(updates) == 0 && a.fallback != nil {
-		legacy, lerr := a.materializeLegacy(ctx, room)
-		if lerr != nil {
-			return persistence.LoadResult{}, lerr
+	if !hasBase && len(updates) == 0 && a.fallback != nil {
+		legacy, err := a.materializeLegacy(ctx, room)
+		if err != nil || len(legacy) == 0 {
+			return storedState{doc: doc, empty: true}, err
 		}
-		if len(legacy) == 0 {
-			return persistence.LoadResult{}, nil
+		if err := crdt.ApplyUpdateV1(doc, legacy, nil); err != nil {
+			return storedState{}, err
 		}
-		return persistence.LoadResult{Update: legacy, Version: persistence.Version(legacyHeadClock(ctx, a, room))}, nil
-	}
-	cp, err := a.checkpoint(ctx, room)
-	if err != nil {
-		return persistence.LoadResult{}, err
-	}
-	ceil, hasCeil, err := a.ceiling(ctx, room)
-	if err != nil {
-		return persistence.LoadResult{}, err
+		return storedState{doc: doc, head: legacyHeadClock(ctx, a, room)}, nil
 	}
 
 	clocks := sortedClocks(updates)
 	// Drop any update > ceiling a crashed prune failed to delete; the v2 base
 	// already reflects the rolled-back state.
-	if hasCeil {
-		kept := clocks[:0:0]
-		for _, x := range clocks {
-			if x <= ceil {
-				kept = append(kept, x)
-			}
-		}
-		clocks = kept
+	if m.hasCeil {
+		clocks = clocksUpTo(clocks, m.ceil)
 	}
-	merged := base
 	// Clamp the reported head to an active ceiling. After a crash between the
 	// ceiling write and the checkpoint lowering in PruneAfter, the checkpoint can
 	// still hold the stale pre-rollback value, but no version above the ceiling is
 	// visible — so the head must never exceed it.
-	head := cp
-	if hasCeil && head > ceil {
-		head = ceil
+	head := m.cp
+	if m.hasCeil && head > m.ceil {
+		head = m.ceil
 	}
-	parts := [][]byte{}
-	if len(merged) > 0 {
-		parts = append(parts, merged)
-	}
+	applied := hasBase
 	for _, c := range clocks {
-		if c <= cp {
+		if c <= m.cp {
 			continue // already folded into the snapshot/base
 		}
-		b, err := a.store.get(ctx, updates[c])
-		if err != nil {
-			return persistence.LoadResult{}, err
+		if err := a.applyObject(ctx, doc, updates[c]); err != nil {
+			return storedState{}, err
 		}
-		parts = append(parts, b)
-		if c > head {
-			head = c
+		applied = true
+		head = c
+	}
+	if !applied {
+		return storedState{doc: doc, head: head, empty: true}, nil
+	}
+	if err := a.foldParked(ctx, room, doc, updates, clocksUpTo(clocks, m.cp)); err != nil {
+		return storedState{}, err
+	}
+	return storedState{doc: doc, head: head}, nil
+}
+
+// applyObject applies the update object name to doc. An object deleted since it
+// was listed means a compaction ran meanwhile, reported as errStateMoved.
+func (a *Adapter) applyObject(ctx context.Context, doc *crdt.Doc, name string) error {
+	b, err := a.store.get(ctx, name)
+	if err == errNotFound {
+		return errStateMoved
+	}
+	if err != nil {
+		return err
+	}
+	return crdt.ApplyUpdateV1(doc, b, nil)
+}
+
+// writeUnion writes doc_v2 as the union of the stored state and candidate (a V1
+// update, or nil), so doc_v2 never loses an item. The caller holds gcsDocLockKey.
+func (a *Adapter) writeUnion(ctx context.Context, room DocID, oid uint32, candidate []byte) error {
+	st, err := a.readState(ctx, room, oid)
+	if err != nil {
+		return err
+	}
+	if len(candidate) > 0 {
+		if err := crdt.ApplyUpdateV1(st.doc, candidate, nil); err != nil {
+			return err
 		}
+	} else if st.empty {
+		return nil
 	}
-	if len(parts) == 0 {
-		return persistence.LoadResult{Version: persistence.Version(head)}, nil
-	}
-	out, err := crdt.MergeUpdatesV1(parts...)
-	if err != nil {
-		return persistence.LoadResult{}, err
-	}
-	out, ps, err := a.foldParked(ctx, room, out, updates, clocksUpTo(clocks, cp))
-	if err != nil {
-		return persistence.LoadResult{}, err
-	}
-	// Served anyway: the parked items stay in every later encode, so they are
-	// kept until the edit they wait for arrives, whereas refusing withholds the
-	// whole project.
-	if ps.Items > 0 {
-		a.log.Error("gcs load: serving a document with parked items; an edit they build on is missing from storage",
-			"room", room, "parked", ps.Items, "awaiting_clients", len(ps.MissingFor))
-	}
-	return persistence.LoadResult{Update: out, Version: persistence.Version(head)}, nil
+	return a.writeV2Doc(ctx, room, oid, st.doc)
 }
 
 // AppendUpdate persists one incremental V1 update at clock+1 and returns the
@@ -312,6 +407,9 @@ func (a *Adapter) appendLocked(ctx context.Context, room DocID, oid uint32, upda
 // (yrs load_doc_v2) folds no tail update objects. The last-instance flush uses
 // this so a Rust instance can cold-load a Go-flushed room once the Redis stream
 // is gone. state is the room's full current state as one V1 update.
+//
+// What is written is the union of state and the stored state, so a copy that
+// missed an edit cannot remove it from doc_v2.
 func (a *Adapter) FlushSnapshot(ctx context.Context, room string, state []byte) error {
 	if err := a.validate(room); err != nil {
 		return err
@@ -320,24 +418,25 @@ func (a *Adapter) FlushSnapshot(ctx context.Context, room string, state []byte) 
 	if err != nil {
 		return err
 	}
-	return a.writeV2Snapshot(ctx, room, oid, state)
+	return a.locker.WithLock(ctx, gcsDocLockKey(room), func(ctx context.Context) error {
+		return a.writeUnion(ctx, room, oid, state)
+	})
 }
 
-// SnapshotFromStore reconstructs the room's complete state from GCS (Load folds
-// doc_v2 + tail updates) and rewrites it as a complete doc_v2. Used by the
-// last-instance flush: ygo removes the live doc from GetDoc before firing
-// RoomDeactivated, but it first drains the per-update persistence worker, so the
-// full state is already in GCS and reconstructable without the live doc. No-op
-// when nothing is persisted yet.
+// SnapshotFromStore rewrites doc_v2 from the stored state alone (doc_v2 plus the
+// update log). Used when no live copy is resident. No-op when nothing is
+// persisted yet.
 func (a *Adapter) SnapshotFromStore(ctx context.Context, room string) error {
-	lr, err := a.Load(ctx, room)
+	if err := a.validate(room); err != nil {
+		return err
+	}
+	oid, err := a.oidFor(ctx, room)
 	if err != nil {
 		return err
 	}
-	if len(lr.Update) == 0 {
-		return nil
-	}
-	return a.FlushSnapshot(ctx, room, lr.Update)
+	return a.locker.WithLock(ctx, gcsDocLockKey(room), func(ctx context.Context) error {
+		return a.writeUnion(ctx, room, oid, nil)
+	})
 }
 
 // lastClock returns the highest update clock present (0 if none, falling back to
@@ -515,23 +614,24 @@ func (a *Adapter) MaterializeAt(ctx context.Context, room string, v persistence.
 	if len(parts) == 0 {
 		return nil, nil // empty state
 	}
-	merged, err := crdt.MergeUpdatesV1(parts...)
-	if err != nil {
-		return nil, err
+	doc := crdt.New()
+	for _, p := range parts {
+		if err := crdt.ApplyUpdateV1(doc, p, nil); err != nil {
+			return nil, err
+		}
 	}
 	var checkpointed []uint32
 	if cp <= target {
 		checkpointed = clocksUpTo(clocks, cp)
 	}
-	merged, ps, err := a.foldParked(ctx, room, merged, updates, checkpointed)
-	if err != nil {
+	if err := a.foldParked(ctx, room, doc, updates, checkpointed); err != nil {
 		return nil, err
 	}
-	if ps.Items > 0 {
+	if ps := doc.PendingStats(); ps.Items > 0 {
 		a.log.Debug("gcs materialize: state holds parked items; an edit they build on is missing from storage",
 			"room", room, "version", target, "parked", ps.Items, "awaiting_clients", len(ps.MissingFor))
 	}
-	return merged, nil
+	return crdt.EncodeStateAsUpdateV1(doc, nil), nil
 }
 
 // CaptureSnapshot stores a named snapshot of state and returns the current head

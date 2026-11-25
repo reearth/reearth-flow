@@ -26,7 +26,7 @@ type FlusherOptions struct {
 	Locker Locker
 	// StateOf returns the room's current in-memory doc state as a single V1
 	// update, or nil to rebuild the checkpoint from storage instead (no doc is
-	// resident, or the live copy is known to be incomplete).
+	// resident). Either way the checkpoint is a union with the stored state.
 	StateOf func(room string) []byte
 }
 

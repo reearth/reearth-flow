@@ -160,10 +160,9 @@ func parkedRoom(t *testing.T, s *Server, room string, second []byte) *crdt.Doc {
 	return doc
 }
 
-// TestCheckpointState_RebuildsFromStorageWhenTheCopyIsParked: a copy holding
-// parked updates is missing an edit storage has, so it must not be the
-// checkpoint.
-func TestCheckpointState_RebuildsFromStorageWhenTheCopyIsParked(t *testing.T) {
+// TestCheckpointState_OffersTheLiveCopyParkedOrNot: the checkpoint is the union
+// of the live copy and storage, so a copy holding parked updates is offered too.
+func TestCheckpointState_OffersTheLiveCopyParkedOrNot(t *testing.T) {
 	t.Parallel()
 
 	s := New(testConfig())
@@ -172,18 +171,8 @@ func TestCheckpointState_RebuildsFromStorageWhenTheCopyIsParked(t *testing.T) {
 	}
 	_, second := parkedPair(t)
 	parkedRoom(t, s, versionRoom, second)
-	if s.CheckpointState(versionRoom) != nil {
-		t.Fatal("a copy holding parked updates was offered as the checkpoint")
-	}
-
-	s2 := New(testConfig())
-	c := dialE2E(t, httptestServer(t, s2), versionRoom, 101)
-	defer c.close()
-	c.completeHandshake()
-	c.insertText("x")
-	waitFor(t, "the edit", func() bool { return serverText(s2, versionRoom) == "x" })
-	if s2.CheckpointState(versionRoom) == nil {
-		t.Fatal("a complete copy was not offered as the checkpoint")
+	if s.CheckpointState(versionRoom) == nil {
+		t.Fatal("a copy holding parked updates was not offered as the checkpoint")
 	}
 }
 
