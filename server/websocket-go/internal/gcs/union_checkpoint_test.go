@@ -2,12 +2,14 @@ package gcs
 
 import (
 	"context"
+	"errors"
 	"sync"
 	"testing"
 
 	"github.com/alicebob/miniredis/v2"
 	goredis "github.com/redis/go-redis/v9"
 	"github.com/reearth/ygo/crdt"
+	"github.com/reearth/ygo/persistence"
 )
 
 // fillers returns n independent incremental updates from client 3 on map "f".
@@ -469,5 +471,76 @@ func TestCompact_TwoInstancesLeaveTheLogConsistent(t *testing.T) {
 				}
 			}
 		})
+	}
+}
+
+// TestMaterializeAt_RefusesAVersionTheLogCannotRebuild: once an unload
+// compaction trims the log, a version below the checkpoint has neither the base
+// (MaterializeAt leaves it out, it is past the version) nor the updates it needs
+// (they were folded and deleted). The rebuild would be a fragment, and rollback
+// writes it over doc_v2 and deletes the log above the version, so it must be
+// refused rather than returned.
+func TestMaterializeAt_RefusesAVersionTheLogCannotRebuild(t *testing.T) {
+	t.Parallel()
+	ctx := context.Background()
+	a := newParkedTestAdapter(t)
+	appendAll(t, a, fillers(t, 30)...) // clocks 1..30; clock 30 checkpoints
+
+	if _, err := a.Compact(ctx, "room", 10); err != nil { // deletes 1..20, keeps 21..30
+		t.Fatal(err)
+	}
+	cp, err := a.checkpoint(ctx, "room")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if cp != 30 {
+		t.Fatalf("checkpoint = %d, want 30; the setup needs the kept versions below it", cp)
+	}
+
+	// 21..29 sit below the checkpoint with updates 1..20 gone.
+	for _, v := range []uint32{21, 25, 29} {
+		state, err := a.MaterializeAt(ctx, "room", persistence.Version(v))
+		if !errors.Is(err, ErrVersionNotRebuildable) {
+			t.Errorf("MaterializeAt(%d) = %d bytes, %v; want ErrVersionNotRebuildable", v, len(state), err)
+		}
+		if state != nil {
+			t.Errorf("MaterializeAt(%d) returned %d bytes alongside the refusal", v, len(state))
+		}
+	}
+
+	// The checkpoint itself still rebuilds, from the base.
+	state, err := a.MaterializeAt(ctx, "room", persistence.Version(cp))
+	if err != nil {
+		t.Fatalf("MaterializeAt(%d): %v", cp, err)
+	}
+	if got := fillerValue(t, state); got != 29 {
+		t.Fatalf("MaterializeAt(%d) f.k = %v, want 29", cp, got)
+	}
+}
+
+// TestMaterializeAt_StillRebuildsWhileTheLogIsWhole: the refusal must be narrow.
+// A project whose log still reaches back to its first update rebuilds every
+// version, below the checkpoint included.
+func TestMaterializeAt_StillRebuildsWhileTheLogIsWhole(t *testing.T) {
+	t.Parallel()
+	ctx := context.Background()
+	a := newParkedTestAdapter(t)
+	appendAll(t, a, fillers(t, 30)...) // clocks 1..30, nothing compacted away
+
+	cp, err := a.checkpoint(ctx, "room")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if cp != 30 {
+		t.Fatalf("checkpoint = %d, want 30", cp)
+	}
+	for _, v := range []uint32{1, 7, 22, 29, 30} {
+		state, err := a.MaterializeAt(ctx, "room", persistence.Version(v))
+		if err != nil {
+			t.Fatalf("MaterializeAt(%d): %v", v, err)
+		}
+		if got, want := fillerValue(t, state), float64(v-1); got != want {
+			t.Errorf("MaterializeAt(%d) f.k = %v, want %v", v, got, want)
+		}
 	}
 }

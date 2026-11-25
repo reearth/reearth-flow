@@ -22,6 +22,19 @@ const keepUpdates = 10
 // ErrNotFound signals a missing document. The Load handler maps it to 404.
 var ErrNotFound = errors.New("document not found")
 
+// notRebuildable is reported by a store that cannot reconstruct a version
+// because its update log was compacted past it. Matched by method rather than by
+// sentinel so this package keeps no dependency on the storage implementation.
+type notRebuildable interface{ NotRebuildable() bool }
+
+// rebuildRefused reports whether err is a store refusing to rebuild a version.
+// It is a conflict with the stored history, not a server fault, so the handlers
+// answer 409 rather than 500.
+func rebuildRefused(err error) bool {
+	var nr notRebuildable
+	return errors.As(err, &nr) && nr.NotRebuildable()
+}
+
 // LoadResult is the latest merged state of a room.
 type LoadResult struct {
 	Update    []byte
@@ -243,6 +256,15 @@ func (r *router) rollback(w http.ResponseWriter, req *http.Request) {
 	}
 	ctx := req.Context()
 	rolledBack, err := r.store.MaterializeAt(ctx, id, body.Version)
+	// Refused before the prune: the rebuild would be a fragment, and PruneAfter
+	// writes it over doc_v2 and deletes the log above the target. Failing the
+	// restore is recoverable, destroying the history above it is not.
+	if rebuildRefused(err) {
+		r.log.Warn("rollback refused: the update log was compacted past the target version",
+			"doc", id, "version", body.Version, "err", err)
+		writeErr(w, http.StatusConflict, "this version can no longer be restored")
+		return
+	}
 	if err != nil {
 		r.fail(w, "rollback materialize failed", err, "doc", id, "version", body.Version)
 		return
@@ -326,6 +348,14 @@ func (r *router) createSnapshot(w http.ResponseWriter, req *http.Request) {
 		return
 	}
 	state, err := r.store.MaterializeAt(req.Context(), body.DocID, body.Version)
+	// Same refusal as rollback: a snapshot of a fragment would be stored as if it
+	// were that version.
+	if rebuildRefused(err) {
+		r.log.Warn("snapshot refused: the update log was compacted past the target version",
+			"doc", body.DocID, "version", body.Version, "err", err)
+		writeErr(w, http.StatusConflict, "this version can no longer be captured")
+		return
+	}
 	if err != nil {
 		r.fail(w, "snapshot materialize failed", err, "doc", body.DocID, "version", body.Version)
 		return

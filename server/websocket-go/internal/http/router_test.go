@@ -23,9 +23,11 @@ type fakeStore struct {
 	versions     []VersionInfo
 	updateAt     map[uint64][]byte
 	materialized []byte
-	rolledBack   bool
-	prunedTarget uint64
-	flushed      bool
+	// materializeErr, when set, is returned by MaterializeAt instead of materialized.
+	materializeErr error
+	rolledBack     bool
+	prunedTarget   uint64
+	flushed        bool
 	// captureSnapshotCalled must stay false: the snapshot endpoint is read-only.
 	captureSnapshotCalled bool
 	copied                [2]string // [dst, src]
@@ -70,6 +72,9 @@ func (f *fakeStore) GetUpdate(ctx context.Context, room string, v uint64) ([]byt
 	return b, VersionInfo{Version: v, UpdatedAt: time.Unix(0, 0).UTC()}, true, nil
 }
 func (f *fakeStore) MaterializeAt(ctx context.Context, room string, v uint64) ([]byte, error) {
+	if f.materializeErr != nil {
+		return nil, f.materializeErr
+	}
 	return f.materialized, nil
 }
 func (f *fakeStore) PruneAfter(ctx context.Context, room string, target uint64, rolledBack []byte) error {
@@ -444,5 +449,47 @@ func TestRollbackClearSurvivesClientDisconnect(t *testing.T) {
 	}
 	if sig.clearCtxErr != nil {
 		t.Fatalf("clear ran on a cancelled context (err=%v) — unhiding the canvas must not depend on client liveness", sig.clearCtxErr)
+	}
+}
+
+// refusedRebuild models a store that cannot reconstruct a version because its
+// update log was compacted past it. It reports itself by method, the way the
+// GCS adapter's error does.
+type refusedRebuild struct{}
+
+func (refusedRebuild) Error() string        { return "the update log was compacted past this version" }
+func (refusedRebuild) NotRebuildable() bool { return true }
+
+// TestRollbackRefusesAVersionTheStoreCannotRebuild: a rebuild the store refuses
+// must never reach PruneAfter. PruneAfter replaces doc_v2 with what it is given
+// and deletes the log above the target, so pruning on a fragment destroys the
+// history above the version while restoring nothing. The caller gets 409, not
+// 500: the stored history conflicts with the request, the server is fine.
+func TestRollbackRefusesAVersionTheStoreCannotRebuild(t *testing.T) {
+	t.Parallel()
+
+	store := &fakeStore{materializeErr: refusedRebuild{}}
+	h := newTestRouter(store)
+	rec := do(t, h, "POST", "/api/document/proj1/rollback", `{"doc_id":"proj1","version":4}`)
+
+	if rec.Code != http.StatusConflict {
+		t.Errorf("status = %d, want %d", rec.Code, http.StatusConflict)
+	}
+	if store.rolledBack {
+		t.Error("PruneAfter ran on a rebuild the store refused")
+	}
+}
+
+// TestCreateSnapshotRefusesAVersionTheStoreCannotRebuild: the same refusal, so a
+// fragment is not stored as if it were that version.
+func TestCreateSnapshotRefusesAVersionTheStoreCannotRebuild(t *testing.T) {
+	t.Parallel()
+
+	store := &fakeStore{materializeErr: refusedRebuild{}}
+	h := newTestRouter(store)
+	rec := do(t, h, "POST", "/api/document/snapshot", `{"doc_id":"proj1","version":4}`)
+
+	if rec.Code != http.StatusConflict {
+		t.Errorf("status = %d, want %d", rec.Code, http.StatusConflict)
 	}
 }

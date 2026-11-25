@@ -3,6 +3,7 @@ package gcs
 import (
 	"context"
 	"errors"
+	"fmt"
 	"sort"
 
 	"github.com/reearth/ygo/crdt"
@@ -565,6 +566,48 @@ func (a *Adapter) GetUpdate(ctx context.Context, room string, v persistence.Vers
 	return b, persistence.VersionMeta{Version: v, UpdatedAt: at.Updated}, true, nil
 }
 
+// ErrVersionNotRebuildable reports that the update log no longer reaches back
+// far enough to reconstruct the requested version, because a compaction folded
+// the updates below it into a base that is itself past the version.
+//
+// Refusing matters because MaterializeAt's callers write the result somewhere
+// durable: rollback replaces doc_v2 with it and deletes the log above the
+// target, and a snapshot stores it. Returning a fragment of the document would
+// destroy the history above the version while restoring nothing.
+var ErrVersionNotRebuildable = errors.New("gcs: the update log was compacted past this version")
+
+// notRebuildable carries ErrVersionNotRebuildable with the detail, and reports
+// itself through a NotRebuildable method so a caller in another package can map
+// it to a status without importing this one.
+type notRebuildable struct{ detail string }
+
+func (e *notRebuildable) Error() string        { return ErrVersionNotRebuildable.Error() + ": " + e.detail }
+func (e *notRebuildable) Is(target error) bool { return target == ErrVersionNotRebuildable }
+func (e *notRebuildable) NotRebuildable() bool { return true }
+
+// ensureReplayComplete reports whether clocks (ascending) holds every update
+// from 1 through target. Below the checkpoint MaterializeAt leaves the base out
+// and replays update objects alone, so only an unbroken run from the first
+// update rebuilds the whole state.
+func ensureReplayComplete(clocks []uint32, target uint32) error {
+	want := uint32(1)
+	for _, c := range clocks {
+		if c > target {
+			break
+		}
+		if c != want {
+			return &notRebuildable{detail: fmt.Sprintf(
+				"version %d needs update %d, the oldest one retained is %d", target, want, c)}
+		}
+		want++
+	}
+	if want <= target {
+		return &notRebuildable{detail: fmt.Sprintf(
+			"version %d needs updates through %d, the log holds only %d", target, target, want-1)}
+	}
+	return nil
+}
+
 // MaterializeAt rebuilds the full state at version v as one V1 update. Read-only.
 func (a *Adapter) MaterializeAt(ctx context.Context, room string, v persistence.Version) ([]byte, error) {
 	if err := a.validate(room); err != nil {
@@ -634,6 +677,17 @@ func (a *Adapter) MaterializeAt(ctx context.Context, room string, v persistence.
 		return nil, err
 	}
 	clocks := sortedClocks(updates)
+	// The base was left out above, so the update objects are the only source for
+	// this version. A compaction that folded the oldest ones into a base already
+	// past target leaves a log that cannot rebuild it: refuse rather than hand a
+	// fragment to a caller that will write it over doc_v2.
+	if cp > target {
+		if err := ensureReplayComplete(clocks, target); err != nil {
+			a.log.Warn("gcs materialize: refusing a version the update log can no longer rebuild",
+				"room", room, "version", target, "checkpoint", cp, "err", err)
+			return nil, err
+		}
+	}
 	for _, c := range clocks {
 		if c > target {
 			break
