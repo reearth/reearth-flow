@@ -52,3 +52,38 @@ category = "geometry"
 default_disposition = "warn_drop"
 message = "skipped geocentric packet because force2D was requested"
 help = "EPSG:4978 has no 2D form and dropping Z from an ECEF coordinate is meaningless, not merely lossy. Turn force2D off, or supply the positions as `cartographicDegrees`."
+
+[[codes]]
+code = "czml.untimed_sample"
+category = "schema"
+default_disposition = "warn_drop"
+message = "dropped position with no time value from a grouped entity"
+help = "Features grouped by groupTimeseriesBy share one entity. When some of them carry a value in timeField, the entity's positions are written as time-tagged samples and a feature without one has no place on that timeline. When none of them do, the entity is static and holds a single position, so only the first can be written. Either way the rest are dropped. Give every feature in the group a time value, or group it separately."
+
+[[codes]]
+code = "czml.unparsable_time"
+category = "schema"
+default_disposition = "warn_drop"
+message = "dropped position whose time value is neither a timestamp nor a number"
+help = "CZML writes times as ISO 8601 timestamps, or as numbers of seconds counted from an epoch. A timeField value that is neither cannot be written, and writing it unchanged produced a file no viewer could load. Correct the attribute, or point timeField at one that holds a time."
+
+[[codes]]
+code = "czml.areal_samples_dropped"
+category = "geometry"
+default_disposition = "warn_drop"
+message = "wrote an areal entity's first footprint and dropped its time samples"
+help = "A CZML polygon carries its own coordinates, so an entity drawn as a polygon cannot be moved by its position samples. A group whose features are areal is therefore written as one static footprint, taken from the first feature that could be placed. Group the features as points to animate them, or write one entity per feature."
+
+[[codes]]
+code = "czml.style_not_applied"
+category = "config"
+default_disposition = "warn_drop"
+message = "polygonStyle was set but this batch is written straight from geometry, which it does not reach"
+help = "polygonStyle colours and extrudes the single polygon the writer derives for a time-dynamic entity or for a feature read back from CZML. A feature written straight from its geometry gets one packet per face instead, and those faces are not styled. Set timeField, or read the features back through the CZML Reader, to get a styled entity."
+
+[[codes]]
+code = "czml.parse_failed"
+category = "parse"
+default_disposition = "fatal"
+message = "could not parse the CZML file"
+help = "The file is not valid CZML: it must be a JSON array of packets whose first packet has id \"document\". Check that the file is CZML rather than GeoJSON or another JSON format, and that it is not truncated."
