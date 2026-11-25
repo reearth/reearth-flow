@@ -15,5 +15,6 @@ it, for the tests that expect no L03 error.
 ## `__empty` objectlists
 
 `z08220_tsukuba-shi_city_2023_citygml_2_op/08220_city_2023_objectlist_op__empty.xlsx`
-keeps only the header rows of each sheet, for tests that do not test the
+and `z16211_imizu-shi_city_2024_citygml_1_op/16211_city_2024_objectlist_op__empty.xlsx`
+keep only the header rows of each sheet, for tests that do not test the
 objectlist checks.

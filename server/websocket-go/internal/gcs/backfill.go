@@ -150,11 +150,11 @@ func (a *Adapter) loadPrimaryV2(ctx context.Context, room string) ([]byte, bool,
 	if err != nil {
 		return nil, false, err
 	}
-	doc, err := docFromV2(v2)
+	v1, err := stateFromV2(v2)
 	if err != nil {
 		return nil, false, err
 	}
-	return crdt.EncodeStateAsUpdateV1(doc, nil), true, nil
+	return v1, true, nil
 }
 
 // legacyHeadClock returns the highest legacy-root update clock for room, used as

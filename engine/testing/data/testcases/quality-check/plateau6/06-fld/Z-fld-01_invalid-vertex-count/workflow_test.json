@@ -1,5 +1,5 @@
 {
-  "description": "A square patch written as a single surface member: five coordinates where a triangle has four, so the corner count is reported and nothing else is.",
+  "description": "A square patch written as a single surface member: five coordinates where a triangle has four, so the vertex count is reported, plus one T03 error for a self-referencing surface member.",
   "workflowPath": "quality-check/plateau6/06-fld/workflow.yml",
   "workflowVariables": [
     {
