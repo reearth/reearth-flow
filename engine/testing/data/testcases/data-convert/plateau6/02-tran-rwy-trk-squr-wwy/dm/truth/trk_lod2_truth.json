@@ -78,13 +78,21 @@
         }
       ]
     },
+    "core:creationDate": "2024-03-19T00:00:00",
+    "urc:lodType": "2cm以上の高低差に応じて車道部・歩道部・島の高さを表現",
+    "tran:class": "道路",
+    "tran:Track_tran:function": "徒歩道",
     "__key_order": [
       "meshcode",
       "feature_type",
       "city_code",
       "city_name",
       "gml_id",
-      "attributes"
+      "attributes",
+      "core:creationDate",
+      "urc:lodType",
+      "tran:class",
+      "tran:Track_tran:function"
     ]
   },
   "trk_98823040-65c2-4be4-97e1-62bf21bddf33": {
@@ -168,6 +176,10 @@
         }
       ]
     },
+    "core:creationDate": "2024-03-19T00:00:00",
+    "urc:lodType": "2cm以上の高低差に応じて車道部・歩道部・島の高さを表現",
+    "tran:class": "道路",
+    "tran:Track_tran:function": "徒歩道",
     "tran:function": "歩道部",
     "__key_order": [
       "meshcode",
@@ -176,6 +188,10 @@
       "city_name",
       "gml_id",
       "attributes",
+      "core:creationDate",
+      "urc:lodType",
+      "tran:class",
+      "tran:Track_tran:function",
       "tran:function"
     ]
   }

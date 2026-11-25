@@ -50,13 +50,33 @@
         }
       ]
     },
+    "gml:name": "城端線",
+    "core:creationDate": "2025-03-14T00:00:00",
+    "urc:geometrySrcDescLod1": "公共測量成果又は基本測量成果",
+    "tran:class": "鉄道",
+    "tran:function": "普通鉄道",
+    "uro:operatorType": "JR在来線",
+    "uro:operator": "西日本旅客鉄道株式会社",
+    "uro:railwayType": "普通鉄道JR",
+    "uro:startStation": "高岡",
+    "uro:endStation": "城端",
     "__key_order": [
       "meshcode",
       "feature_type",
       "city_code",
       "city_name",
       "gml_id",
-      "attributes"
+      "attributes",
+      "gml:name",
+      "core:creationDate",
+      "urc:geometrySrcDescLod1",
+      "tran:class",
+      "tran:function",
+      "uro:operatorType",
+      "uro:operator",
+      "uro:railwayType",
+      "uro:startStation",
+      "uro:endStation"
     ]
   },
   "TrafficArea_13ac4836-054c-4a5b-8c84-48e76ca7c0cb": {
@@ -110,13 +130,33 @@
         }
       ]
     },
+    "gml:name": "城端線",
+    "core:creationDate": "2025-03-14T00:00:00",
+    "urc:geometrySrcDescLod1": "公共測量成果又は基本測量成果",
+    "tran:class": "鉄道",
+    "tran:function": "普通鉄道",
+    "uro:operatorType": "JR在来線",
+    "uro:operator": "西日本旅客鉄道株式会社",
+    "uro:railwayType": "普通鉄道JR",
+    "uro:startStation": "高岡",
+    "uro:endStation": "城端",
     "__key_order": [
       "meshcode",
       "feature_type",
       "city_code",
       "city_name",
       "gml_id",
-      "attributes"
+      "attributes",
+      "gml:name",
+      "core:creationDate",
+      "urc:geometrySrcDescLod1",
+      "tran:class",
+      "tran:function",
+      "uro:operatorType",
+      "uro:operator",
+      "uro:railwayType",
+      "uro:startStation",
+      "uro:endStation"
     ]
   },
   "TrafficArea_282273de-038d-4f06-b8fa-1cce8c95a58a": {
@@ -170,13 +210,33 @@
         }
       ]
     },
+    "gml:name": "城端線",
+    "core:creationDate": "2025-03-14T00:00:00",
+    "urc:geometrySrcDescLod1": "公共測量成果又は基本測量成果",
+    "tran:class": "鉄道",
+    "tran:function": "普通鉄道",
+    "uro:operatorType": "JR在来線",
+    "uro:operator": "西日本旅客鉄道株式会社",
+    "uro:railwayType": "普通鉄道JR",
+    "uro:startStation": "高岡",
+    "uro:endStation": "城端",
     "__key_order": [
       "meshcode",
       "feature_type",
       "city_code",
       "city_name",
       "gml_id",
-      "attributes"
+      "attributes",
+      "gml:name",
+      "core:creationDate",
+      "urc:geometrySrcDescLod1",
+      "tran:class",
+      "tran:function",
+      "uro:operatorType",
+      "uro:operator",
+      "uro:railwayType",
+      "uro:startStation",
+      "uro:endStation"
     ]
   },
   "TrafficArea_28aa46bd-36cf-47a1-895d-54b318068c11": {
@@ -230,13 +290,33 @@
         }
       ]
     },
+    "gml:name": "あいの風とやま鉄道線",
+    "core:creationDate": "2025-03-14T00:00:00",
+    "urc:geometrySrcDescLod1": "公共測量成果又は基本測量成果",
+    "tran:class": "鉄道",
+    "tran:function": "普通鉄道",
+    "uro:operatorType": "第三セクター",
+    "uro:operator": "あいの風とやま鉄道株式会社",
+    "uro:railwayType": "普通鉄道",
+    "uro:startStation": "石動",
+    "uro:endStation": "越中宮崎",
     "__key_order": [
       "meshcode",
       "feature_type",
       "city_code",
       "city_name",
       "gml_id",
-      "attributes"
+      "attributes",
+      "gml:name",
+      "core:creationDate",
+      "urc:geometrySrcDescLod1",
+      "tran:class",
+      "tran:function",
+      "uro:operatorType",
+      "uro:operator",
+      "uro:railwayType",
+      "uro:startStation",
+      "uro:endStation"
     ]
   },
   "TrafficArea_377470ee-9895-4621-91d2-b0fa96f06b18": {
@@ -290,13 +370,33 @@
         }
       ]
     },
+    "gml:name": "城端線",
+    "core:creationDate": "2025-03-14T00:00:00",
+    "urc:geometrySrcDescLod1": "公共測量成果又は基本測量成果",
+    "tran:class": "鉄道",
+    "tran:function": "普通鉄道",
+    "uro:operatorType": "JR在来線",
+    "uro:operator": "西日本旅客鉄道株式会社",
+    "uro:railwayType": "普通鉄道JR",
+    "uro:startStation": "高岡",
+    "uro:endStation": "城端",
     "__key_order": [
       "meshcode",
       "feature_type",
       "city_code",
       "city_name",
       "gml_id",
-      "attributes"
+      "attributes",
+      "gml:name",
+      "core:creationDate",
+      "urc:geometrySrcDescLod1",
+      "tran:class",
+      "tran:function",
+      "uro:operatorType",
+      "uro:operator",
+      "uro:railwayType",
+      "uro:startStation",
+      "uro:endStation"
     ]
   },
   "TrafficArea_c442ce8f-38de-4a66-b255-5abfcbd146d0": {
@@ -350,13 +450,33 @@
         }
       ]
     },
+    "gml:name": "城端線",
+    "core:creationDate": "2025-03-14T00:00:00",
+    "urc:geometrySrcDescLod1": "公共測量成果又は基本測量成果",
+    "tran:class": "鉄道",
+    "tran:function": "普通鉄道",
+    "uro:operatorType": "JR在来線",
+    "uro:operator": "西日本旅客鉄道株式会社",
+    "uro:railwayType": "普通鉄道JR",
+    "uro:startStation": "高岡",
+    "uro:endStation": "城端",
     "__key_order": [
       "meshcode",
       "feature_type",
       "city_code",
       "city_name",
       "gml_id",
-      "attributes"
+      "attributes",
+      "gml:name",
+      "core:creationDate",
+      "urc:geometrySrcDescLod1",
+      "tran:class",
+      "tran:function",
+      "uro:operatorType",
+      "uro:operator",
+      "uro:railwayType",
+      "uro:startStation",
+      "uro:endStation"
     ]
   },
   "TrafficArea_ed057b58-c9bd-44ab-81ce-0cb830a2c45d": {
@@ -410,13 +530,33 @@
         }
       ]
     },
+    "gml:name": "あいの風とやま鉄道線",
+    "core:creationDate": "2025-03-14T00:00:00",
+    "urc:geometrySrcDescLod1": "公共測量成果又は基本測量成果",
+    "tran:class": "鉄道",
+    "tran:function": "普通鉄道",
+    "uro:operatorType": "第三セクター",
+    "uro:operator": "あいの風とやま鉄道株式会社",
+    "uro:railwayType": "普通鉄道",
+    "uro:startStation": "石動",
+    "uro:endStation": "越中宮崎",
     "__key_order": [
       "meshcode",
       "feature_type",
       "city_code",
       "city_name",
       "gml_id",
-      "attributes"
+      "attributes",
+      "gml:name",
+      "core:creationDate",
+      "urc:geometrySrcDescLod1",
+      "tran:class",
+      "tran:function",
+      "uro:operatorType",
+      "uro:operator",
+      "uro:railwayType",
+      "uro:startStation",
+      "uro:endStation"
     ]
   }
 }

@@ -60,7 +60,13 @@
         }
       ]
     },
+    "core:creationDate": "2024-03-15T00:00:00",
+    "urc:geometrySrcDescLod1": "公共測量成果又は基本測量成果",
+    "tran:class": "道路",
+    "tran:Road_tran:function": "不明",
+    "tran:usage": "不明",
     "tran:function": "島",
+    "uro:RoadStructureAttribute_uro:sectionType": "交差部",
     "__key_order": [
       "meshcode",
       "feature_type",
@@ -68,7 +74,13 @@
       "city_name",
       "gml_id",
       "attributes",
-      "tran:function"
+      "core:creationDate",
+      "urc:geometrySrcDescLod1",
+      "tran:class",
+      "tran:Road_tran:function",
+      "tran:usage",
+      "tran:function",
+      "uro:RoadStructureAttribute_uro:sectionType"
     ]
   },
   "traf_aad39605-4836-42da-9c5a-d6c4817a7e57": {
@@ -132,7 +144,13 @@
         }
       ]
     },
+    "core:creationDate": "2024-03-15T00:00:00",
+    "urc:geometrySrcDescLod1": "公共測量成果又は基本測量成果",
+    "tran:class": "道路",
+    "tran:Road_tran:function": "不明",
+    "tran:usage": "不明",
     "tran:function": "歩道部",
+    "uro:RoadStructureAttribute_uro:sectionType": "交差部",
     "__key_order": [
       "meshcode",
       "feature_type",
@@ -140,7 +158,13 @@
       "city_name",
       "gml_id",
       "attributes",
-      "tran:function"
+      "core:creationDate",
+      "urc:geometrySrcDescLod1",
+      "tran:class",
+      "tran:Road_tran:function",
+      "tran:usage",
+      "tran:function",
+      "uro:RoadStructureAttribute_uro:sectionType"
     ]
   },
   "traf_bed931ec-cbff-4d64-ba25-5e8e760e7519": {
@@ -204,7 +228,13 @@
         }
       ]
     },
+    "core:creationDate": "2024-03-15T00:00:00",
+    "urc:geometrySrcDescLod1": "公共測量成果又は基本測量成果",
+    "tran:class": "道路",
+    "tran:Road_tran:function": "不明",
+    "tran:usage": "不明",
     "tran:function": "島",
+    "uro:RoadStructureAttribute_uro:sectionType": "交差部",
     "__key_order": [
       "meshcode",
       "feature_type",
@@ -212,7 +242,13 @@
       "city_name",
       "gml_id",
       "attributes",
-      "tran:function"
+      "core:creationDate",
+      "urc:geometrySrcDescLod1",
+      "tran:class",
+      "tran:Road_tran:function",
+      "tran:usage",
+      "tran:function",
+      "uro:RoadStructureAttribute_uro:sectionType"
     ]
   },
   "traf_e5ea50ce-7198-4879-a380-9d99f1c6491f": {
@@ -276,7 +312,13 @@
         }
       ]
     },
+    "core:creationDate": "2024-03-15T00:00:00",
+    "urc:geometrySrcDescLod1": "公共測量成果又は基本測量成果",
+    "tran:class": "道路",
+    "tran:Road_tran:function": "不明",
+    "tran:usage": "不明",
     "tran:function": "車道交差部",
+    "uro:RoadStructureAttribute_uro:sectionType": "交差部",
     "__key_order": [
       "meshcode",
       "feature_type",
@@ -284,7 +326,13 @@
       "city_name",
       "gml_id",
       "attributes",
-      "tran:function"
+      "core:creationDate",
+      "urc:geometrySrcDescLod1",
+      "tran:class",
+      "tran:Road_tran:function",
+      "tran:usage",
+      "tran:function",
+      "uro:RoadStructureAttribute_uro:sectionType"
     ]
   },
   "traf_f8f3ceeb-a7ec-447d-8a20-620b0b7bc413": {
@@ -348,7 +396,13 @@
         }
       ]
     },
+    "core:creationDate": "2024-03-15T00:00:00",
+    "urc:geometrySrcDescLod1": "公共測量成果又は基本測量成果",
+    "tran:class": "道路",
+    "tran:Road_tran:function": "不明",
+    "tran:usage": "不明",
     "tran:function": "島",
+    "uro:RoadStructureAttribute_uro:sectionType": "交差部",
     "__key_order": [
       "meshcode",
       "feature_type",
@@ -356,7 +410,13 @@
       "city_name",
       "gml_id",
       "attributes",
-      "tran:function"
+      "core:creationDate",
+      "urc:geometrySrcDescLod1",
+      "tran:class",
+      "tran:Road_tran:function",
+      "tran:usage",
+      "tran:function",
+      "uro:RoadStructureAttribute_uro:sectionType"
     ]
   }
 }
