@@ -2,6 +2,7 @@ package gcs
 
 import (
 	"context"
+	"errors"
 	"math"
 	"testing"
 
@@ -154,3 +155,25 @@ func svOf(t *testing.T, v1 []byte) crdt.StateVector {
 }
 
 var _ = persistence.Version(0)
+
+// TestCompact_ValidatesTheRoomBeforeTheKeepGuard: Compact reports an unusable
+// room whatever keep is, so a caller cannot read "keep every update" as success
+// for a room this adapter could never have compacted.
+func TestCompact_ValidatesTheRoomBeforeTheKeepGuard(t *testing.T) {
+	t.Parallel()
+
+	ctx := context.Background()
+	client, bucket := newFakeGCS(t)
+	a, err := New(Options{Client: client, Bucket: bucket, Locker: NewNoLock(), Phase2: true})
+	if err != nil {
+		t.Fatalf("New: %v", err)
+	}
+
+	for _, keep := range []int{0, 10} {
+		for _, room := range []string{"", "nested/room"} {
+			if _, err := a.Compact(ctx, room, keep); !errors.Is(err, ErrUnsafeDocID) {
+				t.Errorf("Compact(%q, keep=%d) = %v, want ErrUnsafeDocID", room, keep, err)
+			}
+		}
+	}
+}

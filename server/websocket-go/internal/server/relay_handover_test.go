@@ -165,14 +165,35 @@ func parkedRoom(t *testing.T, s *Server, room string, second []byte) *crdt.Doc {
 func TestCheckpointState_OffersTheLiveCopyParkedOrNot(t *testing.T) {
 	t.Parallel()
 
+	const completeRoom = "550e8400-e29b-41d4-a716-446655440078"
+
 	s := New(testConfig())
 	if s.CheckpointState(versionRoom) != nil {
 		t.Fatal("state for a room this instance does not hold")
 	}
-	_, second := parkedPair(t)
+	first, second := parkedPair(t)
 	parkedRoom(t, s, versionRoom, second)
 	if s.CheckpointState(versionRoom) == nil {
 		t.Fatal("a copy holding parked updates was not offered as the checkpoint")
+	}
+
+	// The complete copy is the other half of "parked or not": without it, the
+	// assertion above would still pass if no copy were ever offered.
+	err := s.ws.Apply(context.Background(), completeRoom, func(doc *crdt.Doc, _ func(func(*crdt.Transaction))) {
+		if err := crdt.ApplyUpdateV1(doc, first, nil); err != nil {
+			t.Error(err)
+		}
+	})
+	// Apply reports changes made through its transaction helper, not a direct
+	// ApplyUpdateV1, so it reports none here as it does for a parked apply.
+	if err != nil && !errors.Is(err, ygws.ErrNoChanges) {
+		t.Fatal(err)
+	}
+	if p := s.ws.GetDoc(completeRoom).PendingStats().Items; p != 0 {
+		t.Fatalf("setup: the complete copy parked %d items", p)
+	}
+	if s.CheckpointState(completeRoom) == nil {
+		t.Fatal("a complete copy was not offered as the checkpoint")
 	}
 }
 

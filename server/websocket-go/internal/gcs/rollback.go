@@ -72,11 +72,12 @@ func (a *Adapter) deleteUpdatesAfter(ctx context.Context, room DocID, oid, targe
 // updates exist, and when keep ≤ 0, which ygo's stores read as "keep every
 // update". The new base is written before any update is deleted.
 func (a *Adapter) Compact(ctx context.Context, room string, keep int) (int, error) {
-	if keep <= 0 {
-		return 0, nil
-	}
+	// Validation runs first so an unusable room reports itself whatever keep is.
 	if err := a.validate(room); err != nil {
 		return 0, err
+	}
+	if keep <= 0 {
+		return 0, nil
 	}
 	oid, err := a.oidFor(ctx, room)
 	if err != nil {
