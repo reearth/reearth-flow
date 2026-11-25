@@ -147,6 +147,13 @@ type storedState struct {
 	head uint32
 	// empty means nothing is stored for the room.
 	empty bool
+	// v2Gen is the generation of the doc_v2 that doc was read from, 0 for none.
+	v2Gen int64
+	// updates are the listed update objects, and checkpointed the clocks among
+	// them at or below the checkpoint. folded reports that doc already has those.
+	updates      map[uint32]string
+	checkpointed []uint32
+	folded       bool
 }
 
 // marks are the checkpoint, the rollback ceiling and doc_v2's generation. Every
@@ -231,12 +238,12 @@ func (a *Adapter) readState(ctx context.Context, room DocID, oid uint32) (stored
 	if !hasBase && len(updates) == 0 && a.fallback != nil {
 		legacy, err := a.materializeLegacy(ctx, room)
 		if err != nil || len(legacy) == 0 {
-			return storedState{doc: doc, empty: true}, err
+			return storedState{doc: doc, empty: true, v2Gen: before.v2Gen}, err
 		}
 		if err := crdt.ApplyUpdateV1(doc, legacy, nil); err != nil {
 			return storedState{}, err
 		}
-		return storedState{doc: doc, head: legacyHeadClock(ctx, a, room)}, nil
+		return storedState{doc: doc, head: legacyHeadClock(ctx, a, room), v2Gen: before.v2Gen}, nil
 	}
 
 	clocks := sortedClocks(updates)
@@ -264,13 +271,16 @@ func (a *Adapter) readState(ctx context.Context, room DocID, oid uint32) (stored
 		readObjects = true
 		head = c
 	}
+	st := storedState{doc: doc, head: head, v2Gen: before.v2Gen, updates: updates, checkpointed: clocksUpTo(clocks, m.cp)}
 	if !hasBase && !readObjects {
-		return storedState{doc: doc, head: head, empty: true}, nil
+		st.empty = true
+		return st, nil
 	}
-	folded, err := a.foldParked(ctx, room, doc, updates, clocksUpTo(clocks, m.cp))
+	folded, err := a.foldParked(ctx, room, doc, updates, st.checkpointed)
 	if err != nil {
 		return storedState{}, err
 	}
+	st.folded = folded
 	// A rollback and appends after the marks check can replace a listed object
 	// with a later edit, which only the marks show.
 	if readObjects || folded {
@@ -282,7 +292,7 @@ func (a *Adapter) readState(ctx context.Context, room DocID, oid uint32) (stored
 			return storedState{}, errStateMoved
 		}
 	}
-	return storedState{doc: doc, head: head}, nil
+	return st, nil
 }
 
 // applyObject applies the update object name to doc. An object deleted since it
@@ -300,7 +310,18 @@ func (a *Adapter) applyObject(ctx context.Context, doc *crdt.Doc, name string) e
 
 // writeUnion writes doc_v2 as the union of the stored state and candidate (a V1
 // update, or nil), so doc_v2 never loses an item. The caller holds gcsDocLockKey.
+//
+// The write only lands on the doc_v2 it read, so a caller whose lock expired
+// cannot replace a newer checkpoint. It reads the state again once, then fails.
 func (a *Adapter) writeUnion(ctx context.Context, room DocID, oid uint32, candidate []byte) error {
+	err := a.writeUnionOnce(ctx, room, oid, candidate)
+	if errors.Is(err, errGenerationMoved) {
+		err = a.writeUnionOnce(ctx, room, oid, candidate)
+	}
+	return err
+}
+
+func (a *Adapter) writeUnionOnce(ctx context.Context, room DocID, oid uint32, candidate []byte) error {
 	st, err := a.readState(ctx, room, oid)
 	if err != nil {
 		return err
@@ -309,10 +330,17 @@ func (a *Adapter) writeUnion(ctx context.Context, room DocID, oid uint32, candid
 		if err := crdt.ApplyUpdateV1(st.doc, candidate, nil); err != nil {
 			return err
 		}
+		// The candidate can park items on an edit that only a checkpointed object
+		// holds, which readState did not fold when nothing was parked before.
+		if !st.folded {
+			if _, err := a.foldParked(ctx, room, st.doc, st.updates, st.checkpointed); err != nil {
+				return err
+			}
+		}
 	} else if st.empty {
 		return nil
 	}
-	return a.writeV2Doc(ctx, room, oid, st.doc)
+	return a.writeV2DocIf(ctx, room, oid, st.doc, st.v2Gen)
 }
 
 // AppendUpdate persists one incremental V1 update at clock+1 and returns the
