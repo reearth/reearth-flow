@@ -10,11 +10,11 @@
     },
     {
       "destinationPath": "__flat urc:geometrySrcDescLod1",
-      "sourcePath": "attributes core:adeOfAbstractCityObject urc:DataQualityAttribute urc:geometrySrcDescLod1"
+      "sourcePath": "attributes core:adeOfAbstractCityObject[*] urc:DataQualityAttribute urc:geometrySrcDescLod1"
     },
     {
       "destinationPath": "__flat urc:lodType",
-      "sourcePath": "attributes core:adeOfAbstractCityObject urc:DataQualityAttribute urc:lodType"
+      "sourcePath": "attributes core:adeOfAbstractCityObject[*] urc:DataQualityAttribute urc:lodType"
     },
     {
       "destinationPath": "__flat tran:class",
@@ -30,117 +30,117 @@
     },
     {
       "destinationPath": "__flat uro:RoadStructureAttribute_uro:widthType",
-      "sourcePath": "attributes tran:adeOfRoad uro:RoadStructureAttribute uro:widthType"
+      "sourcePath": "attributes tran:adeOfRoad[*] uro:RoadStructureAttribute uro:widthType"
     },
     {
       "destinationPath": "__flat uro:RoadStructureAttribute_uro:width",
-      "sourcePath": "attributes tran:adeOfRoad uro:RoadStructureAttribute uro:width",
+      "sourcePath": "attributes tran:adeOfRoad[*] uro:RoadStructureAttribute uro:width",
       "dataType": "float"
     },
     {
       "destinationPath": "__flat uro:RoadStructureAttribute_uro:numberOfLanes",
-      "sourcePath": "attributes tran:adeOfRoad uro:RoadStructureAttribute uro:numberOfLanes",
+      "sourcePath": "attributes tran:adeOfRoad[*] uro:RoadStructureAttribute uro:numberOfLanes",
       "dataType": "int"
     },
     {
       "destinationPath": "__flat uro:RoadStructureAttribute_uro:sectionType",
-      "sourcePath": "attributes tran:adeOfRoad uro:RoadStructureAttribute uro:sectionType"
+      "sourcePath": "attributes tran:adeOfRoad[*] uro:RoadStructureAttribute uro:sectionType"
     },
     {
       "destinationPath": "__flat uro:TrafficVolumeAttribute_uro:sectionID",
-      "sourcePath": "attributes tran:adeOfRoad uro:TrafficVolumeAttribute uro:sectionID"
+      "sourcePath": "attributes tran:adeOfRoad[*] uro:TrafficVolumeAttribute uro:sectionID"
     },
     {
       "destinationPath": "__flat uro:TrafficVolumeAttribute_uro:routeName",
-      "sourcePath": "attributes tran:adeOfRoad uro:TrafficVolumeAttribute uro:routeName"
+      "sourcePath": "attributes tran:adeOfRoad[*] uro:TrafficVolumeAttribute uro:routeName"
     },
     {
       "destinationPath": "__flat uro:TrafficVolumeAttribute_uro:weekday12hourTrafficVolume",
-      "sourcePath": "attributes tran:adeOfRoad uro:TrafficVolumeAttribute uro:weekday12hourTrafficVolume",
+      "sourcePath": "attributes tran:adeOfRoad[*] uro:TrafficVolumeAttribute uro:weekday12hourTrafficVolume",
       "dataType": "float"
     },
     {
       "destinationPath": "__flat uro:TrafficVolumeAttribute_uro:weekday24hourTrafficVolume",
-      "sourcePath": "attributes tran:adeOfRoad uro:TrafficVolumeAttribute uro:weekday24hourTrafficVolume",
+      "sourcePath": "attributes tran:adeOfRoad[*] uro:TrafficVolumeAttribute uro:weekday24hourTrafficVolume",
       "dataType": "float"
     },
     {
       "destinationPath": "__flat uro:TrafficVolumeAttribute_uro:largeVehicleRate",
-      "sourcePath": "attributes tran:adeOfRoad uro:TrafficVolumeAttribute uro:largeVehicleRate",
+      "sourcePath": "attributes tran:adeOfRoad[*] uro:TrafficVolumeAttribute uro:largeVehicleRate",
       "dataType": "float"
     },
     {
       "destinationPath": "__flat uro:TrafficVolumeAttribute_uro:congestionRate",
-      "sourcePath": "attributes tran:adeOfRoad uro:TrafficVolumeAttribute uro:congestionRate",
+      "sourcePath": "attributes tran:adeOfRoad[*] uro:TrafficVolumeAttribute uro:congestionRate",
       "dataType": "float"
     },
     {
       "destinationPath": "__flat uro:TrafficVolumeAttribute_uro:averageTravelSpeedInCongestion",
-      "sourcePath": "attributes tran:adeOfRoad uro:TrafficVolumeAttribute uro:averageTravelSpeedInCongestion",
+      "sourcePath": "attributes tran:adeOfRoad[*] uro:TrafficVolumeAttribute uro:averageTravelSpeedInCongestion",
       "dataType": "float"
     },
     {
       "destinationPath": "__flat uro:TrafficVolumeAttribute_uro:averageInboundTravelSpeedInCongestion",
-      "sourcePath": "attributes tran:adeOfRoad uro:TrafficVolumeAttribute uro:averageInboundTravelSpeedInCongestion",
+      "sourcePath": "attributes tran:adeOfRoad[*] uro:TrafficVolumeAttribute uro:averageInboundTravelSpeedInCongestion",
       "dataType": "float"
     },
     {
       "destinationPath": "__flat uro:TrafficVolumeAttribute_uro:averageOutboundTravelSpeedInCongestion",
-      "sourcePath": "attributes tran:adeOfRoad uro:TrafficVolumeAttribute uro:averageOutboundTravelSpeedInCongestion",
+      "sourcePath": "attributes tran:adeOfRoad[*] uro:TrafficVolumeAttribute uro:averageOutboundTravelSpeedInCongestion",
       "dataType": "float"
     },
     {
       "destinationPath": "__flat uro:TrafficVolumeAttribute_uro:averageInboundTravelSpeedNotCongestion",
-      "sourcePath": "attributes tran:adeOfRoad uro:TrafficVolumeAttribute uro:averageInboundTravelSpeedNotCongestion",
+      "sourcePath": "attributes tran:adeOfRoad[*] uro:TrafficVolumeAttribute uro:averageInboundTravelSpeedNotCongestion",
       "dataType": "float"
     },
     {
       "destinationPath": "__flat uro:TrafficVolumeAttribute_uro:averageOutboundTravelSpeedNotCongestion",
-      "sourcePath": "attributes tran:adeOfRoad uro:TrafficVolumeAttribute uro:averageOutboundTravelSpeedNotCongestion",
+      "sourcePath": "attributes tran:adeOfRoad[*] uro:TrafficVolumeAttribute uro:averageOutboundTravelSpeedNotCongestion",
       "dataType": "float"
     },
     {
       "destinationPath": "__flat uro:TrafficVolumeAttribute_uro:observationPointName",
-      "sourcePath": "attributes tran:adeOfRoad uro:TrafficVolumeAttribute uro:observationPointName"
+      "sourcePath": "attributes tran:adeOfRoad[*] uro:TrafficVolumeAttribute uro:observationPointName"
     },
     {
       "destinationPath": "__flat uro:TrafficVolumeAttribute_uro:reference",
-      "sourcePath": "attributes tran:adeOfRoad uro:TrafficVolumeAttribute uro:reference"
+      "sourcePath": "attributes tran:adeOfRoad[*] uro:TrafficVolumeAttribute uro:reference"
     },
     {
       "destinationPath": "__flat uro:TrafficVolumeAttribute_uro:surveyYear",
-      "sourcePath": "attributes tran:adeOfRoad uro:TrafficVolumeAttribute uro:surveyYear",
+      "sourcePath": "attributes tran:adeOfRoad[*] uro:TrafficVolumeAttribute uro:surveyYear",
       "dataType": "int"
     }
   ],
   "tran:TrafficArea": [
     {
       "destinationPath": "__flat gml:name",
-      "sourcePath": "attributes ancestors gml:name"
+      "sourcePath": "attributes ancestors[0] gml:name"
     },
     {
       "destinationPath": "__flat core:creationDate",
-      "sourcePath": "attributes ancestors core:creationDate"
+      "sourcePath": "attributes ancestors[0] core:creationDate"
     },
     {
       "destinationPath": "__flat urc:geometrySrcDescLod1",
-      "sourcePath": "attributes ancestors core:adeOfAbstractCityObject urc:DataQualityAttribute urc:geometrySrcDescLod1"
+      "sourcePath": "attributes ancestors[0] core:adeOfAbstractCityObject[*] urc:DataQualityAttribute urc:geometrySrcDescLod1"
     },
     {
       "destinationPath": "__flat urc:lodType",
-      "sourcePath": "attributes ancestors core:adeOfAbstractCityObject urc:DataQualityAttribute urc:lodType"
+      "sourcePath": "attributes ancestors[0] core:adeOfAbstractCityObject[*] urc:DataQualityAttribute urc:lodType"
     },
     {
       "destinationPath": "__flat tran:class",
-      "sourcePath": "attributes ancestors tran:class"
+      "sourcePath": "attributes ancestors[0] tran:class"
     },
     {
       "destinationPath": "__flat tran:Road_tran:function",
-      "sourcePath": "attributes ancestors tran:function"
+      "sourcePath": "attributes ancestors[0] tran:function"
     },
     {
       "destinationPath": "__flat tran:usage",
-      "sourcePath": "attributes ancestors tran:usage"
+      "sourcePath": "attributes ancestors[0] tran:usage"
     },
     {
       "destinationPath": "__flat tran:function",
@@ -148,122 +148,122 @@
     },
     {
       "destinationPath": "__flat uro:numberOfLanes",
-      "sourcePath": "attributes tran:adeOfTrafficArea uro:TrafficAreaStructureAttribute uro:numberOfLanes",
+      "sourcePath": "attributes tran:adeOfTrafficArea[*] uro:TrafficAreaStructureAttribute uro:numberOfLanes",
       "dataType": "int"
     },
     {
       "destinationPath": "__flat uro:RoadStructureAttribute_uro:widthType",
-      "sourcePath": "attributes ancestors tran:adeOfRoad uro:RoadStructureAttribute uro:widthType"
+      "sourcePath": "attributes ancestors[0] tran:adeOfRoad[*] uro:RoadStructureAttribute uro:widthType"
     },
     {
       "destinationPath": "__flat uro:RoadStructureAttribute_uro:width",
-      "sourcePath": "attributes ancestors tran:adeOfRoad uro:RoadStructureAttribute uro:width",
+      "sourcePath": "attributes ancestors[0] tran:adeOfRoad[*] uro:RoadStructureAttribute uro:width",
       "dataType": "float"
     },
     {
       "destinationPath": "__flat uro:RoadStructureAttribute_uro:numberOfLanes",
-      "sourcePath": "attributes ancestors tran:adeOfRoad uro:RoadStructureAttribute uro:numberOfLanes",
+      "sourcePath": "attributes ancestors[0] tran:adeOfRoad[*] uro:RoadStructureAttribute uro:numberOfLanes",
       "dataType": "int"
     },
     {
       "destinationPath": "__flat uro:RoadStructureAttribute_uro:sectionType",
-      "sourcePath": "attributes ancestors tran:adeOfRoad uro:RoadStructureAttribute uro:sectionType"
+      "sourcePath": "attributes ancestors[0] tran:adeOfRoad[*] uro:RoadStructureAttribute uro:sectionType"
     },
     {
       "destinationPath": "__flat uro:TrafficVolumeAttribute_uro:sectionID",
-      "sourcePath": "attributes ancestors tran:adeOfRoad uro:TrafficVolumeAttribute uro:sectionID"
+      "sourcePath": "attributes ancestors[0] tran:adeOfRoad[*] uro:TrafficVolumeAttribute uro:sectionID"
     },
     {
       "destinationPath": "__flat uro:TrafficVolumeAttribute_uro:routeName",
-      "sourcePath": "attributes ancestors tran:adeOfRoad uro:TrafficVolumeAttribute uro:routeName"
+      "sourcePath": "attributes ancestors[0] tran:adeOfRoad[*] uro:TrafficVolumeAttribute uro:routeName"
     },
     {
       "destinationPath": "__flat uro:TrafficVolumeAttribute_uro:weekday12hourTrafficVolume",
-      "sourcePath": "attributes ancestors tran:adeOfRoad uro:TrafficVolumeAttribute uro:weekday12hourTrafficVolume",
+      "sourcePath": "attributes ancestors[0] tran:adeOfRoad[*] uro:TrafficVolumeAttribute uro:weekday12hourTrafficVolume",
       "dataType": "float"
     },
     {
       "destinationPath": "__flat uro:TrafficVolumeAttribute_uro:weekday24hourTrafficVolume",
-      "sourcePath": "attributes ancestors tran:adeOfRoad uro:TrafficVolumeAttribute uro:weekday24hourTrafficVolume",
+      "sourcePath": "attributes ancestors[0] tran:adeOfRoad[*] uro:TrafficVolumeAttribute uro:weekday24hourTrafficVolume",
       "dataType": "float"
     },
     {
       "destinationPath": "__flat uro:TrafficVolumeAttribute_uro:largeVehicleRate",
-      "sourcePath": "attributes ancestors tran:adeOfRoad uro:TrafficVolumeAttribute uro:largeVehicleRate",
+      "sourcePath": "attributes ancestors[0] tran:adeOfRoad[*] uro:TrafficVolumeAttribute uro:largeVehicleRate",
       "dataType": "float"
     },
     {
       "destinationPath": "__flat uro:TrafficVolumeAttribute_uro:congestionRate",
-      "sourcePath": "attributes ancestors tran:adeOfRoad uro:TrafficVolumeAttribute uro:congestionRate",
+      "sourcePath": "attributes ancestors[0] tran:adeOfRoad[*] uro:TrafficVolumeAttribute uro:congestionRate",
       "dataType": "float"
     },
     {
       "destinationPath": "__flat uro:TrafficVolumeAttribute_uro:averageTravelSpeedInCongestion",
-      "sourcePath": "attributes ancestors tran:adeOfRoad uro:TrafficVolumeAttribute uro:averageTravelSpeedInCongestion",
+      "sourcePath": "attributes ancestors[0] tran:adeOfRoad[*] uro:TrafficVolumeAttribute uro:averageTravelSpeedInCongestion",
       "dataType": "float"
     },
     {
       "destinationPath": "__flat uro:TrafficVolumeAttribute_uro:averageInboundTravelSpeedInCongestion",
-      "sourcePath": "attributes ancestors tran:adeOfRoad uro:TrafficVolumeAttribute uro:averageInboundTravelSpeedInCongestion",
+      "sourcePath": "attributes ancestors[0] tran:adeOfRoad[*] uro:TrafficVolumeAttribute uro:averageInboundTravelSpeedInCongestion",
       "dataType": "float"
     },
     {
       "destinationPath": "__flat uro:TrafficVolumeAttribute_uro:averageOutboundTravelSpeedInCongestion",
-      "sourcePath": "attributes ancestors tran:adeOfRoad uro:TrafficVolumeAttribute uro:averageOutboundTravelSpeedInCongestion",
+      "sourcePath": "attributes ancestors[0] tran:adeOfRoad[*] uro:TrafficVolumeAttribute uro:averageOutboundTravelSpeedInCongestion",
       "dataType": "float"
     },
     {
       "destinationPath": "__flat uro:TrafficVolumeAttribute_uro:averageInboundTravelSpeedNotCongestion",
-      "sourcePath": "attributes ancestors tran:adeOfRoad uro:TrafficVolumeAttribute uro:averageInboundTravelSpeedNotCongestion",
+      "sourcePath": "attributes ancestors[0] tran:adeOfRoad[*] uro:TrafficVolumeAttribute uro:averageInboundTravelSpeedNotCongestion",
       "dataType": "float"
     },
     {
       "destinationPath": "__flat uro:TrafficVolumeAttribute_uro:averageOutboundTravelSpeedNotCongestion",
-      "sourcePath": "attributes ancestors tran:adeOfRoad uro:TrafficVolumeAttribute uro:averageOutboundTravelSpeedNotCongestion",
+      "sourcePath": "attributes ancestors[0] tran:adeOfRoad[*] uro:TrafficVolumeAttribute uro:averageOutboundTravelSpeedNotCongestion",
       "dataType": "float"
     },
     {
       "destinationPath": "__flat uro:TrafficVolumeAttribute_uro:observationPointName",
-      "sourcePath": "attributes ancestors tran:adeOfRoad uro:TrafficVolumeAttribute uro:observationPointName"
+      "sourcePath": "attributes ancestors[0] tran:adeOfRoad[*] uro:TrafficVolumeAttribute uro:observationPointName"
     },
     {
       "destinationPath": "__flat uro:TrafficVolumeAttribute_uro:reference",
-      "sourcePath": "attributes ancestors tran:adeOfRoad uro:TrafficVolumeAttribute uro:reference"
+      "sourcePath": "attributes ancestors[0] tran:adeOfRoad[*] uro:TrafficVolumeAttribute uro:reference"
     },
     {
       "destinationPath": "__flat uro:TrafficVolumeAttribute_uro:surveyYear",
-      "sourcePath": "attributes ancestors tran:adeOfRoad uro:TrafficVolumeAttribute uro:surveyYear",
+      "sourcePath": "attributes ancestors[0] tran:adeOfRoad[*] uro:TrafficVolumeAttribute uro:surveyYear",
       "dataType": "int"
     }
   ],
   "tran:AuxiliaryTrafficArea": [
     {
       "destinationPath": "__flat gml:name",
-      "sourcePath": "attributes ancestors gml:name"
+      "sourcePath": "attributes ancestors[0] gml:name"
     },
     {
       "destinationPath": "__flat core:creationDate",
-      "sourcePath": "attributes ancestors core:creationDate"
+      "sourcePath": "attributes ancestors[0] core:creationDate"
     },
     {
       "destinationPath": "__flat urc:geometrySrcDescLod1",
-      "sourcePath": "attributes ancestors core:adeOfAbstractCityObject urc:DataQualityAttribute urc:geometrySrcDescLod1"
+      "sourcePath": "attributes ancestors[0] core:adeOfAbstractCityObject[*] urc:DataQualityAttribute urc:geometrySrcDescLod1"
     },
     {
       "destinationPath": "__flat urc:lodType",
-      "sourcePath": "attributes ancestors core:adeOfAbstractCityObject urc:DataQualityAttribute urc:lodType"
+      "sourcePath": "attributes ancestors[0] core:adeOfAbstractCityObject[*] urc:DataQualityAttribute urc:lodType"
     },
     {
       "destinationPath": "__flat tran:class",
-      "sourcePath": "attributes ancestors tran:class"
+      "sourcePath": "attributes ancestors[0] tran:class"
     },
     {
       "destinationPath": "__flat tran:Road_tran:function",
-      "sourcePath": "attributes ancestors tran:function"
+      "sourcePath": "attributes ancestors[0] tran:function"
     },
     {
       "destinationPath": "__flat tran:usage",
-      "sourcePath": "attributes ancestors tran:usage"
+      "sourcePath": "attributes ancestors[0] tran:usage"
     },
     {
       "destinationPath": "__flat tran:function",
@@ -275,86 +275,86 @@
     },
     {
       "destinationPath": "__flat uro:RoadStructureAttribute_uro:widthType",
-      "sourcePath": "attributes ancestors tran:adeOfRoad uro:RoadStructureAttribute uro:widthType"
+      "sourcePath": "attributes ancestors[0] tran:adeOfRoad[*] uro:RoadStructureAttribute uro:widthType"
     },
     {
       "destinationPath": "__flat uro:RoadStructureAttribute_uro:width",
-      "sourcePath": "attributes ancestors tran:adeOfRoad uro:RoadStructureAttribute uro:width",
+      "sourcePath": "attributes ancestors[0] tran:adeOfRoad[*] uro:RoadStructureAttribute uro:width",
       "dataType": "float"
     },
     {
       "destinationPath": "__flat uro:RoadStructureAttribute_uro:numberOfLanes",
-      "sourcePath": "attributes ancestors tran:adeOfRoad uro:RoadStructureAttribute uro:numberOfLanes",
+      "sourcePath": "attributes ancestors[0] tran:adeOfRoad[*] uro:RoadStructureAttribute uro:numberOfLanes",
       "dataType": "int"
     },
     {
       "destinationPath": "__flat uro:RoadStructureAttribute_uro:sectionType",
-      "sourcePath": "attributes ancestors tran:adeOfRoad uro:RoadStructureAttribute uro:sectionType"
+      "sourcePath": "attributes ancestors[0] tran:adeOfRoad[*] uro:RoadStructureAttribute uro:sectionType"
     },
     {
       "destinationPath": "__flat uro:TrafficVolumeAttribute_uro:sectionID",
-      "sourcePath": "attributes ancestors tran:adeOfRoad uro:TrafficVolumeAttribute uro:sectionID"
+      "sourcePath": "attributes ancestors[0] tran:adeOfRoad[*] uro:TrafficVolumeAttribute uro:sectionID"
     },
     {
       "destinationPath": "__flat uro:TrafficVolumeAttribute_uro:routeName",
-      "sourcePath": "attributes ancestors tran:adeOfRoad uro:TrafficVolumeAttribute uro:routeName"
+      "sourcePath": "attributes ancestors[0] tran:adeOfRoad[*] uro:TrafficVolumeAttribute uro:routeName"
     },
     {
       "destinationPath": "__flat uro:TrafficVolumeAttribute_uro:weekday12hourTrafficVolume",
-      "sourcePath": "attributes ancestors tran:adeOfRoad uro:TrafficVolumeAttribute uro:weekday12hourTrafficVolume",
+      "sourcePath": "attributes ancestors[0] tran:adeOfRoad[*] uro:TrafficVolumeAttribute uro:weekday12hourTrafficVolume",
       "dataType": "float"
     },
     {
       "destinationPath": "__flat uro:TrafficVolumeAttribute_uro:weekday24hourTrafficVolume",
-      "sourcePath": "attributes ancestors tran:adeOfRoad uro:TrafficVolumeAttribute uro:weekday24hourTrafficVolume",
+      "sourcePath": "attributes ancestors[0] tran:adeOfRoad[*] uro:TrafficVolumeAttribute uro:weekday24hourTrafficVolume",
       "dataType": "float"
     },
     {
       "destinationPath": "__flat uro:TrafficVolumeAttribute_uro:largeVehicleRate",
-      "sourcePath": "attributes ancestors tran:adeOfRoad uro:TrafficVolumeAttribute uro:largeVehicleRate",
+      "sourcePath": "attributes ancestors[0] tran:adeOfRoad[*] uro:TrafficVolumeAttribute uro:largeVehicleRate",
       "dataType": "float"
     },
     {
       "destinationPath": "__flat uro:TrafficVolumeAttribute_uro:congestionRate",
-      "sourcePath": "attributes ancestors tran:adeOfRoad uro:TrafficVolumeAttribute uro:congestionRate",
+      "sourcePath": "attributes ancestors[0] tran:adeOfRoad[*] uro:TrafficVolumeAttribute uro:congestionRate",
       "dataType": "float"
     },
     {
       "destinationPath": "__flat uro:TrafficVolumeAttribute_uro:averageTravelSpeedInCongestion",
-      "sourcePath": "attributes ancestors tran:adeOfRoad uro:TrafficVolumeAttribute uro:averageTravelSpeedInCongestion",
+      "sourcePath": "attributes ancestors[0] tran:adeOfRoad[*] uro:TrafficVolumeAttribute uro:averageTravelSpeedInCongestion",
       "dataType": "float"
     },
     {
       "destinationPath": "__flat uro:TrafficVolumeAttribute_uro:averageInboundTravelSpeedInCongestion",
-      "sourcePath": "attributes ancestors tran:adeOfRoad uro:TrafficVolumeAttribute uro:averageInboundTravelSpeedInCongestion",
+      "sourcePath": "attributes ancestors[0] tran:adeOfRoad[*] uro:TrafficVolumeAttribute uro:averageInboundTravelSpeedInCongestion",
       "dataType": "float"
     },
     {
       "destinationPath": "__flat uro:TrafficVolumeAttribute_uro:averageOutboundTravelSpeedInCongestion",
-      "sourcePath": "attributes ancestors tran:adeOfRoad uro:TrafficVolumeAttribute uro:averageOutboundTravelSpeedInCongestion",
+      "sourcePath": "attributes ancestors[0] tran:adeOfRoad[*] uro:TrafficVolumeAttribute uro:averageOutboundTravelSpeedInCongestion",
       "dataType": "float"
     },
     {
       "destinationPath": "__flat uro:TrafficVolumeAttribute_uro:averageInboundTravelSpeedNotCongestion",
-      "sourcePath": "attributes ancestors tran:adeOfRoad uro:TrafficVolumeAttribute uro:averageInboundTravelSpeedNotCongestion",
+      "sourcePath": "attributes ancestors[0] tran:adeOfRoad[*] uro:TrafficVolumeAttribute uro:averageInboundTravelSpeedNotCongestion",
       "dataType": "float"
     },
     {
       "destinationPath": "__flat uro:TrafficVolumeAttribute_uro:averageOutboundTravelSpeedNotCongestion",
-      "sourcePath": "attributes ancestors tran:adeOfRoad uro:TrafficVolumeAttribute uro:averageOutboundTravelSpeedNotCongestion",
+      "sourcePath": "attributes ancestors[0] tran:adeOfRoad[*] uro:TrafficVolumeAttribute uro:averageOutboundTravelSpeedNotCongestion",
       "dataType": "float"
     },
     {
       "destinationPath": "__flat uro:TrafficVolumeAttribute_uro:observationPointName",
-      "sourcePath": "attributes ancestors tran:adeOfRoad uro:TrafficVolumeAttribute uro:observationPointName"
+      "sourcePath": "attributes ancestors[0] tran:adeOfRoad[*] uro:TrafficVolumeAttribute uro:observationPointName"
     },
     {
       "destinationPath": "__flat uro:TrafficVolumeAttribute_uro:reference",
-      "sourcePath": "attributes ancestors tran:adeOfRoad uro:TrafficVolumeAttribute uro:reference"
+      "sourcePath": "attributes ancestors[0] tran:adeOfRoad[*] uro:TrafficVolumeAttribute uro:reference"
     },
     {
       "destinationPath": "__flat uro:TrafficVolumeAttribute_uro:surveyYear",
-      "sourcePath": "attributes ancestors tran:adeOfRoad uro:TrafficVolumeAttribute uro:surveyYear",
+      "sourcePath": "attributes ancestors[0] tran:adeOfRoad[*] uro:TrafficVolumeAttribute uro:surveyYear",
       "dataType": "int"
     }
   ],

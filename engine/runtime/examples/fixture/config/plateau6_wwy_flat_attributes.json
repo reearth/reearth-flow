@@ -10,111 +10,111 @@
     },
     {
       "destinationPath": "__flat urc:geometrySrcDescLod1",
-      "sourcePath": "attributes core:adeOfAbstractCityObject urc:DataQualityAttribute urc:geometrySrcDescLod1"
+      "sourcePath": "attributes core:adeOfAbstractCityObject[*] urc:DataQualityAttribute urc:geometrySrcDescLod1"
     },
     {
       "destinationPath": "__flat urc:lodType",
-      "sourcePath": "attributes core:adeOfAbstractCityObject urc:DataQualityAttribute urc:lodType"
+      "sourcePath": "attributes core:adeOfAbstractCityObject[*] urc:DataQualityAttribute urc:lodType"
     },
     {
       "destinationPath": "__flat uro:routeId",
-      "sourcePath": "attributes tran:adeOfWaterway uro:WaterwayDetailAttribute uro:routeId"
+      "sourcePath": "attributes tran:adeOfWaterway[*] uro:WaterwayDetailAttribute uro:routeId"
     },
     {
       "destinationPath": "__flat uro:routeDirection",
-      "sourcePath": "attributes tran:adeOfWaterway uro:WaterwayDetailAttribute uro:routeDirection"
+      "sourcePath": "attributes tran:adeOfWaterway[*] uro:WaterwayDetailAttribute uro:routeDirection"
     },
     {
       "destinationPath": "__flat uro:minimumWidth",
-      "sourcePath": "attributes tran:adeOfWaterway uro:WaterwayDetailAttribute uro:minimumWidth",
+      "sourcePath": "attributes tran:adeOfWaterway[*] uro:WaterwayDetailAttribute uro:minimumWidth",
       "dataType": "float"
     },
     {
       "destinationPath": "__flat uro:maximumWidth",
-      "sourcePath": "attributes tran:adeOfWaterway uro:WaterwayDetailAttribute uro:maximumWidth",
+      "sourcePath": "attributes tran:adeOfWaterway[*] uro:WaterwayDetailAttribute uro:maximumWidth",
       "dataType": "float"
     },
     {
       "destinationPath": "__flat uro:length",
-      "sourcePath": "attributes tran:adeOfWaterway uro:WaterwayDetailAttribute uro:length",
+      "sourcePath": "attributes tran:adeOfWaterway[*] uro:WaterwayDetailAttribute uro:length",
       "dataType": "float"
     },
     {
       "destinationPath": "__flat uro:navigation",
-      "sourcePath": "attributes tran:adeOfWaterway uro:WaterwayDetailAttribute uro:navigation"
+      "sourcePath": "attributes tran:adeOfWaterway[*] uro:WaterwayDetailAttribute uro:navigation"
     },
     {
       "destinationPath": "__flat uro:plannedDepth",
-      "sourcePath": "attributes tran:adeOfWaterway uro:WaterwayDetailAttribute uro:plannedDepth",
+      "sourcePath": "attributes tran:adeOfWaterway[*] uro:WaterwayDetailAttribute uro:plannedDepth",
       "dataType": "float"
     },
     {
       "destinationPath": "__flat uro:speedLimit",
-      "sourcePath": "attributes tran:adeOfWaterway uro:WaterwayDetailAttribute uro:speedLimit",
+      "sourcePath": "attributes tran:adeOfWaterway[*] uro:WaterwayDetailAttribute uro:speedLimit",
       "dataType": "float"
     },
     {
       "destinationPath": "__flat uro:targetShipType",
-      "sourcePath": "attributes tran:adeOfWaterway uro:WaterwayDetailAttribute uro:targetShipType"
+      "sourcePath": "attributes tran:adeOfWaterway[*] uro:WaterwayDetailAttribute uro:targetShipType"
     }
   ],
   "tran:TrafficArea": [
     {
       "destinationPath": "__flat gml:name",
-      "sourcePath": "attributes ancestors gml:name"
+      "sourcePath": "attributes ancestors[0] gml:name"
     },
     {
       "destinationPath": "__flat core:creationDate",
-      "sourcePath": "attributes ancestors core:creationDate"
+      "sourcePath": "attributes ancestors[0] core:creationDate"
     },
     {
       "destinationPath": "__flat urc:geometrySrcDescLod1",
-      "sourcePath": "attributes ancestors core:adeOfAbstractCityObject urc:DataQualityAttribute urc:geometrySrcDescLod1"
+      "sourcePath": "attributes ancestors[0] core:adeOfAbstractCityObject[*] urc:DataQualityAttribute urc:geometrySrcDescLod1"
     },
     {
       "destinationPath": "__flat urc:lodType",
-      "sourcePath": "attributes ancestors core:adeOfAbstractCityObject urc:DataQualityAttribute urc:lodType"
+      "sourcePath": "attributes ancestors[0] core:adeOfAbstractCityObject[*] urc:DataQualityAttribute urc:lodType"
     },
     {
       "destinationPath": "__flat uro:routeId",
-      "sourcePath": "attributes ancestors tran:adeOfWaterway uro:WaterwayDetailAttribute uro:routeId"
+      "sourcePath": "attributes ancestors[0] tran:adeOfWaterway[*] uro:WaterwayDetailAttribute uro:routeId"
     },
     {
       "destinationPath": "__flat uro:routeDirection",
-      "sourcePath": "attributes ancestors tran:adeOfWaterway uro:WaterwayDetailAttribute uro:routeDirection"
+      "sourcePath": "attributes ancestors[0] tran:adeOfWaterway[*] uro:WaterwayDetailAttribute uro:routeDirection"
     },
     {
       "destinationPath": "__flat uro:minimumWidth",
-      "sourcePath": "attributes ancestors tran:adeOfWaterway uro:WaterwayDetailAttribute uro:minimumWidth",
+      "sourcePath": "attributes ancestors[0] tran:adeOfWaterway[*] uro:WaterwayDetailAttribute uro:minimumWidth",
       "dataType": "float"
     },
     {
       "destinationPath": "__flat uro:maximumWidth",
-      "sourcePath": "attributes ancestors tran:adeOfWaterway uro:WaterwayDetailAttribute uro:maximumWidth",
+      "sourcePath": "attributes ancestors[0] tran:adeOfWaterway[*] uro:WaterwayDetailAttribute uro:maximumWidth",
       "dataType": "float"
     },
     {
       "destinationPath": "__flat uro:length",
-      "sourcePath": "attributes ancestors tran:adeOfWaterway uro:WaterwayDetailAttribute uro:length",
+      "sourcePath": "attributes ancestors[0] tran:adeOfWaterway[*] uro:WaterwayDetailAttribute uro:length",
       "dataType": "float"
     },
     {
       "destinationPath": "__flat uro:navigation",
-      "sourcePath": "attributes ancestors tran:adeOfWaterway uro:WaterwayDetailAttribute uro:navigation"
+      "sourcePath": "attributes ancestors[0] tran:adeOfWaterway[*] uro:WaterwayDetailAttribute uro:navigation"
     },
     {
       "destinationPath": "__flat uro:plannedDepth",
-      "sourcePath": "attributes ancestors tran:adeOfWaterway uro:WaterwayDetailAttribute uro:plannedDepth",
+      "sourcePath": "attributes ancestors[0] tran:adeOfWaterway[*] uro:WaterwayDetailAttribute uro:plannedDepth",
       "dataType": "float"
     },
     {
       "destinationPath": "__flat uro:speedLimit",
-      "sourcePath": "attributes ancestors tran:adeOfWaterway uro:WaterwayDetailAttribute uro:speedLimit",
+      "sourcePath": "attributes ancestors[0] tran:adeOfWaterway[*] uro:WaterwayDetailAttribute uro:speedLimit",
       "dataType": "float"
     },
     {
       "destinationPath": "__flat uro:targetShipType",
-      "sourcePath": "attributes ancestors tran:adeOfWaterway uro:WaterwayDetailAttribute uro:targetShipType"
+      "sourcePath": "attributes ancestors[0] tran:adeOfWaterway[*] uro:WaterwayDetailAttribute uro:targetShipType"
     }
   ]
 }

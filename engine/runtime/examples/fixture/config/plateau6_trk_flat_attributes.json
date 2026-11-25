@@ -10,11 +10,11 @@
     },
     {
       "destinationPath": "__flat urc:geometrySrcDescLod1",
-      "sourcePath": "attributes core:adeOfAbstractCityObject urc:DataQualityAttribute urc:geometrySrcDescLod1"
+      "sourcePath": "attributes core:adeOfAbstractCityObject[*] urc:DataQualityAttribute urc:geometrySrcDescLod1"
     },
     {
       "destinationPath": "__flat urc:lodType",
-      "sourcePath": "attributes core:adeOfAbstractCityObject urc:DataQualityAttribute urc:lodType"
+      "sourcePath": "attributes core:adeOfAbstractCityObject[*] urc:DataQualityAttribute urc:lodType"
     },
     {
       "destinationPath": "__flat tran:class",
@@ -32,31 +32,31 @@
   "tran:TrafficArea": [
     {
       "destinationPath": "__flat gml:name",
-      "sourcePath": "attributes ancestors gml:name"
+      "sourcePath": "attributes ancestors[0] gml:name"
     },
     {
       "destinationPath": "__flat core:creationDate",
-      "sourcePath": "attributes ancestors core:creationDate"
+      "sourcePath": "attributes ancestors[0] core:creationDate"
     },
     {
       "destinationPath": "__flat urc:geometrySrcDescLod1",
-      "sourcePath": "attributes ancestors core:adeOfAbstractCityObject urc:DataQualityAttribute urc:geometrySrcDescLod1"
+      "sourcePath": "attributes ancestors[0] core:adeOfAbstractCityObject[*] urc:DataQualityAttribute urc:geometrySrcDescLod1"
     },
     {
       "destinationPath": "__flat urc:lodType",
-      "sourcePath": "attributes ancestors core:adeOfAbstractCityObject urc:DataQualityAttribute urc:lodType"
+      "sourcePath": "attributes ancestors[0] core:adeOfAbstractCityObject[*] urc:DataQualityAttribute urc:lodType"
     },
     {
       "destinationPath": "__flat tran:class",
-      "sourcePath": "attributes ancestors tran:class"
+      "sourcePath": "attributes ancestors[0] tran:class"
     },
     {
       "destinationPath": "__flat tran:Track_tran:function",
-      "sourcePath": "attributes ancestors tran:function"
+      "sourcePath": "attributes ancestors[0] tran:function"
     },
     {
       "destinationPath": "__flat tran:usage",
-      "sourcePath": "attributes ancestors tran:usage"
+      "sourcePath": "attributes ancestors[0] tran:usage"
     },
     {
       "destinationPath": "__flat tran:function",
@@ -66,31 +66,31 @@
   "tran:AuxiliaryTrafficArea": [
     {
       "destinationPath": "__flat gml:name",
-      "sourcePath": "attributes ancestors gml:name"
+      "sourcePath": "attributes ancestors[0] gml:name"
     },
     {
       "destinationPath": "__flat core:creationDate",
-      "sourcePath": "attributes ancestors core:creationDate"
+      "sourcePath": "attributes ancestors[0] core:creationDate"
     },
     {
       "destinationPath": "__flat urc:geometrySrcDescLod1",
-      "sourcePath": "attributes ancestors core:adeOfAbstractCityObject urc:DataQualityAttribute urc:geometrySrcDescLod1"
+      "sourcePath": "attributes ancestors[0] core:adeOfAbstractCityObject[*] urc:DataQualityAttribute urc:geometrySrcDescLod1"
     },
     {
       "destinationPath": "__flat urc:lodType",
-      "sourcePath": "attributes ancestors core:adeOfAbstractCityObject urc:DataQualityAttribute urc:lodType"
+      "sourcePath": "attributes ancestors[0] core:adeOfAbstractCityObject[*] urc:DataQualityAttribute urc:lodType"
     },
     {
       "destinationPath": "__flat tran:class",
-      "sourcePath": "attributes ancestors tran:class"
+      "sourcePath": "attributes ancestors[0] tran:class"
     },
     {
       "destinationPath": "__flat tran:Track_tran:function",
-      "sourcePath": "attributes ancestors tran:function"
+      "sourcePath": "attributes ancestors[0] tran:function"
     },
     {
       "destinationPath": "__flat tran:usage",
-      "sourcePath": "attributes ancestors tran:usage"
+      "sourcePath": "attributes ancestors[0] tran:usage"
     },
     {
       "destinationPath": "__flat tran:function",
