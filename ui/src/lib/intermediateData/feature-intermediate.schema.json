@@ -1515,11 +1515,11 @@
     },
     "PointCloud": {
       "title": "Point cloud",
-      "description": "A 3D point cloud: one or more acquisition segments sharing a coordinate frame.",
+      "description": "A 3D point cloud: its points in a coordinate frame.",
       "type": "object",
       "required": [
-        "frame",
-        "segments"
+        "data",
+        "frame"
       ],
       "properties": {
         "frame": {
@@ -1530,23 +1530,50 @@
             }
           ]
         },
-        "segments": {
-          "title": "Segments",
+        "data": {
+          "title": "Data",
+          "allOf": [
+            {
+              "$ref": "#/definitions/Data"
+            }
+          ]
+        },
+        "scale": {
+          "title": "Scale",
+          "description": "Per-axis factor on every stored position.",
           "type": "array",
           "items": {
-            "$ref": "#/definitions/Segment"
-          }
+            "type": "number",
+            "format": "double"
+          },
+          "maxItems": 3,
+          "minItems": 3
+        },
+        "translation": {
+          "title": "Translation",
+          "description": "Added to every stored position after `scale`.",
+          "type": "array",
+          "items": {
+            "type": "number",
+            "format": "double"
+          },
+          "maxItems": 3,
+          "minItems": 3
         }
       }
     },
-    "Segment": {
-      "title": "Acquisition segment",
-      "description": "One acquisition source's points: their positions in the encoding they are stored in, plus any per-point attribute columns.",
+    "Data": {
+      "title": "Point data",
+      "description": "Either `file`, a LAS / LAZ file holding the points, or their positions in the encoding they are stored in, plus any per-point fields and attribute columns.",
       "type": "object",
-      "required": [
-        "positions"
-      ],
       "properties": {
+        "file": {
+          "title": "File",
+          "type": [
+            "string",
+            "null"
+          ]
+        },
         "source": {
           "title": "Source",
           "type": [
@@ -1556,11 +1583,103 @@
         },
         "positions": {
           "title": "Positions",
-          "allOf": [
+          "anyOf": [
             {
               "$ref": "#/definitions/Positions"
+            },
+            {
+              "type": "null"
             }
           ]
+        },
+        "rgb": {
+          "title": "RGB",
+          "type": [
+            "array",
+            "null"
+          ],
+          "items": {
+            "type": "array",
+            "items": {
+              "type": "integer",
+              "format": "uint16",
+              "minimum": 0.0
+            },
+            "maxItems": 3,
+            "minItems": 3
+          }
+        },
+        "intensity": {
+          "title": "Intensity",
+          "type": [
+            "array",
+            "null"
+          ],
+          "items": {
+            "type": "integer",
+            "format": "uint16",
+            "minimum": 0.0
+          }
+        },
+        "timestamp": {
+          "title": "Timestamp",
+          "type": [
+            "array",
+            "null"
+          ],
+          "items": {
+            "type": "number",
+            "format": "double"
+          }
+        },
+        "classification": {
+          "title": "Classification",
+          "type": [
+            "array",
+            "null"
+          ],
+          "items": {
+            "type": "integer",
+            "format": "uint8",
+            "minimum": 0.0
+          }
+        },
+        "return_info": {
+          "title": "Return info",
+          "description": "Return number in bits 0-3, number of returns in bits 4-7.",
+          "type": [
+            "array",
+            "null"
+          ],
+          "items": {
+            "type": "integer",
+            "format": "uint8",
+            "minimum": 0.0
+          }
+        },
+        "scan_angle": {
+          "title": "Scan angle",
+          "description": "In units of 0.006 degrees.",
+          "type": [
+            "array",
+            "null"
+          ],
+          "items": {
+            "type": "integer",
+            "format": "int16"
+          }
+        },
+        "point_source_id": {
+          "title": "Point source ID",
+          "type": [
+            "array",
+            "null"
+          ],
+          "items": {
+            "type": "integer",
+            "format": "uint16",
+            "minimum": 0.0
+          }
         },
         "attributes": {
           "title": "Attribute columns",
@@ -1668,7 +1787,7 @@
       ]
     },
     "AttributeColumn": {
-      "description": "Typed column for user-defined per-point attributes (LAS Extra Bytes, PDAL extra dims, etc.). Schema-based: every column has exactly `Segment::count` entries. SoA layout: one `Vec<T>` per attribute, accessed one column at a time.",
+      "description": "Typed column for user-defined per-point attributes (LAS Extra Bytes, PDAL extra dims, etc.). Schema-based: every column has exactly `PointBuffer::count` entries. SoA layout: one `Vec<T>` per attribute, accessed one column at a time.",
       "oneOf": [
         {
           "type": "object",

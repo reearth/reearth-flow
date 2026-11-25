@@ -71,9 +71,10 @@ func TestSingleLockedEvictReconnectLosesNoUpdates(t *testing.T) {
 	_ = relay.Close()
 }
 
-// TestPublishRefusedDuringEvict: a Publish issued while a room is mid-evict is
-// refused (no XADD races the DEL).
-func TestPublishRefusedDuringEvict(t *testing.T) {
+// TestPublishDuringEvictNeverRecreatesTheStream: a Publish issued while a room
+// is mid-evict is written only while the stream exists, so a late XADD can
+// never put a stream back after the last instance's DEL.
+func TestPublishDuringEvictNeverRecreatesTheStream(t *testing.T) {
 	c, mr := newTestClient(t)
 	ctx := context.Background()
 	const room = "proj1"
@@ -88,13 +89,15 @@ func TestPublishRefusedDuringEvict(t *testing.T) {
 	relay.rooms[room].evicting = true
 	relay.mu.Unlock()
 
-	before, _ := c.XLen(ctx, streamKey(room)).Result()
+	// The last instance's evict has deleted the stream.
+	if err := c.Del(ctx, streamKey(room)).Err(); err != nil {
+		t.Fatal(err)
+	}
 	if err := relay.Publish(ctx, cluster.Outbound{Room: room, Kind: cluster.KindSync, Data: []byte{1}}); err != nil {
 		t.Fatalf("Publish during evict returned err: %v", err)
 	}
-	after, _ := c.XLen(ctx, streamKey(room)).Result()
-	if after != before {
-		t.Fatalf("Publish during evict wrote to the stream: before=%d after=%d", before, after)
+	if mr.Exists(streamKey(room)) {
+		t.Fatal("Publish during evict recreated the deleted stream")
 	}
 }
 

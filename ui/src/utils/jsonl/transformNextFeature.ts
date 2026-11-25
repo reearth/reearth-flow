@@ -673,16 +673,18 @@ function polygonsOfShell(shell: unknown, swap: boolean): Position[][][] {
   return [];
 }
 
-/** Total points across a point cloud's segments, whatever encoding they use. */
-function countPointCloud(leaf: Record<string, unknown>): number {
-  const segments = (leaf.segments ?? []) as Record<string, unknown>[];
-  return segments.reduce((total, segment) => {
-    const positions = (segment?.positions ?? {}) as Record<string, unknown>;
-    const payload = Object.values(positions)[0];
-    if (Array.isArray(payload)) return total + payload.length;
-    const scaled = (payload as Record<string, unknown>)?.values;
-    return total + (Array.isArray(scaled) ? scaled.length : 0);
-  }, 0);
+/**
+ * A point cloud's point count, whatever encoding its positions use, or
+ * `undefined` if its points are still in a file.
+ */
+function countPointCloud(leaf: Record<string, unknown>): number | undefined {
+  const data = (leaf.data ?? {}) as Record<string, unknown>;
+  if (data.file !== undefined) return undefined;
+  const positions = (data.positions ?? {}) as Record<string, unknown>;
+  const payload = Object.values(positions)[0];
+  if (Array.isArray(payload)) return payload.length;
+  const scaled = (payload as Record<string, unknown>)?.values;
+  return Array.isArray(scaled) ? scaled.length : 0;
 }
 
 /** A count, grouped for the active language — `1,234` and `1.234` differ. */
@@ -698,8 +700,12 @@ function summarize(variant: string | null, value: unknown): string | undefined {
   switch (variant) {
     case "Point":
       return i18n.t("Positions: {{n}}", { n: num(1) });
-    case "PointCloud":
-      return i18n.t("Points: {{n}}", { n: num(countPointCloud(leaf)) });
+    case "PointCloud": {
+      const n = countPointCloud(leaf);
+      return n === undefined
+        ? undefined
+        : i18n.t("Points: {{n}}", { n: num(n) });
+    }
     case "LineString":
       return i18n.t("Vertices: {{n}}", { n: num(count("coords")) });
     case "Polygon":

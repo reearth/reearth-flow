@@ -84,15 +84,15 @@ crate::unsupported!(Point3D: CountHoles);
 // A point is exactly one coordinate.
 #[cfg(feature = "new-geometry")]
 impl crate::ops::CountVertices for Point2D {
-    fn count_vertices(&self) -> usize {
-        1
+    fn count_vertices(&self) -> crate::error::Result<usize> {
+        Ok(1)
     }
 }
 
 #[cfg(feature = "new-geometry")]
 impl crate::ops::CountVertices for Point3D {
-    fn count_vertices(&self) -> usize {
-        1
+    fn count_vertices(&self) -> crate::error::Result<usize> {
+        Ok(1)
     }
 }
 

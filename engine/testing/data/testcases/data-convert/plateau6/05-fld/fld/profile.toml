@@ -39,7 +39,7 @@ path = "pref_l2_truth.json"
 [convs.json.tileset_natl_l1]
 flow_path = "13997_tokyo_udx-mlit_2026_citygml_1_sample-tokyoCG3_op_fld_natl_arakawa_arakawa_3dtiles_l1_no_texture/tileset.json"
 output_path = "natl_l1_tileset.json"
-generate_truth = false
+generate_truth = true
 json_path = ".properties"
 
 [convs.json.tileset_natl_l1.casts]

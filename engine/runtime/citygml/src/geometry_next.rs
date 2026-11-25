@@ -16,6 +16,7 @@ use reearth_flow_geometry::collection::Collection3D;
 use reearth_flow_geometry::coordinate::CoordinateFrame;
 use reearth_flow_geometry::line_string::LineString3D;
 use reearth_flow_geometry::point::Point3D;
+use reearth_flow_geometry::point_cloud::PointCloud;
 use reearth_flow_geometry::polygon::Polygon3D;
 use reearth_flow_geometry::triangular_mesh::TriangularMesh3D;
 
@@ -23,7 +24,10 @@ use super::coordinate_handling::CoordinateHandling;
 use super::malformation::{Malformation, MalformationKind};
 use super::parser::{Parser, RawChild, RawNode, raw_gml_id};
 use super::resolver::{FaceIds, GeomNode, GmlGeometryType, LeafIds, Role, Unresolved};
-use super::utils::{GML_NS_311_ID, GML_NS_ID, GeomMeta, frame_for, local_name};
+use super::srsname::parse_point_file_epsg;
+use super::utils::{
+    CITYGML_NS_30_ID, GML_NS_311_ID, GML_NS_ID, GeomMeta, frame_for, local_name, resolve_uri,
+};
 
 impl Parser {
     /// Strip every geometry property from `node`, replacing each in place with a
@@ -53,6 +57,20 @@ impl Parser {
                 }
                 continue;
             };
+
+            if let Some((kept, cloud)) = self.point_cloud_property(e) {
+                let nc = new_children.get_or_insert_with(|| node.children[..i].to_vec());
+                nc.push(RawChild::Element(kept));
+                if let Some(cloud) = cloud {
+                    let meta = GeomMeta {
+                        lod: None,
+                        property: local_name(&e.name.0).to_string(),
+                        gml_type: Some("PointCloud".to_string()),
+                    };
+                    nc.push(RawChild::Geometry(meta, Arc::new(cloud)));
+                }
+                continue;
+            }
 
             let ln = local_name(&e.name.0);
             let lod = if ln == "tin" {
@@ -220,11 +238,166 @@ impl Parser {
         members
     }
 
+    /// Read a `core:pointCloud` property holding a `pcl:PointCloud`. Returns the
+    /// property to keep as attributes, without any inline `pcl:points`, and the
+    /// point cloud as a geometry when it could be read; `None` for any other
+    /// element.
+    ///
+    /// A `pcl:pointFile` becomes a file-backed point cloud: the file is not
+    /// opened, its path is resolved against the document, and its frame is
+    /// `pcl:pointFileSrsName` or, without one, the document's CRS. Inline
+    /// `pcl:points` become an in-memory point cloud in the document's CRS.
+    ///
+    /// TODO: resolve `xlink:href` references. A property referencing a point
+    /// cloud and points referenced from `pcl:points` are reported and skipped.
+    fn point_cloud_property(
+        &mut self,
+        prop: &Arc<RawNode>,
+    ) -> Option<(Arc<RawNode>, Option<GeomNode>)> {
+        if prop.name.1 != CITYGML_NS_30_ID || local_name(&prop.name.0) != "pointCloud" {
+            return None;
+        }
+        if let Some(RawChild::Ref(key)) = prop.children.first() {
+            let mut m = Malformation::new(MalformationKind::PointCloudReference(key.1.clone()));
+            m.file = prop.source_url.as_str().to_string();
+            m.location = prop.name.0.clone();
+            self.malformations.push(m);
+            return Some((Arc::clone(prop), None));
+        }
+        let pcl = self.ns_registry.get(PCL_NS_30)?;
+        let is_pcl =
+            |node: &RawNode, name: &str| node.name.1 == pcl && local_name(&node.name.0) == name;
+        let cloud = element_children(prop).find(|c| is_pcl(c, "PointCloud"))?;
+        let pcl_child = |name: &str| element_children(cloud).find(|c| is_pcl(c, name));
+
+        let file = prop.source_url.as_str().to_string();
+        let location = raw_gml_id(cloud).unwrap_or_else(|| cloud.name.0.clone());
+        let before = self.malformations.len();
+        let geometry = if let Some(points) = pcl_child("points") {
+            let refs = count_refs(points);
+            if refs > 0 {
+                self.malformations.push(Malformation::new(
+                    MalformationKind::PointCloudPointReferences(refs),
+                ));
+            }
+            let positions = gather_coords(points, &mut self.malformations);
+            Some(PointCloud::from_positions(self.frame(cloud), positions))
+        } else if let Some(point_file) = pcl_child("pointFile") {
+            self.point_file(cloud, point_file, &pcl_child)
+        } else {
+            self.malformations
+                .push(Malformation::new(MalformationKind::PointCloudWithoutPoints));
+            None
+        };
+        for m in &mut self.malformations[before..] {
+            if m.file.is_empty() {
+                m.file = file.clone();
+            }
+            if m.location.is_empty() {
+                m.location = location.clone();
+            }
+        }
+
+        let kept = match pcl_child("points") {
+            None => Arc::clone(prop),
+            Some(_) => without_inline_points(prop, &is_pcl),
+        };
+        let geometry = geometry.map(|pc| {
+            GeomNode::Resolved(
+                Euclidean3DGeometry::PointCloud(Box::new(pc)),
+                LeafIds {
+                    file,
+                    faces: Vec::new(),
+                },
+            )
+        });
+        Some((kept, geometry))
+    }
+
+    /// The file-backed point cloud `pcl:pointFile` names, or `None` after
+    /// recording why it cannot be read.
+    fn point_file<'a>(
+        &mut self,
+        cloud: &RawNode,
+        point_file: &RawNode,
+        pcl_child: &impl Fn(&str) -> Option<&'a RawNode>,
+    ) -> Option<PointCloud> {
+        if let Some(mime) = pcl_child("mimeType") {
+            let mime = text_content(mime).trim();
+            if !LAS_MIME_TYPES.contains(&mime) {
+                self.malformations.push(Malformation::new(
+                    MalformationKind::UnsupportedPointFileType(mime.to_string()),
+                ));
+                return None;
+            }
+        }
+        let frame = match pcl_child("pointFileSrsName") {
+            Some(srs) => {
+                let srs = text_content(srs).trim();
+                match parse_point_file_epsg(srs) {
+                    Some(epsg) => CoordinateFrame::Crs(epsg),
+                    None => {
+                        self.malformations.push(Malformation::new(
+                            MalformationKind::InvalidPointFileSrsName(srs.to_string()),
+                        ));
+                        return None;
+                    }
+                }
+            }
+            None => self.frame(cloud),
+        };
+        let path = text_content(point_file).trim();
+        let Some(uri) = resolve_uri(&cloud.source_url, path) else {
+            self.malformations
+                .push(Malformation::new(MalformationKind::InvalidPointFile(
+                    path.to_string(),
+                )));
+            return None;
+        };
+        Some(PointCloud::from_las_file(frame, uri))
+    }
+
     /// The coordinate frame geometry from `node` is expressed in: the CRS of the
     /// file the node was parsed from, or `Euclidean` when that file declared none.
     fn frame(&self, node: &RawNode) -> CoordinateFrame {
         frame_for(node.source_url.as_str(), &self.srs_by_file)
     }
+}
+
+/// The CityGML 3.0 point cloud module.
+const PCL_NS_30: &str = "http://www.opengis.net/citygml/pointcloud/3.0";
+
+/// The `pcl:mimeType` values of a LAS or LAZ file.
+const LAS_MIME_TYPES: [&str; 2] = ["application/vnd.las", "application/vnd.laszip"];
+
+/// `prop` with every `pcl:points` under its `pcl:PointCloud` removed.
+fn without_inline_points(prop: &RawNode, is_pcl: &impl Fn(&RawNode, &str) -> bool) -> Arc<RawNode> {
+    let children = prop
+        .children
+        .iter()
+        .map(|child| match child {
+            RawChild::Element(cloud) if is_pcl(cloud, "PointCloud") => {
+                RawChild::Element(Arc::new(RawNode {
+                    name: cloud.name.clone(),
+                    attrs: cloud.attrs.clone(),
+                    children: cloud
+                        .children
+                        .iter()
+                        .filter(|c| !matches!(c, RawChild::Element(e) if is_pcl(e, "points")))
+                        .cloned()
+                        .collect(),
+                    source_url: Arc::clone(&cloud.source_url),
+                }))
+            }
+            other => other.clone(),
+        })
+        .collect();
+    Arc::new(RawNode {
+        name: prop.name.clone(),
+        attrs: prop.attrs.clone(),
+        children,
+        source_url: Arc::clone(&prop.source_url),
+    })
 }
 
 /// Borrow a node's `gml:id`, if any.
@@ -488,6 +661,18 @@ fn gather_coords(node: &RawNode, malformations: &mut Vec<Malformation>) -> Vec<[
     let mut out = Vec::new();
     gather_coords_into(node, &mut out, malformations);
     out
+}
+
+/// How many `xlink:href` references `node` holds at any depth.
+fn count_refs(node: &RawNode) -> usize {
+    node.children
+        .iter()
+        .map(|c| match c {
+            RawChild::Ref(_) => 1,
+            RawChild::Element(e) => count_refs(e),
+            _ => 0,
+        })
+        .sum()
 }
 
 /// Collect every coordinate under `node` into `out`, descending through wrappers

@@ -185,6 +185,17 @@ func (a *Adapter) Load(ctx context.Context, room string) (res persistence.LoadRe
 	if err != nil {
 		return persistence.LoadResult{}, err
 	}
+	out, ps, err := a.foldParked(ctx, room, out, updates, clocksUpTo(clocks, cp))
+	if err != nil {
+		return persistence.LoadResult{}, err
+	}
+	// Served anyway: the parked items stay in every later encode, so they are
+	// kept until the edit they wait for arrives, whereas refusing withholds the
+	// whole project.
+	if ps.Items > 0 {
+		a.log.Error("gcs load: serving a document with parked items; an edit they build on is missing from storage",
+			"room", room, "parked", ps.Items, "awaiting_clients", len(ps.MissingFor))
+	}
 	return persistence.LoadResult{Update: out, Version: persistence.Version(head)}, nil
 }
 
@@ -487,7 +498,8 @@ func (a *Adapter) MaterializeAt(ctx context.Context, room string, v persistence.
 	if err != nil {
 		return nil, err
 	}
-	for _, c := range sortedClocks(updates) {
+	clocks := sortedClocks(updates)
+	for _, c := range clocks {
 		if c > target {
 			break
 		}
@@ -503,7 +515,23 @@ func (a *Adapter) MaterializeAt(ctx context.Context, room string, v persistence.
 	if len(parts) == 0 {
 		return nil, nil // empty state
 	}
-	return crdt.MergeUpdatesV1(parts...)
+	merged, err := crdt.MergeUpdatesV1(parts...)
+	if err != nil {
+		return nil, err
+	}
+	var checkpointed []uint32
+	if cp <= target {
+		checkpointed = clocksUpTo(clocks, cp)
+	}
+	merged, ps, err := a.foldParked(ctx, room, merged, updates, checkpointed)
+	if err != nil {
+		return nil, err
+	}
+	if ps.Items > 0 {
+		a.log.Debug("gcs materialize: state holds parked items; an edit they build on is missing from storage",
+			"room", room, "version", target, "parked", ps.Items, "awaiting_clients", len(ps.MissingFor))
+	}
+	return merged, nil
 }
 
 // CaptureSnapshot stores a named snapshot of state and returns the current head

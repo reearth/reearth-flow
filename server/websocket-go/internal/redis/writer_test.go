@@ -188,9 +188,10 @@ func TestPublishDropsAndCountsWhenQueueFull(t *testing.T) {
 	close(gate.release)
 }
 
-// TestEnqueueNoOpForEvictingRoom: Publish to an evicting room buffers nothing and
-// drops nothing — it is simply refused.
-func TestEnqueueNoOpForEvictingRoom(t *testing.T) {
+// TestPublishToEvictingRoomIsWrittenDirectly: Publish to an evicting room
+// buffers nothing and drops nothing: the stream still exists, so the update is
+// written at once for the instances that still hold the room.
+func TestPublishToEvictingRoomIsWrittenDirectly(t *testing.T) {
 	c, mr := newTestClient(t)
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
@@ -211,14 +212,15 @@ func TestEnqueueNoOpForEvictingRoom(t *testing.T) {
 	if err := relay.Publish(ctx, cluster.Outbound{Room: room, Kind: cluster.KindSync, Data: []byte{1}}); err != nil {
 		t.Fatalf("publish: %v", err)
 	}
-	// Give any (incorrect) writer a moment to flush.
-	time.Sleep(200 * time.Millisecond)
 	after, _ := c.XLen(ctx, streamKey(room)).Result()
-	if after != before {
-		t.Fatalf("evicting-room publish wrote to the stream: before=%d after=%d", before, after)
+	if after != before+1 {
+		t.Fatalf("evicting-room publish was not written: before=%d after=%d", before, after)
 	}
-	if relay.DroppedWrites() != dropsBefore {
-		t.Fatal("evicting-room publish counted a drop; it should be a silent no-op")
+	if len(relay.rooms[room].writeCh) != 0 {
+		t.Fatal("evicting-room publish was queued")
+	}
+	if relay.DroppedWrites() != dropsBefore || relay.LateWrites() != 1 {
+		t.Fatalf("dropped %d, late %d; want no drop and one late write", relay.DroppedWrites()-dropsBefore, relay.LateWrites())
 	}
 }
 
