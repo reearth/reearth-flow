@@ -39,7 +39,7 @@ use super::lod_geometry_type::LodGeometryTypeCheck;
 use super::report::Reporter;
 use super::srs_name::SrsNameCheck;
 use super::traversal::collect_descendant_info;
-use super::xlink::{ExternalGmlIds, XlinkCheck};
+use super::xlink::{self, ExternalGmlIds, XlinkCheck};
 use crate::common::PlateauProfile;
 use crate::common::application_schema_conformance::{
     CityObjectTypes, ConformanceRules, ElementName, element_name,
@@ -438,9 +438,11 @@ fn process_feature(
     let xml_str = std::str::from_utf8(&xml_content)
         .map_err(|source| Error::CityGmlNotUtf8 { path, source })?;
 
-    let schema = conformance_rules
-        .filter(|rules| rules.package(package, None).is_some())
-        .and_then(|_| application_schema(ctx, &xml_content, &city_gml_uri.path()));
+    // L03 needs the XSDs only for a package the objectlist has.
+    let schema = (xlink::needs_application_schema(profile)
+        || conformance_rules.is_some_and(|rules| rules.package(package, None).is_some()))
+    .then(|| application_schema(ctx, &xml_content, &city_gml_uri.path()))
+    .flatten();
     let city_gml_dir = city_gml_uri.dir();
     let city_objects = schema
         .as_deref()
@@ -480,12 +482,14 @@ fn process_feature(
         gml_id_format,
         code_value: CodeValueCheck::new(&mut caches.loaded_codelists),
         extents: ExtentsCheck::default(),
-        xlink: XlinkCheck::new(&mut caches.external_gml_ids),
+        xlink: XlinkCheck::new(&mut caches.external_gml_ids, profile, schema.as_deref()),
         lod_geometry_type: LodGeometryTypeCheck::default(),
         gml_ids: GmlIdTable::new(),
         member_count: 0,
     };
     let parse_outcome = run_checks(&context, xml_str, &feature_type, &mut checks);
+
+    checks.xlink.warn_unresolved_associations(ctx);
 
     let parse_failed = parse_outcome.is_err();
     if let Err(e) = parse_outcome {
@@ -644,13 +648,13 @@ fn check_member(
         if is_city_object_group {
             checks
                 .xlink
-                .add_city_object_group(member.name(), gml_id, collected.xlink_entries);
+                .add_city_object_group(member.name(), gml_id, collected.xlinks.entries);
         } else {
             checks.xlink.check_member(
                 &context.ctx.storage_resolver,
                 gml_ns,
                 context.city_gml_dir,
-                &collected.xlink_entries,
+                &collected.xlinks,
                 &member_gml_ids,
                 &report,
             );
@@ -1116,6 +1120,39 @@ mod tests {
         )
     }
 
+    /// Writes, under `root/schemas`, the XSDs of the T03 (association target
+    /// type) check: a surface member takes a surface, and an address is not
+    /// one.
+    fn write_schemas(root: &Path) -> std::io::Result<()> {
+        write_file(
+            &root.join("schemas/gml.xsd"),
+            r#"<xs:schema xmlns:xs="http://www.w3.org/2001/XMLSchema" xmlns:gml="http://www.opengis.net/gml/3.2" targetNamespace="http://www.opengis.net/gml/3.2" elementFormDefault="qualified">
+    <xs:element name="AbstractSurface" abstract="true"/>
+    <xs:element name="Polygon" substitutionGroup="gml:AbstractSurface"/>
+    <xs:complexType name="SurfacePropertyType">
+        <xs:sequence minOccurs="0"><xs:element ref="gml:AbstractSurface"/></xs:sequence>
+    </xs:complexType>
+    <xs:element name="surfaceMember" type="gml:SurfacePropertyType"/>
+</xs:schema>"#,
+        )?;
+        write_file(
+            &root.join("schemas/core.xsd"),
+            r#"<xs:schema xmlns:xs="http://www.w3.org/2001/XMLSchema" targetNamespace="http://www.opengis.net/citygml/3.0">
+    <xs:element name="Address"/>
+</xs:schema>"#,
+        )
+    }
+
+    /// [`city_model`] naming the XSDs of [`write_schemas`], for a file two
+    /// directories below `root`.
+    fn city_model_with_schemas(srs_name: &str, members: &str) -> String {
+        city_model(srs_name, members).replacen(
+            r#"xmlns:foo="http://example.com/foo">"#,
+            r#"xmlns:foo="http://example.com/foo" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://www.opengis.net/gml/3.2 ../../schemas/gml.xsd http://www.opengis.net/citygml/3.0 ../../schemas/core.xsd">"#,
+            1,
+        )
+    }
+
     /// A building `gml:id` with an LoD0 surface of `pos_list`.
     fn building(gml_id: &str, pos_list: &str) -> String {
         format!(
@@ -1416,9 +1453,10 @@ mod tests {
         let grp = gml_id("grp", 5);
         let missing_in_group = gml_id("bldg", 98);
         let f1 = root.join("udx/bldg/f1.gml");
+        write_schemas(root)?;
         write_file(
             &f1,
-            &city_model(
+            &city_model_with_schemas(
                 VALID_SRS_NAME_6697,
                 &format!(
                     r##"    <core:cityObjectMember>
@@ -2162,9 +2200,10 @@ mod tests {
         let poly3 = gml_id("poly", 31);
         let missing = gml_id("bldg", 99);
         let f1 = root.join("udx/bldg/f1.gml");
+        write_schemas(root)?;
         write_file(
             &f1,
-            &city_model(
+            &city_model_with_schemas(
                 VALID_SRS_NAME_6697,
                 &format!(
                     r##"{group}
