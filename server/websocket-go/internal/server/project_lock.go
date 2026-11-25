@@ -149,8 +149,13 @@ func (l *projectLocks) observe(rl *roomLock, cur projectLock) (stale bool) {
 		// one again puts it after both.
 		return true
 	}
-	rl.latest = cur
-	rl.enforced = true
+	// The newest change written again, by a repair or a peer, is no new
+	// change: it keeps the enforcement it had, so the value the document was
+	// loaded with stays unenforced.
+	if cur != rl.latest {
+		rl.latest = cur
+		rl.enforced = true
+	}
 	return false
 }
 

@@ -609,6 +609,53 @@ func TestSignalLock_RepairsALoadedUnsignedEntryOnTheNextPeerUpdate(t *testing.T)
 	})
 }
 
+func TestSignalLock_PuttingBackTheLoadedChangeDoesNotEnforceIt(t *testing.T) {
+	t.Parallel()
+
+	for name, clobber := range map[string]func(*e2eClient){
+		"unsigned entry": func(c *e2eClient) { c.setLockEntry(forgedLockEntry(9_000_000_000_000)) },
+		"removed entry":  func(c *e2eClient) { c.deleteLockEntry() },
+	} {
+		t.Run(name, func(t *testing.T) {
+			t.Parallel()
+
+			// The room was stored locked, and unlocked while no instance held
+			// it, so the stored entry is out of date and a's connection may
+			// write.
+			ctx := context.Background()
+			mem := persistence.NewMemoryPersistence()
+			srv := NewWithPersistence(ctx, testConfig(), mem)
+			loaded := projectLock{Locked: true, At: 1000}
+			stored := crdt.New(crdt.WithClientID(crdt.ClientID(303)))
+			m := stored.GetMap(metadataMapName)
+			stored.Transact(func(txn *crdt.Transaction) {
+				m.Set(txn, projectLockKey, lockEntry(srv, lockRoom, loaded))
+			})
+			if _, err := mem.AppendUpdate(ctx, lockRoom, crdt.EncodeStateAsUpdateV1(stored, nil)); err != nil {
+				t.Fatalf("AppendUpdate: %v", err)
+			}
+			ts := httptest.NewServer(srv.Handler())
+			defer ts.Close()
+			a := dialE2E(t, ts, lockRoom, 101)
+			defer a.close()
+			a.completeHandshake()
+
+			clobber(a)
+			a.insertText("1")
+			waitFor(t, "the edit after the entry", func() bool { return serverText(srv, lockRoom) == "1" })
+			waitFor(t, "the loaded change put back", func() bool {
+				got, ok := storedLock(srv, lockRoom)
+				return ok && got == loaded
+			})
+			if srv.locks.locked(lockRoom, srv.WSProvider().GetDoc(lockRoom)) {
+				t.Fatal("putting back the loaded change enforced it")
+			}
+			a.insertText("2")
+			waitFor(t, "a later edit", func() bool { return serverText(srv, lockRoom) == "12" })
+		})
+	}
+}
+
 func TestProjectLocks_WarnUnsignedIsRateLimited(t *testing.T) {
 	t.Parallel()
 
