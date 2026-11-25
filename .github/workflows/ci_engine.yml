@@ -19,11 +19,9 @@ defaults:
   run:
     working-directory: engine
 
-# All jobs share the same Rust cache (shared-key: engine-ci). The first run
-# after Cargo.lock changes pays a cache-miss cost in every job; subsequent
-# runs hit the cache the seeding job populated. Net wall clock is bounded by
-# the slowest single job (test-conv, ~7-8 min) instead of the sum of all
-# suites (~18 min on the previous monolithic layout).
+# Each job keeps its own Rust cache (rust-cache's default job-based key): the
+# jobs build different targets and features, so a shared cache only holds the
+# artifacts of whichever job saved first.
 jobs:
   lint:
     name: lint (clippy / fmt / taplo)
