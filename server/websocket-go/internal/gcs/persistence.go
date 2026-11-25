@@ -176,11 +176,25 @@ func (a *Adapter) readMarks(ctx context.Context, room DocID) (marks, error) {
 	return marks{cp: cp, ceil: ceil, hasCeil: hasCeil, v2Gen: gen}, nil
 }
 
-// readState reads doc_v2 (or the v1 base) and the update objects above the
+// readState reads doc_v2 (or the v1 base) and every update object above the
 // checkpoint into one document, adding the checkpointed objects when items are
 // left parked. Without gcsDocLockKey a concurrent writer can change what it
 // reads, which it reports as errStateMoved.
 func (a *Adapter) readState(ctx context.Context, room DocID, oid uint32) (storedState, error) {
+	return a.readStateUpTo(ctx, room, oid, noClockLimit)
+}
+
+// noClockLimit reads every update object, which is what every caller but Compact
+// wants: a checkpoint must cover the whole stored state.
+const noClockLimit = ^uint32(0)
+
+// readStateUpTo is readState bounded to the update objects at or below upTo.
+// Compact passes its cutoff so the base it writes does not run ahead of the
+// checkpoint it sets: an object above the checkpoint is one MaterializeAt still
+// replays on top of the base, so folding it in would make every version above
+// the checkpoint rebuild as the latest state. The base still starts from the
+// stored doc_v2, so bounding the read can never shrink it.
+func (a *Adapter) readStateUpTo(ctx context.Context, room DocID, oid uint32, upTo uint32) (storedState, error) {
 	before, err := a.readMarks(ctx, room)
 	if err != nil {
 		return storedState{}, err
@@ -245,6 +259,7 @@ func (a *Adapter) readState(ctx context.Context, room DocID, oid uint32) (stored
 	if m.hasCeil {
 		clocks = clocksUpTo(clocks, m.ceil)
 	}
+	clocks = clocksUpTo(clocks, upTo)
 	// Clamp the reported head to an active ceiling. After a crash between the
 	// ceiling write and the checkpoint lowering in PruneAfter, the checkpoint can
 	// still hold the stale pre-rollback value, but no version above the ceiling is

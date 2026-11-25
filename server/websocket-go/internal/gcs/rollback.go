@@ -95,7 +95,11 @@ func (a *Adapter) Compact(ctx context.Context, room string, keep int) (int, erro
 		foldUpto := len(clocks) - keep // fold clocks[0:foldUpto] into the base
 		cutoff := clocks[foldUpto-1]   // highest clock folded in
 
-		st, err := a.readState(ctx, room, oid)
+		// Bounded to cutoff: the kept objects stay above the new checkpoint, where
+		// Load folds them and MaterializeAt replays them per version. Folding them
+		// into the base instead would make every kept version rebuild as the
+		// latest state.
+		st, err := a.readStateUpTo(ctx, room, oid, cutoff)
 		if err != nil {
 			return err
 		}

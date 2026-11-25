@@ -141,6 +141,50 @@ func TestCompact_FoldsCheckpointedObjectsItDeletes(t *testing.T) {
 	}
 }
 
+// TestCompact_KeptVersionsStillRebuildTheirOwnState: the base Compact writes
+// must not run ahead of the checkpoint it sets. MaterializeAt starts from the
+// base for any version at or above the checkpoint and replays the update objects
+// on top, so a base holding the kept objects makes every one of those versions
+// rebuild as the latest state instead of its own.
+func TestCompact_KeptVersionsStillRebuildTheirOwnState(t *testing.T) {
+	t.Parallel()
+	ctx := context.Background()
+	a := newParkedTestAdapter(t)
+	appendAll(t, a, fillers(t, 27)...) // clocks 1..27 set f.k to 0..26; clock 20 checkpoints
+
+	if _, err := a.Compact(ctx, "room", 10); err != nil {
+		t.Fatal(err)
+	}
+	cp, err := a.checkpoint(ctx, "room")
+	if err != nil {
+		t.Fatal(err)
+	}
+	vs, err := a.ListVersions(ctx, "room")
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	checked := 0
+	for _, v := range vs {
+		if uint32(v.Version) < cp {
+			// Below the checkpoint MaterializeAt leaves the base out by design and
+			// replays a log that no longer reaches clock 1. Out of scope here.
+			continue
+		}
+		state, err := a.MaterializeAt(ctx, "room", v.Version)
+		if err != nil {
+			t.Fatalf("MaterializeAt(%d): %v", v.Version, err)
+		}
+		if got, want := fillerValue(t, state), float64(uint32(v.Version)-1); got != want {
+			t.Errorf("MaterializeAt(%d) f.k = %v, want %v; the kept objects leaked into the base", v.Version, got, want)
+		}
+		checked++
+	}
+	if checked < 7 {
+		t.Fatalf("checked only %d versions at or above checkpoint %d, want at least 7", checked, cp)
+	}
+}
+
 // TestCompact_KeepZeroKeepsTheLog: ygo compacts every room it unloads with
 // KeepVersions, whose zero means "keep everything".
 func TestCompact_KeepZeroKeepsTheLog(t *testing.T) {
@@ -405,9 +449,12 @@ func TestCompact_TwoInstancesLeaveTheLogConsistent(t *testing.T) {
 			if got, parked := loaded(t, base, "t"); got != "ab" || parked != 0 {
 				t.Fatalf("doc_v2: %q with %d parked, want \"ab\" and none", got, parked)
 			}
-			// doc_v2 must hold every deleted update (clock 22 set f.k to 19); it may hold kept ones too.
-			if v := fillerValue(t, base); v < 19 {
-				t.Fatalf("doc_v2 f.k = %v, want at least 19 (clock 22)", v)
+			// doc_v2 must hold every deleted update and stop there: clock 22 is the
+			// highest one folded in and it set f.k to 19. A later value means the
+			// kept objects (23..27) leaked into the base, which would make every
+			// one of them rebuild as the latest state.
+			if v := fillerValue(t, base); v != 19 {
+				t.Fatalf("doc_v2 f.k = %v, want exactly 19 (clock 22, the highest folded in)", v)
 			}
 
 			extra := fillers(t, 26)[25]
