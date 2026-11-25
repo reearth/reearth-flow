@@ -71,7 +71,9 @@ impl Query {
                     Ok(Step::Gather(inner.to_string()))
                 }
             } else if token.contains(['[', ']']) {
-                Err(error("a bracket step must be separated from a key by whitespace"))
+                Err(error(
+                    "a bracket step must be separated from a key by whitespace",
+                ))
             } else {
                 Ok(Step::Key(token.to_string()))
             }
@@ -231,7 +233,10 @@ mod tests {
         assert_eq!(results(data.clone(), "l [-4]"), json!([]));
         assert_eq!(results(data, "m [0]"), json!([]));
         // per result: each list is indexed on its own, a missing item is dropped
-        assert_eq!(results(json!({"l": [[1, 2], [3]]}), "l [*] [1]"), json!([2]));
+        assert_eq!(
+            results(json!({"l": [[1, 2], [3]]}), "l [*] [1]"),
+            json!([2])
+        );
     }
 
     #[test]
