@@ -208,9 +208,9 @@ func TestForceEvictDeletesWithoutFlush(t *testing.T) {
 	}
 }
 
-// TestRoomDeactivatedIsIdempotent: ygo can fire it twice across an eviction/reload
-// handoff, and the second call must not re-run the election against a fresh room.
-func TestRoomDeactivatedIsIdempotent(t *testing.T) {
+// TestUnmatchedRoomDeactivatedIsANoOp: a deactivation for a room this instance no
+// longer holds must not re-run the election.
+func TestUnmatchedRoomDeactivatedIsANoOp(t *testing.T) {
 	pool := newPool(t)
 	fl := &countingFlusher{}
 	r := startRelay(t, pool, &fakeSink{}, fl)
