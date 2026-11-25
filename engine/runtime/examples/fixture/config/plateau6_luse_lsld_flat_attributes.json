@@ -26,127 +26,127 @@
     },
     {
       "destinationPath": "__flat uro:LandUseDetailAttribute_uro:id",
-      "sourcePath": "__city_gml_attributes luse:adeOfLandUse[*] uro:LandUseDetailAttribute uro:id"
+      "sourcePath": "__city_gml_attributes luse:adeOfLandUse [] [*] [uro:LandUseDetailAttribute] [0] uro:id"
     },
     {
       "destinationPath": "__flat uro:LandUseDetailAttribute_uro:orgLandUse",
-      "sourcePath": "__city_gml_attributes luse:adeOfLandUse[*] uro:LandUseDetailAttribute uro:orgLandUse"
+      "sourcePath": "__city_gml_attributes luse:adeOfLandUse [] [*] [uro:LandUseDetailAttribute] [0] uro:orgLandUse"
     },
     {
       "destinationPath": "__flat uro:LandUseDetailAttribute_uro:orgLandUse_code",
-      "sourcePath": "__city_gml_attributes luse:adeOfLandUse[*] uro:LandUseDetailAttribute uro:orgLandUse_code"
+      "sourcePath": "__city_gml_attributes luse:adeOfLandUse [] [*] [uro:LandUseDetailAttribute] [0] uro:orgLandUse_code"
     },
     {
       "destinationPath": "__flat uro:LandUseDetailAttribute_uro:nominalArea",
-      "sourcePath": "__city_gml_attributes luse:adeOfLandUse[*] uro:LandUseDetailAttribute uro:nominalArea",
+      "sourcePath": "__city_gml_attributes luse:adeOfLandUse [] [*] [uro:LandUseDetailAttribute] [0] uro:nominalArea",
       "dataType": "float"
     },
     {
       "destinationPath": "__flat uro:LandUseDetailAttribute_uro:ownerType",
-      "sourcePath": "__city_gml_attributes luse:adeOfLandUse[*] uro:LandUseDetailAttribute uro:ownerType"
+      "sourcePath": "__city_gml_attributes luse:adeOfLandUse [] [*] [uro:LandUseDetailAttribute] [0] uro:ownerType"
     },
     {
       "destinationPath": "__flat uro:LandUseDetailAttribute_uro:ownerType_code",
-      "sourcePath": "__city_gml_attributes luse:adeOfLandUse[*] uro:LandUseDetailAttribute uro:ownerType_code"
+      "sourcePath": "__city_gml_attributes luse:adeOfLandUse [] [*] [uro:LandUseDetailAttribute] [0] uro:ownerType_code"
     },
     {
       "destinationPath": "__flat uro:LandUseDetailAttribute_uro:areaInSquareMeter",
-      "sourcePath": "__city_gml_attributes luse:adeOfLandUse[*] uro:LandUseDetailAttribute uro:areaInSquareMeter",
+      "sourcePath": "__city_gml_attributes luse:adeOfLandUse [] [*] [uro:LandUseDetailAttribute] [0] uro:areaInSquareMeter",
       "dataType": "float"
     },
     {
       "destinationPath": "__flat uro:LandUseDetailAttribute_uro:areaInHa",
-      "sourcePath": "__city_gml_attributes luse:adeOfLandUse[*] uro:LandUseDetailAttribute uro:areaInHa",
+      "sourcePath": "__city_gml_attributes luse:adeOfLandUse [] [*] [uro:LandUseDetailAttribute] [0] uro:areaInHa",
       "dataType": "float"
     },
     {
       "destinationPath": "__flat uro:LandUseDetailAttribute_uro:buildingCoverageRate",
-      "sourcePath": "__city_gml_attributes luse:adeOfLandUse[*] uro:LandUseDetailAttribute uro:buildingCoverageRate",
+      "sourcePath": "__city_gml_attributes luse:adeOfLandUse [] [*] [uro:LandUseDetailAttribute] [0] uro:buildingCoverageRate",
       "dataType": "float"
     },
     {
       "destinationPath": "__flat uro:LandUseDetailAttribute_uro:floorAreaRate",
-      "sourcePath": "__city_gml_attributes luse:adeOfLandUse[*] uro:LandUseDetailAttribute uro:floorAreaRate",
+      "sourcePath": "__city_gml_attributes luse:adeOfLandUse [] [*] [uro:LandUseDetailAttribute] [0] uro:floorAreaRate",
       "dataType": "float"
     },
     {
       "destinationPath": "__flat uro:LandUseDetailAttribute_uro:specifiedBuildingCoverageRate",
-      "sourcePath": "__city_gml_attributes luse:adeOfLandUse[*] uro:LandUseDetailAttribute uro:specifiedBuildingCoverageRate",
+      "sourcePath": "__city_gml_attributes luse:adeOfLandUse [] [*] [uro:LandUseDetailAttribute] [0] uro:specifiedBuildingCoverageRate",
       "dataType": "float"
     },
     {
       "destinationPath": "__flat uro:LandUseDetailAttribute_uro:specifiedFloorAreaRate",
-      "sourcePath": "__city_gml_attributes luse:adeOfLandUse[*] uro:LandUseDetailAttribute uro:specifiedFloorAreaRate",
+      "sourcePath": "__city_gml_attributes luse:adeOfLandUse [] [*] [uro:LandUseDetailAttribute] [0] uro:specifiedFloorAreaRate",
       "dataType": "float"
     },
     {
       "destinationPath": "__flat uro:LandUseDetailAttribute_uro:standardFloorAreaRate",
-      "sourcePath": "__city_gml_attributes luse:adeOfLandUse[*] uro:LandUseDetailAttribute uro:standardFloorAreaRate",
+      "sourcePath": "__city_gml_attributes luse:adeOfLandUse [] [*] [uro:LandUseDetailAttribute] [0] uro:standardFloorAreaRate",
       "dataType": "float"
     },
     {
       "destinationPath": "__flat uro:LandUseDetailAttribute_uro:urbanPlanType",
-      "sourcePath": "__city_gml_attributes luse:adeOfLandUse[*] uro:LandUseDetailAttribute uro:urbanPlanType"
+      "sourcePath": "__city_gml_attributes luse:adeOfLandUse [] [*] [uro:LandUseDetailAttribute] [0] uro:urbanPlanType"
     },
     {
       "destinationPath": "__flat uro:LandUseDetailAttribute_uro:urbanPlanType_code",
-      "sourcePath": "__city_gml_attributes luse:adeOfLandUse[*] uro:LandUseDetailAttribute uro:urbanPlanType_code"
+      "sourcePath": "__city_gml_attributes luse:adeOfLandUse [] [*] [uro:LandUseDetailAttribute] [0] uro:urbanPlanType_code"
     },
     {
       "destinationPath": "__flat uro:LandUseDetailAttribute_uro:areaClassificationType",
-      "sourcePath": "__city_gml_attributes luse:adeOfLandUse[*] uro:LandUseDetailAttribute uro:areaClassificationType"
+      "sourcePath": "__city_gml_attributes luse:adeOfLandUse [] [*] [uro:LandUseDetailAttribute] [0] uro:areaClassificationType"
     },
     {
       "destinationPath": "__flat uro:LandUseDetailAttribute_uro:areaClassificationType_code",
-      "sourcePath": "__city_gml_attributes luse:adeOfLandUse[*] uro:LandUseDetailAttribute uro:areaClassificationType_code"
+      "sourcePath": "__city_gml_attributes luse:adeOfLandUse [] [*] [uro:LandUseDetailAttribute] [0] uro:areaClassificationType_code"
     },
     {
       "destinationPath": "__flat uro:LandUseDetailAttribute_uro:districtsAndZonesType",
-      "sourcePath": "__city_gml_attributes luse:adeOfLandUse[*] uro:LandUseDetailAttribute uro:districtsAndZonesType"
+      "sourcePath": "__city_gml_attributes luse:adeOfLandUse [] [*] [uro:LandUseDetailAttribute] [0] uro:districtsAndZonesType"
     },
     {
       "destinationPath": "__flat uro:LandUseDetailAttribute_uro:districtsAndZonesType_code",
-      "sourcePath": "__city_gml_attributes luse:adeOfLandUse[*] uro:LandUseDetailAttribute uro:districtsAndZonesType_code"
+      "sourcePath": "__city_gml_attributes luse:adeOfLandUse [] [*] [uro:LandUseDetailAttribute] [0] uro:districtsAndZonesType_code"
     },
     {
       "destinationPath": "__flat uro:LandUseDetailAttribute_uro:prefecture",
-      "sourcePath": "__city_gml_attributes luse:adeOfLandUse[*] uro:LandUseDetailAttribute uro:prefecture"
+      "sourcePath": "__city_gml_attributes luse:adeOfLandUse [] [*] [uro:LandUseDetailAttribute] [0] uro:prefecture"
     },
     {
       "destinationPath": "__flat uro:LandUseDetailAttribute_uro:prefecture_code",
-      "sourcePath": "__city_gml_attributes luse:adeOfLandUse[*] uro:LandUseDetailAttribute uro:prefecture_code"
+      "sourcePath": "__city_gml_attributes luse:adeOfLandUse [] [*] [uro:LandUseDetailAttribute] [0] uro:prefecture_code"
     },
     {
       "destinationPath": "__flat uro:LandUseDetailAttribute_uro:city",
-      "sourcePath": "__city_gml_attributes luse:adeOfLandUse[*] uro:LandUseDetailAttribute uro:city"
+      "sourcePath": "__city_gml_attributes luse:adeOfLandUse [] [*] [uro:LandUseDetailAttribute] [0] uro:city"
     },
     {
       "destinationPath": "__flat uro:LandUseDetailAttribute_uro:city_code",
-      "sourcePath": "__city_gml_attributes luse:adeOfLandUse[*] uro:LandUseDetailAttribute uro:city_code"
+      "sourcePath": "__city_gml_attributes luse:adeOfLandUse [] [*] [uro:LandUseDetailAttribute] [0] uro:city_code"
     },
     {
       "destinationPath": "__flat uro:LandUseDetailAttribute_uro:surveyYear",
-      "sourcePath": "__city_gml_attributes luse:adeOfLandUse[*] uro:LandUseDetailAttribute uro:surveyYear"
+      "sourcePath": "__city_gml_attributes luse:adeOfLandUse [] [*] [uro:LandUseDetailAttribute] [0] uro:surveyYear"
     },
     {
       "destinationPath": "__flat uro:LandUseDetailAttribute_uro:note",
-      "sourcePath": "__city_gml_attributes luse:adeOfLandUse[*] uro:LandUseDetailAttribute uro:note"
+      "sourcePath": "__city_gml_attributes luse:adeOfLandUse [] [*] [uro:LandUseDetailAttribute] [0] uro:note"
     },
     {
       "destinationPath": "__flat urc:geometrySrcDescLod1",
-      "sourcePath": "__city_gml_attributes core:adeOfAbstractCityObject[*] urc:DataQualityAttribute urc:geometrySrcDescLod1"
+      "sourcePath": "__city_gml_attributes core:adeOfAbstractCityObject [] [*] [urc:DataQualityAttribute] [0] urc:geometrySrcDescLod1"
     },
     {
       "destinationPath": "__flat urc:geometrySrcDescLod1_code",
-      "sourcePath": "__city_gml_attributes core:adeOfAbstractCityObject[*] urc:DataQualityAttribute urc:geometrySrcDescLod1_code"
+      "sourcePath": "__city_gml_attributes core:adeOfAbstractCityObject [] [*] [urc:DataQualityAttribute] [0] urc:geometrySrcDescLod1_code"
     },
     {
       "destinationPath": "__flat urc:thematicSrcDesc",
-      "sourcePath": "__city_gml_attributes core:adeOfAbstractCityObject[*] urc:DataQualityAttribute urc:thematicSrcDesc"
+      "sourcePath": "__city_gml_attributes core:adeOfAbstractCityObject [] [*] [urc:DataQualityAttribute] [0] urc:thematicSrcDesc"
     },
     {
       "destinationPath": "__flat urc:thematicSrcDesc_code",
-      "sourcePath": "__city_gml_attributes core:adeOfAbstractCityObject[*] urc:DataQualityAttribute urc:thematicSrcDesc_code"
+      "sourcePath": "__city_gml_attributes core:adeOfAbstractCityObject [] [*] [urc:DataQualityAttribute] [0] urc:thematicSrcDesc_code"
     }
   ],
   "urf:SedimentDisasterProneArea": [
@@ -204,19 +204,19 @@
     },
     {
       "destinationPath": "__flat urc:geometrySrcDescLod1",
-      "sourcePath": "__city_gml_attributes core:adeOfAbstractCityObject[*] urc:DataQualityAttribute urc:geometrySrcDescLod1"
+      "sourcePath": "__city_gml_attributes core:adeOfAbstractCityObject [] [*] [urc:DataQualityAttribute] [0] urc:geometrySrcDescLod1"
     },
     {
       "destinationPath": "__flat urc:geometrySrcDescLod1_code",
-      "sourcePath": "__city_gml_attributes core:adeOfAbstractCityObject[*] urc:DataQualityAttribute urc:geometrySrcDescLod1_code"
+      "sourcePath": "__city_gml_attributes core:adeOfAbstractCityObject [] [*] [urc:DataQualityAttribute] [0] urc:geometrySrcDescLod1_code"
     },
     {
       "destinationPath": "__flat urc:thematicSrcDesc",
-      "sourcePath": "__city_gml_attributes core:adeOfAbstractCityObject[*] urc:DataQualityAttribute urc:thematicSrcDesc"
+      "sourcePath": "__city_gml_attributes core:adeOfAbstractCityObject [] [*] [urc:DataQualityAttribute] [0] urc:thematicSrcDesc"
     },
     {
       "destinationPath": "__flat urc:thematicSrcDesc_code",
-      "sourcePath": "__city_gml_attributes core:adeOfAbstractCityObject[*] urc:DataQualityAttribute urc:thematicSrcDesc_code"
+      "sourcePath": "__city_gml_attributes core:adeOfAbstractCityObject [] [*] [urc:DataQualityAttribute] [0] urc:thematicSrcDesc_code"
     }
   ]
 }

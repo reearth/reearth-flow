@@ -1,43 +1,38 @@
 //! Query language for the source paths of the Attribute Table Extractor.
 //!
-//! A query is a sequence of segments separated by whitespace. Each segment is a key, optionally
-//! followed by one or more selectors:
+//! A query is a sequence of steps separated by whitespace. It is evaluated over a sequence of
+//! results; the first step must be a key, looked up in the feature's attributes.
 //!
-//! ```text
-//! query    := segment (WS+ segment)*
-//! segment  := key selector*
-//! key      := one or more characters other than whitespace, '[' and ']'
-//! selector := "[*]" | "[0]"
-//! ```
+//! - `k`: per result; the value of `k` if the result is a map that has it, otherwise nothing
+//! - `[]`: per result; a list stays as is, anything else (`null` included) becomes a one-item list
+//! - `[*]`: per result; a list becomes its items, anything else gives nothing
+//! - `[n]`: per result; item `n` of a list (negative counts from the end), anything else or out of
+//!   range gives nothing
+//! - `[k]`: over all results; one list of their `k` values as is (lists stay nested), results
+//!   without `k` skipped, may be `[]`
+//! - output: zero results give nothing, one result gives that value, several results give nothing
 //!
-//! A query is evaluated over a sequence of results, which starts as the feature's attributes:
-//!
-//! - key `k`: each result that is a map containing `k` is replaced by the value of `k`, as is,
-//!   even when that value is a list. Every other result, including a list, is dropped.
-//! - `[*]`: each result that is a list is replaced by its items. Every other result is kept.
-//! - `[0]`: `[*]`, then only the first result is kept.
-//!
-//! A list is never searched implicitly: crossing a list takes `[*]` (all items) or `[0]` (the
-//! first). Both treat a value that is not a list as a list of that one value, so a query works
-//! the same whether the CityGML reader found an element once (a value) or several times (a list).
+//! Inside brackets, an integer is an index, `*` expands, and anything else is a key to gather.
 
+use std::borrow::Cow;
 use std::fmt;
 
 use reearth_flow_types::{AttributeValue, Attributes};
 
 #[derive(Debug, Clone, PartialEq)]
 pub(super) struct Query {
-    /// The key of the first segment, looked up in the feature's attributes.
+    /// The first step's key, looked up in the feature's attributes.
     root: String,
-    /// The steps after the root key.
     steps: Vec<Step>,
 }
 
 #[derive(Debug, Clone, PartialEq)]
 enum Step {
     Key(String),
-    All,
-    First,
+    Wrap,
+    Expand,
+    Index(i64),
+    Gather(String),
 }
 
 #[derive(Debug, Clone, PartialEq)]
@@ -54,82 +49,121 @@ impl fmt::Display for ParseError {
 
 impl std::error::Error for ParseError {}
 
+type Results<'a> = Vec<Cow<'a, AttributeValue>>;
+
 impl Query {
     pub(super) fn parse(query: &str) -> Result<Self, ParseError> {
         let error = |reason| ParseError {
             query: query.to_string(),
             reason,
         };
-        let mut steps = Vec::new();
-        for segment in query.split_whitespace() {
-            let key_end = segment.find(['[', ']']).unwrap_or(segment.len());
-            let (key, mut selectors) = segment.split_at(key_end);
-            if key.is_empty() {
-                return Err(error("a segment must start with a key"));
-            }
-            steps.push(Step::Key(key.to_string()));
-            while !selectors.is_empty() {
-                let step = if let Some(rest) = selectors.strip_prefix("[*]") {
-                    selectors = rest;
-                    Step::All
-                } else if let Some(rest) = selectors.strip_prefix("[0]") {
-                    selectors = rest;
-                    Step::First
+        let mut steps = query.split_whitespace().map(|token| {
+            if let Some(inner) = token.strip_prefix('[').and_then(|t| t.strip_suffix(']')) {
+                if inner.contains(['[', ']']) {
+                    Err(error("brackets cannot be nested"))
+                } else if inner.is_empty() {
+                    Ok(Step::Wrap)
+                } else if inner == "*" {
+                    Ok(Step::Expand)
+                } else if let Ok(n) = inner.parse() {
+                    Ok(Step::Index(n))
                 } else {
-                    return Err(error("a selector must be `[*]` or `[0]`"));
-                };
-                steps.push(step);
+                    Ok(Step::Gather(inner.to_string()))
+                }
+            } else if token.contains(['[', ']']) {
+                Err(error("a bracket step must be separated from a key by whitespace"))
+            } else {
+                Ok(Step::Key(token.to_string()))
             }
-        }
-        let mut steps = steps.into_iter();
-        match steps.next() {
-            Some(Step::Key(root)) => Ok(Self {
-                root,
-                steps: steps.collect(),
-            }),
-            _ => Err(error("a query must have at least one segment")),
-        }
+        });
+        let root = match steps.next() {
+            Some(Ok(Step::Key(root))) => root,
+            Some(Err(e)) => return Err(e),
+            Some(Ok(_)) => return Err(error("a query must start with a key")),
+            None => return Err(error("a query must have at least one step")),
+        };
+        Ok(Self {
+            root,
+            steps: steps.collect::<Result<_, _>>()?,
+        })
     }
 
-    /// Every result of the query, in document order.
-    pub(super) fn select<'a>(&self, attributes: &'a Attributes) -> Vec<&'a AttributeValue> {
-        let mut results: Vec<&AttributeValue> =
-            attributes.get(self.root.as_str()).into_iter().collect();
+    /// Every result of the query, in order.
+    fn select<'a>(&self, attributes: &'a Attributes) -> Results<'a> {
+        let mut results: Results<'a> = attributes
+            .get(self.root.as_str())
+            .map(Cow::Borrowed)
+            .into_iter()
+            .collect();
         for step in &self.steps {
             results = match step {
-                Step::Key(key) => results
-                    .into_iter()
-                    .filter_map(|value| match value {
-                        AttributeValue::Map(map) => map.get(key.as_str()),
-                        _ => None,
-                    })
-                    .collect(),
-                Step::All => results.into_iter().flat_map(items).collect(),
-                Step::First => results.into_iter().flat_map(items).take(1).collect(),
+                Step::Key(key) => results.into_iter().filter_map(|r| get(r, key)).collect(),
+                Step::Wrap => results.into_iter().map(wrap).collect(),
+                Step::Expand => results.into_iter().flat_map(expand).collect(),
+                Step::Index(n) => results.into_iter().filter_map(|r| index(r, *n)).collect(),
+                Step::Gather(key) => vec![Cow::Owned(AttributeValue::Array(
+                    results
+                        .into_iter()
+                        .filter_map(|r| get(r, key))
+                        .map(Cow::into_owned)
+                        .collect(),
+                ))],
             };
         }
         results
     }
 
-    /// The query's value: `None` without results, the result itself when there is exactly one,
-    /// and a list of the results otherwise.
+    /// The query's value: the result when there is exactly one, otherwise nothing.
     pub(super) fn evaluate(&self, attributes: &Attributes) -> Option<AttributeValue> {
         let mut results = self.select(attributes);
-        match results.len() {
-            0 => None,
-            1 => results.pop().cloned(),
-            _ => Some(AttributeValue::Array(
-                results.into_iter().cloned().collect(),
-            )),
+        if results.len() == 1 {
+            results.pop().map(Cow::into_owned)
+        } else {
+            None
         }
     }
 }
 
-/// The items of a list, or the value itself when it is not a list.
-fn items(value: &AttributeValue) -> Vec<&AttributeValue> {
+fn get<'a>(value: Cow<'a, AttributeValue>, key: &str) -> Option<Cow<'a, AttributeValue>> {
     match value {
-        AttributeValue::Array(list) => list.iter().collect(),
-        other => vec![other],
+        Cow::Borrowed(AttributeValue::Map(map)) => map.get(key).map(Cow::Borrowed),
+        Cow::Owned(AttributeValue::Map(mut map)) => map.swap_remove(key).map(Cow::Owned),
+        _ => None,
+    }
+}
+
+fn wrap(value: Cow<'_, AttributeValue>) -> Cow<'_, AttributeValue> {
+    match value.as_ref() {
+        AttributeValue::Array(_) => value,
+        _ => Cow::Owned(AttributeValue::Array(vec![value.into_owned()])),
+    }
+}
+
+fn expand(value: Cow<'_, AttributeValue>) -> Results<'_> {
+    match value {
+        Cow::Borrowed(AttributeValue::Array(list)) => list.iter().map(Cow::Borrowed).collect(),
+        Cow::Owned(AttributeValue::Array(list)) => list.into_iter().map(Cow::Owned).collect(),
+        _ => Vec::new(),
+    }
+}
+
+fn index(value: Cow<'_, AttributeValue>, n: i64) -> Option<Cow<'_, AttributeValue>> {
+    let len = match value.as_ref() {
+        AttributeValue::Array(list) => list.len(),
+        _ => return None,
+    };
+    let pos = if n >= 0 {
+        usize::try_from(n).ok()?
+    } else {
+        len.checked_sub(usize::try_from(n.unsigned_abs()).ok()?)?
+    };
+    if pos >= len {
+        return None;
+    }
+    match value {
+        Cow::Borrowed(AttributeValue::Array(list)) => Some(Cow::Borrowed(&list[pos])),
+        Cow::Owned(AttributeValue::Array(mut list)) => Some(Cow::Owned(list.swap_remove(pos))),
+        _ => None,
     }
 }
 
@@ -140,145 +174,99 @@ mod tests {
 
     use super::*;
 
-    /// Runs `query` over the attributes `data` and returns its results as a JSON list.
-    fn select(data: Value, query: &str) -> Value {
+    fn attributes(data: Value) -> Attributes {
         let AttributeValue::Map(attributes) = AttributeValue::from(data) else {
             panic!("test data must be an object");
         };
-        let query = Query::parse(query).unwrap();
-        Value::Array(
-            query
-                .select(&attributes)
-                .into_iter()
-                .cloned()
-                .map(Value::from)
-                .collect(),
-        )
+        attributes
     }
 
-    /// Same as `select`, through `evaluate`; `null` stands for no value.
+    /// The results of `query` over `data`, as a JSON list.
+    fn results(data: Value, query: &str) -> Value {
+        let attributes = attributes(data);
+        let results = Query::parse(query).unwrap().select(&attributes);
+        Value::Array(results.into_iter().map(|r| r.into_owned().into()).collect())
+    }
+
+    /// The output of `query` over `data`; `null` stands for nothing.
     fn evaluate(data: Value, query: &str) -> Value {
-        let AttributeValue::Map(attributes) = AttributeValue::from(data) else {
-            panic!("test data must be an object");
-        };
         Query::parse(query)
             .unwrap()
-            .evaluate(&attributes)
+            .evaluate(&attributes(data))
             .map_or(Value::Null, Value::from)
     }
 
-    // Key
-
     #[test]
-    fn key_takes_the_value_of_a_map_entry_as_is() {
-        let data = json!({"a": {"b": 1, "l": [1, 2]}});
-        assert_eq!(select(data.clone(), "a"), json!([{"b": 1, "l": [1, 2]}]));
-        assert_eq!(select(data.clone(), "a b"), json!([1]));
-        assert_eq!(select(data, "a l"), json!([[1, 2]]));
+    fn key() {
+        let data = json!({"a": {"b": 1, "l": [1, 2]}, "s": "x"});
+        assert_eq!(results(data.clone(), "a b"), json!([1]));
+        assert_eq!(results(data.clone(), "a l"), json!([[1, 2]]));
+        assert_eq!(results(data.clone(), "a missing"), json!([]));
+        assert_eq!(results(data.clone(), "s b"), json!([]));
+        assert_eq!(results(json!({"a": [{"b": 1}]}), "a b"), json!([]));
     }
 
     #[test]
-    fn key_drops_results_without_it() {
-        let data = json!({"a": {"b": 1}, "s": "text"});
-        assert_eq!(select(data.clone(), "missing"), json!([]));
-        assert_eq!(select(data.clone(), "a missing"), json!([]));
-        assert_eq!(select(data, "s b"), json!([]));
+    fn wrap() {
+        let data = json!({"l": [1, 2], "m": {"b": 1}, "n": null});
+        assert_eq!(results(data.clone(), "l []"), json!([[1, 2]]));
+        assert_eq!(results(data.clone(), "m []"), json!([[{"b": 1}]]));
+        assert_eq!(results(data, "n []"), json!([[null]]));
     }
 
     #[test]
-    fn key_does_not_look_into_a_list() {
-        let data = json!({"a": [{"b": 1}, {"b": 2}]});
-        assert_eq!(select(data, "a b"), json!([]));
-    }
-
-    // [*]
-
-    #[test]
-    fn all_replaces_a_list_by_its_items() {
-        let data = json!({"a": [{"b": 1}, {"b": 2}], "e": []});
-        assert_eq!(select(data.clone(), "a[*]"), json!([{"b": 1}, {"b": 2}]));
-        assert_eq!(select(data.clone(), "a[*] b"), json!([1, 2]));
-        assert_eq!(select(data, "e[*]"), json!([]));
+    fn expand() {
+        let data = json!({"l": [1, [2, 3]], "e": [], "m": {"b": 1}});
+        assert_eq!(results(data.clone(), "l [*]"), json!([1, [2, 3]]));
+        assert_eq!(results(data.clone(), "e [*]"), json!([]));
+        assert_eq!(results(data, "m [*]"), json!([]));
     }
 
     #[test]
-    fn all_keeps_a_value_that_is_not_a_list() {
-        let data = json!({"a": {"b": 1}});
-        assert_eq!(select(data.clone(), "a[*]"), json!([{"b": 1}]));
-        assert_eq!(select(data, "a[*] b"), json!([1]));
+    fn index() {
+        let data = json!({"l": [1, 2, 3], "m": {"b": 1}});
+        assert_eq!(results(data.clone(), "l [0]"), json!([1]));
+        assert_eq!(results(data.clone(), "l [-1]"), json!([3]));
+        assert_eq!(results(data.clone(), "l [3]"), json!([]));
+        assert_eq!(results(data.clone(), "l [-4]"), json!([]));
+        assert_eq!(results(data, "m [0]"), json!([]));
+        // per result: each list is indexed on its own, a missing item is dropped
+        assert_eq!(results(json!({"l": [[1, 2], [3]]}), "l [*] [1]"), json!([2]));
     }
 
     #[test]
-    fn all_expands_one_level_only() {
-        let data = json!({"a": [[1, 2], 3]});
-        assert_eq!(select(data.clone(), "a[*]"), json!([[1, 2], 3]));
-        assert_eq!(select(data, "a[*][*]"), json!([1, 2, 3]));
+    fn gather() {
+        let data = json!({"l": [{"k": [1, 2]}, {"x": 0}, 5, {"k": 3}]});
+        assert_eq!(results(data.clone(), "l [*] [k]"), json!([[[1, 2], 3]]));
+        assert_eq!(results(data.clone(), "l [*] [missing]"), json!([[]]));
+        assert_eq!(results(json!({"m": {"k": 1}}), "m [k]"), json!([[1]]));
     }
 
     #[test]
-    fn key_after_all_drops_items_without_it() {
-        // A CityGML 3 ADE hook holds one class per item: a key selects that class.
-        let data = json!({"ade": [{"uro:Detail": {"x": 1}}, {"uro:ID": {"id": "a"}}]});
-        assert_eq!(select(data, "ade[*] uro:ID id"), json!(["a"]));
-    }
-
-    // [0]
-
-    #[test]
-    fn first_takes_the_first_item_of_a_list() {
-        let data = json!({"a": [1, 2], "e": []});
-        assert_eq!(select(data.clone(), "a[0]"), json!([1]));
-        assert_eq!(select(data, "e[0]"), json!([]));
+    fn output() {
+        let data = json!({"l": [1, 2], "one": [1]});
+        assert_eq!(evaluate(data.clone(), "missing"), Value::Null);
+        assert_eq!(evaluate(data.clone(), "one [*]"), json!(1));
+        assert_eq!(evaluate(data.clone(), "l"), json!([1, 2]));
+        assert_eq!(evaluate(data, "l [*]"), Value::Null);
     }
 
     #[test]
-    fn first_keeps_a_value_that_is_not_a_list() {
-        let data = json!({"a": {"b": 1}, "s": "text"});
-        assert_eq!(select(data.clone(), "a[0] b"), json!([1]));
-        assert_eq!(select(data, "s[0]"), json!(["text"]));
+    fn one_query_for_every_shape_of_a_repeatable_element() {
+        // The CityGML reader gives an element found once as its value and several as a list.
+        let query = "a [] [*] [I] [0] id";
+        let once = json!({"a": {"I": {"id": "x"}}});
+        let mixed = json!({"a": [{"D": {"y": 1}}, {"I": {"id": "x"}}]});
+        let duplicated = json!({"a": [{"I": {"id": "x"}}, {"I": {"id": "Null"}}]});
+        assert_eq!(evaluate(once, query), json!("x"));
+        assert_eq!(evaluate(mixed, query), json!("x"));
+        assert_eq!(evaluate(duplicated, query), json!("x"));
     }
 
     #[test]
-    fn first_applies_to_all_results_not_to_each() {
-        let data = json!({"a": [{"b": [1, 2]}, {"b": [3, 4]}]});
-        assert_eq!(select(data.clone(), "a[*] b"), json!([[1, 2], [3, 4]]));
-        assert_eq!(select(data, "a[*] b[0]"), json!([1]));
-    }
-
-    // Evaluation
-
-    #[test]
-    fn evaluate_gives_nothing_one_value_or_a_list() {
-        let data = json!({"a": [{"b": 1}, {"b": 2}, {"c": 3}]});
-        assert_eq!(evaluate(data.clone(), "a[*] missing"), Value::Null);
-        assert_eq!(evaluate(data.clone(), "a[*] c"), json!(3));
-        assert_eq!(evaluate(data, "a[*] b"), json!([1, 2]));
-    }
-
-    #[test]
-    fn a_query_gives_the_same_value_for_one_element_and_for_a_list_of_one() {
-        // The CityGML reader gives one element as its value and several as a list.
-        let one = json!({"ade": {"uro:ID": {"id": "a"}}});
-        let many = json!({"ade": [{"uro:ID": {"id": "a"}}, {"uro:ID": {"id": "b"}}]});
-        assert_eq!(evaluate(one.clone(), "ade[*] uro:ID[0] id"), json!("a"));
-        assert_eq!(evaluate(many.clone(), "ade[*] uro:ID[0] id"), json!("a"));
-        assert_eq!(evaluate(one, "ade[*] uro:ID id"), json!("a"));
-        assert_eq!(evaluate(many, "ade[*] uro:ID id"), json!(["a", "b"]));
-    }
-
-    // Syntax
-
-    #[test]
-    fn segments_are_separated_by_any_whitespace() {
-        let data = json!({"a": {"b": [1, 2]}});
-        assert_eq!(select(data, "  a \t b[*][0]\n"), json!([1]));
-    }
-
-    #[test]
-    fn rejects_malformed_queries() {
-        for query in [
-            "", "   ", "[0]", "a [0]", "a[1]", "a[-1]", "a[", "a[*", "a]", "a[0]b",
-        ] {
+    fn syntax() {
+        assert_eq!(results(json!({"a": [[1]]}), " a\t[*]\n [0] "), json!([1]));
+        for query in ["", " ", "[0]", "[k] a", "a[0]", "a [0", "a 0]", "a [[0]]"] {
             assert!(Query::parse(query).is_err(), "{query:?} should be rejected");
         }
     }

@@ -1059,7 +1059,7 @@ Classifies a numeric attribute by looking its value up in a table of ranges and 
 ### Type
 * processor
 ### Description
-Copies values between nested map/list attribute paths, following a table of source/destination path pairs keyed by a feature type attribute. A source path crosses a list explicitly with `[*]` or `[0]`. A destination path with more than one segment creates nested maps as needed.
+Copies values between nested map/list attribute paths, following a table of source/destination path pairs keyed by a feature type attribute. A source path handles lists explicitly with steps such as `[]`, `[*]` and `[n]`. A destination path with more than one segment creates nested maps as needed.
 ### Parameters
 ```json
 {
@@ -1133,7 +1133,7 @@ Copies values between nested map/list attribute paths, following a table of sour
         },
         "sourcePath": {
           "title": "Source Path",
-          "description": "Where the value is read from, as a space-separated chain of keys walked from the feature's top level. A key only looks into a map; a list is crossed with `[*]` (all items) or `[0]` (the first item) written right after the key, e.g. `bldg:adeOfAbstractBuilding[*]`. Both treat a value that is not a list as a list of that one value, so a path works whether an element appears once or many times. Several results are written as a list.",
+          "description": "Where the value is read from, as whitespace-separated steps walked from the feature's top level: `k` takes key `k` of a map, `[]` makes a single value a one-item list, `[*]` expands a list into its items, `[n]` takes item `n` of a list (negative counts from the end), and `[k]` gathers the `k` values of all results into one list. The value is written only when exactly one result remains, e.g. `__city_gml_attributes bldg:adeOfAbstractBuilding [] [*] [uro:BuildingIDAttribute] [0] uro:buildingID`.",
           "type": "string"
         },
         "dataType": {

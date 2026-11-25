@@ -10,11 +10,11 @@
     },
     {
       "destinationPath": "__flat urc:geometrySrcDescLod1",
-      "sourcePath": "attributes core:adeOfAbstractCityObject[*] urc:DataQualityAttribute urc:geometrySrcDescLod1"
+      "sourcePath": "attributes core:adeOfAbstractCityObject [] [*] [urc:DataQualityAttribute] [0] urc:geometrySrcDescLod1"
     },
     {
       "destinationPath": "__flat urc:lodType",
-      "sourcePath": "attributes core:adeOfAbstractCityObject[*] urc:DataQualityAttribute urc:lodType"
+      "sourcePath": "attributes core:adeOfAbstractCityObject [] [*] [urc:DataQualityAttribute] [0] urc:lodType"
     },
     {
       "destinationPath": "__flat tran:class",
@@ -26,283 +26,283 @@
     },
     {
       "destinationPath": "__flat uro:SquareUrbanPlanAttribute_uro:prefecture",
-      "sourcePath": "attributes tran:adeOfSquare[*] uro:SquareUrbanPlanAttribute uro:prefecture"
+      "sourcePath": "attributes tran:adeOfSquare [] [*] [uro:SquareUrbanPlanAttribute] [0] uro:prefecture"
     },
     {
       "destinationPath": "__flat uro:SquareUrbanPlanAttribute_uro:city",
-      "sourcePath": "attributes tran:adeOfSquare[*] uro:SquareUrbanPlanAttribute uro:city"
+      "sourcePath": "attributes tran:adeOfSquare [] [*] [uro:SquareUrbanPlanAttribute] [0] uro:city"
     },
     {
       "destinationPath": "__flat uro:SquareUrbanPlanAttribute_uro:urbanPlanningAreaName",
-      "sourcePath": "attributes tran:adeOfSquare[*] uro:SquareUrbanPlanAttribute uro:urbanPlanningAreaName"
+      "sourcePath": "attributes tran:adeOfSquare [] [*] [uro:SquareUrbanPlanAttribute] [0] uro:urbanPlanningAreaName"
     },
     {
       "destinationPath": "__flat uro:SquareUrbanPlanAttribute_uro:enforcer",
-      "sourcePath": "attributes tran:adeOfSquare[*] uro:SquareUrbanPlanAttribute uro:enforcer"
+      "sourcePath": "attributes tran:adeOfSquare [] [*] [uro:SquareUrbanPlanAttribute] [0] uro:enforcer"
     },
     {
       "destinationPath": "__flat uro:SquareUrbanPlanAttribute_uro:dateOfDecision",
-      "sourcePath": "attributes tran:adeOfSquare[*] uro:SquareUrbanPlanAttribute uro:dateOfDecision"
+      "sourcePath": "attributes tran:adeOfSquare [] [*] [uro:SquareUrbanPlanAttribute] [0] uro:dateOfDecision"
     },
     {
       "destinationPath": "__flat uro:SquareUrbanPlanAttribute_uro:dateOfRevision",
-      "sourcePath": "attributes tran:adeOfSquare[*] uro:SquareUrbanPlanAttribute uro:dateOfRevision"
+      "sourcePath": "attributes tran:adeOfSquare [] [*] [uro:SquareUrbanPlanAttribute] [0] uro:dateOfRevision"
     },
     {
       "destinationPath": "__flat uro:SquareUrbanPlanAttribute_uro:areaPlanned",
-      "sourcePath": "attributes tran:adeOfSquare[*] uro:SquareUrbanPlanAttribute uro:areaPlanned",
+      "sourcePath": "attributes tran:adeOfSquare [] [*] [uro:SquareUrbanPlanAttribute] [0] uro:areaPlanned",
       "dataType": "float"
     },
     {
       "destinationPath": "__flat uro:SquareUrbanPlanAttribute_uro:areaInService",
-      "sourcePath": "attributes tran:adeOfSquare[*] uro:SquareUrbanPlanAttribute uro:areaInService",
+      "sourcePath": "attributes tran:adeOfSquare [] [*] [uro:SquareUrbanPlanAttribute] [0] uro:areaInService",
       "dataType": "float"
     },
     {
       "destinationPath": "__flat uro:SquareUrbanPlanAttribute_uro:remarks",
-      "sourcePath": "attributes tran:adeOfSquare[*] uro:SquareUrbanPlanAttribute uro:remarks"
+      "sourcePath": "attributes tran:adeOfSquare [] [*] [uro:SquareUrbanPlanAttribute] [0] uro:remarks"
     },
     {
       "destinationPath": "__flat uro:SquareUrbanPlanAttribute_uro:status",
-      "sourcePath": "attributes tran:adeOfSquare[*] uro:SquareUrbanPlanAttribute uro:status"
+      "sourcePath": "attributes tran:adeOfSquare [] [*] [uro:SquareUrbanPlanAttribute] [0] uro:status"
     },
     {
       "destinationPath": "__flat uro:SquareUrbanPlanAttribute_uro:areaImproved",
-      "sourcePath": "attributes tran:adeOfSquare[*] uro:SquareUrbanPlanAttribute uro:areaImproved",
+      "sourcePath": "attributes tran:adeOfSquare [] [*] [uro:SquareUrbanPlanAttribute] [0] uro:areaImproved",
       "dataType": "float"
     },
     {
       "destinationPath": "__flat uro:SquareUrbanPlanAttribute_uro:areaCompleted",
-      "sourcePath": "attributes tran:adeOfSquare[*] uro:SquareUrbanPlanAttribute uro:areaCompleted",
+      "sourcePath": "attributes tran:adeOfSquare [] [*] [uro:SquareUrbanPlanAttribute] [0] uro:areaCompleted",
       "dataType": "float"
     },
     {
       "destinationPath": "__flat uro:SquareUrbanPlanAttribute_uro:projectStartDate",
-      "sourcePath": "attributes tran:adeOfSquare[*] uro:SquareUrbanPlanAttribute uro:projectStartDate"
+      "sourcePath": "attributes tran:adeOfSquare [] [*] [uro:SquareUrbanPlanAttribute] [0] uro:projectStartDate"
     },
     {
       "destinationPath": "__flat uro:SquareUrbanPlanAttribute_uro:projectEndDate",
-      "sourcePath": "attributes tran:adeOfSquare[*] uro:SquareUrbanPlanAttribute uro:projectEndDate"
+      "sourcePath": "attributes tran:adeOfSquare [] [*] [uro:SquareUrbanPlanAttribute] [0] uro:projectEndDate"
     },
     {
       "destinationPath": "__flat uro:SquareUrbanPlanAttribute_uro:isCompleted",
-      "sourcePath": "attributes tran:adeOfSquare[*] uro:SquareUrbanPlanAttribute uro:isCompleted"
+      "sourcePath": "attributes tran:adeOfSquare [] [*] [uro:SquareUrbanPlanAttribute] [0] uro:isCompleted"
     },
     {
       "destinationPath": "__flat uro:SquareUrbanPlanAttribute_uro:isAuthorized",
-      "sourcePath": "attributes tran:adeOfSquare[*] uro:SquareUrbanPlanAttribute uro:isAuthorized"
+      "sourcePath": "attributes tran:adeOfSquare [] [*] [uro:SquareUrbanPlanAttribute] [0] uro:isAuthorized"
     },
     {
       "destinationPath": "__flat uro:SquareUrbanPlanAttribute_uro:purpose",
-      "sourcePath": "attributes tran:adeOfSquare[*] uro:SquareUrbanPlanAttribute uro:purpose"
+      "sourcePath": "attributes tran:adeOfSquare [] [*] [uro:SquareUrbanPlanAttribute] [0] uro:purpose"
     },
     {
       "destinationPath": "__flat uro:SquareUrbanPlanAttribute_uro:note",
-      "sourcePath": "attributes tran:adeOfSquare[*] uro:SquareUrbanPlanAttribute uro:note"
+      "sourcePath": "attributes tran:adeOfSquare [] [*] [uro:SquareUrbanPlanAttribute] [0] uro:note"
     },
     {
       "destinationPath": "__flat uro:StationSquareAttribute_uro:prefecture",
-      "sourcePath": "attributes tran:adeOfSquare[*] uro:StationSquareAttribute uro:prefecture"
+      "sourcePath": "attributes tran:adeOfSquare [] [*] [uro:StationSquareAttribute] [0] uro:prefecture"
     },
     {
       "destinationPath": "__flat uro:StationSquareAttribute_uro:city",
-      "sourcePath": "attributes tran:adeOfSquare[*] uro:StationSquareAttribute uro:city"
+      "sourcePath": "attributes tran:adeOfSquare [] [*] [uro:StationSquareAttribute] [0] uro:city"
     },
     {
       "destinationPath": "__flat uro:StationSquareAttribute_uro:urbanPlanningAreaName",
-      "sourcePath": "attributes tran:adeOfSquare[*] uro:StationSquareAttribute uro:urbanPlanningAreaName"
+      "sourcePath": "attributes tran:adeOfSquare [] [*] [uro:StationSquareAttribute] [0] uro:urbanPlanningAreaName"
     },
     {
       "destinationPath": "__flat uro:StationSquareAttribute_uro:enforcer",
-      "sourcePath": "attributes tran:adeOfSquare[*] uro:StationSquareAttribute uro:enforcer"
+      "sourcePath": "attributes tran:adeOfSquare [] [*] [uro:StationSquareAttribute] [0] uro:enforcer"
     },
     {
       "destinationPath": "__flat uro:StationSquareAttribute_uro:dateOfDecision",
-      "sourcePath": "attributes tran:adeOfSquare[*] uro:StationSquareAttribute uro:dateOfDecision"
+      "sourcePath": "attributes tran:adeOfSquare [] [*] [uro:StationSquareAttribute] [0] uro:dateOfDecision"
     },
     {
       "destinationPath": "__flat uro:StationSquareAttribute_uro:dateOfRevision",
-      "sourcePath": "attributes tran:adeOfSquare[*] uro:StationSquareAttribute uro:dateOfRevision"
+      "sourcePath": "attributes tran:adeOfSquare [] [*] [uro:StationSquareAttribute] [0] uro:dateOfRevision"
     },
     {
       "destinationPath": "__flat uro:StationSquareAttribute_uro:areaPlanned",
-      "sourcePath": "attributes tran:adeOfSquare[*] uro:StationSquareAttribute uro:areaPlanned",
+      "sourcePath": "attributes tran:adeOfSquare [] [*] [uro:StationSquareAttribute] [0] uro:areaPlanned",
       "dataType": "float"
     },
     {
       "destinationPath": "__flat uro:StationSquareAttribute_uro:areaInService",
-      "sourcePath": "attributes tran:adeOfSquare[*] uro:StationSquareAttribute uro:areaInService",
+      "sourcePath": "attributes tran:adeOfSquare [] [*] [uro:StationSquareAttribute] [0] uro:areaInService",
       "dataType": "float"
     },
     {
       "destinationPath": "__flat uro:StationSquareAttribute_uro:remarks",
-      "sourcePath": "attributes tran:adeOfSquare[*] uro:StationSquareAttribute uro:remarks"
+      "sourcePath": "attributes tran:adeOfSquare [] [*] [uro:StationSquareAttribute] [0] uro:remarks"
     },
     {
       "destinationPath": "__flat uro:StationSquareAttribute_uro:status",
-      "sourcePath": "attributes tran:adeOfSquare[*] uro:StationSquareAttribute uro:status"
+      "sourcePath": "attributes tran:adeOfSquare [] [*] [uro:StationSquareAttribute] [0] uro:status"
     },
     {
       "destinationPath": "__flat uro:StationSquareAttribute_uro:areaImproved",
-      "sourcePath": "attributes tran:adeOfSquare[*] uro:StationSquareAttribute uro:areaImproved",
+      "sourcePath": "attributes tran:adeOfSquare [] [*] [uro:StationSquareAttribute] [0] uro:areaImproved",
       "dataType": "float"
     },
     {
       "destinationPath": "__flat uro:StationSquareAttribute_uro:areaCompleted",
-      "sourcePath": "attributes tran:adeOfSquare[*] uro:StationSquareAttribute uro:areaCompleted",
+      "sourcePath": "attributes tran:adeOfSquare [] [*] [uro:StationSquareAttribute] [0] uro:areaCompleted",
       "dataType": "float"
     },
     {
       "destinationPath": "__flat uro:StationSquareAttribute_uro:projectStartDate",
-      "sourcePath": "attributes tran:adeOfSquare[*] uro:StationSquareAttribute uro:projectStartDate"
+      "sourcePath": "attributes tran:adeOfSquare [] [*] [uro:StationSquareAttribute] [0] uro:projectStartDate"
     },
     {
       "destinationPath": "__flat uro:StationSquareAttribute_uro:projectEndDate",
-      "sourcePath": "attributes tran:adeOfSquare[*] uro:StationSquareAttribute uro:projectEndDate"
+      "sourcePath": "attributes tran:adeOfSquare [] [*] [uro:StationSquareAttribute] [0] uro:projectEndDate"
     },
     {
       "destinationPath": "__flat uro:StationSquareAttribute_uro:isCompleted",
-      "sourcePath": "attributes tran:adeOfSquare[*] uro:StationSquareAttribute uro:isCompleted"
+      "sourcePath": "attributes tran:adeOfSquare [] [*] [uro:StationSquareAttribute] [0] uro:isCompleted"
     },
     {
       "destinationPath": "__flat uro:StationSquareAttribute_uro:isAuthorized",
-      "sourcePath": "attributes tran:adeOfSquare[*] uro:StationSquareAttribute uro:isAuthorized"
+      "sourcePath": "attributes tran:adeOfSquare [] [*] [uro:StationSquareAttribute] [0] uro:isAuthorized"
     },
     {
       "destinationPath": "__flat uro:StationSquareAttribute_uro:purpose",
-      "sourcePath": "attributes tran:adeOfSquare[*] uro:StationSquareAttribute uro:purpose"
+      "sourcePath": "attributes tran:adeOfSquare [] [*] [uro:StationSquareAttribute] [0] uro:purpose"
     },
     {
       "destinationPath": "__flat uro:StationSquareAttribute_uro:note",
-      "sourcePath": "attributes tran:adeOfSquare[*] uro:StationSquareAttribute uro:note"
+      "sourcePath": "attributes tran:adeOfSquare [] [*] [uro:StationSquareAttribute] [0] uro:note"
     },
     {
       "destinationPath": "__flat uro:StationSquareAttribute_uro:station",
-      "sourcePath": "attributes tran:adeOfSquare[*] uro:StationSquareAttribute uro:station"
+      "sourcePath": "attributes tran:adeOfSquare [] [*] [uro:StationSquareAttribute] [0] uro:station"
     },
     {
       "destinationPath": "__flat uro:StationSquareAttribute_uro:route",
-      "sourcePath": "attributes tran:adeOfSquare[*] uro:StationSquareAttribute uro:route"
+      "sourcePath": "attributes tran:adeOfSquare [] [*] [uro:StationSquareAttribute] [0] uro:route"
     },
     {
       "destinationPath": "__flat uro:StationSquareAttribute_uro:railwayType",
-      "sourcePath": "attributes tran:adeOfSquare[*] uro:StationSquareAttribute uro:railwayType"
+      "sourcePath": "attributes tran:adeOfSquare [] [*] [uro:StationSquareAttribute] [0] uro:railwayType"
     },
     {
       "destinationPath": "__flat uro:TerminalAttribute_uro:prefecture",
-      "sourcePath": "attributes tran:adeOfSquare[*] uro:TerminalAttribute uro:prefecture"
+      "sourcePath": "attributes tran:adeOfSquare [] [*] [uro:TerminalAttribute] [0] uro:prefecture"
     },
     {
       "destinationPath": "__flat uro:TerminalAttribute_uro:city",
-      "sourcePath": "attributes tran:adeOfSquare[*] uro:TerminalAttribute uro:city"
+      "sourcePath": "attributes tran:adeOfSquare [] [*] [uro:TerminalAttribute] [0] uro:city"
     },
     {
       "destinationPath": "__flat uro:TerminalAttribute_uro:urbanPlanningAreaName",
-      "sourcePath": "attributes tran:adeOfSquare[*] uro:TerminalAttribute uro:urbanPlanningAreaName"
+      "sourcePath": "attributes tran:adeOfSquare [] [*] [uro:TerminalAttribute] [0] uro:urbanPlanningAreaName"
     },
     {
       "destinationPath": "__flat uro:TerminalAttribute_uro:enforcer",
-      "sourcePath": "attributes tran:adeOfSquare[*] uro:TerminalAttribute uro:enforcer"
+      "sourcePath": "attributes tran:adeOfSquare [] [*] [uro:TerminalAttribute] [0] uro:enforcer"
     },
     {
       "destinationPath": "__flat uro:TerminalAttribute_uro:dateOfDecision",
-      "sourcePath": "attributes tran:adeOfSquare[*] uro:TerminalAttribute uro:dateOfDecision"
+      "sourcePath": "attributes tran:adeOfSquare [] [*] [uro:TerminalAttribute] [0] uro:dateOfDecision"
     },
     {
       "destinationPath": "__flat uro:TerminalAttribute_uro:dateOfRevision",
-      "sourcePath": "attributes tran:adeOfSquare[*] uro:TerminalAttribute uro:dateOfRevision"
+      "sourcePath": "attributes tran:adeOfSquare [] [*] [uro:TerminalAttribute] [0] uro:dateOfRevision"
     },
     {
       "destinationPath": "__flat uro:TerminalAttribute_uro:areaPlanned",
-      "sourcePath": "attributes tran:adeOfSquare[*] uro:TerminalAttribute uro:areaPlanned",
+      "sourcePath": "attributes tran:adeOfSquare [] [*] [uro:TerminalAttribute] [0] uro:areaPlanned",
       "dataType": "float"
     },
     {
       "destinationPath": "__flat uro:TerminalAttribute_uro:areaInService",
-      "sourcePath": "attributes tran:adeOfSquare[*] uro:TerminalAttribute uro:areaInService",
+      "sourcePath": "attributes tran:adeOfSquare [] [*] [uro:TerminalAttribute] [0] uro:areaInService",
       "dataType": "float"
     },
     {
       "destinationPath": "__flat uro:TerminalAttribute_uro:remarks",
-      "sourcePath": "attributes tran:adeOfSquare[*] uro:TerminalAttribute uro:remarks"
+      "sourcePath": "attributes tran:adeOfSquare [] [*] [uro:TerminalAttribute] [0] uro:remarks"
     },
     {
       "destinationPath": "__flat uro:TerminalAttribute_uro:status",
-      "sourcePath": "attributes tran:adeOfSquare[*] uro:TerminalAttribute uro:status"
+      "sourcePath": "attributes tran:adeOfSquare [] [*] [uro:TerminalAttribute] [0] uro:status"
     },
     {
       "destinationPath": "__flat uro:TerminalAttribute_uro:areaImproved",
-      "sourcePath": "attributes tran:adeOfSquare[*] uro:TerminalAttribute uro:areaImproved",
+      "sourcePath": "attributes tran:adeOfSquare [] [*] [uro:TerminalAttribute] [0] uro:areaImproved",
       "dataType": "float"
     },
     {
       "destinationPath": "__flat uro:TerminalAttribute_uro:areaCompleted",
-      "sourcePath": "attributes tran:adeOfSquare[*] uro:TerminalAttribute uro:areaCompleted",
+      "sourcePath": "attributes tran:adeOfSquare [] [*] [uro:TerminalAttribute] [0] uro:areaCompleted",
       "dataType": "float"
     },
     {
       "destinationPath": "__flat uro:TerminalAttribute_uro:projectStartDate",
-      "sourcePath": "attributes tran:adeOfSquare[*] uro:TerminalAttribute uro:projectStartDate"
+      "sourcePath": "attributes tran:adeOfSquare [] [*] [uro:TerminalAttribute] [0] uro:projectStartDate"
     },
     {
       "destinationPath": "__flat uro:TerminalAttribute_uro:projectEndDate",
-      "sourcePath": "attributes tran:adeOfSquare[*] uro:TerminalAttribute uro:projectEndDate"
+      "sourcePath": "attributes tran:adeOfSquare [] [*] [uro:TerminalAttribute] [0] uro:projectEndDate"
     },
     {
       "destinationPath": "__flat uro:TerminalAttribute_uro:isCompleted",
-      "sourcePath": "attributes tran:adeOfSquare[*] uro:TerminalAttribute uro:isCompleted"
+      "sourcePath": "attributes tran:adeOfSquare [] [*] [uro:TerminalAttribute] [0] uro:isCompleted"
     },
     {
       "destinationPath": "__flat uro:TerminalAttribute_uro:isAuthorized",
-      "sourcePath": "attributes tran:adeOfSquare[*] uro:TerminalAttribute uro:isAuthorized"
+      "sourcePath": "attributes tran:adeOfSquare [] [*] [uro:TerminalAttribute] [0] uro:isAuthorized"
     },
     {
       "destinationPath": "__flat uro:TerminalAttribute_uro:purpose",
-      "sourcePath": "attributes tran:adeOfSquare[*] uro:TerminalAttribute uro:purpose"
+      "sourcePath": "attributes tran:adeOfSquare [] [*] [uro:TerminalAttribute] [0] uro:purpose"
     },
     {
       "destinationPath": "__flat uro:TerminalAttribute_uro:note",
-      "sourcePath": "attributes tran:adeOfSquare[*] uro:TerminalAttribute uro:note"
+      "sourcePath": "attributes tran:adeOfSquare [] [*] [uro:TerminalAttribute] [0] uro:note"
     },
     {
       "destinationPath": "__flat uro:TerminalAttribute_uro:terminalType",
-      "sourcePath": "attributes tran:adeOfSquare[*] uro:TerminalAttribute uro:terminalType"
+      "sourcePath": "attributes tran:adeOfSquare [] [*] [uro:TerminalAttribute] [0] uro:terminalType"
     },
     {
       "destinationPath": "__flat uro:TerminalAttribute_uro:structure",
-      "sourcePath": "attributes tran:adeOfSquare[*] uro:TerminalAttribute uro:structure"
+      "sourcePath": "attributes tran:adeOfSquare [] [*] [uro:TerminalAttribute] [0] uro:structure"
     },
     {
       "destinationPath": "__flat uro:TerminalAttribute_uro:numberOfBerthsPlanned",
-      "sourcePath": "attributes tran:adeOfSquare[*] uro:TerminalAttribute uro:numberOfBerthsPlanned",
+      "sourcePath": "attributes tran:adeOfSquare [] [*] [uro:TerminalAttribute] [0] uro:numberOfBerthsPlanned",
       "dataType": "int"
     },
     {
       "destinationPath": "__flat uro:TerminalAttribute_uro:numberOfBerthsInService",
-      "sourcePath": "attributes tran:adeOfSquare[*] uro:TerminalAttribute uro:numberOfBerthsInService",
+      "sourcePath": "attributes tran:adeOfSquare [] [*] [uro:TerminalAttribute] [0] uro:numberOfBerthsInService",
       "dataType": "int"
     },
     {
       "destinationPath": "__flat uro:TerminalAttribute_uro:userType",
-      "sourcePath": "attributes tran:adeOfSquare[*] uro:TerminalAttribute uro:userType"
+      "sourcePath": "attributes tran:adeOfSquare [] [*] [uro:TerminalAttribute] [0] uro:userType"
     }
   ],
   "tran:TrafficArea": [
     {
       "destinationPath": "__flat gml:name",
-      "sourcePath": "attributes ancestors[0] gml:name"
+      "sourcePath": "attributes ancestors [0] gml:name"
     },
     {
       "destinationPath": "__flat core:creationDate",
-      "sourcePath": "attributes ancestors[0] core:creationDate"
+      "sourcePath": "attributes ancestors [0] core:creationDate"
     },
     {
       "destinationPath": "__flat urc:geometrySrcDescLod1",
-      "sourcePath": "attributes ancestors[0] core:adeOfAbstractCityObject[*] urc:DataQualityAttribute urc:geometrySrcDescLod1"
+      "sourcePath": "attributes ancestors [0] core:adeOfAbstractCityObject [] [*] [urc:DataQualityAttribute] [0] urc:geometrySrcDescLod1"
     },
     {
       "destinationPath": "__flat urc:lodType",
-      "sourcePath": "attributes ancestors[0] core:adeOfAbstractCityObject[*] urc:DataQualityAttribute urc:lodType"
+      "sourcePath": "attributes ancestors [0] core:adeOfAbstractCityObject [] [*] [urc:DataQualityAttribute] [0] urc:lodType"
     },
     {
       "destinationPath": "__flat tran:function",
@@ -310,291 +310,291 @@
     },
     {
       "destinationPath": "__flat tran:class",
-      "sourcePath": "attributes ancestors[0] tran:class"
+      "sourcePath": "attributes ancestors [0] tran:class"
     },
     {
       "destinationPath": "__flat tran:Square_tran:function",
-      "sourcePath": "attributes ancestors[0] tran:function"
+      "sourcePath": "attributes ancestors [0] tran:function"
     },
     {
       "destinationPath": "__flat uro:SquareUrbanPlanAttribute_uro:prefecture",
-      "sourcePath": "attributes ancestors[0] tran:adeOfSquare[*] uro:SquareUrbanPlanAttribute uro:prefecture"
+      "sourcePath": "attributes ancestors [0] tran:adeOfSquare [] [*] [uro:SquareUrbanPlanAttribute] [0] uro:prefecture"
     },
     {
       "destinationPath": "__flat uro:SquareUrbanPlanAttribute_uro:city",
-      "sourcePath": "attributes ancestors[0] tran:adeOfSquare[*] uro:SquareUrbanPlanAttribute uro:city"
+      "sourcePath": "attributes ancestors [0] tran:adeOfSquare [] [*] [uro:SquareUrbanPlanAttribute] [0] uro:city"
     },
     {
       "destinationPath": "__flat uro:SquareUrbanPlanAttribute_uro:urbanPlanningAreaName",
-      "sourcePath": "attributes ancestors[0] tran:adeOfSquare[*] uro:SquareUrbanPlanAttribute uro:urbanPlanningAreaName"
+      "sourcePath": "attributes ancestors [0] tran:adeOfSquare [] [*] [uro:SquareUrbanPlanAttribute] [0] uro:urbanPlanningAreaName"
     },
     {
       "destinationPath": "__flat uro:SquareUrbanPlanAttribute_uro:enforcer",
-      "sourcePath": "attributes ancestors[0] tran:adeOfSquare[*] uro:SquareUrbanPlanAttribute uro:enforcer"
+      "sourcePath": "attributes ancestors [0] tran:adeOfSquare [] [*] [uro:SquareUrbanPlanAttribute] [0] uro:enforcer"
     },
     {
       "destinationPath": "__flat uro:SquareUrbanPlanAttribute_uro:dateOfDecision",
-      "sourcePath": "attributes ancestors[0] tran:adeOfSquare[*] uro:SquareUrbanPlanAttribute uro:dateOfDecision"
+      "sourcePath": "attributes ancestors [0] tran:adeOfSquare [] [*] [uro:SquareUrbanPlanAttribute] [0] uro:dateOfDecision"
     },
     {
       "destinationPath": "__flat uro:SquareUrbanPlanAttribute_uro:dateOfRevision",
-      "sourcePath": "attributes ancestors[0] tran:adeOfSquare[*] uro:SquareUrbanPlanAttribute uro:dateOfRevision"
+      "sourcePath": "attributes ancestors [0] tran:adeOfSquare [] [*] [uro:SquareUrbanPlanAttribute] [0] uro:dateOfRevision"
     },
     {
       "destinationPath": "__flat uro:SquareUrbanPlanAttribute_uro:areaPlanned",
-      "sourcePath": "attributes ancestors[0] tran:adeOfSquare[*] uro:SquareUrbanPlanAttribute uro:areaPlanned",
+      "sourcePath": "attributes ancestors [0] tran:adeOfSquare [] [*] [uro:SquareUrbanPlanAttribute] [0] uro:areaPlanned",
       "dataType": "float"
     },
     {
       "destinationPath": "__flat uro:SquareUrbanPlanAttribute_uro:areaInService",
-      "sourcePath": "attributes ancestors[0] tran:adeOfSquare[*] uro:SquareUrbanPlanAttribute uro:areaInService",
+      "sourcePath": "attributes ancestors [0] tran:adeOfSquare [] [*] [uro:SquareUrbanPlanAttribute] [0] uro:areaInService",
       "dataType": "float"
     },
     {
       "destinationPath": "__flat uro:SquareUrbanPlanAttribute_uro:remarks",
-      "sourcePath": "attributes ancestors[0] tran:adeOfSquare[*] uro:SquareUrbanPlanAttribute uro:remarks"
+      "sourcePath": "attributes ancestors [0] tran:adeOfSquare [] [*] [uro:SquareUrbanPlanAttribute] [0] uro:remarks"
     },
     {
       "destinationPath": "__flat uro:SquareUrbanPlanAttribute_uro:status",
-      "sourcePath": "attributes ancestors[0] tran:adeOfSquare[*] uro:SquareUrbanPlanAttribute uro:status"
+      "sourcePath": "attributes ancestors [0] tran:adeOfSquare [] [*] [uro:SquareUrbanPlanAttribute] [0] uro:status"
     },
     {
       "destinationPath": "__flat uro:SquareUrbanPlanAttribute_uro:areaImproved",
-      "sourcePath": "attributes ancestors[0] tran:adeOfSquare[*] uro:SquareUrbanPlanAttribute uro:areaImproved",
+      "sourcePath": "attributes ancestors [0] tran:adeOfSquare [] [*] [uro:SquareUrbanPlanAttribute] [0] uro:areaImproved",
       "dataType": "float"
     },
     {
       "destinationPath": "__flat uro:SquareUrbanPlanAttribute_uro:areaCompleted",
-      "sourcePath": "attributes ancestors[0] tran:adeOfSquare[*] uro:SquareUrbanPlanAttribute uro:areaCompleted",
+      "sourcePath": "attributes ancestors [0] tran:adeOfSquare [] [*] [uro:SquareUrbanPlanAttribute] [0] uro:areaCompleted",
       "dataType": "float"
     },
     {
       "destinationPath": "__flat uro:SquareUrbanPlanAttribute_uro:projectStartDate",
-      "sourcePath": "attributes ancestors[0] tran:adeOfSquare[*] uro:SquareUrbanPlanAttribute uro:projectStartDate"
+      "sourcePath": "attributes ancestors [0] tran:adeOfSquare [] [*] [uro:SquareUrbanPlanAttribute] [0] uro:projectStartDate"
     },
     {
       "destinationPath": "__flat uro:SquareUrbanPlanAttribute_uro:projectEndDate",
-      "sourcePath": "attributes ancestors[0] tran:adeOfSquare[*] uro:SquareUrbanPlanAttribute uro:projectEndDate"
+      "sourcePath": "attributes ancestors [0] tran:adeOfSquare [] [*] [uro:SquareUrbanPlanAttribute] [0] uro:projectEndDate"
     },
     {
       "destinationPath": "__flat uro:SquareUrbanPlanAttribute_uro:isCompleted",
-      "sourcePath": "attributes ancestors[0] tran:adeOfSquare[*] uro:SquareUrbanPlanAttribute uro:isCompleted"
+      "sourcePath": "attributes ancestors [0] tran:adeOfSquare [] [*] [uro:SquareUrbanPlanAttribute] [0] uro:isCompleted"
     },
     {
       "destinationPath": "__flat uro:SquareUrbanPlanAttribute_uro:isAuthorized",
-      "sourcePath": "attributes ancestors[0] tran:adeOfSquare[*] uro:SquareUrbanPlanAttribute uro:isAuthorized"
+      "sourcePath": "attributes ancestors [0] tran:adeOfSquare [] [*] [uro:SquareUrbanPlanAttribute] [0] uro:isAuthorized"
     },
     {
       "destinationPath": "__flat uro:SquareUrbanPlanAttribute_uro:purpose",
-      "sourcePath": "attributes ancestors[0] tran:adeOfSquare[*] uro:SquareUrbanPlanAttribute uro:purpose"
+      "sourcePath": "attributes ancestors [0] tran:adeOfSquare [] [*] [uro:SquareUrbanPlanAttribute] [0] uro:purpose"
     },
     {
       "destinationPath": "__flat uro:SquareUrbanPlanAttribute_uro:note",
-      "sourcePath": "attributes ancestors[0] tran:adeOfSquare[*] uro:SquareUrbanPlanAttribute uro:note"
+      "sourcePath": "attributes ancestors [0] tran:adeOfSquare [] [*] [uro:SquareUrbanPlanAttribute] [0] uro:note"
     },
     {
       "destinationPath": "__flat uro:StationSquareAttribute_uro:prefecture",
-      "sourcePath": "attributes ancestors[0] tran:adeOfSquare[*] uro:StationSquareAttribute uro:prefecture"
+      "sourcePath": "attributes ancestors [0] tran:adeOfSquare [] [*] [uro:StationSquareAttribute] [0] uro:prefecture"
     },
     {
       "destinationPath": "__flat uro:StationSquareAttribute_uro:city",
-      "sourcePath": "attributes ancestors[0] tran:adeOfSquare[*] uro:StationSquareAttribute uro:city"
+      "sourcePath": "attributes ancestors [0] tran:adeOfSquare [] [*] [uro:StationSquareAttribute] [0] uro:city"
     },
     {
       "destinationPath": "__flat uro:StationSquareAttribute_uro:urbanPlanningAreaName",
-      "sourcePath": "attributes ancestors[0] tran:adeOfSquare[*] uro:StationSquareAttribute uro:urbanPlanningAreaName"
+      "sourcePath": "attributes ancestors [0] tran:adeOfSquare [] [*] [uro:StationSquareAttribute] [0] uro:urbanPlanningAreaName"
     },
     {
       "destinationPath": "__flat uro:StationSquareAttribute_uro:enforcer",
-      "sourcePath": "attributes ancestors[0] tran:adeOfSquare[*] uro:StationSquareAttribute uro:enforcer"
+      "sourcePath": "attributes ancestors [0] tran:adeOfSquare [] [*] [uro:StationSquareAttribute] [0] uro:enforcer"
     },
     {
       "destinationPath": "__flat uro:StationSquareAttribute_uro:dateOfDecision",
-      "sourcePath": "attributes ancestors[0] tran:adeOfSquare[*] uro:StationSquareAttribute uro:dateOfDecision"
+      "sourcePath": "attributes ancestors [0] tran:adeOfSquare [] [*] [uro:StationSquareAttribute] [0] uro:dateOfDecision"
     },
     {
       "destinationPath": "__flat uro:StationSquareAttribute_uro:dateOfRevision",
-      "sourcePath": "attributes ancestors[0] tran:adeOfSquare[*] uro:StationSquareAttribute uro:dateOfRevision"
+      "sourcePath": "attributes ancestors [0] tran:adeOfSquare [] [*] [uro:StationSquareAttribute] [0] uro:dateOfRevision"
     },
     {
       "destinationPath": "__flat uro:StationSquareAttribute_uro:areaPlanned",
-      "sourcePath": "attributes ancestors[0] tran:adeOfSquare[*] uro:StationSquareAttribute uro:areaPlanned",
+      "sourcePath": "attributes ancestors [0] tran:adeOfSquare [] [*] [uro:StationSquareAttribute] [0] uro:areaPlanned",
       "dataType": "float"
     },
     {
       "destinationPath": "__flat uro:StationSquareAttribute_uro:areaInService",
-      "sourcePath": "attributes ancestors[0] tran:adeOfSquare[*] uro:StationSquareAttribute uro:areaInService",
+      "sourcePath": "attributes ancestors [0] tran:adeOfSquare [] [*] [uro:StationSquareAttribute] [0] uro:areaInService",
       "dataType": "float"
     },
     {
       "destinationPath": "__flat uro:StationSquareAttribute_uro:remarks",
-      "sourcePath": "attributes ancestors[0] tran:adeOfSquare[*] uro:StationSquareAttribute uro:remarks"
+      "sourcePath": "attributes ancestors [0] tran:adeOfSquare [] [*] [uro:StationSquareAttribute] [0] uro:remarks"
     },
     {
       "destinationPath": "__flat uro:StationSquareAttribute_uro:status",
-      "sourcePath": "attributes ancestors[0] tran:adeOfSquare[*] uro:StationSquareAttribute uro:status"
+      "sourcePath": "attributes ancestors [0] tran:adeOfSquare [] [*] [uro:StationSquareAttribute] [0] uro:status"
     },
     {
       "destinationPath": "__flat uro:StationSquareAttribute_uro:areaImproved",
-      "sourcePath": "attributes ancestors[0] tran:adeOfSquare[*] uro:StationSquareAttribute uro:areaImproved",
+      "sourcePath": "attributes ancestors [0] tran:adeOfSquare [] [*] [uro:StationSquareAttribute] [0] uro:areaImproved",
       "dataType": "float"
     },
     {
       "destinationPath": "__flat uro:StationSquareAttribute_uro:areaCompleted",
-      "sourcePath": "attributes ancestors[0] tran:adeOfSquare[*] uro:StationSquareAttribute uro:areaCompleted",
+      "sourcePath": "attributes ancestors [0] tran:adeOfSquare [] [*] [uro:StationSquareAttribute] [0] uro:areaCompleted",
       "dataType": "float"
     },
     {
       "destinationPath": "__flat uro:StationSquareAttribute_uro:projectStartDate",
-      "sourcePath": "attributes ancestors[0] tran:adeOfSquare[*] uro:StationSquareAttribute uro:projectStartDate"
+      "sourcePath": "attributes ancestors [0] tran:adeOfSquare [] [*] [uro:StationSquareAttribute] [0] uro:projectStartDate"
     },
     {
       "destinationPath": "__flat uro:StationSquareAttribute_uro:projectEndDate",
-      "sourcePath": "attributes ancestors[0] tran:adeOfSquare[*] uro:StationSquareAttribute uro:projectEndDate"
+      "sourcePath": "attributes ancestors [0] tran:adeOfSquare [] [*] [uro:StationSquareAttribute] [0] uro:projectEndDate"
     },
     {
       "destinationPath": "__flat uro:StationSquareAttribute_uro:isCompleted",
-      "sourcePath": "attributes ancestors[0] tran:adeOfSquare[*] uro:StationSquareAttribute uro:isCompleted"
+      "sourcePath": "attributes ancestors [0] tran:adeOfSquare [] [*] [uro:StationSquareAttribute] [0] uro:isCompleted"
     },
     {
       "destinationPath": "__flat uro:StationSquareAttribute_uro:isAuthorized",
-      "sourcePath": "attributes ancestors[0] tran:adeOfSquare[*] uro:StationSquareAttribute uro:isAuthorized"
+      "sourcePath": "attributes ancestors [0] tran:adeOfSquare [] [*] [uro:StationSquareAttribute] [0] uro:isAuthorized"
     },
     {
       "destinationPath": "__flat uro:StationSquareAttribute_uro:purpose",
-      "sourcePath": "attributes ancestors[0] tran:adeOfSquare[*] uro:StationSquareAttribute uro:purpose"
+      "sourcePath": "attributes ancestors [0] tran:adeOfSquare [] [*] [uro:StationSquareAttribute] [0] uro:purpose"
     },
     {
       "destinationPath": "__flat uro:StationSquareAttribute_uro:note",
-      "sourcePath": "attributes ancestors[0] tran:adeOfSquare[*] uro:StationSquareAttribute uro:note"
+      "sourcePath": "attributes ancestors [0] tran:adeOfSquare [] [*] [uro:StationSquareAttribute] [0] uro:note"
     },
     {
       "destinationPath": "__flat uro:StationSquareAttribute_uro:station",
-      "sourcePath": "attributes ancestors[0] tran:adeOfSquare[*] uro:StationSquareAttribute uro:station"
+      "sourcePath": "attributes ancestors [0] tran:adeOfSquare [] [*] [uro:StationSquareAttribute] [0] uro:station"
     },
     {
       "destinationPath": "__flat uro:StationSquareAttribute_uro:route",
-      "sourcePath": "attributes ancestors[0] tran:adeOfSquare[*] uro:StationSquareAttribute uro:route"
+      "sourcePath": "attributes ancestors [0] tran:adeOfSquare [] [*] [uro:StationSquareAttribute] [0] uro:route"
     },
     {
       "destinationPath": "__flat uro:StationSquareAttribute_uro:railwayType",
-      "sourcePath": "attributes ancestors[0] tran:adeOfSquare[*] uro:StationSquareAttribute uro:railwayType"
+      "sourcePath": "attributes ancestors [0] tran:adeOfSquare [] [*] [uro:StationSquareAttribute] [0] uro:railwayType"
     },
     {
       "destinationPath": "__flat uro:TerminalAttribute_uro:prefecture",
-      "sourcePath": "attributes ancestors[0] tran:adeOfSquare[*] uro:TerminalAttribute uro:prefecture"
+      "sourcePath": "attributes ancestors [0] tran:adeOfSquare [] [*] [uro:TerminalAttribute] [0] uro:prefecture"
     },
     {
       "destinationPath": "__flat uro:TerminalAttribute_uro:city",
-      "sourcePath": "attributes ancestors[0] tran:adeOfSquare[*] uro:TerminalAttribute uro:city"
+      "sourcePath": "attributes ancestors [0] tran:adeOfSquare [] [*] [uro:TerminalAttribute] [0] uro:city"
     },
     {
       "destinationPath": "__flat uro:TerminalAttribute_uro:urbanPlanningAreaName",
-      "sourcePath": "attributes ancestors[0] tran:adeOfSquare[*] uro:TerminalAttribute uro:urbanPlanningAreaName"
+      "sourcePath": "attributes ancestors [0] tran:adeOfSquare [] [*] [uro:TerminalAttribute] [0] uro:urbanPlanningAreaName"
     },
     {
       "destinationPath": "__flat uro:TerminalAttribute_uro:enforcer",
-      "sourcePath": "attributes ancestors[0] tran:adeOfSquare[*] uro:TerminalAttribute uro:enforcer"
+      "sourcePath": "attributes ancestors [0] tran:adeOfSquare [] [*] [uro:TerminalAttribute] [0] uro:enforcer"
     },
     {
       "destinationPath": "__flat uro:TerminalAttribute_uro:dateOfDecision",
-      "sourcePath": "attributes ancestors[0] tran:adeOfSquare[*] uro:TerminalAttribute uro:dateOfDecision"
+      "sourcePath": "attributes ancestors [0] tran:adeOfSquare [] [*] [uro:TerminalAttribute] [0] uro:dateOfDecision"
     },
     {
       "destinationPath": "__flat uro:TerminalAttribute_uro:dateOfRevision",
-      "sourcePath": "attributes ancestors[0] tran:adeOfSquare[*] uro:TerminalAttribute uro:dateOfRevision"
+      "sourcePath": "attributes ancestors [0] tran:adeOfSquare [] [*] [uro:TerminalAttribute] [0] uro:dateOfRevision"
     },
     {
       "destinationPath": "__flat uro:TerminalAttribute_uro:areaPlanned",
-      "sourcePath": "attributes ancestors[0] tran:adeOfSquare[*] uro:TerminalAttribute uro:areaPlanned",
+      "sourcePath": "attributes ancestors [0] tran:adeOfSquare [] [*] [uro:TerminalAttribute] [0] uro:areaPlanned",
       "dataType": "float"
     },
     {
       "destinationPath": "__flat uro:TerminalAttribute_uro:areaInService",
-      "sourcePath": "attributes ancestors[0] tran:adeOfSquare[*] uro:TerminalAttribute uro:areaInService",
+      "sourcePath": "attributes ancestors [0] tran:adeOfSquare [] [*] [uro:TerminalAttribute] [0] uro:areaInService",
       "dataType": "float"
     },
     {
       "destinationPath": "__flat uro:TerminalAttribute_uro:remarks",
-      "sourcePath": "attributes ancestors[0] tran:adeOfSquare[*] uro:TerminalAttribute uro:remarks"
+      "sourcePath": "attributes ancestors [0] tran:adeOfSquare [] [*] [uro:TerminalAttribute] [0] uro:remarks"
     },
     {
       "destinationPath": "__flat uro:TerminalAttribute_uro:status",
-      "sourcePath": "attributes ancestors[0] tran:adeOfSquare[*] uro:TerminalAttribute uro:status"
+      "sourcePath": "attributes ancestors [0] tran:adeOfSquare [] [*] [uro:TerminalAttribute] [0] uro:status"
     },
     {
       "destinationPath": "__flat uro:TerminalAttribute_uro:areaImproved",
-      "sourcePath": "attributes ancestors[0] tran:adeOfSquare[*] uro:TerminalAttribute uro:areaImproved",
+      "sourcePath": "attributes ancestors [0] tran:adeOfSquare [] [*] [uro:TerminalAttribute] [0] uro:areaImproved",
       "dataType": "float"
     },
     {
       "destinationPath": "__flat uro:TerminalAttribute_uro:areaCompleted",
-      "sourcePath": "attributes ancestors[0] tran:adeOfSquare[*] uro:TerminalAttribute uro:areaCompleted",
+      "sourcePath": "attributes ancestors [0] tran:adeOfSquare [] [*] [uro:TerminalAttribute] [0] uro:areaCompleted",
       "dataType": "float"
     },
     {
       "destinationPath": "__flat uro:TerminalAttribute_uro:projectStartDate",
-      "sourcePath": "attributes ancestors[0] tran:adeOfSquare[*] uro:TerminalAttribute uro:projectStartDate"
+      "sourcePath": "attributes ancestors [0] tran:adeOfSquare [] [*] [uro:TerminalAttribute] [0] uro:projectStartDate"
     },
     {
       "destinationPath": "__flat uro:TerminalAttribute_uro:projectEndDate",
-      "sourcePath": "attributes ancestors[0] tran:adeOfSquare[*] uro:TerminalAttribute uro:projectEndDate"
+      "sourcePath": "attributes ancestors [0] tran:adeOfSquare [] [*] [uro:TerminalAttribute] [0] uro:projectEndDate"
     },
     {
       "destinationPath": "__flat uro:TerminalAttribute_uro:isCompleted",
-      "sourcePath": "attributes ancestors[0] tran:adeOfSquare[*] uro:TerminalAttribute uro:isCompleted"
+      "sourcePath": "attributes ancestors [0] tran:adeOfSquare [] [*] [uro:TerminalAttribute] [0] uro:isCompleted"
     },
     {
       "destinationPath": "__flat uro:TerminalAttribute_uro:isAuthorized",
-      "sourcePath": "attributes ancestors[0] tran:adeOfSquare[*] uro:TerminalAttribute uro:isAuthorized"
+      "sourcePath": "attributes ancestors [0] tran:adeOfSquare [] [*] [uro:TerminalAttribute] [0] uro:isAuthorized"
     },
     {
       "destinationPath": "__flat uro:TerminalAttribute_uro:purpose",
-      "sourcePath": "attributes ancestors[0] tran:adeOfSquare[*] uro:TerminalAttribute uro:purpose"
+      "sourcePath": "attributes ancestors [0] tran:adeOfSquare [] [*] [uro:TerminalAttribute] [0] uro:purpose"
     },
     {
       "destinationPath": "__flat uro:TerminalAttribute_uro:note",
-      "sourcePath": "attributes ancestors[0] tran:adeOfSquare[*] uro:TerminalAttribute uro:note"
+      "sourcePath": "attributes ancestors [0] tran:adeOfSquare [] [*] [uro:TerminalAttribute] [0] uro:note"
     },
     {
       "destinationPath": "__flat uro:TerminalAttribute_uro:terminalType",
-      "sourcePath": "attributes ancestors[0] tran:adeOfSquare[*] uro:TerminalAttribute uro:terminalType"
+      "sourcePath": "attributes ancestors [0] tran:adeOfSquare [] [*] [uro:TerminalAttribute] [0] uro:terminalType"
     },
     {
       "destinationPath": "__flat uro:TerminalAttribute_uro:structure",
-      "sourcePath": "attributes ancestors[0] tran:adeOfSquare[*] uro:TerminalAttribute uro:structure"
+      "sourcePath": "attributes ancestors [0] tran:adeOfSquare [] [*] [uro:TerminalAttribute] [0] uro:structure"
     },
     {
       "destinationPath": "__flat uro:TerminalAttribute_uro:numberOfBerthsPlanned",
-      "sourcePath": "attributes ancestors[0] tran:adeOfSquare[*] uro:TerminalAttribute uro:numberOfBerthsPlanned",
+      "sourcePath": "attributes ancestors [0] tran:adeOfSquare [] [*] [uro:TerminalAttribute] [0] uro:numberOfBerthsPlanned",
       "dataType": "int"
     },
     {
       "destinationPath": "__flat uro:TerminalAttribute_uro:numberOfBerthsInService",
-      "sourcePath": "attributes ancestors[0] tran:adeOfSquare[*] uro:TerminalAttribute uro:numberOfBerthsInService",
+      "sourcePath": "attributes ancestors [0] tran:adeOfSquare [] [*] [uro:TerminalAttribute] [0] uro:numberOfBerthsInService",
       "dataType": "int"
     },
     {
       "destinationPath": "__flat uro:TerminalAttribute_uro:userType",
-      "sourcePath": "attributes ancestors[0] tran:adeOfSquare[*] uro:TerminalAttribute uro:userType"
+      "sourcePath": "attributes ancestors [0] tran:adeOfSquare [] [*] [uro:TerminalAttribute] [0] uro:userType"
     }
   ],
   "tran:AuxiliaryTrafficArea": [
     {
       "destinationPath": "__flat gml:name",
-      "sourcePath": "attributes ancestors[0] gml:name"
+      "sourcePath": "attributes ancestors [0] gml:name"
     },
     {
       "destinationPath": "__flat core:creationDate",
-      "sourcePath": "attributes ancestors[0] core:creationDate"
+      "sourcePath": "attributes ancestors [0] core:creationDate"
     },
     {
       "destinationPath": "__flat urc:geometrySrcDescLod1",
-      "sourcePath": "attributes ancestors[0] core:adeOfAbstractCityObject[*] urc:DataQualityAttribute urc:geometrySrcDescLod1"
+      "sourcePath": "attributes ancestors [0] core:adeOfAbstractCityObject [] [*] [urc:DataQualityAttribute] [0] urc:geometrySrcDescLod1"
     },
     {
       "destinationPath": "__flat urc:lodType",
-      "sourcePath": "attributes ancestors[0] core:adeOfAbstractCityObject[*] urc:DataQualityAttribute urc:lodType"
+      "sourcePath": "attributes ancestors [0] core:adeOfAbstractCityObject [] [*] [urc:DataQualityAttribute] [0] urc:lodType"
     },
     {
       "destinationPath": "__flat tran:function",
@@ -602,273 +602,273 @@
     },
     {
       "destinationPath": "__flat tran:class",
-      "sourcePath": "attributes ancestors[0] tran:class"
+      "sourcePath": "attributes ancestors [0] tran:class"
     },
     {
       "destinationPath": "__flat tran:Square_tran:function",
-      "sourcePath": "attributes ancestors[0] tran:function"
+      "sourcePath": "attributes ancestors [0] tran:function"
     },
     {
       "destinationPath": "__flat uro:SquareUrbanPlanAttribute_uro:prefecture",
-      "sourcePath": "attributes ancestors[0] tran:adeOfSquare[*] uro:SquareUrbanPlanAttribute uro:prefecture"
+      "sourcePath": "attributes ancestors [0] tran:adeOfSquare [] [*] [uro:SquareUrbanPlanAttribute] [0] uro:prefecture"
     },
     {
       "destinationPath": "__flat uro:SquareUrbanPlanAttribute_uro:city",
-      "sourcePath": "attributes ancestors[0] tran:adeOfSquare[*] uro:SquareUrbanPlanAttribute uro:city"
+      "sourcePath": "attributes ancestors [0] tran:adeOfSquare [] [*] [uro:SquareUrbanPlanAttribute] [0] uro:city"
     },
     {
       "destinationPath": "__flat uro:SquareUrbanPlanAttribute_uro:urbanPlanningAreaName",
-      "sourcePath": "attributes ancestors[0] tran:adeOfSquare[*] uro:SquareUrbanPlanAttribute uro:urbanPlanningAreaName"
+      "sourcePath": "attributes ancestors [0] tran:adeOfSquare [] [*] [uro:SquareUrbanPlanAttribute] [0] uro:urbanPlanningAreaName"
     },
     {
       "destinationPath": "__flat uro:SquareUrbanPlanAttribute_uro:enforcer",
-      "sourcePath": "attributes ancestors[0] tran:adeOfSquare[*] uro:SquareUrbanPlanAttribute uro:enforcer"
+      "sourcePath": "attributes ancestors [0] tran:adeOfSquare [] [*] [uro:SquareUrbanPlanAttribute] [0] uro:enforcer"
     },
     {
       "destinationPath": "__flat uro:SquareUrbanPlanAttribute_uro:dateOfDecision",
-      "sourcePath": "attributes ancestors[0] tran:adeOfSquare[*] uro:SquareUrbanPlanAttribute uro:dateOfDecision"
+      "sourcePath": "attributes ancestors [0] tran:adeOfSquare [] [*] [uro:SquareUrbanPlanAttribute] [0] uro:dateOfDecision"
     },
     {
       "destinationPath": "__flat uro:SquareUrbanPlanAttribute_uro:dateOfRevision",
-      "sourcePath": "attributes ancestors[0] tran:adeOfSquare[*] uro:SquareUrbanPlanAttribute uro:dateOfRevision"
+      "sourcePath": "attributes ancestors [0] tran:adeOfSquare [] [*] [uro:SquareUrbanPlanAttribute] [0] uro:dateOfRevision"
     },
     {
       "destinationPath": "__flat uro:SquareUrbanPlanAttribute_uro:areaPlanned",
-      "sourcePath": "attributes ancestors[0] tran:adeOfSquare[*] uro:SquareUrbanPlanAttribute uro:areaPlanned",
+      "sourcePath": "attributes ancestors [0] tran:adeOfSquare [] [*] [uro:SquareUrbanPlanAttribute] [0] uro:areaPlanned",
       "dataType": "float"
     },
     {
       "destinationPath": "__flat uro:SquareUrbanPlanAttribute_uro:areaInService",
-      "sourcePath": "attributes ancestors[0] tran:adeOfSquare[*] uro:SquareUrbanPlanAttribute uro:areaInService",
+      "sourcePath": "attributes ancestors [0] tran:adeOfSquare [] [*] [uro:SquareUrbanPlanAttribute] [0] uro:areaInService",
       "dataType": "float"
     },
     {
       "destinationPath": "__flat uro:SquareUrbanPlanAttribute_uro:remarks",
-      "sourcePath": "attributes ancestors[0] tran:adeOfSquare[*] uro:SquareUrbanPlanAttribute uro:remarks"
+      "sourcePath": "attributes ancestors [0] tran:adeOfSquare [] [*] [uro:SquareUrbanPlanAttribute] [0] uro:remarks"
     },
     {
       "destinationPath": "__flat uro:SquareUrbanPlanAttribute_uro:status",
-      "sourcePath": "attributes ancestors[0] tran:adeOfSquare[*] uro:SquareUrbanPlanAttribute uro:status"
+      "sourcePath": "attributes ancestors [0] tran:adeOfSquare [] [*] [uro:SquareUrbanPlanAttribute] [0] uro:status"
     },
     {
       "destinationPath": "__flat uro:SquareUrbanPlanAttribute_uro:areaImproved",
-      "sourcePath": "attributes ancestors[0] tran:adeOfSquare[*] uro:SquareUrbanPlanAttribute uro:areaImproved",
+      "sourcePath": "attributes ancestors [0] tran:adeOfSquare [] [*] [uro:SquareUrbanPlanAttribute] [0] uro:areaImproved",
       "dataType": "float"
     },
     {
       "destinationPath": "__flat uro:SquareUrbanPlanAttribute_uro:areaCompleted",
-      "sourcePath": "attributes ancestors[0] tran:adeOfSquare[*] uro:SquareUrbanPlanAttribute uro:areaCompleted",
+      "sourcePath": "attributes ancestors [0] tran:adeOfSquare [] [*] [uro:SquareUrbanPlanAttribute] [0] uro:areaCompleted",
       "dataType": "float"
     },
     {
       "destinationPath": "__flat uro:SquareUrbanPlanAttribute_uro:projectStartDate",
-      "sourcePath": "attributes ancestors[0] tran:adeOfSquare[*] uro:SquareUrbanPlanAttribute uro:projectStartDate"
+      "sourcePath": "attributes ancestors [0] tran:adeOfSquare [] [*] [uro:SquareUrbanPlanAttribute] [0] uro:projectStartDate"
     },
     {
       "destinationPath": "__flat uro:SquareUrbanPlanAttribute_uro:projectEndDate",
-      "sourcePath": "attributes ancestors[0] tran:adeOfSquare[*] uro:SquareUrbanPlanAttribute uro:projectEndDate"
+      "sourcePath": "attributes ancestors [0] tran:adeOfSquare [] [*] [uro:SquareUrbanPlanAttribute] [0] uro:projectEndDate"
     },
     {
       "destinationPath": "__flat uro:SquareUrbanPlanAttribute_uro:isCompleted",
-      "sourcePath": "attributes ancestors[0] tran:adeOfSquare[*] uro:SquareUrbanPlanAttribute uro:isCompleted"
+      "sourcePath": "attributes ancestors [0] tran:adeOfSquare [] [*] [uro:SquareUrbanPlanAttribute] [0] uro:isCompleted"
     },
     {
       "destinationPath": "__flat uro:SquareUrbanPlanAttribute_uro:isAuthorized",
-      "sourcePath": "attributes ancestors[0] tran:adeOfSquare[*] uro:SquareUrbanPlanAttribute uro:isAuthorized"
+      "sourcePath": "attributes ancestors [0] tran:adeOfSquare [] [*] [uro:SquareUrbanPlanAttribute] [0] uro:isAuthorized"
     },
     {
       "destinationPath": "__flat uro:SquareUrbanPlanAttribute_uro:purpose",
-      "sourcePath": "attributes ancestors[0] tran:adeOfSquare[*] uro:SquareUrbanPlanAttribute uro:purpose"
+      "sourcePath": "attributes ancestors [0] tran:adeOfSquare [] [*] [uro:SquareUrbanPlanAttribute] [0] uro:purpose"
     },
     {
       "destinationPath": "__flat uro:SquareUrbanPlanAttribute_uro:note",
-      "sourcePath": "attributes ancestors[0] tran:adeOfSquare[*] uro:SquareUrbanPlanAttribute uro:note"
+      "sourcePath": "attributes ancestors [0] tran:adeOfSquare [] [*] [uro:SquareUrbanPlanAttribute] [0] uro:note"
     },
     {
       "destinationPath": "__flat uro:StationSquareAttribute_uro:prefecture",
-      "sourcePath": "attributes ancestors[0] tran:adeOfSquare[*] uro:StationSquareAttribute uro:prefecture"
+      "sourcePath": "attributes ancestors [0] tran:adeOfSquare [] [*] [uro:StationSquareAttribute] [0] uro:prefecture"
     },
     {
       "destinationPath": "__flat uro:StationSquareAttribute_uro:city",
-      "sourcePath": "attributes ancestors[0] tran:adeOfSquare[*] uro:StationSquareAttribute uro:city"
+      "sourcePath": "attributes ancestors [0] tran:adeOfSquare [] [*] [uro:StationSquareAttribute] [0] uro:city"
     },
     {
       "destinationPath": "__flat uro:StationSquareAttribute_uro:urbanPlanningAreaName",
-      "sourcePath": "attributes ancestors[0] tran:adeOfSquare[*] uro:StationSquareAttribute uro:urbanPlanningAreaName"
+      "sourcePath": "attributes ancestors [0] tran:adeOfSquare [] [*] [uro:StationSquareAttribute] [0] uro:urbanPlanningAreaName"
     },
     {
       "destinationPath": "__flat uro:StationSquareAttribute_uro:enforcer",
-      "sourcePath": "attributes ancestors[0] tran:adeOfSquare[*] uro:StationSquareAttribute uro:enforcer"
+      "sourcePath": "attributes ancestors [0] tran:adeOfSquare [] [*] [uro:StationSquareAttribute] [0] uro:enforcer"
     },
     {
       "destinationPath": "__flat uro:StationSquareAttribute_uro:dateOfDecision",
-      "sourcePath": "attributes ancestors[0] tran:adeOfSquare[*] uro:StationSquareAttribute uro:dateOfDecision"
+      "sourcePath": "attributes ancestors [0] tran:adeOfSquare [] [*] [uro:StationSquareAttribute] [0] uro:dateOfDecision"
     },
     {
       "destinationPath": "__flat uro:StationSquareAttribute_uro:dateOfRevision",
-      "sourcePath": "attributes ancestors[0] tran:adeOfSquare[*] uro:StationSquareAttribute uro:dateOfRevision"
+      "sourcePath": "attributes ancestors [0] tran:adeOfSquare [] [*] [uro:StationSquareAttribute] [0] uro:dateOfRevision"
     },
     {
       "destinationPath": "__flat uro:StationSquareAttribute_uro:areaPlanned",
-      "sourcePath": "attributes ancestors[0] tran:adeOfSquare[*] uro:StationSquareAttribute uro:areaPlanned",
+      "sourcePath": "attributes ancestors [0] tran:adeOfSquare [] [*] [uro:StationSquareAttribute] [0] uro:areaPlanned",
       "dataType": "float"
     },
     {
       "destinationPath": "__flat uro:StationSquareAttribute_uro:areaInService",
-      "sourcePath": "attributes ancestors[0] tran:adeOfSquare[*] uro:StationSquareAttribute uro:areaInService",
+      "sourcePath": "attributes ancestors [0] tran:adeOfSquare [] [*] [uro:StationSquareAttribute] [0] uro:areaInService",
       "dataType": "float"
     },
     {
       "destinationPath": "__flat uro:StationSquareAttribute_uro:remarks",
-      "sourcePath": "attributes ancestors[0] tran:adeOfSquare[*] uro:StationSquareAttribute uro:remarks"
+      "sourcePath": "attributes ancestors [0] tran:adeOfSquare [] [*] [uro:StationSquareAttribute] [0] uro:remarks"
     },
     {
       "destinationPath": "__flat uro:StationSquareAttribute_uro:status",
-      "sourcePath": "attributes ancestors[0] tran:adeOfSquare[*] uro:StationSquareAttribute uro:status"
+      "sourcePath": "attributes ancestors [0] tran:adeOfSquare [] [*] [uro:StationSquareAttribute] [0] uro:status"
     },
     {
       "destinationPath": "__flat uro:StationSquareAttribute_uro:areaImproved",
-      "sourcePath": "attributes ancestors[0] tran:adeOfSquare[*] uro:StationSquareAttribute uro:areaImproved",
+      "sourcePath": "attributes ancestors [0] tran:adeOfSquare [] [*] [uro:StationSquareAttribute] [0] uro:areaImproved",
       "dataType": "float"
     },
     {
       "destinationPath": "__flat uro:StationSquareAttribute_uro:areaCompleted",
-      "sourcePath": "attributes ancestors[0] tran:adeOfSquare[*] uro:StationSquareAttribute uro:areaCompleted",
+      "sourcePath": "attributes ancestors [0] tran:adeOfSquare [] [*] [uro:StationSquareAttribute] [0] uro:areaCompleted",
       "dataType": "float"
     },
     {
       "destinationPath": "__flat uro:StationSquareAttribute_uro:projectStartDate",
-      "sourcePath": "attributes ancestors[0] tran:adeOfSquare[*] uro:StationSquareAttribute uro:projectStartDate"
+      "sourcePath": "attributes ancestors [0] tran:adeOfSquare [] [*] [uro:StationSquareAttribute] [0] uro:projectStartDate"
     },
     {
       "destinationPath": "__flat uro:StationSquareAttribute_uro:projectEndDate",
-      "sourcePath": "attributes ancestors[0] tran:adeOfSquare[*] uro:StationSquareAttribute uro:projectEndDate"
+      "sourcePath": "attributes ancestors [0] tran:adeOfSquare [] [*] [uro:StationSquareAttribute] [0] uro:projectEndDate"
     },
     {
       "destinationPath": "__flat uro:StationSquareAttribute_uro:isCompleted",
-      "sourcePath": "attributes ancestors[0] tran:adeOfSquare[*] uro:StationSquareAttribute uro:isCompleted"
+      "sourcePath": "attributes ancestors [0] tran:adeOfSquare [] [*] [uro:StationSquareAttribute] [0] uro:isCompleted"
     },
     {
       "destinationPath": "__flat uro:StationSquareAttribute_uro:isAuthorized",
-      "sourcePath": "attributes ancestors[0] tran:adeOfSquare[*] uro:StationSquareAttribute uro:isAuthorized"
+      "sourcePath": "attributes ancestors [0] tran:adeOfSquare [] [*] [uro:StationSquareAttribute] [0] uro:isAuthorized"
     },
     {
       "destinationPath": "__flat uro:StationSquareAttribute_uro:purpose",
-      "sourcePath": "attributes ancestors[0] tran:adeOfSquare[*] uro:StationSquareAttribute uro:purpose"
+      "sourcePath": "attributes ancestors [0] tran:adeOfSquare [] [*] [uro:StationSquareAttribute] [0] uro:purpose"
     },
     {
       "destinationPath": "__flat uro:StationSquareAttribute_uro:note",
-      "sourcePath": "attributes ancestors[0] tran:adeOfSquare[*] uro:StationSquareAttribute uro:note"
+      "sourcePath": "attributes ancestors [0] tran:adeOfSquare [] [*] [uro:StationSquareAttribute] [0] uro:note"
     },
     {
       "destinationPath": "__flat uro:StationSquareAttribute_uro:station",
-      "sourcePath": "attributes ancestors[0] tran:adeOfSquare[*] uro:StationSquareAttribute uro:station"
+      "sourcePath": "attributes ancestors [0] tran:adeOfSquare [] [*] [uro:StationSquareAttribute] [0] uro:station"
     },
     {
       "destinationPath": "__flat uro:StationSquareAttribute_uro:route",
-      "sourcePath": "attributes ancestors[0] tran:adeOfSquare[*] uro:StationSquareAttribute uro:route"
+      "sourcePath": "attributes ancestors [0] tran:adeOfSquare [] [*] [uro:StationSquareAttribute] [0] uro:route"
     },
     {
       "destinationPath": "__flat uro:StationSquareAttribute_uro:railwayType",
-      "sourcePath": "attributes ancestors[0] tran:adeOfSquare[*] uro:StationSquareAttribute uro:railwayType"
+      "sourcePath": "attributes ancestors [0] tran:adeOfSquare [] [*] [uro:StationSquareAttribute] [0] uro:railwayType"
     },
     {
       "destinationPath": "__flat uro:TerminalAttribute_uro:prefecture",
-      "sourcePath": "attributes ancestors[0] tran:adeOfSquare[*] uro:TerminalAttribute uro:prefecture"
+      "sourcePath": "attributes ancestors [0] tran:adeOfSquare [] [*] [uro:TerminalAttribute] [0] uro:prefecture"
     },
     {
       "destinationPath": "__flat uro:TerminalAttribute_uro:city",
-      "sourcePath": "attributes ancestors[0] tran:adeOfSquare[*] uro:TerminalAttribute uro:city"
+      "sourcePath": "attributes ancestors [0] tran:adeOfSquare [] [*] [uro:TerminalAttribute] [0] uro:city"
     },
     {
       "destinationPath": "__flat uro:TerminalAttribute_uro:urbanPlanningAreaName",
-      "sourcePath": "attributes ancestors[0] tran:adeOfSquare[*] uro:TerminalAttribute uro:urbanPlanningAreaName"
+      "sourcePath": "attributes ancestors [0] tran:adeOfSquare [] [*] [uro:TerminalAttribute] [0] uro:urbanPlanningAreaName"
     },
     {
       "destinationPath": "__flat uro:TerminalAttribute_uro:enforcer",
-      "sourcePath": "attributes ancestors[0] tran:adeOfSquare[*] uro:TerminalAttribute uro:enforcer"
+      "sourcePath": "attributes ancestors [0] tran:adeOfSquare [] [*] [uro:TerminalAttribute] [0] uro:enforcer"
     },
     {
       "destinationPath": "__flat uro:TerminalAttribute_uro:dateOfDecision",
-      "sourcePath": "attributes ancestors[0] tran:adeOfSquare[*] uro:TerminalAttribute uro:dateOfDecision"
+      "sourcePath": "attributes ancestors [0] tran:adeOfSquare [] [*] [uro:TerminalAttribute] [0] uro:dateOfDecision"
     },
     {
       "destinationPath": "__flat uro:TerminalAttribute_uro:dateOfRevision",
-      "sourcePath": "attributes ancestors[0] tran:adeOfSquare[*] uro:TerminalAttribute uro:dateOfRevision"
+      "sourcePath": "attributes ancestors [0] tran:adeOfSquare [] [*] [uro:TerminalAttribute] [0] uro:dateOfRevision"
     },
     {
       "destinationPath": "__flat uro:TerminalAttribute_uro:areaPlanned",
-      "sourcePath": "attributes ancestors[0] tran:adeOfSquare[*] uro:TerminalAttribute uro:areaPlanned",
+      "sourcePath": "attributes ancestors [0] tran:adeOfSquare [] [*] [uro:TerminalAttribute] [0] uro:areaPlanned",
       "dataType": "float"
     },
     {
       "destinationPath": "__flat uro:TerminalAttribute_uro:areaInService",
-      "sourcePath": "attributes ancestors[0] tran:adeOfSquare[*] uro:TerminalAttribute uro:areaInService",
+      "sourcePath": "attributes ancestors [0] tran:adeOfSquare [] [*] [uro:TerminalAttribute] [0] uro:areaInService",
       "dataType": "float"
     },
     {
       "destinationPath": "__flat uro:TerminalAttribute_uro:remarks",
-      "sourcePath": "attributes ancestors[0] tran:adeOfSquare[*] uro:TerminalAttribute uro:remarks"
+      "sourcePath": "attributes ancestors [0] tran:adeOfSquare [] [*] [uro:TerminalAttribute] [0] uro:remarks"
     },
     {
       "destinationPath": "__flat uro:TerminalAttribute_uro:status",
-      "sourcePath": "attributes ancestors[0] tran:adeOfSquare[*] uro:TerminalAttribute uro:status"
+      "sourcePath": "attributes ancestors [0] tran:adeOfSquare [] [*] [uro:TerminalAttribute] [0] uro:status"
     },
     {
       "destinationPath": "__flat uro:TerminalAttribute_uro:areaImproved",
-      "sourcePath": "attributes ancestors[0] tran:adeOfSquare[*] uro:TerminalAttribute uro:areaImproved",
+      "sourcePath": "attributes ancestors [0] tran:adeOfSquare [] [*] [uro:TerminalAttribute] [0] uro:areaImproved",
       "dataType": "float"
     },
     {
       "destinationPath": "__flat uro:TerminalAttribute_uro:areaCompleted",
-      "sourcePath": "attributes ancestors[0] tran:adeOfSquare[*] uro:TerminalAttribute uro:areaCompleted",
+      "sourcePath": "attributes ancestors [0] tran:adeOfSquare [] [*] [uro:TerminalAttribute] [0] uro:areaCompleted",
       "dataType": "float"
     },
     {
       "destinationPath": "__flat uro:TerminalAttribute_uro:projectStartDate",
-      "sourcePath": "attributes ancestors[0] tran:adeOfSquare[*] uro:TerminalAttribute uro:projectStartDate"
+      "sourcePath": "attributes ancestors [0] tran:adeOfSquare [] [*] [uro:TerminalAttribute] [0] uro:projectStartDate"
     },
     {
       "destinationPath": "__flat uro:TerminalAttribute_uro:projectEndDate",
-      "sourcePath": "attributes ancestors[0] tran:adeOfSquare[*] uro:TerminalAttribute uro:projectEndDate"
+      "sourcePath": "attributes ancestors [0] tran:adeOfSquare [] [*] [uro:TerminalAttribute] [0] uro:projectEndDate"
     },
     {
       "destinationPath": "__flat uro:TerminalAttribute_uro:isCompleted",
-      "sourcePath": "attributes ancestors[0] tran:adeOfSquare[*] uro:TerminalAttribute uro:isCompleted"
+      "sourcePath": "attributes ancestors [0] tran:adeOfSquare [] [*] [uro:TerminalAttribute] [0] uro:isCompleted"
     },
     {
       "destinationPath": "__flat uro:TerminalAttribute_uro:isAuthorized",
-      "sourcePath": "attributes ancestors[0] tran:adeOfSquare[*] uro:TerminalAttribute uro:isAuthorized"
+      "sourcePath": "attributes ancestors [0] tran:adeOfSquare [] [*] [uro:TerminalAttribute] [0] uro:isAuthorized"
     },
     {
       "destinationPath": "__flat uro:TerminalAttribute_uro:purpose",
-      "sourcePath": "attributes ancestors[0] tran:adeOfSquare[*] uro:TerminalAttribute uro:purpose"
+      "sourcePath": "attributes ancestors [0] tran:adeOfSquare [] [*] [uro:TerminalAttribute] [0] uro:purpose"
     },
     {
       "destinationPath": "__flat uro:TerminalAttribute_uro:note",
-      "sourcePath": "attributes ancestors[0] tran:adeOfSquare[*] uro:TerminalAttribute uro:note"
+      "sourcePath": "attributes ancestors [0] tran:adeOfSquare [] [*] [uro:TerminalAttribute] [0] uro:note"
     },
     {
       "destinationPath": "__flat uro:TerminalAttribute_uro:terminalType",
-      "sourcePath": "attributes ancestors[0] tran:adeOfSquare[*] uro:TerminalAttribute uro:terminalType"
+      "sourcePath": "attributes ancestors [0] tran:adeOfSquare [] [*] [uro:TerminalAttribute] [0] uro:terminalType"
     },
     {
       "destinationPath": "__flat uro:TerminalAttribute_uro:structure",
-      "sourcePath": "attributes ancestors[0] tran:adeOfSquare[*] uro:TerminalAttribute uro:structure"
+      "sourcePath": "attributes ancestors [0] tran:adeOfSquare [] [*] [uro:TerminalAttribute] [0] uro:structure"
     },
     {
       "destinationPath": "__flat uro:TerminalAttribute_uro:numberOfBerthsPlanned",
-      "sourcePath": "attributes ancestors[0] tran:adeOfSquare[*] uro:TerminalAttribute uro:numberOfBerthsPlanned",
+      "sourcePath": "attributes ancestors [0] tran:adeOfSquare [] [*] [uro:TerminalAttribute] [0] uro:numberOfBerthsPlanned",
       "dataType": "int"
     },
     {
       "destinationPath": "__flat uro:TerminalAttribute_uro:numberOfBerthsInService",
-      "sourcePath": "attributes ancestors[0] tran:adeOfSquare[*] uro:TerminalAttribute uro:numberOfBerthsInService",
+      "sourcePath": "attributes ancestors [0] tran:adeOfSquare [] [*] [uro:TerminalAttribute] [0] uro:numberOfBerthsInService",
       "dataType": "int"
     },
     {
       "destinationPath": "__flat uro:TerminalAttribute_uro:userType",
-      "sourcePath": "attributes ancestors[0] tran:adeOfSquare[*] uro:TerminalAttribute uro:userType"
+      "sourcePath": "attributes ancestors [0] tran:adeOfSquare [] [*] [uro:TerminalAttribute] [0] uro:userType"
     }
   ]
 }

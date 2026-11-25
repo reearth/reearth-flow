@@ -1086,7 +1086,7 @@
     {
       "name": "Attribute Table Extractor",
       "type": "processor",
-      "description": "根据以要素类型属性为键的源/目标路径对照表，在嵌套的map或list属性路径之间复制值。源路径用`[*]`或`[0]`显式遍历list。当目标路径包含多个片段时，会按需创建嵌套map",
+      "description": "根据以要素类型属性为键的源/目标路径对照表，在嵌套的map或list属性路径之间复制值。源路径用`[]`、`[*]`、`[n]`等步骤显式处理list。当目标路径包含多个片段时，会按需创建嵌套map",
       "parameter": {
         "$schema": "http://json-schema.org/draft-07/schema#",
         "title": "Attribute Table Extractor 参数",
@@ -1158,7 +1158,7 @@
               },
               "sourcePath": {
                 "title": "Source Path",
-                "description": "Where the value is read from, as a space-separated chain of keys walked from the feature's top level. A key only looks into a map; a list is crossed with `[*]` (all items) or `[0]` (the first item) written right after the key, e.g. `bldg:adeOfAbstractBuilding[*]`. Both treat a value that is not a list as a list of that one value, so a path works whether an element appears once or many times. Several results are written as a list.",
+                "description": "Where the value is read from, as whitespace-separated steps walked from the feature's top level: `k` takes key `k` of a map, `[]` makes a single value a one-item list, `[*]` expands a list into its items, `[n]` takes item `n` of a list (negative counts from the end), and `[k]` gathers the `k` values of all results into one list. The value is written only when exactly one result remains, e.g. `__city_gml_attributes bldg:adeOfAbstractBuilding [] [*] [uro:BuildingIDAttribute] [0] uro:buildingID`.",
                 "type": "string"
               },
               "dataType": {
