@@ -1,6 +1,5 @@
 citygml_zip_name = "43206_tamana-shi_city_2024_citygml_2_op_luse.zip"
 
-# luse features carry no gml_id, so each tile is rasterized as a whole
 [convs.mvt_png.luse]
 path = "43206_tamana-shi_city_2024_citygml_2_op_luse_mvt"
 truth_path = "luse_png_truth"
@@ -8,6 +7,9 @@ generate_truth = true
 
 [tests.raster.luse]
 threshold = 0.005
+
+[tests.mvt_polygons]
+threshold = 0.001
 
 [filter.tree]
 "udx/luse/" = ["493033_luse_6697_op.gml"]
