@@ -4,7 +4,9 @@ import (
 	"context"
 	"errors"
 	"sync"
+	"sync/atomic"
 	"testing"
+	"time"
 
 	"github.com/alicebob/miniredis/v2"
 	goredis "github.com/redis/go-redis/v9"
@@ -658,5 +660,100 @@ func TestCompact_AnExpiredLockDeletesNothing(t *testing.T) {
 	}
 	if v := fillerValue(t, mustLoad(t, a)); v != 11 {
 		t.Fatalf("f.k = %v, want 11", v)
+	}
+}
+
+// lockerStub is a Locker whose WithLock can be switched to unavailable, as a
+// contended doc lock is once its acquisition budget runs out. Each Locker has
+// its own timeout error, so what matters is that fn never runs.
+type lockerStub struct {
+	inner       Locker
+	unavailable atomic.Bool
+	refused     atomic.Int64
+}
+
+func (l *lockerStub) WithLock(ctx context.Context, key string, fn func(context.Context) error) error {
+	if l.unavailable.Load() {
+		l.refused.Add(1)
+		return ErrLockTimeout
+	}
+	return l.inner.WithLock(ctx, key, fn)
+}
+
+func (l *lockerStub) TryWithLock(ctx context.Context, key string, ttl time.Duration, fn func(context.Context) error) error {
+	return l.inner.TryWithLock(ctx, key, ttl, fn)
+}
+
+func newLockerStubAdapter(t *testing.T) (*Adapter, *lockerStub) {
+	t.Helper()
+	client, bucket := newFakeGCS(t)
+	lk := &lockerStub{inner: NewNoLock()}
+	a, err := New(Options{Client: client, Bucket: bucket, Locker: lk})
+	if err != nil {
+		t.Fatal(err)
+	}
+	return a, lk
+}
+
+// movingWriter moves the room's marks from inside readState, as another
+// instance's checkpoint landing mid-read does, for the first n reads. It writes
+// the checkpoint directly because AppendUpdate would need the doc lock, which
+// these tests make unavailable.
+func movingWriter(t *testing.T, a *Adapter, n int) func() {
+	t.Helper()
+	moved := 0
+	return func() {
+		if moved >= n {
+			return
+		}
+		moved++
+		if err := a.store.put(context.Background(), a.layout.CheckpointName("room"), be32(uint32(moved))); err != nil {
+			t.Error(err)
+		}
+	}
+}
+
+// TestLoad_OpensWhenTheDocLockIsUnavailable: the doc lock is an optimisation for
+// Load's read, not a correctness requirement, and Load is the connect path. A
+// room being written hard is exactly when the lock is contended and also exactly
+// when someone is trying to open it, so an unavailable lock must degrade to
+// another unlocked read rather than fail the open.
+func TestLoad_OpensWhenTheDocLockIsUnavailable(t *testing.T) {
+	t.Parallel()
+	a, lk := newLockerStubAdapter(t)
+	fs := fillers(t, 10)
+	appendAll(t, a, fs[:9]...) // clocks 1..9, while the lock still works
+
+	lk.unavailable.Store(true)
+	// Enough to exhaust the first unlocked round, then the writer is done.
+	a.afterReadBase = movingWriter(t, a, loadAttempts-1)
+
+	state := mustLoad(t, a)
+	a.afterReadBase = nil
+
+	if got := fillerValue(t, state); got != 8 {
+		t.Fatalf("f.k = %v, want 8", got)
+	}
+	if n := lk.refused.Load(); n != 1 {
+		t.Errorf("the doc lock was asked for %d times, want exactly 1", n)
+	}
+}
+
+// TestLoad_StillRefusesAStateThatKeepsMoving: the fallback above widens the
+// window Load tolerates, and must not widen what it is willing to serve. A
+// writer that never stops leaves every attempt inconsistent, so Load fails
+// rather than hand back a state assembled across a write.
+func TestLoad_StillRefusesAStateThatKeepsMoving(t *testing.T) {
+	t.Parallel()
+	a, lk := newLockerStubAdapter(t)
+	appendAll(t, a, fillers(t, 9)...)
+
+	lk.unavailable.Store(true)
+	a.afterReadBase = movingWriter(t, a, 1<<30) // never stops
+	defer func() { a.afterReadBase = nil }()
+
+	_, err := a.Load(context.Background(), "room")
+	if !errors.Is(err, errStateMoved) {
+		t.Fatalf("Load error = %v, want errStateMoved", err)
 	}
 }

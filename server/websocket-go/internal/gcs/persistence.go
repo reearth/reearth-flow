@@ -80,8 +80,9 @@ func (a *Adapter) snapshotPrefix(room DocID) string {
 	return legacySnapshotPrefix(room)
 }
 
-// loadAttempts bounds Load's unlocked reads of a state other writers keep
-// changing; the last attempt holds gcsDocLockKey.
+// loadAttempts bounds one round of Load's unlocked reads of a state other
+// writers keep changing. Load tries a round, then the same read under
+// gcsDocLockKey, then a further round if the lock was unavailable.
 const loadAttempts = 4
 
 // Load returns the latest merged state for room (v2-first → v1 fallback), folding
@@ -122,19 +123,52 @@ func (a *Adapter) Load(ctx context.Context, room string) (res persistence.LoadRe
 
 // readStateRetrying reads the stored state without the doc lock, retrying while
 // a writer changes it underneath, and takes the lock for the last attempt.
+//
+// The lock is an optimisation for this read, never a correctness requirement:
+// every unlocked attempt checks the marks around what it reads, so a read that
+// returns at all is consistent. Load is the connect path, so when the lock is
+// unavailable it must degrade to another unlocked read rather than fail the
+// room open. A room being written hard is exactly when the lock is contended,
+// and it is also exactly when someone is trying to open the room.
 func (a *Adapter) readStateRetrying(ctx context.Context, room DocID, oid uint32) (storedState, error) {
-	for attempt := 1; attempt < loadAttempts; attempt++ {
-		st, err := a.readState(ctx, room, oid)
-		if !errors.Is(err, errStateMoved) {
-			return st, err
-		}
+	st, err := a.readStateUnlocked(ctx, room, oid)
+	if !errors.Is(err, errStateMoved) {
+		return st, err
 	}
-	var st storedState
-	err := a.locker.WithLock(ctx, gcsDocLockKey(room), func(ctx context.Context) error {
-		var err error
+
+	// ran distinguishes "the lock was not acquired" from "the read under it
+	// failed". Each Locker has its own timeout error, so the flag is the only
+	// implementation-independent way to tell them apart.
+	ran := false
+	if lockErr := a.locker.WithLock(ctx, gcsDocLockKey(room), func(ctx context.Context) error {
+		ran = true
 		st, err = a.readState(ctx, room, oid)
 		return err
-	})
+	}); lockErr != nil && !ran {
+		a.log.Warn("gcs load: the doc lock was unavailable, reading without it",
+			"room", room, "err", lockErr)
+	}
+	if ran && !errors.Is(err, errStateMoved) {
+		return st, err
+	}
+
+	// Either the lock never came free, or the state moved even under it (a lapsed
+	// lease). Another unlocked round still has to come back clean, so this widens
+	// the window Load tolerates without ever serving a state a writer moved.
+	return a.readStateUnlocked(ctx, room, oid)
+}
+
+// readStateUnlocked reads the state without the doc lock, retrying while a
+// writer keeps changing it underneath. The last attempt's result is returned,
+// so the caller still sees errStateMoved when none of them came back clean.
+func (a *Adapter) readStateUnlocked(ctx context.Context, room DocID, oid uint32) (storedState, error) {
+	var st storedState
+	var err error
+	for attempt := 1; attempt < loadAttempts; attempt++ {
+		if st, err = a.readState(ctx, room, oid); !errors.Is(err, errStateMoved) {
+			break
+		}
+	}
 	return st, err
 }
 
