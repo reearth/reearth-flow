@@ -91,7 +91,7 @@ func (i *NodeDiagnostics) checkJobPermission(ctx context.Context, jobID id.JobID
 	if j != nil {
 		wsIDs = append(wsIDs, j.Workspace())
 	}
-	return i.checkPermission(ctx, rbac.ActionAny, wsIDs...)
+	return i.checkPermission(ctx, rbac.ActionRead, wsIDs...)
 }
 
 func (i *NodeDiagnostics) GetNodeDiagnostics(ctx context.Context, jobID id.JobID, nodeID string) ([]*diagnostic.Diagnostic, error) {
