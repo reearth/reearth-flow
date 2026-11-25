@@ -121,8 +121,9 @@ func (a *Adapter) Compact(ctx context.Context, room string, keep int) (int, erro
 			a.log.Debug("gcs compact: new base holds parked items",
 				"room", room, "parked", ps.Items, "awaiting_clients", len(ps.MissingFor), "kept", keep)
 		}
-		// Write the new base before deleting any update (abort-without-loss).
-		if err := a.writeV2Doc(ctx, room, oid, st.doc); err != nil {
+		// Write the new base before deleting any update (abort-without-loss). It
+		// only lands on the doc_v2 readState read, so an expired lock deletes nothing.
+		if err := a.writeV2DocIf(ctx, room, oid, st.doc, st.v2Gen); err != nil {
 			return err
 		}
 		if cutoff > m.cp {

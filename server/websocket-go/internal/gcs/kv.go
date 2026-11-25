@@ -113,14 +113,41 @@ func (s kv) putWithMetaIfAbsent(ctx context.Context, name string, data []byte, m
 
 // asObjectExists maps a failed DoesNotExist precondition (412) to errObjectExists.
 func asObjectExists(err error) error {
-	if err == nil {
-		return nil
-	}
-	var gerr *googleapi.Error
-	if errors.As(err, &gerr) && gerr.Code == http.StatusPreconditionFailed {
+	if preconditionFailed(err) {
 		return errObjectExists
 	}
 	return err
+}
+
+// errGenerationMoved reports that a conditional write lost to a newer write of
+// the same object.
+var errGenerationMoved = errors.New("gcs: object rewritten since it was read")
+
+// putIfGeneration writes data only while the object's generation is gen, or
+// while it does not exist when gen is 0. It returns errGenerationMoved otherwise.
+func (s kv) putIfGeneration(ctx context.Context, name string, data []byte, gen int64) error {
+	cond := storage.Conditions{GenerationMatch: gen}
+	if gen == 0 {
+		cond = storage.Conditions{DoesNotExist: true}
+	}
+	w := s.bucket.Object(name).If(cond).NewWriter(ctx)
+	if _, err := w.Write(data); err != nil {
+		_ = w.Close()
+		return asGenerationMoved(err)
+	}
+	return asGenerationMoved(w.Close())
+}
+
+func asGenerationMoved(err error) error {
+	if preconditionFailed(err) {
+		return errGenerationMoved
+	}
+	return err
+}
+
+func preconditionFailed(err error) bool {
+	var gerr *googleapi.Error
+	return errors.As(err, &gerr) && gerr.Code == http.StatusPreconditionFailed
 }
 
 func (s kv) delete(ctx context.Context, name string) error {

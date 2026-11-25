@@ -544,3 +544,119 @@ func TestMaterializeAt_StillRebuildsWhileTheLogIsWhole(t *testing.T) {
 		}
 	}
 }
+
+// TestFlushSnapshot_CopyParkedOnACheckpointedEditIsCompleted: doc_v2, written by
+// an earlier build, lacks a checkpointed edit and has nothing parked. A copy
+// waiting on that edit checkpoints, and doc_v2 must come out complete.
+func TestFlushSnapshot_CopyParkedOnACheckpointedEditIsCompleted(t *testing.T) {
+	t.Parallel()
+	ctx := context.Background()
+	a := newParkedTestAdapter(t)
+	first, second := editPair(t)
+	fs := fillers(t, 9)
+	appendAll(t, a, first)
+	appendAll(t, a, fs...) // clock 10 checkpoints first's object
+	behind := crdt.New()
+	for _, f := range fs {
+		if err := crdt.ApplyUpdateV1(behind, f, nil); err != nil {
+			t.Fatal(err)
+		}
+	}
+	writeOldCheckpoint(t, a, "room", crdt.EncodeStateAsUpdateV1(behind, nil))
+
+	if err := a.FlushSnapshot(ctx, "room", parkedState(t, second)); err != nil {
+		t.Fatal(err)
+	}
+	v1, _, err := a.loadPrimaryV2(ctx, "room")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if got, parked := loaded(t, v1, "t"); got != "ab" || parked != 0 {
+		t.Fatalf("doc_v2: %q with %d parked, want \"ab\" and none", got, parked)
+	}
+}
+
+// textEdit is an update from its own client that sets the text name to s.
+func textEdit(client crdt.ClientID, name, s string) []byte {
+	d := crdt.New(crdt.WithClientID(client))
+	txt := d.GetText(name)
+	d.Transact(func(txn *crdt.Transaction) { txt.Insert(txn, 0, s, nil) })
+	return crdt.EncodeStateAsUpdateV1(d, nil)
+}
+
+// checkpointDuringWrite runs a checkpoint of the text "x" once, just before a's
+// next conditional doc_v2 write, as another instance would after a's doc lock
+// expired. The test adapter does not lock, so the checkpoint runs at once.
+func checkpointDuringWrite(t *testing.T, a *Adapter) {
+	t.Helper()
+	fired := false
+	a.beforeV2Write = func() {
+		if fired {
+			return
+		}
+		fired = true
+		if err := a.FlushSnapshot(context.Background(), "room", textEdit(8, "x", "x")); err != nil {
+			t.Error(err)
+		}
+	}
+	t.Cleanup(func() {
+		if !fired {
+			t.Error("the checkpoint did not run")
+		}
+	})
+}
+
+// TestFlushSnapshot_AnExpiredLockCannotReplaceANewerCheckpoint: a checkpoint
+// whose lock expired after it read the stored state must not write over the
+// checkpoint another instance wrote meanwhile.
+func TestFlushSnapshot_AnExpiredLockCannotReplaceANewerCheckpoint(t *testing.T) {
+	t.Parallel()
+	ctx := context.Background()
+	a := newParkedTestAdapter(t)
+	appendAll(t, a, fillers(t, 3)...)
+	checkpointDuringWrite(t, a)
+	if err := a.FlushSnapshot(ctx, "room", textEdit(9, "y", "y")); err != nil {
+		t.Fatal(err)
+	}
+	a.beforeV2Write = nil
+	v1, _, err := a.loadPrimaryV2(ctx, "room")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if x, _ := loaded(t, v1, "x"); x != "x" {
+		t.Fatalf("doc_v2 x = %q, want \"x\"; the other instance's checkpoint was replaced", x)
+	}
+	if y, _ := loaded(t, v1, "y"); y != "y" {
+		t.Fatalf("doc_v2 y = %q, want \"y\"", y)
+	}
+}
+
+// TestCompact_AnExpiredLockDeletesNothing: a compaction whose lock expired after
+// it read the stored state must neither replace the newer checkpoint nor delete
+// the update objects it folded.
+func TestCompact_AnExpiredLockDeletesNothing(t *testing.T) {
+	t.Parallel()
+	ctx := context.Background()
+	a := newParkedTestAdapter(t)
+	appendAll(t, a, fillers(t, 12)...)
+	checkpointDuringWrite(t, a)
+	n, err := a.Compact(ctx, "room", 1)
+	a.beforeV2Write = nil
+	if !errors.Is(err, errGenerationMoved) || n != 0 {
+		t.Fatalf("Compact = %d, %v; want 0 deleted and errGenerationMoved", n, err)
+	}
+	vs, err := a.ListVersions(ctx, "room")
+	if err != nil || len(vs) != 12 {
+		t.Fatalf("versions = %d, %v; want all 12 kept", len(vs), err)
+	}
+	v1, _, err := a.loadPrimaryV2(ctx, "room")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if x, _ := loaded(t, v1, "x"); x != "x" {
+		t.Fatalf("doc_v2 x = %q, want \"x\"; the other instance's checkpoint was replaced", x)
+	}
+	if v := fillerValue(t, mustLoad(t, a)); v != 11 {
+		t.Fatalf("f.k = %v, want 11", v)
+	}
+}

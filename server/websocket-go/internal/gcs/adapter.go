@@ -56,6 +56,9 @@ type Adapter struct {
 	// afterCheckMarks, when set, runs in readState between its marks check and
 	// reading the update objects (test injection only).
 	afterCheckMarks func()
+	// beforeV2Write, when set, runs in writeV2DocIf before its conditional
+	// doc_v2 write (test injection only).
+	beforeV2Write func()
 
 	// oidCache memoizes allocated OIDs per room. Phase 2 pins OID=0.
 	oidCache map[string]uint32
@@ -375,12 +378,29 @@ func (a *Adapter) writeV2Snapshot(ctx context.Context, room DocID, oid uint32, v
 // writeV2Doc writes doc as doc_v2, SUB_DOC and SUB_STATE_VEC. It strips the
 // transient keys from doc first.
 func (a *Adapter) writeV2Doc(ctx context.Context, room DocID, oid uint32, doc *crdt.Doc) error {
+	return a.writeV2DocWith(ctx, room, oid, doc, func(name string, b []byte) error {
+		return a.store.put(ctx, name, b)
+	})
+}
+
+// writeV2DocIf is writeV2Doc, but writes nothing and returns errGenerationMoved
+// once doc_v2 is no longer at generation gen (0 for absent).
+func (a *Adapter) writeV2DocIf(ctx context.Context, room DocID, oid uint32, doc *crdt.Doc, gen int64) error {
+	return a.writeV2DocWith(ctx, room, oid, doc, func(name string, b []byte) error {
+		if a.beforeV2Write != nil {
+			a.beforeV2Write()
+		}
+		return a.store.putIfGeneration(ctx, name, b, gen)
+	})
+}
+
+func (a *Adapter) writeV2DocWith(ctx context.Context, room DocID, oid uint32, doc *crdt.Doc, putV2 func(name string, b []byte) error) error {
 	// Strip ephemeral UI keys (e.g. metadata.rollbackInProgress) before persisting:
 	// they ride the CRDT for live broadcast but must never survive in doc_v2, which
 	// the Rust reader loads on its own with no tail updates to clear them.
 	a.stripTransient(doc)
 	v2 := crdt.EncodeStateAsUpdateV2(doc, nil)
-	if err := a.store.put(ctx, a.layout.DocV2Name(room), compressBrotli(v2)); err != nil {
+	if err := putV2(a.layout.DocV2Name(room), compressBrotli(v2)); err != nil {
 		return err
 	}
 	if err := a.store.put(ctx, a.layout.DocStateName(room, oid), crdt.EncodeStateAsUpdateV1(doc, nil)); err != nil {
