@@ -1,6 +1,7 @@
 //! PLATEAU 6 (CityGML 3.0) extraction seam for the common transportation
 //! xlink check.
 
+use crate::citygml::v3::GML_NS;
 use crate::common::transportation_xlink_detector::TransportationXlinkStrategy;
 
 /// Zero-sized strategy; passed as `&Plateau6TransportationXlinkStrategy` (rvalue
@@ -17,7 +18,7 @@ impl TransportationXlinkStrategy for Plateau6TransportationXlinkStrategy {
         "core"
     }
     fn gml_namespace(&self) -> &str {
-        "http://www.opengis.net/gml/3.2"
+        GML_NS
     }
     /// Descendant axis, because the traffic spaces may sit directly under the
     /// container or be nested through any depth of `tran:Section` /
