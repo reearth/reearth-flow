@@ -89,9 +89,6 @@ const ThemeLanguageMenu: React.FC = () => {
           {lang === language && <CheckIcon weight="light" />}
         </DropdownMenuItem>
       ))}
-      <p className="px-4 py-2 text-[11px] leading-4 font-light text-muted-foreground">
-        {t("Action descriptions are available in English and Japanese only.")}
-      </p>
     </>
   );
 };
