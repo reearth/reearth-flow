@@ -383,6 +383,7 @@ func TestProject_PreviewSchema_RequiresWorkflow(t *testing.T) {
 // project's own workspace, not the caller's: a workspace-less check would let a
 // caller in one workspace run a schema preview against a project in another.
 func TestProject_PreviewSchema_ChecksTargetProjectWorkspace(t *testing.T) {
+	t.Parallel()
 	ctx := previewTestContext()
 	projectRepo := memory.NewProject()
 	jobRepo := memory.NewJob()

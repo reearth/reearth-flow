@@ -66,6 +66,7 @@ func TestChecker_WriterAllowedOnContentActions(t *testing.T) {
 }
 
 func TestChecker_WriterDeniedDeploymentWrites(t *testing.T) {
+	t.Parallel()
 	ws, ctx, _ := wsWithMember(t, role.RoleWriter)
 	cer := &fakeCerbosRepo{result: &cerbos.CheckPermissionResult{Allowed: true}}
 	c := NewChecker(cer, &fakeWorkspaceRepo{ws: ws}, "flow")

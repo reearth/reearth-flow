@@ -61,6 +61,7 @@ func TestProjectDocumentPolicyStaysDeclared(t *testing.T) {
 }
 
 func TestRolesAndPermissionsMatrix(t *testing.T) {
+	t.Parallel()
 	type grant struct {
 		resource, action string
 		roles            []string
@@ -95,6 +96,7 @@ func TestRolesAndPermissionsMatrix(t *testing.T) {
 		{ResourceWorkspace, ActionManageMembers, maintainerUp},
 	} {
 		t.Run(g.resource+"/"+g.action, func(t *testing.T) {
+			t.Parallel()
 			actions := actionsFor(t, g.resource)
 			require.Contains(t, actions, g.action)
 			assert.ElementsMatch(t, g.roles, actions[g.action].Roles)
