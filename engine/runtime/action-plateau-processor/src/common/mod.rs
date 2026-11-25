@@ -8,6 +8,7 @@ pub(crate) mod gml_name_code_space_validator;
 pub(crate) mod missing_attribute_detector;
 pub(crate) mod object_list_extractor;
 mod profile;
+mod schema_lookup;
 pub(crate) mod solid_intersection_test_pair_creator;
 pub(crate) mod transitive_link_resolver;
 pub(crate) mod transportation_xlink_detector;
