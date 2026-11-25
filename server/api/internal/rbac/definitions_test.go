@@ -59,3 +59,45 @@ func TestProjectDocumentPolicyStaysDeclared(t *testing.T) {
 	assert.Contains(t, actions[ActionEdit].Roles, roleWriter,
 		"the target model exists to let writers mutate a document without project-settings rights")
 }
+
+func TestRolesAndPermissionsMatrix(t *testing.T) {
+	type grant struct {
+		resource, action string
+		roles            []string
+	}
+	all := []string{roleReader, roleWriter, roleMaintainer, roleOwner}
+	writerUp := []string{roleWriter, roleMaintainer, roleOwner}
+	maintainerUp := []string{roleMaintainer, roleOwner}
+
+	for _, g := range []grant{
+		{ResourceAsset, ActionRead, all},
+		{ResourceAsset, ActionAny, writerUp},
+		{ResourceDeployment, ActionRead, all},
+		{ResourceDeployment, ActionAny, maintainerUp},
+		{ResourceJob, ActionRead, all},
+		{ResourceJob, ActionAny, writerUp},
+		{ResourceLog, ActionRead, all},
+		{ResourceEdge, ActionRead, all},
+		{ResourceParameter, ActionRead, all},
+		{ResourceParameter, ActionAny, writerUp},
+		{ResourceTrigger, ActionRead, all},
+		{ResourceTrigger, ActionCreate, maintainerUp},
+		{ResourceTrigger, ActionEdit, maintainerUp},
+		{ResourceTrigger, ActionDelete, maintainerUp},
+		{ResourceProject, ActionRead, all},
+		{ResourceProject, ActionAny, writerUp},
+		{ResourceProject, ActionCreate, maintainerUp},
+		{ResourceProject, ActionEdit, maintainerUp},
+		{ResourceProject, ActionDelete, maintainerUp},
+		{ResourceProjectAccess, ActionAny, maintainerUp},
+		{ResourceWorkspace, ActionEdit, []string{roleOwner}},
+		{ResourceWorkspace, ActionDelete, []string{roleOwner}},
+		{ResourceWorkspace, ActionManageMembers, maintainerUp},
+	} {
+		t.Run(g.resource+"/"+g.action, func(t *testing.T) {
+			actions := actionsFor(t, g.resource)
+			require.Contains(t, actions, g.action)
+			assert.ElementsMatch(t, g.roles, actions[g.action].Roles)
+		})
+	}
+}

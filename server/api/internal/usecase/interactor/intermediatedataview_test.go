@@ -714,7 +714,7 @@ func TestIntermediateDataView_IsAuthorizedByTheEdgePolicy(t *testing.T) {
 		{role: "owner", allowed: true},
 		{role: "maintainer", allowed: true},
 		{role: "writer", allowed: true},
-		{role: "reader", allowed: false},
+		{role: "reader", allowed: true},
 	} {
 		t.Run(tc.role, func(t *testing.T) {
 			h := newViewHarness(t, job.StatusCompleted, true)

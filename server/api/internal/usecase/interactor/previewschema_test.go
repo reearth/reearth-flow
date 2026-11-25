@@ -412,7 +412,7 @@ func TestProject_PreviewSchema_ChecksTargetProjectWorkspace(t *testing.T) {
 	assert.NotNil(t, got)
 
 	assert.Equal(t, rbac.ResourceProject, rc.gotResource)
-	assert.Equal(t, rbac.ActionEdit, rc.gotAction)
+	assert.Equal(t, rbac.ActionRead, rc.gotAction)
 	require.Len(t, rc.gotWorkspace, 1)
 	assert.Equal(t, prj.Workspace(), rc.gotWorkspace[0])
 }

@@ -59,10 +59,21 @@ func TestChecker_WriterAllowedOnContentActions(t *testing.T) {
 	cer := &fakeCerbosRepo{result: &cerbos.CheckPermissionResult{Allowed: true}}
 	c := NewChecker(cer, &fakeWorkspaceRepo{ws: ws}, "flow")
 
-	allowed, err := c.CheckPermission(ctx, "deployment", "any", ws.ID())
+	allowed, err := c.CheckPermission(ctx, "job", "any", ws.ID())
 
 	require.NoError(t, err)
 	assert.True(t, allowed)
+}
+
+func TestChecker_WriterDeniedDeploymentWrites(t *testing.T) {
+	ws, ctx, _ := wsWithMember(t, role.RoleWriter)
+	cer := &fakeCerbosRepo{result: &cerbos.CheckPermissionResult{Allowed: true}}
+	c := NewChecker(cer, &fakeWorkspaceRepo{ws: ws}, "flow")
+
+	allowed, err := c.CheckPermission(ctx, "deployment", "any", ws.ID())
+
+	require.NoError(t, err)
+	assert.False(t, allowed, "deploying is maintainer and owner only")
 }
 
 func TestChecker_NonMemberDenied(t *testing.T) {
