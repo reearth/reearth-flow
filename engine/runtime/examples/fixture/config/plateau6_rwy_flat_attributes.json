@@ -9,6 +9,14 @@
       "sourcePath": "attributes core:creationDate"
     },
     {
+      "destinationPath": "__flat urc:geometrySrcDescLod1",
+      "sourcePath": "attributes core:adeOfAbstractCityObject urc:DataQualityAttribute urc:geometrySrcDescLod1"
+    },
+    {
+      "destinationPath": "__flat urc:lodType",
+      "sourcePath": "attributes core:adeOfAbstractCityObject urc:DataQualityAttribute urc:lodType"
+    },
+    {
       "destinationPath": "__flat tran:class",
       "sourcePath": "attributes tran:class"
     },
@@ -35,14 +43,6 @@
     {
       "destinationPath": "__flat uro:endStation",
       "sourcePath": "attributes tran:adeOfRailway uro:RailwayRouteAttribute uro:endStation"
-    },
-    {
-      "destinationPath": "__flat urc:geometrySrcDescLod1",
-      "sourcePath": "attributes core:adeOfAbstractCityObject urc:DataQualityAttribute urc:geometrySrcDescLod1"
-    },
-    {
-      "destinationPath": "__flat urc:lodType",
-      "sourcePath": "attributes core:adeOfAbstractCityObject urc:DataQualityAttribute urc:lodType"
     }
   ],
   "tran:TrafficArea": [
@@ -55,14 +55,6 @@
       "sourcePath": "attributes ancestors core:creationDate"
     },
     {
-      "destinationPath": "__flat tran:class",
-      "sourcePath": "attributes ancestors tran:class"
-    },
-    {
-      "destinationPath": "__flat tran:function",
-      "sourcePath": "attributes ancestors tran:function"
-    },
-    {
       "destinationPath": "__flat urc:geometrySrcDescLod1",
       "sourcePath": "attributes ancestors core:adeOfAbstractCityObject urc:DataQualityAttribute urc:geometrySrcDescLod1"
     },
@@ -71,24 +63,12 @@
       "sourcePath": "attributes ancestors core:adeOfAbstractCityObject urc:DataQualityAttribute urc:lodType"
     },
     {
-      "destinationPath": "__flat uro:operatorType",
-      "sourcePath": "attributes ancestors tran:adeOfRailway uro:RailwayRouteAttribute uro:operatorType"
+      "destinationPath": "__flat tran:class",
+      "sourcePath": "attributes ancestors tran:class"
     },
     {
-      "destinationPath": "__flat uro:operator",
-      "sourcePath": "attributes ancestors tran:adeOfRailway uro:RailwayRouteAttribute uro:operator"
-    },
-    {
-      "destinationPath": "__flat uro:railwayType",
-      "sourcePath": "attributes ancestors tran:adeOfRailway uro:RailwayRouteAttribute uro:railwayType"
-    },
-    {
-      "destinationPath": "__flat uro:startStation",
-      "sourcePath": "attributes ancestors tran:adeOfRailway uro:RailwayRouteAttribute uro:startStation"
-    },
-    {
-      "destinationPath": "__flat uro:endStation",
-      "sourcePath": "attributes ancestors tran:adeOfRailway uro:RailwayRouteAttribute uro:endStation"
+      "destinationPath": "__flat tran:function",
+      "sourcePath": "attributes ancestors tran:function"
     },
     {
       "destinationPath": "__flat uro:routeName",
@@ -109,6 +89,26 @@
     {
       "destinationPath": "__flat uro:alignmentType",
       "sourcePath": "attributes tran:adeOfTrafficArea uro:RailwayTrackAttribute uro:alignmentType"
+    },
+    {
+      "destinationPath": "__flat uro:operatorType",
+      "sourcePath": "attributes ancestors tran:adeOfRailway uro:RailwayRouteAttribute uro:operatorType"
+    },
+    {
+      "destinationPath": "__flat uro:operator",
+      "sourcePath": "attributes ancestors tran:adeOfRailway uro:RailwayRouteAttribute uro:operator"
+    },
+    {
+      "destinationPath": "__flat uro:railwayType",
+      "sourcePath": "attributes ancestors tran:adeOfRailway uro:RailwayRouteAttribute uro:railwayType"
+    },
+    {
+      "destinationPath": "__flat uro:startStation",
+      "sourcePath": "attributes ancestors tran:adeOfRailway uro:RailwayRouteAttribute uro:startStation"
+    },
+    {
+      "destinationPath": "__flat uro:endStation",
+      "sourcePath": "attributes ancestors tran:adeOfRailway uro:RailwayRouteAttribute uro:endStation"
     }
   ],
   "tran:AuxiliaryTrafficArea": [
@@ -121,20 +121,20 @@
       "sourcePath": "attributes ancestors core:creationDate"
     },
     {
-      "destinationPath": "__flat tran:class",
-      "sourcePath": "attributes ancestors tran:class"
-    },
-    {
-      "destinationPath": "__flat tran:function",
-      "sourcePath": "attributes ancestors tran:function"
-    },
-    {
       "destinationPath": "__flat urc:geometrySrcDescLod1",
       "sourcePath": "attributes ancestors core:adeOfAbstractCityObject urc:DataQualityAttribute urc:geometrySrcDescLod1"
     },
     {
       "destinationPath": "__flat urc:lodType",
       "sourcePath": "attributes ancestors core:adeOfAbstractCityObject urc:DataQualityAttribute urc:lodType"
+    },
+    {
+      "destinationPath": "__flat tran:class",
+      "sourcePath": "attributes ancestors tran:class"
+    },
+    {
+      "destinationPath": "__flat tran:function",
+      "sourcePath": "attributes ancestors tran:function"
     },
     {
       "destinationPath": "__flat uro:operatorType",

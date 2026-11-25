@@ -9,6 +9,14 @@
       "sourcePath": "attributes core:creationDate"
     },
     {
+      "destinationPath": "__flat urc:geometrySrcDescLod1",
+      "sourcePath": "attributes core:adeOfAbstractCityObject urc:DataQualityAttribute urc:geometrySrcDescLod1"
+    },
+    {
+      "destinationPath": "__flat urc:lodType",
+      "sourcePath": "attributes core:adeOfAbstractCityObject urc:DataQualityAttribute urc:lodType"
+    },
+    {
       "destinationPath": "__flat tran:class",
       "sourcePath": "attributes tran:class"
     },
@@ -103,14 +111,6 @@
       "destinationPath": "__flat uro:TrafficVolumeAttribute_uro:surveyYear",
       "sourcePath": "attributes tran:adeOfRoad uro:TrafficVolumeAttribute uro:surveyYear",
       "dataType": "int"
-    },
-    {
-      "destinationPath": "__flat urc:geometrySrcDescLod1",
-      "sourcePath": "attributes core:adeOfAbstractCityObject urc:DataQualityAttribute urc:geometrySrcDescLod1"
-    },
-    {
-      "destinationPath": "__flat urc:lodType",
-      "sourcePath": "attributes core:adeOfAbstractCityObject urc:DataQualityAttribute urc:lodType"
     }
   ],
   "tran:TrafficArea": [
@@ -123,12 +123,24 @@
       "sourcePath": "attributes ancestors core:creationDate"
     },
     {
+      "destinationPath": "__flat urc:geometrySrcDescLod1",
+      "sourcePath": "attributes ancestors core:adeOfAbstractCityObject urc:DataQualityAttribute urc:geometrySrcDescLod1"
+    },
+    {
+      "destinationPath": "__flat urc:lodType",
+      "sourcePath": "attributes ancestors core:adeOfAbstractCityObject urc:DataQualityAttribute urc:lodType"
+    },
+    {
       "destinationPath": "__flat tran:class",
       "sourcePath": "attributes ancestors tran:class"
     },
     {
       "destinationPath": "__flat tran:Road_tran:function",
       "sourcePath": "attributes ancestors tran:function"
+    },
+    {
+      "destinationPath": "__flat tran:usage",
+      "sourcePath": "attributes ancestors tran:usage"
     },
     {
       "destinationPath": "__flat tran:function",
@@ -138,10 +150,6 @@
       "destinationPath": "__flat uro:numberOfLanes",
       "sourcePath": "attributes tran:adeOfTrafficArea uro:TrafficAreaStructureAttribute uro:numberOfLanes",
       "dataType": "int"
-    },
-    {
-      "destinationPath": "__flat tran:usage",
-      "sourcePath": "attributes ancestors tran:usage"
     },
     {
       "destinationPath": "__flat uro:RoadStructureAttribute_uro:widthType",
@@ -226,14 +234,6 @@
       "destinationPath": "__flat uro:TrafficVolumeAttribute_uro:surveyYear",
       "sourcePath": "attributes ancestors tran:adeOfRoad uro:TrafficVolumeAttribute uro:surveyYear",
       "dataType": "int"
-    },
-    {
-      "destinationPath": "__flat urc:geometrySrcDescLod1",
-      "sourcePath": "attributes ancestors core:adeOfAbstractCityObject urc:DataQualityAttribute urc:geometrySrcDescLod1"
-    },
-    {
-      "destinationPath": "__flat urc:lodType",
-      "sourcePath": "attributes ancestors core:adeOfAbstractCityObject urc:DataQualityAttribute urc:lodType"
     }
   ],
   "tran:AuxiliaryTrafficArea": [
@@ -246,6 +246,14 @@
       "sourcePath": "attributes ancestors core:creationDate"
     },
     {
+      "destinationPath": "__flat urc:geometrySrcDescLod1",
+      "sourcePath": "attributes ancestors core:adeOfAbstractCityObject urc:DataQualityAttribute urc:geometrySrcDescLod1"
+    },
+    {
+      "destinationPath": "__flat urc:lodType",
+      "sourcePath": "attributes ancestors core:adeOfAbstractCityObject urc:DataQualityAttribute urc:lodType"
+    },
+    {
       "destinationPath": "__flat tran:class",
       "sourcePath": "attributes ancestors tran:class"
     },
@@ -254,16 +262,16 @@
       "sourcePath": "attributes ancestors tran:function"
     },
     {
+      "destinationPath": "__flat tran:usage",
+      "sourcePath": "attributes ancestors tran:usage"
+    },
+    {
       "destinationPath": "__flat tran:function",
       "sourcePath": "attributes tran:function"
     },
     {
       "destinationPath": "__flat tran:surfaceMaterial",
       "sourcePath": "attributes tran:surfaceMaterial"
-    },
-    {
-      "destinationPath": "__flat tran:usage",
-      "sourcePath": "attributes ancestors tran:usage"
     },
     {
       "destinationPath": "__flat uro:RoadStructureAttribute_uro:widthType",
@@ -348,14 +356,6 @@
       "destinationPath": "__flat uro:TrafficVolumeAttribute_uro:surveyYear",
       "sourcePath": "attributes ancestors tran:adeOfRoad uro:TrafficVolumeAttribute uro:surveyYear",
       "dataType": "int"
-    },
-    {
-      "destinationPath": "__flat urc:geometrySrcDescLod1",
-      "sourcePath": "attributes ancestors core:adeOfAbstractCityObject urc:DataQualityAttribute urc:geometrySrcDescLod1"
-    },
-    {
-      "destinationPath": "__flat urc:lodType",
-      "sourcePath": "attributes ancestors core:adeOfAbstractCityObject urc:DataQualityAttribute urc:lodType"
     }
   ],
   "tran:TrafficSpace": [

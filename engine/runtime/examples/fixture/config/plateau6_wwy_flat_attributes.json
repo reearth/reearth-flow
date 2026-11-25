@@ -9,6 +9,14 @@
       "sourcePath": "attributes core:creationDate"
     },
     {
+      "destinationPath": "__flat urc:geometrySrcDescLod1",
+      "sourcePath": "attributes core:adeOfAbstractCityObject urc:DataQualityAttribute urc:geometrySrcDescLod1"
+    },
+    {
+      "destinationPath": "__flat urc:lodType",
+      "sourcePath": "attributes core:adeOfAbstractCityObject urc:DataQualityAttribute urc:lodType"
+    },
+    {
       "destinationPath": "__flat uro:routeId",
       "sourcePath": "attributes tran:adeOfWaterway uro:WaterwayDetailAttribute uro:routeId"
     },
@@ -48,14 +56,6 @@
     {
       "destinationPath": "__flat uro:targetShipType",
       "sourcePath": "attributes tran:adeOfWaterway uro:WaterwayDetailAttribute uro:targetShipType"
-    },
-    {
-      "destinationPath": "__flat urc:geometrySrcDescLod1",
-      "sourcePath": "attributes core:adeOfAbstractCityObject urc:DataQualityAttribute urc:geometrySrcDescLod1"
-    },
-    {
-      "destinationPath": "__flat urc:lodType",
-      "sourcePath": "attributes core:adeOfAbstractCityObject urc:DataQualityAttribute urc:lodType"
     }
   ],
   "tran:TrafficArea": [

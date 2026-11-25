@@ -9,6 +9,14 @@
       "sourcePath": "attributes core:creationDate"
     },
     {
+      "destinationPath": "__flat urc:geometrySrcDescLod1",
+      "sourcePath": "attributes core:adeOfAbstractCityObject urc:DataQualityAttribute urc:geometrySrcDescLod1"
+    },
+    {
+      "destinationPath": "__flat urc:lodType",
+      "sourcePath": "attributes core:adeOfAbstractCityObject urc:DataQualityAttribute urc:lodType"
+    },
+    {
       "destinationPath": "__flat tran:class",
       "sourcePath": "attributes tran:class"
     },
@@ -277,14 +285,6 @@
     {
       "destinationPath": "__flat uro:TerminalAttribute_uro:userType",
       "sourcePath": "attributes tran:adeOfSquare uro:TerminalAttribute uro:userType"
-    },
-    {
-      "destinationPath": "__flat urc:geometrySrcDescLod1",
-      "sourcePath": "attributes core:adeOfAbstractCityObject urc:DataQualityAttribute urc:geometrySrcDescLod1"
-    },
-    {
-      "destinationPath": "__flat urc:lodType",
-      "sourcePath": "attributes core:adeOfAbstractCityObject urc:DataQualityAttribute urc:lodType"
     }
   ],
   "tran:TrafficArea": [
@@ -297,20 +297,20 @@
       "sourcePath": "attributes ancestors core:creationDate"
     },
     {
-      "destinationPath": "__flat tran:class",
-      "sourcePath": "attributes ancestors tran:class"
-    },
-    {
-      "destinationPath": "__flat tran:function",
-      "sourcePath": "attributes tran:function"
-    },
-    {
       "destinationPath": "__flat urc:geometrySrcDescLod1",
       "sourcePath": "attributes ancestors core:adeOfAbstractCityObject urc:DataQualityAttribute urc:geometrySrcDescLod1"
     },
     {
       "destinationPath": "__flat urc:lodType",
       "sourcePath": "attributes ancestors core:adeOfAbstractCityObject urc:DataQualityAttribute urc:lodType"
+    },
+    {
+      "destinationPath": "__flat tran:function",
+      "sourcePath": "attributes tran:function"
+    },
+    {
+      "destinationPath": "__flat tran:class",
+      "sourcePath": "attributes ancestors tran:class"
     },
     {
       "destinationPath": "__flat tran:Square_tran:function",
@@ -589,20 +589,20 @@
       "sourcePath": "attributes ancestors core:creationDate"
     },
     {
-      "destinationPath": "__flat tran:class",
-      "sourcePath": "attributes ancestors tran:class"
-    },
-    {
-      "destinationPath": "__flat tran:function",
-      "sourcePath": "attributes tran:function"
-    },
-    {
       "destinationPath": "__flat urc:geometrySrcDescLod1",
       "sourcePath": "attributes ancestors core:adeOfAbstractCityObject urc:DataQualityAttribute urc:geometrySrcDescLod1"
     },
     {
       "destinationPath": "__flat urc:lodType",
       "sourcePath": "attributes ancestors core:adeOfAbstractCityObject urc:DataQualityAttribute urc:lodType"
+    },
+    {
+      "destinationPath": "__flat tran:function",
+      "sourcePath": "attributes tran:function"
+    },
+    {
+      "destinationPath": "__flat tran:class",
+      "sourcePath": "attributes ancestors tran:class"
     },
     {
       "destinationPath": "__flat tran:Square_tran:function",
