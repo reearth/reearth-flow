@@ -14,6 +14,7 @@ import (
 	gws "github.com/gorilla/websocket"
 	"github.com/reearth/ygo/cluster"
 	"github.com/reearth/ygo/crdt"
+	"github.com/reearth/ygo/persistence"
 	ygsync "github.com/reearth/ygo/sync"
 )
 
@@ -348,17 +349,14 @@ func TestSignalLock_IgnoresAnEntryAPeerWrote(t *testing.T) {
 	b.completeHandshake()
 
 	// An entry far in the future would outrank every real change if trusted.
-	a.setLockEntry(map[string]any{"locked": true, "at": float64(9_000_000_000_000), "sig": "forged"})
-	waitFor(t, "the peer's entry", func() bool {
-		v, _ := srv.WSProvider().GetDoc(lockRoom).GetMap(metadataMapName).Get(projectLockKey)
-		_, sig, ok := decodeProjectLock(v)
-		return ok && sig == "forged"
-	})
+	a.setLockEntry(forgedLockEntry(9_000_000_000_000))
+	a.insertText("a")
+	waitFor(t, "the edit after the entry", func() bool { return serverText(srv, lockRoom) == "a" })
 	if srv.locks.locked(lockRoom, srv.WSProvider().GetDoc(lockRoom)) {
 		t.Fatal("a peer's entry locked the room")
 	}
 	b.insertText("b")
-	waitFor(t, "another peer's edit", func() bool { return serverText(srv, lockRoom) == "b" })
+	waitFor(t, "another peer's edit", func() bool { return serverText(srv, lockRoom) == "ab" })
 
 	ctx := context.Background()
 	if err := srv.SignalLock(ctx, lockRoom, true, time.UnixMilli(1000)); err != nil {
@@ -372,6 +370,261 @@ func TestSignalLock_IgnoresAnEntryAPeerWrote(t *testing.T) {
 	}
 	if srv.locks.locked(lockRoom, srv.WSProvider().GetDoc(lockRoom)) {
 		t.Fatal("the unlock did not take")
+	}
+}
+
+// forgedLockEntry is a lock entry a peer could write: well formed, but not
+// signed by the server.
+func forgedLockEntry(at int64) map[string]any {
+	return map[string]any{"locked": true, "at": float64(at), "sig": "forged"}
+}
+
+// deleteLockEntry removes the lock entry from c, as a client editing the
+// document could.
+func (c *e2eClient) deleteLockEntry() {
+	m := c.doc.GetMap(metadataMapName)
+	before := c.doc.StateVector()
+	c.doc.Transact(func(txn *crdt.Transaction) {
+		m.Delete(txn, projectLockKey)
+	})
+	c.writeSync(ygsync.EncodeUpdate(crdt.EncodeStateAsUpdateV1(c.doc, before)))
+}
+
+// syncUntil applies the server's sync frames to c's document until cond holds.
+func (c *e2eClient) syncUntil(t *testing.T, what string, cond func() bool) {
+	t.Helper()
+	deadline := time.Now().Add(3 * time.Second)
+	for !cond() {
+		// A read that times out fails the connection, so wait out the deadline
+		// in one read.
+		mt, payload, err := c.readFrame(time.Until(deadline))
+		if err != nil {
+			t.Fatalf("waiting for %s: %v", what, err)
+		}
+		if mt != wireMsgSync {
+			continue
+		}
+		if _, err := ygsync.ApplySyncMessage(c.doc, payload, nil); err != nil {
+			t.Fatalf("apply a server sync message: %v", err)
+		}
+	}
+}
+
+// watchLockEntry records each lock entry c's document shows after a change to
+// it, as the UI observes it to decide whether to fetch the project again. A
+// removed entry is recorded as nil.
+func (c *e2eClient) watchLockEntry() func() []any {
+	m := c.doc.GetMap(metadataMapName)
+	var mu sync.Mutex
+	var seen []any
+	m.Observe(func(ev crdt.YMapEvent) {
+		if _, ok := ev.Keys[projectLockKey]; !ok {
+			return
+		}
+		v, _ := m.Get(projectLockKey)
+		mu.Lock()
+		seen = append(seen, v)
+		mu.Unlock()
+	})
+	return func() []any {
+		mu.Lock()
+		defer mu.Unlock()
+		return append([]any(nil), seen...)
+	}
+}
+
+func TestSignalLock_RemovesAnEntryAPeerWroteBeforeAnyChange(t *testing.T) {
+	t.Parallel()
+
+	srv := New(testConfig())
+	ts := httptest.NewServer(srv.Handler())
+	defer ts.Close()
+	a := dialE2E(t, ts, lockRoom, 101)
+	defer a.close()
+	a.completeHandshake()
+	b := dialE2E(t, ts, lockRoom, 202)
+	defer b.close()
+	b.completeHandshake()
+	// Until the server has answered b's handshake, the answer can carry the
+	// room's state between a's entry and its repair. The server reads b's
+	// frames in order, so once it has b's edit the answer is on its way, ahead
+	// of a's edit after it.
+	b.insertText("b")
+	waitFor(t, "b's edit", func() bool { return serverText(srv, lockRoom) == "b" })
+	a.insertText("0")
+	b.syncUntil(t, "a's first edit", func() bool { return strings.Contains(b.doc.GetText("content").ToString(), "0") })
+	seen := b.watchLockEntry()
+
+	a.setLockEntry(forgedLockEntry(1000))
+	a.insertText("a")
+	b.syncUntil(t, "a's edit", func() bool { return strings.Contains(b.doc.GetText("content").ToString(), "a") })
+
+	if v, ok := srv.WSProvider().GetDoc(lockRoom).GetMap(metadataMapName).Get(projectLockKey); ok {
+		t.Fatalf("the room kept the peer's entry: %v", v)
+	}
+	if v, ok := b.doc.GetMap(metadataMapName).Get(projectLockKey); ok {
+		t.Fatalf("another peer kept the peer's entry: %v", v)
+	}
+	if got := seen(); len(got) != 0 {
+		t.Fatalf("another peer saw the entry change: %v", got)
+	}
+}
+
+func TestSignalLock_PutsBackTheChangeAPeerOverwrote(t *testing.T) {
+	t.Parallel()
+
+	for name, clobber := range map[string]func(*e2eClient){
+		"unsigned entry": func(c *e2eClient) { c.setLockEntry(forgedLockEntry(9_000_000_000_000)) },
+		"removed entry":  func(c *e2eClient) { c.deleteLockEntry() },
+	} {
+		t.Run(name, func(t *testing.T) {
+			t.Parallel()
+
+			srv := New(testConfig())
+			ts := httptest.NewServer(srv.Handler())
+			defer ts.Close()
+			a := dialE2E(t, ts, lockRoom, 101)
+			defer a.close()
+			a.completeHandshake()
+			b := dialE2E(t, ts, lockRoom, 202)
+			defer b.close()
+			b.completeHandshake()
+			a.insertText("1")
+			waitFor(t, "the edit before the change", func() bool { return serverText(srv, lockRoom) == "1" })
+
+			// An unlock, so the room still takes a's writes.
+			want := projectLock{Locked: false, At: 1000}
+			if err := srv.SignalLock(context.Background(), lockRoom, want.Locked, time.UnixMilli(want.At)); err != nil {
+				t.Fatalf("SignalLock: %v", err)
+			}
+			hasChange := func(c *e2eClient) func() bool {
+				return func() bool {
+					v, _ := c.doc.GetMap(metadataMapName).Get(projectLockKey)
+					got, ok := srv.signedLock(lockRoom, v)
+					return ok && got == want
+				}
+			}
+			a.syncUntil(t, "the change at a", hasChange(a))
+			b.syncUntil(t, "the change at b", hasChange(b))
+			seen := b.watchLockEntry()
+
+			clobber(a)
+			a.insertText("2")
+			b.syncUntil(t, "a's edit", func() bool { return b.doc.GetText("content").ToString() == "12" })
+
+			if got, ok := storedLock(srv, lockRoom); !ok || got != want {
+				t.Fatalf("stored lock = %+v, %v, want %+v", got, ok, want)
+			}
+			if !hasChange(b)() {
+				t.Fatal("another peer did not keep the change")
+			}
+			for _, v := range seen() {
+				if got, ok := srv.signedLock(lockRoom, v); !ok || got != want {
+					t.Fatalf("another peer saw the entry change to %v", v)
+				}
+			}
+			a.syncUntil(t, "the change back at the peer that overwrote it", hasChange(a))
+		})
+	}
+}
+
+func TestSignalLock_PutsBackTheChangeAPeerOnAnotherInstanceOverwrote(t *testing.T) {
+	t.Parallel()
+
+	relay := cluster.NewMemRelay()
+	defer func() { _ = relay.Close() }()
+	x, y := New(testConfig()), New(testConfig())
+	for _, s := range []*Server{x, y} {
+		if err := s.AttachRedisRelay(context.Background(), relay); err != nil {
+			t.Fatalf("attach relay: %v", err)
+		}
+		s.SetPresence(func(context.Context, string) (int, error) { return 2, nil })
+	}
+	var clients []*e2eClient
+	for i, s := range []*Server{x, y} {
+		ts := httptest.NewServer(s.Handler())
+		defer ts.Close()
+		c := dialE2E(t, ts, lockRoom, uint64(101+i))
+		defer c.close()
+		c.completeHandshake()
+		clients = append(clients, c)
+	}
+	clients[0].insertText("1")
+	for _, s := range []*Server{x, y} {
+		waitFor(t, "the edit before the change", func() bool { return serverText(s, lockRoom) == "1" })
+	}
+
+	want := projectLock{Locked: false, At: 1000}
+	if err := x.SignalLock(context.Background(), lockRoom, want.Locked, time.UnixMilli(want.At)); err != nil {
+		t.Fatalf("SignalLock: %v", err)
+	}
+	for _, s := range []*Server{x, y} {
+		waitFor(t, "the change", func() bool {
+			got, ok := storedLock(s, lockRoom)
+			return ok && got == want
+		})
+	}
+
+	clients[0].setLockEntry(forgedLockEntry(9_000_000_000_000))
+	clients[0].insertText("2")
+	for _, s := range []*Server{x, y} {
+		waitFor(t, "the edit after the entry", func() bool { return serverText(s, lockRoom) == "12" })
+		waitFor(t, "the change put back", func() bool {
+			got, ok := storedLock(s, lockRoom)
+			return ok && got == want
+		})
+	}
+}
+
+func TestSignalLock_RepairsALoadedUnsignedEntryOnTheNextPeerUpdate(t *testing.T) {
+	t.Parallel()
+
+	// The room was stored with an entry a peer wrote before entries were
+	// repaired.
+	ctx := context.Background()
+	mem := persistence.NewMemoryPersistence()
+	stored := crdt.New(crdt.WithClientID(crdt.ClientID(303)))
+	m := stored.GetMap(metadataMapName)
+	stored.Transact(func(txn *crdt.Transaction) {
+		m.Set(txn, projectLockKey, forgedLockEntry(1000))
+	})
+	if _, err := mem.AppendUpdate(ctx, lockRoom, crdt.EncodeStateAsUpdateV1(stored, nil)); err != nil {
+		t.Fatalf("AppendUpdate: %v", err)
+	}
+	cfg := testConfig()
+	srv := NewWithPersistence(ctx, cfg, mem)
+	ts := httptest.NewServer(srv.Handler())
+	defer ts.Close()
+	a := dialE2E(t, ts, lockRoom, 101)
+	defer a.close()
+	a.completeHandshake()
+	if _, ok := a.doc.GetMap(metadataMapName).Get(projectLockKey); !ok {
+		t.Fatal("the room was not loaded with the stored entry")
+	}
+
+	a.insertText("a")
+	waitFor(t, "the entry removed", func() bool {
+		_, ok := srv.WSProvider().GetDoc(lockRoom).GetMap(metadataMapName).Get(projectLockKey)
+		return !ok && serverText(srv, lockRoom) == "a"
+	})
+}
+
+func TestProjectLocks_WarnUnsignedIsRateLimited(t *testing.T) {
+	t.Parallel()
+
+	l := newProjectLocks()
+	rl := &roomLock{}
+	t0 := time.Unix(1000, 0)
+	if warn, n := l.warnUnsigned(rl, t0); !warn || n != 0 {
+		t.Fatalf("first entry: warn = %v, suppressed = %d, want true, 0", warn, n)
+	}
+	for i := range 3 {
+		if warn, _ := l.warnUnsigned(rl, t0.Add(time.Duration(i+1)*time.Second)); warn {
+			t.Fatalf("entry %d within the interval was logged", i+2)
+		}
+	}
+	if warn, n := l.warnUnsigned(rl, t0.Add(unsignedLockWarnEvery)); !warn || n != 3 {
+		t.Fatalf("after the interval: warn = %v, suppressed = %d, want true, 3", warn, n)
 	}
 }
 
