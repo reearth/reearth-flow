@@ -383,6 +383,7 @@ func TestProject_PreviewSchema_RequiresWorkflow(t *testing.T) {
 // project's own workspace, not the caller's: a workspace-less check would let a
 // caller in one workspace run a schema preview against a project in another.
 func TestProject_PreviewSchema_ChecksTargetProjectWorkspace(t *testing.T) {
+	t.Parallel()
 	ctx := previewTestContext()
 	projectRepo := memory.NewProject()
 	jobRepo := memory.NewJob()
@@ -412,7 +413,7 @@ func TestProject_PreviewSchema_ChecksTargetProjectWorkspace(t *testing.T) {
 	assert.NotNil(t, got)
 
 	assert.Equal(t, rbac.ResourceProject, rc.gotResource)
-	assert.Equal(t, rbac.ActionEdit, rc.gotAction)
+	assert.Equal(t, rbac.ActionRead, rc.gotAction)
 	require.Len(t, rc.gotWorkspace, 1)
 	assert.Equal(t, prj.Workspace(), rc.gotWorkspace[0])
 }

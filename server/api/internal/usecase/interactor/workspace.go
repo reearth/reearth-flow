@@ -84,7 +84,7 @@ func (i *Workspace) Delete(ctx context.Context, wid accountsid.WorkspaceID) erro
 }
 
 func (i *Workspace) AddUserMember(ctx context.Context, wid accountsid.WorkspaceID, users map[accountsid.UserID]role.RoleType) (*accountsworkspace.Workspace, error) {
-	if err := i.checkPermission(ctx, rbac.ActionEdit, wid); err != nil {
+	if err := i.checkPermission(ctx, rbac.ActionManageMembers, wid); err != nil {
 		return nil, err
 	}
 
@@ -102,7 +102,7 @@ func (i *Workspace) AddUserMember(ctx context.Context, wid accountsid.WorkspaceI
 }
 
 func (i *Workspace) UpdateUserMember(ctx context.Context, wid accountsid.WorkspaceID, uid accountsid.UserID, role role.RoleType) (*accountsworkspace.Workspace, error) {
-	if err := i.checkPermission(ctx, rbac.ActionEdit, wid); err != nil {
+	if err := i.checkPermission(ctx, rbac.ActionManageMembers, wid); err != nil {
 		return nil, err
 	}
 
@@ -114,7 +114,7 @@ func (i *Workspace) UpdateUserMember(ctx context.Context, wid accountsid.Workspa
 }
 
 func (i *Workspace) RemoveUserMember(ctx context.Context, wid accountsid.WorkspaceID, uid accountsid.UserID) (*accountsworkspace.Workspace, error) {
-	if err := i.checkPermission(ctx, rbac.ActionEdit, wid); err != nil {
+	if err := i.checkPermission(ctx, rbac.ActionManageMembers, wid); err != nil {
 		return nil, err
 	}
 

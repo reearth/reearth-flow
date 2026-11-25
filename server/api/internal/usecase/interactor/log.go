@@ -61,7 +61,7 @@ func (li *LogInteractor) GetLogs(ctx context.Context, since time.Time, jobID id.
 	if j != nil {
 		wsIDs = append(wsIDs, j.Workspace())
 	}
-	if err := li.checkPermission(ctx, rbac.ActionAny, wsIDs...); err != nil {
+	if err := li.checkPermission(ctx, rbac.ActionRead, wsIDs...); err != nil {
 		return nil, err
 	}
 
@@ -84,7 +84,7 @@ func (li *LogInteractor) GetLogs(ctx context.Context, since time.Time, jobID id.
 // Jobs in a workspace the caller can't see are simply omitted from the result.
 func (li *LogInteractor) GetLogsBatch(ctx context.Context, since time.Time, jobIDs []id.JobID) (map[id.JobID][]*log.Log, error) {
 	if len(jobIDs) == 0 {
-		if err := li.checkPermission(ctx, rbac.ActionAny); err != nil {
+		if err := li.checkPermission(ctx, rbac.ActionRead); err != nil {
 			return nil, err
 		}
 		return map[id.JobID][]*log.Log{}, nil
@@ -114,7 +114,7 @@ func (li *LogInteractor) GetLogsBatch(ctx context.Context, since time.Time, jobI
 
 	allowed := make([]id.JobID, 0, len(jobs))
 	for ws, jids := range byWorkspace {
-		if err := li.checkPermission(ctx, rbac.ActionAny, ws); err != nil {
+		if err := li.checkPermission(ctx, rbac.ActionRead, ws); err != nil {
 			continue // caller can't see this workspace; omit its jobs' logs
 		}
 		allowed = append(allowed, jids...)
@@ -156,7 +156,7 @@ func (li *LogInteractor) Subscribe(ctx context.Context, jobID id.JobID) (chan *l
 	if j != nil {
 		wsIDs = append(wsIDs, j.Workspace())
 	}
-	if err := li.checkPermission(ctx, rbac.ActionAny, wsIDs...); err != nil {
+	if err := li.checkPermission(ctx, rbac.ActionRead, wsIDs...); err != nil {
 		return nil, err
 	}
 

@@ -346,13 +346,20 @@ func TestInternalAPI_DeploymentsTriggersJobs(t *testing.T) {
 
 	t.Run("reader", func(t *testing.T) {
 		ctx := as(f.reader)
-		_, err := f.client.ListDeployments(ctx, &flowv1.ListDeploymentsRequest{WorkspaceId: f.wsID})
-		assertCode(t, err, codes.PermissionDenied)
+		ds, err := f.client.ListDeployments(ctx, &flowv1.ListDeploymentsRequest{WorkspaceId: f.wsID})
+		require.NoError(t, err, "readers may view deployments")
+		assert.Len(t, ds.GetDeployments(), 2)
 		_, err = f.client.GetDeployment(ctx, &flowv1.GetDeploymentRequest{DeploymentId: f.deployment.ID().String()})
-		assertCode(t, err, codes.NotFound)
-		_, err = f.client.GetJob(ctx, &flowv1.GetJobRequest{JobId: f.job.ID().String()})
-		assertCode(t, err, codes.NotFound)
+		require.NoError(t, err)
 
+		js, err := f.client.ListJobs(ctx, &flowv1.ListJobsRequest{WorkspaceId: f.wsID})
+		require.NoError(t, err, "readers may view jobs")
+		assert.Len(t, js.GetJobs(), 1)
+		_, err = f.client.GetJob(ctx, &flowv1.GetJobRequest{JobId: f.job.ID().String()})
+		require.NoError(t, err)
+
+		_, err = f.client.GetTrigger(ctx, &flowv1.GetTriggerRequest{TriggerId: f.trigger.ID().String()})
+		require.NoError(t, err, "readers may view triggers")
 		ts, err := f.client.ListTriggers(ctx, &flowv1.ListTriggersRequest{WorkspaceId: f.wsID})
 		require.NoError(t, err, "every member may see triggers")
 		assert.Len(t, ts.GetTriggers(), 1)

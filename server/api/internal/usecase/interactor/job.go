@@ -302,7 +302,7 @@ func (i *Job) FindByID(ctx context.Context, id id.JobID) (*job.Job, error) {
 	if j == nil {
 		return nil, rerror.ErrNotFound
 	}
-	if err := i.checkPermission(ctx, rbac.ActionAny, j.Workspace()); err != nil {
+	if err := i.checkPermission(ctx, rbac.ActionRead, j.Workspace()); err != nil {
 		return nil, err
 	}
 
@@ -316,7 +316,7 @@ func (i *Job) Fetch(ctx context.Context, ids []id.JobID) ([]*job.Job, error) {
 	}
 	jobs := alignToRequestedIDs(ids, got, nil, (*job.Job).ID)
 
-	if err := authorizeFetchByWorkspace(ctx, i.checkPermission, rbac.ActionAny, jobs, nil, (*job.Job).Workspace); err != nil {
+	if err := authorizeFetchByWorkspace(ctx, i.checkPermission, rbac.ActionRead, jobs, nil, (*job.Job).Workspace); err != nil {
 		return nil, err
 	}
 
@@ -329,7 +329,7 @@ func (i *Job) FindByWorkspace(
 	p *interfaces.PaginationParam,
 	keyword *string,
 ) ([]*job.Job, *interfaces.PageBasedInfo, error) {
-	if err := i.checkPermission(ctx, rbac.ActionAny, wsID); err != nil {
+	if err := i.checkPermission(ctx, rbac.ActionRead, wsID); err != nil {
 		return nil, nil, err
 	}
 
@@ -344,7 +344,7 @@ func (i *Job) GetStatus(ctx context.Context, jobID id.JobID) (job.Status, error)
 	if j == nil {
 		return "", rerror.ErrNotFound
 	}
-	if err := i.checkPermission(ctx, rbac.ActionAny, j.Workspace()); err != nil {
+	if err := i.checkPermission(ctx, rbac.ActionRead, j.Workspace()); err != nil {
 		return "", err
 	}
 	return j.Status(), nil
@@ -688,7 +688,7 @@ func (i *Job) Subscribe(ctx context.Context, jobID id.JobID) (chan job.Status, e
 	if j == nil {
 		return nil, rerror.ErrNotFound
 	}
-	if err := i.checkPermission(ctx, rbac.ActionAny, j.Workspace()); err != nil {
+	if err := i.checkPermission(ctx, rbac.ActionRead, j.Workspace()); err != nil {
 		return nil, err
 	}
 
