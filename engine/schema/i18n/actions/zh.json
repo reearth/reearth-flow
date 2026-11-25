@@ -754,8 +754,8 @@
           "title": "File Path",
           "description": "Expression that returns the path to the input file, either a literal path or a variable reference."
         },
-        "force2d": {
-          "title": "Force 2D",
+        "force2D": {
+          "title": "强制二维",
           "description": "丢弃高程，将所有几何按二维读取。以地心直角坐标定位的数据包会被跳过，因为该坐标系没有二维形式。"
         },
         "inline": {
@@ -790,63 +790,74 @@
     },
     {
       "name": "CZML Writer",
-      "description": "将要素导出为CZML格式用于Cesium可视化，支持时间动态实体和时间序列位置数据",
+      "description": "将要素写入一个 CZML 文件；设置 `groupBy` 时，按分组各写出一个文件。同时设置 `timeField` 与 `groupTimeseriesBy` 时，每个分组成为一个实体，其位置写为带时间标记的采样，但面状要素只保留单个轮廓。仅设置 `timeField` 时，每个要素各自成为一个实体，拥有静态位置和各自的可用时间区间。没有时间属性的要素写为静态实体。",
       "parameterI18n": {
         "": {
-          "title": "CZML Writer Parameters",
-          "description": "Configuration for writing geographic features to CZML files. Supports both static entities and time-dynamic entities with interpolated position samples.\n\n## Timeseries Configuration\n\nTo create time-animated entities in Cesium, configure at least the first two parameters below; configure `epoch` only when using numeric time offsets: 1. `timeField` - Attribute containing time values 2. `groupTimeseriesBy` - Attribute to group features into entities 3. `epoch` (optional) - Base time used when `timeField` contains numeric offsets\n\n### Example with ISO 8601 timestamps: ```yaml - action: CZML Writer with: output: \"vehicles.czml\" timeField: \"timestamp\"           # Contains \"2024-01-01T00:00:00Z\", etc. groupTimeseriesBy: \"vehicleId\"   # Groups by vehicle ID interpolationAlgorithm: \"LAGRANGE\" interpolationDegree: 5 ```\n\n### Example with numeric time offsets: ```yaml - action: CZML Writer with: output: \"sensors.czml\" timeField: \"timeOffset\"          # Contains numeric values: 0, 60, 120, etc. groupTimeseriesBy: \"sensorId\" epoch: \"2024-01-01T00:00:00Z\"    # Base time for offsets interpolationAlgorithm: \"LINEAR\" ```"
-        },
-        "colorAttribute": {
-          "title": "Color Attribute",
-          "description": "Attribute containing a hex color string (e.g., \"#ffd8c0\") for polygon fill. Used when polygon geometry is auto-converted from the feature geometry."
+          "title": "CZML Writer 参数",
+          "description": "配置 CZML 的写出位置、要素如何分组为文件与实体，以及派生多边形的样式。"
         },
         "epoch": {
-          "title": "Epoch",
-          "description": "Reference time (ISO 8601 format) used as the base for numeric time offsets.\n\n**When to use:** - Optional but recommended when `timeField` contains numeric values (e.g., \"0\", \"60\", \"3600\") - Not needed when `timeField` contains ISO 8601 datetime strings\n\n**Format:** ISO 8601 datetime string with timezone - Examples: \"2024-01-01T00:00:00Z\", \"2024-06-15T09:00:00+09:00\"\n\n**Auto-detection:** If omitted and all time values are numeric, automatically defaults to Unix epoch \"1970-01-01T00:00:00Z\". For custom time ranges, explicitly set this parameter to your desired base time.\n\n**Example:** ```yaml epoch: \"2024-01-01T00:00:00Z\"  # Time value \"60\" means 2024-01-01T00:01:00Z ```"
+          "title": "历元",
+          "description": "数值型 `timeField` 的起算基准时间，使用包含日期、时间与时区的 RFC 3339 时间戳，例如 `2024-01-01T00:00:00Z`；仅有日期（如 `2024-01-01`）将被拒绝。省略且所有时间值均为数值时，使用 Unix 历元 `1970-01-01T00:00:00Z`。"
         },
         "groupBy": {
-          "title": "Group By Attributes",
-          "description": "Attributes used to group features into separate CZML files"
+          "title": "分组属性",
+          "description": "用于对要素分组的属性，每个不同分组在 `output` 路径下各写出一个文件，文件名取自该分组值的哈希。省略时，所有要素都写入 `output` 指定的单个文件。"
         },
         "groupTimeseriesBy": {
-          "title": "Group Timeseries By",
-          "description": "Attribute used to group features into a single time-dynamic CZML entity. Features with the same value for this attribute are merged into one packet with time-tagged positions."
-        },
-        "heightAttribute": {
-          "title": "Height Attribute",
-          "description": "Attribute containing a numeric value for polygon extrusion height. When set, polygons are extruded from ground to this height value."
+          "title": "时间序列分组属性",
+          "description": "按该属性的值把要素合并为单个时间动态实体，每个不同取值一个实体。未设置 `timeField` 时不起作用。"
         },
         "interpolationAlgorithm": {
-          "title": "Interpolation Algorithm",
-          "description": "Algorithm used by Cesium to interpolate between time-tagged samples."
+          "title": "插值算法",
+          "description": "查看器在带时间标记的采样之间如何插值。仅作为提示写入输出，引擎本身不做插值。仅适用于由 `groupTimeseriesBy` 合并的实体。"
         },
         "interpolationDegree": {
-          "title": "Interpolation Degree",
-          "description": "Degree of interpolation (1 for LINEAR, 5 typical for LAGRANGE)."
-        },
-        "opacity": {
-          "title": "Opacity",
-          "description": "Alpha value (0–255) for polygon fill color. Default: 180."
+          "title": "插值次数",
+          "description": "与算法一同写出的插值多项式次数。线性插值取 1，拉格朗日插值通常取 5。仅适用于由 `groupTimeseriesBy` 合并的实体。"
         },
         "output": {
-          "title": "Output File Path",
-          "description": "Path where the CZML file will be written"
+          "title": "输出文件路径",
+          "description": "要写入的 CZML 文件路径。在工作流启动时仅使用工作流变量求值一次，因此不能依赖要素属性。"
+        },
+        "polygonStyle": {
+          "title": "多边形样式",
+          "description": "写出器从要素几何派生的单个多边形的填充色与拉伸。适用于由 `groupTimeseriesBy` 合并的实体以及从 CZML 读回的要素；直接按几何写出的要素改为每个面一个数据包，不带填充色、拉伸和轮廓。"
         },
         "timeField": {
-          "title": "Time Field",
-          "description": "Attribute containing the timestamp for each feature. Supports two formats: - **ISO 8601 strings**: e.g., \"2024-01-01T00:00:00Z\", \"2024-01-01T12:30:45+09:00\" - **Numeric values**: Seconds as offset from epoch (e.g., \"0\", \"60\", \"120.5\")\n\nWhen set together with `groupTimeseriesBy`, features sharing the same group key are combined into a single CZML entity with time-tagged position samples for animation in Cesium.\n\n**Example workflow configuration:** ```yaml - action: CZML Writer with: output: \"output.czml\" timeField: \"timestamp\" groupTimeseriesBy: \"vehicleId\" epoch: \"2024-01-01T00:00:00Z\"  # Optional for numeric times (auto-defaults to Unix epoch) ```"
+          "title": "时间字段",
+          "description": "保存各要素时间的属性，可以是 ISO 8601 时间戳，也可以是自 `epoch` 起算的秒数。与 `groupTimeseriesBy` 一同设置时，会把一个分组合并为一个实体，并将其位置写为带时间标记的采样，但面状要素只保留单个轮廓。单独设置时，每个要素各自成为一个实体，并限定在其时间所在的区间内，且只提供时间信息而非可绘制的内容：面状要素绘制为其多边形，其余要素需要通过 `czml.*` 属性自行指定图形，因为仅有位置不会绘制任何内容。"
+        }
+      },
+      "definitionI18n": {
+        "PolygonStyleParam": {
+          "colorAttribute": {
+            "title": "颜色属性",
+            "description": "以十六进制字符串保存填充色的属性，例如 `#ffd8c0`。省略或该属性无法解析时，多边形不会被着色填充。"
+          },
+          "heightAttribute": {
+            "title": "高度属性",
+            "description": "以米为单位保存拉伸高度的属性。设置后，多边形从地面拉伸到该高度，并封闭顶面和底面。"
+          },
+          "opacity": {
+            "title": "不透明度",
+            "description": "应用于填充色的 Alpha 值，0 为全透明，255 为不透明。没有 `colorAttribute` 时不起作用。"
+          }
         }
       },
       "enumI18n": {
         "InterpolationAlgorithm": {
-          "HERMITE": {
-            "description": "Hermite spline interpolation using tangent data."
+          "hermite": {
+            "title": "埃尔米特",
+            "description": "样条插值，采样带有切线数据时也会一并使用。"
           },
-          "LAGRANGE": {
-            "description": "Lagrange polynomial interpolation for smooth curves (typical degree 5)."
+          "lagrange": {
+            "title": "拉格朗日",
+            "description": "用经过各采样的多项式插值，得到平滑路径。插值次数较高，通常为 5。"
           },
-          "LINEAR": {
-            "description": "Linear interpolation between samples (degree 1)."
+          "linear": {
+            "title": "线性",
+            "description": "在相邻采样之间按直线插值。插值次数取 1。"
           }
         }
       }
