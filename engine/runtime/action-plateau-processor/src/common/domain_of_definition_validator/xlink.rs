@@ -28,6 +28,7 @@ use super::gml_id_uniqueness::{GmlIdTable, MemberGmlIds, Occurrence};
 use super::report::{MemberReporter, Reporter};
 use super::traversal::{CollectedXlinkEntry, CollectedXlinks};
 use crate::citygml::gml_id;
+use crate::citygml::v3::{CORE_NS, DYN_NS, GRP_NS, TRAN_NS, VERS_NS};
 use crate::common::PlateauProfile;
 use crate::common::schema_lookup::substitution_heads;
 
@@ -405,12 +406,6 @@ fn read_gml_ids(
         buf.clear();
     }
 }
-
-const CORE_NS: &str = "http://www.opengis.net/citygml/3.0";
-const DYN_NS: &str = "http://www.opengis.net/citygml/dynamizer/3.0";
-const GRP_NS: &str = "http://www.opengis.net/citygml/cityobjectgroup/3.0";
-const TRAN_NS: &str = "http://www.opengis.net/citygml/transportation/3.0";
-const VERS_NS: &str = "http://www.opengis.net/citygml/versioning/3.0";
 
 /// The targets of the CityGML 3.0 associations whose property type has no
 /// element content, such as `gml:ReferenceType`: the XSDs give them only in
