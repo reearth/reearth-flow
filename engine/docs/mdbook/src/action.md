@@ -1059,7 +1059,7 @@ Classifies a numeric attribute by looking its value up in a table of ranges and 
 ### Type
 * processor
 ### Description
-Moves values between nested map/list attribute paths, following a table of source/destination path pairs keyed by a feature type attribute. A destination path with more than one segment creates nested maps as needed.
+Copies values between nested map/list attribute paths, following a table of source/destination path pairs keyed by a feature type attribute. A source path crosses a list explicitly with `[*]` or `[0]`. A destination path with more than one segment creates nested maps as needed.
 ### Parameters
 ```json
 {
@@ -1133,7 +1133,7 @@ Moves values between nested map/list attribute paths, following a table of sourc
         },
         "sourcePath": {
           "title": "Source Path",
-          "description": "Where the value is read from, as a space-separated chain of keys walked from the feature's top level. A segment matches either a key in a map or the first matching element of a list, so it works whether a wrapper element appears once or many times.",
+          "description": "Where the value is read from, as a space-separated chain of keys walked from the feature's top level. A key only looks into a map; a list is crossed with `[*]` (all items) or `[0]` (the first item) written right after the key, e.g. `bldg:adeOfAbstractBuilding[*]`. Both treat a value that is not a list as a list of that one value, so a path works whether an element appears once or many times. Several results are written as a list.",
           "type": "string"
         },
         "dataType": {

@@ -1086,7 +1086,7 @@
     {
       "name": "Attribute Table Extractor",
       "type": "processor",
-      "description": "根据以要素类型属性为键的源/目标路径对照表，在嵌套的map或list属性路径之间移动值。当目标路径包含多个片段时，会按需创建嵌套map",
+      "description": "根据以要素类型属性为键的源/目标路径对照表，在嵌套的map或list属性路径之间复制值。源路径用`[*]`或`[0]`显式遍历list。当目标路径包含多个片段时，会按需创建嵌套map",
       "parameter": {
         "$schema": "http://json-schema.org/draft-07/schema#",
         "title": "Attribute Table Extractor 参数",
@@ -1158,7 +1158,7 @@
               },
               "sourcePath": {
                 "title": "Source Path",
-                "description": "Where the value is read from, as a space-separated chain of keys walked from the feature's top level. A segment matches either a key in a map or the first matching element of a list, so it works whether a wrapper element appears once or many times.",
+                "description": "Where the value is read from, as a space-separated chain of keys walked from the feature's top level. A key only looks into a map; a list is crossed with `[*]` (all items) or `[0]` (the first item) written right after the key, e.g. `bldg:adeOfAbstractBuilding[*]`. Both treat a value that is not a list as a list of that one value, so a path works whether an element appears once or many times. Several results are written as a list.",
                 "type": "string"
               },
               "dataType": {

@@ -1086,7 +1086,7 @@
     {
       "name": "Attribute Table Extractor",
       "type": "processor",
-      "description": "Mueve valores entre rutas de atributos de tipo mapa o lista anidados, siguiendo una tabla de pares de rutas origen/destino indexada por un atributo de tipo de entidad. Una ruta de destino con más de un segmento crea mapas anidados según sea necesario",
+      "description": "Copia valores entre rutas de atributos de tipo mapa o lista anidados, siguiendo una tabla de pares de rutas origen/destino indexada por un atributo de tipo de entidad. Una ruta de origen recorre una lista de forma explícita con `[*]` o `[0]`. Una ruta de destino con más de un segmento crea mapas anidados según sea necesario",
       "parameter": {
         "$schema": "http://json-schema.org/draft-07/schema#",
         "title": "Parámetros de Attribute Table Extractor",
@@ -1158,7 +1158,7 @@
               },
               "sourcePath": {
                 "title": "Source Path",
-                "description": "Where the value is read from, as a space-separated chain of keys walked from the feature's top level. A segment matches either a key in a map or the first matching element of a list, so it works whether a wrapper element appears once or many times.",
+                "description": "Where the value is read from, as a space-separated chain of keys walked from the feature's top level. A key only looks into a map; a list is crossed with `[*]` (all items) or `[0]` (the first item) written right after the key, e.g. `bldg:adeOfAbstractBuilding[*]`. Both treat a value that is not a list as a list of that one value, so a path works whether an element appears once or many times. Several results are written as a list.",
                 "type": "string"
               },
               "dataType": {
