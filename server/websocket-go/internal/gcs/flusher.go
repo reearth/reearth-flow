@@ -25,8 +25,8 @@ type FlusherOptions struct {
 	// The Locker carries its own owner token, so the flusher does not need one.
 	Locker Locker
 	// StateOf returns the room's current in-memory doc state as a single V1
-	// update (e.g. server.WSProvider().GetDoc(room) → EncodeStateAsUpdateV1), or
-	// nil when no doc is resident.
+	// update, or nil to rebuild the checkpoint from storage instead (no doc is
+	// resident, or the live copy is known to be incomplete).
 	StateOf func(room string) []byte
 }
 

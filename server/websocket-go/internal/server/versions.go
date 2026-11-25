@@ -213,8 +213,30 @@ func (s *Server) caughtUpState(room string, doc *crdt.Doc) func(context.Context)
 				return nil, fmt.Errorf("server: replay room before version: %w", err)
 			}
 		}
-		return encodeFullState(doc), nil
+		return s.completeState(ctx, room, doc)
 	}
+}
+
+// completeState returns doc's full state for a version. A copy holding parked
+// updates missed an edit another instance applied and persisted, so the stored
+// state is folded in to supply it.
+func (s *Server) completeState(ctx context.Context, room string, doc *crdt.Doc) ([]byte, error) {
+	live := encodeFullState(doc)
+	if doc.PendingStats().Items == 0 || s.stored == nil {
+		return live, nil
+	}
+	stored, err := s.stored(ctx, room)
+	if err != nil {
+		return nil, fmt.Errorf("server: read stored state to complete a version: %w", err)
+	}
+	if len(stored) == 0 {
+		return live, nil
+	}
+	merged, err := crdt.MergeUpdatesV1(live, stored)
+	if err != nil {
+		return nil, fmt.Errorf("server: complete a version with the stored state: %w", err)
+	}
+	return merged, nil
 }
 
 // currentState reads room's full state from this instance's copy, caught up

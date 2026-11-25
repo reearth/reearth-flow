@@ -290,25 +290,32 @@ func (r *Relay) Publish(_ context.Context, out cluster.Outbound) error {
 	rs, ok := r.rooms[out.Room]
 	if !ok || rs.evicting {
 		r.mu.Unlock()
+		if out.Kind == cluster.KindSync {
+			// ygo hands a room's last updates to Publish while tearing the room
+			// down, after RoomDeactivated. Instances still holding the room miss
+			// this one until they reload it.
+			r.droppedWrites.Add(1)
+			r.log.Warn("relay dropped an update for a room no longer active here", "room", out.Room)
+		}
 		return nil
 	}
-	ch := rs.writeCh
-	r.mu.Unlock()
-
-	// Copy the payload: the caller's slice may alias internal buffers, and the
-	// INSERT happens later on the writer goroutine.
+	// Enqueue while holding r.mu: RoomDeactivated sets evicting under it before
+	// stopping the writer, so the writer's final drain always sees this item.
+	// Copy the payload: the caller's slice may alias internal buffers.
 	item := writeItem{kind: out.Kind, data: append([]byte(nil), out.Data...)}
 	select {
-	case ch <- item:
-		return nil
+	case rs.writeCh <- item:
+		r.mu.Unlock()
 	default:
+		r.mu.Unlock()
 		r.droppedWrites.Add(1)
 		r.log.Debug("relay write queue full, dropping update", "room", out.Room, "kind", out.Kind.String())
-		return nil
 	}
+	return nil
 }
 
-// DroppedWrites returns the cumulative count of updates dropped on a full queue.
+// DroppedWrites returns the cumulative count of updates dropped on a full queue
+// or for a room no longer active here.
 func (r *Relay) DroppedWrites() uint64 { return r.droppedWrites.Load() }
 
 // ErrRoomNotActive is what WaitCaughtUp returns for a room this instance does

@@ -11,6 +11,7 @@ use fastxml::schema::types::CompiledSchema;
 use fastxml::transform::EditableNodeRef;
 
 use super::PlateauProfile;
+use super::schema_lookup::substitution_heads;
 use crate::object_list::ObjectListDefinitions;
 
 /// Why a use is an error.
@@ -150,20 +151,9 @@ impl<'a> CityObjectTypes<'a> {
         let Some(namespace) = element.namespace_uri() else {
             return false;
         };
-        let mut current = self.schema.element_ns(&namespace, &element.name());
-        // Bounds a cyclic substitution group in a broken schema.
-        for _ in 0..32 {
-            let Some(head) = current.and_then(|element| element.substitution_ns.as_ref()) else {
-                return false;
-            };
-            if &*head.namespace_uri == self.core_ns && &*head.local_name == "AbstractCityObject" {
-                return true;
-            }
-            current = self
-                .schema
-                .element_ns(&head.namespace_uri, &head.local_name);
-        }
-        false
+        substitution_heads(self.schema, &namespace, &element.name()).any(|head| {
+            &*head.namespace_uri == self.core_ns && &*head.local_name == "AbstractCityObject"
+        })
     }
 }
 

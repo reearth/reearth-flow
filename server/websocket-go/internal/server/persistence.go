@@ -36,3 +36,21 @@ func NewWithPersistence(ctx context.Context, cfg *config.Config, p persistence.V
 	s.enableProjectLock()
 	return s
 }
+
+// CheckpointState returns room's live state for a checkpoint, or nil when the
+// checkpoint must be rebuilt from storage instead: when this instance does not
+// hold the room, or its copy holds parked updates. A copy with parked updates
+// missed an edit another instance applied and persisted, so storage is
+// complete where the copy is not.
+func (s *Server) CheckpointState(room string) []byte {
+	doc := s.ws.GetDoc(room)
+	if doc == nil {
+		return nil
+	}
+	if ps := doc.PendingStats(); ps.Items > 0 {
+		s.log.Warn("room holds parked updates; checkpointing it from storage",
+			"room", room, "parked", ps.Items, "awaitingClients", len(ps.MissingFor))
+		return nil
+	}
+	return encodeFullState(doc)
+}

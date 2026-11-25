@@ -6,6 +6,7 @@
 //! these constants, so only the config accessors are provided and the common
 //! default extraction is reused.
 
+use crate::citygml::v3::GML_NS;
 use crate::common::unmatched_xlink_detector::UnmatchedXlinkStrategy;
 
 /// Zero-sized strategy; passed as `&Plateau6XlinkStrategy` (rvalue static
@@ -24,6 +25,6 @@ impl UnmatchedXlinkStrategy for Plateau6XlinkStrategy {
         "core:boundary"
     }
     fn gml_namespace(&self) -> &str {
-        "http://www.opengis.net/gml/3.2"
+        GML_NS
     }
 }

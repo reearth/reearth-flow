@@ -179,6 +179,27 @@ func TestDocFromV2_AcceptsACompleteDecode(t *testing.T) {
 	}
 }
 
+// TestStateFromV2_DecodesTheGCFixtureCompletely pins what lets Load serve a doc_v2
+// with parked items instead of refusing it: the decoder keeps everything on this
+// fixture, so a parked item means an edit is genuinely missing, not lost in decoding.
+func TestStateFromV2_DecodesTheGCFixtureCompletely(t *testing.T) {
+	v2, err := hex.DecodeString(fixtureV2WithGC)
+	if err != nil {
+		t.Fatalf("bad fixture: %v", err)
+	}
+	v1, err := stateFromV2(v2)
+	if err != nil {
+		t.Fatalf("stateFromV2: %v", err)
+	}
+	doc, err := docFromV1(v1)
+	if err != nil {
+		t.Fatalf("docFromV1: %v", err)
+	}
+	if got, parked := rootKeys(t, doc), doc.PendingStats().Items; got != 12 || parked != 0 {
+		t.Fatalf("got %d keys with %d parked, want 12 and none", got, parked)
+	}
+}
+
 // TestDocFromV2_GuardCatchesWhatApplyUpdateV2Hides is a regression canary for the
 // failure mode the guard exists for: a decode that reports success while dropping
 // content.
