@@ -222,6 +222,9 @@ func (a *Adapter) readState(ctx context.Context, room DocID, oid uint32) (stored
 	if m != before {
 		return storedState{}, errStateMoved
 	}
+	if a.afterCheckMarks != nil {
+		a.afterCheckMarks()
+	}
 
 	// Phase-2 dual-read: when the primary prefix holds nothing, materialize the
 	// legacy-root state for the same validated doc id. Never folds across layouts.
@@ -250,7 +253,7 @@ func (a *Adapter) readState(ctx context.Context, room DocID, oid uint32) (stored
 	if m.hasCeil && head > m.ceil {
 		head = m.ceil
 	}
-	applied := hasBase
+	readObjects := false
 	for _, c := range clocks {
 		if c <= m.cp {
 			continue // already folded into the snapshot/base
@@ -258,14 +261,26 @@ func (a *Adapter) readState(ctx context.Context, room DocID, oid uint32) (stored
 		if err := a.applyObject(ctx, doc, updates[c]); err != nil {
 			return storedState{}, err
 		}
-		applied = true
+		readObjects = true
 		head = c
 	}
-	if !applied {
+	if !hasBase && !readObjects {
 		return storedState{doc: doc, head: head, empty: true}, nil
 	}
-	if err := a.foldParked(ctx, room, doc, updates, clocksUpTo(clocks, m.cp)); err != nil {
+	folded, err := a.foldParked(ctx, room, doc, updates, clocksUpTo(clocks, m.cp))
+	if err != nil {
 		return storedState{}, err
+	}
+	// A rollback and appends after the marks check can replace a listed object
+	// with a later edit, which only the marks show.
+	if readObjects || folded {
+		m, err := a.readMarks(ctx, room)
+		if err != nil {
+			return storedState{}, err
+		}
+		if m != before {
+			return storedState{}, errStateMoved
+		}
 	}
 	return storedState{doc: doc, head: head}, nil
 }
@@ -630,7 +645,7 @@ func (a *Adapter) MaterializeAt(ctx context.Context, room string, v persistence.
 	if cp <= target {
 		checkpointed = clocksUpTo(clocks, cp)
 	}
-	if err := a.foldParked(ctx, room, doc, updates, checkpointed); err != nil {
+	if _, err := a.foldParked(ctx, room, doc, updates, checkpointed); err != nil {
 		return nil, err
 	}
 	if ps := doc.PendingStats(); ps.Items > 0 {

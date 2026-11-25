@@ -53,6 +53,9 @@ type Adapter struct {
 	// afterReadBase, when set, runs in readState between reading doc_v2 and
 	// listing the update log (test injection only).
 	afterReadBase func()
+	// afterCheckMarks, when set, runs in readState between its marks check and
+	// reading the update objects (test injection only).
+	afterCheckMarks func()
 
 	// oidCache memoizes allocated OIDs per room. Phase 2 pins OID=0.
 	oidCache map[string]uint32
@@ -325,19 +328,19 @@ func stateFromV2(v2 []byte) ([]byte, error) {
 // foldParked applies the update objects at clocks to doc when doc holds parked
 // items. The checkpoint claims those objects are already in doc_v2, but a doc_v2
 // written from a copy that missed one of them is not.
-func (a *Adapter) foldParked(ctx context.Context, room DocID, doc *crdt.Doc, updates map[uint32]string, clocks []uint32) error {
+func (a *Adapter) foldParked(ctx context.Context, room DocID, doc *crdt.Doc, updates map[uint32]string, clocks []uint32) (bool, error) {
 	before := doc.PendingStats().Items
 	if before == 0 || len(clocks) == 0 {
-		return nil
+		return false, nil
 	}
 	for _, c := range clocks {
 		if err := a.applyObject(ctx, doc, updates[c]); err != nil {
-			return err
+			return false, err
 		}
 	}
 	a.log.Info("gcs: folded checkpointed update objects into a state with parked items",
 		"room", room, "parked_before", before, "parked_after", doc.PendingStats().Items)
-	return nil
+	return true, nil
 }
 
 // clocksUpTo returns the leading clocks of the ascending slice that are <= max.
