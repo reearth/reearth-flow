@@ -7,6 +7,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/jackc/pgx/v5/pgxpool"
 	"github.com/reearth/ygo/cluster"
 )
 
@@ -54,7 +55,17 @@ type reactivatingSink struct {
 	relay   *Relay
 	trigger string
 	fired   atomic.Bool
-	done    chan struct{}
+	// abort ends the wait for the eviction when the test ends first.
+	abort chan struct{}
+	done  chan struct{}
+	// err is what went wrong in Inject; read it after done.
+	err error
+}
+
+func newReactivatingSink(t *testing.T, trigger string) *reactivatingSink {
+	s := &reactivatingSink{trigger: trigger, abort: make(chan struct{}), done: make(chan struct{})}
+	t.Cleanup(func() { close(s.abort) })
+	return s
 }
 
 func (s *reactivatingSink) Inject(ctx context.Context, in cluster.Inbound) error {
@@ -62,11 +73,20 @@ func (s *reactivatingSink) Inject(ctx context.Context, in cluster.Inbound) error
 	if string(in.Data) != s.trigger || !s.fired.CompareAndSwap(false, true) {
 		return nil
 	}
+	defer close(s.done)
+	deadline := time.After(5 * time.Second)
 	for !s.evicting(in.Room) {
-		time.Sleep(time.Millisecond)
+		select {
+		case <-s.abort:
+			s.err = errors.New("test ended before the eviction started")
+			return nil
+		case <-deadline:
+			s.err = errors.New("the eviction never started")
+			return nil
+		case <-time.After(time.Millisecond):
+		}
 	}
 	s.relay.RoomActivated(in.Room)
-	close(s.done)
 	return nil
 }
 
@@ -77,20 +97,13 @@ func (s *reactivatingSink) evicting(room string) bool {
 	return ok && rs.evicting
 }
 
-// TestActivationDuringEvictionKeepsTheInstanceLive: a room re-activated while its
-// previous state is evicting must end with this instance's heartbeat in place and
-// the rows kept, and the eviction must not deadlock.
-func TestActivationDuringEvictionKeepsTheInstanceLive(t *testing.T) {
-	pool := newPool(t)
+// evictWithSuccessor activates room on r, has a peer write the trigger and leave,
+// then deactivates the room on r while its reader injects the trigger, during
+// which the sink re-activates it. It returns once the first eviction finished.
+func evictWithSuccessor(t *testing.T, pool *pgxpool.Pool, r *Relay, sink *reactivatingSink) {
+	t.Helper()
 	ctx := context.Background()
-	fl := &countingFlusher{}
-	sink := &reactivatingSink{trigger: "reactivate", done: make(chan struct{})}
-	r := startRelay(t, pool, sink, fl)
-	sink.relay = r
 	r.RoomActivated(room)
-
-	// Another instance writes the entry the reader is injecting when the eviction
-	// starts, then lets the room go so this instance holds it alone.
 	peer := startRelay(t, pool, &fakeSink{}, nil)
 	peer.RoomActivated(room)
 	if err := peer.Publish(ctx, cluster.Outbound{Room: room, Kind: cluster.KindSync, Data: []byte(sink.trigger)}); err != nil {
@@ -109,7 +122,27 @@ func TestActivationDuringEvictionKeepsTheInstanceLive(t *testing.T) {
 	case <-time.After(5 * time.Second):
 		t.Fatal("RoomDeactivated deadlocked on a re-activation from its own reader")
 	}
-	<-sink.done
+	select {
+	case <-sink.done:
+	case <-time.After(10 * time.Second):
+		t.Fatal("the sink never re-activated the room")
+	}
+	if sink.err != nil {
+		t.Fatalf("re-activation: %v", sink.err)
+	}
+}
+
+// TestActivationDuringEvictionKeepsTheInstanceLive: a room re-activated while its
+// previous state is evicting must end with this instance's heartbeat in place and
+// the rows kept, and the eviction must not deadlock.
+func TestActivationDuringEvictionKeepsTheInstanceLive(t *testing.T) {
+	pool := newPool(t)
+	ctx := context.Background()
+	fl := &countingFlusher{}
+	sink := newReactivatingSink(t, "reactivate")
+	r := startRelay(t, pool, sink, fl)
+	sink.relay = r
+	evictWithSuccessor(t, pool, r, sink)
 
 	if err := r.WaitCaughtUp(ctx, room); err != nil {
 		t.Fatalf("successor not active: %v", err)
@@ -146,5 +179,100 @@ func TestActivationOntoALiveStateReplaysTheRows(t *testing.T) {
 	eventually(t, 3*time.Second, "the replay", func() bool { return sink.count() == 2 })
 	if got := sink.payloads()[1]; string(got) != "x" {
 		t.Fatalf("replayed %q, want %q", got, "x")
+	}
+}
+
+// TestSuccessorLeavingDuringTheRestoreLeavesNoHeartbeat: the state that replaced
+// an evicting one leaves while the older eviction is restoring its heartbeat. The
+// last departure must remove the instance's heartbeat.
+func TestSuccessorLeavingDuringTheRestoreLeavesNoHeartbeat(t *testing.T) {
+	pool := newPool(t)
+	ctx := context.Background()
+	sink := newReactivatingSink(t, "reactivate")
+	r := startRelay(t, pool, sink, &countingFlusher{})
+	sink.relay = r
+	successorLeft := make(chan struct{})
+	var once atomic.Bool
+	r.beforeRestore = func() {
+		if !once.CompareAndSwap(false, true) {
+			return
+		}
+		go func() {
+			r.RoomDeactivated(room)
+			close(successorLeft)
+		}()
+		// Give the successor's departure the chance to finish first.
+		select {
+		case <-successorLeft:
+		case <-time.After(time.Second):
+		}
+	}
+	evictWithSuccessor(t, pool, r, sink)
+	select {
+	case <-successorLeft:
+	case <-time.After(10 * time.Second):
+		t.Fatal("the successor's departure never finished")
+	}
+	if n, _ := r.activeInstances(ctx, room); n != 0 {
+		t.Fatalf("heartbeats after both left = %d, want 0", n)
+	}
+}
+
+// TestWaitCaughtUpWaitsForTheReplay: a second activation onto a live state whose
+// cursor is at the head must not count as caught up until its replay is done.
+func TestWaitCaughtUpWaitsForTheReplay(t *testing.T) {
+	pool := newPool(t)
+	ctx := context.Background()
+	r := startRelay(t, pool, &fakeSink{}, nil)
+	peer := startRelay(t, pool, &fakeSink{}, nil)
+	peer.RoomActivated(room)
+	if err := peer.Publish(ctx, cluster.Outbound{Room: room, Kind: cluster.KindSync, Data: []byte("x")}); err != nil {
+		t.Fatal(err)
+	}
+	eventually(t, 3*time.Second, "the row", func() bool { return rowCount(t, pool, room) == 1 })
+	r.RoomActivated(room)
+	if err := r.WaitCaughtUp(ctx, room); err != nil {
+		t.Fatal(err)
+	}
+
+	// Hold the reader before it starts the replay the next activation asks for.
+	entered, release := make(chan struct{}), make(chan struct{})
+	var held, released atomic.Bool
+	releaseOnce := func() {
+		if released.CompareAndSwap(false, true) {
+			close(release)
+		}
+	}
+	// Registered after startRelay's cleanup, so it runs first: Close waits for the
+	// held reader.
+	t.Cleanup(releaseOnce)
+	hold := func() {
+		if held.CompareAndSwap(false, true) {
+			close(entered)
+			<-release
+		}
+	}
+	r.beforePass.Store(&hold)
+	select {
+	case <-entered:
+	case <-time.After(5 * time.Second):
+		t.Fatal("the reader never started another pass")
+	}
+	r.RoomActivated(room)
+	waited := make(chan error, 1)
+	go func() { waited <- r.WaitCaughtUp(ctx, room) }()
+	select {
+	case err := <-waited:
+		t.Fatalf("WaitCaughtUp returned %v before the replay ran", err)
+	case <-time.After(200 * time.Millisecond):
+	}
+	releaseOnce()
+	select {
+	case err := <-waited:
+		if err != nil {
+			t.Fatalf("WaitCaughtUp after the replay: %v", err)
+		}
+	case <-time.After(5 * time.Second):
+		t.Fatal("WaitCaughtUp did not return after the replay")
 	}
 }

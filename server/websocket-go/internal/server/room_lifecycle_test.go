@@ -3,6 +3,7 @@ package server
 import (
 	"context"
 	"errors"
+	"fmt"
 	"net/http"
 	"net/http/httptest"
 	"runtime"
@@ -67,6 +68,10 @@ type lcInstance struct {
 	onLastPeer atomic.Pointer[func()]
 	// onLastInstance runs inside the relay's last-instance flush.
 	onLastInstance atomic.Pointer[func()]
+	// lastPeers and unloads count ygo's OnLastPeer and OnUnloadDocument. On the
+	// eager path OnUnloadDocument fires once the room's relay teardown returned.
+	lastPeers atomic.Int32
+	unloads   atomic.Int32
 }
 
 // lcFlusher lets a test act inside the relay's last-instance flush.
@@ -110,9 +115,15 @@ func (e *lcEnv) instance(name string, cfg *config.Config) *lcInstance {
 	lastPeer := s.ws.OnLastPeer
 	s.ws.OnLastPeer = func(ctx context.Context, room string) {
 		lastPeer(ctx, room)
+		in.lastPeers.Add(1)
 		if hook := in.onLastPeer.Load(); hook != nil {
 			(*hook)()
 		}
+	}
+	unload := s.ws.OnUnloadDocument
+	s.ws.OnUnloadDocument = func(ctx context.Context, room string) {
+		unload(ctx, room)
+		in.unloads.Add(1)
 	}
 	relay, err := redisrelay.New(redisrelay.Options{Addr: e.mr.Addr(), Flusher: lcFlusher{s.VersionedFlusher(flusher), in}})
 	if err != nil {
@@ -137,6 +148,12 @@ func (e *lcEnv) instance(name string, cfg *config.Config) *lcInstance {
 }
 
 func (p *lcInstance) text() string { return serverText(p.s, lifecycleRoom) }
+
+// waitUnloads waits until ygo has unloaded the room n times on p.
+func (p *lcInstance) waitUnloads(t *testing.T, n int32) {
+	t.Helper()
+	waitFor(t, "the old room's teardown", func() bool { return p.unloads.Load() >= n })
+}
 
 func (p *lcInstance) loaded() bool { return p.s.ws.GetDoc(lifecycleRoom) != nil }
 
@@ -180,16 +197,27 @@ func (tb *lcTab) reconnect(t *testing.T, p *lcInstance) {
 	tb.completeHandshake()
 }
 
-// pauseIn returns a hook that, the first time it runs, signals reached and waits
-// for resume, so the test goroutine acts while the hook's caller is held.
-func pauseIn() (hook func(), reached, resume chan struct{}) {
-	var once sync.Once
-	reached, resume = make(chan struct{}), make(chan struct{})
+// pauseIn returns a hook that, the first time it runs, holds its caller until
+// resume, so the test acts meanwhile. reached waits for the hook, bounded, and a
+// cleanup resumes it if the test ends first.
+func pauseIn(t *testing.T) (hook, reached, resume func()) {
+	var once, resumed sync.Once
+	in, out := make(chan struct{}), make(chan struct{})
+	resume = func() { resumed.Do(func() { close(out) }) }
+	t.Cleanup(resume)
 	hook = func() {
 		once.Do(func() {
-			close(reached)
-			<-resume
+			close(in)
+			<-out
 		})
+	}
+	reached = func() {
+		t.Helper()
+		select {
+		case <-in:
+		case <-time.After(10 * time.Second):
+			t.Fatal("the paused callback never ran")
+		}
 	}
 	return hook, reached, resume
 }
@@ -220,7 +248,7 @@ func TestRoomLifecycle_RelayEntryDuringTeardownKeepsTheRoomLive(t *testing.T) {
 	const rounds = 20
 	cutOff, hit := 0, 0
 	for i := range rounds {
-		func() {
+		t.Run(fmt.Sprintf("round %d", i), func(t *testing.T) {
 			e := newLCEnv(t)
 			A, B := e.instance("A", testConfig()), e.instance("B", testConfig())
 			alice := openLCTab(t, A, "alice", 101)
@@ -245,7 +273,8 @@ func TestRoomLifecycle_RelayEntryDuringTeardownKeepsTheRoomLive(t *testing.T) {
 			}()
 			time.Sleep(100 * time.Millisecond)
 			alice.close()
-			time.Sleep(1500 * time.Millisecond)
+			A.waitUnloads(t, 1)
+			time.Sleep(100 * time.Millisecond) // more relay traffic after the teardown
 			close(stop)
 			<-done
 			if !A.loaded() {
@@ -256,9 +285,9 @@ func TestRoomLifecycle_RelayEntryDuringTeardownKeepsTheRoomLive(t *testing.T) {
 				within(3*time.Second, func() bool { return A.text() == B.text() })
 			if !live {
 				cutOff++
-				t.Logf("round %d: A holds the room with no live relay: relayActive=%v heartbeats=%d", i, A.relayActive(), e.heartbeats(A))
+				t.Logf("A holds the room with no live relay: relayActive=%v heartbeats=%d", A.relayActive(), e.heartbeats(A))
 			}
-		}()
+		})
 	}
 	if cutOff > 0 {
 		t.Fatalf("a relay entry during teardown left a cut-off room in %d of %d disconnects", cutOff, rounds)
@@ -276,7 +305,7 @@ func TestRoomLifecycle_ReconnectDuringTeardownKeepsTheRelay(t *testing.T) {
 	const rounds = 20
 	cutOff := 0
 	for i := range rounds {
-		func() {
+		t.Run(fmt.Sprintf("round %d", i), func(t *testing.T) {
 			e := newLCEnv(t)
 			A, B := e.instance("A", testConfig()), e.instance("B", testConfig())
 			alice := openLCTab(t, A, "alice", 101)
@@ -289,7 +318,7 @@ func TestRoomLifecycle_ReconnectDuringTeardownKeepsTheRelay(t *testing.T) {
 			alice.close()
 			waitFor(t, "the room leaving A's map", func() bool { return !A.loaded() })
 			alice.reconnect(t, A)
-			time.Sleep(time.Second) // the old room's teardown finishes
+			A.waitUnloads(t, 1)
 			alice.insertText("a2 ")
 			bob.insertText("b2 ")
 			synced := within(3*time.Second, func() bool {
@@ -297,9 +326,9 @@ func TestRoomLifecycle_ReconnectDuringTeardownKeepsTheRelay(t *testing.T) {
 			})
 			if n := e.heartbeats(A); !synced || n != 2 {
 				cutOff++
-				t.Logf("round %d: A=%q B=%q heartbeats=%d", i, A.text(), B.text(), n)
+				t.Logf("A=%q B=%q heartbeats=%d", A.text(), B.text(), n)
 			}
-		}()
+		})
 	}
 	if cutOff > 0 {
 		t.Fatalf("an immediate reconnect left the new room cut off in %d of %d", cutOff, rounds)
@@ -319,14 +348,14 @@ func TestRoomLifecycle_RelayEntryInTheTeardownWindow(t *testing.T) {
 	alice.insertText("a1 ")
 	waitFor(t, "a1 on B", func() bool { return strings.Contains(B.text(), "a1 ") })
 
-	hook, reached, resume := pauseIn()
+	hook, reached, resume := pauseIn(t)
 	A.onLastPeer.Store(&hook)
 	alice.close()
-	<-reached
+	reached()
 	bob.insertText("b1 ")
 	waitFor(t, "b1 re-creating the room on A", func() bool { return strings.Contains(A.text(), "b1 ") })
-	close(resume)
-	time.Sleep(200 * time.Millisecond)
+	resume()
+	A.waitUnloads(t, 1)
 
 	if !A.relayActive() || e.heartbeats(A) != 2 {
 		t.Fatalf("the re-created room has no live relay: relayActive=%v heartbeats=%d", A.relayActive(), e.heartbeats(A))
@@ -350,14 +379,26 @@ func TestRoomLifecycle_ReconnectDuringTheLastInstanceFlush(t *testing.T) {
 	alice.insertText("a1 ")
 	waitFor(t, "a1 on A", func() bool { return strings.Contains(A.text(), "a1 ") })
 
-	hook, reached, resume := pauseIn()
+	rc := goredis.NewClient(&goredis.Options{Addr: e.mr.Addr()})
+	defer func() { _ = rc.Close() }()
+	stream := "yjs:stream:" + lifecycleRoom
+	head, err := rc.XRevRangeN(e.ctx, stream, "+", "-", 1).Result()
+	if err != nil || len(head) == 0 {
+		t.Fatalf("stream head: %v (%d entries)", err, len(head))
+	}
+
+	hook, reached, resume := pauseIn(t)
 	A.onLastInstance.Store(&hook)
 	alice.close()
-	<-reached
+	reached()
 	alice.reconnect(t, A)
-	close(resume)
-	time.Sleep(200 * time.Millisecond)
+	resume()
+	A.waitUnloads(t, 1)
 
+	// A later write would re-create a deleted stream, so look for the old entry.
+	if kept, err := rc.XRange(e.ctx, stream, head[0].ID, head[0].ID).Result(); err != nil || len(kept) != 1 {
+		t.Fatalf("the stream was deleted under the reconnected room: %v (%d entries)", err, len(kept))
+	}
 	if !A.relayActive() || e.heartbeats(A) != 1 {
 		t.Fatalf("the reconnected room lost its relay: relayActive=%v heartbeats=%d", A.relayActive(), e.heartbeats(A))
 	}
@@ -422,7 +463,10 @@ func TestRoomLifecycle_ShutdownLetsIdleRoomsGo(t *testing.T) {
 	alice.insertText("a1 ")
 	waitFor(t, "a1 on B", func() bool { return strings.Contains(B.text(), "a1 ") })
 	alice.close()
-	waitFor(t, "alice's disconnect", func() bool { return A.loaded() && e.heartbeats(A) == 2 })
+	waitFor(t, "alice's disconnect", func() bool { return A.lastPeers.Load() == 1 })
+	if !A.loaded() || e.heartbeats(A) != 2 {
+		t.Fatalf("A let the idle room go before Shutdown: loaded=%v heartbeats=%d", A.loaded(), e.heartbeats(A))
+	}
 
 	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
 	defer cancel()
@@ -437,4 +481,49 @@ func TestRoomLifecycle_ShutdownLetsIdleRoomsGo(t *testing.T) {
 	}
 	bob.insertText("b1 ")
 	waitFor(t, "b1 on B", func() bool { return strings.Contains(B.text(), "b1 ") })
+}
+
+// TestRoomLifecycle_ShutdownRefusesNewConnections: a connection opened while
+// Shutdown closes rooms is refused, and no room is left loaded.
+func TestRoomLifecycle_ShutdownRefusesNewConnections(t *testing.T) {
+	e := newLCEnv(t)
+	A := e.instance("A", testConfig())
+	alice := openLCTab(t, A, "alice", 101)
+	defer runtime.KeepAlive(alice)
+	alice.insertText("a1 ")
+	waitFor(t, "a1 on A", func() bool { return strings.Contains(A.text(), "a1 ") })
+
+	hook, reached, resume := pauseIn(t)
+	A.onLastPeer.Store(&hook)
+	shut := make(chan error, 1)
+	go func() {
+		ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+		defer cancel()
+		shut <- A.s.Shutdown(ctx)
+	}()
+	reached()
+
+	conn, resp, err := gws.DefaultDialer.Dial(wsURL(A.ts, lifecycleRoom+"?user=bob"), nil)
+	if conn != nil {
+		_ = conn.Close()
+	}
+	if err == nil || resp == nil || resp.StatusCode != http.StatusServiceUnavailable {
+		status := 0
+		if resp != nil {
+			status = resp.StatusCode
+		}
+		t.Fatalf("a dial during Shutdown got status %d, err %v; want 503", status, err)
+	}
+	resume()
+	select {
+	case err := <-shut:
+		if err != nil {
+			t.Fatal(err)
+		}
+	case <-time.After(10 * time.Second):
+		t.Fatal("Shutdown did not return")
+	}
+	if rooms := A.s.ws.Rooms(); len(rooms) != 0 {
+		t.Fatalf("rooms still loaded after Shutdown: %v", rooms)
+	}
 }

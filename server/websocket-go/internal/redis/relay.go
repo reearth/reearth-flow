@@ -97,6 +97,9 @@ type Relay struct {
 	// beforeEnqueue, when set, runs in Publish just before an update is queued.
 	// Tests use it to interleave RoomDeactivated.
 	beforeEnqueue func()
+	// beforeRestore, when set, runs in restoreSuccessor between finding the
+	// successor and writing its heartbeat (test injection only).
+	beforeRestore func()
 
 	mu     sync.Mutex
 	sink   cluster.Sink
@@ -116,6 +119,16 @@ type roomState struct {
 	// state loaded from storage, which can lack entries the reader already applied
 	// to the room it replaces.
 	replay bool
+	// replayed is closed once a replay finishes with none asked for since it
+	// began; nil when no replay is pending.
+	replayed chan struct{}
+
+	// prev is the evicting state this one replaced. This state's eviction waits
+	// for prev's, so the last eviction removes the instance's heartbeat and cursor.
+	prev *roomState
+	// evicted is closed once this state's eviction has finished.
+	evicted     chan struct{}
+	evictedOnce sync.Once
 
 	// writeCh is the bounded outbound queue; Publish enqueues non-blockingly.
 	writeCh chan writeItem
@@ -288,6 +301,10 @@ func (r *Relay) WaitCaughtUp(ctx context.Context, room string) error {
 	r.mu.Lock()
 	rs, ok := r.rooms[room]
 	active := ok && !rs.evicting
+	var replayed chan struct{}
+	if active {
+		replayed = rs.replayed
+	}
 	r.mu.Unlock()
 	if !active {
 		return ErrRoomNotActive
@@ -296,12 +313,17 @@ func (r *Relay) WaitCaughtUp(ctx context.Context, room string) error {
 	if err != nil {
 		return err
 	}
-	select {
-	case <-rs.caughtUp:
-	case <-rs.done:
-		return ErrRoomNotActive
-	case <-ctx.Done():
-		return ctx.Err()
+	for _, ch := range []chan struct{}{rs.caughtUp, replayed} {
+		if ch == nil {
+			continue
+		}
+		select {
+		case <-ch:
+		case <-rs.done:
+			return ErrRoomNotActive
+		case <-ctx.Done():
+			return ctx.Err()
+		}
 	}
 	if len(head) == 0 {
 		return nil
@@ -348,9 +370,13 @@ func (r *Relay) RoomActivated(room string) {
 		r.mu.Unlock()
 		return
 	}
-	if rs, ok := r.rooms[room]; ok && !rs.evicting {
-		rs.activations++
-		rs.replay = true
+	old, ok := r.rooms[room]
+	if ok && !old.evicting {
+		old.activations++
+		old.replay = true
+		if old.replayed == nil {
+			old.replayed = make(chan struct{})
+		}
 		r.mu.Unlock()
 		return
 	}
@@ -364,6 +390,10 @@ func (r *Relay) RoomActivated(room string) {
 		writeCh:     make(chan writeItem, writeQueueCap),
 		caughtUp:    make(chan struct{}),
 		done:        make(chan struct{}),
+		evicted:     make(chan struct{}),
+	}
+	if ok {
+		rs.prev = old
 	}
 	r.rooms[room] = rs
 	sink := r.sink
@@ -610,6 +640,10 @@ func (r *Relay) replayIfAsked(ctx context.Context, room string, rs *roomState, s
 	if streamIDBefore(rs.lastID, last) {
 		rs.lastID = last
 	}
+	if !rs.replay && rs.replayed != nil {
+		close(rs.replayed)
+		rs.replayed = nil
+	}
 }
 
 // inject routes a parsed sync/awareness entry to the sink.
@@ -775,11 +809,16 @@ func (r *Relay) RoomDeactivated(room string) {
 	}
 	// Refuse Publish for the whole critical section so no XADD races the DEL.
 	rs.evicting = true
+	prev := rs.prev
+	rs.prev = nil
 	r.mu.Unlock()
 
 	rs.cancel()
 	rs.wg.Wait()
 
+	if prev != nil {
+		r.waitEvicted(room, prev)
+	}
 	r.evict(room, rs)
 
 	r.mu.Lock()
@@ -789,6 +828,20 @@ func (r *Relay) RoomDeactivated(room string) {
 		delete(r.rooms, room)
 	}
 	r.mu.Unlock()
+	rs.markEvicted()
+}
+
+func (rs *roomState) markEvicted() { rs.evictedOnce.Do(func() { close(rs.evicted) }) }
+
+// waitEvicted waits, at most evictTimeout, for the eviction of the state that
+// rs replaced. It never runs on that eviction's own goroutines, which never
+// deactivate a room.
+func (r *Relay) waitEvicted(room string, prev *roomState) {
+	select {
+	case <-prev.evicted:
+	case <-time.After(evictTimeout):
+		r.log.Warn("relay stopped waiting for the room's previous eviction", "room", room)
+	}
 }
 
 // successor returns the live state that replaced rs while rs was evicting.
@@ -808,6 +861,9 @@ func (r *Relay) restoreSuccessor(ctx context.Context, room string, rs *roomState
 	next, ok := r.successor(room, rs)
 	if !ok {
 		return
+	}
+	if r.beforeRestore != nil {
+		r.beforeRestore()
 	}
 	if err := updateHeartbeat(ctx, r.client, room, r.clientID); err != nil {
 		r.log.Warn("relay could not restore the heartbeat of a reactivated room", "room", room, "err", err)
@@ -896,6 +952,7 @@ func (r *Relay) ForceEvict(ctx context.Context, room string) error {
 	r.mu.Unlock()
 
 	if ok {
+		defer rs.markEvicted()
 		rs.cancel()
 		rs.wg.Wait()
 	}

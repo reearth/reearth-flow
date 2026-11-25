@@ -8,6 +8,7 @@ import (
 	"log/slog"
 	"net/http"
 	"sync"
+	"sync/atomic"
 	"time"
 
 	"github.com/reearth/ygo/crdt"
@@ -47,6 +48,9 @@ type Server struct {
 	leaveIdle  chan struct{}
 
 	health healthDeps
+
+	// shuttingDown refuses new WebSocket connections once Shutdown has begun.
+	shuttingDown atomic.Bool
 }
 
 // New builds a Server from config using the in-memory provider.
@@ -71,21 +75,26 @@ func New(cfg *config.Config) *Server {
 	return s
 }
 
-// closeRoomPasses bounds how often Shutdown closes rooms that were loaded again
-// while it closed them.
+// closeRoomPasses bounds how often Shutdown closes rooms that a relay entry
+// loaded again while it closed them.
 const closeRoomPasses = 3
 
 // Shutdown closes every room, so each is let go as when its last peer leaves,
 // then shuts the provider down. ygo's own Shutdown leaves rooms with no peers
 // loaded, and the relay would never hear that this instance let them go.
+//
+// New connections are refused from the start: ygo's CloseRoom does not count
+// peers again before removing a room, so a peer joining meanwhile would be left
+// on a room with no relay and no persistence.
 func (s *Server) Shutdown(ctx context.Context) error {
+	s.shuttingDown.Store(true)
 	s.closeRooms(ctx)
 	return s.ws.Shutdown(ctx)
 }
 
 // closeRooms closes every loaded room in parallel until none is left, ctx ends
-// or closeRoomPasses runs out. A reconnect or a relay entry can load a room
-// again while it is closed.
+// or closeRoomPasses runs out. A relay entry can load a room again while it is
+// closed.
 func (s *Server) closeRooms(ctx context.Context) {
 	for range closeRoomPasses {
 		rooms := s.ws.Rooms()
@@ -144,6 +153,10 @@ func (s *Server) wsHandler() http.Handler {
 		// preventing distinct invalid URLs from collapsing into a single room "".
 		if room == "" {
 			http.Error(w, "doc_id required", http.StatusBadRequest)
+			return
+		}
+		if s.shuttingDown.Load() {
+			http.Error(w, "server is shutting down", http.StatusServiceUnavailable)
 			return
 		}
 		r.SetPathValue("room", room)
