@@ -1,5 +1,8 @@
 import {
-  ArrowSquareOutIcon,
+  ArrowUpRightIcon,
+  BookIcon,
+  ChatCircleTextIcon,
+  FileTextIcon,
   KeyboardIcon,
   SignOutIcon,
   UserIcon,
@@ -48,7 +51,7 @@ const UserMenu: React.FC<Props> = ({
   const [openAccountUpdateDialog, setOpenAccountUpdateDialog] = useState(false);
   const [openShortcutDialog, setOpenShortcutDialog] = useState(false);
 
-  const { tosUrl, documentationUrl } = config();
+  const { tosUrl, documentationUrl, feedbackUrl } = config();
 
   const handleTosPageOpen = openLinkInNewTab(tosUrl ?? "");
   const handleDocumentationPageOpen = openLinkInNewTab(documentationUrl ?? "");
@@ -85,42 +88,63 @@ const UserMenu: React.FC<Props> = ({
                 ? openLinkInNewTab(externalAccountUrl)
                 : () => setOpenAccountUpdateDialog(true)
             }>
-            <p>{t("Account Settings")}</p>
-            {externalAccountUrl ? (
-              <ArrowSquareOutIcon weight="light" />
-            ) : (
+            <div className="flex items-center gap-3 whitespace-nowrap">
               <UserIcon weight="light" />
-            )}
+              <p>{t("Account Settings")}</p>
+            </div>
+            {externalAccountUrl && <ArrowUpRightIcon weight="light" />}
+          </DropdownMenuItem>
+          <DropdownMenuItem
+            className="justify-between gap-4"
+            disabled={!feedbackUrl}
+            onClick={feedbackUrl ? openLinkInNewTab(feedbackUrl) : () => {}}>
+            <div className="flex items-center gap-3 whitespace-nowrap">
+              <ChatCircleTextIcon weight="light" />
+              <p>{t("Share Feedback")}</p>
+            </div>
+            <ArrowUpRightIcon weight="light" />
           </DropdownMenuItem>
           <DropdownMenuItem
             className="justify-between gap-4"
             onClick={() => setOpenShortcutDialog(true)}>
-            <p>{t("Keyboard Shortcuts")}</p>
-            <KeyboardIcon weight="light" />
+            <div className="flex items-center gap-3 whitespace-nowrap">
+              <KeyboardIcon weight="light" />
+              <p>{t("Keyboard Shortcuts")}</p>
+            </div>
+            <span className="size-4 shrink-0" />
           </DropdownMenuItem>
           <DropdownMenuSeparator />
           {tosUrl && (
             <DropdownMenuItem
               className="justify-between gap-4"
               onClick={handleTosPageOpen}>
-              <p>{t("Terms of Service")}</p>
-              <ArrowSquareOutIcon weight="light" />
+              <div className="flex items-center gap-3 whitespace-nowrap">
+                <FileTextIcon weight="light" />
+                <p>{t("Terms of Service")}</p>
+              </div>
+              <ArrowUpRightIcon weight="light" />
             </DropdownMenuItem>
           )}
           {documentationUrl && (
             <DropdownMenuItem
               className="justify-between gap-4"
               onClick={handleDocumentationPageOpen}>
-              <p>{t("Documentation")}</p>
-              <ArrowSquareOutIcon weight="light" />
+              <div className="flex items-center gap-3 whitespace-nowrap">
+                <BookIcon weight="light" />
+                <p>{t("Documentation")}</p>
+              </div>
+              <ArrowUpRightIcon weight="light" />
             </DropdownMenuItem>
           )}
           <DropdownMenuSeparator />
           <DropdownMenuItem
             className="justify-between gap-4 text-warning"
             onClick={handleLogout}>
-            <p>{t("Log Out")}</p>
-            <SignOutIcon weight="light" />
+            <div className="flex items-center gap-3 whitespace-nowrap">
+              <SignOutIcon weight="light" className="text-warning" />
+              <p>{t("Log Out")}</p>
+            </div>
+            <span className="size-4 shrink-0" />
           </DropdownMenuItem>
         </DropdownMenuContent>
       </DropdownMenu>
