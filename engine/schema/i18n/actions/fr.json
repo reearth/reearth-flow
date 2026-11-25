@@ -406,7 +406,7 @@
     },
     {
       "name": "Attribute Table Extractor",
-      "description": "Déplace des valeurs entre des chemins d'attributs de type map ou liste imbriqués, en suivant une table de paires de chemins source/destination indexée par un attribut de type d'entité. Un chemin de destination à plusieurs segments crée des cartes imbriquées si nécessaire",
+      "description": "Copie des valeurs entre des chemins d'attributs de type map ou liste imbriqués, en suivant une table de paires de chemins source/destination indexée par un attribut de type d'entité. Un chemin source traite les listes explicitement avec des étapes comme `[]`, `[*]` et `[n]`. Un chemin de destination à plusieurs segments crée des cartes imbriquées si nécessaire",
       "parameterI18n": {
         "": {
           "title": "Paramètres Attribute Table Extractor",
@@ -437,7 +437,7 @@
           },
           "sourcePath": {
             "title": "Source Path",
-            "description": "Where the value is read from, as a space-separated chain of keys walked from the feature's top level. A segment matches either a key in a map or the first matching element of a list, so it works whether a wrapper element appears once or many times."
+            "description": "Where the value is read from, as whitespace-separated steps walked from the feature's top level: `k` takes key `k` of a map, `[]` makes a single value a one-item list, `[*]` expands a list into its items, `[n]` takes item `n` of a list (negative counts from the end), and `[k]` gathers the `k` values of all results into one list. The value is written only when exactly one result remains, e.g. `__city_gml_attributes bldg:adeOfAbstractBuilding [] [*] [uro:BuildingIDAttribute] [0] uro:buildingID`."
           }
         }
       },
