@@ -119,7 +119,10 @@ pub(super) struct CzmlReaderParam {
     /// Drops elevations, reading every geometry as two-dimensional. A packet
     /// positioned in earth-centred cartesian coordinates is skipped instead,
     /// because that system has no two-dimensional form.
-    #[serde(default)]
+    // `force2D` is the spelling GeoPackage Reader and Shapefile Reader already
+    // use; this reader was the only one on `force2d`. The alias keeps any
+    // workflow written against the old spelling working.
+    #[serde(default, rename = "force2D", alias = "force2d")]
     pub(super) force_2d: bool,
     /// # Skip Document Packet
     /// Skips the document packet, which carries the version and clock settings

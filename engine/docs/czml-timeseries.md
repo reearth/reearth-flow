@@ -128,7 +128,7 @@ The writer automatically detects the feature format and chooses the appropriate 
 
 ### Embedded Mode (Option B) — Recommended
 
-When features have `czml.timeseries` attributes (from `preserveRaw` reading), the writer reconstructs full CZML packets:
+When any feature carries a `czml.*` attribute (from `preserveRaw` reading), or `timeField` is set without `groupTimeseriesBy`, the writer reconstructs full CZML packets:
 
 - Position with time-tagged `cartographicDegrees` (numeric offsets or ISO strings)
 - Interpolation metadata (`epoch`, `interpolationAlgorithm`, `interpolationDegree`)
@@ -154,7 +154,7 @@ with:
   output: "variables.get(\"outputFilePath\")"
   timeField: "czml.timestamp"
   epoch: "2024-01-01T00:00:00Z"
-  interpolationAlgorithm: "LAGRANGE"
+  interpolationAlgorithm: "lagrange"
   interpolationDegree: 5
   groupTimeseriesBy: "id"
 ```
@@ -166,10 +166,11 @@ with:
 | `output` | Expr | Yes | — | Output file path (expression) |
 | `timeField` | String | No | — | Attribute containing the timestamp (Option A) |
 | `epoch` | String | No | auto | ISO 8601 epoch for numeric offsets (Option A) |
-| `interpolationAlgorithm` | Enum | No | `LINEAR` | `LINEAR`, `LAGRANGE`, or `HERMITE` (Option A) |
+| `interpolationAlgorithm` | Enum | No | `linear` | `linear`, `lagrange`, or `hermite` (Option A) |
 | `interpolationDegree` | Number | No | `1` | Polynomial degree for interpolation (Option A) |
 | `groupTimeseriesBy` | String | No | — | Attribute to group features into entities (Option A) |
 | `groupBy` | Array | No | — | Attributes for splitting into separate CZML files |
+| `polygonStyle` | Object | No | — | `colorAttribute`, `opacity` and `heightAttribute` for a derived polygon |
 
 ---
 
@@ -277,7 +278,7 @@ graphs:
           output: "variables.get(\"outputFilePath\")"
           timeField: "czml.timestamp"
           epoch: "2024-01-01T00:00:00Z"
-          interpolationAlgorithm: "LAGRANGE"
+          interpolationAlgorithm: "lagrange"
           interpolationDegree: 5
           groupTimeseriesBy: "id"
     edges:
@@ -314,9 +315,13 @@ The `interpolationAlgorithm` parameter tells Cesium how to interpolate between t
 
 | Algorithm | Degree | Best For |
 |-----------|--------|----------|
-| `LINEAR` | 1 | Straight-line movement between samples |
-| `LAGRANGE` | 5 (typical) | Smooth curves for vehicles, aircraft, satellites |
-| `HERMITE` | — | Spline interpolation when tangent data is available |
+| `linear` | 1 | Straight-line movement between samples |
+| `lagrange` | 5 (typical) | Smooth curves for vehicles, aircraft, satellites |
+| `hermite` | — | Spline interpolation when tangent data is available |
+
+The parameter takes these camelCase values; the uppercase spelling CZML itself
+uses (`LINEAR`, `LAGRANGE`, `HERMITE`) is what gets written into the output, and
+is also what the reader puts in the `czml.interpolationAlgorithm` attribute.
 
 **Note:** The interpolation is performed by Cesium at visualization time, not by Re:Earth Flow. The engine writes the algorithm hint into the CZML output.
 
@@ -330,9 +335,9 @@ The `interpolationAlgorithm` parameter tells Cesium how to interpolate between t
 
 3. **Use `allSamples` for per-sample processing** — this gives you full control over each time sample as a separate feature, allowing filtering, attribute manipulation, and transformation.
 
-4. **The writer auto-detects the mode** — if features have `czml.timeseries`, it uses embedded mode. If `timeField` + `groupTimeseriesBy` are configured, it uses grouped mode. Otherwise it falls back to legacy CityGML polygon output.
+4. **The writer auto-detects the mode** — if `timeField` and `groupTimeseriesBy` are both configured, it uses grouped mode. If any feature carries a `czml.*` attribute, or `timeField` is set on its own, it uses embedded mode. Otherwise each feature is written straight from its geometry: every face becomes its own polygon packet, every line its own polyline packet, and anything else a bare position. (Before the new-geometry port this last case handled CityGML geometry only, and rejected everything else.)
 
-5. **LAGRANGE with degree 5** produces smooth curves for most vehicle/satellite tracking use cases. Use `LINEAR` for data where straight-line interpolation between points is appropriate.
+5. **`lagrange` with degree 5** produces smooth curves for most vehicle/satellite tracking use cases. Use `linear` for data where straight-line interpolation between points is appropriate.
 
 6. **Static entities pass through unchanged** — entities without time-tagged positions (like points of interest) are handled correctly by both reader and writer without any timeseries configuration.
 

@@ -182,6 +182,13 @@
     "help": "Check the file path, and check the header row settings if the file does have data."
   },
   {
+    "code": "czml.areal_samples_dropped",
+    "category": "geometry",
+    "defaultDisposition": "warn_drop",
+    "message": "wrote an areal entity's first footprint and dropped its time samples",
+    "help": "A CZML polygon carries its own coordinates, so an entity drawn as a polygon cannot be moved by its position samples. A group whose features are areal is therefore written as one static footprint, taken from the first feature that could be placed. Group the features as points to animate them, or write one entity per feature."
+  },
+  {
     "code": "czml.empty_geometry",
     "category": "geometry",
     "defaultDisposition": "warn_drop",
@@ -217,11 +224,32 @@
     "help": "CZML Writer only converts CityGML geometry to polygons; route other geometry types to a different writer."
   },
   {
+    "code": "czml.parse_failed",
+    "category": "parse",
+    "defaultDisposition": "fatal",
+    "message": "could not parse the CZML file",
+    "help": "The file is not valid CZML: it must be a JSON array of packets whose first packet has id \"document\". Check that the file is CZML rather than GeoJSON or another JSON format, and that it is not truncated."
+  },
+  {
+    "code": "czml.style_not_applied",
+    "category": "config",
+    "defaultDisposition": "warn_drop",
+    "message": "polygonStyle was set but this batch is written straight from geometry, which it does not reach",
+    "help": "polygonStyle colours and extrudes the single polygon the writer derives for a time-dynamic entity or for a feature read back from CZML. A feature written straight from its geometry gets one packet per face instead, and those faces are not styled. Set timeField, or read the features back through the CZML Reader, to get a styled entity."
+  },
+  {
     "code": "czml.too_many_faces",
     "category": "geometry",
     "defaultDisposition": "warn_drop",
     "message": "skipped feature with more faces than the writer will emit",
     "help": "Each face becomes its own CZML entity, so a finely tessellated surface such as a terrain mesh produces an unusably large file. Simplify or split the geometry before the CZML Writer."
+  },
+  {
+    "code": "czml.unparsable_time",
+    "category": "schema",
+    "defaultDisposition": "warn_drop",
+    "message": "dropped position whose time value is neither a timestamp nor a number",
+    "help": "CZML writes times as ISO 8601 timestamps, or as numbers of seconds counted from an epoch. A timeField value that is neither cannot be written, and writing it unchanged produced a file no viewer could load. Correct the attribute, or point timeField at one that holds a time."
   },
   {
     "code": "czml.unplaceable_frame",
@@ -236,6 +264,13 @@
     "defaultDisposition": "warn_drop",
     "message": "skipped packet with a position this reader cannot interpret",
     "help": "Interval-scoped property arrays, `reference`/`references` positions and time-tagged `cartesian` positions are not read yet. Use a static `cartographicDegrees`, `cartographicRadians` or `cartesian` value."
+  },
+  {
+    "code": "czml.untimed_sample",
+    "category": "schema",
+    "defaultDisposition": "warn_drop",
+    "message": "dropped position with no time value from a grouped entity",
+    "help": "Features grouped by groupTimeseriesBy share one entity. When some of them carry a value in timeField, the entity's positions are written as time-tagged samples and a feature without one has no place on that timeline. When none of them do, the entity is static and holds a single position, so only the first can be written. Either way the rest are dropped. Give every feature in the group a time value, or group it separately."
   },
   {
     "code": "expr.attribute_operation_failed",
@@ -500,8 +535,8 @@
     "code": "plateau.application_schema_unavailable",
     "category": "schema",
     "defaultDisposition": "warn_drop",
-    "message": "could not read or compile the XSDs the city GML names; checked the objectlist without them",
-    "help": "Without the XSDs, a nested city object the objectlist does not define is not reported. Check that the xsi:schemaLocation of the city GML points to schemas that can be read, such as the schemas folder of the package."
+    "message": "could not read or compile the XSDs the city GML names; checked the objectlist and the xlink targets without them",
+    "help": "Without the XSDs, a nested city object the objectlist does not define is not reported, and for CityGML 3.0 the type of an xlink target is not checked. Check that the xsi:schemaLocation of the city GML points to schemas that can be read, such as the schemas folder of the package."
   },
   {
     "code": "plateau.objectlist_prefix_unknown",
@@ -509,6 +544,13 @@
     "defaultDisposition": "warn_drop",
     "message": "objectlist rows use a prefix with no namespace URI, so no element matches them",
     "help": "The prefix is not one of the CityGML or i-UR prefixes of the PLATEAU generation the workflow checks. Check the prefix in the objectlist, or use the workflow for the generation the objectlist is written for."
+  },
+  {
+    "code": "plateau.xlink_target_unresolved",
+    "category": "schema",
+    "defaultDisposition": "warn_drop",
+    "message": "the XSDs give no target type of an association an xlink uses; did not check the type of its targets",
+    "help": "The type of the property holding the xlink:href has no element content, and the association is not one whose target the check knows. Check that the property is one of the CityGML 3.0 or i-UR application schema."
   },
   {
     "code": "raster.image_save_failed",

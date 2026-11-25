@@ -754,9 +754,9 @@
           "title": "File Path",
           "description": "Expression that returns the path to the input file, either a literal path or a variable reference."
         },
-        "force2d": {
-          "title": "Force 2D",
-          "description": "Supprime les altitudes et lit toute la géométrie en deux dimensions. Un paquet positionné en coordonnées cartésiennes géocentriques est ignoré, car ce système n'a pas de forme bidimensionnelle."
+        "force2D": {
+          "title": "Forcer 2D",
+          "description": "Supprime les altitudes et lit toute la géométrie en deux dimensions. Un paquet positionné en coordonnées cartésiennes géocentriques est ignoré à la place, car ce système n'a pas de forme bidimensionnelle."
         },
         "inline": {
           "title": "Inline Content",
@@ -790,63 +790,74 @@
     },
     {
       "name": "CZML Writer",
-      "description": "Exporte les entités au format CZML pour la visualisation Cesium, avec prise en charge des entités dynamiques dans le temps et des positions de séries temporelles",
+      "description": "Écrit les entités dans un fichier CZML, ou dans un fichier par groupe lorsque `groupBy` est défini. Avec `timeField` et `groupTimeseriesBy` ensemble, chaque groupe devient une entité dont la position est écrite sous forme d'échantillons horodatés, sauf les entités surfaciques, qui conservent une seule emprise. Avec `timeField` seul, chaque entité devient une entité à part entière, avec une position statique et sa propre fenêtre de disponibilité. Les entités sans attribut de temps sont écrites comme entités statiques.",
       "parameterI18n": {
         "": {
-          "title": "CZML Writer Parameters",
-          "description": "Configuration for writing geographic features to CZML files. Supports both static entities and time-dynamic entities with interpolated position samples.\n\n## Timeseries Configuration\n\nTo create time-animated entities in Cesium, configure at least the first two parameters below; configure `epoch` only when using numeric time offsets: 1. `timeField` - Attribute containing time values 2. `groupTimeseriesBy` - Attribute to group features into entities 3. `epoch` (optional) - Base time used when `timeField` contains numeric offsets\n\n### Example with ISO 8601 timestamps: ```yaml - action: CZML Writer with: output: \"vehicles.czml\" timeField: \"timestamp\"           # Contains \"2024-01-01T00:00:00Z\", etc. groupTimeseriesBy: \"vehicleId\"   # Groups by vehicle ID interpolationAlgorithm: \"LAGRANGE\" interpolationDegree: 5 ```\n\n### Example with numeric time offsets: ```yaml - action: CZML Writer with: output: \"sensors.czml\" timeField: \"timeOffset\"          # Contains numeric values: 0, 60, 120, etc. groupTimeseriesBy: \"sensorId\" epoch: \"2024-01-01T00:00:00Z\"    # Base time for offsets interpolationAlgorithm: \"LINEAR\" ```"
-        },
-        "colorAttribute": {
-          "title": "Color Attribute",
-          "description": "Attribute containing a hex color string (e.g., \"#ffd8c0\") for polygon fill. Used when polygon geometry is auto-converted from the feature geometry."
+          "title": "Paramètres de CZML Writer",
+          "description": "Configure où le CZML est écrit, comment les entités sont regroupées en fichiers et en entités CZML, et comment un polygone dérivé est stylisé."
         },
         "epoch": {
-          "title": "Epoch",
-          "description": "Reference time (ISO 8601 format) used as the base for numeric time offsets.\n\n**When to use:** - Optional but recommended when `timeField` contains numeric values (e.g., \"0\", \"60\", \"3600\") - Not needed when `timeField` contains ISO 8601 datetime strings\n\n**Format:** ISO 8601 datetime string with timezone - Examples: \"2024-01-01T00:00:00Z\", \"2024-06-15T09:00:00+09:00\"\n\n**Auto-detection:** If omitted and all time values are numeric, automatically defaults to Unix epoch \"1970-01-01T00:00:00Z\". For custom time ranges, explicitly set this parameter to your desired base time.\n\n**Example:** ```yaml epoch: \"2024-01-01T00:00:00Z\"  # Time value \"60\" means 2024-01-01T00:01:00Z ```"
+          "title": "Époque",
+          "description": "Temps de référence à partir duquel les valeurs numériques de `timeField` sont comptées, sous forme d'horodatage RFC 3339 comportant une date, une heure et un fuseau, par exemple `2024-01-01T00:00:00Z` ; une date seule comme `2024-01-01` est refusée. S'il est omis et que toutes les valeurs de temps sont numériques, l'époque Unix `1970-01-01T00:00:00Z` est utilisée."
         },
         "groupBy": {
-          "title": "Group By Attributes",
-          "description": "Attributes used to group features into separate CZML files"
+          "title": "Attributs de regroupement",
+          "description": "Attributs selon lesquels regrouper les entités, en écrivant un fichier par groupe distinct sous le chemin `output` et en le nommant d'après une empreinte des valeurs du groupe. S'il est omis, toutes les entités vont dans le fichier unique désigné par `output`."
         },
         "groupTimeseriesBy": {
-          "title": "Group Timeseries By",
-          "description": "Attribute used to group features into a single time-dynamic CZML entity. Features with the same value for this attribute are merged into one packet with time-tagged positions."
-        },
-        "heightAttribute": {
-          "title": "Height Attribute",
-          "description": "Attribute containing a numeric value for polygon extrusion height. When set, polygons are extruded from ground to this height value."
+          "title": "Regrouper la série temporelle par",
+          "description": "Attribut dont la valeur fusionne les entités en une seule entité dynamique dans le temps, une entité par valeur distincte. Sans effet si `timeField` n'est pas défini."
         },
         "interpolationAlgorithm": {
-          "title": "Interpolation Algorithm",
-          "description": "Algorithm used by Cesium to interpolate between time-tagged samples."
+          "title": "Algorithme d'interpolation",
+          "description": "Manière dont une visionneuse interpole entre les échantillons horodatés. Écrit dans la sortie à titre indicatif ; le moteur lui-même n'interpole jamais. Ne s'applique qu'aux entités fusionnées par `groupTimeseriesBy`."
         },
         "interpolationDegree": {
-          "title": "Interpolation Degree",
-          "description": "Degree of interpolation (1 for LINEAR, 5 typical for LAGRANGE)."
-        },
-        "opacity": {
-          "title": "Opacity",
-          "description": "Alpha value (0–255) for polygon fill color. Default: 180."
+          "title": "Degré d'interpolation",
+          "description": "Degré du polynôme d'interpolation, écrit à côté de l'algorithme. L'interpolation linéaire prend 1 ; 5 est courant pour Lagrange. Ne s'applique qu'aux entités fusionnées par `groupTimeseriesBy`."
         },
         "output": {
-          "title": "Output File Path",
-          "description": "Path where the CZML file will be written"
+          "title": "Chemin du fichier de sortie",
+          "description": "Chemin du fichier CZML à écrire. Évalué une seule fois au démarrage du workflow, avec les seules variables du workflow, il ne peut donc pas dépendre des attributs des entités."
+        },
+        "polygonStyle": {
+          "title": "Style de polygone",
+          "description": "Couleur de remplissage et extrusion de l'unique polygone que l'écrivain dérive de la géométrie d'une entité. S'applique aux entités fusionnées par `groupTimeseriesBy` et aux entités relues depuis le CZML ; une entité écrite directement depuis sa géométrie reçoit à la place un paquet par face, sans couleur de remplissage, sans extrusion et sans contour."
         },
         "timeField": {
-          "title": "Time Field",
-          "description": "Attribute containing the timestamp for each feature. Supports two formats: - **ISO 8601 strings**: e.g., \"2024-01-01T00:00:00Z\", \"2024-01-01T12:30:45+09:00\" - **Numeric values**: Seconds as offset from epoch (e.g., \"0\", \"60\", \"120.5\")\n\nWhen set together with `groupTimeseriesBy`, features sharing the same group key are combined into a single CZML entity with time-tagged position samples for animation in Cesium.\n\n**Example workflow configuration:** ```yaml - action: CZML Writer with: output: \"output.czml\" timeField: \"timestamp\" groupTimeseriesBy: \"vehicleId\" epoch: \"2024-01-01T00:00:00Z\"  # Optional for numeric times (auto-defaults to Unix epoch) ```"
+          "title": "Champ de temps",
+          "description": "Attribut portant le temps de chaque entité, soit un horodatage ISO 8601, soit un nombre de secondes comptées depuis `epoch`. Défini avec `groupTimeseriesBy`, un groupe est fusionné en une seule entité dont la position est écrite sous forme d'échantillons horodatés, sauf les entités surfaciques, qui conservent une seule emprise. Défini seul, chaque entité devient une entité à part entière, limitée à l'intervalle où tombe son temps, et ne fournit que la temporisation plutôt que de quoi dessiner : une entité surfacique est dessinée comme son polygone, tandis que toute autre a besoin de son propre graphique via un attribut `czml.*`, car une position seule ne dessine rien."
+        }
+      },
+      "definitionI18n": {
+        "PolygonStyleParam": {
+          "colorAttribute": {
+            "title": "Attribut de couleur",
+            "description": "Attribut portant la couleur de remplissage sous forme de chaîne hexadécimale, par exemple `#ffd8c0`. S'il est omis, ou si l'attribut ne peut pas être interprété, le polygone reste sans couleur de remplissage."
+          },
+          "heightAttribute": {
+            "title": "Attribut de hauteur",
+            "description": "Attribut portant la hauteur d'extrusion en mètres. S'il est défini, le polygone est extrudé du sol jusqu'à cette hauteur et fermé en haut comme en bas."
+          },
+          "opacity": {
+            "title": "Opacité",
+            "description": "Alpha appliqué à la couleur de remplissage, de 0 pour transparent à 255 pour opaque. Sans effet en l'absence de `colorAttribute`."
+          }
         }
       },
       "enumI18n": {
         "InterpolationAlgorithm": {
-          "HERMITE": {
-            "description": "Hermite spline interpolation using tangent data."
+          "hermite": {
+            "title": "Hermite",
+            "description": "Interpolation par spline qui lit aussi les données de tangente lorsque les échantillons en portent."
           },
-          "LAGRANGE": {
-            "description": "Lagrange polynomial interpolation for smooth curves (typical degree 5)."
+          "lagrange": {
+            "title": "Lagrange",
+            "description": "Interpolation polynomiale passant par les échantillons, donnant un tracé lisse. Prend un degré d'interpolation plus élevé, typiquement 5."
           },
-          "LINEAR": {
-            "description": "Linear interpolation between samples (degree 1)."
+          "linear": {
+            "title": "Linéaire",
+            "description": "Interpolation en ligne droite entre échantillons voisins. Prend un degré d'interpolation de 1."
           }
         }
       }
