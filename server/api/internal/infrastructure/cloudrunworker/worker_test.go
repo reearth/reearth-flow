@@ -602,9 +602,11 @@ func answerOn(t *testing.T, route string, code int, body string) error {
 	return callRoute(t, route, srv.URL, srv.Client())
 }
 
-// Cloud Run answers 429 in plain text, without reaching the worker, when every
-// instance it may run is busy. Only that answer means the pool is full: any
-// other failure may follow work that started.
+// Cloud Run answers 429, without reaching the worker, when every instance it
+// may run is busy. Only that answer means the pool is full: any other failure
+// may follow work that started. The body and content type of Cloud Run's 429
+// are not yet recorded, so the classification reads only the status code and
+// the plain-text body here is a guess.
 func TestWorker_OnlyCloudRuns429IsABusyPool(t *testing.T) {
 	t.Parallel()
 
