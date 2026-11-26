@@ -9,10 +9,12 @@ import {
 } from "@phosphor-icons/react";
 
 import {
+  Button,
   DropdownMenuItem,
   DropdownMenuLabel,
   DropdownMenuSeparator,
 } from "@flow/components";
+import { useToast } from "@flow/features/NotificationSystem/useToast";
 import { useUser } from "@flow/lib/gql";
 import type { AvailableLanguage } from "@flow/lib/i18n";
 import { localesWithLabel, useLang, useT } from "@flow/lib/i18n";
@@ -46,6 +48,7 @@ const ThemeLanguageMenu: React.FC = () => {
   const lang = useLang();
   const { theme, setTheme } = useTheme();
   const { updateMe } = useUser();
+  const { toast, dismiss } = useToast();
 
   const themeLabels: Record<Theme, string> = {
     light: t("Light"),
@@ -56,9 +59,31 @@ const ThemeLanguageMenu: React.FC = () => {
     system: t("System"),
   };
 
+  const saveLanguage = async (language: AvailableLanguage) => {
+    const { me } = await updateMe({ lang: language });
+    if (me) return;
+    const title = t("Failed to save language");
+    const { id, update } = toast({ title, variant: "destructive" });
+    update({
+      title,
+      variant: "destructive",
+      description: (
+        <Button
+          size="sm"
+          variant="outline"
+          onClick={() => {
+            dismiss(id);
+            saveLanguage(language);
+          }}>
+          {t("Retry")}
+        </Button>
+      ),
+    });
+  };
+
   const handleLanguageChange = (language: AvailableLanguage) => {
     i18n.changeLanguage(language);
-    updateMe({ lang: language });
+    saveLanguage(language);
   };
 
   return (
