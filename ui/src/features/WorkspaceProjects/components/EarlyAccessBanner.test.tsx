@@ -10,7 +10,10 @@ vi.mock("@flow/lib/gql", () => ({
 }));
 
 vi.mock("@flow/config", () => ({
-  config: () => ({ feedbackUrl: "https://example.com/feedback" }),
+  config: () => ({
+    feedbackUrl: "https://example.com/feedback",
+    earlyAccessUrl: "https://example.com/early-access",
+  }),
 }));
 
 const message = "Flow is in early access. Your feedback helps us improve it.";
@@ -23,6 +26,16 @@ describe("EarlyAccessBanner", () => {
 
     const link = screen.getByRole("link", { name: "Share feedback" });
     expect(link).toHaveAttribute("href", "https://example.com/feedback");
+    expect(link).toHaveAttribute("target", "_blank");
+  });
+
+  test("links to the early access notes in a new tab", () => {
+    render(<EarlyAccessBanner />);
+
+    const link = screen.getByRole("link", {
+      name: "Learn more about early access",
+    });
+    expect(link).toHaveAttribute("href", "https://example.com/early-access");
     expect(link).toHaveAttribute("target", "_blank");
   });
 

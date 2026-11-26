@@ -22,6 +22,7 @@ import {
   PopoverContent,
   PopoverTrigger,
 } from "@flow/components";
+import ConfirmationDialog from "@flow/features/ConfirmationDialog";
 import { useEditorContext } from "@flow/features/Editor/editorContext";
 import { useToast } from "@flow/features/NotificationSystem/useToast";
 import { useSubscription } from "@flow/lib/gql/subscriptions/useSubscription";
@@ -93,6 +94,7 @@ const DebugActionBar: React.FC<Props> = ({
 }) => {
   const t = useT();
   const permissions = usePermissions();
+  const [showClearConfirm, setShowClearConfirm] = useState(false);
   const {
     showOverlayElement,
     debugRunStarted,
@@ -145,6 +147,7 @@ const DebugActionBar: React.FC<Props> = ({
       <IconButton
         className="shrink-0"
         tooltipText={t("Clear debug run and results")}
+        aria-label={t("Clear debug run and results")}
         tooltipOffset={tooltipOffset}
         disabled={
           !debugJob ||
@@ -153,7 +156,20 @@ const DebugActionBar: React.FC<Props> = ({
           jobStatus === "queued"
         }
         icon={<BroomIcon weight="thin" size={18} />}
-        onClick={handleDebugRunReset}
+        onClick={() => setShowClearConfirm(true)}
+      />
+      <ConfirmationDialog
+        title={t("Clear debug run?")}
+        description={t(
+          "This removes the debug run's results and intermediate data from the canvas, and resets debug run variable values to their defaults. To see the results again you will need to run the workflow again.",
+        )}
+        confirmLabel={t("Clear")}
+        isOpen={showClearConfirm}
+        onClose={() => setShowClearConfirm(false)}
+        onConfirm={async () => {
+          setShowClearConfirm(false);
+          await handleDebugRunReset();
+        }}
       />
       <DebugActiveRunsPopover
         activeUsersDebugRuns={activeUsersDebugRuns}

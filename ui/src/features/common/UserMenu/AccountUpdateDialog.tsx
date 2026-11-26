@@ -1,12 +1,4 @@
-import {
-  GearIcon,
-  MoonIcon,
-  MoonStarsIcon,
-  SunIcon,
-  TerminalWindowIcon,
-  WaveformIcon,
-} from "@phosphor-icons/react";
-import { useEffect, useState } from "react";
+import { useState } from "react";
 
 import {
   Button,
@@ -19,18 +11,9 @@ import {
   DialogTitle,
   Input,
   Label,
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
 } from "@flow/components";
 import { useUser } from "@flow/lib/gql";
-import type { AvailableLanguage } from "@flow/lib/i18n";
-import { localesWithLabel, useT } from "@flow/lib/i18n";
-import i18n from "@flow/lib/i18n/i18n";
-import type { Theme } from "@flow/lib/theme";
-import { useTheme } from "@flow/lib/theme";
+import { useT } from "@flow/lib/i18n";
 
 type Errors =
   "failed" | "passwordNotSame" | "passwordFailed" | "langUpdateFailed";
@@ -52,43 +35,6 @@ const AccountUpdateDialog: React.FC<Props> = ({ isOpen, onOpenChange }) => {
   >();
   const [showError, setShowError] = useState<Errors | undefined>(undefined);
   const [loading, setLoading] = useState(false);
-  // For some users me.lang maybe lang: "und". Therefore, we can default to i18n.language.
-  const language = me?.lang && me.lang !== "und" ? me?.lang : i18n.language;
-  const [selectedLang, setSelectedLang] = useState<string>(language);
-  const currentLanguageLabel =
-    localesWithLabel[i18n.language as AvailableLanguage] ||
-    t("Select Language");
-
-  const themes: { value: Theme; label: string; icon: React.ReactNode }[] = [
-    { value: "light", label: t("Light"), icon: <SunIcon /> },
-    { value: "dark", label: t("Dark"), icon: <MoonIcon /> },
-    {
-      value: "midnight",
-      label: t("Midnight"),
-      icon: <MoonStarsIcon weight="fill" />,
-    },
-    {
-      value: "synthwave",
-      label: t("Synthwave"),
-      icon: <WaveformIcon weight="bold" />,
-    },
-    { value: "terminal", label: t("Terminal"), icon: <TerminalWindowIcon /> },
-    { value: "system", label: t("System"), icon: <GearIcon /> },
-  ];
-
-  const { theme, setTheme, previewTheme } = useTheme();
-  const currentTheme = themes.filter((t) => t.value === theme)[0];
-  const [selectedTheme, setSelectedTheme] = useState<Theme>(theme);
-  const [savedTheme, setSavedTheme] = useState<Theme>(theme);
-
-  // Update saved theme when dialog opens
-  useEffect(() => {
-    return () => {
-      if (selectedTheme === theme) return;
-      setSavedTheme(theme);
-      setSelectedTheme(theme);
-    };
-  }, [isOpen, selectedTheme, theme]);
 
   const handleUpdateMe = async () => {
     setLoading(true);
@@ -114,7 +60,7 @@ const AccountUpdateDialog: React.FC<Props> = ({ isOpen, onOpenChange }) => {
       }
     }
 
-    const input = { name, email, lang: selectedLang };
+    const input = { name, email };
 
     const { me: user } = await updateMe(input);
     if (!user) {
@@ -123,27 +69,11 @@ const AccountUpdateDialog: React.FC<Props> = ({ isOpen, onOpenChange }) => {
       return;
     }
 
-    // Save theme permanently on successful update
-    setTheme(selectedTheme);
-    setSavedTheme(selectedTheme);
-
     setLoading(false);
     onOpenChange(false);
   };
-  const handleLanguageChange = (lang: string) => {
-    setSelectedLang(lang);
-  };
-
-  const handleThemeChange = (theme: Theme) => {
-    setSelectedTheme(theme);
-    previewTheme(theme); // Preview theme without saving
-  };
 
   const handleDialogClose = (open: boolean) => {
-    if (!open) {
-      // Revert to saved theme if dialog is closed without saving
-      previewTheme(savedTheme);
-    }
     onOpenChange(open);
   };
   return (
@@ -199,51 +129,6 @@ const AccountUpdateDialog: React.FC<Props> = ({ isOpen, onOpenChange }) => {
               />
             </DialogContentSection>
           </DialogContentSection>
-          <DialogContentSection className="flex-row">
-            <DialogContentSection className="flex-1">
-              <Label htmlFor="theme-selector">{t("Theme")}</Label>
-              <Select
-                onValueChange={(v) =>
-                  v != null && handleThemeChange(v as Theme)
-                }
-                items={themes}>
-                <SelectTrigger>
-                  <SelectValue
-                    placeholder={<CurrentTheme theme={currentTheme} />}
-                  />
-                </SelectTrigger>
-                <SelectContent>
-                  {themes.map((theme) => (
-                    <SelectItem key={theme.value} value={theme.value}>
-                      <div className="flex items-center justify-between gap-2">
-                        {theme.icon}
-                        {theme.label}
-                      </div>
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </DialogContentSection>
-            <DialogContentSection className="flex-1">
-              <Label htmlFor="language-selector">{t("Select Language")}</Label>
-              <Select
-                onValueChange={(v) =>
-                  v != null && handleLanguageChange(v as string)
-                }
-                items={localesWithLabel}>
-                <SelectTrigger>
-                  <SelectValue placeholder={currentLanguageLabel} />
-                </SelectTrigger>
-                <SelectContent>
-                  {Object.entries(localesWithLabel).map(([value, label]) => (
-                    <SelectItem key={value} value={value}>
-                      {label}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </DialogContentSection>
-          </DialogContentSection>
         </DialogContentWrapper>
         <div
           className={`text-xs text-destructive ${showError ? "opacity-70" : "opacity-0"}`}>
@@ -262,19 +147,6 @@ const AccountUpdateDialog: React.FC<Props> = ({ isOpen, onOpenChange }) => {
         </DialogFooter>
       </DialogContent>
     </Dialog>
-  );
-};
-
-const CurrentTheme = ({
-  theme,
-}: {
-  theme: { icon: React.ReactNode; label: string };
-}) => {
-  return (
-    <div className="flex items-center justify-between gap-2">
-      {theme.icon}
-      {theme.label}
-    </div>
   );
 };
 
