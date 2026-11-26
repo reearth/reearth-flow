@@ -85,6 +85,12 @@ func (a *Adapter) Compact(ctx context.Context, room string, keep int) (int, erro
 	}
 	var deleted int
 	err = a.locker.WithLock(ctx, gcsDocLockKey(room), func(ctx context.Context) error {
+		// Read before anything else, so a rollback that rewrites the checkpoint at
+		// any later point makes the conditional publish below fail.
+		cpGen, err := a.store.generation(ctx, a.layout.CheckpointName(room))
+		if err != nil {
+			return err
+		}
 		updates, err := a.listUpdates(ctx, room, oid)
 		if err != nil {
 			return err
@@ -106,6 +112,9 @@ func (a *Adapter) Compact(ctx context.Context, room string, keep int) (int, erro
 		}
 		foldUpto := len(clocks) - keep // fold clocks[0:foldUpto] into the base
 		cutoff := clocks[foldUpto-1]   // highest clock folded in
+		if a.afterCompactSelect != nil {
+			a.afterCompactSelect()
+		}
 
 		// Bounded to cutoff: the kept objects stay above the new checkpoint, where
 		// Load folds them and MaterializeAt replays them per version. Folding them
@@ -114,6 +123,14 @@ func (a *Adapter) Compact(ctx context.Context, room string, keep int) (int, erro
 		st, err := a.readStateUpTo(ctx, room, oid, cutoff)
 		if err != nil {
 			return err
+		}
+		// A lapsed lease does not stop this section, so another holder can roll back
+		// between the selection above and that read. Everything below acts on the
+		// selection, so it must still describe the state just read.
+		if st.marks != m || !sameObjects(st.updates, updates) {
+			a.log.Warn("gcs compact: the stored state moved after the selection, leaving it for the next run",
+				"room", room, "cutoff", cutoff)
+			return errStateMoved
 		}
 		// readState applied the objects above the checkpoint. The checkpointed ones
 		// go in too: a doc_v2 written before checkpoints were unions can lack one.
@@ -131,13 +148,40 @@ func (a *Adapter) Compact(ctx context.Context, room string, keep int) (int, erro
 		}
 		// Write the new base before deleting any update (abort-without-loss). It
 		// only lands on the doc_v2 readState read, so an expired lock deletes nothing.
-		if err := a.writeV2DocIf(ctx, room, oid, st.doc, st.v2Gen); err != nil {
+		baseGen, err := a.writeV2DocIf(ctx, room, oid, st.doc, st.v2Gen)
+		if err != nil {
 			return err
 		}
+		if a.afterCompactBase != nil {
+			a.afterCompactBase()
+		}
+		// The checkpoint gets its own fence: a rollback since the selection has
+		// rewritten it, and a stale cutoff over that would hide acknowledged updates.
 		if cutoff > m.cp {
-			if err := a.store.put(ctx, a.layout.CheckpointName(room), be32(cutoff)); err != nil {
+			g, err := a.store.putIfGeneration(ctx, a.layout.CheckpointName(room), be32(cutoff), cpGen)
+			if errors.Is(err, errGenerationMoved) {
+				a.log.Warn("gcs compact: the checkpoint moved since the selection, leaving it for the next run",
+					"room", room, "cutoff", cutoff)
+				return errStateMoved
+			}
+			if err != nil {
 				return err
 			}
+			cpGen = g
+		}
+		if a.afterCompactPublish != nil {
+			a.afterCompactPublish()
+		}
+		// Deletes cannot be undone, so confirm both objects are still the ones this
+		// run wrote before removing anything they fold in.
+		moved, err := a.compactPublishMoved(ctx, room, baseGen, cpGen)
+		if err != nil {
+			return err
+		}
+		if moved {
+			a.log.Warn("gcs compact: doc_v2 or the checkpoint moved after publishing, deleting nothing",
+				"room", room, "cutoff", cutoff)
+			return errStateMoved
 		}
 		for i := 0; i < foldUpto; i++ {
 			if err := a.store.delete(ctx, updates[clocks[i]]); err != nil {
@@ -148,6 +192,36 @@ func (a *Adapter) Compact(ctx context.Context, room string, keep int) (int, erro
 		return nil
 	})
 	return deleted, err
+}
+
+// sameObjects reports whether two update listings name the same objects.
+func sameObjects(a, b map[uint32]string) bool {
+	if len(a) != len(b) {
+		return false
+	}
+	for c, n := range a {
+		if b[c] != n {
+			return false
+		}
+	}
+	return true
+}
+
+// compactPublishMoved reports whether doc_v2 or the checkpoint changed after
+// Compact wrote them, which a holder that took over a lapsed lease can do.
+func (a *Adapter) compactPublishMoved(ctx context.Context, room DocID, baseGen, cpGen int64) (bool, error) {
+	v2, err := a.store.generation(ctx, a.layout.DocV2Name(room))
+	if err != nil {
+		return false, err
+	}
+	if baseGen != 0 && v2 != baseGen {
+		return true, nil
+	}
+	cg, err := a.store.generation(ctx, a.layout.CheckpointName(room))
+	if err != nil {
+		return false, err
+	}
+	return cg != cpGen, nil
 }
 
 // compactToCheckpoint is the every-10th-clock inline compaction: rewrite the

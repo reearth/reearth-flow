@@ -189,6 +189,9 @@ type storedState struct {
 	updates      map[uint32]string
 	checkpointed []uint32
 	folded       bool
+	// marks are the ones this read validated, so a caller that chose what to fold
+	// or delete beforehand can check its choice still describes this state.
+	marks marks
 }
 
 // marks are the checkpoint, the rollback ceiling and doc_v2's generation. Every
@@ -287,12 +290,12 @@ func (a *Adapter) readStateUpTo(ctx context.Context, room DocID, oid uint32, upT
 	if !hasBase && len(updates) == 0 && a.fallback != nil {
 		legacy, err := a.materializeLegacy(ctx, room)
 		if err != nil || len(legacy) == 0 {
-			return storedState{doc: doc, empty: true, v2Gen: before.v2Gen}, err
+			return storedState{doc: doc, empty: true, v2Gen: before.v2Gen, marks: m}, err
 		}
 		if err := crdt.ApplyUpdateV1(doc, legacy, nil); err != nil {
 			return storedState{}, err
 		}
-		return storedState{doc: doc, head: legacyHeadClock(ctx, a, room), v2Gen: before.v2Gen}, nil
+		return storedState{doc: doc, head: legacyHeadClock(ctx, a, room), v2Gen: before.v2Gen, marks: m}, nil
 	}
 
 	clocks := sortedClocks(updates)
@@ -321,7 +324,7 @@ func (a *Adapter) readStateUpTo(ctx context.Context, room DocID, oid uint32, upT
 		readObjects = true
 		head = c
 	}
-	st := storedState{doc: doc, head: head, v2Gen: before.v2Gen, updates: updates, checkpointed: clocksUpTo(clocks, m.cp)}
+	st := storedState{doc: doc, head: head, v2Gen: before.v2Gen, updates: updates, checkpointed: clocksUpTo(clocks, m.cp), marks: m}
 	if !hasBase && !readObjects {
 		st.empty = true
 		return st, nil
@@ -422,7 +425,8 @@ func (a *Adapter) writeUnionOnce(ctx context.Context, room DocID, oid uint32, ca
 	} else if st.empty {
 		return nil
 	}
-	return a.writeV2DocIf(ctx, room, oid, st.doc, st.v2Gen)
+	_, err = a.writeV2DocIf(ctx, room, oid, st.doc, st.v2Gen)
+	return err
 }
 
 // AppendUpdate persists one incremental V1 update at clock+1 and returns the

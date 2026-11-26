@@ -245,3 +245,189 @@ func TestCompact_LeavesAbandonedUpdatesOutOfTheCutoff(t *testing.T) {
 		}
 	}
 }
+
+// seedCompactRace appends "a".."o" as clocks 1..15; the tenth trips the inline
+// compaction, so the checkpoint sits at 10 with every clock still on disk. It
+// returns the oid and the state at clock 12 that a rollback would publish.
+func seedCompactRace(t *testing.T, a *Adapter, room string) (uint32, []byte) {
+	t.Helper()
+	ctx := context.Background()
+	doc := crdt.New(crdt.WithClientID(21))
+	txt := doc.GetText("t")
+	var prev []byte
+	for i := 0; i < 15; i++ {
+		doc.Transact(func(txn *crdt.Transaction) { txt.Insert(txn, txt.Len(), string(rune('a'+i)), nil) })
+		full := crdt.EncodeStateAsUpdateV1(doc, nil)
+		inc := full
+		if prev != nil {
+			d, err := crdt.DiffUpdateV1(full, svOf(t, prev))
+			if err != nil {
+				t.Fatalf("DiffUpdateV1: %v", err)
+			}
+			inc = d
+		}
+		if _, err := a.AppendUpdate(ctx, room, inc); err != nil {
+			t.Fatalf("AppendUpdate: %v", err)
+		}
+		prev = full
+	}
+	oid, err := a.oidFor(ctx, room)
+	if err != nil {
+		t.Fatalf("oidFor: %v", err)
+	}
+	if cp, _ := a.checkpoint(ctx, room); cp != 10 {
+		t.Fatalf("setup: checkpoint = %d, want 10", cp)
+	}
+	rolled, err := a.MaterializeAt(ctx, room, persistence.Version(12))
+	if err != nil {
+		t.Fatalf("MaterializeAt(12): %v", err)
+	}
+	return oid, rolled
+}
+
+func assertClocksPresent(t *testing.T, a *Adapter, room string, oid uint32, upTo uint32) {
+	t.Helper()
+	updates, err := a.listUpdates(context.Background(), room, oid)
+	if err != nil {
+		t.Fatalf("listUpdates: %v", err)
+	}
+	for c := uint32(1); c <= upTo; c++ {
+		if _, ok := updates[c]; !ok {
+			t.Errorf("clock %d was deleted by a compaction that should have stood down", c)
+		}
+	}
+}
+
+// TestCompact_StandsDownWhenARollbackLandsBeforeItsRead: a rollback that died
+// after writing doc_v2 and the ceiling, but before the checkpoint, leaves the
+// checkpoint's generation untouched. Only rechecking the selection against the
+// state Compact then reads catches it; otherwise the checkpoint passes the ceiling.
+func TestCompact_StandsDownWhenARollbackLandsBeforeItsRead(t *testing.T) {
+	t.Parallel()
+	ctx := context.Background()
+	client, bucket := newFakeGCS(t)
+	a, err := New(Options{Client: client, Bucket: bucket, Locker: NewNoLock()})
+	if err != nil {
+		t.Fatalf("New: %v", err)
+	}
+	const room = "race-select"
+	oid, rolled := seedCompactRace(t, a, room)
+
+	fired := false
+	a.afterCompactSelect = func() {
+		if fired {
+			return
+		}
+		fired = true
+		if err := a.writeV2Snapshot(ctx, room, oid, rolled); err != nil {
+			t.Errorf("crashed rollback, doc_v2: %v", err)
+		}
+		if err := a.store.put(ctx, a.ceilingName(room), be32(12)); err != nil {
+			t.Errorf("crashed rollback, ceiling: %v", err)
+		}
+	}
+
+	if _, err := a.Compact(ctx, room, 2); !errors.Is(err, errStateMoved) {
+		t.Errorf("Compact = %v, want errStateMoved", err)
+	}
+	if cp, _ := a.checkpoint(ctx, room); cp > 12 {
+		t.Errorf("checkpoint = %d, past the rollback ceiling 12", cp)
+	}
+	assertClocksPresent(t, a, room, oid, 12)
+}
+
+// TestCompact_DoesNotPublishOverARollbacksCheckpoint: a holder whose lease
+// lapsed after its base write must not publish its stale cutoff over the
+// checkpoint a rollback set meanwhile; Load would skip acknowledged updates.
+func TestCompact_DoesNotPublishOverARollbacksCheckpoint(t *testing.T) {
+	t.Parallel()
+	ctx := context.Background()
+	client, bucket := newFakeGCS(t)
+	a, err := New(Options{Client: client, Bucket: bucket, Locker: NewNoLock()})
+	if err != nil {
+		t.Fatalf("New: %v", err)
+	}
+	const room = "race-publish"
+	oid, rolled := seedCompactRace(t, a, room)
+
+	fired := false
+	a.afterCompactBase = func() {
+		if fired {
+			return
+		}
+		fired = true
+		if err := a.PruneAfter(ctx, room, persistence.Version(12), rolled); err != nil {
+			t.Errorf("PruneAfter: %v", err)
+		}
+	}
+
+	if _, err := a.Compact(ctx, room, 2); !errors.Is(err, errStateMoved) {
+		t.Errorf("Compact = %v, want errStateMoved", err)
+	}
+	if cp, _ := a.checkpoint(ctx, room); cp != 12 {
+		t.Errorf("checkpoint = %d, want the rollback's 12", cp)
+	}
+	assertClocksPresent(t, a, room, oid, 12)
+}
+
+// TestCompact_DeletesNothingOnceThePublishIsOvertaken: after the checkpoint
+// publish, another holder rolls back and appends, reusing clock 13's name. The
+// deletes go by the stale listing, so without a last check they would delete
+// that new edit without it ever reaching the base.
+func TestCompact_DeletesNothingOnceThePublishIsOvertaken(t *testing.T) {
+	t.Parallel()
+	ctx := context.Background()
+	client, bucket := newFakeGCS(t)
+	a, err := New(Options{Client: client, Bucket: bucket, Locker: NewNoLock()})
+	if err != nil {
+		t.Fatalf("New: %v", err)
+	}
+	const room = "race-delete"
+	_, rolled := seedCompactRace(t, a, room)
+
+	fired := false
+	a.afterCompactPublish = func() {
+		if fired {
+			return
+		}
+		fired = true
+		if err := a.PruneAfter(ctx, room, persistence.Version(12), rolled); err != nil {
+			t.Errorf("PruneAfter: %v", err)
+		}
+		d := crdt.New(crdt.WithClientID(99))
+		if err := crdt.ApplyUpdateV1(d, rolled, nil); err != nil {
+			t.Errorf("apply rolled: %v", err)
+			return
+		}
+		sv := d.StateVector()
+		txt := d.GetText("t")
+		d.Transact(func(txn *crdt.Transaction) { txt.Insert(txn, txt.Len(), "Z", nil) })
+		inc, err := crdt.DiffUpdateV1(crdt.EncodeStateAsUpdateV1(d, nil), sv)
+		if err != nil {
+			t.Errorf("diff: %v", err)
+			return
+		}
+		v, err := a.AppendUpdate(ctx, room, inc)
+		if err != nil {
+			t.Errorf("AppendUpdate: %v", err)
+		}
+		if v != 13 {
+			t.Errorf("setup: the post-rollback edit took clock %d, want 13 (reusing the stale name)", v)
+		}
+	}
+
+	if _, err := a.Compact(ctx, room, 2); !errors.Is(err, errStateMoved) {
+		t.Errorf("Compact = %v, want errStateMoved", err)
+	}
+	lr, err := a.Load(ctx, room)
+	if err != nil {
+		t.Fatalf("Load: %v", err)
+	}
+	got := crdt.New()
+	if err := crdt.ApplyUpdateV1(got, lr.Update, nil); err != nil {
+		t.Fatalf("ApplyUpdateV1: %v", err)
+	}
+	if s := got.GetText("t").ToString(); s != "abcdefghijklZ" {
+		t.Errorf("Load text = %q, want %q: the edit after the rollback was deleted", s, "abcdefghijklZ")
+	}
+}

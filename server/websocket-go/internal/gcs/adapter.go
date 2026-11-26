@@ -59,6 +59,15 @@ type Adapter struct {
 	// beforeV2Write, when set, runs in writeV2DocIf before its conditional
 	// doc_v2 write (test injection only).
 	beforeV2Write func()
+	// afterCompactSelect, when set, runs in Compact between choosing the cutoff
+	// and reading the state it folds (test injection only).
+	afterCompactSelect func()
+	// afterCompactBase, when set, runs in Compact between the base write and the
+	// checkpoint publish (test injection only).
+	afterCompactBase func()
+	// afterCompactPublish, when set, runs in Compact between the checkpoint
+	// publish and the deletes (test injection only).
+	afterCompactPublish func()
 
 	// oidCache memoizes allocated OIDs per room. Phase 2 pins OID=0.
 	oidCache map[string]uint32
@@ -387,13 +396,17 @@ func (a *Adapter) writeV2Doc(ctx context.Context, room DocID, oid uint32, doc *c
 
 // writeV2DocIf is writeV2Doc, but writes nothing and returns errGenerationMoved
 // once doc_v2 is no longer at generation gen (0 for absent).
-func (a *Adapter) writeV2DocIf(ctx context.Context, room DocID, oid uint32, doc *crdt.Doc, gen int64) error {
-	return a.writeV2DocWith(ctx, room, oid, doc, func(name string, b []byte) (int64, error) {
+func (a *Adapter) writeV2DocIf(ctx context.Context, room DocID, oid uint32, doc *crdt.Doc, gen int64) (int64, error) {
+	var wrote int64
+	err := a.writeV2DocWith(ctx, room, oid, doc, func(name string, b []byte) (int64, error) {
 		if a.beforeV2Write != nil {
 			a.beforeV2Write()
 		}
-		return a.store.putIfGeneration(ctx, name, b, gen)
+		g, err := a.store.putIfGeneration(ctx, name, b, gen)
+		wrote = g
+		return g, err
 	})
+	return wrote, err
 }
 
 func (a *Adapter) writeV2DocWith(ctx context.Context, room DocID, oid uint32, doc *crdt.Doc, putV2 func(name string, b []byte) (int64, error)) error {
