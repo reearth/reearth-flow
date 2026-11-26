@@ -23,7 +23,7 @@ const UNLOCK_HOVER_DELAY = 1000;
 
 const LockedBadge: React.FC<Props> = ({ reason, onUnlock }) => {
   const t = useT();
-  const canUnlock = reason === "locked";
+  const canUnlock = reason === "locked" && !!onUnlock;
   const [isUnlockReady, setIsUnlockReady] = useState(false);
   const timerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
@@ -98,7 +98,7 @@ const LockedBadge: React.FC<Props> = ({ reason, onUnlock }) => {
             "col-start-1 row-start-1 w-fit justify-self-start transition-opacity duration-300",
             isUnlockReady ? "opacity-0" : "opacity-100",
           )}>
-          {canUnlock ? t("Locked") : t("Read only")}
+          {reason === "locked" ? t("Locked") : t("Read only")}
         </span>
         <span
           ref={unlockLabelRef}

@@ -28,8 +28,7 @@ import {
 } from "@flow/global-constants";
 import { useWorkflowImport } from "@flow/hooks";
 import { useT } from "@flow/lib/i18n";
-import { useCurrentUserRole } from "@flow/stores";
-import { Role } from "@flow/types";
+import { usePermissions } from "@flow/lib/permissions";
 
 import {
   CreatorFilter,
@@ -46,7 +45,7 @@ import useProjectImportFromFile from "./useProjectImportFromFile";
 
 const ProjectsManager: React.FC = () => {
   const t = useT();
-  const [currentUserRole] = useCurrentUserRole();
+  const permissions = usePermissions();
   const {
     projects,
     ref,
@@ -96,7 +95,7 @@ const ProjectsManager: React.FC = () => {
     handleVariableMappingConfirm,
     handleVariableMappingCancel,
   } = useWorkflowImport();
-  const readonly = currentUserRole === Role.Reader;
+  const readonly = !permissions.manageProjects;
   return (
     <div className="flex h-full flex-1 flex-col">
       <div className="flex flex-1 flex-col gap-4 overflow-scroll pt-4 pr-3 pb-2 pl-2">

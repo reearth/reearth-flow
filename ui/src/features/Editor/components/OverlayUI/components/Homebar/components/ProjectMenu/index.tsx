@@ -26,12 +26,8 @@ import {
 } from "@flow/features/WorkspaceProjects/components";
 import { useProject } from "@flow/lib/gql";
 import { useT } from "@flow/lib/i18n";
-import {
-  useCurrentProject,
-  useCurrentUserRole,
-  useCurrentWorkspace,
-} from "@flow/stores";
-import { Role } from "@flow/types";
+import { usePermissions } from "@flow/lib/permissions";
+import { useCurrentProject, useCurrentWorkspace } from "@flow/stores";
 import type { Project, Workspace } from "@flow/types";
 
 const ProjectMenu: React.FC = () => {
@@ -39,7 +35,7 @@ const ProjectMenu: React.FC = () => {
   const navigate = useNavigate();
   const [currentProject] = useCurrentProject();
   const [currentWorkspace] = useCurrentWorkspace();
-  const [currentUserRole] = useCurrentUserRole();
+  const { manageProjects } = usePermissions();
   const { useGetWorkspaceProjects } = useProject();
   const { page } = useGetWorkspaceProjects(currentWorkspace?.id);
   const { handleNewWorkspace, workspaceAddDialog } = useNewWorkspace();
@@ -47,8 +43,6 @@ const ProjectMenu: React.FC = () => {
   const [open, setOpen] = useState(false);
   const [openProjectAddDialog, setOpenProjectAddDialog] = useState(false);
   const [openProjectEditDialog, setOpenProjectEditDialog] = useState(false);
-
-  const canEdit = currentUserRole !== Role.Reader;
 
   const handleProjectSelect = (project: Project) => {
     if (project.id === currentProject?.id) return;
@@ -102,7 +96,7 @@ const ProjectMenu: React.FC = () => {
                   ))}
                 </div>
               </ScrollArea>
-              {canEdit && (
+              {manageProjects && (
                 <>
                   <DropdownMenuSeparator className="mx-0 my-0" />
                   <DropdownMenuItem
@@ -115,7 +109,7 @@ const ProjectMenu: React.FC = () => {
               )}
             </DropdownMenuSubContent>
           </DropdownMenuSub>
-          {canEdit && (
+          {manageProjects && (
             <DropdownMenuItem
               className={menuRowClass}
               onClick={() => setOpenProjectEditDialog(true)}>

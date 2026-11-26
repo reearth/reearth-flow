@@ -7,8 +7,8 @@ import {
   isRestrictedWorkspace,
 } from "@flow/hooks/useRestrictedWorkspaces";
 import { useUser, useWorkspace } from "@flow/lib/gql";
+import { roleOf } from "@flow/lib/permissions";
 import { useCurrentUserRole, useCurrentWorkspace } from "@flow/stores";
-import type { UserMember } from "@flow/types";
 
 import NotFoundPage from "../NotFound";
 
@@ -41,10 +41,7 @@ const WorkspaceIdWrapper: React.FC<Props> = ({ children }) => {
     !!workspace &&
     isRestrictedWorkspace(workspace, policy?.canCreatePrivateProject);
 
-  const userMembers = workspace?.members as UserMember[];
-  const userRole = userMembers?.find(
-    (m) => "userId" in m && m.userId === me?.id,
-  )?.role;
+  const userRole = roleOf(workspace, me?.id);
 
   useEffect(() => {
     if (!isRestricted || !me?.myWorkspaceId) return;
