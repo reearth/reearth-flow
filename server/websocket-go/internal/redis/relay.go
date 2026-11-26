@@ -13,6 +13,7 @@ import (
 	"github.com/reearth/ygo/cluster"
 
 	"github.com/reearth/reearth-flow/websocket-go/internal/latency"
+	"github.com/reearth/reearth-flow/websocket-go/internal/relaypolicy"
 )
 
 // ErrRelayClosed is returned by Publish after Close.
@@ -136,6 +137,12 @@ type roomState struct {
 	// lastID is the per-reader stream cursor, advanced past self-filtered entries.
 	lastID string
 
+	// outboundGap is set once an update for this room failed to reach the stream,
+	// so other instances may lack it until they reload the room. gapWarned keeps
+	// the warning to one per room.
+	outboundGap bool
+	gapWarned   bool
+
 	// caughtUp is closed once the reader has replayed the stream as it stood
 	// when the room was activated; done when the reader stops.
 	caughtUp chan struct{}
@@ -235,11 +242,43 @@ func (r *Relay) Publish(_ context.Context, out cluster.Outbound) error {
 	case rs.writeCh <- item:
 		r.mu.Unlock()
 	default:
+		// Blocking here would stall ygo's lane worker, so the update is dropped and
+		// the room flagged for repair from storage, where ygo has already persisted it.
+		r.markGapLocked(out.Room, rs, "write queue full", nil)
 		r.mu.Unlock()
 		r.droppedWrites.Add(1)
-		r.log.Debug("relay write queue full, dropping update", "room", out.Room, "kind", out.Kind.String())
 	}
 	return nil
+}
+
+// markGap records that an update for the room did not reach the stream. It warns
+// once per room; droppedWrites counts every loss.
+func (r *Relay) markGap(room string, rs *roomState, reason string, err error) {
+	r.mu.Lock()
+	defer r.mu.Unlock()
+	r.markGapLocked(room, rs, reason, err)
+}
+
+func (r *Relay) markGapLocked(room string, rs *roomState, reason string, err error) {
+	rs.outboundGap = true
+	if rs.gapWarned {
+		return
+	}
+	rs.gapWarned = true
+	args := []any{"room", room, "reason", reason}
+	if err != nil {
+		args = append(args, "err", err)
+	}
+	r.log.Warn("relay lost an update; instances holding the room miss it until they reload the room", args...)
+}
+
+// OutboundGap reports whether an update for a room this instance holds failed to
+// reach the other instances holding it.
+func (r *Relay) OutboundGap(room string) bool {
+	r.mu.Lock()
+	defer r.mu.Unlock()
+	rs, ok := r.rooms[room]
+	return ok && rs.outboundGap
 }
 
 // DroppedWrites returns the cumulative count of outbound updates dropped on a full
@@ -421,11 +460,15 @@ func (r *Relay) catchUp(ctx context.Context, room string, sink cluster.Sink) (st
 		}
 		for _, m := range msgs {
 			e := parseEntry(m, r.clientID)
-			lastID = e.id
-			if e.isSelf {
-				continue
+			if !e.isSelf {
+				switch r.inject(ctx, room, sink, e, false) { // catch-up: replay depth, not latency
+				case relaypolicy.Stop:
+					return "", context.Cause(ctx)
+				case relaypolicy.Retry:
+					return "", errInjectRetry
+				}
 			}
-			r.inject(ctx, room, sink, e, false) // catch-up: replay depth, not latency
+			lastID = e.id
 		}
 		if len(msgs) < readCount {
 			return lastID, nil
@@ -593,20 +636,36 @@ func (r *Relay) readLoop(ctx context.Context, room string, rs *roomState, sink c
 		}
 
 		newLast := from
+		held := false
 		// Drain the batch in order; all injects complete before the cursor advances.
+		// The cursor stops before an entry the room could not take yet: the stream
+		// keeps it until every reader's advertised cursor has passed it.
+	batch:
 		for _, stream := range res {
 			for _, m := range stream.Messages {
 				e := parseEntry(m, r.clientID)
-				newLast = e.id // advance past self/filtered too
-				if e.isSelf {
-					continue
+				if !e.isSelf {
+					switch r.inject(ctx, room, sink, e, true) {
+					case relaypolicy.Stop:
+						return
+					case relaypolicy.Retry:
+						held = true
+						break batch
+					}
 				}
-				r.inject(ctx, room, sink, e, true)
+				newLast = e.id // past applied, skipped and self/filtered entries
 			}
 		}
 		r.mu.Lock()
 		rs.lastID = newLast
 		r.mu.Unlock()
+		if held {
+			select {
+			case <-ctx.Done():
+				return
+			case <-time.After(readBackoff):
+			}
+		}
 	}
 }
 
@@ -639,8 +698,13 @@ func (r *Relay) replayIfAsked(ctx context.Context, room string, rs *roomState, s
 	}
 }
 
-// inject routes a parsed sync/awareness entry to the sink.
-func (r *Relay) inject(ctx context.Context, room string, sink cluster.Sink, e parsedEntry, measure bool) {
+// errInjectRetry reports an entry the room could not take yet; the reader keeps
+// its cursor before it and reads it again.
+var errInjectRetry = errors.New("relay: an entry could not be injected yet")
+
+// inject routes a parsed sync/awareness entry to the sink and reports what the
+// reader should do with it.
+func (r *Relay) inject(ctx context.Context, room string, sink cluster.Sink, e parsedEntry, measure bool) relaypolicy.InjectOutcome {
 	var kind cluster.Kind
 	switch e.kind {
 	case kindSync:
@@ -648,19 +712,26 @@ func (r *Relay) inject(ctx context.Context, room string, sink cluster.Sink, e pa
 	case kindAwareness:
 		kind = cluster.KindAwareness
 	default:
-		return // empty markers / unknown types are no-ops
+		return relaypolicy.Applied // empty markers / unknown types are no-ops
 	}
 	if len(e.data) == 0 {
-		return
+		return relaypolicy.Applied
 	}
-	// Measure only live deliveries. Catch-up replays entries that may be hours old,
-	// and their age is replay depth, not the latency a remote editor experienced.
-	if measure {
-		r.latency.Observe(e.age)
+	err := sink.Inject(ctx, cluster.Inbound{Room: room, Kind: kind, Data: e.data})
+	outcome := relaypolicy.ClassifyInject(ctx, err)
+	switch outcome {
+	case relaypolicy.Applied:
+		// Measure only live deliveries. Catch-up replays entries that may be hours
+		// old, and their age is replay depth, not the latency a remote editor saw.
+		if measure {
+			r.latency.Observe(e.age)
+		}
+	case relaypolicy.Skip:
+		r.log.Warn("relay skipped an entry the room cannot apply", "room", room, "kind", kind.String(), "err", err)
+	case relaypolicy.Retry:
+		r.log.Debug("relay inject failed; reading the entry again", "room", room, "kind", kind.String(), "err", err)
 	}
-	if err := sink.Inject(ctx, cluster.Inbound{Room: room, Kind: kind, Data: e.data}); err != nil {
-		r.log.Debug("relay inject failed", "room", room, "kind", kind.String(), "err", err)
-	}
+	return outcome
 }
 
 // heartbeatLoop refreshes this node's liveness every 30s.
@@ -692,26 +763,40 @@ func (r *Relay) writeLoop(ctx context.Context, room string, rs *roomState) {
 			r.drainRemaining(room, key, rs)
 			return
 		case first := <-rs.writeCh:
-			batch := r.collectBatch(rs, first)
-			// The batch is off the queue, so drainRemaining will not see it. Write
-			// it even when RoomDeactivated cancels ctx meanwhile: a room's last
-			// edits are published just before it is deactivated, and losing them
-			// leaves every later edit that builds on them unappliable elsewhere.
-			wctx, cancel := context.WithTimeout(context.WithoutCancel(ctx), writeTimeout)
-			err := pipelineXAdd(wctx, r.client, key, r.clientID, batch)
-			cancel()
-			if err != nil {
-				r.droppedWrites.Add(uint64(len(batch)))
-				r.log.Warn("relay batched XADD failed; instances holding the room miss these updates until they reload it",
-					"room", room, "count", len(batch), "err", err)
-			}
+			batch := r.collectBatch(room, rs, first)
+			r.writeWithRetry(ctx, room, key, rs, batch)
 		}
+	}
+}
+
+// writeWithRetry writes a batch, retrying a failure before the writer takes
+// anything else off the queue so this instance's order in the stream holds. Once
+// every attempt fails the batch is dropped and the room flagged.
+//
+// The batch is off the queue, so drainRemaining will not see it. It is written
+// even when RoomDeactivated cancels ctx meanwhile: a room's last edits are
+// published just before it is deactivated, and losing them leaves every later
+// edit that builds on them unappliable elsewhere.
+func (r *Relay) writeWithRetry(ctx context.Context, room, key string, rs *roomState, batch []writeItem) {
+	for attempt := 0; ; attempt++ {
+		wctx, cancel := context.WithTimeout(context.WithoutCancel(ctx), writeTimeout)
+		err := pipelineXAdd(wctx, r.client, key, r.clientID, batch)
+		cancel()
+		if err == nil {
+			return
+		}
+		if attempt == len(relaypolicy.WriteRetryDelays) {
+			r.droppedWrites.Add(uint64(len(batch)))
+			r.markGap(room, rs, "batched XADD failed after retries", err)
+			return
+		}
+		time.Sleep(relaypolicy.WriteRetryDelays[attempt])
 	}
 }
 
 // collectBatch accumulates queued items of the same kind as first, up to that
 // kind's cap, stopping at a kind boundary or when the queue drains.
-func (r *Relay) collectBatch(rs *roomState, first writeItem) []writeItem {
+func (r *Relay) collectBatch(room string, rs *roomState, first writeItem) []writeItem {
 	limit := batchCap(first.kind)
 	batch := make([]writeItem, 0, limit)
 	batch = append(batch, first)
@@ -721,7 +806,7 @@ func (r *Relay) collectBatch(rs *roomState, first writeItem) []writeItem {
 			if it.kind != first.kind {
 				// Kind boundary: flush what we have, requeue this for its own batch.
 				out := batch
-				r.requeue(rs, it)
+				r.requeue(room, rs, it)
 				return out
 			}
 			batch = append(batch, it)
@@ -734,11 +819,12 @@ func (r *Relay) collectBatch(rs *roomState, first writeItem) []writeItem {
 
 // requeue puts an item back at the tail of the queue, non-blocking; a full channel
 // drops + counts.
-func (r *Relay) requeue(rs *roomState, it writeItem) {
+func (r *Relay) requeue(room string, rs *roomState, it writeItem) {
 	select {
 	case rs.writeCh <- it:
 	default:
 		r.droppedWrites.Add(1)
+		r.markGap(room, rs, "write queue full", nil)
 	}
 }
 
