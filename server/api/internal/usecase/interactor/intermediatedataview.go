@@ -7,6 +7,7 @@ import (
 	"time"
 
 	accountsid "github.com/reearth/reearth-accounts/server/pkg/id"
+	"github.com/reearth/reearth-flow/api/internal/adapter"
 	"github.com/reearth/reearth-flow/api/internal/rbac"
 	"github.com/reearth/reearth-flow/api/internal/usecase/gateway"
 	"github.com/reearth/reearth-flow/api/internal/usecase/interfaces"
@@ -116,7 +117,7 @@ func (i *IntermediateDataView) Render(
 	// the worker nothing. The slot is taken before the previous report is
 	// cleared, so a refused retry leaves that report's outcome in place, and
 	// it is given back however the render ends, a failed clear included.
-	done, err := i.planLimits.startRender(ctx, source.Workspace())
+	done, err := i.planLimits.startRender(ctx, source.Workspace(), adapter.User(ctx))
 	if err != nil {
 		return nil, err
 	}

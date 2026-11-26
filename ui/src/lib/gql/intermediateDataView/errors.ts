@@ -25,6 +25,7 @@ const KINDS_BY_CODE: Record<string, IntermediateDataViewErrorKind> = {
   INTERMEDIATE_DATA_NOT_FOUND: "dataNotFound",
   OPERATION_DENIED: "permissionDenied",
   VIEW_WORKERS_BUSY: "workersBusy",
+  VIEW_RENDER_LIMIT_REACHED: "renderLimitReached",
 };
 
 // An API from before the codes sends message text only, each starting with
@@ -35,10 +36,6 @@ const KINDS_BY_MESSAGE_PREFIX: [string, IntermediateDataViewErrorKind][] = [
   ["job has not finished", "jobNotFinished"],
   ["intermediate data not found", "dataNotFound"],
   ["operation denied", "permissionDenied"],
-  [
-    "this workspace already has as many views rendering as its plan allows",
-    "renderLimitReached",
-  ],
 ];
 
 export const toIntermediateDataViewError = (
