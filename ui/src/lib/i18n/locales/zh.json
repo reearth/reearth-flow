@@ -297,6 +297,8 @@
   "Are you sure you want to stop the workflow's debug run?": "您确定要停止工作流的调试运行吗？",
   "Stop": "停止",
   "Clear debug run and results": "清除调试运行和结果",
+  "Clear debug run?": "清除调试运行？",
+  "This removes the debug run's results and intermediate data from the canvas, and resets debug run variable values to their defaults. To see the results again you will need to run the workflow again.": "这将从画布中移除调试运行的结果和中间数据，并将调试运行的变量值重置为默认值。如需再次查看结果，需要重新运行工作流。",
   "Debug Cache is Stale": "调试缓存已过期",
   "Start debug run of workflow": "开始工作流的调试运行",
   "Stop debug run of workflow": "停止工作流的调试运行",

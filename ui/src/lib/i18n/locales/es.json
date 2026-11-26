@@ -299,6 +299,8 @@
   "Are you sure you want to stop the workflow's debug run?": "¿Estás seguro de que deseas detener la ejecución de depuración del flujo de trabajo?",
   "Stop": "Detener",
   "Clear debug run and results": "Borrar ejecución de depuración y resultados",
+  "Clear debug run?": "¿Borrar la ejecución de depuración?",
+  "This removes the debug run's results and intermediate data from the canvas, and resets debug run variable values to their defaults. To see the results again you will need to run the workflow again.": "Esto elimina del lienzo los resultados y los datos intermedios de la ejecución de depuración, y restablece los valores de las variables de depuración a sus valores predeterminados. Para volver a ver los resultados tendrás que ejecutar el flujo de trabajo de nuevo.",
   "Debug Cache is Stale": "La caché de depuración está obsoleta",
   "Start debug run of workflow": "Iniciar ejecución de depuración del flujo de trabajo",
   "Stop debug run of workflow": "Detener ejecución de depuración del flujo de trabajo",

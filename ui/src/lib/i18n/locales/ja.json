@@ -297,6 +297,8 @@
   "Are you sure you want to stop the workflow's debug run?": "ワークフローのデバッグ実行を停止しますか？",
   "Stop": "停止",
   "Clear debug run and results": "デバッグ実行と結果をクリア",
+  "Clear debug run?": "デバッグ実行をクリアしますか？",
+  "This removes the debug run's results and intermediate data from the canvas, and resets debug run variable values to their defaults. To see the results again you will need to run the workflow again.": "デバッグ実行の結果と中間データをキャンバスから削除し、デバッグ実行用の変数の値をデフォルトに戻します。結果を再度表示するには、ワークフローを再実行する必要があります。",
   "Debug Cache is Stale": "デバッグキャッシュが古くなっています",
   "Start debug run of workflow": "ワークフローのデバッグ実行を開始",
   "Stop debug run of workflow": "ワークフローのデバッグ実行を停止",
