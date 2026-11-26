@@ -26,6 +26,7 @@ var errorCodes = []struct {
 	{interfaces.ErrViewsUnavailable, "VIEWS_UNAVAILABLE"},
 	{interfaces.ErrRenderTimedOut, "VIEW_RENDER_TIMED_OUT"},
 	{interfaces.ErrViewWorkersBusy, "VIEW_WORKERS_BUSY"},
+	{interfaces.ErrConcurrentRenderLimit, "VIEW_RENDER_LIMIT_REACHED"},
 	{interfaces.ErrProjectLocked, "PROJECT_LOCKED"},
 }
 

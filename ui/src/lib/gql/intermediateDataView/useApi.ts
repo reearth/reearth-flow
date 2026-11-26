@@ -76,7 +76,7 @@ export const useIntermediateDataView = () => {
         );
       case "renderLimitReached":
         return t(
-          "This workspace is already rendering as many views as its plan allows. Try again when one finishes.",
+          "You already have as many views rendering as this workspace's plan allows. Try again when one finishes.",
         );
       case "workersBusy":
         return t(

@@ -21,8 +21,9 @@ const (
 	// PolicyCheckAssetSize asks whether the workspace may upload an asset of
 	// Value bytes.
 	PolicyCheckAssetSize PolicyCheckType = "flow_asset_size"
-	// PolicyCheckConcurrentRenderCount asks whether the workspace may have
-	// Value intermediate-data renders in progress at once, counting the new one.
+	// PolicyCheckConcurrentRenderCount asks whether a member of the workspace
+	// may have Value intermediate-data renders in progress at once, counting the
+	// new one.
 	PolicyCheckConcurrentRenderCount PolicyCheckType = "flow_concurrent_render_count"
 	// PolicyCheckDebugConcurrentRunCount asks whether the workspace may have
 	// Value debug runs pending or running at once, counting the new one.
