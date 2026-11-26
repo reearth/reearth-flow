@@ -779,16 +779,96 @@ func (a *Adapter) MaterializeAt(ctx context.Context, room string, v persistence.
 	if err := a.validate(room); err != nil {
 		return nil, err
 	}
+	target := uint32(v)
+	rs, err := a.readRebuildState(ctx, room)
+	if err != nil {
+		return nil, err
+	}
+	// Phase-2 dual-read: a legacy-only room materializes from the legacy root,
+	// mirroring Load, so a rollback never overwrites it with an empty snapshot.
+	if rs.legacyOnly {
+		return a.materializeLegacy(ctx, room)
+	}
+	// Its callers write the result somewhere durable, so a version that cannot be
+	// rebuilt exactly is refused rather than handed over as a fragment.
+	if err := a.rebuildRefusal(ctx, room, rs, target); err != nil {
+		a.log.Warn("gcs materialize: refusing a version that cannot be rebuilt exactly",
+			"room", room, "version", target, "err", err)
+		return nil, err
+	}
+	base := rs.m.covers().clock
+
+	var parts [][]byte
+	// CRDT merge is idempotent, so folding the base plus replayed updates never
+	// double-applies.
+	if base <= target {
+		if v1, ok, err := a.loadV2(ctx, room); err != nil {
+			return nil, err
+		} else if ok {
+			parts = append(parts, v1)
+		} else {
+			if b, err := a.store.get(ctx, a.layout.DocStateName(room, rs.oid)); err == nil {
+				parts = append(parts, b)
+			} else if err != errNotFound {
+				return nil, err
+			}
+		}
+	}
+	for _, c := range rs.clocks {
+		if c > target {
+			break
+		}
+		if base <= target && c <= base {
+			continue // already in the base snapshot
+		}
+		b, err := a.store.get(ctx, rs.updates[c])
+		if err != nil {
+			return nil, err
+		}
+		parts = append(parts, b)
+	}
+	if len(parts) == 0 {
+		return nil, nil // empty state
+	}
+	doc := crdt.New()
+	for _, p := range parts {
+		if err := crdt.ApplyUpdateV1(doc, p, nil); err != nil {
+			return nil, err
+		}
+	}
+	var checkpointed []uint32
+	if base <= target {
+		checkpointed = clocksUpTo(rs.clocks, base)
+	}
+	if _, err := a.foldParked(ctx, room, doc, rs.updates, checkpointed); err != nil {
+		return nil, err
+	}
+	if ps := doc.PendingStats(); ps.Items > 0 {
+		a.log.Debug("gcs materialize: state holds parked items; an edit they build on is missing from storage",
+			"room", room, "version", target, "parked", ps.Items, "awaiting_clients", len(ps.MissingFor))
+	}
+	return crdt.EncodeStateAsUpdateV1(doc, nil), nil
+}
+
+// rebuildState is what deciding a rebuild needs, read once so the recovery
+// list and a rebuild judge every version by the same stored state.
+type rebuildState struct {
+	oid uint32
+	// legacyOnly means the primary prefix holds nothing and the room is rebuilt
+	// from the legacy root.
+	legacyOnly bool
+	m          marks
+	updates    map[uint32]string
+	clocks     []uint32
+	// imported is asked at most once, and only when a version needs it.
+	imported *bool
+}
+
+func (a *Adapter) readRebuildState(ctx context.Context, room string) (*rebuildState, error) {
 	oid, err := a.oidFor(ctx, room)
 	if err != nil {
 		return nil, err
 	}
-	target := uint32(v)
-
-	// Phase-2 dual-read: when the primary prefix holds nothing (no doc_v2, no v1
-	// base, no updates) the state lives in the legacy root. Reconstruct it there,
-	// mirroring Load — otherwise a legacy-only room materializes empty and a
-	// rollback overwrites its real content with an empty snapshot.
 	if a.fallback != nil {
 		_, hasPrimaryV2, err := a.loadPrimaryV2(ctx, room)
 		if err != nil {
@@ -807,127 +887,102 @@ func (a *Adapter) MaterializeAt(ctx context.Context, room string, v persistence.
 			}
 		}
 		if !hasPrimaryV2 && len(primaryBase) == 0 && len(primaryUpdates) == 0 {
-			return a.materializeLegacy(ctx, room)
+			return &rebuildState{oid: oid, legacyOnly: true}, nil
 		}
 	}
-
 	m, err := a.readMarks(ctx, room)
 	if err != nil {
 		return nil, err
 	}
-	cp := m.cp
-	// The base is usable for a version only if it holds nothing past it. The
-	// checkpoint used to stand in for that, but a flush or snapshot from the store
-	// rewrites doc_v2 without moving the checkpoint, so recorded coverage decides.
-	cov := m.covers()
-	base := cov.clock
-
-	var parts [][]byte
-	// Include the base snapshot when the checkpoint is at or below target. The
-	// base is folded whenever a doc_v2 (or v1 SUB_DOC) exists, NOT only when
-	// cp>0: a legacy-only/backfilled/flushed room has a real base at checkpoint 0,
-	// and gating on cp>0 dropped it — materializing empty and letting a rollback
-	// overwrite real content with an empty snapshot. CRDT merge is idempotent, so
-	// folding the full base plus replayed updates never double-applies.
-	if base <= target {
-		if v1, ok, err := a.loadV2(ctx, room); err != nil {
-			return nil, err
-		} else if ok {
-			parts = append(parts, v1)
-		} else {
-			if b, err := a.store.get(ctx, a.layout.DocStateName(room, oid)); err == nil {
-				parts = append(parts, b)
-			} else if err != errNotFound {
-				return nil, err
-			}
-		}
+	// Mid-rollback, doc_v2, the ceiling and the checkpoint may disagree, and a
+	// rebuild from that mix would be written somewhere durable.
+	if m.rolling {
+		return nil, errStateMoved
 	}
-	// else target < checkpoint: base is past target, replay updates 0..target only.
-
 	updates, err := a.listUpdates(ctx, room, oid)
 	if err != nil {
 		return nil, err
 	}
-	clocks := sortedClocks(updates)
+	return &rebuildState{oid: oid, m: m, updates: updates, clocks: sortedClocks(updates)}, nil
+}
+
+// rebuildRefusal reports why target cannot be rebuilt exactly from rs, or nil
+// when it can. A refusal is a *notRebuildable.
+func (a *Adapter) rebuildRefusal(ctx context.Context, room string, rs *rebuildState, target uint32) error {
+	if rs.legacyOnly {
+		return nil
+	}
+	// The base is usable for a version only if it holds nothing past it. The
+	// checkpoint used to stand in for that, but a flush or snapshot from the store
+	// rewrites doc_v2 without moving the checkpoint, so recorded coverage decides.
+	cov := rs.m.covers()
+	base := cov.clock
 	// A live base can hold edits that raced its flush and only reached the log at
 	// later clocks, so used for a version below the head it can run past it.
 	if base <= target && cov.live {
 		head := base
-		visible := clocks
-		if m.hasCeil {
-			visible = clocksUpTo(visible, m.ceil)
+		visible := rs.clocks
+		if rs.m.hasCeil {
+			visible = clocksUpTo(visible, rs.m.ceil)
 		}
 		if n := len(visible); n > 0 && visible[n-1] > head {
 			head = visible[n-1]
 		}
 		if target < head {
-			err := &notRebuildable{detail: fmt.Sprintf(
+			return &notRebuildable{detail: fmt.Sprintf(
 				"version %d is below the head %d, and the base was flushed from a live room that can hold later edits", target, head)}
-			a.log.Warn("gcs materialize: refusing a version a live base can overtake",
-				"room", room, "version", target, "covers", base, "head", head)
-			return nil, err
 		}
 	}
-	// The base was left out above, so the update objects are the only source for
-	// this version. A compaction that folded the oldest ones into a base already
-	// past target leaves a log that cannot rebuild it: refuse rather than hand a
-	// fragment to a caller that will write it over doc_v2.
-	if base > target {
-		if err := ensureReplayComplete(clocks, target); err != nil {
-			a.log.Warn("gcs materialize: refusing a version the update log can no longer rebuild",
-				"room", room, "version", target, "checkpoint", cp, "err", err)
-			return nil, err
-		}
-		// A contiguous log from clock 1 rebuilds the whole document only when the
-		// document started empty. Backfill copies the legacy root into doc_v2 and
-		// writes no update objects, so that content rides in the excluded base alone.
+	if base <= target {
+		return nil
+	}
+	// The base is left out, so the update objects are the only source for this
+	// version, and a compaction may have folded the oldest ones away.
+	if err := ensureReplayComplete(rs.clocks, target); err != nil {
+		return err
+	}
+	// A contiguous log from clock 1 rebuilds the whole document only when the
+	// document started empty. Backfill copies the legacy root into doc_v2 and
+	// writes no update objects, so that content rides in the excluded base alone.
+	if rs.imported == nil {
 		imported, err := a.hasImportedBase(ctx, room)
 		if err != nil {
-			return nil, err
+			return err
 		}
-		if imported {
-			rerr := &notRebuildable{detail: fmt.Sprintf(
-				"version %d is below what the base covers (%d), and this room's base was imported from the legacy layout, which no update object carries",
-				target, base)}
-			a.log.Warn("gcs materialize: refusing a version below an imported base",
-				"room", room, "version", target, "checkpoint", cp)
-			return nil, rerr
-		}
+		rs.imported = &imported
 	}
-	for _, c := range clocks {
-		if c > target {
-			break
-		}
-		if base <= target && c <= base {
-			continue // already in the base snapshot
-		}
-		b, err := a.store.get(ctx, updates[c])
-		if err != nil {
-			return nil, err
-		}
-		parts = append(parts, b)
+	if *rs.imported {
+		return &notRebuildable{detail: fmt.Sprintf(
+			"version %d is below what the base covers (%d), and this room's base was imported from the legacy layout, which no update object carries",
+			target, base)}
 	}
-	if len(parts) == 0 {
-		return nil, nil // empty state
-	}
-	doc := crdt.New()
-	for _, p := range parts {
-		if err := crdt.ApplyUpdateV1(doc, p, nil); err != nil {
-			return nil, err
-		}
-	}
-	var checkpointed []uint32
-	if base <= target {
-		checkpointed = clocksUpTo(clocks, base)
-	}
-	if _, err := a.foldParked(ctx, room, doc, updates, checkpointed); err != nil {
+	return nil
+}
+
+// RebuildableVersions reports which of versions MaterializeAt can rebuild
+// exactly, judging all of them by one read of the stored state.
+func (a *Adapter) RebuildableVersions(ctx context.Context, room string, versions []persistence.Version) (map[persistence.Version]bool, error) {
+	if err := a.validate(room); err != nil {
 		return nil, err
 	}
-	if ps := doc.PendingStats(); ps.Items > 0 {
-		a.log.Debug("gcs materialize: state holds parked items; an edit they build on is missing from storage",
-			"room", room, "version", target, "parked", ps.Items, "awaiting_clients", len(ps.MissingFor))
+	rs, err := a.readRebuildState(ctx, room)
+	if err != nil {
+		return nil, err
 	}
-	return crdt.EncodeStateAsUpdateV1(doc, nil), nil
+	out := make(map[persistence.Version]bool, len(versions))
+	for _, v := range versions {
+		err := a.rebuildRefusal(ctx, room, rs, uint32(v))
+		var nr *notRebuildable
+		switch {
+		case err == nil:
+			out[v] = true
+		case errors.As(err, &nr):
+			out[v] = false
+		default:
+			return nil, err
+		}
+	}
+	return out, nil
 }
 
 // CaptureSnapshot stores a named snapshot of state and returns the current head

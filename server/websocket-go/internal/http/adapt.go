@@ -20,6 +20,7 @@ type Persistence interface {
 	ListVersions(ctx context.Context, room string) ([]persistence.VersionMeta, error)
 	GetUpdate(ctx context.Context, room string, v persistence.Version) ([]byte, persistence.VersionMeta, bool, error)
 	MaterializeAt(ctx context.Context, room string, v persistence.Version) ([]byte, error)
+	RebuildableVersions(ctx context.Context, room string, versions []persistence.Version) (map[persistence.Version]bool, error)
 	PruneAfter(ctx context.Context, room string, target persistence.Version, rolledBack []byte) error
 	CaptureSnapshot(ctx context.Context, room, name string, state []byte) (persistence.Version, error)
 	Delete(ctx context.Context, room string) error
@@ -102,6 +103,22 @@ func (s *StoreAdapter) GetUpdate(ctx context.Context, room string, v uint64) ([]
 
 func (s *StoreAdapter) MaterializeAt(ctx context.Context, room string, v uint64) ([]byte, error) {
 	return s.p.MaterializeAt(ctx, room, persistence.Version(v))
+}
+
+func (s *StoreAdapter) RebuildableVersions(ctx context.Context, room string, versions []uint64) (map[uint64]bool, error) {
+	vs := make([]persistence.Version, len(versions))
+	for i, v := range versions {
+		vs[i] = persistence.Version(v)
+	}
+	got, err := s.p.RebuildableVersions(ctx, room, vs)
+	if err != nil {
+		return nil, err
+	}
+	out := make(map[uint64]bool, len(got))
+	for v, ok := range got {
+		out[uint64(v)] = ok
+	}
+	return out, nil
 }
 
 func (s *StoreAdapter) PruneAfter(ctx context.Context, room string, target uint64, rolledBack []byte) error {

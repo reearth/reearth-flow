@@ -25,9 +25,11 @@ type fakeStore struct {
 	materialized []byte
 	// materializeErr, when set, is returned by MaterializeAt instead of materialized.
 	materializeErr error
-	rolledBack     bool
-	prunedTarget   uint64
-	flushed        bool
+	// unrebuildable marks versions RebuildableVersions reports as not rebuildable.
+	unrebuildable map[uint64]bool
+	rolledBack    bool
+	prunedTarget  uint64
+	flushed       bool
 	// captureSnapshotCalled must stay false: the snapshot endpoint is read-only.
 	captureSnapshotCalled bool
 	copied                [2]string // [dst, src]
@@ -76,6 +78,13 @@ func (f *fakeStore) MaterializeAt(ctx context.Context, room string, v uint64) ([
 		return nil, f.materializeErr
 	}
 	return f.materialized, nil
+}
+func (f *fakeStore) RebuildableVersions(ctx context.Context, room string, versions []uint64) (map[uint64]bool, error) {
+	out := make(map[uint64]bool, len(versions))
+	for _, v := range versions {
+		out[v] = !f.unrebuildable[v]
+	}
+	return out, nil
 }
 func (f *fakeStore) PruneAfter(ctx context.Context, room string, target uint64, rolledBack []byte) error {
 	f.rolledBack = true
@@ -208,6 +217,55 @@ func TestGetHistory(t *testing.T) {
 	if len(items) != 2 || items[0].Version != 2 {
 		t.Fatalf("items = %+v", items)
 	}
+}
+
+// TestGetHistory_ListsOnlyRebuildableVersions: the recovery view used to list
+// entries the store could not rebuild, and reverting to one wiped the project.
+// Both lists now carry only what preview and rollback will accept.
+func TestGetHistory_ListsOnlyRebuildableVersions(t *testing.T) {
+	t.Parallel()
+
+	newStore := func() *fakeStore {
+		return &fakeStore{
+			versions: []VersionInfo{
+				{Version: 3, UpdatedAt: time.Unix(0, 0).UTC()},
+				{Version: 2, UpdatedAt: time.Unix(0, 0).UTC()},
+				{Version: 1, UpdatedAt: time.Unix(0, 0).UTC()},
+			},
+			updateAt:      map[uint64][]byte{1: {9}, 2: {8}, 3: {7}},
+			unrebuildable: map[uint64]bool{1: true, 2: true},
+		}
+	}
+
+	t.Run("history", func(t *testing.T) {
+		t.Parallel()
+		rec := do(t, newTestRouter(newStore()), "GET", "/api/document/proj1/history", "")
+		if rec.Code != 200 {
+			t.Fatalf("status = %d, body=%s", rec.Code, rec.Body.String())
+		}
+		var items []DocumentResponse
+		if err := json.Unmarshal(rec.Body.Bytes(), &items); err != nil {
+			t.Fatalf("decode: %v", err)
+		}
+		if len(items) != 1 || items[0].Version != 3 {
+			t.Errorf("items = %+v, want only version 3", items)
+		}
+	})
+
+	t.Run("metadata", func(t *testing.T) {
+		t.Parallel()
+		rec := do(t, newTestRouter(newStore()), "GET", "/api/document/proj1/history/metadata", "")
+		if rec.Code != 200 {
+			t.Fatalf("status = %d, body=%s", rec.Code, rec.Body.String())
+		}
+		var items []HistoryMetadataItem
+		if err := json.Unmarshal(rec.Body.Bytes(), &items); err != nil {
+			t.Fatalf("decode: %v", err)
+		}
+		if len(items) != 1 || items[0].Version != 3 {
+			t.Errorf("items = %+v, want only version 3", items)
+		}
+	})
 }
 
 func TestGetHistoryMetadata(t *testing.T) {

@@ -68,6 +68,8 @@ type DocStore interface {
 	GetUpdate(ctx context.Context, room string, v uint64) ([]byte, VersionInfo, bool, error)
 	// MaterializeAt rebuilds the full state at v.
 	MaterializeAt(ctx context.Context, room string, v uint64) ([]byte, error)
+	// RebuildableVersions reports which versions MaterializeAt can rebuild.
+	RebuildableVersions(ctx context.Context, room string, versions []uint64) (map[uint64]bool, error)
 	// PruneAfter persists the rolled-back state and prunes updates > target.
 	PruneAfter(ctx context.Context, room string, target uint64, rolledBack []byte) error
 	// Flush forces a GCS snapshot of the room's current state.
@@ -196,6 +198,9 @@ func (r *router) getLatest(w http.ResponseWriter, req *http.Request) {
 func (r *router) getHistory(w http.ResponseWriter, req *http.Request) {
 	id := req.PathValue("id")
 	versions, err := r.store.ListVersions(req.Context(), id)
+	if err == nil {
+		versions, err = r.rebuildable(req.Context(), id, versions)
+	}
 	if err != nil {
 		r.fail(w, "history failed", err, "doc", id)
 		return
@@ -223,6 +228,9 @@ func (r *router) getHistory(w http.ResponseWriter, req *http.Request) {
 func (r *router) getHistoryMetadata(w http.ResponseWriter, req *http.Request) {
 	id := req.PathValue("id")
 	versions, err := r.store.ListVersions(req.Context(), id)
+	if err == nil {
+		versions, err = r.rebuildable(req.Context(), id, versions)
+	}
 	if err != nil {
 		r.fail(w, "history metadata failed", err, "doc", id)
 		return
@@ -235,6 +243,26 @@ func (r *router) getHistoryMetadata(w http.ResponseWriter, req *http.Request) {
 		})
 	}
 	writeJSON(w, http.StatusOK, items)
+}
+
+// rebuildable keeps only the versions the store can rebuild exactly, so the
+// recovery list offers nothing that preview and rollback would then refuse.
+func (r *router) rebuildable(ctx context.Context, id string, versions []VersionInfo) ([]VersionInfo, error) {
+	vs := make([]uint64, len(versions))
+	for i, v := range versions {
+		vs[i] = v.Version
+	}
+	ok, err := r.store.RebuildableVersions(ctx, id, vs)
+	if err != nil {
+		return nil, err
+	}
+	out := make([]VersionInfo, 0, len(versions))
+	for _, v := range versions {
+		if ok[v.Version] {
+			out = append(out, v)
+		}
+	}
+	return out, nil
 }
 
 func (r *router) getHistoryByVersion(w http.ResponseWriter, req *http.Request) {

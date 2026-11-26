@@ -198,3 +198,56 @@ func TestCoverage_AStoreCheckpointPastTheFlushClearsLive(t *testing.T) {
 		t.Errorf("MaterializeAt(11) = %q, want %q", s, "abcdefghijk")
 	}
 }
+
+// TestRebuildableVersions_AgreesWithMaterializeAt: the recovery list and the
+// rebuild must not disagree, so every listed version is judged both ways. The
+// room carries both kinds of refusal: entries the trimmed log no longer reaches,
+// and entries a live base overtakes.
+func TestRebuildableVersions_AgreesWithMaterializeAt(t *testing.T) {
+	t.Parallel()
+	ctx := context.Background()
+	a := newCoverageAdapter(t)
+	const room = "agree"
+	appendLetters(t, a, room, 15, func(clock int, full []byte) {
+		if clock == 12 {
+			if err := a.FlushSnapshot(ctx, room, full); err != nil {
+				t.Fatalf("FlushSnapshot: %v", err)
+			}
+		}
+	})
+	if _, err := a.Compact(ctx, room, 5); err != nil {
+		t.Fatalf("Compact: %v", err)
+	}
+
+	metas, err := a.ListVersions(ctx, room)
+	if err != nil {
+		t.Fatalf("ListVersions: %v", err)
+	}
+	vs := make([]persistence.Version, len(metas))
+	for i, m := range metas {
+		vs[i] = m.Version
+	}
+	ok, err := a.RebuildableVersions(ctx, room, vs)
+	if err != nil {
+		t.Fatalf("RebuildableVersions: %v", err)
+	}
+
+	var listed, refused int
+	for _, v := range vs {
+		_, merr := a.MaterializeAt(ctx, room, v)
+		if merr != nil && !errors.Is(merr, ErrVersionNotRebuildable) {
+			t.Fatalf("MaterializeAt(%d): unexpected %v", v, merr)
+		}
+		if ok[v] != (merr == nil) {
+			t.Errorf("version %d: listed=%v but MaterializeAt err=%v", v, ok[v], merr)
+		}
+		if ok[v] {
+			listed++
+		} else {
+			refused++
+		}
+	}
+	if listed == 0 || refused == 0 {
+		t.Fatalf("setup: %d listed and %d refused; want both kinds present", listed, refused)
+	}
+}
