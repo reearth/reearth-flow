@@ -1059,7 +1059,7 @@ Classifies a numeric attribute by looking its value up in a table of ranges and 
 ### Type
 * processor
 ### Description
-Copies values between nested map/list attribute paths, following a table of source/destination path pairs keyed by a feature type attribute. A source path handles lists explicitly with steps such as `[]`, `[*]` and `[n]`. A destination path with more than one segment creates nested maps as needed.
+Copies values between nested map/list attribute paths, following a table of source/destination path pairs. The table is either one list of pairs applied to every feature, or, when a feature type attribute is set, lists keyed by that attribute's value. A source path handles lists explicitly with steps such as `[]`, `[*]` and `[n]`. A destination path with more than one segment creates nested maps as needed.
 ### Parameters
 ```json
 {
@@ -1070,7 +1070,7 @@ Copies values between nested map/list attribute paths, following a table of sour
   "properties": {
     "dataset": {
       "title": "Dataset URI",
-      "description": "Path or URI of a JSON file holding the extraction table. Provide either this or Inline Table.",
+      "description": "Path or URI of a JSON file holding the extraction table, in the same shape as Inline Table. Provide either this or Inline Table.",
       "type": [
         "object",
         "null"
@@ -1095,21 +1095,19 @@ Copies values between nested map/list attribute paths, following a table of sour
     },
     "inline": {
       "title": "Inline Table",
-      "description": "Extraction table given directly, keyed by feature type. Each key is a feature type name as it appears in the type attribute, and its value is the list of rules applied to features of that type. Provide either this or Dataset URI.",
-      "type": [
-        "object",
-        "null"
-      ],
-      "additionalProperties": {
-        "type": "array",
-        "items": {
-          "$ref": "#/definitions/ExtractRule"
+      "description": "Extraction table given directly. Without a Feature Type Attribute, a list of rules applied to every feature. With one, an object whose keys are values of that attribute and whose values are the rules applied to features with that value. Provide either this or Dataset URI.",
+      "anyOf": [
+        {
+          "$ref": "#/definitions/ExtractTable"
+        },
+        {
+          "type": "null"
         }
-      }
+      ]
     },
     "typeAttribute": {
       "title": "Feature Type Attribute",
-      "description": "Attribute whose value selects which rule set in the table applies to the feature. Defaults to `__citygml_feature_type`.",
+      "description": "Attribute whose value selects which rule list in the table applies to the feature. Leave unset to apply one rule list to every feature.",
       "type": [
         "string",
         "null"
@@ -1117,6 +1115,31 @@ Copies values between nested map/list attribute paths, following a table of sour
     }
   },
   "definitions": {
+    "ExtractTable": {
+      "title": "Extraction Table",
+      "description": "Either one list of rules applied to every feature, or rule lists keyed by the value of the Feature Type Attribute.",
+      "anyOf": [
+        {
+          "title": "Rules",
+          "description": "One list of rules applied to every feature.",
+          "type": "array",
+          "items": {
+            "$ref": "#/definitions/ExtractRule"
+          }
+        },
+        {
+          "title": "Rules by Feature Type",
+          "description": "Rule lists keyed by the value of the Feature Type Attribute.",
+          "type": "object",
+          "additionalProperties": {
+            "type": "array",
+            "items": {
+              "$ref": "#/definitions/ExtractRule"
+            }
+          }
+        }
+      ]
+    },
     "ExtractRule": {
       "title": "Extraction Rule",
       "description": "Moves one value from a source path to a destination path.\n\nBoth paths are chains of attribute keys separated by **spaces**, not dots — the keys themselves are qualified XML names such as `bldg:measuredHeight`, which may contain colons and dots but never whitespace.",

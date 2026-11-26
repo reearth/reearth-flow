@@ -24,6 +24,8 @@ graphs:
   - !include ../../../../graphs/plateau6/attribute_tree_pruner.yml
   - !include ../../../../graphs/plateau6/city_code_boundary_filter.yml
   - !include ../../../../graphs/plateau6/lod_splitter_with_dm.yml
+  - !include ../../../../graphs/plateau6/dm_attribute_mapper.yml
+  - !include ../../../../graphs/plateau6/dm_mvt_writer.yml
   - id: 03f58016-cf27-4313-ac53-36936af38bbb
     name: entry_point
     nodes:
@@ -63,6 +65,7 @@ graphs:
           # the types that can own geometry (core:AbstractThematicSurface in i-UR 4.0.2); the
           # five *DistrictPlan types cannot, and only hold the nested urf:DistrictDevelopmentPlan
           extractTags:
+            - urc:DmGeometricAttribute
             - urf:UnclassifiedBlankArea
             - urf:UnclassifiedUseDistrict
             - urf:Zone
@@ -179,6 +182,10 @@ graphs:
         action: Attribute Mapper
         with:
           mappers:
+            - attribute: __citygml_parent_gml_id
+              valueAttribute: __citygml_parent_gml_id
+            - attribute: __citygml_root_gml_id
+              valueAttribute: __citygml_root_gml_id
             - attribute: __citygml_gml_id
               valueAttribute: __citygml_gml_id
             - attribute: __citygml_feature_type
@@ -197,12 +204,19 @@ graphs:
         type: subGraph
         subGraphId: 833b0700-a741-4411-bfae-c310f7e3dc0c
 
+      # joins each extracted urc:DmGeometricAttribute back to its owner (see the subgraph)
+      - id: 0b4b16ae-c026-4ef8-9353-ae2730302d96
+        name: DmAttributeMapper
+        type: subGraph
+        subGraphId: 7632ce18-8fc0-4188-84ef-3a503911bdfa
+
       # top-level attributes, following plateau4's list; `attributes` keeps the full tree
       - id: d0740a7a-d5da-4f0e-a7d8-54cd324e2caa
         name: AttributeTableExtractor
         type: action
         action: Attribute Table Extractor
         with:
+          typeAttribute: __citygml_feature_type
           inline: !include ../../../../config/plateau6_urf_flat_attributes.json
 
       - id: 33e0069d-c5ba-4916-8443-f4d3db68a43f
@@ -404,6 +418,52 @@ graphs:
               });
               {"urf": result}
 
+      # DmGeometricAttribute features (DmAttributeMapper): own record in __dm, owner's attributes
+      - id: 32fe6807-8c22-4d04-abd1-050e349f92a4
+        name: FeatureFilterDmGeometricAttribute
+        type: action
+        action: Feature Filter
+        with:
+          conditions:
+            - expr:
+                type: flowExpr
+                value: type(attributes.get("__dm")) == dict
+              outputPort: dm
+
+      - id: c0b5ed6c-c3e2-4017-90c4-767e06c2e3c3
+        name: AttributeTableExtractorDmGeometricAttribute
+        type: action
+        action: Attribute Table Extractor
+        with:
+          inline: !include ../../../../config/plateau6_dm_flat_attributes.json
+
+      - id: 080cedc8-a614-4315-b059-157fa1e7a11e
+        name: AttributeOrderMapperDm
+        type: action
+        action: Attribute Mapper
+        with:
+          mappers:
+            - multipleExpr:
+                type: flowExpr
+                value: |
+                  out = {};
+                  for k in ["meshcode", "feature_type", "city_code", "city_name", "gml_id", "attributes"] {
+                    if k in attributes { out[k] = attributes[k]; }
+                  }
+                  group = attributes.get("__flat", {});
+                  for k in group.keys() { out[k] = group[k]; }
+                  for k in ["dm_dmCode", "dm_dmCode_code", "dm_geometryType", "dm_geometryType_code", "dm_mapLevel", "dm_mapLevel_code", "dm_shapeType", "dm_shapeType_code", "dm_attributes"] {
+                    if k in attributes { out[k] = attributes[k]; }
+                  }
+                  out
+            - attribute: __output_base
+              valueAttribute: __output_base
+
+      - id: 9dc6ea5f-5953-4132-a8aa-f42f16c0d43f
+        name: DmMvtWriter
+        type: subGraph
+        subGraphId: da5a2614-60e3-42c1-ab01-86e5d73a55e6
+
     edges:
       - id: 007005f7-7937-4f1a-b70a-8adf62f9cb50
         from: 3b883b51-ec40-4aa8-bcfe-0e89d474d573
@@ -437,6 +497,11 @@ graphs:
         toPort: features
       - id: 61845775-ce8e-4607-bd43-68ff21617a58
         from: d8ca5c9f-8340-45f9-9944-ab7ce39efe2d
+        to: 0b4b16ae-c026-4ef8-9353-ae2730302d96
+        fromPort: features
+        toPort: features
+      - id: 450bcaaf-1d2d-408c-9ae2-ca0db863bc6e
+        from: 0b4b16ae-c026-4ef8-9353-ae2730302d96
         to: d0740a7a-d5da-4f0e-a7d8-54cd324e2caa
         fromPort: features
         toPort: features
@@ -462,7 +527,27 @@ graphs:
         toPort: features
       - id: fdaee7c1-9994-4e3b-a747-1ddc02fb3c97
         from: c2f216a3-42f0-4079-83dc-301ec2884a8d
+        to: 32fe6807-8c22-4d04-abd1-050e349f92a4
+        fromPort: features
+        toPort: features
+      - id: f0a9f597-1ca2-497f-9feb-5541fdabba01
+        from: 32fe6807-8c22-4d04-abd1-050e349f92a4
         to: dcfa4775-a553-4cbb-9146-08207cd91b24
+        fromPort: unfiltered
+        toPort: features
+      - id: 7c304a2e-45d4-4da3-a029-f349971b49a6
+        from: 32fe6807-8c22-4d04-abd1-050e349f92a4
+        to: c0b5ed6c-c3e2-4017-90c4-767e06c2e3c3
+        fromPort: dm
+        toPort: features
+      - id: 79abc7f8-ff72-478a-b905-a2691391ac95
+        from: c0b5ed6c-c3e2-4017-90c4-767e06c2e3c3
+        to: 080cedc8-a614-4315-b059-157fa1e7a11e
+        fromPort: features
+        toPort: features
+      - id: d808cd6c-ad15-4346-9f4d-51159f245736
+        from: 080cedc8-a614-4315-b059-157fa1e7a11e
+        to: 9dc6ea5f-5953-4132-a8aa-f42f16c0d43f
         fromPort: features
         toPort: features
       - id: a26b80b9-02bf-4c34-89fe-0730360d36ca

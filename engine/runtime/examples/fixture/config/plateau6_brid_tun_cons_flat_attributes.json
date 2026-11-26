@@ -1,0 +1,100 @@
+{
+  "brid:Bridge": [
+    {
+      "destinationPath": "__flat core:creationDate",
+      "sourcePath": "__city_gml_attributes core:creationDate"
+    },
+    {
+      "destinationPath": "__flat brid:class",
+      "sourcePath": "__city_gml_attributes brid:class"
+    },
+    {
+      "destinationPath": "__flat brid:function",
+      "sourcePath": "__city_gml_attributes brid:function"
+    },
+    {
+      "destinationPath": "__flat brid:yearOfConstruction",
+      "sourcePath": "__city_gml_attributes con:dateOfConstruction"
+    },
+    {
+      "destinationPath": "__flat uro:surveyYear",
+      "sourcePath": "__city_gml_attributes con:adeOfAbstractConstruction [] [*] [uro:ConstructionRiskAssessmentAttribute] [0] uro:surveyYear"
+    },
+    {
+      "destinationPath": "__flat uro:riskType",
+      "sourcePath": "__city_gml_attributes con:adeOfAbstractConstruction [] [*] [uro:ConstructionRiskAssessmentAttribute] [0] uro:riskType"
+    },
+    {
+      "destinationPath": "__flat uro:status",
+      "sourcePath": "__city_gml_attributes con:adeOfAbstractConstruction [] [*] [uro:ConstructionRiskAssessmentAttribute] [0] uro:status"
+    },
+    {
+      "destinationPath": "__flat uro:referenceDate",
+      "sourcePath": "__city_gml_attributes con:adeOfAbstractConstruction [] [*] [uro:ConstructionRiskAssessmentAttribute] [0] uro:referenceDate"
+    },
+    {
+      "destinationPath": "__flat urc:geometrySrcDescLod1",
+      "sourcePath": "__city_gml_attributes core:adeOfAbstractCityObject [] [*] [urc:ExteriorDataQualityAttribute] [0] urc:geometrySrcDescLod1"
+    },
+    {
+      "destinationPath": "__flat urc:lodType",
+      "sourcePath": "__city_gml_attributes core:adeOfAbstractCityObject [] [*] [urc:ExteriorDataQualityAttribute] [0] urc:lodType"
+    }
+  ],
+  "tun:Tunnel": [
+    {
+      "destinationPath": "__flat core:creationDate",
+      "sourcePath": "__city_gml_attributes core:creationDate"
+    },
+    {
+      "destinationPath": "__flat tun:class",
+      "sourcePath": "__city_gml_attributes tun:class"
+    },
+    {
+      "destinationPath": "__flat tun:function",
+      "sourcePath": "__city_gml_attributes tun:function"
+    },
+    {
+      "destinationPath": "__flat tun:yearOfConstruction",
+      "sourcePath": "__city_gml_attributes con:dateOfConstruction"
+    },
+    {
+      "destinationPath": "__flat uro:surveyYear",
+      "sourcePath": "__city_gml_attributes con:adeOfAbstractConstruction [] [*] [uro:ConstructionRiskAssessmentAttribute] [0] uro:surveyYear"
+    },
+    {
+      "destinationPath": "__flat uro:riskType",
+      "sourcePath": "__city_gml_attributes con:adeOfAbstractConstruction [] [*] [uro:ConstructionRiskAssessmentAttribute] [0] uro:riskType"
+    },
+    {
+      "destinationPath": "__flat uro:status",
+      "sourcePath": "__city_gml_attributes con:adeOfAbstractConstruction [] [*] [uro:ConstructionRiskAssessmentAttribute] [0] uro:status"
+    },
+    {
+      "destinationPath": "__flat uro:referenceDate",
+      "sourcePath": "__city_gml_attributes con:adeOfAbstractConstruction [] [*] [uro:ConstructionRiskAssessmentAttribute] [0] uro:referenceDate"
+    },
+    {
+      "destinationPath": "__flat urc:geometrySrcDescLod1",
+      "sourcePath": "__city_gml_attributes core:adeOfAbstractCityObject [] [*] [urc:ExteriorDataQualityAttribute] [0] urc:geometrySrcDescLod1"
+    },
+    {
+      "destinationPath": "__flat urc:lodType",
+      "sourcePath": "__city_gml_attributes core:adeOfAbstractCityObject [] [*] [urc:ExteriorDataQualityAttribute] [0] urc:lodType"
+    }
+  ],
+  "con:OtherConstruction": [
+    {
+      "destinationPath": "__flat core:creationDate",
+      "sourcePath": "__city_gml_attributes core:creationDate"
+    },
+    {
+      "destinationPath": "__flat urc:geometrySrcDescLod1",
+      "sourcePath": "__city_gml_attributes core:adeOfAbstractCityObject [] [*] [urc:ExteriorDataQualityAttribute] [0] urc:geometrySrcDescLod1"
+    },
+    {
+      "destinationPath": "__flat urc:lodType",
+      "sourcePath": "__city_gml_attributes core:adeOfAbstractCityObject [] [*] [urc:ExteriorDataQualityAttribute] [0] urc:lodType"
+    }
+  ]
+}

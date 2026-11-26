@@ -1086,7 +1086,7 @@
     {
       "name": "Attribute Table Extractor",
       "type": "processor",
-      "description": "Copia valores entre rutas de atributos de tipo mapa o lista anidados, siguiendo una tabla de pares de rutas origen/destino indexada por un atributo de tipo de entidad. Una ruta de origen trata las listas de forma explícita con pasos como `[]`, `[*]` y `[n]`. Una ruta de destino con más de un segmento crea mapas anidados según sea necesario",
+      "description": "Copia valores entre rutas de atributos de tipo mapa o lista anidados, siguiendo una tabla de pares de rutas origen/destino. La tabla es una lista de pares aplicada a todas las entidades o, si se indica un atributo de tipo de entidad, listas indexadas por el valor de ese atributo. Una ruta de origen trata las listas de forma explícita con pasos como `[]`, `[*]` y `[n]`. Una ruta de destino con más de un segmento crea mapas anidados según sea necesario",
       "parameter": {
         "$schema": "http://json-schema.org/draft-07/schema#",
         "title": "Parámetros de Attribute Table Extractor",
@@ -1095,7 +1095,7 @@
         "properties": {
           "dataset": {
             "title": "URI del Conjunto de Datos",
-            "description": "Ruta o URI del archivo de tabla de extracción. Proporcione esto o datos en línea",
+            "description": "Ruta o URI de un archivo JSON con la tabla de extracción, con la misma forma que la Tabla en Línea. Proporcione esto o la Tabla en Línea",
             "type": [
               "object",
               "null"
@@ -1120,21 +1120,19 @@
           },
           "inline": {
             "title": "Tabla en Línea",
-            "description": "Contenido de la tabla de extracción proporcionado directamente como JSON. Se usa cuando no se proporciona una URI de conjunto de datos",
-            "type": [
-              "object",
-              "null"
-            ],
-            "additionalProperties": {
-              "type": "array",
-              "items": {
-                "$ref": "#/definitions/ExtractRule"
+            "description": "Tabla de extracción proporcionada directamente. Sin Atributo de Tipo de Entidad, una lista de reglas aplicada a todas las entidades. Con él, un objeto cuyas claves son valores de ese atributo y cuyos valores son las reglas aplicadas a las entidades con ese valor. Proporcione esto o la URI del Conjunto de Datos",
+            "anyOf": [
+              {
+                "$ref": "#/definitions/ExtractTable"
+              },
+              {
+                "type": "null"
               }
-            }
+            ]
           },
           "typeAttribute": {
             "title": "Atributo de Tipo de Entidad",
-            "description": "Atributo cuyo valor selecciona qué conjunto de reglas de la tabla se aplica a la entidad. Por defecto `__citygml_feature_type`",
+            "description": "Atributo cuyo valor selecciona qué lista de reglas de la tabla se aplica a la entidad. Déjelo sin definir para aplicar una sola lista de reglas a todas las entidades",
             "type": [
               "string",
               "null"
@@ -1142,6 +1140,31 @@
           }
         },
         "definitions": {
+          "ExtractTable": {
+            "title": "Extraction Table",
+            "description": "Either one list of rules applied to every feature, or rule lists keyed by the value of the Feature Type Attribute.",
+            "anyOf": [
+              {
+                "title": "Rules",
+                "description": "One list of rules applied to every feature.",
+                "type": "array",
+                "items": {
+                  "$ref": "#/definitions/ExtractRule"
+                }
+              },
+              {
+                "title": "Rules by Feature Type",
+                "description": "Rule lists keyed by the value of the Feature Type Attribute.",
+                "type": "object",
+                "additionalProperties": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/definitions/ExtractRule"
+                  }
+                }
+              }
+            ]
+          },
           "ExtractRule": {
             "title": "Extraction Rule",
             "description": "Moves one value from a source path to a destination path.\n\nBoth paths are chains of attribute keys separated by **spaces**, not dots — the keys themselves are qualified XML names such as `bldg:measuredHeight`, which may contain colons and dots but never whitespace.",

@@ -21,6 +21,7 @@ graphs:
   - !include ../../../../graphs/plateau6/city_code_boundary_filter.yml
   - !include ../../../../graphs/plateau6/lod_splitter_with_dm.yml
   - !include ../../../../graphs/plateau6/dm_mvt_writer.yml
+  - !include ../../../../graphs/plateau6/dm_attribute_mapper.yml
   - id: 6058bda7-db22-4c23-8c40-f8fcb91e6d22
     name: entry_point
     nodes:
@@ -57,9 +58,11 @@ graphs:
           cityGmlAttributesKey: __city_gml_attributes
           hoistAttributes:
             - uom
-          # urc:DmGeometricAttribute is deliberately not extracted: it stays in its owner's
-          # attribute tree, and its geometry rolls up into the owner as members.
+          # urc:DmGeometricAttribute is extracted, so each record keeps its own lod0Geometry;
+          # DmAttributeMapper puts the record back into its owner's tree and gives the DM feature
+          # the owner's attributes.
           extractTags:
+            - urc:DmGeometricAttribute
             - tran:AuxiliaryTrafficArea
             # - tran:AuxiliaryTrafficSpace
             # - tran:ClearanceSpace
@@ -133,17 +136,33 @@ graphs:
         type: subGraph
         subGraphId: 833b0700-a741-4411-bfae-c310f7e3dc0c
 
+      # joins each extracted urc:DmGeometricAttribute back to its owner (see the subgraph)
+      - id: 0f6893c9-553d-4d29-a8da-4d7c4f0ca3ee
+        name: DmAttributeMapper
+        type: subGraph
+        subGraphId: 7632ce18-8fc0-4188-84ef-3a503911bdfa
+
       - id: 12ae8af6-389c-4c70-85df-02e607edb34a
         name: LodSplitterWithDm
         type: subGraph
         subGraphId: c9694451-1158-4100-b171-3150faf3c4f8
+
+      - id: f5eb79fb-89c4-4e86-92e1-a37ead0ac15f
+        name: FeatureFilterDmForTableExtractor
+        type: action
+        action: Feature Filter
+        with:
+          conditions:
+            - expr:
+                type: flowExpr
+                value: type(attributes.get("__dm")) == dict
+              outputPort: dm
 
       - id: f5687fd3-3399-4f64-bad4-a0f0ffdd296a
         name: AttributeTableExtractorDmGeometricAttribute
         type: action
         action: Attribute Table Extractor
         with:
-          typeAttribute: __dm
           inline: !include ../../../../config/plateau6_dm_flat_attributes.json
 
       # like plateau4, the feature's full tree holds its ancestors' full trees (root first) under
@@ -222,6 +241,7 @@ graphs:
         type: action
         action: Attribute Table Extractor
         with:
+          typeAttribute: __citygml_feature_type
           inline: !include ../../../../config/plateau6_tran_flat_attributes.json
 
       - id: fd01991f-fc9d-4829-abd6-73079bd6e504
@@ -229,6 +249,7 @@ graphs:
         type: action
         action: Attribute Table Extractor
         with:
+          typeAttribute: __citygml_feature_type
           inline: !include ../../../../config/plateau6_squr_flat_attributes.json
 
       - id: 83e059ff-3d4c-4278-bef3-5e014ea89b32
@@ -236,6 +257,7 @@ graphs:
         type: action
         action: Attribute Table Extractor
         with:
+          typeAttribute: __citygml_feature_type
           inline: !include ../../../../config/plateau6_trk_flat_attributes.json
 
       - id: c0998e5f-67ef-48e5-84dd-047ffc9c42e3
@@ -243,6 +265,7 @@ graphs:
         type: action
         action: Attribute Table Extractor
         with:
+          typeAttribute: __citygml_feature_type
           inline: !include ../../../../config/plateau6_rwy_flat_attributes.json
 
       - id: d8f7167b-1fa4-4ecd-8209-b0234fca62b1
@@ -250,6 +273,7 @@ graphs:
         type: action
         action: Attribute Table Extractor
         with:
+          typeAttribute: __citygml_feature_type
           inline: !include ../../../../config/plateau6_wwy_flat_attributes.json
 
       - id: 36c60099-916a-47ce-9e50-cd33ee300cd7
@@ -446,7 +470,7 @@ graphs:
           conditions:
             - expr:
                 type: flowExpr
-                value: attributes["__dm"] != null
+                value: type(attributes.get("__dm")) == dict
               outputPort: features
 
       - id: 6475a47b-563b-417a-b65d-dbe54e0992f2
@@ -487,6 +511,11 @@ graphs:
         toPort: features
       - id: da14eb61-9639-401a-a9a4-3e100572e0ed
         from: a458769b-0703-46ab-bbed-ad1cd603ed8a
+        to: 0f6893c9-553d-4d29-a8da-4d7c4f0ca3ee
+        fromPort: features
+        toPort: features
+      - id: 2f1b62ee-c0f3-465d-be40-75f949ebbfa6
+        from: 0f6893c9-553d-4d29-a8da-4d7c4f0ca3ee
         to: 12ae8af6-389c-4c70-85df-02e607edb34a
         fromPort: features
         toPort: features
@@ -542,8 +571,18 @@ graphs:
         toPort: features
       - id: e5e5e012-e82e-4189-8780-d4dd68745bbb
         from: 12ae8af6-389c-4c70-85df-02e607edb34a
-        to: f5687fd3-3399-4f64-bad4-a0f0ffdd296a
+        to: f5eb79fb-89c4-4e86-92e1-a37ead0ac15f
         fromPort: features
+        toPort: features
+      - id: 91a87ce7-6db7-4fe0-92e6-526c893c8d5d
+        from: f5eb79fb-89c4-4e86-92e1-a37ead0ac15f
+        to: f5687fd3-3399-4f64-bad4-a0f0ffdd296a
+        fromPort: dm
+        toPort: features
+      - id: 608270bb-5582-4e01-8a45-bb7c5606490c
+        from: f5eb79fb-89c4-4e86-92e1-a37ead0ac15f
+        to: 3d2c4fa7-2f82-4ca1-92a4-e46757fa735c
+        fromPort: unfiltered
         toPort: features
       - id: 4fa18a79-e6f8-4611-a7b9-4af5a7f68880
         from: f5687fd3-3399-4f64-bad4-a0f0ffdd296a
