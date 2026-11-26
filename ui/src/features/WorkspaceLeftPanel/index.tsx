@@ -1,7 +1,6 @@
 import { useRouterState } from "@tanstack/react-router";
 
-import { useCurrentUserRole } from "@flow/stores";
-import { Role } from "@flow/types";
+import { usePermissions } from "@flow/lib/permissions";
 
 import { BottomSection, TopSection } from "./components";
 
@@ -26,12 +25,12 @@ const LeftPanel: React.FC = () => {
   } = useRouterState();
 
   const route: RouteOption = getRoute(pathname);
-  const [currentUserRole] = useCurrentUserRole();
+  const { viewMembers } = usePermissions();
   return (
     <div className="m-2 flex w-[280px] flex-col justify-between gap-[8px] rounded-xl border bg-secondary px-2 shadow-md shadow-secondary backdrop-blur-xs">
       <div className="flex flex-1 flex-col">
         <TopSection route={route} />
-        {currentUserRole !== Role.Reader && <BottomSection route={route} />}
+        {viewMembers && <BottomSection route={route} />}
       </div>
     </div>
   );

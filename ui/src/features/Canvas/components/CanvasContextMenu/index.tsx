@@ -22,6 +22,7 @@ import {
 } from "@flow/features/Editor/editorContext";
 import { useT } from "@flow/lib/i18n";
 import { useIndexedDB } from "@flow/lib/indexedDB";
+import { usePermissions } from "@flow/lib/permissions";
 import { useCurrentProject } from "@flow/stores";
 import type { Node, NodeChange } from "@flow/types";
 
@@ -79,6 +80,7 @@ const CanvasContextMenu: React.FC<Props> = ({
   const [currentProject] = useCurrentProject();
   const disabled = useIsReadOnly();
   const { canDebugRunFromNode } = useEditorContext();
+  const { runDebug } = usePermissions();
 
   const { value: debugRunState } = useIndexedDB("debugRun");
 
@@ -175,6 +177,7 @@ const CanvasContextMenu: React.FC<Props> = ({
                   onDebugRunStartFromSelectedNode?.(node, nodes),
                 ),
                 disabled:
+                  !runDebug ||
                   !debugRunJob ||
                   debugRunJob.status !== "completed" ||
                   (nodes?.length ?? 0) > 1 ||
@@ -207,6 +210,7 @@ const CanvasContextMenu: React.FC<Props> = ({
                   onDebugRunStartToSelectedNode?.(node, nodes),
                 ),
                 disabled:
+                  !runDebug ||
                   (nodes?.length ?? 0) > 1 ||
                   !node ||
                   node.type === "batch" ||
@@ -376,6 +380,7 @@ const CanvasContextMenu: React.FC<Props> = ({
     return items;
   }, [
     t,
+    runDebug,
     node,
     nodes,
     clipboardHasReadersOrWriters,

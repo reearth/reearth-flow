@@ -1,7 +1,8 @@
 import { ToolboxIcon, UsersThreeIcon } from "@phosphor-icons/react";
-import { useRouterState } from "@tanstack/react-router";
+import { Navigate, useParams, useRouterState } from "@tanstack/react-router";
 
 import { useT } from "@flow/lib/i18n";
+import { usePermissions } from "@flow/lib/permissions";
 
 import type { RouteOption } from "../WorkspaceLeftPanel";
 
@@ -11,6 +12,8 @@ type Tab = "general" | "integrations" | "members";
 
 const WorkspaceSettings: React.FC = () => {
   const t = useT();
+  const { viewMembers } = usePermissions();
+  const { workspaceId } = useParams({ strict: false });
   const {
     location: { pathname },
   } = useRouterState();
@@ -40,6 +43,16 @@ const WorkspaceSettings: React.FC = () => {
       component: <MembersSettings />,
     },
   ];
+
+  if (!viewMembers) {
+    return (
+      <Navigate
+        to="/workspaces/$workspaceId/projects"
+        params={{ workspaceId: workspaceId ?? "" }}
+        replace
+      />
+    );
+  }
 
   return (
     <div className="flex h-full flex-1 flex-col">

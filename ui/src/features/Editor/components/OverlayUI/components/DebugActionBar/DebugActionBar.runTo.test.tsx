@@ -3,6 +3,8 @@ import { beforeEach, describe, expect, test, vi } from "vitest";
 
 import { EditorProvider } from "@flow/features/Editor/editorContext";
 import type { EditorContextType } from "@flow/features/Editor/editorContext";
+import type * as PermissionsModule from "@flow/lib/permissions";
+import { Role } from "@flow/types";
 import type { Node } from "@flow/types";
 
 import DebugActionBar from "./index";
@@ -12,6 +14,14 @@ const state = {
   jobs: [] as { projectId: string; jobId: string; status?: string }[],
   nodes: [] as Node[],
 };
+
+vi.mock("@flow/lib/permissions", async (importOriginal) => {
+  const actual = await importOriginal<typeof PermissionsModule>();
+  return {
+    ...actual,
+    usePermissions: () => actual.permissionsFor(Role.Writer),
+  };
+});
 
 vi.mock("@flow/stores", async (importOriginal) => ({
   ...(await importOriginal<Record<string, unknown>>()),

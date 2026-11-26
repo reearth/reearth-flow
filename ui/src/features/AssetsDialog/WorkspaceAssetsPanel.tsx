@@ -17,6 +17,7 @@ import {
 import { ALLOWED_ASSET_IMPORT_EXTENSIONS } from "@flow/global-constants";
 import { useAssets } from "@flow/hooks";
 import { useT } from "@flow/lib/i18n";
+import { usePermissions } from "@flow/lib/permissions";
 import type { Asset } from "@flow/types";
 
 import {
@@ -78,6 +79,7 @@ const WorkspaceAssetsPanel: React.FC<Props> = ({
   } = useAssets({ workspaceId });
 
   const handleAssetDoubleClick = onAssetDoubleClick ?? setAssetToBeEdited;
+  const readonly = !usePermissions().manageAssets;
 
   return (
     <>
@@ -126,7 +128,7 @@ const WorkspaceAssetsPanel: React.FC<Props> = ({
         <Button
           variant="default"
           onClick={handleAssetUploadClick}
-          disabled={isCreatingAsset}>
+          disabled={isCreatingAsset || readonly}>
           <FileArrowUpIcon weight="thin" />
           <p className="text-xs dark:font-light">{t("Upload")}</p>
         </Button>
@@ -139,6 +141,7 @@ const WorkspaceAssetsPanel: React.FC<Props> = ({
             {layoutView === "list" ? (
               <AssetsListView
                 assets={assets}
+                readonly={readonly}
                 selectedAssetId={selectedAssetId}
                 isFetching={isFetching}
                 isDebouncingSearch={isDebouncingSearch}
@@ -157,6 +160,7 @@ const WorkspaceAssetsPanel: React.FC<Props> = ({
             ) : (
               <AssetsGridView
                 assets={assets}
+                readonly={readonly}
                 selectedAssetId={selectedAssetId}
                 isFetching={isFetching}
                 isDebouncingSearch={isDebouncingSearch}

@@ -13,9 +13,8 @@ import {
 import WorkflowVariablesRunDialog from "@flow/features/WorkflowVariablesRunDialog";
 import { DEPLOYMENT_FETCH_RATE } from "@flow/lib/gql/deployment/useQueries";
 import { useT } from "@flow/lib/i18n";
+import { usePermissions } from "@flow/lib/permissions";
 import type { AppColumnDef } from "@flow/lib/table/features";
-import { useCurrentUserRole } from "@flow/stores";
-import { Role } from "@flow/types";
 import type { Deployment } from "@flow/types";
 import { formatTimestamp } from "@flow/utils/timestamp";
 
@@ -30,8 +29,8 @@ import useHooks from "./hooks";
 
 const DeploymentManager: React.FC = () => {
   const t = useT();
-  const [currentUserRole] = useCurrentUserRole();
-  const readonly = currentUserRole === Role.Reader;
+  const permissions = usePermissions();
+  const readonly = !permissions.manageDeployments;
   const {
     deployments,
     selectedDeployment,

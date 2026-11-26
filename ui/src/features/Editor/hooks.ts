@@ -20,6 +20,7 @@ import {
   useProjectSave,
   useProjectShare,
 } from "@flow/hooks";
+import { usePermissions } from "@flow/lib/permissions";
 import {
   useAwarenessPresence,
   useSpotlightUser,
@@ -27,8 +28,7 @@ import {
 } from "@flow/lib/yjs";
 import type { YWorkflow } from "@flow/lib/yjs/types";
 import useWorkflowTabs from "@flow/lib/yjs/useWorkflowTabs";
-import { useCurrentProject, useCurrentUserRole } from "@flow/stores";
-import { Role } from "@flow/types";
+import { useCurrentProject } from "@flow/stores";
 import type { Algorithm, Direction, Edge, Node } from "@flow/types";
 import { toFinitePosition } from "@flow/utils/toFinitePosition";
 
@@ -56,7 +56,7 @@ export default ({
   ) => void;
 }) => {
   const { fitView } = useReactFlow();
-  const [currentUserRole] = useCurrentUserRole();
+  const permissions = usePermissions();
   const [currentWorkflowId, setCurrentWorkflowId] = useState<string>(
     DEFAULT_ENTRY_GRAPH_ID,
   );
@@ -225,7 +225,7 @@ export default ({
     recordDeployment,
   });
 
-  const isReaderRestricted = currentUserRole === Role.Reader;
+  const isReaderRestricted = !permissions.editWorkflow;
 
   const { isLocked, handleProjectLockChange } = useProjectLock({
     currentProject,
@@ -380,7 +380,7 @@ export default ({
             handleYWorkflowAddFromSelection(nodes, edges);
           break;
         case "l":
-          if (hasModifier && !isReaderRestricted)
+          if (hasModifier && permissions.lockProject)
             handleProjectLockChange?.(!isLocked);
           break;
         case "k":

@@ -7,10 +7,9 @@ import {
 } from "@flow/components";
 import { TRIGGERS_FETCH_RATE } from "@flow/lib/gql/trigger/useQueries";
 import { useT } from "@flow/lib/i18n";
+import { usePermissions } from "@flow/lib/permissions";
 import type { AppColumnDef } from "@flow/lib/table/features";
-import { useCurrentUserRole } from "@flow/stores";
 import type { Trigger } from "@flow/types";
-import { Role } from "@flow/types";
 import { formatTimestamp, getEventSourceLabel } from "@flow/utils";
 
 import {
@@ -23,8 +22,8 @@ import useHooks from "./hooks";
 
 const TriggerManager: React.FC = () => {
   const t = useT();
-  const [currentUserRole] = useCurrentUserRole();
-  const readonly = currentUserRole === Role.Reader;
+  const permissions = usePermissions();
+  const readonly = !permissions.manageTriggers;
   const {
     triggers,
     selectedTrigger,
