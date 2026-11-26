@@ -2493,6 +2493,24 @@
               }
             ]
           },
+          "quantizePointCloud": {
+            "title": "Cuantización de nubes de puntos",
+            "description": "Si las posiciones de las nubes de puntos se cuantizan a enteros de 16 bits (`KHR_mesh_quantization`) y con qué error máximo. Por defecto está activada con 0,01 m. Si está desactivada, las posiciones se escriben como flotantes de 32 bits.",
+            "default": {
+              "enabled": {}
+            },
+            "allOf": [
+              {
+                "$ref": "#/definitions/PointCloudQuantization"
+              }
+            ]
+          },
+          "meshoptCompressionForPointCloud": {
+            "title": "Compresión Meshopt para nubes de puntos",
+            "description": "Comprime las posiciones de las nubes de puntos con meshopt (`EXT_meshopt_compression`). Por defecto es true.",
+            "default": true,
+            "type": "boolean"
+          },
           "schemaKey": {
             "title": "Clave de Esquema",
             "description": "Clave de atributo cuyo valor identifica el tipo de esquema y determina el nombre del archivo de salida: todas las entidades que comparten el mismo valor se escriben en el mismo archivo. Este atributo se excluye de la salida.",
@@ -2542,7 +2560,7 @@
                     "type": "object",
                     "properties": {
                       "quantizationError": {
-                        "title": "Quantization Error",
+                        "title": "Error de cuantización",
                         "description": "Upper bound, in meters, on how far compression may move a vertex. Must be positive. When unset, the encoder's default resolution is used.",
                         "type": [
                           "number",
@@ -2597,6 +2615,46 @@
                 "enum": [
                   "Untextured"
                 ]
+              }
+            ]
+          },
+          "PointCloudQuantization": {
+            "description": "Whether point positions are quantized to 16-bit integers, and how precisely.",
+            "oneOf": [
+              {
+                "title": "Desactivada",
+                "description": "Escribe las posiciones de los puntos como flotantes de 32 bits.",
+                "type": "string",
+                "enum": [
+                  "disabled"
+                ]
+              },
+              {
+                "title": "Activada",
+                "description": "Cuantiza las posiciones de los puntos a enteros de 16 bits.",
+                "type": "object",
+                "required": [
+                  "enabled"
+                ],
+                "properties": {
+                  "enabled": {
+                    "type": "object",
+                    "properties": {
+                      "quantizationError": {
+                        "title": "Quantization Error",
+                        "description": "Límite superior, en metros, de cuánto puede desplazar la cuantización un punto. Debe ser positivo. Por defecto es 0,01. Si 16 bits no bastan para cubrir los puntos de una tesela con este error, el error se eleva al que sí lo permite.",
+                        "type": [
+                          "number",
+                          "null"
+                        ],
+                        "format": "double",
+                        "exclusiveMinimum": 0.0
+                      }
+                    },
+                    "additionalProperties": false
+                  }
+                },
+                "additionalProperties": false
               }
             ]
           }

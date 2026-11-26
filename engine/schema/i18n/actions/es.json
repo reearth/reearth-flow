@@ -909,9 +909,17 @@
           "title": "Compresión Draco",
           "description": "Si se comprime la geometría de malla con Draco y con qué precisión. Por defecto está activada con la resolución predeterminada del codificador."
         },
+        "meshoptCompressionForPointCloud": {
+          "title": "Compresión Meshopt para nubes de puntos",
+          "description": "Comprime las posiciones de las nubes de puntos con meshopt (`EXT_meshopt_compression`). Por defecto es true."
+        },
         "output": {
           "title": "Ruta de Salida",
           "description": "Ruta del directorio o archivo zip donde se escribirán los 3D Tiles. Una ruta que termina en `.zip` se escribe como archivo zip"
+        },
+        "quantizePointCloud": {
+          "title": "Cuantización de nubes de puntos",
+          "description": "Si las posiciones de las nubes de puntos se cuantizan a enteros de 16 bits (`KHR_mesh_quantization`) y con qué error máximo. Por defecto está activada con 0,01 m. Si está desactivada, las posiciones se escriben como flotantes de 32 bits."
         },
         "schemaKey": {
           "title": "Clave de Esquema",
@@ -949,8 +957,24 @@
             "description": "Comprime la geometría de malla con Draco.",
             "properties": {
               "quantizationError": {
-                "title": "Quantization Error",
+                "title": "Error de cuantización",
                 "description": "Upper bound, in meters, on how far compression may move a vertex. Must be positive. When unset, the encoder's default resolution is used."
+              }
+            }
+          }
+        },
+        "PointCloudQuantization": {
+          "disabled": {
+            "title": "Desactivada",
+            "description": "Escribe las posiciones de los puntos como flotantes de 32 bits."
+          },
+          "enabled": {
+            "title": "Activada",
+            "description": "Cuantiza las posiciones de los puntos a enteros de 16 bits.",
+            "properties": {
+              "quantizationError": {
+                "title": "Quantization Error",
+                "description": "Límite superior, en metros, de cuánto puede desplazar la cuantización un punto. Debe ser positivo. Por defecto es 0,01. Si 16 bits no bastan para cubrir los puntos de una tesela con este error, el error se eleva al que sí lo permite."
               }
             }
           }

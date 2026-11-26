@@ -214,13 +214,28 @@ impl Builder {
             }
         }
 
+        let material_index = self.push_material(material);
+
+        self.primitives
+            .push(super::PendingPrimitive::Triangles(PrimitiveBuilder {
+                positions: out_positions,
+                dedup_attrs,
+                indices: out_indices,
+                material: material_index,
+                extensions: Vec::new(),
+            }));
+        PrimitiveHandle(self.primitives.len() - 1)
+    }
+
+    /// Add `material` to the document.
+    pub(super) fn push_material(&mut self, material: MaterialDesc) -> json::Index<json::Material> {
         let base_color_texture = material.base_color_texture.map(|tex| json::texture::Info {
             index: tex.index(),
             tex_coord: 0,
             extensions: Default::default(),
             extras: Default::default(),
         });
-        let material_index = self.root.push(json::Material {
+        self.root.push(json::Material {
             pbr_metallic_roughness: json::material::PbrMetallicRoughness {
                 base_color_factor: json::material::PbrBaseColorFactor(material.base_color_factor),
                 metallic_factor: json::material::StrengthFactor(material.metallic_factor),
@@ -229,22 +244,20 @@ impl Builder {
                 ..Default::default()
             },
             ..Default::default()
-        });
-
-        self.primitives.push(PrimitiveBuilder {
-            positions: out_positions,
-            dedup_attrs,
-            indices: out_indices,
-            material: material_index,
-            extensions: Vec::new(),
-        });
-        PrimitiveHandle(self.primitives.len() - 1)
+        })
     }
 }
 
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    fn triangles(builder: &Builder, handle: PrimitiveHandle) -> &PrimitiveBuilder {
+        match &builder.primitives[handle.0] {
+            super::super::PendingPrimitive::Triangles(p) => p,
+            super::super::PendingPrimitive::Points(_) => panic!("not a triangle primitive"),
+        }
+    }
 
     fn material() -> MaterialDesc {
         MaterialDesc {
@@ -281,7 +294,7 @@ mod tests {
 
         // Vertices 1 and 2 are shared by position, but each triangle's flat
         // normal disagrees on them, so none of the 6 corners may collapse.
-        assert_eq!(builder.primitives[handle.0].positions.len(), 6);
+        assert_eq!(triangles(&builder, handle).positions.len(), 6);
     }
 
     #[test]
@@ -297,7 +310,7 @@ mod tests {
 
         // Same shared vertices, but both polygons agree on the normal now, so
         // the shared corners collapse back to the 4 original positions.
-        assert_eq!(builder.primitives[handle.0].positions.len(), 4);
+        assert_eq!(triangles(&builder, handle).positions.len(), 4);
     }
 
     /// Two features meeting along an edge: each carries its own copy of the
@@ -338,6 +351,6 @@ mod tests {
         // Position and normal agree on the two shared corners, so without the
         // feature ID in the key they would collapse to 4 and feature 1's
         // triangle would read feature 0's ID.
-        assert_eq!(builder.primitives[handle.0].positions.len(), 6);
+        assert_eq!(triangles(&builder, handle).positions.len(), 6);
     }
 }

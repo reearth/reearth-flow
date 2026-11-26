@@ -147,6 +147,7 @@ jsonpath_lib = "0.3.0"
 kiddo = "6.3.0"
 ktx2-rw = "0.2.4"
 las = { version = "0.11.2", features = ["laz"] }
+meshopt = "0.7.0"
 nalgebra = "0.35.0"
 num-traits = "0.2.19"
 num_cpus = "1.17.0"

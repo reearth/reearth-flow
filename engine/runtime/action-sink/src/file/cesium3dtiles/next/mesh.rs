@@ -12,9 +12,9 @@ use reearth_flow_geometry::{Euclidean3DGeometry, Geometry};
 use super::appearance::{self, ResolvedMaterial};
 
 /// WGS84, 3D geographic (lat, lon, height) — used for the tileset's bounding region.
-const WGS84_GEOGRAPHIC: EpsgCode = EpsgCode::new(4979);
+pub(super) const WGS84_GEOGRAPHIC: EpsgCode = EpsgCode::new(4979);
 /// WGS84, geocentric (ECEF) — used for glTF vertex positions.
-const WGS84_GEOCENTRIC: EpsgCode = EpsgCode::new(4978);
+pub(super) const WGS84_GEOCENTRIC: EpsgCode = EpsgCode::new(4978);
 
 /// Per-file scratch shared across every mesh, so repeated extraction amortizes
 /// its PROJ setup and earcut allocations.
@@ -26,8 +26,8 @@ const WGS84_GEOCENTRIC: EpsgCode = EpsgCode::new(4978);
 /// meshes.
 #[derive(Default)]
 pub(super) struct ExtractCaches {
-    geographic: ReprojectionCache,
-    geocentric: ReprojectionCache,
+    pub(super) geographic: ReprojectionCache,
+    pub(super) geocentric: ReprojectionCache,
     triangulation: TriangulationCache,
 }
 
@@ -182,6 +182,8 @@ fn collect_euclidean3d(geometry: &Euclidean3DGeometry, out: &mut Vec<CollectedMe
                 }
             }
         }
+        // Written as point content; see `super::points`.
+        Euclidean3DGeometry::PointCloud(_) => {}
         other => tracing::warn!(
             "Cesium3DTilesWriter: only PolygonMesh/TriangularMesh/Solid are supported; skipping \
              {other:?}"
@@ -192,7 +194,7 @@ fn collect_euclidean3d(geometry: &Euclidean3DGeometry, out: &mut Vec<CollectedMe
 /// The EPSG source CRS a mesh's coordinates are reprojected from. A mesh
 /// tagged with anything but a concrete `Crs` (e.g. `Euclidean`, meaning the
 /// reader found no srsName) cannot be placed on the globe, so it is skipped.
-fn source_crs(frame: &CoordinateFrame) -> Option<EpsgCode> {
+pub(super) fn source_crs(frame: &CoordinateFrame) -> Option<EpsgCode> {
     match frame {
         CoordinateFrame::Crs(epsg) => Some(*epsg),
         other => {

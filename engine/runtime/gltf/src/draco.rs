@@ -44,7 +44,9 @@ impl DracoCompression {
 
 /// Reads the quantization error, rejecting any value that is not strictly positive
 /// and finite.
-fn deserialize_quantization_error<'de, D>(deserializer: D) -> Result<Option<f64>, D::Error>
+pub(crate) fn deserialize_quantization_error<'de, D>(
+    deserializer: D,
+) -> Result<Option<f64>, D::Error>
 where
     D: serde::Deserializer<'de>,
 {
@@ -61,7 +63,7 @@ where
 }
 
 /// JSON schema for the quantization error: a positive number, or absent.
-fn quantization_error_schema(
+pub(crate) fn quantization_error_schema(
     generator: &mut schemars::r#gen::SchemaGenerator,
 ) -> schemars::schema::Schema {
     let mut schema = <Option<f64>>::json_schema(generator).into_object();

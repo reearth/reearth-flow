@@ -118,6 +118,11 @@ impl SinkFactory for Cesium3DTilesSinkFactory {
                 wrap_tolerance: params.wrap_tolerance,
                 #[cfg(feature = "new-geometry")]
                 texture_codec: params.texture_codec,
+                #[cfg(feature = "new-geometry")]
+                points: super::next::PointEncoding {
+                    quantization: params.quantize_point_cloud,
+                    meshopt: params.meshopt_compression_for_point_cloud,
+                },
                 skip_unexposed_attributes: params.skip_unexposed_attributes.unwrap_or(false),
                 schema_key: params.schema_key,
                 #[cfg(feature = "new-geometry")]
@@ -246,6 +251,20 @@ pub struct Cesium3DTilesWriterParam {
     /// `Untextured` to attach no textures.
     #[serde(default)]
     pub(super) texture_codec: TextureCodec,
+    /// # Point Cloud Quantization
+    /// Whether point-cloud positions are quantized to 16-bit integers
+    /// (`KHR_mesh_quantization`), and with what maximum error. Defaults to
+    /// enabled at 0.01 m. When disabled, positions are written as 32-bit
+    /// floats.
+    #[cfg(feature = "new-geometry")]
+    #[serde(default)]
+    pub(super) quantize_point_cloud: super::next::PointCloudQuantization,
+    /// # Meshopt Compression for Point Clouds
+    /// Compress point-cloud positions with meshopt (`EXT_meshopt_compression`).
+    /// Defaults to true.
+    #[cfg(feature = "new-geometry")]
+    #[serde(default = "default_true")]
+    pub(super) meshopt_compression_for_point_cloud: bool,
     /// # Schema Key
     /// Attribute key whose value identifies the schema type and determines the output
     /// filename: all features sharing the same value are written to the same file.
@@ -291,6 +310,8 @@ pub struct Cesium3DTilesWriterCompiledParam {
     pub(super) wrap_tolerance: Option<f64>,
     #[cfg(feature = "new-geometry")]
     pub(super) texture_codec: TextureCodec,
+    #[cfg(feature = "new-geometry")]
+    pub(super) points: super::next::PointEncoding,
     pub(super) skip_unexposed_attributes: bool,
     pub(super) schema_key: Option<String>,
     #[cfg(feature = "new-geometry")]

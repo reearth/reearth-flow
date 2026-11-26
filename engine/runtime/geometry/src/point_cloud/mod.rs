@@ -288,7 +288,6 @@ impl PointBuffer {
     }
 
     /// The bytes of field `bit` of point `i`.
-    #[cfg_attr(feature = "debug-geom-feature-write", allow(dead_code))]
     fn field<const N: usize>(&self, bit: u16, i: usize) -> [u8; N] {
         debug_assert!(self.has(bit) && FIELD_SIZE[bit as usize] as usize == N);
         let at = i * self.stride as usize + self.offsets[bit as usize] as usize;
@@ -360,6 +359,39 @@ impl PointCloud {
     ) -> Result<impl Iterator<Item = [f64; 3]> + '_, UnsupportedOperation> {
         let buffer = self.data.buffer(operation)?;
         Ok(ops::buffer_positions(buffer).map(|p| self.place(p)))
+    }
+
+    /// Every point's position, with `scale` and `translation` applied. Errs if
+    /// the points are still in a file; see [`PointCloud::load`].
+    pub fn vertices(
+        &self,
+    ) -> Result<impl ExactSizeIterator<Item = [f64; 3]> + '_, UnsupportedOperation> {
+        let buffer = self.data.buffer("vertices")?;
+        Ok(ops::buffer_positions(buffer).map(|p| self.place(p)))
+    }
+
+    /// Every point's 16-bit RGB, or `None` if the points carry no colour. Errs
+    /// if the points are still in a file; see [`PointCloud::load`].
+    pub fn rgb(
+        &self,
+    ) -> Result<Option<impl ExactSizeIterator<Item = [u16; 3]> + '_>, UnsupportedOperation> {
+        let buffer = self.data.buffer("rgb")?;
+        if !buffer.has(bit::RGB) {
+            return Ok(None);
+        }
+        Ok(Some((0..buffer.count).map(|i| {
+            let b: [u8; 6] = buffer.field(bit::RGB, i);
+            [
+                u16::from_le_bytes([b[0], b[1]]),
+                u16::from_le_bytes([b[2], b[3]]),
+                u16::from_le_bytes([b[4], b[5]]),
+            ]
+        })))
+    }
+
+    /// Whether the points are held in memory rather than left in a file.
+    pub fn is_loaded(&self) -> bool {
+        matches!(self.data, Data::InMemory(_))
     }
 }
 

@@ -909,9 +909,17 @@
           "title": "Draco 圧縮",
           "description": "メッシュジオメトリを Draco で圧縮するかと、その精度。デフォルトはエンコーダー既定の解像度で有効。"
         },
+        "meshoptCompressionForPointCloud": {
+          "title": "点群の Meshopt 圧縮",
+          "description": "点群の位置を meshopt（`EXT_meshopt_compression`）で圧縮する。デフォルトは true。"
+        },
         "output": {
           "title": "出力パス",
           "description": "3D Tilesを書き出すディレクトリまたはzipアーカイブのパス。`.zip`で終わるパスはzipアーカイブとして書き出す"
+        },
+        "quantizePointCloud": {
+          "title": "点群の量子化",
+          "description": "点群の位置を 16 ビット整数に量子化するか（`KHR_mesh_quantization`）と、その最大誤差。デフォルトは 0.01 m で有効。無効の場合、位置は 32 ビット浮動小数点数で書き出す。"
         },
         "schemaKey": {
           "title": "スキーマキー",
@@ -949,8 +957,24 @@
             "description": "メッシュジオメトリを Draco で圧縮する。",
             "properties": {
               "quantizationError": {
-                "title": "Quantization Error",
+                "title": "量子化誤差",
                 "description": "Upper bound, in meters, on how far compression may move a vertex. Must be positive. When unset, the encoder's default resolution is used."
+              }
+            }
+          }
+        },
+        "PointCloudQuantization": {
+          "disabled": {
+            "title": "無効",
+            "description": "点の位置を 32 ビット浮動小数点数で書き出す。"
+          },
+          "enabled": {
+            "title": "有効",
+            "description": "点の位置を 16 ビット整数に量子化する。",
+            "properties": {
+              "quantizationError": {
+                "title": "Quantization Error",
+                "description": "量子化で点が動く距離の上限（メートル）。正の値でなければならない。デフォルトは 0.01。タイル内の点をこの誤差で 16 ビットに収められない場合は、収められる誤差まで引き上げる。"
               }
             }
           }

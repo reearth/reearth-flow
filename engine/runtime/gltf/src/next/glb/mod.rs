@@ -10,6 +10,7 @@
 //! that builds Cesium's metadata extensions on top of this.
 
 mod codec;
+mod points;
 mod primitive;
 mod texture;
 
@@ -58,6 +59,23 @@ struct Extension {
     value: serde_json::Value,
 }
 
+/// A primitive awaiting [`Builder::build`].
+enum PendingPrimitive {
+    /// Built by [`Builder::push_primitive`]; its accessors are written at build.
+    Triangles(primitive::PrimitiveBuilder),
+    /// Built by [`Builder::push_points`] from accessors already written.
+    Points(points::PointsPrimitive),
+}
+
+impl PendingPrimitive {
+    fn extensions_mut(&mut self) -> &mut Vec<Extension> {
+        match self {
+            PendingPrimitive::Triangles(p) => &mut p.extensions,
+            PendingPrimitive::Points(p) => &mut p.extensions,
+        }
+    }
+}
+
 /// Tool name recorded in the `asset.generator` field of every GLB built here.
 const GENERATOR: &str = "Re:Earth Flow";
 
@@ -69,9 +87,12 @@ const GENERATOR: &str = "Re:Earth Flow";
 pub struct Builder {
     bin: Vec<u8>,
     root: json::Root,
-    primitives: Vec<primitive::PrimitiveBuilder>,
+    primitives: Vec<PendingPrimitive>,
     root_extensions: Vec<Extension>,
     used_extension_names: HashSet<&'static str>,
+    /// Bytes reserved on the data-less fallback buffer, and the extension that
+    /// marks it as one; `None` until a view is placed on it.
+    fallback: Option<(usize, &'static str)>,
 }
 
 impl Builder {
@@ -240,7 +261,7 @@ impl Builder {
         match handle.into() {
             Handle::Root => self.root_extensions.push(Extension { name, value }),
             Handle::Primitive(handle) => self.primitives[handle.0]
-                .extensions
+                .extensions_mut()
                 .push(Extension { name, value }),
         }
     }
@@ -250,12 +271,26 @@ impl Builder {
     ///
     /// `translation` carries the document's single node's origin, at full
     /// `f64` precision.
-    pub fn build(mut self, translation: [f64; 3]) -> Vec<u8> {
+    pub fn build(self, translation: [f64; 3]) -> Vec<u8> {
+        self.build_scaled(translation, None)
+    }
+
+    /// [`Builder::build`] with the node also scaled by `scale`, as dequantizing
+    /// positions takes.
+    pub fn build_scaled(mut self, translation: [f64; 3], scale: Option<[f64; 3]>) -> Vec<u8> {
         let primitives = std::mem::take(&mut self.primitives);
         let root_extensions = std::mem::take(&mut self.root_extensions);
 
         let mut json_primitives = Vec::with_capacity(primitives.len());
         for p in primitives {
+            let p = match p {
+                PendingPrimitive::Triangles(p) => p,
+                PendingPrimitive::Points(p) => {
+                    let primitive = self.finish_points(p);
+                    json_primitives.push(primitive);
+                    continue;
+                }
+            };
             let position_accessor = self.push_vec3_f32(&p.positions, true);
             let indices_accessor =
                 self.push_scalar_u32(&p.indices, json::buffer::Target::ElementArrayBuffer);
@@ -295,6 +330,9 @@ impl Builder {
             extensions: Default::default(),
             extras: Default::default(),
         });
+        if let Some((byte_length, extension)) = self.fallback {
+            self.push_fallback_buffer(byte_length, extension);
+        }
 
         let mut root_ext = json::extensions::root::Root::default();
         for ext in root_extensions {
@@ -332,6 +370,9 @@ impl Builder {
         // itself has no such precision limit on this field, so patch the real
         // `f64` value back in after serialization rather than truncate it.
         json_value["nodes"][0]["translation"] = serde_json::json!(translation);
+        if let Some(scale) = scale {
+            json_value["nodes"][0]["scale"] = serde_json::json!(scale);
+        }
         let json_bytes = serde_json::to_vec(&json_value).expect("glTF JSON is always serializable");
         crate::utils::write_glb(json_bytes, self.bin)
     }

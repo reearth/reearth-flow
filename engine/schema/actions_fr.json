@@ -2493,6 +2493,24 @@
               }
             ]
           },
+          "quantizePointCloud": {
+            "title": "Quantification des nuages de points",
+            "description": "Indique si les positions des nuages de points sont quantifiées en entiers 16 bits (`KHR_mesh_quantization`), et avec quelle erreur maximale. Activée par défaut à 0,01 m. Désactivée, les positions sont écrites en flottants 32 bits.",
+            "default": {
+              "enabled": {}
+            },
+            "allOf": [
+              {
+                "$ref": "#/definitions/PointCloudQuantization"
+              }
+            ]
+          },
+          "meshoptCompressionForPointCloud": {
+            "title": "Compression Meshopt des nuages de points",
+            "description": "Compresse les positions des nuages de points avec meshopt (`EXT_meshopt_compression`). Vaut true par défaut.",
+            "default": true,
+            "type": "boolean"
+          },
           "schemaKey": {
             "title": "Clé de Schéma",
             "description": "Clé d'attribut dont la valeur identifie le type de schéma et détermine le nom du fichier de sortie : toutes les entités partageant la même valeur sont écrites dans le même fichier. Cet attribut est exclu de la sortie.",
@@ -2542,7 +2560,7 @@
                     "type": "object",
                     "properties": {
                       "quantizationError": {
-                        "title": "Quantization Error",
+                        "title": "Erreur de quantification",
                         "description": "Upper bound, in meters, on how far compression may move a vertex. Must be positive. When unset, the encoder's default resolution is used.",
                         "type": [
                           "number",
@@ -2597,6 +2615,46 @@
                 "enum": [
                   "Untextured"
                 ]
+              }
+            ]
+          },
+          "PointCloudQuantization": {
+            "description": "Whether point positions are quantized to 16-bit integers, and how precisely.",
+            "oneOf": [
+              {
+                "title": "Désactivée",
+                "description": "Écrit les positions des points en flottants 32 bits.",
+                "type": "string",
+                "enum": [
+                  "disabled"
+                ]
+              },
+              {
+                "title": "Activée",
+                "description": "Quantifie les positions des points en entiers 16 bits.",
+                "type": "object",
+                "required": [
+                  "enabled"
+                ],
+                "properties": {
+                  "enabled": {
+                    "type": "object",
+                    "properties": {
+                      "quantizationError": {
+                        "title": "Quantization Error",
+                        "description": "Borne supérieure, en mètres, du déplacement d'un point par la quantification. Doit être positive. Vaut 0,01 par défaut. Si 16 bits ne suffisent pas à couvrir les points d'une tuile à cette erreur, l'erreur est relevée à celle qui le permet.",
+                        "type": [
+                          "number",
+                          "null"
+                        ],
+                        "format": "double",
+                        "exclusiveMinimum": 0.0
+                      }
+                    },
+                    "additionalProperties": false
+                  }
+                },
+                "additionalProperties": false
               }
             ]
           }

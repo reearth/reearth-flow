@@ -2493,6 +2493,24 @@
               }
             ]
           },
+          "quantizePointCloud": {
+            "title": "点云量化",
+            "description": "是否将点云位置量化为 16 位整数（`KHR_mesh_quantization`），以及最大误差。默认以 0.01 m 启用。禁用时，位置以 32 位浮点数写出。",
+            "default": {
+              "enabled": {}
+            },
+            "allOf": [
+              {
+                "$ref": "#/definitions/PointCloudQuantization"
+              }
+            ]
+          },
+          "meshoptCompressionForPointCloud": {
+            "title": "点云 Meshopt 压缩",
+            "description": "使用 meshopt（`EXT_meshopt_compression`）压缩点云位置。默认为 true。",
+            "default": true,
+            "type": "boolean"
+          },
           "schemaKey": {
             "title": "模式键",
             "description": "其值用于标识模式类型并决定输出文件名的属性键：所有具有相同值的实体都写入同一文件。该属性会从输出中排除。",
@@ -2542,7 +2560,7 @@
                     "type": "object",
                     "properties": {
                       "quantizationError": {
-                        "title": "Quantization Error",
+                        "title": "量化误差",
                         "description": "Upper bound, in meters, on how far compression may move a vertex. Must be positive. When unset, the encoder's default resolution is used.",
                         "type": [
                           "number",
@@ -2597,6 +2615,46 @@
                 "enum": [
                   "Untextured"
                 ]
+              }
+            ]
+          },
+          "PointCloudQuantization": {
+            "description": "Whether point positions are quantized to 16-bit integers, and how precisely.",
+            "oneOf": [
+              {
+                "title": "禁用",
+                "description": "以 32 位浮点数写出点的位置。",
+                "type": "string",
+                "enum": [
+                  "disabled"
+                ]
+              },
+              {
+                "title": "启用",
+                "description": "将点的位置量化为 16 位整数。",
+                "type": "object",
+                "required": [
+                  "enabled"
+                ],
+                "properties": {
+                  "enabled": {
+                    "type": "object",
+                    "properties": {
+                      "quantizationError": {
+                        "title": "Quantization Error",
+                        "description": "量化可移动点的距离上限（米）。必须为正数。默认为 0.01。若 16 位无法以此误差覆盖瓦片内的点，则将误差提高到可覆盖的值。",
+                        "type": [
+                          "number",
+                          "null"
+                        ],
+                        "format": "double",
+                        "exclusiveMinimum": 0.0
+                      }
+                    },
+                    "additionalProperties": false
+                  }
+                },
+                "additionalProperties": false
               }
             ]
           }
