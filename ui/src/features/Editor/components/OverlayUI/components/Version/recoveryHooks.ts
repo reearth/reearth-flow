@@ -46,6 +46,11 @@ export default ({
     useState<Y.Map<YWorkflow> | null>(null);
   const lastErroredVersionRef = useRef<number | null>(null);
   const [isCorruptedVersion, setIsCorruptedVersion] = useState<boolean>(false);
+  // The server refuses an entry it cannot rebuild exactly. Reverting to it, or
+  // to one that previews with no workflows, would replace the project with
+  // nothing, so both keep Revert disabled.
+  const [refusedVersion, setRefusedVersion] = useState<number | null>(null);
+  const [isEmptyPreview, setIsEmptyPreview] = useState<boolean>(false);
 
   const { toast } = useToast();
   const t = useT();
@@ -168,6 +173,8 @@ export default ({
         previewDocRef.current = null;
       }
       setPreviewDocYWorkflows(null);
+      setRefusedVersion(null);
+      setIsEmptyPreview(false);
       setIsLoadingPreview(true);
 
       try {
@@ -175,6 +182,10 @@ export default ({
           projectId,
           version,
         );
+        if (previewData?.refused) {
+          setRefusedVersion(version);
+          return;
+        }
         if (!previewData) {
           console.error(
             "No project snapshot found for version: ",
@@ -202,6 +213,7 @@ export default ({
           return;
         }
 
+        setIsEmptyPreview(versionpreviewPreviewYWorkflows.size === 0);
         setPreviewDocYWorkflows(versionpreviewPreviewYWorkflows);
       } catch (error) {
         console.error("Version Preview Failed:", error);
@@ -246,6 +258,10 @@ export default ({
     isLoadingPreview,
     isReverting,
     isCorruptedVersion,
+    isRefusedVersion:
+      refusedVersion !== null &&
+      refusedVersion === selectedProjectSnapshotVersion,
+    isEmptyPreview,
     openVersionConfirmationDialog,
     setOpenVersionConfirmationDialog,
     setIsCorruptedVersion,

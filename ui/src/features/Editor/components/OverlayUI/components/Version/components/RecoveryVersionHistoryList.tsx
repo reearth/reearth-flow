@@ -67,7 +67,15 @@ const RecoveryVersionHistoryList: React.FC<Props> = ({
             </div>
           ))}
         </div>
-      ) : null}
+      ) : (
+        // The server lists only entries it can rebuild, so an empty list is a
+        // real answer: nothing here can be restored.
+        <p className="px-2 py-4 text-xs font-thin text-muted-foreground">
+          {t(
+            "There is nothing to restore here. Saved versions are in the Version History panel.",
+          )}
+        </p>
+      )}
     </ScrollArea>
   );
 };
