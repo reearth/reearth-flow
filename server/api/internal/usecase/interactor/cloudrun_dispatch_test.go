@@ -120,10 +120,10 @@ func (c *dispatchClock) waits() int {
 }
 
 type fakeRunWorker struct {
+	onCall func(ctx context.Context, n int)
 	mockCloudRunWorker
 	answers []error
 	calls   atomic.Int32
-	onCall  func(ctx context.Context, n int)
 }
 
 func (w *fakeRunWorker) answer() (gateway.JobStatus, error) {
@@ -146,7 +146,7 @@ func (w *fakeRunWorker) PreviewSchema(context.Context, gateway.ProbeSchemaParam)
 	return w.answer()
 }
 
-var busy = fmt.Errorf("cloudrunworker: run refused (http 429): %w: %w", gateway.ErrWorkerBusy, gateway.ErrRunNotStarted)
+var errBusy = fmt.Errorf("cloudrunworker: run refused (http 429): %w: %w", gateway.ErrWorkerBusy, gateway.ErrRunNotStarted)
 
 func queuedDebugJob(t *testing.T, startedAt time.Time) *job.Job {
 	t.Helper()
@@ -210,7 +210,7 @@ func TestJob_RunCloudRunWorker_WaitsForAFreeInstance(t *testing.T) {
 	clock := &dispatchClock{t: time.Unix(1_000_000, 0)}
 	queued := queuedDebugJob(t, clock.now())
 	repo := newDispatchJobRepo(queued)
-	worker := &fakeRunWorker{answers: []error{busy, busy, busy, nil}}
+	worker := &fakeRunWorker{answers: []error{errBusy, errBusy, errBusy, nil}}
 	i := newDispatchJob(repo, worker, newFakeLeases(), clock)
 	var refunds atomic.Int32
 
@@ -228,7 +228,7 @@ func TestJob_RunCloudRunWorker_FailsWhenThePoolStaysFull(t *testing.T) {
 	clock := &dispatchClock{t: time.Unix(1_000_000, 0)}
 	queued := queuedDebugJob(t, clock.now())
 	repo := newDispatchJobRepo(queued)
-	worker := &fakeRunWorker{answers: []error{busy}}
+	worker := &fakeRunWorker{answers: []error{errBusy}}
 	i := newDispatchJob(repo, worker, newFakeLeases(), clock)
 	var refunds atomic.Int32
 
@@ -246,7 +246,7 @@ func TestJob_RunCloudRunWorker_ACancelWhileWaitingSendsNoMoreRequests(t *testing
 	clock := &dispatchClock{t: time.Unix(1_000_000, 0)}
 	queued := queuedDebugJob(t, clock.now())
 	repo := newDispatchJobRepo(queued)
-	worker := &fakeRunWorker{answers: []error{busy, nil}}
+	worker := &fakeRunWorker{answers: []error{errBusy, nil}}
 	i := newDispatchJob(repo, worker, newFakeLeases(), clock)
 	var refunds atomic.Int32
 	i.sleep = func(ctx context.Context, d time.Duration) error {
@@ -271,7 +271,7 @@ func TestJob_RunCloudRunWorker_EachAttemptGetsTheWholeRunLimit(t *testing.T) {
 	repo := newDispatchJobRepo(queued)
 	const limit = 100 * time.Millisecond
 	var stale atomic.Int32
-	worker := &fakeRunWorker{answers: []error{busy, busy, nil}}
+	worker := &fakeRunWorker{answers: []error{errBusy, errBusy, nil}}
 	worker.onCall = func(ctx context.Context, n int) {
 		deadline, ok := ctx.Deadline()
 		if !ok || time.Until(deadline) < limit/2 {
@@ -293,7 +293,7 @@ func TestJob_PreviewSchemaCloudRunWorker_WaitsForAFreeInstance(t *testing.T) {
 	clock := &dispatchClock{t: time.Unix(1_000_000, 0)}
 	queued := queuedDebugJob(t, clock.now())
 	repo := newDispatchJobRepo(queued)
-	worker := &fakeRunWorker{answers: []error{busy, busy, nil}}
+	worker := &fakeRunWorker{answers: []error{errBusy, errBusy, nil}}
 	i := newDispatchJob(repo, worker, newFakeLeases(), clock)
 
 	i.PreviewSchemaCloudRunWorker(queued, gateway.ProbeSchemaParam{JobID: queued.ID()})
@@ -309,7 +309,7 @@ func TestJob_PreviewSchemaCloudRunWorker_GivesUpSoonerThanARun(t *testing.T) {
 	clock := &dispatchClock{t: time.Unix(1_000_000, 0)}
 	queued := queuedDebugJob(t, clock.now())
 	repo := newDispatchJobRepo(queued)
-	i := newDispatchJob(repo, &fakeRunWorker{answers: []error{busy}}, newFakeLeases(), clock)
+	i := newDispatchJob(repo, &fakeRunWorker{answers: []error{errBusy}}, newFakeLeases(), clock)
 
 	i.PreviewSchemaCloudRunWorker(queued, gateway.ProbeSchemaParam{JobID: queued.ID()})
 
@@ -453,7 +453,7 @@ func TestJob_RunCloudRunWorker_StaysQueuedWhileItWaits(t *testing.T) {
 	repo := newDispatchJobRepo(queued)
 	var mu sync.Mutex
 	var seen []job.Status
-	worker := &fakeRunWorker{answers: []error{busy, busy, nil}}
+	worker := &fakeRunWorker{answers: []error{errBusy, errBusy, nil}}
 	worker.onCall = func(context.Context, int) {
 		mu.Lock()
 		defer mu.Unlock()
@@ -728,7 +728,7 @@ func TestJob_RunCloudRunWorker_ACancelWhileWaitingGivesTheRunBack(t *testing.T) 
 	clock := &dispatchClock{t: time.Unix(1_000_000, 0)}
 	queued := queuedDebugJob(t, clock.now())
 	repo := newDispatchJobRepo(queued)
-	worker := &fakeRunWorker{answers: []error{busy, nil}}
+	worker := &fakeRunWorker{answers: []error{errBusy, nil}}
 	i := newDispatchJob(repo, worker, newFakeLeases(), clock)
 	i.sleep = func(ctx context.Context, d time.Duration) error {
 		_, err := i.Cancel(ctx, queued.ID())
@@ -750,7 +750,7 @@ func TestJob_RunCloudRunWorker_StopsWithinOneHoldOfTheWaitLimit(t *testing.T) {
 	clock := &dispatchClock{t: time.Unix(1_000_000, 0)}
 	queued := queuedDebugJob(t, clock.now())
 	repo := newDispatchJobRepo(queued)
-	worker := &fakeRunWorker{answers: []error{busy}}
+	worker := &fakeRunWorker{answers: []error{errBusy}}
 	worker.onCall = func(context.Context, int) { clock.advance(cloudRunHold) }
 	i := newDispatchJob(repo, worker, newFakeLeases(), clock)
 	var refunds atomic.Int32
