@@ -569,8 +569,6 @@ func TestRunJob_TellsARunNotStarted(t *testing.T) {
 	})
 }
 
-// callRoute makes one call on the named route against srvURL and returns its
-// error.
 func callRoute(t *testing.T, route, srvURL string, client *http.Client) error {
 	t.Helper()
 	w := &Worker{serviceURL: srvURL, file: &fakeFile{bucket: "b"}, httpClient: client}
@@ -589,8 +587,6 @@ func callRoute(t *testing.T, route, srvURL string, client *http.Client) error {
 	return err
 }
 
-// answerOn calls route against a Service that answers every request with
-// code and body.
 func answerOn(t *testing.T, route string, code int, body string) error {
 	t.Helper()
 	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
@@ -602,9 +598,20 @@ func answerOn(t *testing.T, route string, code int, body string) error {
 	return callRoute(t, route, srv.URL, srv.Client())
 }
 
-// Cloud Run answers 429 in plain text, without reaching the worker, when every
-// instance it may run is busy. Only that answer means the pool is full: any
-// other failure may follow work that started.
+// Cloud Run's answer when the pool is full, as observed on the dev Service on
+// 2026-11-26.
+func cloudRunBusyOn(t *testing.T, route string) error {
+	t.Helper()
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		assert.Equal(t, route, r.URL.Path)
+		w.Header().Set("Content-Type", "text/html")
+		w.WriteHeader(http.StatusTooManyRequests)
+		_, _ = w.Write([]byte("Rate exceeded."))
+	}))
+	defer srv.Close()
+	return callRoute(t, route, srv.URL, srv.Client())
+}
+
 func TestWorker_OnlyCloudRuns429IsABusyPool(t *testing.T) {
 	t.Parallel()
 
@@ -612,7 +619,7 @@ func TestWorker_OnlyCloudRuns429IsABusyPool(t *testing.T) {
 		t.Run(route+": a 429 is a busy pool and nothing ran", func(t *testing.T) {
 			t.Parallel()
 
-			err := answerOn(t, route, http.StatusTooManyRequests, "Rate exceeded.")
+			err := cloudRunBusyOn(t, route)
 
 			assert.ErrorIs(t, err, gateway.ErrWorkerBusy)
 			assert.ErrorIs(t, err, gateway.ErrRunNotStarted)

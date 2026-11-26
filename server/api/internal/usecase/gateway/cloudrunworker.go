@@ -25,7 +25,7 @@ type CloudRunWorker interface {
 	//
 	// It makes one attempt. When the pool is full it returns ErrWorkerBusy
 	// rather than waiting: whether and how long to wait for an instance is the
-	// caller's policy, because only the caller can see the run cancelled.
+	// caller's policy.
 	RunJob(ctx context.Context, p RunJobParam) (JobStatus, error)
 	// PreviewSchema POSTs to the Service's dedicated probe-schema route and blocks
 	// until the probe completes. Returns the terminal infra status. This is a
