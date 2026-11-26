@@ -598,9 +598,20 @@ func answerOn(t *testing.T, route string, code int, body string) error {
 	return callRoute(t, route, srv.URL, srv.Client())
 }
 
-// The body and content type of Cloud Run's 429 are not yet recorded, so the
-// classification reads only the status code and the plain-text body here is a
-// guess.
+// Cloud Run's answer when the pool is full, as observed on the dev Service on
+// 2026-11-26.
+func cloudRunBusyOn(t *testing.T, route string) error {
+	t.Helper()
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		assert.Equal(t, route, r.URL.Path)
+		w.Header().Set("Content-Type", "text/html")
+		w.WriteHeader(http.StatusTooManyRequests)
+		_, _ = w.Write([]byte("Rate exceeded."))
+	}))
+	defer srv.Close()
+	return callRoute(t, route, srv.URL, srv.Client())
+}
+
 func TestWorker_OnlyCloudRuns429IsABusyPool(t *testing.T) {
 	t.Parallel()
 
@@ -608,7 +619,7 @@ func TestWorker_OnlyCloudRuns429IsABusyPool(t *testing.T) {
 		t.Run(route+": a 429 is a busy pool and nothing ran", func(t *testing.T) {
 			t.Parallel()
 
-			err := answerOn(t, route, http.StatusTooManyRequests, "Rate exceeded.")
+			err := cloudRunBusyOn(t, route)
 
 			assert.ErrorIs(t, err, gateway.ErrWorkerBusy)
 			assert.ErrorIs(t, err, gateway.ErrRunNotStarted)
