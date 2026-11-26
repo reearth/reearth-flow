@@ -7,6 +7,7 @@ import { useT } from "@flow/lib/i18n";
 import type { ExprField as ExprFieldNode } from "@flow/lib/schemaForm";
 
 import { FieldRow } from "./FieldRow";
+import { inlineCodeType } from "./inlineCodeType";
 import type { FieldProps } from "./types";
 import { useField } from "./useField";
 
@@ -28,6 +29,7 @@ const ExprField: React.FC<FieldProps<ExprFieldNode>> = ({
 
   const codeValue = value as CodeValue | null | undefined;
   const stringAllowed = node.allowedTypes.includes("string");
+  const flowExprAllowed = node.allowedTypes.includes("flowExpr");
   const fallbackType: CodeValue["type"] = stringAllowed ? "string" : "flowExpr";
   // A schema that admits only `flowExpr` has no literal form to fall back to,
   // so the field is always the expression chip.
@@ -45,6 +47,14 @@ const ExprField: React.FC<FieldProps<ExprFieldNode>> = ({
     },
     [onChange, path],
   );
+
+  const handleInlineBlur = useCallback(() => {
+    const text = codeValue?.value ?? "";
+    if (inlineCodeType(text, flowExprAllowed) === "flowExpr") {
+      onChange(path, { type: "flowExpr", value: text });
+    }
+    field.onBlur();
+  }, [codeValue, flowExprAllowed, onChange, path, field]);
 
   const handleReset = useCallback(() => {
     onChange(path, defaultValue.current ?? { type: fallbackType, value: "" });
@@ -123,7 +133,7 @@ const ExprField: React.FC<FieldProps<ExprFieldNode>> = ({
             value={codeValue?.value ?? ""}
             onChange={handleInlineChange}
             onFocus={field.onFocus}
-            onBlur={field.onBlur}
+            onBlur={handleInlineBlur}
             placeholder={node.description || t("Enter value...")}
             disabled={field.readonly}
             aria-invalid={field.hasErrors}

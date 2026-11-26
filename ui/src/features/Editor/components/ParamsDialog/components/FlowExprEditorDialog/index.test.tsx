@@ -70,14 +70,14 @@ const submitted = (initial: CodeValue) => {
 };
 
 describe("FlowExprEditorDialog URL insertion", () => {
-  it("inserts a picked URL as a string literal on the Expression tab", () => {
+  it("inserts a picked URL as a string literal when Expression is on", () => {
     expect(submitted({ type: "flowExpr", value: "" })).toEqual({
       type: "flowExpr",
       value: JSON.stringify(ASSET_URL),
     });
   });
 
-  it("inserts a picked URL as-is on the Literal string tab", () => {
+  it("inserts a picked URL as-is when Expression is off", () => {
     expect(submitted({ type: "string", value: "" })).toEqual({
       type: "string",
       value: ASSET_URL,

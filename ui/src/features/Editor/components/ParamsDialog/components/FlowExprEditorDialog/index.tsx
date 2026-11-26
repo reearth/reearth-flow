@@ -5,7 +5,7 @@ import {
   FileIcon,
   CircleIcon,
 } from "@phosphor-icons/react";
-import { useCallback, useMemo, useRef, useState } from "react";
+import { useCallback, useId, useMemo, useRef, useState } from "react";
 
 import {
   Button,
@@ -19,10 +19,10 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
   IconButton,
+  Label,
+  Switch,
   TextArea,
   Tabs,
-  TabsList,
-  TabsTrigger,
   TabsContent,
 } from "@flow/components";
 import type { EditorContext as FieldContext } from "@flow/components/SchemaForm";
@@ -80,6 +80,7 @@ const FlowExprEditorDialog: React.FC<Props> = ({
   const [showAssetPicker, setShowAssetPicker] = useState(false);
 
   const editorRef = useRef<FlowExprCodeEditorRef>(null);
+  const expressionSwitchId = useId();
 
   const [currentProject] = useCurrentProject();
   const { useGetWorkflowVariables } = useWorkflowVariables();
@@ -205,15 +206,16 @@ const FlowExprEditorDialog: React.FC<Props> = ({
             value={codeType}
             onValueChange={(v) => setCodeType(v as "flowExpr" | "string")}
             className={`flex flex-col ${isFullscreen ? "h-[calc(100vh-52px)]" : "h-[70vh]"}`}>
-            {/* Mode toggle — only shown when more than one type is allowed */}
             {flowExprAllowed && stringAllowed && (
-              <div className="flex shrink-0 gap-1 border-b px-4 py-2">
-                <TabsList className="flex gap-2">
-                  <TabsTrigger value="flowExpr">{t("Expression")}</TabsTrigger>
-                  <TabsTrigger value="string">
-                    {t("Literal string")}
-                  </TabsTrigger>
-                </TabsList>
+              <div className="flex shrink-0 items-center gap-2 border-b px-4 py-2">
+                <Switch
+                  id={expressionSwitchId}
+                  checked={codeType === "flowExpr"}
+                  onCheckedChange={(checked) =>
+                    setCodeType(checked ? "flowExpr" : "string")
+                  }
+                />
+                <Label htmlFor={expressionSwitchId}>{t("Expression")}</Label>
               </div>
             )}
 
