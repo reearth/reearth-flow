@@ -21,31 +21,31 @@ type dispatchPolicy struct {
 }
 
 var (
-	runDispatchPolicy   = dispatchPolicy{MaxWait: 10 * time.Minute, BaseBackoff: 2 * time.Second, MaxBackoff: 20 * time.Second}
-	probeDispatchPolicy = dispatchPolicy{MaxWait: 2 * time.Minute, BaseBackoff: 2 * time.Second, MaxBackoff: 20 * time.Second}
+	runDispatchPolicy   = dispatchPolicy{MaxWait: 10 * time.Minute, BaseBackoff: 2 * time.Second, MaxBackoff: 10 * time.Second}
+	probeDispatchPolicy = dispatchPolicy{MaxWait: 2 * time.Minute, BaseBackoff: 2 * time.Second, MaxBackoff: 10 * time.Second}
 )
 
-func (p dispatchPolicy) backoff(n int, r float64) time.Duration {
+func (p dispatchPolicy) backoff(n int, jitter float64) time.Duration {
 	ceiling := 2 * p.BaseBackoff
 	for k := 1; k < n && ceiling < p.MaxBackoff; k++ {
 		ceiling *= 2
 	}
 	ceiling = min(ceiling, p.MaxBackoff)
-	return p.BaseBackoff + time.Duration(r*float64(ceiling-p.BaseBackoff))
+	return p.BaseBackoff + time.Duration(jitter*float64(ceiling-p.BaseBackoff))
 }
 
 type attemptOutcome int
 
 const (
-	attemptFinal attemptOutcome = iota
-	attemptBusy
+	attemptMayHaveRun attemptOutcome = iota
+	attemptNeverRan
 )
 
 func classifyAttempt(err error) attemptOutcome {
 	if errors.Is(err, gateway.ErrWorkerBusy) {
-		return attemptBusy
+		return attemptNeverRan
 	}
-	return attemptFinal
+	return attemptMayHaveRun
 }
 
 var (
@@ -59,19 +59,25 @@ func (i *Job) dispatchWhenFree(
 	p dispatchPolicy,
 	attempt func(context.Context) (gateway.JobStatus, error),
 ) (gateway.JobStatus, error) {
+	release := i.holdDispatchLease(ctx, jobID)
+	handedToWorker := false
+	defer func() { release(handedToWorker) }()
+
 	deadline := i.clock().Add(p.MaxWait)
 	for n := 1; ; n++ {
 		if i.finishedWhileWaiting(ctx, jobID) {
 			return gateway.JobStatusCancelled, errFinishedWhileWaiting
 		}
 		status, err := attempt(ctx)
-		if classifyAttempt(err) == attemptFinal {
+		if classifyAttempt(err) == attemptMayHaveRun {
+			handedToWorker = true
 			return status, err
 		}
-		if !i.clock().Before(deadline) {
-			return gateway.JobStatusFailed, fmt.Errorf("%w for %s: %w", errPoolStayedFull, p.MaxWait, err)
+		now := i.clock()
+		if !now.Before(deadline) {
+			return gateway.JobStatusFailed, fmt.Errorf("%w for %s: %w (last refusal: %v)", errPoolStayedFull, p.MaxWait, gateway.ErrRunNotStarted, err)
 		}
-		delay := p.backoff(n, rand.Float64())
+		delay := min(p.backoff(n, rand.Float64()), deadline.Sub(now))
 		log.Infofc(ctx, "job: worker pool full for %s after attempt %d, retrying in %s", jobID, n, delay)
 		if err := i.pause(ctx, delay); err != nil {
 			return gateway.JobStatusFailed, err
@@ -99,29 +105,34 @@ func isCloudRunDebug(j *job.Job) bool {
 const dispatchLeaseKeyPrefix = "flow:cloud-run-dispatch-leases:"
 
 const (
-	dispatchLeaseLifetime = time.Minute
-	dispatchLeaseRenewal  = dispatchLeaseLifetime / 3
-	abandonedDispatchAge  = 2 * time.Minute
-	dispatcherMember      = "dispatcher"
+	dispatchLeaseLifetime     = 2 * time.Minute
+	dispatchLeaseRenewal      = 20 * time.Second
+	dispatchLeaseStartupGrace = 2 * time.Minute
+	dispatchResultWait        = 15 * time.Minute
+	dispatcherMember          = "dispatcher"
 )
 
 func dispatchLeaseKey(jobID id.JobID) string {
 	return dispatchLeaseKeyPrefix + jobID.String()
 }
 
-func (i *Job) holdDispatchLease(ctx context.Context, jobID id.JobID) func() {
+// holdDispatchLease renews the job's dispatch lease until release is called.
+// Once a worker may have the run, release(true) leaves the lease to live
+// dispatchResultWait, so the job is not read as abandoned while its result is
+// on the way.
+func (i *Job) holdDispatchLease(ctx context.Context, jobID id.JobID) (release func(handedToWorker bool)) {
 	if i.usage == nil {
-		return func() {}
+		return func(bool) {}
 	}
-	ctx, cancel := context.WithCancel(ctx)
+	renewCtx, stopRenewing := context.WithCancel(ctx)
 	key := dispatchLeaseKey(jobID)
-	renew := func() {
+	hold := func(ctx context.Context, d time.Duration) {
 		now := i.clock()
-		if _, err := i.usage.AcquireLease(ctx, key, dispatcherMember, now, now.Add(dispatchLeaseLifetime)); err != nil && ctx.Err() == nil {
+		if _, err := i.usage.AcquireLease(ctx, key, dispatcherMember, now, now.Add(d)); err != nil && ctx.Err() == nil {
 			log.Warnfc(ctx, "job: could not renew the dispatch lease of %s: %v", jobID, err)
 		}
 	}
-	renew()
+	hold(renewCtx, dispatchLeaseLifetime)
 	done := make(chan struct{})
 	go func() {
 		defer close(done)
@@ -129,22 +140,25 @@ func (i *Job) holdDispatchLease(ctx context.Context, jobID id.JobID) func() {
 		defer ticker.Stop()
 		for {
 			select {
-			case <-ctx.Done():
+			case <-renewCtx.Done():
 				return
 			case <-ticker.C:
-				renew()
+				hold(renewCtx, dispatchLeaseLifetime)
 			}
 		}
 	}()
-	return func() {
-		cancel()
+	return func(handedToWorker bool) {
+		stopRenewing()
 		<-done
+		if handedToWorker {
+			hold(context.WithoutCancel(ctx), dispatchResultWait)
+		}
 	}
 }
 
 func (i *Job) mayBeAbandoned(j *job.Job) bool {
 	return i.usage != nil && j.Status() == job.StatusPending && isCloudRunDebug(j) &&
-		i.clock().Sub(j.StartedAt()) >= abandonedDispatchAge
+		i.clock().Sub(j.StartedAt()) >= dispatchLeaseStartupGrace
 }
 
 func (i *Job) claimAbandonedDispatch(ctx context.Context, j *job.Job) bool {
@@ -168,13 +182,17 @@ func (i *Job) claimAbandonedDispatch(ctx context.Context, j *job.Job) bool {
 	return false
 }
 
-var lastLogTime = time.Date(9999, time.December, 31, 0, 0, 0, 0, time.UTC)
+// The worker stamps its logs with its own clock, so the window has no upper
+// bound the server could trust.
+var logsUnbounded = time.Date(9999, time.December, 31, 0, 0, 0, 0, time.UTC)
 
-func (i *Job) startRunningOnFirstLog(ctx context.Context, current *job.Job) (bool, error) {
+// startRunningOnFirstLog reports whether the queued job's worker has logged,
+// and if so sets the job RUNNING unless it moved on in the meantime.
+func (i *Job) startRunningOnFirstLog(ctx context.Context, current *job.Job) (logged bool, err error) {
 	if current.Status() != job.StatusPending || !isCloudRunDebug(current) {
 		return false, nil
 	}
-	logs, err := i.redis.GetLogs(ctx, time.Time{}, lastLogTime, current.ID())
+	logs, err := i.redis.GetLogs(ctx, time.Time{}, logsUnbounded, current.ID())
 	if err != nil {
 		log.Warnfc(ctx, "job: could not read the logs of queued cloud run job %s: %v", current.ID(), err)
 		return false, nil
@@ -182,11 +200,18 @@ func (i *Job) startRunningOnFirstLog(ctx context.Context, current *job.Job) (boo
 	if len(logs) == 0 {
 		return false, nil
 	}
-	current.SetStatus(job.StatusRunning)
-	if err := i.jobRepo.Save(ctx, current); err != nil {
-		return false, fmt.Errorf("failed to save started cloud run job %s: %w", current.ID(), err)
+	latest, err := i.jobRepo.FindByID(ctx, current.ID())
+	if err != nil {
+		return true, fmt.Errorf("failed to reload started cloud run job %s: %w", current.ID(), err)
 	}
-	i.subscriptions.Notify(current.ID().String(), current.Status())
+	if latest == nil || latest.Status() != job.StatusPending {
+		return true, nil
+	}
+	latest.SetStatus(job.StatusRunning)
+	if err := i.jobRepo.Save(ctx, latest); err != nil {
+		return true, fmt.Errorf("failed to save started cloud run job %s: %w", current.ID(), err)
+	}
+	i.subscriptions.Notify(latest.ID().String(), latest.Status())
 	return true, nil
 }
 

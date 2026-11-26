@@ -2,6 +2,7 @@ package interactor
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"sync"
 	"sync/atomic"
@@ -169,7 +170,7 @@ func newDispatchJob(repo *dispatchJobRepo, worker gateway.CloudRunWorker, leases
 func TestDispatchPolicy_Backoff(t *testing.T) {
 	t.Parallel()
 
-	p := runDispatchPolicy
+	p := dispatchPolicy{BaseBackoff: time.Second, MaxBackoff: 12 * time.Second}
 
 	t.Run("never shorter than the base or longer than the cap", func(t *testing.T) {
 		t.Parallel()
@@ -183,12 +184,23 @@ func TestDispatchPolicy_Backoff(t *testing.T) {
 	t.Run("the ceiling doubles until it reaches the cap", func(t *testing.T) {
 		t.Parallel()
 
-		ceiling := func(n int) time.Duration { return p.backoff(n, 1).Round(time.Second) }
-		assert.Equal(t, 4*time.Second, ceiling(1))
-		assert.Equal(t, 8*time.Second, ceiling(2))
-		assert.Equal(t, 16*time.Second, ceiling(3))
-		assert.Equal(t, 20*time.Second, ceiling(4))
-		assert.Equal(t, 20*time.Second, ceiling(10))
+		ceiling := func(n int) time.Duration { return p.backoff(n, 1) }
+		assert.Equal(t, 2*time.Second, ceiling(1))
+		assert.Equal(t, 4*time.Second, ceiling(2))
+		assert.Equal(t, 8*time.Second, ceiling(3))
+		assert.Equal(t, 12*time.Second, ceiling(4))
+		assert.Equal(t, 12*time.Second, ceiling(10))
+	})
+
+	t.Run("a waiting run is out of Cloud Run's queue for 2 to 10 seconds", func(t *testing.T) {
+		t.Parallel()
+
+		for _, p := range []dispatchPolicy{runDispatchPolicy, probeDispatchPolicy} {
+			for n := 1; n <= 40; n++ {
+				assert.Equal(t, 2*time.Second, p.backoff(n, 0), "attempt %d", n)
+				assert.LessOrEqual(t, p.backoff(n, 1), 10*time.Second, "attempt %d", n)
+			}
+		}
 	})
 }
 
@@ -348,7 +360,7 @@ func TestJob_Refresh_FailsAnAbandonedDispatchOnce(t *testing.T) {
 	t.Run("two replicas noticing it fail it once", func(t *testing.T) {
 		t.Parallel()
 
-		i, repo, leases, queued := setup(t, 3*time.Minute)
+		i, repo, leases, staleCopy := setup(t, 3*time.Minute)
 		other := newDispatchJob(repo, &fakeRunWorker{answers: []error{nil}}, leases, &dispatchClock{t: i.clock()})
 
 		var wg sync.WaitGroup
@@ -356,7 +368,7 @@ func TestJob_Refresh_FailsAnAbandonedDispatchOnce(t *testing.T) {
 			wg.Add(1)
 			go func() {
 				defer wg.Done()
-				_, err := replica.Refresh(context.Background(), queued)
+				_, err := replica.Refresh(context.Background(), staleCopy)
 				assert.NoError(t, err)
 			}()
 		}
@@ -369,8 +381,8 @@ func TestJob_Refresh_FailsAnAbandonedDispatchOnce(t *testing.T) {
 		t.Parallel()
 
 		i, repo, _, queued := setup(t, 3*time.Minute)
-		stop := i.holdDispatchLease(context.Background(), queued.ID())
-		defer stop()
+		release := i.holdDispatchLease(context.Background(), queued.ID())
+		defer release(false)
 
 		got, err := i.Refresh(context.Background(), queued)
 
@@ -533,7 +545,7 @@ func TestJob_checkJobStatus_AQueuedJobRunsFromItsFirstLog(t *testing.T) {
 	t.Run("a logged job with no dispatcher left is running, not abandoned", func(t *testing.T) {
 		t.Parallel()
 
-		i, repo, store, queued, _ := setup(t, 2*abandonedDispatchAge)
+		i, repo, store, queued, _ := setup(t, 2*dispatchLeaseStartupGrace)
 		store.logs = firstLog(queued)
 
 		require.NoError(t, i.checkJobStatus(context.Background(), queued))
@@ -555,4 +567,202 @@ func TestJob_checkJobStatus_AQueuedJobRunsFromItsFirstLog(t *testing.T) {
 		assert.Equal(t, job.StatusPending, repo.status())
 		assert.Empty(t, notified(ch))
 	})
+}
+
+func (c *dispatchClock) advance(d time.Duration) {
+	c.mu.Lock()
+	defer c.mu.Unlock()
+	c.t = c.t.Add(d)
+}
+
+func (f *fakeLeases) heldUntil(key, member string) time.Time {
+	f.mu.Lock()
+	defer f.mu.Unlock()
+	return f.leases[key][member]
+}
+
+func TestJob_RunCloudRunWorker_AFinishedRunWaitsForItsResult(t *testing.T) {
+	t.Parallel()
+
+	setup := func(t *testing.T) (*Job, *dispatchJobRepo, *mockCheckStatusRedis, *dispatchClock, *job.Job) {
+		t.Helper()
+		clock := &dispatchClock{t: time.Unix(1_000_000, 0)}
+		queued := queuedDebugJob(t, clock.now())
+		repo := newDispatchJobRepo(queued)
+		leases := newFakeLeases()
+		i := newDispatchJob(repo, &fakeRunWorker{answers: []error{nil}}, leases, clock)
+
+		i.RunCloudRunWorker(queued, gateway.RunJobParam{JobID: queued.ID()}, nil)
+		require.Eventually(t, func() bool {
+			return leases.heldUntil(dispatchLeaseKey(queued.ID()), dispatcherMember).Sub(clock.now()) >= dispatchResultWait
+		}, 5*time.Second, time.Millisecond, "the dispatcher handed the job to its worker")
+
+		store := &mockCheckStatusRedis{}
+		monitor := newDispatchJob(repo, &fakeRunWorker{answers: []error{nil}}, leases, clock)
+		monitor.redis = store
+		return monitor, repo, store, clock, queued
+	}
+
+	t.Run("a result that arrives late completes it", func(t *testing.T) {
+		t.Parallel()
+
+		monitor, repo, store, clock, queued := setup(t)
+		clock.advance(dispatchResultWait - time.Minute)
+
+		require.NoError(t, monitor.checkJobStatus(context.Background(), queued))
+		assert.Equal(t, job.StatusPending, repo.status(), "not failed as abandoned while its result is on the way")
+
+		store.event = &gateway.JobCompleteEvent{JobID: queued.ID().String(), Result: "success"}
+		require.NoError(t, monitor.checkJobStatus(context.Background(), queued))
+		assert.Equal(t, job.StatusCompleted, repo.status())
+		assert.NotContains(t, repo.savedStatuses(), job.StatusFailed)
+	})
+
+	t.Run("a result that never arrives fails it", func(t *testing.T) {
+		t.Parallel()
+
+		monitor, repo, _, clock, queued := setup(t)
+		clock.advance(dispatchResultWait + time.Second)
+
+		require.NoError(t, monitor.checkJobStatus(context.Background(), queued))
+		assert.Equal(t, job.StatusFailed, repo.status())
+	})
+}
+
+func TestJob_Refresh_LeavesAJobWithAResultToTheMonitoringLoop(t *testing.T) {
+	t.Parallel()
+
+	clock := &dispatchClock{t: time.Unix(1_000_000, 0)}
+	queued := queuedDebugJob(t, clock.now().Add(-3*time.Minute))
+	repo := newDispatchJobRepo(queued)
+	i := newDispatchJob(repo, &fakeRunWorker{answers: []error{nil}}, newFakeLeases(), clock)
+	i.redis = &mockCheckStatusRedis{event: &gateway.JobCompleteEvent{JobID: queued.ID().String(), Result: "success"}}
+
+	got, err := i.Refresh(context.Background(), queued)
+
+	require.NoError(t, err)
+	assert.Equal(t, job.StatusPending, got.Status())
+	assert.Empty(t, repo.savedStatuses())
+}
+
+type failingRenewals struct {
+	*fakeLeases
+	dispatcherCalls atomic.Int32
+}
+
+func (f *failingRenewals) AcquireLease(ctx context.Context, key, member string, now, expireAt time.Time) (int64, error) {
+	if member == dispatcherMember && f.dispatcherCalls.Add(1) > 1 {
+		return 0, errors.New("redis: i/o timeout")
+	}
+	return f.fakeLeases.AcquireLease(ctx, key, member, now, expireAt)
+}
+
+func TestJob_RunCloudRunWorker_ARequestInFlightOutlivesFailedLeaseRenewals(t *testing.T) {
+	t.Parallel()
+
+	clock := &dispatchClock{t: time.Unix(1_000_000, 0)}
+	queued := queuedDebugJob(t, clock.now().Add(-3*time.Minute))
+	repo := newDispatchJobRepo(queued)
+	inFlight := make(chan struct{})
+	finish := make(chan struct{})
+	worker := &fakeRunWorker{answers: []error{nil}}
+	worker.onCall = func(context.Context, int) {
+		close(inFlight)
+		<-finish
+	}
+	leases := &failingRenewals{fakeLeases: newFakeLeases()}
+	i := newDispatchJob(repo, worker, nil, clock)
+	i.usage = leases
+
+	i.RunCloudRunWorker(queued, gateway.RunJobParam{JobID: queued.ID()}, nil)
+	<-inFlight
+	defer close(finish)
+	clock.advance(90 * time.Second)
+
+	other := newDispatchJob(repo, &fakeRunWorker{answers: []error{nil}}, nil, clock)
+	other.usage = leases
+	require.NoError(t, other.checkJobStatus(context.Background(), queued))
+
+	assert.Equal(t, job.StatusPending, repo.status(), "renewals failed for 90 s, but the request is still in flight")
+	assert.Empty(t, repo.savedStatuses())
+}
+
+type cancelOnLogRead struct {
+	*mockCheckStatusRedis
+	repo *dispatchJobRepo
+	once sync.Once
+}
+
+func (s *cancelOnLogRead) GetLogs(ctx context.Context, since, until time.Time, jobID id.JobID) ([]*pkglog.Log, error) {
+	s.once.Do(func() {
+		j, _ := s.repo.FindByID(ctx, jobID)
+		j.SetStatus(job.StatusCancelled)
+		_ = s.repo.Save(ctx, j)
+	})
+	return s.mockCheckStatusRedis.GetLogs(ctx, since, until, jobID)
+}
+
+func TestJob_checkJobStatus_AFirstLogDoesNotUndoACancel(t *testing.T) {
+	t.Parallel()
+
+	clock := &dispatchClock{t: time.Unix(1_000_000, 0)}
+	queued := queuedDebugJob(t, clock.now())
+	repo := newDispatchJobRepo(queued)
+	i := newDispatchJob(repo, &fakeRunWorker{answers: []error{nil}}, newFakeLeases(), clock)
+	i.redis = &cancelOnLogRead{
+		mockCheckStatusRedis: &mockCheckStatusRedis{logs: []*pkglog.Log{pkglog.NewLog(queued.ID(), nil, clock.now(), pkglog.LevelInfo, "started")}},
+		repo:                 repo,
+	}
+	ch := i.subscriptions.Subscribe(queued.ID().String())
+
+	require.NoError(t, i.checkJobStatus(context.Background(), queued))
+
+	assert.Equal(t, job.StatusCancelled, repo.status())
+	assert.Equal(t, []job.Status{job.StatusCancelled}, repo.savedStatuses(), "only the cancel was saved")
+	assert.Empty(t, notified(ch))
+}
+
+func TestJob_RunCloudRunWorker_ACancelWhileWaitingGivesTheRunBack(t *testing.T) {
+	t.Parallel()
+
+	clock := &dispatchClock{t: time.Unix(1_000_000, 0)}
+	queued := queuedDebugJob(t, clock.now())
+	repo := newDispatchJobRepo(queued)
+	worker := &fakeRunWorker{answers: []error{busy, nil}}
+	i := newDispatchJob(repo, worker, newFakeLeases(), clock)
+	i.sleep = func(ctx context.Context, d time.Duration) error {
+		_, err := i.Cancel(ctx, queued.ID())
+		assert.NoError(t, err)
+		return clock.sleep(ctx, d)
+	}
+	var refunds atomic.Int32
+
+	i.RunCloudRunWorker(queued, gateway.RunJobParam{JobID: queued.ID()}, func() { refunds.Add(1) })
+
+	require.Eventually(t, func() bool { return refunds.Load() == 1 }, 5*time.Second, time.Millisecond, "the cancelled run never started")
+	assert.Never(t, func() bool { return refunds.Load() > 1 }, 200*time.Millisecond, 10*time.Millisecond)
+}
+
+func TestJob_RunCloudRunWorker_StopsWithinOneHoldOfTheWaitLimit(t *testing.T) {
+	t.Parallel()
+
+	const cloudRunHold = 10 * time.Second
+	clock := &dispatchClock{t: time.Unix(1_000_000, 0)}
+	queued := queuedDebugJob(t, clock.now())
+	repo := newDispatchJobRepo(queued)
+	worker := &fakeRunWorker{answers: []error{busy}}
+	worker.onCall = func(context.Context, int) { clock.advance(cloudRunHold) }
+	i := newDispatchJob(repo, worker, newFakeLeases(), clock)
+	var refunds atomic.Int32
+
+	i.RunCloudRunWorker(queued, gateway.RunJobParam{JobID: queued.ID()}, func() { refunds.Add(1) })
+
+	require.Eventually(t, func() bool { return repo.status() == job.StatusFailed }, 5*time.Second, time.Millisecond)
+	calls := worker.calls.Load()
+	assert.Never(t, func() bool { return worker.calls.Load() > calls || refunds.Load() > 1 }, 200*time.Millisecond, 10*time.Millisecond)
+	assert.EqualValues(t, 1, refunds.Load())
+	waited := clock.now().Sub(queued.StartedAt())
+	assert.GreaterOrEqual(t, waited, runDispatchPolicy.MaxWait)
+	assert.LessOrEqual(t, waited, runDispatchPolicy.MaxWait+cloudRunHold)
+	assert.Equal(t, []job.Status{job.StatusFailed, job.StatusFailed}, repo.savedStatuses(), "failed once: the failure and its completion handling")
 }

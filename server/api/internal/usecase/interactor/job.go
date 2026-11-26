@@ -179,12 +179,14 @@ func (i *Job) RunCloudRunWorker(j *job.Job, p gateway.RunJobParam, notStarted fu
 				log.Errorfc(ctx, "job: cloud run worker %s panicked: %v", j.ID(), r)
 			}
 		}()
-		defer i.holdDispatchLease(ctx, j.ID())()
 
 		status, err := i.dispatchWhenFree(ctx, j.ID(), runDispatchPolicy, func(ctx context.Context) (gateway.JobStatus, error) {
 			return i.runCloudRunAttempt(ctx, p)
 		})
 		if errors.Is(err, errFinishedWhileWaiting) {
+			if notStarted != nil {
+				notStarted()
+			}
 			return
 		}
 		if err != nil {
@@ -212,12 +214,16 @@ func (i *Job) runCloudRunAttempt(ctx context.Context, p gateway.RunJobParam) (ga
 	}
 	status, err := i.cloudRunWorker.RunJob(runCtx, p)
 	if errors.Is(runCtx.Err(), context.DeadlineExceeded) {
-		log.Infofc(ctx, "job: cloud run worker %s ran past its %s limit, cancelling it", p.JobID, p.MaxRunDuration)
-		if cerr := i.cloudRunWorker.CancelJob(ctx, p.JobID); cerr != nil {
-			log.Errorfc(ctx, "job: could not cancel cloud run worker %s after its limit: %v", p.JobID, cerr)
-		}
+		i.cancelOverrunWorker(ctx, p)
 	}
 	return status, err
+}
+
+func (i *Job) cancelOverrunWorker(ctx context.Context, p gateway.RunJobParam) {
+	log.Infofc(ctx, "job: cloud run worker %s ran past its %s limit, cancelling it", p.JobID, p.MaxRunDuration)
+	if err := i.cloudRunWorker.CancelJob(ctx, p.JobID); err != nil {
+		log.Errorfc(ctx, "job: could not cancel cloud run worker %s after its limit: %v", p.JobID, err)
+	}
 }
 
 // PreviewSchemaCloudRunWorker executes a preview-schema probe on the Cloud Run
@@ -232,7 +238,6 @@ func (i *Job) PreviewSchemaCloudRunWorker(j *job.Job, p gateway.ProbeSchemaParam
 				log.Errorfc(ctx, "job: preview-schema cloud run worker %s panicked: %v", j.ID(), r)
 			}
 		}()
-		defer i.holdDispatchLease(ctx, j.ID())()
 
 		status, err := i.dispatchWhenFree(ctx, j.ID(), probeDispatchPolicy, func(ctx context.Context) (gateway.JobStatus, error) {
 			return i.cloudRunWorker.PreviewSchema(ctx, p)
@@ -354,10 +359,10 @@ func (i *Job) GetStatus(ctx context.Context, jobID id.JobID) (job.Status, error)
 
 // Refresh checks only Batch jobs that this server is not monitoring already.
 // A Cloud Run job has no Batch job to ask, so it is returned as it is, unless
-// it is queued with nothing dispatching it: then it turns running if its worker
-// has logged, and fails if not.
+// it is queued with nothing dispatching it and no result in the live store:
+// then it turns running if its worker has logged, and fails if not.
 func (i *Job) Refresh(ctx context.Context, j *job.Job) (*job.Job, error) {
-	if i.mayBeAbandoned(j) && i.refreshAbandonedDispatch(ctx, j.ID()) {
+	if i.mayBeAbandoned(j) && i.refreshQueuedDispatch(ctx, j.ID()) {
 		return i.jobRepo.FindByID(ctx, j.ID())
 	}
 	if i.batch == nil || i.redis == nil || j.GCPJobID() == "" {
@@ -375,17 +380,20 @@ func (i *Job) Refresh(ctx context.Context, j *job.Job) (*job.Job, error) {
 	return i.jobRepo.FindByID(ctx, j.ID())
 }
 
-func (i *Job) refreshAbandonedDispatch(ctx context.Context, jobID id.JobID) bool {
+func (i *Job) refreshQueuedDispatch(ctx context.Context, jobID id.JobID) bool {
 	lock := i.getJobLock(jobID.String())
 	lock.Lock()
 	defer lock.Unlock()
 
+	if ev, err := i.redis.GetJobCompleteEvent(ctx, jobID); ev != nil || err != nil {
+		return false
+	}
 	current, err := i.jobRepo.FindByID(ctx, jobID)
 	if err != nil || current == nil {
 		return false
 	}
-	if started, err := i.startRunningOnFirstLog(ctx, current); started || err != nil {
-		return started
+	if logged, err := i.startRunningOnFirstLog(ctx, current); logged || err != nil {
+		return logged
 	}
 	return i.failAbandonedDispatch(ctx, current)
 }
@@ -525,11 +533,11 @@ func (i *Job) checkJobStatus(ctx context.Context, j *job.Job) error {
 	}
 
 	if workerEvent == nil && !batchStatusChanged {
-		started, err := i.startRunningOnFirstLog(ctx, currentJob)
+		logged, err := i.startRunningOnFirstLog(ctx, currentJob)
 		if err != nil {
 			return err
 		}
-		if started || i.failAbandonedDispatch(ctx, currentJob) {
+		if logged || i.failAbandonedDispatch(ctx, currentJob) {
 			return nil
 		}
 	}
