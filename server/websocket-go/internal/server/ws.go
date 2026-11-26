@@ -11,6 +11,7 @@ import (
 	"sync/atomic"
 	"time"
 
+	"github.com/reearth/ygo/cluster"
 	"github.com/reearth/ygo/crdt"
 	ygws "github.com/reearth/ygo/provider/websocket"
 
@@ -54,14 +55,21 @@ type Server struct {
 
 	// shuttingDown refuses new WebSocket connections once Shutdown has begun.
 	shuttingDown atomic.Bool
+
+	// Healing parked copies: see heal.go. gaps is the attached relay's, when it
+	// reports lost updates.
+	heals *healer
+	relay cluster.Relay
+	gaps  gapTaker
 }
 
 // New builds a Server from config using the in-memory provider.
 func New(cfg *config.Config) *Server {
 	s := &Server{
-		cfg: cfg,
-		ws:  ygws.NewServer(),
-		log: slog.Default(),
+		cfg:   cfg,
+		ws:    ygws.NewServer(),
+		log:   slog.Default(),
+		heals: newHealer(),
 	}
 	s.ws.AllowedOrigins = cfg.Origins
 	s.ws.Logger = s.log
@@ -91,6 +99,7 @@ const closeRoomPasses = 3
 // on a room with no relay and no persistence.
 func (s *Server) Shutdown(ctx context.Context) error {
 	s.shuttingDown.Store(true)
+	s.heals.stop(ctx)
 	s.closeRooms(ctx)
 	return s.ws.Shutdown(ctx)
 }
@@ -176,7 +185,8 @@ func resyncInterval(d time.Duration) time.Duration {
 }
 
 // StartPeriodicSync re-broadcasts each active room's full state on every tick
-// until ctx is cancelled, keeping connected peers converged.
+// until ctx is cancelled, keeping connected peers converged, and heals rooms
+// whose copy missed an edit.
 func (s *Server) StartPeriodicSync(ctx context.Context, interval time.Duration) {
 	t := time.NewTicker(resyncInterval(interval))
 	defer t.Stop()
@@ -186,6 +196,7 @@ func (s *Server) StartPeriodicSync(ctx context.Context, interval time.Duration) 
 			return
 		case <-t.C:
 			s.resyncRooms(ctx)
+			s.healRooms(ctx)
 			if s.onPeriodicSync != nil {
 				s.onPeriodicSync()
 			}

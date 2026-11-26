@@ -295,7 +295,7 @@ func (r *Relay) markGapLocked(room string, rs *roomState, reason string, err err
 	if err != nil {
 		args = append(args, "err", err)
 	}
-	r.log.Warn("relay lost an update; instances holding the room miss it until they reload the room", args...)
+	r.log.Warn("relay lost an update; instances holding the room miss it until the room is republished", args...)
 }
 
 // OutboundGap reports whether an update for a room this instance holds failed to
@@ -305,6 +305,20 @@ func (r *Relay) OutboundGap(room string) bool {
 	defer r.mu.Unlock()
 	rs, ok := r.rooms[room]
 	return ok && rs.outboundGap
+}
+
+// TakeOutboundGap reports whether an update for the room failed to reach the
+// other instances since the last call, and clears the flag.
+func (r *Relay) TakeOutboundGap(room string) bool {
+	r.mu.Lock()
+	defer r.mu.Unlock()
+	rs, ok := r.rooms[room]
+	if !ok || rs.evicting || !rs.outboundGap {
+		return false
+	}
+	rs.outboundGap = false
+	rs.gapWarned = false
+	return true
 }
 
 // DroppedWrites returns the cumulative count of outbound updates dropped on a full
