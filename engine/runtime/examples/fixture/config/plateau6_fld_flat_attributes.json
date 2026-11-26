@@ -18,125 +18,125 @@
     },
     {
       "destinationPath": "urc:description",
-      "sourcePath": "__city_gml_attributes core:adeOfAbstractCityObject urc:RiverFloodingRiskAttribute urc:description"
+      "sourcePath": "__city_gml_attributes core:adeOfAbstractCityObject [] [*] [urc:RiverFloodingRiskAttribute] [0] urc:description"
     },
     {
       "destinationPath": "urc:rank",
-      "sourcePath": "__city_gml_attributes core:adeOfAbstractCityObject urc:RiverFloodingRiskAttribute urc:rank"
+      "sourcePath": "__city_gml_attributes core:adeOfAbstractCityObject [] [*] [urc:RiverFloodingRiskAttribute] [0] urc:rank"
     },
     {
       "destinationPath": "urc:rank_code",
-      "sourcePath": "__city_gml_attributes core:adeOfAbstractCityObject urc:RiverFloodingRiskAttribute urc:rank_code",
+      "sourcePath": "__city_gml_attributes core:adeOfAbstractCityObject [] [*] [urc:RiverFloodingRiskAttribute] [0] urc:rank_code",
       "dataType": "int"
     },
     {
       "destinationPath": "urc:rankOrg",
-      "sourcePath": "__city_gml_attributes core:adeOfAbstractCityObject urc:RiverFloodingRiskAttribute urc:rankOrg"
+      "sourcePath": "__city_gml_attributes core:adeOfAbstractCityObject [] [*] [urc:RiverFloodingRiskAttribute] [0] urc:rankOrg"
     },
     {
       "destinationPath": "urc:rankOrg_code",
-      "sourcePath": "__city_gml_attributes core:adeOfAbstractCityObject urc:RiverFloodingRiskAttribute urc:rankOrg_code",
+      "sourcePath": "__city_gml_attributes core:adeOfAbstractCityObject [] [*] [urc:RiverFloodingRiskAttribute] [0] urc:rankOrg_code",
       "dataType": "int"
     },
     {
       "destinationPath": "urc:adminType",
-      "sourcePath": "__city_gml_attributes core:adeOfAbstractCityObject urc:RiverFloodingRiskAttribute urc:adminType"
+      "sourcePath": "__city_gml_attributes core:adeOfAbstractCityObject [] [*] [urc:RiverFloodingRiskAttribute] [0] urc:adminType"
     },
     {
       "destinationPath": "urc:scale",
-      "sourcePath": "__city_gml_attributes core:adeOfAbstractCityObject urc:RiverFloodingRiskAttribute urc:scale"
+      "sourcePath": "__city_gml_attributes core:adeOfAbstractCityObject [] [*] [urc:RiverFloodingRiskAttribute] [0] urc:scale"
     },
     {
       "destinationPath": "urc:description",
-      "sourcePath": "__city_gml_attributes core:adeOfAbstractCityObject urc:HighTideRiskAttribute urc:description"
+      "sourcePath": "__city_gml_attributes core:adeOfAbstractCityObject [] [*] [urc:HighTideRiskAttribute] [0] urc:description"
     },
     {
       "destinationPath": "urc:rank",
-      "sourcePath": "__city_gml_attributes core:adeOfAbstractCityObject urc:HighTideRiskAttribute urc:rank"
+      "sourcePath": "__city_gml_attributes core:adeOfAbstractCityObject [] [*] [urc:HighTideRiskAttribute] [0] urc:rank"
     },
     {
       "destinationPath": "urc:rank_code",
-      "sourcePath": "__city_gml_attributes core:adeOfAbstractCityObject urc:HighTideRiskAttribute urc:rank_code",
+      "sourcePath": "__city_gml_attributes core:adeOfAbstractCityObject [] [*] [urc:HighTideRiskAttribute] [0] urc:rank_code",
       "dataType": "int"
     },
     {
       "destinationPath": "urc:rankOrg",
-      "sourcePath": "__city_gml_attributes core:adeOfAbstractCityObject urc:HighTideRiskAttribute urc:rankOrg"
+      "sourcePath": "__city_gml_attributes core:adeOfAbstractCityObject [] [*] [urc:HighTideRiskAttribute] [0] urc:rankOrg"
     },
     {
       "destinationPath": "urc:rankOrg_code",
-      "sourcePath": "__city_gml_attributes core:adeOfAbstractCityObject urc:HighTideRiskAttribute urc:rankOrg_code",
+      "sourcePath": "__city_gml_attributes core:adeOfAbstractCityObject [] [*] [urc:HighTideRiskAttribute] [0] urc:rankOrg_code",
       "dataType": "int"
     },
     {
       "destinationPath": "urc:description",
-      "sourcePath": "__city_gml_attributes core:adeOfAbstractCityObject urc:InlandFloodingRiskAttribute urc:description"
+      "sourcePath": "__city_gml_attributes core:adeOfAbstractCityObject [] [*] [urc:InlandFloodingRiskAttribute] [0] urc:description"
     },
     {
       "destinationPath": "urc:rank",
-      "sourcePath": "__city_gml_attributes core:adeOfAbstractCityObject urc:InlandFloodingRiskAttribute urc:rank"
+      "sourcePath": "__city_gml_attributes core:adeOfAbstractCityObject [] [*] [urc:InlandFloodingRiskAttribute] [0] urc:rank"
     },
     {
       "destinationPath": "urc:rank_code",
-      "sourcePath": "__city_gml_attributes core:adeOfAbstractCityObject urc:InlandFloodingRiskAttribute urc:rank_code",
+      "sourcePath": "__city_gml_attributes core:adeOfAbstractCityObject [] [*] [urc:InlandFloodingRiskAttribute] [0] urc:rank_code",
       "dataType": "int"
     },
     {
       "destinationPath": "urc:rankOrg",
-      "sourcePath": "__city_gml_attributes core:adeOfAbstractCityObject urc:InlandFloodingRiskAttribute urc:rankOrg"
+      "sourcePath": "__city_gml_attributes core:adeOfAbstractCityObject [] [*] [urc:InlandFloodingRiskAttribute] [0] urc:rankOrg"
     },
     {
       "destinationPath": "urc:rankOrg_code",
-      "sourcePath": "__city_gml_attributes core:adeOfAbstractCityObject urc:InlandFloodingRiskAttribute urc:rankOrg_code",
+      "sourcePath": "__city_gml_attributes core:adeOfAbstractCityObject [] [*] [urc:InlandFloodingRiskAttribute] [0] urc:rankOrg_code",
       "dataType": "int"
     },
     {
       "destinationPath": "urc:description",
-      "sourcePath": "__city_gml_attributes core:adeOfAbstractCityObject urc:ReservoirFloodingRiskAttribute urc:description"
+      "sourcePath": "__city_gml_attributes core:adeOfAbstractCityObject [] [*] [urc:ReservoirFloodingRiskAttribute] [0] urc:description"
     },
     {
       "destinationPath": "urc:rank",
-      "sourcePath": "__city_gml_attributes core:adeOfAbstractCityObject urc:ReservoirFloodingRiskAttribute urc:rank"
+      "sourcePath": "__city_gml_attributes core:adeOfAbstractCityObject [] [*] [urc:ReservoirFloodingRiskAttribute] [0] urc:rank"
     },
     {
       "destinationPath": "urc:rank_code",
-      "sourcePath": "__city_gml_attributes core:adeOfAbstractCityObject urc:ReservoirFloodingRiskAttribute urc:rank_code",
+      "sourcePath": "__city_gml_attributes core:adeOfAbstractCityObject [] [*] [urc:ReservoirFloodingRiskAttribute] [0] urc:rank_code",
       "dataType": "int"
     },
     {
       "destinationPath": "urc:rankOrg",
-      "sourcePath": "__city_gml_attributes core:adeOfAbstractCityObject urc:ReservoirFloodingRiskAttribute urc:rankOrg"
+      "sourcePath": "__city_gml_attributes core:adeOfAbstractCityObject [] [*] [urc:ReservoirFloodingRiskAttribute] [0] urc:rankOrg"
     },
     {
       "destinationPath": "urc:rankOrg_code",
-      "sourcePath": "__city_gml_attributes core:adeOfAbstractCityObject urc:ReservoirFloodingRiskAttribute urc:rankOrg_code",
+      "sourcePath": "__city_gml_attributes core:adeOfAbstractCityObject [] [*] [urc:ReservoirFloodingRiskAttribute] [0] urc:rankOrg_code",
       "dataType": "int"
     },
     {
       "destinationPath": "urc:description",
-      "sourcePath": "__city_gml_attributes core:adeOfAbstractCityObject urc:TsunamiRiskAttribute urc:description"
+      "sourcePath": "__city_gml_attributes core:adeOfAbstractCityObject [] [*] [urc:TsunamiRiskAttribute] [0] urc:description"
     },
     {
       "destinationPath": "urc:rank",
-      "sourcePath": "__city_gml_attributes core:adeOfAbstractCityObject urc:TsunamiRiskAttribute urc:rank"
+      "sourcePath": "__city_gml_attributes core:adeOfAbstractCityObject [] [*] [urc:TsunamiRiskAttribute] [0] urc:rank"
     },
     {
       "destinationPath": "urc:rank_code",
-      "sourcePath": "__city_gml_attributes core:adeOfAbstractCityObject urc:TsunamiRiskAttribute urc:rank_code",
+      "sourcePath": "__city_gml_attributes core:adeOfAbstractCityObject [] [*] [urc:TsunamiRiskAttribute] [0] urc:rank_code",
       "dataType": "int"
     },
     {
       "destinationPath": "urc:rankOrg",
-      "sourcePath": "__city_gml_attributes core:adeOfAbstractCityObject urc:TsunamiRiskAttribute urc:rankOrg"
+      "sourcePath": "__city_gml_attributes core:adeOfAbstractCityObject [] [*] [urc:TsunamiRiskAttribute] [0] urc:rankOrg"
     },
     {
       "destinationPath": "urc:rankOrg_code",
-      "sourcePath": "__city_gml_attributes core:adeOfAbstractCityObject urc:TsunamiRiskAttribute urc:rankOrg_code",
+      "sourcePath": "__city_gml_attributes core:adeOfAbstractCityObject [] [*] [urc:TsunamiRiskAttribute] [0] urc:rankOrg_code",
       "dataType": "int"
     },
     {
       "destinationPath": "urc:geometrySrcDescLod1",
-      "sourcePath": "__city_gml_attributes core:adeOfAbstractCityObject urc:DataQualityAttribute urc:geometrySrcDescLod1"
+      "sourcePath": "__city_gml_attributes core:adeOfAbstractCityObject [] [*] [urc:DataQualityAttribute] [0] urc:geometrySrcDescLod1"
     }
   ]
 }

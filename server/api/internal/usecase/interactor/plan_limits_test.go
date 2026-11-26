@@ -8,6 +8,7 @@ import (
 	"time"
 
 	accountsid "github.com/reearth/reearth-accounts/server/pkg/id"
+	accountsuser "github.com/reearth/reearth-accounts/server/pkg/user"
 	"github.com/reearth/reearth-flow/api/internal/infrastructure/memory"
 	"github.com/reearth/reearth-flow/api/internal/usecase/gateway"
 	"github.com/reearth/reearth-flow/api/internal/usecase/interfaces"
@@ -289,7 +290,7 @@ func TestPlanLimits_NoPolicyChecker(t *testing.T) {
 		_, err = ensure(ctx, ws)
 		assert.NoError(t, err)
 	}
-	done, err := l.startRender(ctx, ws)
+	done, err := l.startRender(ctx, ws, nil)
 	assert.NoError(t, err)
 	done()
 	assert.Empty(t, usage.keys, "nothing to enforce, so nothing is counted")
@@ -658,35 +659,69 @@ func TestPlanLimits_StartRender(t *testing.T) {
 
 	ctx := context.Background()
 	ws := accountsid.NewWorkspaceID()
+	u := accountsuser.New().NewID().Email("a@example.com").Name("a").MustBuild()
 	usage := &usageCounter{}
 	checker := &planChecker{}
 	l := planLimits{policyChecker: checker, usage: usage, now: time.Now}
 
-	first, err := l.startRender(ctx, ws)
+	first, err := l.startRender(ctx, ws, u)
 	require.NoError(t, err)
-	second, err := l.startRender(ctx, ws)
+	second, err := l.startRender(ctx, ws, u)
 	require.NoError(t, err)
 
-	_, err = l.startRender(ctx, ws)
+	_, err = l.startRender(ctx, ws, u)
 	assert.ErrorIs(t, err, interfaces.ErrConcurrentRenderLimit, "the default plan renders two at a time")
-	key := renderSlotKeyPrefix + ws.String()
+	key := renderSlotKey(ws, u.ID())
 	assert.Equal(t, int64(2), usage.counts[key], "a refused render gives its slot straight back")
 
 	first()
 	first()
 	assert.Equal(t, int64(1), usage.counts[key], "a render gives back only its own slot, however often it releases")
-	third, err := l.startRender(ctx, ws)
+	third, err := l.startRender(ctx, ws, u)
 	assert.NoError(t, err, "a finished render frees its slot")
 	second()
 	third()
 	assert.Zero(t, usage.counts[key])
 	assert.Equal(t, []int64{1, 2, 3, 2}, values(checker.askedFor(gateway.PolicyCheckConcurrentRenderCount)))
 
+	t.Run("each member has renders of their own", func(t *testing.T) {
+		t.Parallel()
+
+		other := accountsuser.New().NewID().Email("b@example.com").Name("b").MustBuild()
+		usage := &usageCounter{counts: map[string]int64{renderSlotKey(ws, u.ID()): 2}}
+		l := planLimits{policyChecker: &planChecker{}, usage: usage, now: time.Now}
+
+		done, err := l.startRender(ctx, ws, other)
+		require.NoError(t, err)
+		done()
+		_, err = l.startRender(ctx, ws, u)
+		assert.ErrorIs(t, err, interfaces.ErrConcurrentRenderLimit)
+	})
+
+	t.Run("a member's renders in another workspace do not count", func(t *testing.T) {
+		t.Parallel()
+
+		usage := &usageCounter{counts: map[string]int64{renderSlotKey(accountsid.NewWorkspaceID(), u.ID()): 2}}
+		l := planLimits{policyChecker: &planChecker{}, usage: usage, now: time.Now}
+
+		done, err := l.startRender(ctx, ws, u)
+		require.NoError(t, err)
+		done()
+	})
+
+	t.Run("a render without a user is refused", func(t *testing.T) {
+		t.Parallel()
+
+		l := planLimits{policyChecker: &planChecker{}, usage: &usageCounter{}, now: time.Now}
+		_, err := l.startRender(ctx, ws, nil)
+		assert.ErrorIs(t, err, interfaces.ErrOperationDenied)
+	})
+
 	t.Run("a counter failure allows the render", func(t *testing.T) {
 		t.Parallel()
 
 		l := planLimits{policyChecker: &planChecker{}, usage: &usageCounter{err: errors.New("redis: down")}, now: time.Now}
-		done, err := l.startRender(ctx, ws)
+		done, err := l.startRender(ctx, ws, u)
 		assert.NoError(t, err)
 		done()
 	})

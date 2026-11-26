@@ -4,8 +4,7 @@ import type * as Y from "yjs";
 
 import { Button, LoadingSplashscreen, LoadingSkeleton } from "@flow/components";
 import { useT } from "@flow/lib/i18n";
-import { useCurrentUserRole } from "@flow/stores";
-import { Role } from "@flow/types";
+import { usePermissions } from "@flow/lib/permissions";
 import type { Project } from "@flow/types";
 
 import {
@@ -47,8 +46,7 @@ const ProjectRecoveryDialog: React.FC<Props> = ({
   // project, because the lock toggle lives in an editor that will not load.
   // The reader role does still apply: a reader must never write, and unlike the
   // lock it is read from the store, which the route wrapper has already filled.
-  const [currentUserRole] = useCurrentUserRole();
-  const isReaderRestricted = currentUserRole === Role.Reader;
+  const isReaderRestricted = !usePermissions().revertVersion;
   const dialogRef = useRef<HTMLDivElement>(null);
   const [animate, setAnimate] = useState<boolean>(false);
   const {
