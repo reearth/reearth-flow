@@ -5,6 +5,7 @@ import { useCurrentProject } from "@flow/stores";
 import type { Job, Node, NodeSchemaMeta, Workflow } from "@flow/types";
 import { createEngineReadyWorkflow } from "@flow/utils/toEngineWorkflow/engineReadyWorkflow";
 
+import { probeSignature } from "./probeSignature";
 import { buildReaderAttributeSuggestions } from "./readerAttributeSuggestions";
 import {
   applySchemaPatch,
@@ -56,6 +57,7 @@ export default ({
   );
 
   const lastProbedParams = useRef<Map<string, string>>(new Map());
+  const pendingNodeIds = useRef<Set<string>>(new Set());
 
   // Probes this client started. Their outcome is part of the user's edit, so
   // this client writes it. Every other client watches the same probe
@@ -124,6 +126,10 @@ export default ({
   const runProbe = useCallback(
     async (nodeId: string) => {
       if (!currentProject) return;
+      if (!workflowVariablesRef.current) {
+        pendingNodeIds.current.add(nodeId);
+        return;
+      }
       const engineReadyWorkflow = createEngineReadyWorkflow(
         currentProject.name,
         workflowVariablesRef.current,
@@ -151,6 +157,21 @@ export default ({
     [currentProject, previewSchema, sampleSize, markFailed, onPersistSchema],
   );
 
+  const scheduleProbe = useCallback(
+    (nodeId: string) => {
+      const existing = debounceTimers.current.get(nodeId);
+      if (existing) clearTimeout(existing);
+      debounceTimers.current.set(
+        nodeId,
+        setTimeout(() => {
+          debounceTimers.current.delete(nodeId);
+          void runProbe(nodeId);
+        }, PROBE_DEBOUNCE_MS),
+      );
+    },
+    [runProbe],
+  );
+
   const handleNodeParamsSaved = useCallback(
     (node: Node) => {
       if (node.type !== "reader") return;
@@ -158,7 +179,10 @@ export default ({
         return;
       }
 
-      const signature = JSON.stringify(node.data.params);
+      const signature = probeSignature(
+        node.data.params,
+        workflowVariablesRef.current,
+      );
       const failed =
         resolvedWorkflowsRef.current
           .flatMap((workflow) => workflow.nodes ?? [])
@@ -167,19 +191,26 @@ export default ({
       if (!failed && lastProbedParams.current.get(node.id) === signature)
         return;
       lastProbedParams.current.set(node.id, signature);
-
-      const existing = debounceTimers.current.get(node.id);
-      if (existing) clearTimeout(existing);
-      debounceTimers.current.set(
-        node.id,
-        setTimeout(() => {
-          debounceTimers.current.delete(node.id);
-          void runProbe(node.id);
-        }, PROBE_DEBOUNCE_MS),
-      );
+      scheduleProbe(node.id);
     },
-    [runProbe],
+    [scheduleProbe],
   );
+
+  useEffect(() => {
+    if (!workflowVariables) return;
+    const pending = pendingNodeIds.current;
+    pendingNodeIds.current = new Set();
+    for (const [nodeId, signature] of lastProbedParams.current) {
+      const node = rawWorkflowsRef.current
+        .flatMap((workflow) => workflow.nodes ?? [])
+        .find((n) => n.id === nodeId);
+      if (node?.type !== "reader") continue;
+      const next = probeSignature(node.data.params, workflowVariables);
+      if (next === signature && !pending.has(nodeId)) continue;
+      lastProbedParams.current.set(nodeId, next);
+      scheduleProbe(nodeId);
+    }
+  }, [workflowVariables, scheduleProbe]);
 
   const handleProbeComplete = useCallback(
     async (nodeId: string, job: Job) => {

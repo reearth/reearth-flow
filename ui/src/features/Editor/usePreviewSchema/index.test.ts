@@ -12,11 +12,12 @@ import type {
 import usePreviewSchema from ".";
 
 const previewSchema = vi.fn(async () => ({ job: { id: "job-mine" } }));
+let projectVariables: unknown[] | undefined = [];
 
 vi.mock("@flow/lib/gql", () => ({
   useProject: () => ({ previewSchema }),
   useWorkflowVariables: () => ({
-    useGetWorkflowVariables: () => ({ workflowVariables: [] }),
+    useGetWorkflowVariables: () => ({ workflowVariables: projectVariables }),
   }),
 }));
 
@@ -92,6 +93,7 @@ const setup = (schema?: NodeSchemaMeta) => {
 describe("usePreviewSchema", () => {
   beforeEach(() => {
     previewSchema.mockClear();
+    projectVariables = [];
     vi.spyOn(globalThis, "fetch").mockResolvedValue(
       new Response(JSON.stringify(report)),
     );
@@ -172,5 +174,73 @@ describe("usePreviewSchema", () => {
 
     expect(persisted.get("reader")?.status).toBe("complete");
     expect(hook.result.current.schemaProbeOutcomes).toEqual({});
+  });
+
+  const variableReader = (): Node => ({
+    ...readerNode(),
+    data: {
+      officialName: "Reader",
+      params: { dataset: { type: "flowExpr", value: 'variables["url"]' } },
+    },
+  });
+  const urlVariable = (defaultValue: string) => ({
+    id: "var-url",
+    name: "url",
+    defaultValue,
+    type: "text",
+    required: false,
+    public: false,
+  });
+
+  test("re-probes a reader when a variable it references changes", async () => {
+    vi.useFakeTimers();
+    projectVariables = [urlVariable("https://example.com/a.geojson")];
+    const { hook } = setup();
+    hook.rerender({
+      rawWorkflows: [{ id: "main", nodes: [variableReader()] }],
+    });
+
+    act(() => hook.result.current.handleNodeParamsSaved(variableReader()));
+    await act(() => vi.runAllTimersAsync());
+    expect(previewSchema).toHaveBeenCalledTimes(1);
+
+    projectVariables = [urlVariable("https://example.com/b.geojson")];
+    hook.rerender({
+      rawWorkflows: [{ id: "main", nodes: [variableReader()] }],
+    });
+    await act(() => vi.runAllTimersAsync());
+    expect(previewSchema).toHaveBeenCalledTimes(2);
+  });
+
+  test("never probes a reader this client did not save", async () => {
+    vi.useFakeTimers();
+    projectVariables = [urlVariable("https://example.com/a.geojson")];
+    const { hook } = setup();
+    projectVariables = [urlVariable("https://example.com/b.geojson")];
+    hook.rerender({
+      rawWorkflows: [{ id: "main", nodes: [variableReader()] }],
+    });
+    await act(() => vi.runAllTimersAsync());
+    expect(previewSchema).not.toHaveBeenCalled();
+  });
+
+  test("waits for the variables to load before probing", async () => {
+    vi.useFakeTimers();
+    projectVariables = undefined;
+    const { hook } = setup();
+    hook.rerender({
+      rawWorkflows: [{ id: "main", nodes: [variableReader()] }],
+    });
+
+    act(() => hook.result.current.handleNodeParamsSaved(variableReader()));
+    await act(() => vi.runAllTimersAsync());
+    expect(previewSchema).not.toHaveBeenCalled();
+
+    projectVariables = [urlVariable("https://example.com/a.geojson")];
+    hook.rerender({
+      rawWorkflows: [{ id: "main", nodes: [variableReader()] }],
+    });
+    await act(() => vi.runAllTimersAsync());
+    expect(previewSchema).toHaveBeenCalledTimes(1);
   });
 });
