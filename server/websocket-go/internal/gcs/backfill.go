@@ -60,19 +60,21 @@ func (a *Adapter) hasImportedBase(ctx context.Context, room string) (bool, error
 	if a.fallback == nil {
 		return false, nil
 	}
-	if _, err := a.store.get(ctx, a.fallback.DocV2Name(room)); err == nil {
-		return true, nil
-	} else if err != errNotFound {
+	// Only existence matters, so read the attributes rather than download the
+	// snapshots. A generation of 0 means the object is absent.
+	if gen, err := a.store.generation(ctx, a.fallback.DocV2Name(room)); err != nil {
 		return false, err
+	} else if gen != 0 {
+		return true, nil
 	}
 	oid, err := a.legacyOID(ctx, room)
 	if err != nil {
 		return false, err
 	}
-	if _, err := a.store.get(ctx, a.fallback.DocStateName(room, oid)); err == nil {
-		return true, nil
-	} else if err != errNotFound {
+	if gen, err := a.store.generation(ctx, a.fallback.DocStateName(room, oid)); err != nil {
 		return false, err
+	} else if gen != 0 {
+		return true, nil
 	}
 	// A legacy room often has no base at all: its content is the update objects
 	// alone, which materializeLegacy folds. Backfill imports those the same way.

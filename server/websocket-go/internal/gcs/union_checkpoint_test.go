@@ -764,6 +764,7 @@ func TestLoad_StillRefusesAStateThatKeepsMoving(t *testing.T) {
 // contiguous from clock 1 still does not carry that content. Below the
 // checkpoint the base is excluded, so such a version rebuilds short.
 func TestMaterializeAt_RefusesAVersionBelowAnImportedBase(t *testing.T) {
+	t.Parallel()
 	ctx := context.Background()
 	client, bucket := newFakeGCS(t)
 	const room = "proj-imported-base"
