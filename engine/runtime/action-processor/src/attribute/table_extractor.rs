@@ -27,7 +27,7 @@ impl ProcessorFactory for AttributeTableExtractorFactory {
     }
 
     fn description(&self) -> &str {
-        "Copies values between nested map/list attribute paths, following a table of source/destination path pairs keyed by a feature type attribute. A source path handles lists explicitly with steps such as `[]`, `[*]` and `[n]`. A destination path with more than one segment creates nested maps as needed."
+        "Copies values between nested map/list attribute paths, following a table of source/destination path pairs. The table is either one list of pairs applied to every feature, or, when a feature type attribute is set, lists keyed by that attribute's value. A source path handles lists explicitly with steps such as `[]`, `[*]` and `[n]`. A destination path with more than one segment creates nested maps as needed."
     }
 
     fn parameter_schema(&self) -> Option<schemars::schema::RootSchema> {
@@ -75,7 +75,7 @@ impl ProcessorFactory for AttributeTableExtractorFactory {
             .into());
         };
 
-        let table: HashMap<String, Vec<ExtractRule>> = if let Some(dataset) = &params.dataset {
+        let table: ExtractTable = if let Some(dataset) = &params.dataset {
             let storage_resolver = &ctx.storage_resolver;
             let input_path = dataset
                 .compile()
@@ -112,24 +112,39 @@ impl ProcessorFactory for AttributeTableExtractorFactory {
             .into());
         };
 
-        let table = table
-            .into_iter()
-            .map(|(feature_type, rules)| {
-                let rules = rules
-                    .into_iter()
-                    .map(CompiledRule::compile)
-                    .collect::<Result<Vec<_>, _>>()?;
-                Ok((feature_type, rules))
-            })
-            .collect::<Result<HashMap<_, _>, AttributeProcessorError>>()?;
-
-        let process = AttributeTableExtractor {
-            type_attribute: params
-                .type_attribute
-                .unwrap_or_else(|| "__citygml_feature_type".to_string()),
-            table,
+        let compile = |rules: Vec<ExtractRule>| {
+            rules
+                .into_iter()
+                .map(CompiledRule::compile)
+                .collect::<Result<Vec<_>, _>>()
         };
-        Ok(Box::new(process))
+        let table = match (params.type_attribute, table) {
+            (Some(attribute), ExtractTable::ByType(table)) => CompiledTable::ByType {
+                attribute,
+                table: table
+                    .into_iter()
+                    .map(|(feature_type, rules)| Ok((feature_type, compile(rules)?)))
+                    .collect::<Result<HashMap<_, _>, AttributeProcessorError>>()?,
+            },
+            (None, ExtractTable::Rules(rules)) => CompiledTable::Rules(compile(rules)?),
+            (Some(_), ExtractTable::Rules(_)) => {
+                return Err(AttributeProcessorError::TableExtractorFactory(
+                    "Feature Type Attribute is set, so the table must be keyed by feature type, \
+                     not a plain list of rules"
+                        .to_string(),
+                )
+                .into());
+            }
+            (None, ExtractTable::ByType(_)) => {
+                return Err(AttributeProcessorError::TableExtractorFactory(
+                    "the table is keyed by feature type, so Feature Type Attribute must be set"
+                        .to_string(),
+                )
+                .into());
+            }
+        };
+
+        Ok(Box::new(AttributeTableExtractor { table }))
     }
 }
 
@@ -141,17 +156,33 @@ impl ProcessorFactory for AttributeTableExtractorFactory {
 #[serde(rename_all = "camelCase")]
 struct AttributeTableExtractorParam {
     /// # Dataset URI
-    /// Path or URI of a JSON file holding the extraction table. Provide either this or Inline
-    /// Table.
+    /// Path or URI of a JSON file holding the extraction table, in the same shape as Inline
+    /// Table. Provide either this or Inline Table.
     dataset: Option<Code>,
     /// # Inline Table
-    /// Extraction table given directly, keyed by feature type. Each key is a feature type name
-    /// as it appears in the type attribute, and its value is the list of rules applied to
-    /// features of that type. Provide either this or Dataset URI.
-    inline: Option<HashMap<String, Vec<ExtractRule>>>,
+    /// Extraction table given directly. Without a Feature Type Attribute, a list of rules
+    /// applied to every feature. With one, an object whose keys are values of that attribute
+    /// and whose values are the rules applied to features with that value. Provide either this
+    /// or Dataset URI.
+    inline: Option<ExtractTable>,
     /// # Feature Type Attribute
-    /// Attribute whose value selects which rule set in the table applies to the feature. Defaults to `__citygml_feature_type`.
+    /// Attribute whose value selects which rule list in the table applies to the feature. Leave
+    /// unset to apply one rule list to every feature.
     type_attribute: Option<String>,
+}
+
+/// # Extraction Table
+/// Either one list of rules applied to every feature, or rule lists keyed by the value of the
+/// Feature Type Attribute.
+#[derive(Serialize, Deserialize, Debug, Clone, JsonSchema)]
+#[serde(untagged)]
+enum ExtractTable {
+    /// # Rules
+    /// One list of rules applied to every feature.
+    Rules(Vec<ExtractRule>),
+    /// # Rules by Feature Type
+    /// Rule lists keyed by the value of the Feature Type Attribute.
+    ByType(HashMap<String, Vec<ExtractRule>>),
 }
 
 /// # Extraction Rule
@@ -224,9 +255,31 @@ impl CompiledRule {
 }
 
 #[derive(Debug, Clone)]
+enum CompiledTable {
+    /// Applied to every feature.
+    Rules(Vec<CompiledRule>),
+    /// Selected by the value of `attribute`; a feature with no matching key is left as is.
+    ByType {
+        attribute: String,
+        table: HashMap<String, Vec<CompiledRule>>,
+    },
+}
+
+#[derive(Debug, Clone)]
 struct AttributeTableExtractor {
-    type_attribute: String,
-    table: HashMap<String, Vec<CompiledRule>>,
+    table: CompiledTable,
+}
+
+impl AttributeTableExtractor {
+    fn rules_for(&self, feature: &Feature) -> Option<&[CompiledRule]> {
+        match &self.table {
+            CompiledTable::Rules(rules) => Some(rules),
+            CompiledTable::ByType { attribute, table } => {
+                let feature_type = feature.get(attribute).and_then(|v| v.as_string())?;
+                table.get(&feature_type).map(Vec::as_slice)
+            }
+        }
+    }
 }
 
 impl Processor for AttributeTableExtractor {
@@ -236,13 +289,7 @@ impl Processor for AttributeTableExtractor {
         fw: &ProcessorChannelForwarder,
     ) -> Result<(), BoxedError> {
         let mut feature = ctx.feature.clone();
-        let feature_type = feature
-            .get(&self.type_attribute)
-            .and_then(|v| v.as_string());
-
-        if let Some(feature_type) = feature_type
-            && let Some(rules) = self.table.get(&feature_type)
-        {
+        if let Some(rules) = self.rules_for(&feature) {
             for rule in rules {
                 if let Some(value) = rule.source.evaluate(&feature.attributes) {
                     let value = coerce(&ctx, value, rule.data_type);
@@ -383,6 +430,73 @@ mod tests {
         assert_eq!(
             nested.get("bldg:class"),
             Some(&AttributeValue::String("residential".to_string()))
+        );
+    }
+
+    fn rule(source: &str, destination: &str) -> ExtractRule {
+        ExtractRule {
+            destination_path: destination.to_string(),
+            source_path: source.to_string(),
+            data_type: None,
+        }
+    }
+
+    fn compiled(rules: Vec<ExtractRule>) -> Vec<CompiledRule> {
+        rules
+            .into_iter()
+            .map(|r| CompiledRule::compile(r).unwrap())
+            .collect()
+    }
+
+    #[test]
+    fn table_shape_follows_json_shape() {
+        let list: ExtractTable =
+            serde_json::from_str(r#"[{"sourcePath": "a", "destinationPath": "b"}]"#).unwrap();
+        assert!(matches!(list, ExtractTable::Rules(r) if r.len() == 1));
+        let keyed: ExtractTable =
+            serde_json::from_str(r#"{"t": [{"sourcePath": "a", "destinationPath": "b"}]}"#)
+                .unwrap();
+        assert!(matches!(keyed, ExtractTable::ByType(t) if t.contains_key("t")));
+    }
+
+    #[test]
+    fn unkeyed_rules_apply_to_every_feature() {
+        let extractor = AttributeTableExtractor {
+            table: CompiledTable::Rules(compiled(vec![rule("a", "b")])),
+        };
+        let feature = feature_with(Attributes::new());
+        assert_eq!(extractor.rules_for(&feature).map(<[_]>::len), Some(1));
+    }
+
+    #[test]
+    fn keyed_rules_apply_by_type_attribute_value() {
+        let mut table = HashMap::new();
+        table.insert("x:A".to_string(), compiled(vec![rule("a", "b")]));
+        let extractor = AttributeTableExtractor {
+            table: CompiledTable::ByType {
+                attribute: "type".to_string(),
+                table,
+            },
+        };
+        let mut attrs = Attributes::new();
+        attrs.insert(
+            Attribute::new("type"),
+            AttributeValue::String("x:A".to_string()),
+        );
+        assert_eq!(
+            extractor.rules_for(&feature_with(attrs)).map(<[_]>::len),
+            Some(1)
+        );
+        let mut other = Attributes::new();
+        other.insert(
+            Attribute::new("type"),
+            AttributeValue::String("x:B".to_string()),
+        );
+        assert!(extractor.rules_for(&feature_with(other)).is_none());
+        assert!(
+            extractor
+                .rules_for(&feature_with(Attributes::new()))
+                .is_none()
         );
     }
 

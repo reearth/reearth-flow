@@ -1,8 +1,8 @@
 id: c9694451-1158-4100-b171-3150faf3c4f8
 name: LodSplitterWithDm
-# Splits a CityGML feature into one feature per lod, with a DmGeometricAttribute's
-# geometry as a feature of its own. __dm holds the DM's type name on that feature and is
-# null on the others. Assumes at most one DmGeometricAttribute per object.
+# Splits a CityGML feature into one feature per lod. A DmGeometricAttribute feature (__dm set
+# by DmAttributeMapper) is already one record with its own lod0Geometry, so it passes
+# through unsplit with __lod 0.
 nodes:
   - id: 4644cc62-1d86-436b-84fe-2e5305faa405
     name: InputRouter
@@ -10,6 +10,42 @@ nodes:
     action: Input Router
     with:
       routingPort: features
+
+  - id: 000d8cbd-a3e9-45fb-bc07-8ba05f909e13
+    name: FeatureFilterDm
+    type: action
+    action: Feature Filter
+    with:
+      conditions:
+        - expr:
+            type: flowExpr
+            value: type(attributes.get("__dm")) == dict
+          outputPort: dm
+
+  - id: bf79a648-085e-45ae-b0d8-8f2c1e49884c
+    name: AttributeManagerDmLod
+    type: action
+    action: Attribute Manager
+    with:
+      operations:
+        - attribute: __lod
+          method: create
+          value:
+            type: flowExpr
+            value: "0"
+        # promoted by a Geometry Splitter some workflows run before this subgraph
+        - attribute: __split_idx
+          method: remove
+        - attribute: lod
+          method: remove
+        - attribute: gmlPropertyName
+          method: remove
+        - attribute: geometryName
+          method: remove
+        - attribute: __citygml_geometry_gml_id
+          method: remove
+        - attribute: __citygml_geometry_feature_type
+          method: remove
 
   - id: ab3f8698-a35c-4584-8590-66576e3015da
     name: GeometrySplitter
@@ -28,12 +64,6 @@ nodes:
           attributeValue:
             type: flowExpr
             value: attributes.get("lod")
-        - newAttribute: __dm
-          attributeValue:
-            type: flowExpr
-            value: |
-              t = attributes.get("__citygml_geometry_feature_type");
-              if t == "urc:DmGeometricAttribute" { t }
       attributeAccumulation: useOneFeature
 
   # promoted from the first split member; they describe one member only
@@ -64,8 +94,23 @@ nodes:
 edges:
   - id: 7aeacd1b-c83e-4bb9-9261-e0d60e987d7c
     from: 4644cc62-1d86-436b-84fe-2e5305faa405
-    to: ab3f8698-a35c-4584-8590-66576e3015da
+    to: 000d8cbd-a3e9-45fb-bc07-8ba05f909e13
     fromPort: features
+    toPort: features
+  - id: f8e9fdd0-faa9-4355-bc83-0b24b6c5e31e
+    from: 000d8cbd-a3e9-45fb-bc07-8ba05f909e13
+    to: bf79a648-085e-45ae-b0d8-8f2c1e49884c
+    fromPort: dm
+    toPort: features
+  - id: 0d7db01c-fafa-49c4-b490-f4e941f7f4ec
+    from: bf79a648-085e-45ae-b0d8-8f2c1e49884c
+    to: e2ab4271-f288-4911-820c-dc99c3e969b7
+    fromPort: features
+    toPort: features
+  - id: 6c64b2d4-03fe-42ee-a889-4168459ce909
+    from: 000d8cbd-a3e9-45fb-bc07-8ba05f909e13
+    to: ab3f8698-a35c-4584-8590-66576e3015da
+    fromPort: unfiltered
     toPort: features
   - id: 293dd317-9c96-4133-a14b-8ec72069c7bf
     from: ab3f8698-a35c-4584-8590-66576e3015da

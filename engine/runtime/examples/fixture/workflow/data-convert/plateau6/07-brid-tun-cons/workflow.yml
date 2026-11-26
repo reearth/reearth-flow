@@ -30,6 +30,7 @@ graphs:
   - !include ../../../../graphs/plateau6/city_code_boundary_filter.yml
   - !include ../../../../graphs/plateau6/lod_splitter_with_dm.yml
   - !include ../../../../graphs/plateau6/dm_mvt_writer.yml
+  - !include ../../../../graphs/plateau6/dm_attribute_mapper.yml
   - id: 43503194-d4a4-4c32-a501-8bdfd26066da
     name: entry_point
     nodes:
@@ -68,8 +69,12 @@ graphs:
             - uom
           # Installations, constructive elements and boundary surfaces are not extracted: their
           # geometry rolls up into the body as members, and the LOD2/3 surface members are dropped
-          # below. urc:DmGeometricAttribute stays in its owner's tree, as in the other workflows.
+          # below.
+          # urc:DmGeometricAttribute is extracted, so each record keeps its own lod0Geometry;
+          # DmAttributeMapper puts the record back into its owner's tree and gives the DM feature
+          # the owner's attributes.
           extractTags:
+            - urc:DmGeometricAttribute
             - brid:Bridge
             - brid:BridgePart
             - tun:Tunnel
@@ -124,6 +129,12 @@ graphs:
         type: subGraph
         subGraphId: 833b0700-a741-4411-bfae-c310f7e3dc0c
 
+      # joins each extracted urc:DmGeometricAttribute back to its owner (see the subgraph)
+      - id: 1ce52141-2a77-4249-9bfa-809818be15bb
+        name: DmAttributeMapper
+        type: subGraph
+        subGraphId: 7632ce18-8fc0-4188-84ef-3a503911bdfa
+
       # one feature per geometry member, carrying the member's lod and owner type
       - id: 9cfc0dac-c64b-48f3-ad9c-0ba5910df687
         name: GeometrySplitterByMember
@@ -157,12 +168,22 @@ graphs:
         type: subGraph
         subGraphId: c9694451-1158-4100-b171-3150faf3c4f8
 
+      - id: 09081f89-6aa9-4674-bb6c-fb4502e41efd
+        name: FeatureFilterDmForTableExtractor
+        type: action
+        action: Feature Filter
+        with:
+          conditions:
+            - expr:
+                type: flowExpr
+                value: type(attributes.get("__dm")) == dict
+              outputPort: dm
+
       - id: 607b43c9-8891-44e9-af7c-5fc9c9b56888
         name: AttributeTableExtractorDmGeometricAttribute
         type: action
         action: Attribute Table Extractor
         with:
-          typeAttribute: __dm
           inline: !include ../../../../config/plateau6_dm_flat_attributes.json
 
       # like plateau4, the feature's full tree holds its ancestors' full trees (root first) under
@@ -214,6 +235,7 @@ graphs:
         type: action
         action: Attribute Table Extractor
         with:
+          typeAttribute: __citygml_feature_type
           inline: !include ../../../../config/plateau6_brid_tun_cons_flat_attributes.json
 
       # Risk records -> one group, __risk, for bridges and tunnels only (as plateau4). Key names
@@ -427,7 +449,7 @@ graphs:
           conditions:
             - expr:
                 type: flowExpr
-                value: attributes["__dm"] != null
+                value: type(attributes.get("__dm")) == dict
               outputPort: features
 
       - id: 7def6d30-3118-4c27-8d62-a32e90dba25e
@@ -572,6 +594,11 @@ graphs:
         toPort: features
       - id: a304f63c-7c67-42f4-9c6f-e8d5f90bf91a
         from: 0ebc162a-fd50-4ccf-b876-44e842a808d9
+        to: 1ce52141-2a77-4249-9bfa-809818be15bb
+        fromPort: features
+        toPort: features
+      - id: d81f4123-f2ce-428c-8e36-76e6697e8e0c
+        from: 1ce52141-2a77-4249-9bfa-809818be15bb
         to: 9cfc0dac-c64b-48f3-ad9c-0ba5910df687
         fromPort: features
         toPort: features
@@ -587,8 +614,18 @@ graphs:
         toPort: features
       - id: eb344f56-a864-4bf5-a3d3-30a0a1c4884a
         from: c460f8cd-3d56-409a-939a-57c77e0a961e
-        to: 607b43c9-8891-44e9-af7c-5fc9c9b56888
+        to: 09081f89-6aa9-4674-bb6c-fb4502e41efd
         fromPort: features
+        toPort: features
+      - id: 9cf6a508-0a8c-4e24-966a-8353cce2bac1
+        from: 09081f89-6aa9-4674-bb6c-fb4502e41efd
+        to: 607b43c9-8891-44e9-af7c-5fc9c9b56888
+        fromPort: dm
+        toPort: features
+      - id: c2963fa1-bf78-403b-b753-99cc669293cd
+        from: 09081f89-6aa9-4674-bb6c-fb4502e41efd
+        to: 88271f97-76f0-43f7-a7eb-c8c62f51efa6
+        fromPort: unfiltered
         toPort: features
       - id: f42af6ba-87a0-4775-8bc9-f021796a15fd
         from: 607b43c9-8891-44e9-af7c-5fc9c9b56888

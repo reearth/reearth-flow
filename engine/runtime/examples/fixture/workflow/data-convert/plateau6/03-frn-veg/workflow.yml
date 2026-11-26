@@ -21,6 +21,7 @@ graphs:
   - !include ../../../../graphs/plateau6/city_code_boundary_filter.yml
   - !include ../../../../graphs/plateau6/lod_splitter_with_dm.yml
   - !include ../../../../graphs/plateau6/dm_mvt_writer.yml
+  - !include ../../../../graphs/plateau6/dm_attribute_mapper.yml
   - id: 2c795293-163f-41e3-a91e-6da77c4a7078
     name: entry_point
     nodes:
@@ -58,9 +59,11 @@ graphs:
           # veg:height="12.4" uom="m" becomes the number 12.4 plus veg:height_uom, as in plateau4
           hoistAttributes:
             - uom
-          # urc:DmGeometricAttribute is deliberately not extracted: it stays in the furniture's
-          # attribute tree, and its geometry rolls up into the furniture as members.
+          # urc:DmGeometricAttribute is extracted, so each record keeps its own lod0Geometry;
+          # DmAttributeMapper puts the record back into its owner's tree and gives the DM feature
+          # the owner's attributes.
           extractTags:
+            - urc:DmGeometricAttribute
             - frn:CityFurniture
             - veg:SolitaryVegetationObject
             - veg:PlantCover
@@ -180,12 +183,19 @@ graphs:
         type: subGraph
         subGraphId: 833b0700-a741-4411-bfae-c310f7e3dc0c
 
+      # joins each extracted urc:DmGeometricAttribute back to its owner (see the subgraph)
+      - id: 85aaf6e5-f086-4a0c-a6d5-aaa8610ed8db
+        name: DmAttributeMapper
+        type: subGraph
+        subGraphId: 7632ce18-8fc0-4188-84ef-3a503911bdfa
+
       # top-level attributes, following plateau4's list; `attributes` keeps the full tree
       - id: d49f33bd-e255-4e3c-b706-035220d1328b
         name: AttributeTableExtractor
         type: action
         action: Attribute Table Extractor
         with:
+          typeAttribute: __citygml_feature_type
           inline: !include ../../../../config/plateau6_frn_flat_attributes.json
 
       - id: f59f20f5-ce25-4f60-885c-d4ca3fa7022c
@@ -193,12 +203,22 @@ graphs:
         type: subGraph
         subGraphId: c9694451-1158-4100-b171-3150faf3c4f8
 
+      - id: fb5c0582-10ab-445e-b964-b144820a93c3
+        name: FeatureFilterDmForTableExtractor
+        type: action
+        action: Feature Filter
+        with:
+          conditions:
+            - expr:
+                type: flowExpr
+                value: type(attributes.get("__dm")) == dict
+              outputPort: dm
+
       - id: 2986adf3-7c18-46b6-8b48-3f4f089c026a
         name: AttributeTableExtractorDmGeometricAttribute
         type: action
         action: Attribute Table Extractor
         with:
-          typeAttribute: __dm
           inline: !include ../../../../config/plateau6_dm_flat_attributes.json
 
       - id: 8dc5a2bc-173c-4dc3-8279-334224d32f5a
@@ -280,11 +300,11 @@ graphs:
           conditions:
             - expr:
                 type: flowExpr
-                value: attributes["__dm"] == null and attributes["__lod"] in [0, 1, 2, 3]
+                value: type(attributes.get("__dm")) != dict and attributes["__lod"] in [0, 1, 2, 3]
               outputPort: features
             - expr:
                 type: flowExpr
-                value: attributes["__dm"] != null
+                value: type(attributes.get("__dm")) == dict
               outputPort: dm
 
       - id: 48002798-a884-49f8-b220-e8d663985b12
@@ -726,6 +746,11 @@ graphs:
         toPort: features
       - id: e9896800-230a-459c-aa9a-9ce440f707a0
         from: eb170294-4711-4ead-984c-19ebb1bb32a8
+        to: 85aaf6e5-f086-4a0c-a6d5-aaa8610ed8db
+        fromPort: features
+        toPort: features
+      - id: 17aa0f01-83f2-4309-beeb-facbb49b9071
+        from: 85aaf6e5-f086-4a0c-a6d5-aaa8610ed8db
         to: d49f33bd-e255-4e3c-b706-035220d1328b
         fromPort: features
         toPort: features
@@ -736,8 +761,18 @@ graphs:
         toPort: features
       - id: f606d9f5-4a96-4d20-8eae-98ce419a5b01
         from: f59f20f5-ce25-4f60-885c-d4ca3fa7022c
-        to: 2986adf3-7c18-46b6-8b48-3f4f089c026a
+        to: fb5c0582-10ab-445e-b964-b144820a93c3
         fromPort: features
+        toPort: features
+      - id: 7288ba99-ee16-4504-8f7f-4765d751d9a0
+        from: fb5c0582-10ab-445e-b964-b144820a93c3
+        to: 2986adf3-7c18-46b6-8b48-3f4f089c026a
+        fromPort: dm
+        toPort: features
+      - id: 3c93fef6-808d-4221-ba86-8b6f3b34ace7
+        from: fb5c0582-10ab-445e-b964-b144820a93c3
+        to: 8dc5a2bc-173c-4dc3-8279-334224d32f5a
+        fromPort: unfiltered
         toPort: features
       - id: 249f6abb-cc0a-4123-8ede-877dda887842
         from: 2986adf3-7c18-46b6-8b48-3f4f089c026a

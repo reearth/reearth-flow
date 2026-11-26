@@ -1,0 +1,119 @@
+id: 7632ce18-8fc0-4188-84ef-3a503911bdfa
+name: DmAttributeMapper
+# Joins each extracted urc:DmGeometricAttribute back to the object that holds it. Needs the
+# reader to extract urc:DmGeometricAttribute (extractTags) and the parent/root gml:id
+# attributes it sets; runs on whole features, before any LOD split.
+#
+# - Owner: extraction left each DM record's core:adeOfAbstractCityObject wrapper behind as ""
+#   in the owner's tree, at the record's position. The i-th "" gets the i-th DM child's
+#   record back (both in document order), so the owner's tree reads as it did before
+#   extraction.
+# - DM feature: keeps its own lod0Geometry and takes the owner's attributes (tree, feature
+#   type, gml:id, parent), so it flows through the rest of the workflow as its owner does, as
+#   in plateau4. __dm is its own record; it is null on every other feature.
+#
+# A DM held by a non-extracted child of the owner (an installation rolled into its bridge)
+# has its "" inside that child's subtree, so it is not restored into the owner's tree; it
+# still becomes a DM feature of the owner.
+nodes:
+  - id: 9ce57836-ed27-4fa9-8ef4-fef04f58159f
+    name: InputRouter
+    type: action
+    action: Input Router
+    with:
+      routingPort: features
+
+  - id: 61675442-28fc-46c8-bed9-865cef93ec5d
+    name: FeatureGroupMapperDm
+    type: action
+    action: Feature Group Mapper
+    with:
+      attribute: __citygml_root_gml_id
+      expr:
+        type: flowExpr
+        value: |
+          dm_type = "urc:DmGeometricAttribute";
+          # gml:id -> owner feature (every feature in the group that is not a DM record)
+          owners = {};
+          for f in features {
+            id = f.get("__citygml_gml_id");
+            if f.get("__citygml_feature_type") != dm_type and type(id) == str {
+              owners[id] = f;
+            }
+          }
+          # owner gml:id -> its DM records, in document order
+          records = {};
+          for f in features {
+            owner_id = f.get("__citygml_parent_gml_id");
+            if f.get("__citygml_feature_type") == dm_type and type(owner_id) == str {
+              if owner_id not in records { records[owner_id] = []; }
+              records[owner_id].append(f.get("__city_gml_attributes", {}));
+            }
+          }
+          # owner gml:id -> its tree with each "" placeholder (a string, unlike a record) filled
+          trees = {};
+          for owner_id in records.keys() {
+            if owner_id in owners {
+              source = owners[owner_id].get("__city_gml_attributes", {});
+              tree = {};
+              for k in source { tree[k] = source[k]; }
+              hooks = tree.get("core:adeOfAbstractCityObject");
+              pending = records[owner_id];
+              if type(hooks) == str {
+                tree["core:adeOfAbstractCityObject"] = {dm_type: pending[0]};
+              } else if type(hooks) == list {
+                restored = [];
+                i = 0;
+                for h in hooks {
+                  if type(h) == str and i < len(pending) {
+                    restored.append({dm_type: pending[i]});
+                    i = i + 1;
+                  } else {
+                    restored.append(h);
+                  }
+                }
+                tree["core:adeOfAbstractCityObject"] = restored;
+              }
+              trees[owner_id] = tree;
+            }
+          }
+          results = [];
+          for f in features {
+            entry = {};
+            if f.get("__citygml_feature_type") == dm_type {
+              owner_id = f.get("__citygml_parent_gml_id");
+              if type(owner_id) == str and owner_id in owners {
+                owner = owners[owner_id];
+                for k in owner { entry[k] = owner[k]; }
+                entry["__city_gml_attributes"] = trees[owner_id];
+              } else {
+                for k in f { entry[k] = f[k]; }
+              }
+              entry["__dm"] = f.get("__city_gml_attributes", {});
+            } else {
+              for k in f { entry[k] = f[k]; }
+              id = f.get("__citygml_gml_id");
+              if type(id) == str and id in trees { entry["__city_gml_attributes"] = trees[id]; }
+            }
+            results.append(entry);
+          }
+          results
+
+  - id: 5f5239da-0cf9-4fe3-959c-0c003d9967e1
+    name: OutputRouter
+    type: action
+    action: Output Router
+    with:
+      routingPort: features
+
+edges:
+  - id: 33335372-6c6a-4453-9d92-68ec3b484162
+    from: 9ce57836-ed27-4fa9-8ef4-fef04f58159f
+    to: 61675442-28fc-46c8-bed9-865cef93ec5d
+    fromPort: features
+    toPort: features
+  - id: f7d5c220-bb73-4008-9f0c-1e21c2f5cb7b
+    from: 61675442-28fc-46c8-bed9-865cef93ec5d
+    to: 5f5239da-0cf9-4fe3-959c-0c003d9967e1
+    fromPort: features
+    toPort: features
