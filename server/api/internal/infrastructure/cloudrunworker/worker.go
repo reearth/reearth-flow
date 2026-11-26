@@ -293,7 +293,7 @@ func (w *Worker) RenderView(ctx context.Context, p gateway.RenderViewParam) (gat
 
 // busyError is the error for Cloud Run's own 429, which it answers without
 // reaching the worker when every instance it may run is busy. The worker never
-// sends a 429, so nothing ran. Any other status is nil here.
+// sends a 429, so nothing ran.
 func busyError(route string, code int, raw []byte) error {
 	if code != http.StatusTooManyRequests {
 		return nil
