@@ -249,8 +249,9 @@ pub enum Bounded {
 /// Run `command` to completion, killing it if it is still running after `limit`.
 ///
 /// stderr is always captured; stdout is left as the caller configured it. The
-/// child is also killed if the returned future is dropped, so a request that
-/// goes away takes its child with it instead of leaving it running unobserved.
+/// child and every process it started are also killed if the returned future is
+/// dropped, so a request that goes away takes them with it instead of leaving
+/// them running unobserved.
 ///
 /// `scratch`, when given, is the root the child writes into. It is removed only
 /// once the child has exited, however the run ends, so nothing the child is
@@ -262,10 +263,7 @@ pub async fn run_bounded(
 ) -> std::io::Result<Bounded> {
     use tokio::io::AsyncReadExt;
 
-    let child = command
-        .stderr(std::process::Stdio::piped())
-        .kill_on_drop(true)
-        .spawn()?;
+    let child = spawn_in_own_group(command.stderr(std::process::Stdio::piped()))?;
     let mut running = Running {
         child: Some(child),
         scratch,
@@ -292,13 +290,43 @@ pub async fn run_bounded(
             Bounded::Exited { status, stderr }
         }
         Err(_elapsed) => {
-            // `kill` also waits, so the child is gone, not a zombie, on return.
-            child.kill().await?;
+            stop(child).await?;
             Bounded::TimedOut
         }
     };
     running.release();
     Ok(outcome)
+}
+
+/// Spawn `command` in a process group of its own, so [`stop`] reaches every
+/// process it starts.
+fn spawn_in_own_group(
+    command: &mut tokio::process::Command,
+) -> std::io::Result<tokio::process::Child> {
+    #[cfg(unix)]
+    command.process_group(0);
+    command.kill_on_drop(true).spawn()
+}
+
+/// Kill `child` and every process in its group, then wait for `child` to exit.
+async fn stop(child: &mut tokio::process::Child) -> std::io::Result<()> {
+    kill_group(child);
+    child.kill().await
+}
+
+/// Send SIGKILL to the process group led by `child`.
+///
+/// The group's id is the child's pid, which cannot be given to another process
+/// until the child is reaped. `id()` is `None` from then on, so a reaped child's
+/// id is never signalled and another run's group is never hit.
+fn kill_group(child: &tokio::process::Child) {
+    #[cfg(unix)]
+    if let Some(pid) = child.id().and_then(|pid| libc::pid_t::try_from(pid).ok()) {
+        // SAFETY: `kill` takes no pointers and has no memory-safety preconditions.
+        unsafe {
+            libc::kill(-pid, libc::SIGKILL);
+        }
+    }
 }
 
 /// A child and the scratch root it writes into, released in that order.
@@ -317,10 +345,10 @@ impl Running {
 
 impl Drop for Running {
     /// Reached with the child still held only when the run was dropped before
-    /// it ended, as a handler is when its request goes away. Dropping the child
-    /// only sends the kill, so the scratch root waits on a task until the child
-    /// has exited. Outside a runtime there is nothing to wait with, and the
-    /// child's `kill_on_drop` is the backstop.
+    /// it ended, as a handler is when its request goes away. Waiting for the
+    /// child to exit needs a task, so the scratch root goes on that task once
+    /// [`stop`] returns. Outside a runtime there is nothing to wait with: the
+    /// group is killed and the root removed at once.
     fn drop(&mut self) {
         let Some(mut child) = self.child.take() else {
             return;
@@ -329,11 +357,14 @@ impl Drop for Running {
         match tokio::runtime::Handle::try_current() {
             Ok(runtime) => {
                 runtime.spawn(async move {
-                    let _ = child.kill().await;
+                    let _ = stop(&mut child).await;
                     drop(scratch);
                 });
             }
-            Err(_) => drop((child, scratch)),
+            Err(_) => {
+                kill_group(&child);
+                drop((child, scratch));
+            }
         }
     }
 }
@@ -373,15 +404,14 @@ pub async fn serve_run(
         Err(e) => return failed(e.to_string()),
     };
 
-    let child = match tokio::process::Command::new(worker_bin)
-        .args(build_worker_args(req))
-        .env("FLOW_RUNTIME_WORKING_DIRECTORY", scratch.path())
-        .env("TMPDIR", scratch.path())
-        .stdout(std::process::Stdio::inherit())
-        .stderr(std::process::Stdio::inherit())
-        .kill_on_drop(true)
-        .spawn()
-    {
+    let child = match spawn_in_own_group(
+        tokio::process::Command::new(worker_bin)
+            .args(build_worker_args(req))
+            .env("FLOW_RUNTIME_WORKING_DIRECTORY", scratch.path())
+            .env("TMPDIR", scratch.path())
+            .stdout(std::process::Stdio::inherit())
+            .stderr(std::process::Stdio::inherit()),
+    ) {
         Ok(c) => c,
         Err(e) => return failed(e.to_string()),
     };
@@ -421,8 +451,7 @@ pub async fn serve_run(
         .unwrap_or(false);
         if cancelled {
             eprintln!("[wrapper] cancel flag seen for {} -> killing", req.job_id);
-            // `kill` also waits, so the child has exited before the root goes.
-            let _ = child.kill().await;
+            let _ = stop(child).await;
             running.release();
             return (StatusCode::OK, json!({"status": "CANCELLED"}));
         }
@@ -811,6 +840,34 @@ mod bounded_tests {
         );
         let pid = read_pid(&pid_file).await;
         assert!(!is_running(&pid), "pid {pid} outlived its limit");
+    }
+
+    #[tokio::test]
+    async fn what_a_child_started_is_killed_with_it_at_the_limit() {
+        let dir = tempfile::tempdir().unwrap();
+        let helper_pid = dir.path().join("helper");
+        let mut command = tokio::process::Command::new("sh");
+        command.arg("-c").arg(format!(
+            "( while :; do sleep 0.1; done ) & echo $! > '{}'; wait",
+            helper_pid.display()
+        ));
+
+        let outcome = run_bounded(command, Duration::from_millis(500), None)
+            .await
+            .unwrap();
+
+        assert!(matches!(outcome, Bounded::TimedOut), "got {outcome:?}");
+        let helper = read_pid(&helper_pid).await;
+        for _ in 0..100 {
+            if !is_running(&helper) {
+                return;
+            }
+            tokio::time::sleep(Duration::from_millis(20)).await;
+        }
+        let _ = std::process::Command::new("kill")
+            .args(["-9", &helper])
+            .status();
+        panic!("pid {helper}, started by the child, outlived its limit");
     }
 
     #[tokio::test]

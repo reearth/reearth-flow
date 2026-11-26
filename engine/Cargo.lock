@@ -5927,6 +5927,7 @@ dependencies = [
  "google-cloud-pubsub",
  "indexmap 2.14.2",
  "json-subscriber",
+ "libc",
  "num_cpus",
  "nutype",
  "object_store",
