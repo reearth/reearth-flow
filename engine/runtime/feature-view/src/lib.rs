@@ -17,7 +17,7 @@ use bytes::Bytes;
 use reearth_flow_action_sink::SinkOutput;
 use reearth_flow_action_sink::errors::SinkError;
 use reearth_flow_action_sink::file::cesium3dtiles::next::{
-    MetadataOptions, RenderOptions, build, build_glb,
+    MetadataOptions, PointCloudQuantization, PointEncoding, RenderOptions, build, build_glb,
 };
 use reearth_flow_action_sink::file::mvt::next::{TileFeature, TileOptions, build as build_tiles};
 use reearth_flow_common::uri::Uri;
@@ -164,6 +164,10 @@ impl ViewOptions {
             atlas_extrusion: self.atlas_extrusion,
             wrap_tolerance: self.wrap_tolerance,
             texture_codec: self.texture_codec,
+            points: PointEncoding {
+                quantization: PointCloudQuantization::default(),
+                meshopt: true,
+            },
         }
     }
 

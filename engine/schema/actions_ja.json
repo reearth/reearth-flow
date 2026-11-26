@@ -2493,6 +2493,24 @@
               }
             ]
           },
+          "quantizePointCloud": {
+            "title": "点群の量子化",
+            "description": "点群の位置を 16 ビット整数に量子化するか（`KHR_mesh_quantization`）と、その最大誤差。デフォルトは 0.01 m で有効。無効の場合、位置は 32 ビット浮動小数点数で書き出す。",
+            "default": {
+              "enabled": {}
+            },
+            "allOf": [
+              {
+                "$ref": "#/definitions/PointCloudQuantization"
+              }
+            ]
+          },
+          "meshoptCompressionForPointCloud": {
+            "title": "点群の Meshopt 圧縮",
+            "description": "点群の位置を meshopt（`EXT_meshopt_compression`）で圧縮する。デフォルトは true。",
+            "default": true,
+            "type": "boolean"
+          },
           "schemaKey": {
             "title": "スキーマキー",
             "description": "スキーマタイプを識別し出力ファイル名を決定する属性キー。同じ値を持つすべての地物は同一ファイルに書き出される。この属性は出力から除外される",
@@ -2542,7 +2560,7 @@
                     "type": "object",
                     "properties": {
                       "quantizationError": {
-                        "title": "Quantization Error",
+                        "title": "量子化誤差",
                         "description": "Upper bound, in meters, on how far compression may move a vertex. Must be positive. When unset, the encoder's default resolution is used.",
                         "type": [
                           "number",
@@ -2597,6 +2615,46 @@
                 "enum": [
                   "Untextured"
                 ]
+              }
+            ]
+          },
+          "PointCloudQuantization": {
+            "description": "Whether point positions are quantized to 16-bit integers, and how precisely.",
+            "oneOf": [
+              {
+                "title": "無効",
+                "description": "点の位置を 32 ビット浮動小数点数で書き出す。",
+                "type": "string",
+                "enum": [
+                  "disabled"
+                ]
+              },
+              {
+                "title": "有効",
+                "description": "点の位置を 16 ビット整数に量子化する。",
+                "type": "object",
+                "required": [
+                  "enabled"
+                ],
+                "properties": {
+                  "enabled": {
+                    "type": "object",
+                    "properties": {
+                      "quantizationError": {
+                        "title": "Quantization Error",
+                        "description": "量子化で点が動く距離の上限（メートル）。正の値でなければならない。デフォルトは 0.01。タイル内の点をこの誤差で 16 ビットに収められない場合は、収められる誤差まで引き上げる。",
+                        "type": [
+                          "number",
+                          "null"
+                        ],
+                        "format": "double",
+                        "exclusiveMinimum": 0.0
+                      }
+                    },
+                    "additionalProperties": false
+                  }
+                },
+                "additionalProperties": false
               }
             ]
           }

@@ -2435,6 +2435,24 @@ Writes features to Cesium 3D Tiles format for 3D web visualization.
         }
       ]
     },
+    "quantizePointCloud": {
+      "title": "Point Cloud Quantization",
+      "description": "Whether point-cloud positions are quantized to 16-bit integers (`KHR_mesh_quantization`), and with what maximum error. Defaults to enabled at 0.01 m. When disabled, positions are written as 32-bit floats.",
+      "default": {
+        "enabled": {}
+      },
+      "allOf": [
+        {
+          "$ref": "#/definitions/PointCloudQuantization"
+        }
+      ]
+    },
+    "meshoptCompressionForPointCloud": {
+      "title": "Meshopt Compression for Point Clouds",
+      "description": "Compress point-cloud positions with meshopt (`EXT_meshopt_compression`). Defaults to true.",
+      "default": true,
+      "type": "boolean"
+    },
     "schemaKey": {
       "title": "Schema Key",
       "description": "Attribute key whose value identifies the schema type and determines the output filename: all features sharing the same value are written to the same file. This attribute is excluded from output.",
@@ -2539,6 +2557,46 @@ Writes features to Cesium 3D Tiles format for 3D web visualization.
           "enum": [
             "Untextured"
           ]
+        }
+      ]
+    },
+    "PointCloudQuantization": {
+      "description": "Whether point positions are quantized to 16-bit integers, and how precisely.",
+      "oneOf": [
+        {
+          "title": "Disabled",
+          "description": "Write point positions as 32-bit floats.",
+          "type": "string",
+          "enum": [
+            "disabled"
+          ]
+        },
+        {
+          "title": "Enabled",
+          "description": "Quantize point positions to 16-bit integers.",
+          "type": "object",
+          "required": [
+            "enabled"
+          ],
+          "properties": {
+            "enabled": {
+              "type": "object",
+              "properties": {
+                "quantizationError": {
+                  "title": "Quantization Error",
+                  "description": "Upper bound, in meters, on how far quantization may move a point. Must be positive. Defaults to 0.01. Where 16 bits cannot cover a tile's points at this error, the error is raised to what they can.",
+                  "type": [
+                    "number",
+                    "null"
+                  ],
+                  "format": "double",
+                  "exclusiveMinimum": 0.0
+                }
+              },
+              "additionalProperties": false
+            }
+          },
+          "additionalProperties": false
         }
       ]
     }

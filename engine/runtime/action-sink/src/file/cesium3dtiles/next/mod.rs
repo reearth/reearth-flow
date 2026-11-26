@@ -12,6 +12,7 @@
 
 mod appearance;
 mod mesh;
+mod points;
 mod primitive;
 mod quadtree;
 mod subtree;
@@ -48,6 +49,7 @@ pub use super::sink::TextureCodec;
 use crate::errors::SinkError;
 use quadtree::{Cell, GeoBox};
 pub use reearth_flow_gltf::next::metadata::MetadataOptions;
+pub use reearth_flow_gltf::next::points::{PointCloudQuantization, PointEncoding};
 
 impl Cesium3DTilesWriter {
     pub(super) fn process_new_geometry(
@@ -91,6 +93,7 @@ impl Cesium3DTilesWriter {
                 .unwrap_or(DEFAULT_ATLAS_EXTRUSION),
             wrap_tolerance: self.params.wrap_tolerance.unwrap_or(DEFAULT_WRAP_TOLERANCE),
             texture_codec: self.params.texture_codec,
+            points: self.params.points,
         };
         for (output, features) in &self.buffer {
             if output.ends_with(".zip") {
@@ -189,6 +192,8 @@ pub struct RenderOptions {
     /// Image codec for atlas pages. `Untextured` attaches no textures; textured
     /// geometry falls back to its neutral colour.
     pub texture_codec: TextureCodec,
+    /// Position encoding of point-cloud content.
+    pub points: PointEncoding,
 }
 
 /// Default atlas page size when the parameter is unset; inherited from the old
@@ -232,20 +237,24 @@ pub fn build(
 ) -> crate::errors::Result<BuiltTileset> {
     let mut caches = mesh::ExtractCaches::default();
     let mut rendered_features = Vec::new();
-    let extracted: Vec<(&Feature, mesh::ExtractedMesh)> = features
-        .iter()
-        .enumerate()
-        .filter_map(|(index, feature)| {
-            let mesh = mesh::extract(&feature.geometry, &mut caches)?;
-            rendered_features.push(index);
-            Some((feature, mesh))
-        })
-        .collect();
+    let mut rendered: Vec<&Feature> = Vec::new();
+    let mut meshes: Vec<(&Feature, mesh::ExtractedMesh)> = Vec::new();
+    let mut clouds: Vec<(&Feature, points::ExtractedPoints)> = Vec::new();
+    for (index, feature) in features.iter().enumerate() {
+        let mesh = mesh::extract(&feature.geometry, &mut caches);
+        let cloud = points::extract(&feature.geometry, &mut caches);
+        if mesh.is_none() && cloud.is_none() {
+            continue;
+        }
+        rendered_features.push(index);
+        rendered.push(feature);
+        meshes.extend(mesh.map(|m| (feature, m)));
+        clouds.extend(cloud.map(|c| (feature, c)));
+    }
 
     // One column order for every glb, inferred before the cells are built in
     // parallel, so a path takes the same place in each table (and in
     // `tileset.json`) whichever cells it appears in.
-    let rendered: Vec<&Feature> = extracted.iter().map(|(feature, _)| *feature).collect();
     let column_order = metadata::ColumnOrder::of_features(&rendered, options);
     let options = MetadataOptions {
         column_order: Some(&column_order),
@@ -254,7 +263,7 @@ pub fn build(
 
     let property_stats: IndexMap<String, ColumnStats> = IndexMap::new();
 
-    if extracted.is_empty() {
+    if rendered.is_empty() {
         tracing::warn!(
             "Cesium3DTilesWriter (new-geometry): no renderable geometry found; writing an \
              empty tileset"
@@ -263,102 +272,94 @@ pub fn build(
     }
     let property_stats = Mutex::new(property_stats);
 
-    let feature_boxes: Vec<Option<GeoBox>> = extracted
+    let mesh_boxes: Vec<Option<GeoBox>> = meshes
         .iter()
         .map(|(_, m)| GeoBox::of(&m.geographic_vertices))
         .collect();
-    let root = feature_boxes
+    let cloud_boxes: Vec<Option<GeoBox>> = clouds.iter().map(|(_, c)| Some(c.geo_box)).collect();
+    let root = mesh_boxes
         .iter()
+        .chain(&cloud_boxes)
         .flatten()
         .copied()
         .reduce(GeoBox::union)
-        .expect("extracted is non-empty, and mesh::extract never returns an empty vertex buffer");
-
-    let mut by_cell: HashMap<Cell, Vec<usize>> = HashMap::new();
-    for (i, feature_box) in feature_boxes.iter().enumerate() {
-        let Some(feature_box) = *feature_box else {
-            continue;
-        };
-        let cell = quadtree::place_loose(&root, &feature_box, LOOSE_TOLERANCE, SAFETY_MAX_DEPTH);
-        by_cell.entry(cell).or_default().push(i);
-    }
+        .expect("every rendered feature has a mesh vertex or a point");
 
     // Callers own the embedded-texture dir, so a cell's candidate builds write
     // each embedded texture once between them.
-    let build_chunk = |chunk: &[usize], embedded: &EmbeddedTextures| {
+    let build_mesh_chunk = |chunk: &[usize], embedded: &EmbeddedTextures| {
         let members: Vec<&(&Feature, mesh::ExtractedMesh)> =
-            chunk.iter().map(|&i| &extracted[i]).collect();
+            chunk.iter().map(|&i| &meshes[i]).collect();
         let (glb, stats) = build_cell_glb(&members, options, render, embedded)?;
         merge_stats(&mut property_stats.lock().unwrap(), stats);
         Ok(glb)
     };
+    let build_points_chunk = |chunk: &[usize], _: &EmbeddedTextures| {
+        let members: Vec<&(&Feature, points::ExtractedPoints)> =
+            chunk.iter().map(|&i| &clouds[i]).collect();
+        let (glb, stats) = points::build_cell_glb(&members, options, render.points);
+        merge_stats(&mut property_stats.lock().unwrap(), stats);
+        Ok(glb)
+    };
 
-    let mut units: HashMap<Cell, Vec<Unit>> = by_cell
-        .into_par_iter()
-        .map(
-            |(cell, features)| -> crate::errors::Result<(Cell, Vec<Unit>)> {
-                let embedded = EmbeddedTextures::new()?;
-                let bytes = transfer_bytes(&build_chunk(&features, &embedded)?);
-                Ok((cell, vec![Unit { features, bytes }]))
-            },
-        )
-        .collect::<crate::errors::Result<_>>()?;
+    let mesh_placed = place(&mesh_boxes, &root, target_tile_size, &build_mesh_chunk)?;
+    let points_placed = place(&cloud_boxes, &root, target_tile_size, &build_points_chunk)?;
 
-    merge_small_cells(&mut units, target_tile_size);
+    // Meshes and points share a cell's `MAX_CONTENTS_PER_TILE` slots. Points
+    // follow the meshes, so meshes split within what the points reserve, and
+    // points take every slot the meshes left.
+    let points_wanted: HashMap<Cell, usize> = points_placed
+        .units
+        .iter()
+        .map(|(cell, units)| (*cell, wanted_contents(units, target_tile_size)))
+        .collect();
+    let mesh_pass = write_contents(
+        mesh_placed.units,
+        target_tile_size,
+        &build_mesh_chunk,
+        |cell, units| {
+            let points = points_wanted.get(&cell).copied().unwrap_or(0);
+            let reserved = points_reserve(wanted_contents(units, target_tile_size), points);
+            (0, MAX_CONTENTS_PER_TILE - reserved)
+        },
+        &write_tile,
+    )?;
+    let points_pass = write_contents(
+        points_placed.units,
+        target_tile_size,
+        &build_points_chunk,
+        |cell, _| {
+            let first = mesh_pass.content_counts.get(&cell).copied().unwrap_or(0);
+            (first, MAX_CONTENTS_PER_TILE - first)
+        },
+        &write_tile,
+    )?;
 
-    let mut tile_bounds: HashMap<Cell, GeoBox> = HashMap::new();
-    for (cell, cell_units) in &units {
-        let content = cell_units
-            .iter()
-            .flat_map(|u| u.features.iter())
-            .filter_map(|&i| feature_boxes[i])
-            .reduce(GeoBox::union)
-            .expect("every placed feature has a box");
-        let mut tile = Some(*cell);
-        while let Some(t) = tile {
-            tile_bounds
-                .entry(t)
-                .and_modify(|b| *b = b.union(content))
-                .or_insert(content);
-            tile = t.parent();
-        }
+    let mut content_counts = mesh_pass.content_counts;
+    for (cell, count) in points_pass.content_counts {
+        *content_counts.entry(cell).or_default() += count;
     }
-
-    let occupied: BTreeSet<Cell> = units.keys().copied().collect();
+    let mut tile_bounds = mesh_placed.tile_bounds;
+    for (cell, bounds) in points_placed.tile_bounds {
+        tile_bounds
+            .entry(cell)
+            .and_modify(|b| *b = b.union(bounds))
+            .or_insert(bounds);
+    }
+    let occupied: BTreeSet<Cell> = content_counts.keys().copied().collect();
     let available_levels = occupied.iter().map(|c| c.level).max().unwrap_or(0) + 1;
 
-    // The glb bytes feed neither `tileset.json` nor the subtrees (those need
-    // only the cell keys, already captured in `occupied`), so each cell's
-    // contents stream to `write_tile` as soon as the cell is done and peak
-    // memory stays at one cell's contents per worker.
-    let cell_results: Vec<(Cell, usize, bool)> = units
-        .into_par_iter()
-        .map(
-            |(cell, units)| -> crate::errors::Result<(Cell, usize, bool)> {
-                let contents = split_by_size(units, target_tile_size, build_chunk)?;
-                let count = contents.glbs.len();
-                for (n, glb) in contents.glbs.into_iter().enumerate() {
-                    write_tile(content_path(cell, n), glb)?;
-                }
-                Ok((cell, count, contents.capped))
-            },
-        )
-        .collect::<crate::errors::Result<_>>()?;
     // Cells merge in whatever order they finish; the shared order puts the
     // paths back in one fixed sequence.
     let mut property_stats = property_stats.into_inner().unwrap();
     property_stats.sort_by_cached_key(|path, _| column_order.rank(path));
 
-    let content_counts: HashMap<Cell, usize> = cell_results
-        .iter()
-        .map(|(cell, count, _)| (*cell, *count))
-        .collect();
     // The content URI template and the subtree `contentAvailability` array are
     // both declared once for the whole tileset, so every cell shares the same
     // slot count even where only one cell actually splits.
     let max_contents = content_counts.values().copied().max().unwrap_or(1);
     let tile_count: usize = content_counts.values().sum();
-    let capped_cells = cell_results.iter().filter(|(_, _, capped)| *capped).count();
+    let capped_cells = mesh_pass.capped_cells + points_pass.capped_cells;
     if capped_cells > 0 {
         tracing::warn!(
             "Cesium3DTilesWriter: {capped_cells} tile(s) reached the {MAX_CONTENTS_PER_TILE} \
@@ -379,6 +380,142 @@ pub fn build(
         tile_count,
         rendered_features,
     })
+}
+
+/// One kind of content placed in the quadtree, not yet written.
+struct Placed {
+    /// Each cell's units, after small cells are folded into their parents.
+    units: HashMap<Cell, Vec<Unit>>,
+    /// Geographic extent of the content in and below each tile.
+    tile_bounds: HashMap<Cell, GeoBox>,
+}
+
+/// The contents one kind of content wrote.
+struct Written {
+    /// Contents written per cell.
+    content_counts: HashMap<Cell, usize>,
+    /// Cells their content cap stopped from splitting further.
+    capped_cells: usize,
+}
+
+/// Place items by their `boxes` in the quadtree under `root`, measure each
+/// cell, and fold small cells into their parents. Items without a box are
+/// skipped.
+fn place(
+    boxes: &[Option<GeoBox>],
+    root: &GeoBox,
+    target_tile_size: u64,
+    build_chunk: &(impl Fn(&[usize], &EmbeddedTextures) -> crate::errors::Result<Vec<u8>> + Sync),
+) -> crate::errors::Result<Placed> {
+    let mut by_cell: HashMap<Cell, Vec<usize>> = HashMap::new();
+    for (i, item_box) in boxes.iter().enumerate() {
+        let Some(item_box) = *item_box else {
+            continue;
+        };
+        let cell = quadtree::place_loose(root, &item_box, LOOSE_TOLERANCE, SAFETY_MAX_DEPTH);
+        by_cell.entry(cell).or_default().push(i);
+    }
+
+    let mut units: HashMap<Cell, Vec<Unit>> = by_cell
+        .into_par_iter()
+        .map(
+            |(cell, items)| -> crate::errors::Result<(Cell, Vec<Unit>)> {
+                let embedded = EmbeddedTextures::new()?;
+                let bytes = transfer_bytes(&build_chunk(&items, &embedded)?);
+                Ok((
+                    cell,
+                    vec![Unit {
+                        features: items,
+                        bytes,
+                    }],
+                ))
+            },
+        )
+        .collect::<crate::errors::Result<_>>()?;
+
+    merge_small_cells(&mut units, target_tile_size);
+
+    let mut tile_bounds: HashMap<Cell, GeoBox> = HashMap::new();
+    for (cell, cell_units) in &units {
+        let content = cell_units
+            .iter()
+            .flat_map(|u| u.features.iter())
+            .filter_map(|&i| boxes[i])
+            .reduce(GeoBox::union)
+            .expect("every placed item has a box");
+        let mut tile = Some(*cell);
+        while let Some(t) = tile {
+            tile_bounds
+                .entry(t)
+                .and_modify(|b| *b = b.union(content))
+                .or_insert(content);
+            tile = t.parent();
+        }
+    }
+
+    Ok(Placed { units, tile_bounds })
+}
+
+/// Split each cell's units to `target_tile_size` and write the glbs through
+/// `write_tile`. `slots(cell, units)` gives the cell's first content slot and
+/// how many contents it may split into (at least 1).
+fn write_contents(
+    units: HashMap<Cell, Vec<Unit>>,
+    target_tile_size: u64,
+    build_chunk: &(impl Fn(&[usize], &EmbeddedTextures) -> crate::errors::Result<Vec<u8>> + Sync),
+    slots: impl Fn(Cell, &[Unit]) -> (usize, usize) + Sync,
+    write_tile: &(impl Fn(String, Vec<u8>) -> crate::errors::Result<()> + Sync),
+) -> crate::errors::Result<Written> {
+    // The glb bytes feed neither `tileset.json` nor the subtrees (those need
+    // only the cell keys), so each cell's contents stream to `write_tile` as
+    // soon as the cell is done and peak memory stays at one cell's contents
+    // per worker.
+    let cell_results: Vec<(Cell, usize, bool)> = units
+        .into_par_iter()
+        .map(
+            |(cell, units)| -> crate::errors::Result<(Cell, usize, bool)> {
+                let (first, max) = slots(cell, &units);
+                let contents = split_by_size(units, target_tile_size, max, build_chunk)?;
+                let count = contents.glbs.len();
+                for (n, glb) in contents.glbs.into_iter().enumerate() {
+                    write_tile(content_path(cell, first + n), glb)?;
+                }
+                Ok((cell, count, contents.capped))
+            },
+        )
+        .collect::<crate::errors::Result<_>>()?;
+
+    Ok(Written {
+        content_counts: cell_results
+            .iter()
+            .map(|(cell, count, _)| (*cell, *count))
+            .collect(),
+        capped_cells: cell_results.iter().filter(|(_, _, capped)| *capped).count(),
+    })
+}
+
+/// How many contents `units` would split into to meet `target_tile_size`: at
+/// most one per feature, and at most [`MAX_CONTENTS_PER_TILE`].
+fn wanted_contents(units: &[Unit], target_tile_size: u64) -> usize {
+    let by_size = if target_tile_size == 0 {
+        MAX_CONTENTS_PER_TILE
+    } else {
+        group_bytes(units).div_ceil(target_tile_size) as usize
+    };
+    let features: usize = units.iter().map(|u| u.features.len()).sum();
+    by_size.min(features).clamp(1, MAX_CONTENTS_PER_TILE)
+}
+
+/// Slots a cell keeps back from its meshes for the points that follow them:
+/// all the points want while both fit in [`MAX_CONTENTS_PER_TILE`], else their
+/// proportional share, at least 1 each.
+fn points_reserve(mesh_wanted: usize, points_wanted: usize) -> usize {
+    if points_wanted == 0 || mesh_wanted + points_wanted <= MAX_CONTENTS_PER_TILE {
+        return points_wanted;
+    }
+    let share =
+        (MAX_CONTENTS_PER_TILE * points_wanted) as f64 / (mesh_wanted + points_wanted) as f64;
+    (share.round() as usize).clamp(1, MAX_CONTENTS_PER_TILE - 1)
 }
 
 /// Column stats and more column stats -> the stats merged per column name.
@@ -430,8 +567,8 @@ fn transfer_bytes(glb: &[u8]) -> u64 {
 /// The content glbs one cell splits into, in slot order.
 struct CellContents {
     glbs: Vec<Vec<u8>>,
-    /// Whether [`MAX_CONTENTS_PER_TILE`] stopped a split, leaving at least one
-    /// content over the target.
+    /// Whether the content cap stopped a split, leaving at least one content
+    /// over the target.
     capped: bool,
 }
 
@@ -440,19 +577,16 @@ struct CellContents {
 /// bytes, then every chunk is built, measured, and cut further while it is
 /// over the target: a chunk of several units is cut between units, a chunk of
 /// one unit is cut into equal feature counts. A single feature is never split,
-/// and no cell yields more than [`MAX_CONTENTS_PER_TILE`] chunks.
+/// and no cell yields more than `max` chunks.
 fn split_by_size(
     units: Vec<Unit>,
     target_tile_size: u64,
+    max: usize,
     build_chunk: impl Fn(&[usize], &EmbeddedTextures) -> crate::errors::Result<Vec<u8>> + Sync,
 ) -> crate::errors::Result<CellContents> {
+    debug_assert!(max >= 1);
     let embedded = EmbeddedTextures::new()?;
-    let expected = group_bytes(&units);
-    let parts = if target_tile_size == 0 {
-        MAX_CONTENTS_PER_TILE
-    } else {
-        (expected.div_ceil(target_tile_size) as usize).clamp(1, MAX_CONTENTS_PER_TILE)
-    };
+    let parts = wanted_contents(&units, target_tile_size).min(max);
     let mut pending: Vec<Vec<Unit>> = if parts >= 2 && units.len() >= 2 {
         split_into(units, |u| u.bytes, parts)
     } else {
@@ -481,7 +615,7 @@ fn split_by_size(
                 continue;
             }
             let unprocessed = total - k - 1;
-            let room = MAX_CONTENTS_PER_TILE - glbs.len() - pending.len() - unprocessed;
+            let room = max - glbs.len() - pending.len() - unprocessed;
             if room < 2 {
                 capped = true;
                 glbs.push(glb);
@@ -589,6 +723,9 @@ fn merge_small_cells(units: &mut HashMap<Cell, Vec<Unit>>, target_tile_size: u64
 /// on the scene node's translation exactly as tile content is, so the result
 /// drops into a georeferenced viewer unchanged.
 ///
+/// A feature with both renders its mesh only, since points go in a glb of
+/// their own.
+///
 /// `Ok(None)` means the feature carried no renderable geometry.
 ///
 // TODO: Relocate this after GltfWriter is implemented (for the new geometry)
@@ -599,7 +736,9 @@ pub fn build_glb(
 ) -> crate::errors::Result<Option<Vec<u8>>> {
     let mut caches = mesh::ExtractCaches::default();
     let Some(extracted) = mesh::extract(&feature.geometry, &mut caches) else {
-        return Ok(None);
+        // A feature with no mesh renders its points instead, if it has any.
+        return Ok(points::extract(&feature.geometry, &mut caches)
+            .map(|cloud| points::build_cell_glb(&[&(feature, cloud)], options, render.points).0));
     };
 
     let embedded = EmbeddedTextures::new()?;
@@ -1397,6 +1536,10 @@ mod tests {
             atlas_extrusion: 0,
             wrap_tolerance: 0.0,
             texture_codec: TextureCodec::Png,
+            points: PointEncoding {
+                quantization: PointCloudQuantization::default(),
+                meshopt: true,
+            },
         };
 
         let mut builder = glb::Builder::new();
@@ -1529,6 +1672,10 @@ mod tests {
             atlas_extrusion: 0,
             wrap_tolerance: 0.0,
             texture_codec: TextureCodec::Png,
+            points: PointEncoding {
+                quantization: PointCloudQuantization::default(),
+                meshopt: true,
+            },
         };
         let options = MetadataOptions {
             schema_key: None,
@@ -1653,6 +1800,10 @@ mod tests {
             atlas_extrusion: 0,
             wrap_tolerance: 0.0,
             texture_codec: TextureCodec::Png,
+            points: PointEncoding {
+                quantization: PointCloudQuantization::default(),
+                meshopt: true,
+            },
         }
     }
 
@@ -1790,6 +1941,79 @@ mod tests {
     }
 
     #[test]
+    fn points_reserve_shares_the_cap_proportionally() {
+        assert_eq!(points_reserve(5, 0), 0);
+        assert_eq!(points_reserve(5, 10), 10);
+        assert_eq!(points_reserve(15, 2), 2);
+        assert_eq!(points_reserve(15, 15), 8);
+        assert_eq!(points_reserve(15, 1), 1);
+        assert_eq!(points_reserve(1, 15), MAX_CONTENTS_PER_TILE - 1);
+    }
+
+    /// Meshes and points in one cell share its `MAX_CONTENTS_PER_TILE` slots:
+    /// the meshes split within what the points reserve, and the points take
+    /// the slots after them.
+    #[test]
+    fn meshes_and_points_share_the_contents_cap() {
+        use reearth_flow_geometry::point_cloud::PointCloud;
+
+        let frame = CoordinateFrame::Crs(EpsgCode::new(4979));
+        let cloud_feature = |n: usize| {
+            let cloud = PointCloud::from_positions(
+                frame.clone(),
+                // Spans the meshes' footprint, so both land in the same cell.
+                (0..=20).map(|i| {
+                    let t = i as f64 / 20.0;
+                    [
+                        35.0 + 0.0001 * t,
+                        139.0 + 0.0001 * (1.0 - t),
+                        (10 + n) as f64,
+                    ]
+                }),
+            );
+            Feature::new_with_attributes_and_geometry(
+                Attributes::new(),
+                Geometry::Euclidean3D(Euclidean3DGeometry::PointCloud(Box::new(cloud))),
+            )
+        };
+        let mut features: Vec<Feature> = (0..MAX_CONTENTS_PER_TILE * 3)
+            .map(|_| untextured_feature(35.0, 139.0))
+            .collect();
+        features.extend((0..2).map(cloud_feature));
+
+        let tiles = Mutex::new(Vec::new());
+        build(
+            &features,
+            plain_metadata_options(),
+            1,
+            plain_render_options(),
+            |path: String, glb: Vec<u8>| {
+                let json_len = u32::from_le_bytes(glb[12..16].try_into().unwrap()) as usize;
+                let json: serde_json::Value =
+                    serde_json::from_slice(&glb[20..20 + json_len]).unwrap();
+                let points = json["meshes"][0]["primitives"][0]["mode"] == 0;
+                tiles.lock().unwrap().push((path, points));
+                Ok(())
+            },
+        )
+        .expect("build tileset");
+
+        let tiles = tiles.into_inner().unwrap();
+        assert_eq!(tiles.len(), MAX_CONTENTS_PER_TILE);
+        let slot = |path: &str| -> usize {
+            let name = path.rsplit('/').next().unwrap().trim_end_matches(".glb");
+            name.split_once('_').map_or(0, |(_, n)| n.parse().unwrap())
+        };
+        let mut point_slots: Vec<usize> = tiles
+            .iter()
+            .filter(|(_, points)| *points)
+            .map(|(path, _)| slot(path))
+            .collect();
+        point_slots.sort();
+        assert_eq!(point_slots, vec![13, 14]);
+    }
+
+    #[test]
     fn split_into_weights_items_and_never_yields_one_group() {
         let weights = [10u64, 10, 10, 10, 100, 1, 1];
         let all: Vec<usize> = (0..weights.len()).collect();
@@ -1827,5 +2051,78 @@ mod tests {
 
         assert_eq!(content_sizes(&features, summed).len(), 1);
         assert_eq!(content_sizes(&features, summed - 1).len(), 2);
+    }
+
+    /// A feature holding a mesh and a point cloud writes the mesh to slot 0
+    /// and the points to a `POINTS` glb in slot 1, meshopt-compressed and
+    /// quantized, both pointing at the feature's row.
+    #[test]
+    fn point_cloud_gets_its_own_content_after_the_mesh() {
+        use reearth_flow_geometry::GeometryCollection;
+        use reearth_flow_geometry::point_cloud::PointCloud;
+
+        let frame = CoordinateFrame::Crs(EpsgCode::new(4979));
+        let mesh = TriangularMesh3D::from_soup(
+            frame.clone(),
+            [
+                [35.0, 139.0, 10.0],
+                [35.0, 139.0001, 10.0],
+                [35.0001, 139.0, 10.0],
+            ],
+        );
+        let cloud = PointCloud::from_positions(
+            frame,
+            (0..50).map(|i| [35.0 + i as f64 * 1e-6, 139.0, 10.0 + i as f64]),
+        );
+        let mut attrs = Attributes::new();
+        attrs.insert(
+            reearth_flow_types::Attribute::new("name"),
+            reearth_flow_types::AttributeValue::String("tower".to_string()),
+        );
+        let feature = Feature::new_with_attributes_and_geometry(
+            attrs,
+            Geometry::GeometryCollection(GeometryCollection::new([
+                Geometry::Euclidean3D(Euclidean3DGeometry::TriangularMesh(Box::new(mesh))),
+                Geometry::Euclidean3D(Euclidean3DGeometry::PointCloud(Box::new(cloud))),
+            ])),
+        );
+
+        let tiles = Mutex::new(Vec::new());
+        let built = build(
+            &[feature],
+            plain_metadata_options(),
+            DEFAULT_TARGET_TILE_SIZE,
+            plain_render_options(),
+            |path: String, glb| {
+                tiles.lock().unwrap().push((path, glb));
+                Ok(())
+            },
+        )
+        .expect("build tileset");
+
+        assert_eq!(built.tile_count, 2);
+        assert_eq!(built.rendered_features, vec![0]);
+        let mut tiles = tiles.into_inner().unwrap();
+        tiles.sort();
+        assert!(tiles[0].0.ends_with("/0.glb"), "{:?}", tiles[0].0);
+        assert!(tiles[1].0.ends_with("/0_1.glb"), "{:?}", tiles[1].0);
+
+        let glb = &tiles[1].1;
+        let json_len = u32::from_le_bytes(glb[12..16].try_into().unwrap()) as usize;
+        let json: serde_json::Value = serde_json::from_slice(&glb[20..20 + json_len]).unwrap();
+        let primitive = &json["meshes"][0]["primitives"][0];
+        assert_eq!(primitive["mode"], 0);
+        assert_eq!(
+            primitive["extensions"]["EXT_mesh_features"]["featureIds"][0]["featureCount"],
+            1
+        );
+        let required = json["extensionsRequired"].to_string();
+        assert!(required.contains("EXT_meshopt_compression"), "{required}");
+        assert!(required.contains("KHR_mesh_quantization"), "{required}");
+        assert_eq!(
+            json["accessors"][primitive["attributes"]["POSITION"].as_u64().unwrap() as usize]["count"],
+            50
+        );
+        assert!(json["nodes"][0]["scale"].is_array());
     }
 }

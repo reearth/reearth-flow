@@ -909,9 +909,17 @@
           "title": "Draco 压缩",
           "description": "是否使用 Draco 压缩网格几何体，以及压缩精度。默认以编码器的默认精度启用。"
         },
+        "meshoptCompressionForPointCloud": {
+          "title": "点云 Meshopt 压缩",
+          "description": "使用 meshopt（`EXT_meshopt_compression`）压缩点云位置。默认为 true。"
+        },
         "output": {
           "title": "输出路径",
           "description": "写入 3D Tiles 的目录或 zip 压缩包的路径。以 `.zip` 结尾的路径会写成 zip 压缩包"
+        },
+        "quantizePointCloud": {
+          "title": "点云量化",
+          "description": "是否将点云位置量化为 16 位整数（`KHR_mesh_quantization`），以及最大误差。默认以 0.01 m 启用。禁用时，位置以 32 位浮点数写出。"
         },
         "schemaKey": {
           "title": "模式键",
@@ -949,8 +957,24 @@
             "description": "使用 Draco 压缩网格几何体。",
             "properties": {
               "quantizationError": {
-                "title": "Quantization Error",
+                "title": "量化误差",
                 "description": "Upper bound, in meters, on how far compression may move a vertex. Must be positive. When unset, the encoder's default resolution is used."
+              }
+            }
+          }
+        },
+        "PointCloudQuantization": {
+          "disabled": {
+            "title": "禁用",
+            "description": "以 32 位浮点数写出点的位置。"
+          },
+          "enabled": {
+            "title": "启用",
+            "description": "将点的位置量化为 16 位整数。",
+            "properties": {
+              "quantizationError": {
+                "title": "Quantization Error",
+                "description": "量化可移动点的距离上限（米）。必须为正数。默认为 0.01。若 16 位无法以此误差覆盖瓦片内的点，则将误差提高到可覆盖的值。"
               }
             }
           }
