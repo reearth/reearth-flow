@@ -1,6 +1,7 @@
 package gcs
 
 import (
+	"bytes"
 	"context"
 	"errors"
 	"sync"
@@ -808,5 +809,178 @@ func TestMaterializeAt_RefusesAVersionBelowAnImportedBase(t *testing.T) {
 
 	if _, err := p2.MaterializeAt(ctx, room, persistence.Version(5)); !errors.Is(err, ErrVersionNotRebuildable) {
 		t.Errorf("MaterializeAt(5) with checkpoint %d = %v, want ErrVersionNotRebuildable", cp, err)
+	}
+}
+
+// TestWriteV2Doc_LeavesTheMirrorsWhenDocV2MovedOn: the SUB_DOC and SUB_STATE_VEC
+// writes carry no precondition, so a writer whose lease lapsed could replace a
+// newer checkpoint's mirrors with older state and leave the three objects
+// disagreeing. The mirrors are now skipped once doc_v2 is no longer ours.
+func TestWriteV2Doc_LeavesTheMirrorsWhenDocV2MovedOn(t *testing.T) {
+	t.Parallel()
+
+	ctx := context.Background()
+	client, bucket := newFakeGCS(t)
+	a, err := New(Options{Client: client, Bucket: bucket, Locker: NewNoLock()})
+	if err != nil {
+		t.Fatalf("New: %v", err)
+	}
+	const room = "mirrors"
+	oid, err := a.oidFor(ctx, room)
+	if err != nil {
+		t.Fatalf("oidFor: %v", err)
+	}
+
+	winner := crdt.New(crdt.WithClientID(1))
+	wt := winner.GetText("t") // outside Transact: GetText takes the doc lock
+	winner.Transact(func(txn *crdt.Transaction) { wt.Insert(txn, 0, "winner", nil) })
+	if err := a.writeV2Doc(ctx, room, oid, winner); err != nil {
+		t.Fatalf("seed writeV2Doc: %v", err)
+	}
+	wantDoc, err := a.store.get(ctx, a.layout.DocStateName(room, oid))
+	if err != nil {
+		t.Fatalf("read seeded SUB_DOC: %v", err)
+	}
+	wantSV, err := a.store.get(ctx, a.layout.StateVectorName(room, oid))
+	if err != nil {
+		t.Fatalf("read seeded SUB_STATE_VEC: %v", err)
+	}
+
+	// A lapsed writer: its doc_v2 put reports a generation that is no longer the
+	// one on the bucket, which is what a newer publish leaves behind.
+	stale := crdt.New(crdt.WithClientID(2))
+	st := stale.GetText("t")
+	stale.Transact(func(txn *crdt.Transaction) { st.Insert(txn, 0, "stale", nil) })
+	err = a.writeV2DocWith(ctx, room, oid, stale, func(string, []byte) (int64, error) {
+		return 999999, nil
+	})
+	if err != nil {
+		t.Fatalf("writeV2DocWith: %v", err)
+	}
+
+	gotDoc, err := a.store.get(ctx, a.layout.DocStateName(room, oid))
+	if err != nil {
+		t.Fatalf("read SUB_DOC: %v", err)
+	}
+	if !bytes.Equal(gotDoc, wantDoc) {
+		t.Error("a lapsed writer replaced SUB_DOC, so it no longer matches doc_v2")
+	}
+	gotSV, err := a.store.get(ctx, a.layout.StateVectorName(room, oid))
+	if err != nil {
+		t.Fatalf("read SUB_STATE_VEC: %v", err)
+	}
+	if !bytes.Equal(gotSV, wantSV) {
+		t.Error("a lapsed writer replaced SUB_STATE_VEC, so it no longer matches doc_v2")
+	}
+}
+
+// TestRollbackCommitted: writeUnion drops a flush candidate when a rollback
+// landed after the candidate was built, but a ceiling merely being cleared is an
+// ordinary append after a rollback the candidate already reflects.
+func TestRollbackCommitted(t *testing.T) {
+	t.Parallel()
+
+	t.Run("a ceiling appearing is a rollback", func(t *testing.T) {
+		t.Parallel()
+		if !rollbackCommitted(marks{cp: 9}, marks{cp: 5, ceil: 5, hasCeil: true}) {
+			t.Error("a new ceiling was not treated as a rollback")
+		}
+	})
+
+	t.Run("a ceiling moving is another rollback", func(t *testing.T) {
+		t.Parallel()
+		if !rollbackCommitted(marks{cp: 9, ceil: 9, hasCeil: true}, marks{cp: 5, ceil: 5, hasCeil: true}) {
+			t.Error("a moved ceiling was not treated as a rollback")
+		}
+	})
+
+	t.Run("a checkpoint going backwards is a rollback", func(t *testing.T) {
+		t.Parallel()
+		if !rollbackCommitted(marks{cp: 9}, marks{cp: 4}) {
+			t.Error("a checkpoint regression was not treated as a rollback")
+		}
+	})
+
+	t.Run("a ceiling being cleared is not", func(t *testing.T) {
+		t.Parallel()
+		if rollbackCommitted(marks{cp: 5, ceil: 5, hasCeil: true}, marks{cp: 5}) {
+			t.Error("clearing a ceiling dropped a candidate built after that rollback")
+		}
+	})
+
+	t.Run("an ordinary checkpoint advance is not", func(t *testing.T) {
+		t.Parallel()
+		if rollbackCommitted(marks{cp: 5}, marks{cp: 9}) {
+			t.Error("a competing checkpoint dropped the candidate; the union should keep both writers' edits")
+		}
+	})
+}
+
+// TestWriteUnion_DropsACandidateBuiltBeforeARollback: the flush candidate is the
+// live room state, built before a rollback that then commits. Applying it would
+// union the rolled-back edits straight back into doc_v2.
+func TestWriteUnion_DropsACandidateBuiltBeforeARollback(t *testing.T) {
+	t.Parallel()
+
+	ctx := context.Background()
+	client, bucket := newFakeGCS(t)
+	a, err := New(Options{Client: client, Bucket: bucket, Locker: NewNoLock()})
+	if err != nil {
+		t.Fatalf("New: %v", err)
+	}
+	const room = "pre-rollback-candidate"
+	oid, err := a.oidFor(ctx, room)
+	if err != nil {
+		t.Fatalf("oidFor: %v", err)
+	}
+
+	doc := crdt.New(crdt.WithClientID(5))
+	txt := doc.GetText("t")
+	var prev []byte
+	for i := 0; i < 6; i++ {
+		doc.Transact(func(txn *crdt.Transaction) { txt.Insert(txn, txt.Len(), string(rune('a'+i)), nil) })
+		full := crdt.EncodeStateAsUpdateV1(doc, nil)
+		inc := full
+		if prev != nil {
+			d, derr := crdt.DiffUpdateV1(full, svOf(t, prev))
+			if derr != nil {
+				t.Fatalf("DiffUpdateV1: %v", derr)
+			}
+			inc = d
+		}
+		if _, err := a.AppendUpdate(ctx, room, inc); err != nil {
+			t.Fatalf("AppendUpdate: %v", err)
+		}
+		prev = full
+	}
+	candidate := prev // the live state, "abcdef"
+
+	before, err := a.readMarks(ctx, room)
+	if err != nil {
+		t.Fatalf("readMarks: %v", err)
+	}
+
+	rolled, err := a.MaterializeAt(ctx, room, persistence.Version(3))
+	if err != nil {
+		t.Fatalf("MaterializeAt(3): %v", err)
+	}
+	if err := a.PruneAfter(ctx, room, persistence.Version(3), rolled); err != nil {
+		t.Fatalf("PruneAfter: %v", err)
+	}
+
+	if err := a.writeUnionOnce(ctx, room, oid, candidate, before); err != nil {
+		t.Fatalf("writeUnionOnce: %v", err)
+	}
+
+	v1, ok, err := a.loadV2(ctx, room)
+	if err != nil || !ok {
+		t.Fatalf("loadV2: ok=%v err=%v", ok, err)
+	}
+	got := crdt.New()
+	if err := crdt.ApplyUpdateV1(got, v1, nil); err != nil {
+		t.Fatalf("ApplyUpdateV1: %v", err)
+	}
+	if s := got.GetText("t").ToString(); s != "abc" {
+		t.Errorf("doc_v2 text = %q, want %q: the pre-rollback candidate restored edits the rollback removed", s, "abc")
 	}
 }

@@ -364,19 +364,51 @@ func (a *Adapter) applyObject(ctx context.Context, doc *crdt.Doc, name string) e
 // The write only lands on the doc_v2 it read, so a caller whose lock expired
 // cannot replace a newer checkpoint. It reads the state again once, then fails.
 func (a *Adapter) writeUnion(ctx context.Context, room DocID, oid uint32, candidate []byte) error {
-	err := a.writeUnionOnce(ctx, room, oid, candidate)
+	// A rollback committing after the candidate was built deliberately removed
+	// edits the candidate still carries, and the union would restore them. doc_v2's
+	// generation cannot tell a rollback from a competing checkpoint, so capture the
+	// rollback marks here and recheck them before the candidate is applied, on the
+	// retry as well as the first attempt.
+	before, err := a.readMarks(ctx, room)
+	if err != nil {
+		return err
+	}
+	err = a.writeUnionOnce(ctx, room, oid, candidate, before)
 	if errors.Is(err, errGenerationMoved) {
-		err = a.writeUnionOnce(ctx, room, oid, candidate)
+		err = a.writeUnionOnce(ctx, room, oid, candidate, before)
 	}
 	return err
 }
 
-func (a *Adapter) writeUnionOnce(ctx context.Context, room DocID, oid uint32, candidate []byte) error {
+// rollbackCommitted reports whether a rollback published between two marks
+// reads. A ceiling being cleared is an ordinary append after a rollback the
+// candidate already reflects, so that direction does not count.
+func rollbackCommitted(before, now marks) bool {
+	if !before.hasCeil && now.hasCeil {
+		return true
+	}
+	if before.hasCeil && now.hasCeil && before.ceil != now.ceil {
+		return true
+	}
+	return now.cp < before.cp
+}
+
+func (a *Adapter) writeUnionOnce(ctx context.Context, room DocID, oid uint32, candidate []byte, before marks) error {
 	st, err := a.readState(ctx, room, oid)
 	if err != nil {
 		return err
 	}
 	if len(candidate) > 0 {
+		now, err := a.readMarks(ctx, room)
+		if err != nil {
+			return err
+		}
+		if rollbackCommitted(before, now) {
+			a.log.Warn("gcs: dropping a flush candidate built before a rollback",
+				"room", room, "cp_before", before.cp, "cp_now", now.cp,
+				"ceil_before", before.ceil, "ceil_now", now.ceil)
+			return nil
+		}
 		if err := crdt.ApplyUpdateV1(st.doc, candidate, nil); err != nil {
 			return err
 		}

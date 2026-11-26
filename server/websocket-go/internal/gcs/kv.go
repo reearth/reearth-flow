@@ -125,7 +125,7 @@ var errGenerationMoved = errors.New("gcs: object rewritten since it was read")
 
 // putIfGeneration writes data only while the object's generation is gen, or
 // while it does not exist when gen is 0. It returns errGenerationMoved otherwise.
-func (s kv) putIfGeneration(ctx context.Context, name string, data []byte, gen int64) error {
+func (s kv) putIfGeneration(ctx context.Context, name string, data []byte, gen int64) (int64, error) {
 	cond := storage.Conditions{GenerationMatch: gen}
 	if gen == 0 {
 		cond = storage.Conditions{DoesNotExist: true}
@@ -133,9 +133,15 @@ func (s kv) putIfGeneration(ctx context.Context, name string, data []byte, gen i
 	w := s.bucket.Object(name).If(cond).NewWriter(ctx)
 	if _, err := w.Write(data); err != nil {
 		_ = w.Close()
-		return asGenerationMoved(err)
+		return 0, asGenerationMoved(err)
 	}
-	return asGenerationMoved(w.Close())
+	if err := asGenerationMoved(w.Close()); err != nil {
+		return 0, err
+	}
+	if at := w.Attrs(); at != nil {
+		return at.Generation, nil
+	}
+	return 0, nil
 }
 
 func asGenerationMoved(err error) error {

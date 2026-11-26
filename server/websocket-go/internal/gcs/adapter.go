@@ -378,15 +378,17 @@ func (a *Adapter) writeV2Snapshot(ctx context.Context, room DocID, oid uint32, v
 // writeV2Doc writes doc as doc_v2, SUB_DOC and SUB_STATE_VEC. It strips the
 // transient keys from doc first.
 func (a *Adapter) writeV2Doc(ctx context.Context, room DocID, oid uint32, doc *crdt.Doc) error {
-	return a.writeV2DocWith(ctx, room, oid, doc, func(name string, b []byte) error {
-		return a.store.put(ctx, name, b)
+	return a.writeV2DocWith(ctx, room, oid, doc, func(name string, b []byte) (int64, error) {
+		// Unconditional: rollback and backfill hold the lock and publish outright,
+		// so there is no generation of ours for the mirrors to be tied to.
+		return 0, a.store.put(ctx, name, b)
 	})
 }
 
 // writeV2DocIf is writeV2Doc, but writes nothing and returns errGenerationMoved
 // once doc_v2 is no longer at generation gen (0 for absent).
 func (a *Adapter) writeV2DocIf(ctx context.Context, room DocID, oid uint32, doc *crdt.Doc, gen int64) error {
-	return a.writeV2DocWith(ctx, room, oid, doc, func(name string, b []byte) error {
+	return a.writeV2DocWith(ctx, room, oid, doc, func(name string, b []byte) (int64, error) {
 		if a.beforeV2Write != nil {
 			a.beforeV2Write()
 		}
@@ -394,14 +396,30 @@ func (a *Adapter) writeV2DocIf(ctx context.Context, room DocID, oid uint32, doc 
 	})
 }
 
-func (a *Adapter) writeV2DocWith(ctx context.Context, room DocID, oid uint32, doc *crdt.Doc, putV2 func(name string, b []byte) error) error {
+func (a *Adapter) writeV2DocWith(ctx context.Context, room DocID, oid uint32, doc *crdt.Doc, putV2 func(name string, b []byte) (int64, error)) error {
 	// Strip ephemeral UI keys (e.g. metadata.rollbackInProgress) before persisting:
 	// they ride the CRDT for live broadcast but must never survive in doc_v2, which
 	// the Rust reader loads on its own with no tail updates to clear them.
 	a.stripTransient(doc)
 	v2 := crdt.EncodeStateAsUpdateV2(doc, nil)
-	if err := putV2(a.layout.DocV2Name(room), compressBrotli(v2)); err != nil {
+	gen, err := putV2(a.layout.DocV2Name(room), compressBrotli(v2))
+	if err != nil {
 		return err
+	}
+	// The V1 mirrors belong to the doc_v2 just written, but these puts carry no
+	// precondition. A writer whose lease lapsed can arrive here after a newer
+	// doc_v2 was published, so leave that writer's mirrors alone rather than
+	// replacing them with older state.
+	if gen != 0 {
+		cur, gerr := a.store.generation(ctx, a.layout.DocV2Name(room))
+		if gerr != nil {
+			return gerr
+		}
+		if cur != gen {
+			a.log.Warn("gcs: doc_v2 moved on after our write, leaving the v1 mirrors to the newer writer",
+				"room", room, "wrote", gen, "current", cur)
+			return nil
+		}
 	}
 	if err := a.store.put(ctx, a.layout.DocStateName(room, oid), crdt.EncodeStateAsUpdateV1(doc, nil)); err != nil {
 		return err
