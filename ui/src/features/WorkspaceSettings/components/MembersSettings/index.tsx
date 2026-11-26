@@ -11,8 +11,9 @@ import {
 } from "@flow/components";
 import { useUser, useWorkspace } from "@flow/lib/gql";
 import { useT } from "@flow/lib/i18n";
+import { usePermissions, useRoleLabel } from "@flow/lib/permissions";
 import type { AppColumnDef } from "@flow/lib/table/features";
-import { useCurrentUserRole, useCurrentWorkspace } from "@flow/stores";
+import { useCurrentWorkspace } from "@flow/stores";
 import type { UserMember } from "@flow/types";
 import { Role } from "@flow/types";
 
@@ -23,7 +24,8 @@ const roles: Role[] = Object.values(Role);
 const MembersSettings: React.FC = () => {
   const t = useT();
   const [currentWorkspace] = useCurrentWorkspace();
-  const [currentUserRole] = useCurrentUserRole();
+  const { manageMembers } = usePermissions();
+  const roleLabel = useRoleLabel();
 
   const {
     addMemberToWorkspace,
@@ -130,6 +132,7 @@ const MembersSettings: React.FC = () => {
     {
       accessorKey: "role",
       header: t("Role"),
+      cell: (row) => roleLabel(row.row.original.role),
     },
     {
       accessorKey: "actions",
@@ -139,8 +142,8 @@ const MembersSettings: React.FC = () => {
           <div key={row.row.original.userId} className="flex gap-4 py-2">
             <DropdownMenu>
               <DropdownMenuTrigger
-                disabled={row.row.original.userId === me?.id}
-                className={`flex flex-1 items-center gap-1 ${row.row.original.userId === me?.id ? "opacity-50" : ""}`}>
+                disabled={!manageMembers || row.row.original.userId === me?.id}
+                className={`flex flex-1 items-center gap-1 ${!manageMembers || row.row.original.userId === me?.id ? "opacity-50" : ""}`}>
                 <p className="text-sm">{t("Change role")}</p>
                 <CaretDownIcon className="size-2" />
               </DropdownMenuTrigger>
@@ -151,7 +154,7 @@ const MembersSettings: React.FC = () => {
                     onClick={() =>
                       handleChangeRole(row.row.original.userId, role)
                     }>
-                    {role}
+                    {roleLabel(role)}
                   </DropdownMenuItem>
                 ))}
               </DropdownMenuContent>
@@ -162,11 +165,7 @@ const MembersSettings: React.FC = () => {
             className="h-[25px]"
             size="sm"
             variant="outline"
-            disabled={
-              (currentUserRole !== Role.Owner &&
-                currentUserRole !== Role.Maintainer) ||
-              row.row.original.userId === me?.id
-            }
+            disabled={!manageMembers || row.row.original.userId === me?.id}
             onClick={() => handleRemoveMembers(row.row.original.userId)}>
             {t("Remove")}
           </Button>
@@ -185,6 +184,7 @@ const MembersSettings: React.FC = () => {
           {!currentWorkspace?.personal && (
             <Button
               className="flex gap-2"
+              disabled={!manageMembers}
               onClick={() => setOpenMemberAddDialog(true)}>
               <PlusIcon weight="thin" />
               <p className="text-xs dark:font-light"> {t("Add Member")}</p>

@@ -18,7 +18,8 @@
   A second wtr:WaterSurface holds a gml:MultiSurface whose only surface member
   refers back to that MultiSurface itself. The reader rejects the cycle, which
   says nothing about vertex counts, so still one triangle with an incorrect
-  number of vertices is expected.
+  number of vertices is expected. A MultiSurface is not a surface, so the
+  reference is also one T03 error.
 -->
 <core:CityModel xmlns:core="http://www.opengis.net/citygml/3.0"
 	xmlns:wtr="http://www.opengis.net/citygml/waterbody/3.0"

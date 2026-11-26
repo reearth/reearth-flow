@@ -106,6 +106,10 @@ For list `l`, `l.extend(other)` appends all elements of `other` to `l`.
 
 For list `l`, `l.truncate(n)` removes all elements at index `n` and beyond. If `n` is greater than or equal to the length of `l`, `l` is unchanged.
 
+### `reverse`
+
+For list `l`, `l.reverse()` reverses the order of the elements of `l` in place.
+
 ### `get`
 
 For list `l`, `l.get(i)` returns the element at index `i`, or `null` if out of bounds. Negative indices count from the end.

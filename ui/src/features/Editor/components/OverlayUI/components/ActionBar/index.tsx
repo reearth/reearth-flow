@@ -28,6 +28,7 @@ import {
 } from "@flow/features/Editor/editorContext";
 import type { DeploymentChangeStatus } from "@flow/hooks/useDeploymentChanges";
 import { useT } from "@flow/lib/i18n";
+import { usePermissions } from "@flow/lib/permissions";
 import type { Deployment } from "@flow/types";
 
 import type { DialogOptions } from "../../types";
@@ -71,7 +72,8 @@ const ActionBar: React.FC<Props> = ({
   onProjectLockChange,
 }) => {
   const t = useT();
-  const { isLocked, isReaderRestricted } = useEditorContext();
+  const { isLocked } = useEditorContext();
+  const permissions = usePermissions();
   const readonly = useIsReadOnly();
 
   return (
@@ -90,7 +92,7 @@ const ActionBar: React.FC<Props> = ({
                   : t("Deploy project's workflow")
               }
               tooltipOffset={tooltipOffset}
-              disabled={isReaderRestricted}
+              disabled={!permissions.manageDeployments}
               icon={
                 <span className="relative">
                   <RocketIcon weight="thin" size={18} />
@@ -141,7 +143,7 @@ const ActionBar: React.FC<Props> = ({
           className="bg-primary/50 backdrop-blur">
           {showDialog === "share" && (
             <SharePopover
-              readonly={isReaderRestricted}
+              readonly={!permissions.shareProject}
               sharingUrl={sharingUrl}
               onProjectShare={onProjectShare}
             />
@@ -182,7 +184,7 @@ const ActionBar: React.FC<Props> = ({
           <DropdownMenuItem
             className="flex items-center justify-between"
             closeOnClick={false}
-            disabled={isReaderRestricted}
+            disabled={!permissions.lockProject}
             onClick={onProjectLockChange?.bind(null, !isLocked)}>
             <div className="flex items-center gap-1">
               {isLocked ? (

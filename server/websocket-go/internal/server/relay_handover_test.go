@@ -12,11 +12,17 @@ import (
 	"github.com/reearth/ygo/persistence"
 	ygws "github.com/reearth/ygo/provider/websocket"
 
+	"github.com/reearth/reearth-flow/websocket-go/internal/config"
 	redisrelay "github.com/reearth/reearth-flow/websocket-go/internal/redis"
 )
 
 // redisCluster starts n instances sharing one Redis relay and one store.
 func redisCluster(t *testing.T, n int) ([]*Server, []*httptest.Server) {
+	t.Helper()
+	return redisClusterWith(t, n, testConfig())
+}
+
+func redisClusterWith(t *testing.T, n int, cfg *config.Config) ([]*Server, []*httptest.Server) {
 	t.Helper()
 	ctx, cancel := context.WithCancel(context.Background())
 	t.Cleanup(cancel)
@@ -29,7 +35,7 @@ func redisCluster(t *testing.T, n int) ([]*Server, []*httptest.Server) {
 	servers := make([]*Server, n)
 	https := make([]*httptest.Server, n)
 	for i := range servers {
-		s := NewWithPersistence(ctx, testConfig(), mem)
+		s := NewWithPersistence(ctx, cfg, mem)
 		relay, err := redisrelay.New(redisrelay.Options{Addr: mr.Addr()})
 		if err != nil {
 			t.Fatal(err)
@@ -79,9 +85,6 @@ func TestRelay_EditJustBeforeLeavingReachesOtherInstances(t *testing.T) {
 			return doc.GetText("content").ToString() == want && doc.PendingStats().Items == 0
 		})
 		bob.close()
-		// A connect while the room is still being torn down is dropped; that race
-		// is separate from the one this test covers.
-		waitFor(t, "bob's instance to unload the room", func() bool { return servers[1].ws.GetDoc(versionRoom) == nil })
 	}
 }
 
@@ -91,7 +94,9 @@ func TestRelay_EditJustBeforeLeavingReachesOtherInstances(t *testing.T) {
 func TestSignalLock_FromInstanceWithoutTheRoomReachesHolders(t *testing.T) {
 	t.Parallel()
 
-	servers, https := redisCluster(t, 2)
+	// A relay entry can load the room on other again after it is closed; the idle
+	// timeout lets that copy go too.
+	servers, https := redisClusterWith(t, 2, idleConfig(100*time.Millisecond))
 	holder, other := servers[0], servers[1]
 	c := dialE2E(t, https[0], lockRoom, 101)
 	defer c.close()
@@ -108,6 +113,9 @@ func TestSignalLock_FromInstanceWithoutTheRoomReachesHolders(t *testing.T) {
 		waitFor(t, "the holder to receive the lock change", func() bool {
 			l, ok := storedLock(holder, lockRoom)
 			return ok && l.At == at.UnixMilli()
+		})
+		waitFor(t, "other to close the room loaded only to send the lock change", func() bool {
+			return other.ws.GetDoc(lockRoom) == nil
 		})
 	}
 	if p := holder.ws.GetDoc(lockRoom).PendingStats().Items; p != 0 {

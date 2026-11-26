@@ -51,7 +51,7 @@ func (i *Asset) Fetch(ctx context.Context, assets []id.AssetID) ([]*asset.Asset,
 	}
 	res := alignToRequestedIDs(assets, got, nil, (*asset.Asset).ID)
 
-	if err := authorizeFetchByWorkspace(ctx, i.checkPermission, rbac.ActionAny, res, nil, (*asset.Asset).Workspace); err != nil {
+	if err := authorizeFetchByWorkspace(ctx, i.checkPermission, rbac.ActionRead, res, nil, (*asset.Asset).Workspace); err != nil {
 		return nil, err
 	}
 
@@ -59,7 +59,7 @@ func (i *Asset) Fetch(ctx context.Context, assets []id.AssetID) ([]*asset.Asset,
 }
 
 func (i *Asset) FindByWorkspace(ctx context.Context, wid accountsid.WorkspaceID, keyword *string, sort *asset.SortType, p *interfaces.PaginationParam) ([]*asset.Asset, *interfaces.PageBasedInfo, error) {
-	if err := i.checkPermission(ctx, rbac.ActionAny, wid); err != nil {
+	if err := i.checkPermission(ctx, rbac.ActionRead, wid); err != nil {
 		return nil, nil, err
 	}
 

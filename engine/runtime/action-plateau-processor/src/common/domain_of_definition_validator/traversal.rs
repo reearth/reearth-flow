@@ -1,5 +1,7 @@
 //! Collects, in one pass over a member, the inputs of the checks.
 
+use std::collections::HashMap;
+
 use fastxml::transform::EditableNodeRef;
 
 use super::extents::Positions;
@@ -15,7 +17,7 @@ pub(super) struct CollectedDescendants {
     /// The coordinates of the `gml:pos` / `gml:posList`; `None` when not
     /// collected.
     pub(super) positions: Option<Positions>,
-    pub(super) xlink_entries: Vec<CollectedXlinkEntry>,
+    pub(super) xlinks: CollectedXlinks,
     pub(super) lod_entries: Vec<LodEntry>,
 }
 
@@ -32,10 +34,21 @@ pub(super) struct CodeSpaceEntry {
     pub(super) xpath: String,
 }
 
+/// The xlinks under a member.
+#[derive(Default)]
+pub(super) struct CollectedXlinks {
+    pub(super) entries: Vec<CollectedXlinkEntry>,
+    /// The namespace URI of each prefix of the elements of the member, by its
+    /// first element.
+    pub(super) namespaces: HashMap<String, String>,
+}
+
 pub(super) struct CollectedXlinkEntry {
     pub(super) href: String,
     pub(super) tag: String,
     pub(super) xpath: String,
+    /// The element holding `tag`.
+    pub(super) holder_tag: String,
 }
 
 pub(super) struct LodEntry {
@@ -57,6 +70,7 @@ pub(super) fn collect_descendant_info(
         positions,
         ..CollectedDescendants::default()
     };
+    add_namespace(member, &member.qname(), &mut result.xlinks.namespaces);
     let mut path = vec![member_tag.to_string()];
     collect_recursive(member, gml_ns, member_tag, "", &mut path, &mut result);
     result
@@ -78,6 +92,7 @@ fn collect_recursive(
             .split_once(':')
             .map_or(child_tag.as_str(), |(_, local)| local);
         path.push(child_tag.clone());
+        add_namespace(&child, &child_tag, &mut result.xlinks.namespaces);
         // Built only for an element that reports it.
         let mut joined_path = None;
         let mut xpath = || joined_path.get_or_insert_with(|| path.join("/")).clone();
@@ -109,10 +124,11 @@ fn collect_recursive(
         }
 
         if let Some(href) = child.get_attribute_ns(XLINK_NS, "href") {
-            result.xlink_entries.push(CollectedXlinkEntry {
+            result.xlinks.entries.push(CollectedXlinkEntry {
                 href,
                 tag: child_tag.clone(),
                 xpath: xpath(),
+                holder_tag: node_tag.to_string(),
             });
         }
 
@@ -134,5 +150,17 @@ fn collect_recursive(
 
         collect_recursive(&child, gml_ns, &child_tag, &child_gml_id, path, result);
         path.pop();
+    }
+}
+
+/// Adds the namespace URI of the prefix of `element`, whose name is `qname`,
+/// unless the prefix has one.
+fn add_namespace(element: &EditableNodeRef, qname: &str, namespaces: &mut HashMap<String, String>) {
+    let prefix = qname.split_once(':').map_or("", |(prefix, _)| prefix);
+    if namespaces.contains_key(prefix) {
+        return;
+    }
+    if let Some(namespace) = element.namespace_uri() {
+        namespaces.insert(prefix.to_string(), namespace);
     }
 }

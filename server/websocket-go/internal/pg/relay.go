@@ -145,6 +145,17 @@ type Relay struct {
 	bgWG     sync.WaitGroup
 	bgCancel context.CancelFunc
 
+	// beforeRestore, when set, runs in restoreSuccessor between finding the
+	// successor and writing its heartbeat (test injection only).
+	beforeRestore func()
+	// beforePass, when set, runs at the start of each reader pass (test
+	// injection only).
+	beforePass atomic.Pointer[func()]
+
+	// presenceMu makes a restore for a successor and that successor's own removal
+	// of the heartbeat happen one after the other. It is taken before mu, never after.
+	presenceMu sync.Mutex
+
 	mu     sync.Mutex
 	sink   cluster.Sink
 	ctx    context.Context
@@ -155,6 +166,17 @@ type Relay struct {
 type roomState struct {
 	cancel context.CancelFunc
 	wg     sync.WaitGroup
+
+	// activations counts the ygo rooms using this state. ygo can activate a new
+	// room under the same name before deactivating the old one.
+	activations int
+	// replay asks the reader to read the room's rows from the start: a room
+	// activated onto this state loaded from storage, which can lack rows the
+	// reader already applied to the room it replaces.
+	replay bool
+	// replayed is closed once a replay finishes with none asked for since it
+	// began; nil when no replay is pending.
+	replayed chan struct{}
 
 	// writeCh is the bounded outbound queue; Publish enqueues non-blockingly.
 	writeCh chan writeItem
@@ -335,6 +357,10 @@ func (r *Relay) WaitCaughtUp(ctx context.Context, room string) error {
 	r.mu.Lock()
 	rs, ok := r.rooms[room]
 	active := ok && !rs.evicting
+	var replayed chan struct{}
+	if active {
+		replayed = rs.replayed
+	}
 	r.mu.Unlock()
 	if !active {
 		return ErrRoomNotActive
@@ -343,12 +369,17 @@ func (r *Relay) WaitCaughtUp(ctx context.Context, room string) error {
 	if err := r.q.QueryRow(ctx, headSQL, room).Scan(&target); err != nil {
 		return err
 	}
-	select {
-	case <-rs.caughtUp:
-	case <-rs.done:
-		return ErrRoomNotActive
-	case <-ctx.Done():
-		return ctx.Err()
+	for _, ch := range []chan struct{}{rs.caughtUp, replayed} {
+		if ch == nil {
+			continue
+		}
+		select {
+		case <-ch:
+		case <-rs.done:
+			return ErrRoomNotActive
+		case <-ctx.Done():
+			return ctx.Err()
+		}
 	}
 	// Read now rather than at the next poll, and again while the target is
 	// outstanding: with ReadLag a row can still be too young when the commit
@@ -382,7 +413,9 @@ func (r *Relay) ActiveInstances(ctx context.Context, room string) (int, error) {
 }
 
 // RoomActivated starts the room's reader, heartbeat and writer, and registers this
-// instance as live. Idempotent.
+// instance as live. Every call is matched by one RoomDeactivated, and the room
+// stays active until the last of them: ygo can activate a room again before
+// deactivating the room it replaces.
 //
 // Catch-up replay is performed by the reader goroutine, NOT inline here: ygo invokes
 // RoomActivated while holding its rooms lock, so injecting during the callback
@@ -395,17 +428,30 @@ func (r *Relay) RoomActivated(room string) {
 		r.mu.Unlock()
 		return
 	}
-	if rs, ok := r.rooms[room]; ok && !rs.evicting {
+	old, ok := r.rooms[room]
+	if ok && !old.evicting {
+		old.activations++
+		old.replay = true
+		if old.replayed == nil {
+			old.replayed = make(chan struct{})
+		}
 		r.mu.Unlock()
-		return // already active
+		select {
+		case old.wake <- struct{}{}:
+		default:
+		}
+		return
 	}
+	// An evicting state is replaced at once rather than waited for: its eviction
+	// may be waiting on the reader goroutine this call is running on.
 	ctx, cancel := context.WithCancel(r.ctx)
 	rs := &roomState{
-		cancel:   cancel,
-		writeCh:  make(chan writeItem, writeQueueCap),
-		wake:     make(chan struct{}, 1),
-		caughtUp: make(chan struct{}),
-		done:     make(chan struct{}),
+		activations: 1,
+		cancel:      cancel,
+		writeCh:     make(chan writeItem, writeQueueCap),
+		wake:        make(chan struct{}, 1),
+		caughtUp:    make(chan struct{}),
+		done:        make(chan struct{}),
 	}
 	r.rooms[room] = rs
 	sink := r.sink
@@ -421,13 +467,18 @@ func (r *Relay) RoomActivated(room string) {
 	go r.writeLoop(ctx, room, rs)
 }
 
-// RoomDeactivated stops the room's goroutines and runs the locked evict path: if
-// this is the last active instance, flush to GCS then safe-delete the rows.
-// Idempotent.
+// RoomDeactivated ends one RoomActivated. On the last, it stops the room's
+// goroutines and runs the locked evict path: if this is the last active instance,
+// flush to GCS then safe-delete the rows.
 func (r *Relay) RoomDeactivated(room string) {
 	r.mu.Lock()
 	rs, ok := r.rooms[room]
-	if !ok || r.closed {
+	if !ok || r.closed || rs.evicting {
+		r.mu.Unlock()
+		return
+	}
+	rs.activations--
+	if rs.activations > 0 {
 		r.mu.Unlock()
 		return
 	}
@@ -438,18 +489,40 @@ func (r *Relay) RoomDeactivated(room string) {
 	rs.cancel()
 	rs.wg.Wait()
 
-	r.evict(room)
+	r.evict(room, rs)
 
 	r.mu.Lock()
-	// Only delete if the map still holds THIS roomState. A client reconnecting into
-	// the eviction window makes ygo fire RoomActivated (off-lock), which installs a
-	// fresh roomState under the same key; an unconditional delete would drop that
-	// live entry, leaking its goroutines and silently no-op'ing every future
-	// Publish for the room.
+	// A RoomActivated during the eviction installed a successor under the same
+	// key, which must stay.
 	if r.rooms[room] == rs {
 		delete(r.rooms, room)
 	}
 	r.mu.Unlock()
+}
+
+// replaced reports whether a live state replaced rs while rs was evicting.
+func (r *Relay) replaced(room string, rs *roomState) bool {
+	r.mu.Lock()
+	defer r.mu.Unlock()
+	next, ok := r.rooms[room]
+	return ok && next != rs && !next.evicting
+}
+
+// restoreSuccessor re-stamps the heartbeat of a state that replaced rs, which
+// rs's eviction removed because both share this instance's id. Holding presenceMu
+// throughout means a successor that leaves removes the heartbeat after this.
+func (r *Relay) restoreSuccessor(ctx context.Context, room string, rs *roomState) {
+	r.presenceMu.Lock()
+	defer r.presenceMu.Unlock()
+	if !r.replaced(room, rs) {
+		return
+	}
+	if r.beforeRestore != nil {
+		r.beforeRestore()
+	}
+	if err := r.heartbeat(ctx, room); err != nil {
+		r.log.Warn("relay could not restore the heartbeat of a reactivated room", "room", room, "err", err)
+	}
 }
 
 // Close stops every room's goroutines. It does NOT close the Querier: the pool is
@@ -508,9 +581,11 @@ func (r *Relay) ForceEvict(ctx context.Context, room string) error {
 			rs.wg.Wait()
 		}
 
+		r.presenceMu.Lock()
 		if _, err := r.q.Exec(ctx, removeHeartbeatSQL, room, r.clientID); err != nil {
 			r.log.Debug("relay force-evict heartbeat removal failed", "room", room, "err", err)
 		}
+		r.presenceMu.Unlock()
 		if _, err := r.q.Exec(ctx, forceDeleteSQL, room); err != nil {
 			r.log.Debug("relay force-evict delete failed", "room", room, "err", err)
 			return err
@@ -540,20 +615,26 @@ func (r *Relay) ForceEvict(ctx context.Context, room string) error {
 // shutdown ygo cancels the delivery context BEFORE closing peers (which triggers
 // this eviction), so reusing it would abort the last-instance flush and silently
 // lose the room's latest state.
-func (r *Relay) evict(room string) {
+//
+// A state that replaced rs during the eviction keeps this instance live: the
+// rows are kept, and its heartbeat is restored at the end.
+func (r *Relay) evict(room string, rs *roomState) {
 	ctx, cancel := context.WithTimeout(context.WithoutCancel(context.Background()), evictTimeout)
 	defer cancel()
+	defer r.restoreSuccessor(ctx, room, rs)
 
+	r.presenceMu.Lock()
 	if _, err := r.q.Exec(ctx, removeHeartbeatSQL, room, r.clientID); err != nil {
 		r.log.Debug("relay remove heartbeat failed", "room", room, "err", err)
 	}
+	r.presenceMu.Unlock()
 
 	active, err := r.activeInstances(ctx, room)
 	if err != nil {
 		r.log.Debug("relay active-count failed", "room", room, "err", err)
 		return
 	}
-	if active > 0 {
+	if active > 0 || r.replaced(room, rs) {
 		return
 	}
 
@@ -562,6 +643,9 @@ func (r *Relay) evict(room string) {
 		r.log.Debug("relay GCS flush failed", "room", room, "err", err)
 		// Do NOT delete the rows on flush failure — un-persisted updates would be
 		// lost; a reconnect re-replays them.
+		return
+	}
+	if r.replaced(room, rs) {
 		return
 	}
 
@@ -656,7 +740,22 @@ func (r *Relay) readLoop(ctx context.Context, room string, rs *roomState, sink c
 		if ctx.Err() != nil {
 			return
 		}
-		if err := r.drain(ctx, room, rs, sink, live); err != nil {
+		if hook := r.beforePass.Load(); hook != nil {
+			(*hook)()
+		}
+		r.mu.Lock()
+		replay := rs.replay
+		if replay {
+			rs.replay = false
+			rs.cursor = 0
+		}
+		r.mu.Unlock()
+		if err := r.drain(ctx, room, rs, sink, live && !replay); err != nil {
+			if replay {
+				r.mu.Lock()
+				rs.replay = true
+				r.mu.Unlock()
+			}
 			if ctx.Err() != nil {
 				return
 			}
@@ -668,6 +767,14 @@ func (r *Relay) readLoop(ctx context.Context, room string, rs *roomState, sink c
 			case <-time.After(200 * time.Millisecond):
 			}
 			continue
+		}
+		if replay {
+			r.mu.Lock()
+			if !rs.replay && rs.replayed != nil {
+				close(rs.replayed)
+				rs.replayed = nil
+			}
+			r.mu.Unlock()
 		}
 		if !live {
 			close(rs.caughtUp)

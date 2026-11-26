@@ -351,9 +351,9 @@ pub(super) fn read(
     // Borrowed, not copied: `Bytes` derefs to `[u8]` and `from_str` wants only a
     // `&str`, so a CZML document is never duplicated in memory to be decoded.
     let text = std::str::from_utf8(content)
-        .map_err(|e| SourceError::CzmlReader(format!("Invalid UTF-8: {e}")))?;
+        .map_err(|e| parse_failed(ctx, format!("Invalid UTF-8: {e}")))?;
     let packets: Vec<Value> = serde_json::from_str(text)
-        .map_err(|e| SourceError::CzmlReader(format!("Failed to parse CZML: {e}")))?;
+        .map_err(|e| parse_failed(ctx, format!("Failed to parse CZML: {e}")))?;
 
     let mut features = Vec::with_capacity(packets.len());
     for (index, packet) in packets.iter().enumerate() {
@@ -362,10 +362,13 @@ pub(super) fn read(
         // where every lookup misses and it becomes an attribute-less
         // `Geometry::None` feature: malformed input accepted silently.
         if !packet.is_object() {
-            return Err(SourceError::CzmlReader(format!(
-                "packet at index {index}: a CZML packet must be an object, got {}",
-                json_kind(packet)
-            )));
+            return Err(parse_failed(
+                ctx,
+                format!(
+                    "packet at index {index}: a CZML packet must be an object, got {}",
+                    json_kind(packet)
+                ),
+            ));
         }
         let is_document = packet.get("version").is_some_and(Value::is_string);
         if is_document && params.skip_document_packet {
@@ -377,14 +380,27 @@ pub(super) fn read(
                 ctx.report_drop(code, None, None);
             }
             Err(PositionProblem::Malformed(reason)) => {
-                return Err(SourceError::CzmlReader(format!(
-                    "packet `{}`: {reason}",
-                    packet_id(packet)
-                )));
+                return Err(parse_failed(
+                    ctx,
+                    format!("packet `{}`: {reason}", packet_id(packet)),
+                ));
             }
         }
     }
     Ok(features)
+}
+
+/// Classify a read failure as `czml.parse_failed` before returning it.
+///
+/// Without this a malformed file failed the read with a plain `SourceError`,
+/// so it reached the user as `internal.unclassified`/Fatal — no code, no help
+/// text, and nothing to act on, for the one failure a user is best placed to
+/// fix. §9 lets a source's `start()` classify, which is how `CSV Reader`
+/// raises `csv.no_data_rows`; the code's own disposition is `fatal`, matching
+/// the `Err` this hands back.
+fn parse_failed(ctx: &NodeContext, detail: String) -> SourceError {
+    ctx.report_drop(ErrorCode::CzmlParseFailed, None, None);
+    SourceError::CzmlReader(detail)
 }
 
 /// The packet's `id`, or a placeholder, for error messages.
@@ -916,6 +932,60 @@ mod tests {
         // And it must be the malformed arm, not a report-and-skip: a file with a
         // ragged coordinate list produces no features at all.
         assert!(matches!(err, SourceError::CzmlReader(_)));
+    }
+
+    #[test]
+    fn a_read_failure_is_classified_rather_than_landing_as_unclassified() {
+        use reearth_flow_runtime::event::Event;
+
+        // A malformed file used to fail with a plain `SourceError`, so it
+        // reached the user as `internal.unclassified`/Fatal: no code, no help
+        // text, nothing to act on, for the one failure a user is best placed
+        // to fix. §9 lets a source's `start()` classify.
+        for bad in [
+            r#"{"not":"an array"}"#,
+            r#"[1, 2, 3]"#,
+            r#"[{"id":"a"},"#,
+            r#"[{"id":"bad","polyline":{"positions":{"cartographicDegrees":[1.0,2.0]}}}]"#,
+        ] {
+            let ctx = NodeContext::default();
+            let mut rx = ctx.event_hub.sender.subscribe();
+
+            read(&ctx, &Bytes::from(bad.to_string()), &params(false, true))
+                .expect_err(&format!("{bad} must fail the read"));
+
+            let mut codes = Vec::new();
+            while let Ok(event) = rx.try_recv() {
+                if let Event::Diagnostic(d) = event {
+                    codes.push(d.code.as_str().to_string());
+                }
+            }
+            assert!(
+                codes.iter().any(|c| c == "czml.parse_failed"),
+                "{bad} must be classified; got {codes:?}"
+            );
+        }
+
+        // The control: a file that reads cleanly classifies nothing.
+        let ctx = NodeContext::default();
+        let mut rx = ctx.event_hub.sender.subscribe();
+        read(
+            &ctx,
+            &Bytes::from(
+                r#"[{"id":"a","position":{"cartographicDegrees":[139.0,35.0,0.0]}}]"#.to_string(),
+            ),
+            &params(false, true),
+        )
+        .expect("a well-formed file reads");
+        while let Ok(event) = rx.try_recv() {
+            if let Event::Diagnostic(d) = event {
+                assert_ne!(
+                    d.code.as_str(),
+                    "czml.parse_failed",
+                    "a readable file must not report a parse failure"
+                );
+            }
+        }
     }
 
     #[test]

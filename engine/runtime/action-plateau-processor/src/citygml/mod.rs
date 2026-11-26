@@ -1,6 +1,6 @@
 mod spec;
 mod v2;
-mod v3;
+pub(crate) mod v3;
 mod xml;
 
 pub(crate) use spec::{CityGmlSpec, GML_DICTIONARY_NS};

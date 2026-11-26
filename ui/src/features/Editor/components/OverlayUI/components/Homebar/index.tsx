@@ -8,9 +8,9 @@ import type { OpenWorkflow } from "@flow/lib/yjs/useWorkflowTabs";
 import type { AwarenessUser } from "@flow/types";
 
 import {
-  Breadcrumb,
   CollaborationActionBar,
   HomeMenu,
+  ProjectMenu,
   WorkflowVariablesDialog,
   WorkflowsDropdown,
 } from "./components";
@@ -62,18 +62,12 @@ const Homebar: React.FC<Props> = ({
 
   return (
     <div
-      className={`rounded-xl border bg-secondary/70 px-2 py-1 shadow-md shadow-[black]/10 backdrop-blur-xs dark:shadow-secondary ${isMainWorkflow ? "border-border dark:border-primary" : "border-node-subworkflow"}`}>
-      <div className="flex h-[42px] min-w-[250px] items-center gap-4 self-start">
-        <div className="flex items-center gap-1">
-          <HomeMenu
-            dropdownPosition="bottom"
-            dropdownAlign="end"
-            dropdownAlignOffset={-180}
-          />
-          <EcosystemNavigator iconSize={16} />
-        </div>
-        <div className="flex-1">
-          <Breadcrumb />
+      className={`flex min-w-[300px] flex-col gap-2 rounded-xl border bg-secondary/70 p-2 shadow-md shadow-[black]/10 backdrop-blur-xs dark:shadow-secondary ${isMainWorkflow ? "border-border dark:border-primary" : "border-node-subworkflow"}`}>
+      <div className="flex items-center justify-between gap-4">
+        <div className="flex min-w-0 items-center gap-2">
+          <HomeMenu />
+          <EcosystemNavigator iconSize={18} />
+          <ProjectMenu />
         </div>
         <CollaborationActionBar
           self={self}
@@ -86,27 +80,29 @@ const Homebar: React.FC<Props> = ({
           onSpotlightUserDeselect={onSpotlightUserDeselect}
         />
       </div>
-      <div className="flex h-[30px] items-center gap-1">
+      <div className="flex items-center justify-between gap-1">
         <WorkflowsDropdown
           openWorkflows={openWorkflows}
           currentWorkflowId={currentWorkflowId}
           onWorkflowChange={onWorkflowChange}
           onWorkflowClose={onWorkflowClose}
         />
-        <ButtonWithTooltip
-          className="h-6"
-          variant="ghost"
-          tooltipText={t("Workflow Variables")}
-          onClick={() => handleDialogOpen("workflowVariables")}>
-          <SlidersHorizontalIcon weight="light" size={16} />
-        </ButtonWithTooltip>
-        <ButtonWithTooltip
-          className="h-6"
-          variant="ghost"
-          tooltipText={t("Workspace Assets")}
-          onClick={() => handleDialogOpen("assets")}>
-          <FileIcon weight="thin" size={16} />
-        </ButtonWithTooltip>
+        <div className="flex items-center gap-1">
+          <ButtonWithTooltip
+            className="h-6"
+            variant="ghost"
+            tooltipText={t("Workflow Variables")}
+            onClick={() => handleDialogOpen("workflowVariables")}>
+            <SlidersHorizontalIcon weight="light" size={16} />
+          </ButtonWithTooltip>
+          <ButtonWithTooltip
+            className="h-6"
+            variant="ghost"
+            tooltipText={t("Workspace Assets")}
+            onClick={() => handleDialogOpen("assets")}>
+            <FileIcon weight="light" size={16} />
+          </ButtonWithTooltip>
+        </div>
       </div>
       {showDialog === "workflowVariables" && (
         <WorkflowVariablesDialog

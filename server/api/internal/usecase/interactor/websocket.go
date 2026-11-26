@@ -40,8 +40,8 @@ func (i *Websocket) authorize(ctx context.Context, projectID string, action stri
 // authorizeWorkflowChange is authorize for a call that replaces the project's
 // workflow, which a locked project refuses. The lock is checked after the
 // permission, so a caller without access cannot learn whether it is locked.
-func (i *Websocket) authorizeWorkflowChange(ctx context.Context, projectID string) error {
-	proj, err := i.authorizeProject(ctx, projectID, rbac.ActionEdit)
+func (i *Websocket) authorizeWorkflowChange(ctx context.Context, projectID string, action string) error {
+	proj, err := i.authorizeProject(ctx, projectID, action)
 	if err != nil {
 		return err
 	}
@@ -105,7 +105,7 @@ func (i *Websocket) GetNamedSnapshots(ctx context.Context, docID string) ([]*ws.
 }
 
 func (i *Websocket) SaveNamedSnapshot(ctx context.Context, docID, label string) (*ws.SnapshotMetadata, error) {
-	if err := i.authorize(ctx, docID, rbac.ActionEdit); err != nil {
+	if err := i.authorize(ctx, docID, rbac.ActionAny); err != nil {
 		return nil, err
 	}
 	return i.client.SaveNamedSnapshot(ctx, docID, label)
@@ -122,7 +122,7 @@ func (i *Websocket) GetSnapshotState(ctx context.Context, docID string, snapshot
 
 // Rollback prunes every update above the target clock.
 func (i *Websocket) Rollback(ctx context.Context, docID string, version int) (*ws.Document, error) {
-	if err := i.authorizeWorkflowChange(ctx, docID); err != nil {
+	if err := i.authorizeWorkflowChange(ctx, docID, rbac.ActionAny); err != nil {
 		return nil, err
 	}
 	return i.client.Rollback(ctx, docID, version)
@@ -148,7 +148,7 @@ func (i *Websocket) CreateSnapshot(ctx context.Context, docID string, version in
 
 // CopyDocument needs write on the destination and read access to the source.
 func (i *Websocket) CopyDocument(ctx context.Context, docID string, source string) error {
-	if err := i.authorizeWorkflowChange(ctx, docID); err != nil {
+	if err := i.authorizeWorkflowChange(ctx, docID, rbac.ActionEdit); err != nil {
 		return err
 	}
 	if err := i.authorize(ctx, source, rbac.ActionRead); err != nil {
@@ -158,7 +158,7 @@ func (i *Websocket) CopyDocument(ctx context.Context, docID string, source strin
 }
 
 func (i *Websocket) ImportDocument(ctx context.Context, docID string, data []byte) error {
-	if err := i.authorizeWorkflowChange(ctx, docID); err != nil {
+	if err := i.authorizeWorkflowChange(ctx, docID, rbac.ActionEdit); err != nil {
 		return err
 	}
 	return i.client.ImportDocument(ctx, docID, data)

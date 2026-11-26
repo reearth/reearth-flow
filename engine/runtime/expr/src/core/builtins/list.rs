@@ -19,6 +19,7 @@ static METHODS: LazyLock<HashMap<&'static str, MethodFn>> = LazyLock::new(|| {
         ("index", index as MethodFn),
         ("rindex", rindex as MethodFn),
         ("truncate", truncate as MethodFn),
+        ("reverse", reverse as MethodFn),
     ])
 });
 
@@ -143,6 +144,15 @@ fn truncate(args: &[Value]) -> Result<Value> {
     Ok(Value::Null)
 }
 
+fn reverse(args: &[Value]) -> Result<Value> {
+    expect_arity("list.reverse", &args[1..], 0, 0)?;
+    let Value::List(rc) = &args[0] else {
+        return Err(eval_error("expected list receiver"));
+    };
+    rc.borrow_mut().reverse();
+    Ok(Value::Null)
+}
+
 pub fn eq_inner(
     a: &TrackedRc<RefCell<Vec<Value>>>,
     b: &TrackedRc<RefCell<Vec<Value>>>,
@@ -252,6 +262,25 @@ mod tests {
             "arr.truncate(10); arr",
             &[("arr", Value::from(vec![1i64, 2i64, 3i64, 4i64]))],
             Value::from(vec![1i64, 2i64, 3i64, 4i64]),
+        );
+    }
+
+    #[test]
+    fn test_reverse() {
+        assert_eval(
+            "arr.reverse(); arr",
+            &[("arr", Value::from(vec![1i64, 2i64, 3i64]))],
+            Value::from(vec![3i64, 2i64, 1i64]),
+        );
+        assert_eval(
+            "arr.reverse()",
+            &[("arr", Value::from(vec![1i64, 2i64]))],
+            Value::Null,
+        );
+        assert_eval(
+            "arr.reverse(); arr",
+            &[("arr", Value::from(Vec::<i64>::new()))],
+            Value::from(Vec::<i64>::new()),
         );
     }
 
