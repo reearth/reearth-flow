@@ -1,6 +1,7 @@
 import { CalendarIcon } from "@phosphor-icons/react";
 import type { Locale } from "date-fns/locale";
-import { enUS, ja, es, fr, zhCN } from "date-fns/locale";
+import { enUS, ja } from "date-fns/locale";
+// import { es, fr, zhCN } from "date-fns/locale";
 import { useEffect, useState } from "react";
 import DatePicker, { registerLocale } from "react-datepicker";
 
@@ -17,9 +18,9 @@ type Props = {
 export const locales: Record<AvailableLanguage, Locale> = {
   en: enUS,
   ja: ja,
-  es: es,
-  fr: fr,
-  zh: zhCN,
+  // es: es,
+  // fr: fr,
+  // zh: zhCN,
 };
 
 const DateTimePicker: React.FC<Props> = ({ className }) => {
