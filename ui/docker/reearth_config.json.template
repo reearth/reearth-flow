@@ -10,6 +10,7 @@
   "mockEnabled": "${FLOW_MOCK_SERVER_ENABLED}",
   "documentationUrl": "${FLOW_DOCUMENTATION_URL}",
   "feedbackUrl": "${FLOW_FEEDBACK_URL}",
+  "earlyAccessUrl": "${FLOW_EARLY_ACCESS_URL}",
   "tosUrl": "${FLOW_TOS_URL}",
   "reearthHomeUrl": "${FLOW_REEARTH_HOME_URL}",
   "reearthDashboardUrl": "${FLOW_REEARTH_DASHBOARD_URL}",
