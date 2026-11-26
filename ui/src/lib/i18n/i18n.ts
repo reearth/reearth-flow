@@ -6,10 +6,10 @@ import { initReactI18next } from "react-i18next";
 import type { AvailableLanguage } from "./locales";
 import { availableLanguages } from "./locales";
 import en from "./locales/en.json";
-import es from "./locales/es.json";
-import fr from "./locales/fr.json";
+// import es from "./locales/es.json";
+// import fr from "./locales/fr.json";
 import ja from "./locales/ja.json";
-import zh from "./locales/zh.json";
+// import zh from "./locales/zh.json";
 
 const resources: Record<AvailableLanguage, ResourceLanguage> = {
   en: {
@@ -18,15 +18,15 @@ const resources: Record<AvailableLanguage, ResourceLanguage> = {
   ja: {
     translation: ja,
   },
-  es: {
-    translation: es,
-  },
-  fr: {
-    translation: fr,
-  },
-  zh: {
-    translation: zh,
-  },
+  // es: {
+  //   translation: es,
+  // },
+  // fr: {
+  //   translation: fr,
+  // },
+  // zh: {
+  //   translation: zh,
+  // },
 };
 
 i18n

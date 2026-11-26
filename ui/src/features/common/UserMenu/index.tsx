@@ -1,11 +1,4 @@
-import {
-  ArrowSquareOutIcon,
-  KeyboardIcon,
-  SignOutIcon,
-  UserIcon,
-} from "@phosphor-icons/react";
 import { useState } from "react";
-import { useHotkeys } from "react-hotkeys-hook";
 
 import {
   Avatar,
@@ -13,18 +6,11 @@ import {
   AvatarImage,
   DropdownMenu,
   DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@flow/components";
-import { config } from "@flow/config";
-import KeyboardShortcutDialog from "@flow/features/KeyboardShortcutDialog";
-import { GENERAL_HOT_KEYS } from "@flow/global-constants";
-import { useAuth } from "@flow/lib/auth";
 import { useUser } from "@flow/lib/gql";
-import { useT } from "@flow/lib/i18n";
-import { dashboardAccountUrl, openLinkInNewTab } from "@flow/utils";
 
+import { AccountMenuItems } from "./AccountMenuItems";
 import { AccountUpdateDialog } from "./AccountUpdateDialog";
 
 type Props = {
@@ -40,21 +26,11 @@ const UserMenu: React.FC<Props> = ({
   dropdownAlign,
   dropdownOffset = 10,
 }) => {
-  const t = useT();
-  const { logout: handleLogout } = useAuth();
   const { useGetMe } = useUser();
   const { me } = useGetMe();
 
   const [openAccountUpdateDialog, setOpenAccountUpdateDialog] = useState(false);
-  const [openShortcutDialog, setOpenShortcutDialog] = useState(false);
 
-  const { tosUrl, documentationUrl } = config();
-
-  const handleTosPageOpen = openLinkInNewTab(tosUrl ?? "");
-  const handleDocumentationPageOpen = openLinkInNewTab(documentationUrl ?? "");
-  // With a Dashboard, the account is managed there.
-  const externalAccountUrl = dashboardAccountUrl();
-  useHotkeys(GENERAL_HOT_KEYS, () => setOpenShortcutDialog(true));
   return (
     <>
       <DropdownMenu>
@@ -69,71 +45,19 @@ const UserMenu: React.FC<Props> = ({
           </div>
         </DropdownMenuTrigger>
         <DropdownMenuContent
-          className="min-w-[175px]"
+          className="flex w-[220px] flex-col gap-0.5"
           side={dropdownPosition}
           align={dropdownAlign}
           sideOffset={dropdownOffset ?? 4}>
-          <div className="mb-2 rounded p-2">
-            <p className="text-xs font-thin">{t("Username: ")}</p>
-            <p className="truncate px-2 text-sm">{me?.name ?? me?.email}</p>
-          </div>
-          <DropdownMenuSeparator />
-          <DropdownMenuItem
-            className="justify-between gap-4"
-            onClick={
-              externalAccountUrl
-                ? openLinkInNewTab(externalAccountUrl)
-                : () => setOpenAccountUpdateDialog(true)
-            }>
-            <p>{t("Account Settings")}</p>
-            {externalAccountUrl ? (
-              <ArrowSquareOutIcon weight="light" />
-            ) : (
-              <UserIcon weight="light" />
-            )}
-          </DropdownMenuItem>
-          <DropdownMenuItem
-            className="justify-between gap-4"
-            onClick={() => setOpenShortcutDialog(true)}>
-            <p>{t("Keyboard Shortcuts")}</p>
-            <KeyboardIcon weight="light" />
-          </DropdownMenuItem>
-          <DropdownMenuSeparator />
-          {tosUrl && (
-            <DropdownMenuItem
-              className="justify-between gap-4"
-              onClick={handleTosPageOpen}>
-              <p>{t("Terms of Service")}</p>
-              <ArrowSquareOutIcon weight="light" />
-            </DropdownMenuItem>
-          )}
-          {documentationUrl && (
-            <DropdownMenuItem
-              className="justify-between gap-4"
-              onClick={handleDocumentationPageOpen}>
-              <p>{t("Documentation")}</p>
-              <ArrowSquareOutIcon weight="light" />
-            </DropdownMenuItem>
-          )}
-          <DropdownMenuSeparator />
-          <DropdownMenuItem
-            className="justify-between gap-4 text-warning"
-            onClick={handleLogout}>
-            <p>{t("Log Out")}</p>
-            <SignOutIcon weight="light" />
-          </DropdownMenuItem>
+          <AccountMenuItems
+            onAccountSettingsOpen={() => setOpenAccountUpdateDialog(true)}
+          />
         </DropdownMenuContent>
       </DropdownMenu>
       {openAccountUpdateDialog && (
         <AccountUpdateDialog
           isOpen={openAccountUpdateDialog}
           onOpenChange={setOpenAccountUpdateDialog}
-        />
-      )}
-      {openShortcutDialog && (
-        <KeyboardShortcutDialog
-          isOpen={openShortcutDialog}
-          onOpenChange={setOpenShortcutDialog}
         />
       )}
     </>
