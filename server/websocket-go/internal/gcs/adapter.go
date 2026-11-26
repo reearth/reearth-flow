@@ -66,8 +66,14 @@ type Adapter struct {
 	// checkpoint publish (test injection only).
 	afterCompactBase func()
 	// afterCompactPublish, when set, runs in Compact between the checkpoint
-	// publish and the deletes (test injection only).
+	// publish and the check before its deletes (test injection only).
 	afterCompactPublish func()
+	// beforeCompactDelete, when set, runs in Compact between that check and the
+	// deletes (test injection only).
+	beforeCompactDelete func()
+	// beforeMirrorPut, when set, runs in writeV2DocIf between confirming doc_v2 is
+	// still ours and writing the named v1 mirror (test injection only).
+	beforeMirrorPut func(name string)
 	// afterRollbackMark and afterRollbackDocV2, when set, run in PruneAfter after
 	// marking the ceiling and after publishing doc_v2; returning true stops it
 	// there, as a crash would (test injection only).
@@ -393,9 +399,10 @@ func (a *Adapter) writeV2Snapshot(ctx context.Context, room DocID, oid uint32, v
 // transient keys from doc first.
 func (a *Adapter) writeV2Doc(ctx context.Context, room DocID, oid uint32, doc *crdt.Doc, cov coverage) error {
 	return a.writeV2DocWith(ctx, room, oid, doc, cov, func(name string, b []byte, meta map[string]string) (int64, error) {
-		// Unconditional: rollback and backfill hold the lock and publish outright,
-		// so there is no generation of ours for the mirrors to be tied to.
-		return 0, a.store.putWithMeta(ctx, name, b, meta)
+		// Unconditional: rollback and backfill hold the lock and publish doc_v2
+		// outright. The generation still fences their mirrors, since a rollback
+		// whose lease lapsed can resume after a newer one published.
+		return a.store.putGen(ctx, name, b, meta)
 	})
 }
 
@@ -424,28 +431,70 @@ func (a *Adapter) writeV2DocWith(ctx context.Context, room DocID, oid uint32, do
 	if err != nil {
 		return err
 	}
-	// The V1 mirrors belong to the doc_v2 just written, but these puts carry no
-	// precondition. A writer whose lease lapsed can arrive here after a newer
-	// doc_v2 was published, so leave that writer's mirrors alone rather than
-	// replacing them with older state.
-	if gen != 0 {
-		cur, gerr := a.store.generation(ctx, a.layout.DocV2Name(room))
-		if gerr != nil {
-			return gerr
+	docState := crdt.EncodeStateAsUpdateV1(doc, nil)
+	stateVec := crdt.EncodeStateVectorV1(doc)
+	// Without a generation to tie them to, publish the mirrors outright.
+	if gen == 0 {
+		if err := a.store.put(ctx, a.layout.DocStateName(room, oid), docState); err != nil {
+			return err
 		}
-		if cur != gen {
-			a.log.Warn("gcs: doc_v2 moved on after our write, leaving the v1 mirrors to the newer writer",
-				"room", room, "wrote", gen, "current", cur)
-			return nil
+		return a.store.put(ctx, a.layout.StateVectorName(room, oid), stateVec)
+	}
+	// The V1 mirrors belong to the doc_v2 just written. A writer whose lease
+	// lapsed can reach them after a newer doc_v2 was published, so each mirror is
+	// fenced the same way as doc_v2 itself.
+	for _, m := range []struct {
+		name string
+		data []byte
+	}{
+		{a.layout.DocStateName(room, oid), docState},
+		{a.layout.StateVectorName(room, oid), stateVec},
+	} {
+		ours, err := a.putMirror(ctx, room, m.name, m.data, gen)
+		if err != nil || !ours {
+			return err
 		}
-	}
-	if err := a.store.put(ctx, a.layout.DocStateName(room, oid), crdt.EncodeStateAsUpdateV1(doc, nil)); err != nil {
-		return err
-	}
-	if err := a.store.put(ctx, a.layout.StateVectorName(room, oid), crdt.EncodeStateVectorV1(doc)); err != nil {
-		return err
 	}
 	return nil
+}
+
+// mirrorPutAttempts bounds how often putMirror retries after losing a mirror
+// write to another writer while doc_v2 is still ours.
+const mirrorPutAttempts = 4
+
+// putMirror writes one v1 mirror of the doc_v2 at generation ours. The mirror's
+// generation is read before confirming doc_v2 is still ours, and the write is
+// conditional on it: a newer doc_v2 is always published before its mirrors, so
+// any newer writer's mirror write lands after that read and makes this one fail.
+// It returns false, writing nothing, once doc_v2 has moved on.
+func (a *Adapter) putMirror(ctx context.Context, room DocID, name string, data []byte, ours int64) (bool, error) {
+	for attempt := 1; ; attempt++ {
+		mg, err := a.store.generation(ctx, name)
+		if err != nil {
+			return false, err
+		}
+		cur, err := a.store.generation(ctx, a.layout.DocV2Name(room))
+		if err != nil {
+			return false, err
+		}
+		if cur != ours {
+			a.log.Warn("gcs: doc_v2 moved on after our write, leaving the v1 mirrors to the newer writer",
+				"room", room, "wrote", ours, "current", cur)
+			return false, nil
+		}
+		if a.beforeMirrorPut != nil {
+			a.beforeMirrorPut(name)
+		}
+		_, err = a.store.putIfGeneration(ctx, name, data, mg)
+		if err == nil {
+			return true, nil
+		}
+		// Lost to another writer's mirror. While doc_v2 is still ours that writer
+		// is older, so read again and take the mirror back.
+		if !errors.Is(err, errGenerationMoved) || attempt == mirrorPutAttempts {
+			return false, err
+		}
+	}
 }
 
 // stripTransient deletes the configured ephemeral map keys from doc. No-op when

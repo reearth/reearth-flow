@@ -984,3 +984,348 @@ func TestWriteUnion_DropsACandidateBuiltBeforeARollback(t *testing.T) {
 		t.Errorf("doc_v2 text = %q, want %q: the pre-rollback candidate restored edits the rollback removed", s, "abc")
 	}
 }
+
+// staleMirrorWrite runs a writer whose lease lapsed: it publishes doc_v2, then
+// pauses before writing the mirror named by pauseAt while a newer writer
+// publishes doc_v2 and both mirrors. conditional picks the flush and compaction
+// writer (writeV2DocIf) over the rollback and backfill one (writeV2Doc). It
+// returns the newer writer's doc.
+func staleMirrorWrite(t *testing.T, a *Adapter, room string, oid uint32, pauseAt string, conditional bool) *crdt.Doc {
+	t.Helper()
+	ctx := context.Background()
+
+	newer := crdt.New(crdt.WithClientID(1))
+	nt := newer.GetText("t") // outside Transact: GetText takes the doc lock
+	newer.Transact(func(txn *crdt.Transaction) { nt.Insert(txn, 0, "newer", nil) })
+
+	fired := false
+	a.beforeMirrorPut = func(name string) {
+		if fired || name != pauseAt {
+			return
+		}
+		fired = true
+		g, err := a.store.generation(ctx, a.layout.DocV2Name(room))
+		if err != nil {
+			t.Errorf("generation: %v", err)
+			return
+		}
+		if conditional {
+			_, err = a.writeV2DocIf(ctx, room, oid, newer, g, coverage{})
+		} else {
+			err = a.writeV2Doc(ctx, room, oid, newer, coverage{})
+		}
+		if err != nil {
+			t.Errorf("newer write: %v", err)
+		}
+	}
+
+	stale := crdt.New(crdt.WithClientID(2))
+	st := stale.GetText("t")
+	stale.Transact(func(txn *crdt.Transaction) { st.Insert(txn, 0, "stale", nil) })
+	var err error
+	if conditional {
+		_, err = a.writeV2DocIf(ctx, room, oid, stale, 0, coverage{})
+	} else {
+		err = a.writeV2Doc(ctx, room, oid, stale, coverage{})
+	}
+	if err != nil {
+		t.Fatalf("stale write: %v", err)
+	}
+	if !fired {
+		t.Fatal("setup: the stale writer never reached the paused mirror")
+	}
+	return newer
+}
+
+func assertMirrorsMatch(t *testing.T, a *Adapter, room string, oid uint32, want *crdt.Doc) {
+	t.Helper()
+	ctx := context.Background()
+	v1, err := a.store.get(ctx, a.layout.DocStateName(room, oid))
+	if err != nil {
+		t.Fatalf("read SUB_DOC: %v", err)
+	}
+	got, err := docFromV1(v1)
+	if err != nil {
+		t.Fatalf("decode SUB_DOC: %v", err)
+	}
+	if s, w := got.GetText("t").ToString(), want.GetText("t").ToString(); s != w {
+		t.Errorf("SUB_DOC text = %q, want the newer writer's %q", s, w)
+	}
+	sv, err := a.store.get(ctx, a.layout.StateVectorName(room, oid))
+	if err != nil {
+		t.Fatalf("read SUB_STATE_VEC: %v", err)
+	}
+	if !bytes.Equal(sv, crdt.EncodeStateVectorV1(want)) {
+		t.Error("SUB_STATE_VEC is not the newer writer's state vector")
+	}
+}
+
+// TestWriteV2Doc_StaleWriterPausedAfterItsCheckLeavesTheMirrors: the lapsed
+// writer passes its doc_v2 check, then pauses before SUB_DOC while a newer
+// writer publishes everything. Its mirror writes must fail when it resumes.
+func TestWriteV2Doc_StaleWriterPausedAfterItsCheckLeavesTheMirrors(t *testing.T) {
+	t.Parallel()
+	ctx := context.Background()
+	client, bucket := newFakeGCS(t)
+	a, err := New(Options{Client: client, Bucket: bucket, Locker: NewNoLock()})
+	if err != nil {
+		t.Fatalf("New: %v", err)
+	}
+	const room = "mirrors-pause"
+	oid, err := a.oidFor(ctx, room)
+	if err != nil {
+		t.Fatalf("oidFor: %v", err)
+	}
+	newer := staleMirrorWrite(t, a, room, oid, a.layout.DocStateName(room, oid), true)
+	assertMirrorsMatch(t, a, room, oid, newer)
+}
+
+// TestWriteV2Doc_StaleWriterPausedBetweenMirrorsLeavesTheSecond: the pause falls
+// after SUB_DOC and before SUB_STATE_VEC, so the newer writer replaces SUB_DOC
+// and the stale writer must not then replace its SUB_STATE_VEC.
+func TestWriteV2Doc_StaleWriterPausedBetweenMirrorsLeavesTheSecond(t *testing.T) {
+	t.Parallel()
+	ctx := context.Background()
+	client, bucket := newFakeGCS(t)
+	a, err := New(Options{Client: client, Bucket: bucket, Locker: NewNoLock()})
+	if err != nil {
+		t.Fatalf("New: %v", err)
+	}
+	const room = "mirrors-between"
+	oid, err := a.oidFor(ctx, room)
+	if err != nil {
+		t.Fatalf("oidFor: %v", err)
+	}
+	newer := staleMirrorWrite(t, a, room, oid, a.layout.StateVectorName(room, oid), true)
+	assertMirrorsMatch(t, a, room, oid, newer)
+}
+
+// TestFlushRoom_DropsAStateTakenBeforeARollback: the flusher takes the live
+// state, then a rollback commits before FlushSnapshot gets the doc lock. Marks
+// read under that lock already include the rollback, so the flusher reads them
+// before taking the state.
+func TestFlushRoom_DropsAStateTakenBeforeARollback(t *testing.T) {
+	t.Parallel()
+	ctx := context.Background()
+	client, bucket := newFakeGCS(t)
+	a, err := New(Options{Client: client, Bucket: bucket, Locker: NewNoLock()})
+	if err != nil {
+		t.Fatalf("New: %v", err)
+	}
+	const room = "flush-before-rollback"
+
+	doc := crdt.New(crdt.WithClientID(5))
+	txt := doc.GetText("t")
+	var prev []byte
+	for i := 0; i < 6; i++ {
+		doc.Transact(func(txn *crdt.Transaction) { txt.Insert(txn, txt.Len(), string(rune('a'+i)), nil) })
+		full := crdt.EncodeStateAsUpdateV1(doc, nil)
+		inc := full
+		if prev != nil {
+			d, derr := crdt.DiffUpdateV1(full, svOf(t, prev))
+			if derr != nil {
+				t.Fatalf("DiffUpdateV1: %v", derr)
+			}
+			inc = d
+		}
+		if _, err := a.AppendUpdate(ctx, room, inc); err != nil {
+			t.Fatalf("AppendUpdate: %v", err)
+		}
+		prev = full
+	}
+	live := prev // "abcdef"
+
+	calls := 0
+	f := NewFlusher(FlusherOptions{Adapter: a, StateOf: func(string) []byte {
+		state := live
+		// The first call only probes for a resident doc. The rollback commits once
+		// the state that is written is taken, before the flush locks.
+		if calls++; calls == 1 {
+			return state
+		}
+		rolled, err := a.MaterializeAt(ctx, room, persistence.Version(3))
+		if err != nil {
+			t.Errorf("MaterializeAt(3): %v", err)
+			return state
+		}
+		if err := a.PruneAfter(ctx, room, persistence.Version(3), rolled); err != nil {
+			t.Errorf("PruneAfter: %v", err)
+		}
+		return state
+	}})
+	if err := f.FlushRoom(ctx, room); err != nil {
+		t.Fatalf("FlushRoom: %v", err)
+	}
+
+	v1, ok, err := a.loadV2(ctx, room)
+	if err != nil || !ok {
+		t.Fatalf("loadV2: ok=%v err=%v", ok, err)
+	}
+	got := crdt.New()
+	if err := crdt.ApplyUpdateV1(got, v1, nil); err != nil {
+		t.Fatalf("ApplyUpdateV1: %v", err)
+	}
+	if s := got.GetText("t").ToString(); s != "abc" {
+		t.Errorf("doc_v2 text = %q, want %q: the flush restored edits the rollback removed", s, "abc")
+	}
+}
+
+// TestWriteV2Doc_StaleRollbackLeavesTheMirrors: rollback and backfill publish
+// doc_v2 outright, but a rollback whose lease lapsed can resume after a newer
+// one published. Its mirrors must not replace the newer rollback's, whether it
+// pauses before SUB_DOC or between the two mirrors.
+func TestWriteV2Doc_StaleRollbackLeavesTheMirrors(t *testing.T) {
+	t.Parallel()
+
+	t.Run("paused before SUB_DOC", func(t *testing.T) {
+		t.Parallel()
+		ctx := context.Background()
+		client, bucket := newFakeGCS(t)
+		a, err := New(Options{Client: client, Bucket: bucket, Locker: NewNoLock()})
+		if err != nil {
+			t.Fatalf("New: %v", err)
+		}
+		const room = "rollback-mirrors-pause"
+		oid, err := a.oidFor(ctx, room)
+		if err != nil {
+			t.Fatalf("oidFor: %v", err)
+		}
+		newer := staleMirrorWrite(t, a, room, oid, a.layout.DocStateName(room, oid), false)
+		assertMirrorsMatch(t, a, room, oid, newer)
+	})
+
+	t.Run("paused between the mirrors", func(t *testing.T) {
+		t.Parallel()
+		ctx := context.Background()
+		client, bucket := newFakeGCS(t)
+		a, err := New(Options{Client: client, Bucket: bucket, Locker: NewNoLock()})
+		if err != nil {
+			t.Fatalf("New: %v", err)
+		}
+		const room = "rollback-mirrors-between"
+		oid, err := a.oidFor(ctx, room)
+		if err != nil {
+			t.Fatalf("oidFor: %v", err)
+		}
+		newer := staleMirrorWrite(t, a, room, oid, a.layout.StateVectorName(room, oid), false)
+		assertMirrorsMatch(t, a, room, oid, newer)
+	})
+}
+
+// TestFlush_DropsACandidateOnceAnAppendClearedTheRollbackCeiling: the room had
+// no checkpoint, a rollback to 3 committed after the candidate was built, and an
+// append cleared its ceiling before the flush locked. The marks then read like
+// an ordinary checkpoint advance, so only the rollback epoch shows the rollback.
+func TestFlush_DropsACandidateOnceAnAppendClearedTheRollbackCeiling(t *testing.T) {
+	t.Parallel()
+	ctx := context.Background()
+	client, bucket := newFakeGCS(t)
+	a, err := New(Options{Client: client, Bucket: bucket, Locker: NewNoLock()})
+	if err != nil {
+		t.Fatalf("New: %v", err)
+	}
+	const room = "flush-ceiling-cleared"
+
+	doc := crdt.New(crdt.WithClientID(5))
+	txt := doc.GetText("t")
+	var prev []byte
+	for i := 0; i < 6; i++ {
+		doc.Transact(func(txn *crdt.Transaction) { txt.Insert(txn, txt.Len(), string(rune('a'+i)), nil) })
+		full := crdt.EncodeStateAsUpdateV1(doc, nil)
+		inc := full
+		if prev != nil {
+			d, derr := crdt.DiffUpdateV1(full, svOf(t, prev))
+			if derr != nil {
+				t.Fatalf("DiffUpdateV1: %v", derr)
+			}
+			inc = d
+		}
+		if _, err := a.AppendUpdate(ctx, room, inc); err != nil {
+			t.Fatalf("AppendUpdate: %v", err)
+		}
+		prev = full
+	}
+	candidate := prev // the live state, "abcdef"
+
+	before, err := a.flushMarks(ctx, room)
+	if err != nil {
+		t.Fatalf("flushMarks: %v", err)
+	}
+	if before.cp != 0 {
+		t.Fatalf("setup: checkpoint = %d, want 0", before.cp)
+	}
+
+	rolled, err := a.MaterializeAt(ctx, room, persistence.Version(3))
+	if err != nil {
+		t.Fatalf("MaterializeAt(3): %v", err)
+	}
+	if err := a.PruneAfter(ctx, room, persistence.Version(3), rolled); err != nil {
+		t.Fatalf("PruneAfter: %v", err)
+	}
+	after := crdt.New(crdt.WithClientID(7))
+	if err := crdt.ApplyUpdateV1(after, rolled, nil); err != nil {
+		t.Fatalf("apply rolled: %v", err)
+	}
+	sv := after.StateVector()
+	at := after.GetText("t")
+	after.Transact(func(txn *crdt.Transaction) { at.Insert(txn, at.Len(), "Z", nil) })
+	inc, err := crdt.DiffUpdateV1(crdt.EncodeStateAsUpdateV1(after, nil), sv)
+	if err != nil {
+		t.Fatalf("diff: %v", err)
+	}
+	if _, err := a.AppendUpdate(ctx, room, inc); err != nil {
+		t.Fatalf("AppendUpdate: %v", err)
+	}
+	if _, has, _ := a.ceiling(ctx, room); has {
+		t.Fatal("setup: the append did not clear the ceiling")
+	}
+
+	if err := a.flushSnapshotSince(ctx, room, candidate, before); err != nil {
+		t.Fatalf("flushSnapshotSince: %v", err)
+	}
+	lr, err := a.Load(ctx, room)
+	if err != nil {
+		t.Fatalf("Load: %v", err)
+	}
+	got := crdt.New()
+	if err := crdt.ApplyUpdateV1(got, lr.Update, nil); err != nil {
+		t.Fatalf("ApplyUpdateV1: %v", err)
+	}
+	if s := got.GetText("t").ToString(); s != "abcZ" {
+		t.Errorf("Load text = %q, want %q: the flush restored edits the rollback removed", s, "abcZ")
+	}
+}
+
+// TestSnapshotFromStore_PublishesTheTailAfterARace: after the race above, a
+// later rebuild must still write the tail edit into doc_v2 itself, not leave
+// Load to replay it from the update log.
+func TestSnapshotFromStore_PublishesTheTailAfterARace(t *testing.T) {
+	t.Parallel()
+	ctx := context.Background()
+	a, _ := loadRace(t, func(a *Adapter, fs [][]byte) { appendAll(t, a, fs[9]) })
+	_ = a.SnapshotFromStore(ctx, "room") // may lose the race; the next one must not
+	a.afterReadBase = nil
+
+	tail := crdt.New(crdt.WithClientID(4))
+	g := tail.GetMap("g") // outside Transact: GetMap takes the doc lock
+	tail.Transact(func(txn *crdt.Transaction) { g.Set(txn, "k", "tail") })
+	appendAll(t, a, crdt.EncodeStateAsUpdateV1(tail, nil)) // clock 11: no inline checkpoint
+	if err := a.SnapshotFromStore(ctx, "room"); err != nil {
+		t.Fatalf("SnapshotFromStore: %v", err)
+	}
+
+	v1, ok, err := a.loadV2(ctx, "room")
+	if err != nil || !ok {
+		t.Fatalf("loadV2: ok=%v err=%v", ok, err)
+	}
+	d, err := docFromV1(v1)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if v, _ := d.GetMap("g").Get("k"); v != "tail" {
+		t.Errorf("doc_v2 g.k = %v, want \"tail\": the rebuild did not publish the tail edit", v)
+	}
+	if v := fillerValue(t, v1); v != 9 {
+		t.Errorf("doc_v2 f.k = %v, want 9", v)
+	}
+}

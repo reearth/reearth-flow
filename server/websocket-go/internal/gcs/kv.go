@@ -67,6 +67,23 @@ func (s kv) put(ctx context.Context, name string, data []byte) error {
 	return w.Close()
 }
 
+// putGen is put, returning the generation it created (0 if GCS did not say).
+func (s kv) putGen(ctx context.Context, name string, data []byte, meta map[string]string) (int64, error) {
+	w := s.bucket.Object(name).NewWriter(ctx)
+	w.Metadata = meta
+	if _, err := w.Write(data); err != nil {
+		_ = w.Close()
+		return 0, err
+	}
+	if err := w.Close(); err != nil {
+		return 0, err
+	}
+	if at := w.Attrs(); at != nil {
+		return at.Generation, nil
+	}
+	return 0, nil
+}
+
 // putWithMeta writes data and attaches custom object metadata, so listAttrs can
 // return a snapshot's label and uncompressed size without reading its payload.
 func (s kv) putWithMeta(ctx context.Context, name string, data []byte, meta map[string]string) error {
@@ -180,6 +197,17 @@ func (s kv) delete(ctx context.Context, name string) error {
 		return nil // idempotent
 	}
 	return err
+}
+
+// deleteIfGeneration deletes the object only while its generation is gen, so a
+// writer that recreated it under the same name keeps its object. It returns
+// errGenerationMoved in that case, and nil when the object is already gone.
+func (s kv) deleteIfGeneration(ctx context.Context, name string, gen int64) error {
+	err := s.bucket.Object(name).If(storage.Conditions{GenerationMatch: gen}).Delete(ctx)
+	if errors.Is(err, storage.ErrObjectNotExist) {
+		return nil
+	}
+	return asGenerationMoved(err)
 }
 
 // list returns every object name with the given prefix. The caller MUST scope

@@ -27,6 +27,21 @@ func legacyCeilingName(room DocID) string {
 	return hexb([]byte("prune_ceiling:" + hexb([]byte(room))))
 }
 
+// rollbackEpochName is rewritten by every PruneAfter and by nothing else, so a
+// change in its generation means a rollback started. The ceiling cannot say
+// that on its own: the next append clears it, after which the marks look like
+// an ordinary checkpoint advance.
+func (a *Adapter) rollbackEpochName(room DocID) string {
+	if a.phase2 {
+		return ProjectPrefix(room) + "rollback_epoch"
+	}
+	return legacyRollbackEpochName(room)
+}
+
+func legacyRollbackEpochName(room DocID) string {
+	return hexb([]byte("rollback_epoch:" + hexb([]byte(room))))
+}
+
 func legacySnapshotPrefix(room DocID) string {
 	return hexb([]byte("snapshot:" + hexb([]byte(room)) + ":"))
 }
@@ -242,6 +257,10 @@ type marks struct {
 	// rolling means a rollback has marked the ceiling and not yet cleared it.
 	rolling bool
 	mark    rollMark
+	// epochGen is the rollback epoch's generation. Only readFlushMarks reads it
+	// (epochRead), so the marks Load and Compact compare are unaffected.
+	epochGen  int64
+	epochRead bool
 }
 
 // covers is what doc_v2 holds. Without recorded coverage it is taken to be the
@@ -251,6 +270,20 @@ func (m marks) covers() coverage {
 		return m.cov
 	}
 	return coverage{clock: m.cp}
+}
+
+// readFlushMarks is readMarks plus the rollback epoch, for a flush candidate
+// that must be dropped once any rollback starts after it was built.
+func (a *Adapter) readFlushMarks(ctx context.Context, room DocID) (marks, error) {
+	m, err := a.readMarks(ctx, room)
+	if err != nil {
+		return marks{}, err
+	}
+	if m.epochGen, err = a.store.generation(ctx, a.rollbackEpochName(room)); err != nil {
+		return marks{}, err
+	}
+	m.epochRead = true
+	return m, nil
 }
 
 func (a *Adapter) readMarks(ctx context.Context, room DocID) (marks, error) {
@@ -429,11 +462,18 @@ func (a *Adapter) writeUnion(ctx context.Context, room DocID, oid uint32, candid
 	// generation cannot tell a rollback from a competing checkpoint, so capture the
 	// rollback marks here and recheck them before the candidate is applied, on the
 	// retry as well as the first attempt.
-	before, err := a.readMarks(ctx, room)
+	before, err := a.readFlushMarks(ctx, room)
 	if err != nil {
 		return err
 	}
-	err = a.writeUnionOnce(ctx, room, oid, candidate, before)
+	return a.writeUnionSince(ctx, room, oid, candidate, before)
+}
+
+// writeUnionSince is writeUnion for a candidate built after before was read. A
+// caller that builds the candidate itself reads the marks first, so a rollback
+// landing between the build and the lock is seen too.
+func (a *Adapter) writeUnionSince(ctx context.Context, room DocID, oid uint32, candidate []byte, before marks) error {
+	err := a.writeUnionOnce(ctx, room, oid, candidate, before)
 	if errors.Is(err, errGenerationMoved) {
 		err = a.writeUnionOnce(ctx, room, oid, candidate, before)
 	}
@@ -442,8 +482,13 @@ func (a *Adapter) writeUnion(ctx context.Context, room DocID, oid uint32, candid
 
 // rollbackCommitted reports whether a rollback published between two marks
 // reads. A ceiling being cleared is an ordinary append after a rollback the
-// candidate already reflects, so that direction does not count.
+// candidate already reflects, so that direction does not count. The rollback
+// epoch, when both reads have it, catches a rollback whose ceiling an append
+// already cleared.
 func rollbackCommitted(before, now marks) bool {
+	if before.epochRead && now.epochRead && before.epochGen != now.epochGen {
+		return true
+	}
 	if !before.hasCeil && now.hasCeil {
 		return true
 	}
@@ -459,7 +504,7 @@ func (a *Adapter) writeUnionOnce(ctx context.Context, room DocID, oid uint32, ca
 		return err
 	}
 	if len(candidate) > 0 {
-		now, err := a.readMarks(ctx, room)
+		now, err := a.readFlushMarks(ctx, room)
 		if err != nil {
 			return err
 		}
@@ -623,6 +668,36 @@ func (a *Adapter) FlushSnapshot(ctx context.Context, room string, state []byte) 
 	}
 	return a.locker.WithLock(ctx, gcsDocLockKey(room), func(ctx context.Context) error {
 		return a.writeUnion(ctx, room, oid, state)
+	})
+}
+
+// flushMarks reads the rollback marks for a flush whose candidate the caller is
+// about to build. Pass them to flushSnapshotSince with that candidate.
+func (a *Adapter) flushMarks(ctx context.Context, room string) (marks, error) {
+	if err := a.validate(room); err != nil {
+		return marks{}, err
+	}
+	return a.readFlushMarks(ctx, room)
+}
+
+// flushSnapshotSince is FlushSnapshot for a state built after before was read,
+// so a rollback committing before the doc lock is taken still drops the state.
+func (a *Adapter) flushSnapshotSince(ctx context.Context, room string, state []byte, before marks) error {
+	if err := a.validate(room); err != nil {
+		return err
+	}
+	oid, err := a.oidFor(ctx, room)
+	if err != nil {
+		return err
+	}
+	return a.locker.WithLock(ctx, gcsDocLockKey(room), func(ctx context.Context) error {
+		// This path skips writeUnion, so it settles a stopped rollback itself.
+		// before was read earlier: a rollback finished here moves the ceiling and
+		// drops the candidate, and one abandoned here leaves it as it was.
+		if err := a.settleRollback(ctx, room, oid); err != nil {
+			return err
+		}
+		return a.writeUnionSince(ctx, room, oid, state, before)
 	})
 }
 
@@ -1088,6 +1163,7 @@ func (a *Adapter) Delete(ctx context.Context, room string) error {
 		a.layout.StateVectorName(room, oid),
 		a.layout.OIDIndexName(room),
 		a.ceilingName(room),
+		a.rollbackEpochName(room),
 		// NB: SnapNextIDName is deliberately NOT here — see the deferred delete
 		// after the prefix sweep below.
 	}
@@ -1144,6 +1220,7 @@ func (a *Adapter) deleteLegacyRoot(ctx context.Context, room DocID) error {
 		leg.StateVectorName(room, oid),
 		leg.OIDIndexName(room),
 		legacyCeilingName(room),
+		legacyRollbackEpochName(room),
 		// SnapNextIDName deferred to after the sweep, as in the Phase-1 path.
 	}
 	for _, n := range names {

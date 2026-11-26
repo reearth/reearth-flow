@@ -233,3 +233,47 @@ func TestAppendUpdate_SettlesAMarkedRollbackBeforeAppending(t *testing.T) {
 		t.Errorf("Load = %q, %v; want %q", s, err, "abcZ")
 	}
 }
+
+// TestFlush_SettlesAStoppedRollbackInsteadOfFailing: the last-instance flush
+// goes straight to writeUnionSince, past writeUnion's settle. Meeting a stopped
+// rollback's mark, it would fail on every attempt; it now settles the rollback,
+// and drops its candidate, which was built before the rollback and still holds
+// the edits it removed.
+func TestFlush_SettlesAStoppedRollbackInsteadOfFailing(t *testing.T) {
+	t.Parallel()
+	ctx := context.Background()
+	a, _, _ := newFenceAdapters(t)
+	const room = "fence-flush"
+	_, rolled := seedFence(t, a, room)
+
+	before, err := a.flushMarks(ctx, room)
+	if err != nil {
+		t.Fatalf("flushMarks: %v", err)
+	}
+	live := appendLettersState(t, 6) // the live room, "abcdef", as the flush takes it
+
+	a.afterRollbackDocV2 = func() bool { return true }
+	if err := a.PruneAfter(ctx, room, persistence.Version(3), rolled); err != nil {
+		t.Fatalf("PruneAfter: %v", err)
+	}
+	a.afterRollbackDocV2 = nil
+
+	if err := a.flushSnapshotSince(ctx, room, live, before); err != nil {
+		t.Fatalf("flushSnapshotSince = %v, want the stopped rollback settled", err)
+	}
+	if s, err := loadText(t, a, room); err != nil || s != "abc" {
+		t.Errorf("Load = %q, %v; want %q: the pre-rollback candidate was applied", s, err, "abc")
+	}
+}
+
+// appendLettersState is the state appendLetters builds for n letters, without
+// writing anything.
+func appendLettersState(t *testing.T, n int) []byte {
+	t.Helper()
+	doc := crdt.New(crdt.WithClientID(31))
+	txt := doc.GetText("t")
+	for i := 0; i < n; i++ {
+		doc.Transact(func(txn *crdt.Transaction) { txt.Insert(txn, txt.Len(), string(rune('a'+i)), nil) })
+	}
+	return crdt.EncodeStateAsUpdateV1(doc, nil)
+}

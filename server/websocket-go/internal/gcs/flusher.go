@@ -53,22 +53,28 @@ func (f *Flusher) FlushRoom(ctx context.Context, room string) error {
 		// Write the COMPLETE state as doc_v2 (not an incremental update): the Rust
 		// reader loads doc_v2 alone and folds no tail updates, so a Go-flushed room
 		// must leave a complete doc_v2 for cross-implementation cold-loads.
-		if state := f.stateFor(room); len(state) > 0 {
-			return f.adapter.FlushSnapshot(ctx, room, state)
+		//
+		// The rollback marks must be read before the state that is written is
+		// taken: a rollback that commits after that point removed edits the state
+		// still carries, and marks read later, under the doc lock, would already
+		// include it. So a resident doc is probed first, then the marks are read,
+		// then the state is taken again. Probing first keeps the usual evicted
+		// case free of extra GCS reads, with SnapshotFromStore's doc lock still
+		// the first thing it does.
+		if f.stateOf != nil && len(f.stateOf(room)) > 0 {
+			before, err := f.adapter.flushMarks(ctx, room)
+			if err != nil {
+				return err
+			}
+			if state := f.stateOf(room); len(state) > 0 {
+				return f.adapter.flushSnapshotSince(ctx, room, state, before)
+			}
 		}
 		// ygo removes the live doc from GetDoc before firing RoomDeactivated, so
 		// StateOf is empty here. It first drained the per-update persistence worker,
 		// so the full state is already in GCS: reconstruct it and write doc_v2.
 		return f.adapter.SnapshotFromStore(ctx, room)
 	})
-}
-
-// stateFor returns the room's current state, tolerating a nil provider.
-func (f *Flusher) stateFor(room string) []byte {
-	if f.stateOf == nil {
-		return nil
-	}
-	return f.stateOf(room)
 }
 
 // withReadLock runs fn while holding read:lock:{room}. The lock is best-effort:

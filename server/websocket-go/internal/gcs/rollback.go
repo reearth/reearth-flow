@@ -25,7 +25,13 @@ func (a *Adapter) PruneAfter(ctx context.Context, room string, target persistenc
 	}
 	t := uint32(target)
 	return a.locker.WithLock(ctx, gcsDocLockKey(room), func(ctx context.Context) error {
+		// A rollback that stopped earlier is settled before this one starts.
 		if err := a.settleRollback(ctx, room, oid); err != nil {
+			return err
+		}
+		// (0a) announce the rollback before changing anything, so a flush candidate
+		// built earlier is dropped even if this rollback dies partway.
+		if err := a.store.put(ctx, a.rollbackEpochName(room), be32(t)); err != nil {
 			return err
 		}
 		prev, has, err := a.ceiling(ctx, room)
@@ -35,7 +41,7 @@ func (a *Adapter) PruneAfter(ctx context.Context, room string, target persistenc
 		if !has {
 			prev = noCeiling
 		}
-		// (0) Mark the ceiling first. Until (2a) clears it, doc_v2 can hold the
+		// (0b) Mark the ceiling. Until (2a) clears it, doc_v2 can hold the
 		// rolled-back document while the ceiling and checkpoint still describe the
 		// old head, and a reader that sees the mark does not serve that mix.
 		if err := a.store.put(ctx, a.ceilingName(room), markedCeiling(prev, t)); err != nil {
@@ -149,9 +155,15 @@ func (a *Adapter) Compact(ctx context.Context, room string, keep int) (int, erro
 		if err != nil {
 			return err
 		}
-		updates, err := a.listUpdates(ctx, room, oid)
+		// Attrs rather than names: the deletes below are pinned to the generation
+		// listed here, so an object recreated under the same clock survives them.
+		listed, err := a.listUpdatesAttrs(ctx, room, oid)
 		if err != nil {
 			return err
+		}
+		updates := make(map[uint32]string, len(listed))
+		for c, at := range listed {
+			updates[c] = at.Name
 		}
 		m, err := a.readMarks(ctx, room)
 		if err != nil {
@@ -243,8 +255,21 @@ func (a *Adapter) Compact(ctx context.Context, room string, keep int) (int, erro
 				"room", room, "cutoff", cutoff)
 			return errStateMoved
 		}
+		if a.beforeCompactDelete != nil {
+			a.beforeCompactDelete()
+		}
+		// The check above cannot cover the deletes themselves: a lease can lapse
+		// after it, and another holder can roll back and reuse a folded clock's
+		// name. Each delete only lands on the object generation that was folded.
 		for i := 0; i < foldUpto; i++ {
-			if err := a.store.delete(ctx, updates[clocks[i]]); err != nil {
+			at := listed[clocks[i]]
+			err := a.store.deleteIfGeneration(ctx, at.Name, at.Generation)
+			if errors.Is(err, errGenerationMoved) {
+				a.log.Warn("gcs compact: an update was rewritten after it was folded, deleting no further",
+					"room", room, "clock", clocks[i])
+				return errStateMoved
+			}
+			if err != nil {
 				return err
 			}
 			deleted++
