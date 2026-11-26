@@ -125,6 +125,32 @@ func (s *StoreAdapter) PruneAfter(ctx context.Context, room string, target uint6
 	return s.p.PruneAfter(ctx, room, persistence.Version(target), rolledBack)
 }
 
+// fencedRollback is a Persistence that rebuilds and publishes a version as one
+// operation, refusing when another rollback commits in between
+// (production value: *gcs.Adapter).
+type fencedRollback interface {
+	Rollback(ctx context.Context, room string, v persistence.Version, beforePublish func()) ([]byte, error)
+}
+
+// Rollback uses the store's fenced rollback when it has one, else rebuilds with
+// MaterializeAt and publishes with PruneAfter.
+func (s *StoreAdapter) Rollback(ctx context.Context, room string, v uint64, beforePublish func()) ([]byte, error) {
+	if f, ok := s.p.(fencedRollback); ok {
+		return f.Rollback(ctx, room, persistence.Version(v), beforePublish)
+	}
+	rolled, err := s.p.MaterializeAt(ctx, room, persistence.Version(v))
+	if err != nil {
+		return nil, err
+	}
+	if beforePublish != nil {
+		beforePublish()
+	}
+	if err := s.p.PruneAfter(ctx, room, persistence.Version(v), rolled); err != nil {
+		return nil, err
+	}
+	return rolled, nil
+}
+
 // Flush forces a durable GCS snapshot of the room via FlushFn. When FlushFn is
 // nil (tests), it falls back to a name-less CaptureSnapshot of the loaded state.
 func (s *StoreAdapter) Flush(ctx context.Context, room string) error {

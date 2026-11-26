@@ -99,6 +99,16 @@ func (f *fakeStore) PruneAfter(ctx context.Context, room string, target uint64, 
 	}
 	return nil
 }
+func (f *fakeStore) Rollback(ctx context.Context, room string, v uint64, beforePublish func()) ([]byte, error) {
+	rolled, err := f.MaterializeAt(ctx, room, v)
+	if err != nil {
+		return nil, err
+	}
+	if beforePublish != nil {
+		beforePublish()
+	}
+	return rolled, f.PruneAfter(ctx, room, v, rolled)
+}
 func (f *fakeStore) Flush(ctx context.Context, room string) error { f.flushed = true; return nil }
 func (f *fakeStore) Copy(ctx context.Context, dst, src string) error {
 	f.copied = [2]string{dst, src}

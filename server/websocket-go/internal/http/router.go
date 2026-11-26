@@ -83,8 +83,11 @@ type DocStore interface {
 	MaterializeAt(ctx context.Context, room string, v uint64) ([]byte, error)
 	// RebuildableVersions reports which versions MaterializeAt can rebuild.
 	RebuildableVersions(ctx context.Context, room string, versions []uint64) (map[uint64]bool, error)
-	// PruneAfter persists the rolled-back state and prunes updates > target.
-	PruneAfter(ctx context.Context, room string, target uint64, rolledBack []byte) error
+	// Rollback rebuilds v and publishes it as the room's state, calling
+	// beforePublish (if set) once in between, and returns the rebuilt state. A
+	// rebuild and a separate publish would let another rollback commit between
+	// them, so the store does both and refuses that race as retryable.
+	Rollback(ctx context.Context, room string, v uint64, beforePublish func()) ([]byte, error)
 	// Flush forces a GCS snapshot of the room's current state.
 	Flush(ctx context.Context, room string) error
 	// (No CaptureSnapshot: the snapshot endpoint is read-only.)
@@ -321,12 +324,24 @@ func (r *router) rollback(w http.ResponseWriter, req *http.Request) {
 		return
 	}
 	ctx := req.Context()
-	rolledBack, err := r.store.MaterializeAt(ctx, id, body.Version)
+	// The live room is flagged only once the rebuild succeeded, right before the
+	// store publishes it.
+	signaled := false
+	rolledBack, err := r.store.Rollback(ctx, id, body.Version, func() {
+		r.signal(ctx, id, true)
+		signaled = true
+	})
+	if signaled {
+		// Always clear the flag, even on prune failure or client disconnect:
+		// WithoutCancel keeps the clear off client liveness (else the canvas stays
+		// hidden until the room next reloads).
+		defer r.signal(context.WithoutCancel(ctx), id, false)
+	}
 	if retryLater(err) {
 		writeErr(w, http.StatusServiceUnavailable, msgRollbackInProgress)
 		return
 	}
-	// Refused before the prune: the rebuild would be a fragment, and PruneAfter
+	// Refused before the prune: the rebuild would be a fragment, and publishing
 	// writes it over doc_v2 and deletes the log above the target. Failing the
 	// restore is recoverable, destroying the history above it is not.
 	if rebuildRefused(err) {
@@ -336,17 +351,11 @@ func (r *router) rollback(w http.ResponseWriter, req *http.Request) {
 		return
 	}
 	if err != nil {
-		r.fail(w, "rollback materialize failed", err, "doc", id, "version", body.Version)
-		return
-	}
-	r.signal(ctx, id, true)
-	// Always clear the flag, even on prune failure or client disconnect:
-	// WithoutCancel keeps the clear off client liveness (else the canvas stays
-	// hidden until the room next reloads).
-	clearCtx := context.WithoutCancel(ctx)
-	defer r.signal(clearCtx, id, false)
-	if err := r.store.PruneAfter(ctx, id, body.Version, rolledBack); err != nil {
-		r.fail(w, "rollback prune failed", err, "doc", id, "version", body.Version)
+		msg := "rollback materialize failed"
+		if signaled {
+			msg = "rollback prune failed"
+		}
+		r.fail(w, msg, err, "doc", id, "version", body.Version)
 		return
 	}
 	// Return the full rolled-back document, matching the Rust server's

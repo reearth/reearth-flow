@@ -81,6 +81,9 @@ type Adapter struct {
 	afterRollbackDocV2 func() bool
 	// afterRollbackCheckpoint is the same, after the checkpoint write.
 	afterRollbackCheckpoint func() bool
+	// beforeMaterializeBase, when set, runs in MaterializeAt between sampling the
+	// marks and reading the base (test injection only).
+	beforeMaterializeBase func()
 
 	// oidCache memoizes allocated OIDs per room. Phase 2 pins OID=0.
 	oidCache map[string]uint32

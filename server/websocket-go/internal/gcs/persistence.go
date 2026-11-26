@@ -258,6 +258,9 @@ type storedState struct {
 	// marks are the ones this read validated, so a caller that chose what to fold
 	// or delete beforehand can check its choice still describes this state.
 	marks marks
+	// legacyOnly means doc came from the Phase-2 legacy root, whose clocks are not
+	// the primary log's: primary appends restart at 1 below its head.
+	legacyOnly bool
 }
 
 // marks are the checkpoint, the rollback ceiling and doc_v2's generation. Every
@@ -293,15 +296,19 @@ func (m marks) covers() coverage {
 
 // readFlushMarks is readMarks plus the rollback epoch, for a flush candidate
 // that must be dropped once any rollback starts after it was built.
+//
+// The epoch is read first, so a rollback these marks show no mark for rewrites
+// it after this read: when it starts, or at the latest when it commits.
 func (a *Adapter) readFlushMarks(ctx context.Context, room DocID) (marks, error) {
+	epochGen, err := a.store.generation(ctx, a.rollbackEpochName(room))
+	if err != nil {
+		return marks{}, err
+	}
 	m, err := a.readMarks(ctx, room)
 	if err != nil {
 		return marks{}, err
 	}
-	if m.epochGen, err = a.store.generation(ctx, a.rollbackEpochName(room)); err != nil {
-		return marks{}, err
-	}
-	m.epochRead = true
+	m.epochGen, m.epochRead = epochGen, true
 	return m, nil
 }
 
@@ -401,7 +408,7 @@ func (a *Adapter) readStateUpTo(ctx context.Context, room DocID, oid uint32, upT
 		if err := crdt.ApplyUpdateV1(doc, legacy, nil); err != nil {
 			return storedState{}, err
 		}
-		return storedState{doc: doc, head: legacyHeadClock(ctx, a, room), v2Gen: before.v2Gen, marks: m}, nil
+		return storedState{doc: doc, head: legacyHeadClock(ctx, a, room), v2Gen: before.v2Gen, marks: m, legacyOnly: true}, nil
 	}
 
 	clocks := sortedClocks(updates)
@@ -504,7 +511,15 @@ func (a *Adapter) writeUnionSince(ctx context.Context, room DocID, oid uint32, c
 // candidate already reflects, so that direction does not count. The rollback
 // epoch, when both reads have it, catches a rollback whose ceiling an append
 // already cleared.
+//
+// Marks read mid-rollback describe no state the candidate can be checked
+// against: the rollback may commit and an append clear its ceiling before the
+// candidate is written, leaving the epoch as the only trace, and it was already
+// rewritten when they were read. Such a candidate is always dropped.
 func rollbackCommitted(before, now marks) bool {
+	if before.rolling {
+		return true
+	}
 	if before.epochRead && now.epochRead && before.epochGen != now.epochGen {
 		return true
 	}
@@ -552,6 +567,13 @@ func (a *Adapter) writeUnionOnce(ctx context.Context, room DocID, oid uint32, ca
 	// the store alone that reaches past the earlier coverage has folded in what
 	// raced that flush, so it clears the flag.
 	cov.live = len(candidate) > 0 || (prev.live && cov.clock <= prev.clock)
+	if st.legacyOnly {
+		// The legacy head counts legacy clocks. Stamped as primary coverage, it
+		// would cover primary clocks 1..head that hold none of this content, and a
+		// rebuild there would take the base alone. The imported content precedes
+		// every primary clock, as Backfill records it.
+		cov.clock = 0
+	}
 	_, err = a.writeV2DocIf(ctx, room, oid, st.doc, st.v2Gen, cov)
 	return err
 }
@@ -869,11 +891,23 @@ func ensureReplayComplete(clocks []uint32, target uint32) error {
 }
 
 // MaterializeAt rebuilds the full state at version v as one V1 update. Read-only.
+// It reads without the doc lock, so it retries while a writer moves the state.
 func (a *Adapter) MaterializeAt(ctx context.Context, room string, v persistence.Version) ([]byte, error) {
 	if err := a.validate(room); err != nil {
 		return nil, err
 	}
-	target := uint32(v)
+	for attempt := 1; ; attempt++ {
+		b, err := a.materializeOnce(ctx, room, uint32(v))
+		if err == errStateMoved && attempt < loadAttempts {
+			continue
+		}
+		return b, err
+	}
+}
+
+// materializeOnce is one attempt at MaterializeAt. It fails with errStateMoved
+// when the marks it decided by no longer describe what it read.
+func (a *Adapter) materializeOnce(ctx context.Context, room string, target uint32) ([]byte, error) {
 	rs, err := a.readRebuildState(ctx, room)
 	if err != nil {
 		return nil, err
@@ -894,6 +928,9 @@ func (a *Adapter) MaterializeAt(ctx context.Context, room string, v persistence.
 	useBase := usesBase(rs, target)
 
 	var parts [][]byte
+	if a.beforeMaterializeBase != nil {
+		a.beforeMaterializeBase()
+	}
 	// CRDT merge is idempotent, so folding the base plus replayed updates never
 	// double-applies.
 	if useBase {
@@ -917,10 +954,22 @@ func (a *Adapter) MaterializeAt(ctx context.Context, room string, v persistence.
 			continue // already in the base snapshot
 		}
 		b, err := a.store.get(ctx, rs.updates[c])
+		if err == errNotFound {
+			return nil, errStateMoved // compacted or pruned since it was listed
+		}
 		if err != nil {
 			return nil, err
 		}
 		parts = append(parts, b)
+	}
+	// The base and the objects were read after the marks were sampled. Unchanged
+	// marks mean doc_v2 is still the generation the rebuild was judged by and no
+	// rollback or compaction replaced what was listed; otherwise a newer base can
+	// already hold edits past the version, which its callers would write back.
+	if m, err := a.readMarks(ctx, room); err != nil {
+		return nil, err
+	} else if m != rs.m {
+		return nil, errStateMoved
 	}
 	if len(parts) == 0 {
 		return nil, nil // empty state
@@ -985,35 +1034,42 @@ func (a *Adapter) readRebuildState(ctx context.Context, room string) (*rebuildSt
 			return &rebuildState{oid: oid, legacyOnly: true}, nil
 		}
 	}
-	m, err := a.readMarks(ctx, room)
+	m, err := a.settledMarks(ctx, room, oid)
 	if err != nil {
 		return nil, err
-	}
-	// Mid-rollback, doc_v2, the ceiling and the checkpoint may disagree, and a
-	// rebuild from that mix would be written somewhere durable.
-	if m.rolling {
-		// A writer that stopped is settled here, so recovery is not stuck waiting
-		// for something to open the room. A live one still holds the lock.
-		ran := false
-		lockErr := a.locker.WithLock(ctx, gcsDocLockKey(room), func(ctx context.Context) error {
-			ran = true
-			return a.settleRollback(ctx, room, oid)
-		})
-		if ran && lockErr != nil {
-			return nil, lockErr
-		}
-		if m, err = a.readMarks(ctx, room); err != nil {
-			return nil, err
-		}
-		if m.rolling {
-			return nil, errRollbackInProgress
-		}
 	}
 	updates, err := a.listUpdates(ctx, room, oid)
 	if err != nil {
 		return nil, err
 	}
 	return &rebuildState{oid: oid, m: m, updates: updates, clocks: sortedClocks(updates)}, nil
+}
+
+// settledMarks reads the marks, settling a stopped rollback first. Mid-rollback,
+// doc_v2, the ceiling and the checkpoint may disagree, and a rebuild from that
+// mix would be written somewhere durable. A writer that stopped is settled here,
+// so recovery is not stuck waiting for something to open the room; a live one
+// still holds the lock, reported as errRollbackInProgress.
+func (a *Adapter) settledMarks(ctx context.Context, room DocID, oid uint32) (marks, error) {
+	m, err := a.readMarks(ctx, room)
+	if err != nil || !m.rolling {
+		return m, err
+	}
+	ran := false
+	lockErr := a.locker.WithLock(ctx, gcsDocLockKey(room), func(ctx context.Context) error {
+		ran = true
+		return a.settleRollback(ctx, room, oid)
+	})
+	if ran && lockErr != nil {
+		return marks{}, lockErr
+	}
+	if m, err = a.readMarks(ctx, room); err != nil {
+		return marks{}, err
+	}
+	if m.rolling {
+		return marks{}, errRollbackInProgress
+	}
+	return m, nil
 }
 
 // usesBase reports whether target rebuilds from doc_v2 plus the log above it
@@ -1046,6 +1102,17 @@ func visibleHead(rs *rebuildState, base uint32) uint32 {
 func (a *Adapter) rebuildRefusal(ctx context.Context, room string, rs *rebuildState, target uint32) error {
 	if rs.legacyOnly {
 		return nil
+	}
+	// A rollback that stopped before deleting the log above its target leaves
+	// those objects behind its ceiling. They are the edits it removed, so a
+	// version among them is gone, however much of it the log still holds.
+	if rs.m.hasCeil && target > rs.m.ceil {
+		return &notRebuildable{detail: fmt.Sprintf(
+			"version %d is above the rollback ceiling %d", target, rs.m.ceil)}
+	}
+	if head := visibleHead(rs, rs.m.covers().clock); target > head {
+		return &notRebuildable{detail: fmt.Sprintf(
+			"version %d is past the newest version %d", target, head)}
 	}
 	if usesBase(rs, target) {
 		return nil
