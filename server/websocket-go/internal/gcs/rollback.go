@@ -26,7 +26,7 @@ func (a *Adapter) PruneAfter(ctx context.Context, room string, target persistenc
 	t := uint32(target)
 	return a.locker.WithLock(ctx, gcsDocLockKey(room), func(ctx context.Context) error {
 		// (1) durable rolled-back snapshot.
-		if err := a.writeV2Snapshot(ctx, room, oid, rolledBack); err != nil {
+		if err := a.writeV2Snapshot(ctx, room, oid, rolledBack, coverage{clock: t}); err != nil {
 			return err
 		}
 		// (2a) ceiling = target, written before the delete so a crash hides any
@@ -148,7 +148,9 @@ func (a *Adapter) Compact(ctx context.Context, room string, keep int) (int, erro
 		}
 		// Write the new base before deleting any update (abort-without-loss). It
 		// only lands on the doc_v2 readState read, so an expired lock deletes nothing.
-		baseGen, err := a.writeV2DocIf(ctx, room, oid, st.doc, st.v2Gen)
+		prev := st.marks.covers()
+		cov := coverage{clock: max(prev.clock, cutoff), live: prev.live && cutoff <= prev.clock}
+		baseGen, err := a.writeV2DocIf(ctx, room, oid, st.doc, st.v2Gen, cov)
 		if err != nil {
 			return err
 		}

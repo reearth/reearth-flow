@@ -834,7 +834,7 @@ func TestWriteV2Doc_LeavesTheMirrorsWhenDocV2MovedOn(t *testing.T) {
 	winner := crdt.New(crdt.WithClientID(1))
 	wt := winner.GetText("t") // outside Transact: GetText takes the doc lock
 	winner.Transact(func(txn *crdt.Transaction) { wt.Insert(txn, 0, "winner", nil) })
-	if err := a.writeV2Doc(ctx, room, oid, winner); err != nil {
+	if err := a.writeV2Doc(ctx, room, oid, winner, coverage{}); err != nil {
 		t.Fatalf("seed writeV2Doc: %v", err)
 	}
 	wantDoc, err := a.store.get(ctx, a.layout.DocStateName(room, oid))
@@ -851,7 +851,7 @@ func TestWriteV2Doc_LeavesTheMirrorsWhenDocV2MovedOn(t *testing.T) {
 	stale := crdt.New(crdt.WithClientID(2))
 	st := stale.GetText("t")
 	stale.Transact(func(txn *crdt.Transaction) { st.Insert(txn, 0, "stale", nil) })
-	err = a.writeV2DocWith(ctx, room, oid, stale, func(string, []byte) (int64, error) {
+	err = a.writeV2DocWith(ctx, room, oid, stale, coverage{}, func(string, []byte, map[string]string) (int64, error) {
 		return 999999, nil
 	})
 	if err != nil {

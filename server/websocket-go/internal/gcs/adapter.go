@@ -376,46 +376,46 @@ func docFromV1(v1 []byte) (*crdt.Doc, error) {
 // writeV2Snapshot writes state (a V1 update) as the brotli(V2) doc_v2 object and
 // refreshes the v1 SUB_DOC + SUB_STATE_VEC so both representations agree. It
 // replaces doc_v2 outright; only rollback and backfill write this way.
-func (a *Adapter) writeV2Snapshot(ctx context.Context, room DocID, oid uint32, v1State []byte) error {
+func (a *Adapter) writeV2Snapshot(ctx context.Context, room DocID, oid uint32, v1State []byte, cov coverage) error {
 	doc, err := docFromV1(v1State)
 	if err != nil {
 		return err
 	}
-	return a.writeV2Doc(ctx, room, oid, doc)
+	return a.writeV2Doc(ctx, room, oid, doc, cov)
 }
 
 // writeV2Doc writes doc as doc_v2, SUB_DOC and SUB_STATE_VEC. It strips the
 // transient keys from doc first.
-func (a *Adapter) writeV2Doc(ctx context.Context, room DocID, oid uint32, doc *crdt.Doc) error {
-	return a.writeV2DocWith(ctx, room, oid, doc, func(name string, b []byte) (int64, error) {
+func (a *Adapter) writeV2Doc(ctx context.Context, room DocID, oid uint32, doc *crdt.Doc, cov coverage) error {
+	return a.writeV2DocWith(ctx, room, oid, doc, cov, func(name string, b []byte, meta map[string]string) (int64, error) {
 		// Unconditional: rollback and backfill hold the lock and publish outright,
 		// so there is no generation of ours for the mirrors to be tied to.
-		return 0, a.store.put(ctx, name, b)
+		return 0, a.store.putWithMeta(ctx, name, b, meta)
 	})
 }
 
 // writeV2DocIf is writeV2Doc, but writes nothing and returns errGenerationMoved
 // once doc_v2 is no longer at generation gen (0 for absent).
-func (a *Adapter) writeV2DocIf(ctx context.Context, room DocID, oid uint32, doc *crdt.Doc, gen int64) (int64, error) {
+func (a *Adapter) writeV2DocIf(ctx context.Context, room DocID, oid uint32, doc *crdt.Doc, gen int64, cov coverage) (int64, error) {
 	var wrote int64
-	err := a.writeV2DocWith(ctx, room, oid, doc, func(name string, b []byte) (int64, error) {
+	err := a.writeV2DocWith(ctx, room, oid, doc, cov, func(name string, b []byte, meta map[string]string) (int64, error) {
 		if a.beforeV2Write != nil {
 			a.beforeV2Write()
 		}
-		g, err := a.store.putIfGeneration(ctx, name, b, gen)
+		g, err := a.store.putIfGenerationMeta(ctx, name, b, gen, meta)
 		wrote = g
 		return g, err
 	})
 	return wrote, err
 }
 
-func (a *Adapter) writeV2DocWith(ctx context.Context, room DocID, oid uint32, doc *crdt.Doc, putV2 func(name string, b []byte) (int64, error)) error {
+func (a *Adapter) writeV2DocWith(ctx context.Context, room DocID, oid uint32, doc *crdt.Doc, cov coverage, putV2 func(name string, b []byte, meta map[string]string) (int64, error)) error {
 	// Strip ephemeral UI keys (e.g. metadata.rollbackInProgress) before persisting:
 	// they ride the CRDT for live broadcast but must never survive in doc_v2, which
 	// the Rust reader loads on its own with no tail updates to clear them.
 	a.stripTransient(doc)
 	v2 := crdt.EncodeStateAsUpdateV2(doc, nil)
-	gen, err := putV2(a.layout.DocV2Name(room), compressBrotli(v2))
+	gen, err := putV2(a.layout.DocV2Name(room), compressBrotli(v2), cov.meta())
 	if err != nil {
 		return err
 	}

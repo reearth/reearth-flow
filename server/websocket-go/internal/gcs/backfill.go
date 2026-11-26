@@ -37,7 +37,8 @@ func (a *Adapter) Backfill(ctx context.Context, room string) error {
 	}
 
 	oid := FolderOID
-	if err := a.writeV2Snapshot(ctx, room, oid, legacyV1); err != nil {
+	// Coverage 0: the legacy content precedes every clock written after it.
+	if err := a.writeV2Snapshot(ctx, room, oid, legacyV1, coverage{}); err != nil {
 		return err
 	}
 

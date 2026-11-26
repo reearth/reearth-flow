@@ -1,0 +1,200 @@
+package gcs
+
+import (
+	"context"
+	"errors"
+	"testing"
+
+	"github.com/reearth/ygo/crdt"
+	"github.com/reearth/ygo/persistence"
+)
+
+// appendLetters appends one letter per clock, "a" at clock 1, calling after (if
+// set) with the clock and full state after each append. It returns the final state.
+func appendLetters(t *testing.T, a *Adapter, room string, n int, after func(clock int, full []byte)) []byte {
+	t.Helper()
+	ctx := context.Background()
+	doc := crdt.New(crdt.WithClientID(31))
+	txt := doc.GetText("t")
+	var prev []byte
+	for i := 0; i < n; i++ {
+		doc.Transact(func(txn *crdt.Transaction) { txt.Insert(txn, txt.Len(), string(rune('a'+i)), nil) })
+		full := crdt.EncodeStateAsUpdateV1(doc, nil)
+		inc := full
+		if prev != nil {
+			d, err := crdt.DiffUpdateV1(full, svOf(t, prev))
+			if err != nil {
+				t.Fatalf("DiffUpdateV1: %v", err)
+			}
+			inc = d
+		}
+		if _, err := a.AppendUpdate(ctx, room, inc); err != nil {
+			t.Fatalf("AppendUpdate: %v", err)
+		}
+		prev = full
+		if after != nil {
+			after(i+1, full)
+		}
+	}
+	return prev
+}
+
+func textOf(t *testing.T, v1 []byte) string {
+	t.Helper()
+	d := crdt.New()
+	if err := crdt.ApplyUpdateV1(d, v1, nil); err != nil {
+		t.Fatalf("ApplyUpdateV1: %v", err)
+	}
+	return d.GetText("t").ToString()
+}
+
+func newCoverageAdapter(t *testing.T) *Adapter {
+	t.Helper()
+	client, bucket := newFakeGCS(t)
+	a, err := New(Options{Client: client, Bucket: bucket, Locker: NewNoLock()})
+	if err != nil {
+		t.Fatalf("New: %v", err)
+	}
+	return a
+}
+
+// TestMaterializeAt_RefusesAVersionALiveFlushOvertook: the last-instance flush
+// writes the live room into doc_v2 and leaves the checkpoint alone. A live room
+// can hold edits that only reach the log at later clocks, so once the head moves
+// on, a version at the flush point is refused rather than rebuilt from a base
+// that may run past it. Versions the base does not reach still rebuild exactly.
+func TestMaterializeAt_RefusesAVersionALiveFlushOvertook(t *testing.T) {
+	t.Parallel()
+	ctx := context.Background()
+	a := newCoverageAdapter(t)
+	const room = "live-flush"
+	appendLetters(t, a, room, 4, func(clock int, full []byte) {
+		if clock == 3 {
+			if err := a.FlushSnapshot(ctx, room, full); err != nil {
+				t.Fatalf("FlushSnapshot: %v", err)
+			}
+		}
+	})
+
+	if got, err := a.MaterializeAt(ctx, room, persistence.Version(3)); !errors.Is(err, ErrVersionNotRebuildable) {
+		t.Errorf("MaterializeAt(3) = %q, %v; want ErrVersionNotRebuildable", textOf(t, got), err)
+	}
+	for v, want := range map[int]string{1: "a", 4: "abcd"} {
+		got, err := a.MaterializeAt(ctx, room, persistence.Version(v))
+		if err != nil {
+			t.Errorf("MaterializeAt(%d): %v", v, err)
+			continue
+		}
+		if s := textOf(t, got); s != want {
+			t.Errorf("MaterializeAt(%d) = %q, want %q", v, s, want)
+		}
+	}
+}
+
+// TestMaterializeAt_RebuildsAVersionAStoreSnapshotOvertook: a snapshot built
+// from the store alone carries nothing the log lacks, so once its coverage is
+// known a version below it is rebuilt exactly from the log instead of from a
+// base that already holds later edits.
+func TestMaterializeAt_RebuildsAVersionAStoreSnapshotOvertook(t *testing.T) {
+	t.Parallel()
+	ctx := context.Background()
+	a := newCoverageAdapter(t)
+	const room = "store-snapshot"
+	appendLetters(t, a, room, 3, nil)
+	if err := a.SnapshotFromStore(ctx, room); err != nil {
+		t.Fatalf("SnapshotFromStore: %v", err)
+	}
+
+	got, err := a.MaterializeAt(ctx, room, persistence.Version(1))
+	if err != nil {
+		t.Fatalf("MaterializeAt(1): %v", err)
+	}
+	if s := textOf(t, got); s != "a" {
+		t.Errorf("MaterializeAt(1) = %q, want %q: the base already held later edits", s, "a")
+	}
+}
+
+// TestMaterializeAt_StillRebuildsWhileCoverageIsBelowTheTarget: the other side.
+// A base that covers less than the target is still used, with the log replayed
+// on top, so the check refuses only what it has to.
+func TestMaterializeAt_StillRebuildsWhileCoverageIsBelowTheTarget(t *testing.T) {
+	t.Parallel()
+	ctx := context.Background()
+	a := newCoverageAdapter(t)
+	const room = "below-target"
+	appendLetters(t, a, room, 15, nil) // the tenth trips the inline compaction
+
+	for v, want := range map[int]string{10: "abcdefghij", 12: "abcdefghijkl", 15: "abcdefghijklmno"} {
+		got, err := a.MaterializeAt(ctx, room, persistence.Version(v))
+		if err != nil {
+			t.Errorf("MaterializeAt(%d): %v", v, err)
+			continue
+		}
+		if s := textOf(t, got); s != want {
+			t.Errorf("MaterializeAt(%d) = %q, want %q", v, s, want)
+		}
+	}
+}
+
+// TestMaterializeAt_TreatsAnUnstampedDocV2AsTheCheckpoint: a doc_v2 written
+// before coverage was recorded is read as covering the checkpoint, exactly as
+// every rebuild treated it before, so nothing changes for it at deploy.
+func TestMaterializeAt_TreatsAnUnstampedDocV2AsTheCheckpoint(t *testing.T) {
+	t.Parallel()
+	ctx := context.Background()
+	a := newCoverageAdapter(t)
+	const room = "unstamped"
+	appendLetters(t, a, room, 15, nil)
+	// A metadata update only removes a key when it is set to "".
+	if err := a.store.updateMeta(ctx, a.layout.DocV2Name(room), func(m map[string]string) {
+		m[metaCovers] = ""
+		m[metaLive] = ""
+	}); err != nil {
+		t.Fatalf("strip coverage: %v", err)
+	}
+	if mk, err := a.readMarks(ctx, room); err != nil || mk.hasCov {
+		t.Fatalf("setup: coverage still recorded (hasCov=%v, err=%v)", mk.hasCov, err)
+	}
+
+	for v, want := range map[int]string{5: "abcde", 12: "abcdefghijkl"} {
+		got, err := a.MaterializeAt(ctx, room, persistence.Version(v))
+		if err != nil {
+			t.Errorf("MaterializeAt(%d): %v", v, err)
+			continue
+		}
+		if s := textOf(t, got); s != want {
+			t.Errorf("MaterializeAt(%d) = %q, want %q", v, s, want)
+		}
+	}
+}
+
+// TestCoverage_AStoreCheckpointPastTheFlushClearsLive: the live flag would
+// otherwise stick forever, since every later union keeps the live content, and
+// leave every version below the head unrestorable after any last-instance flush.
+func TestCoverage_AStoreCheckpointPastTheFlushClearsLive(t *testing.T) {
+	t.Parallel()
+	ctx := context.Background()
+	a := newCoverageAdapter(t)
+	const room = "live-clears"
+	appendLetters(t, a, room, 12, func(clock int, full []byte) {
+		if clock == 3 {
+			if err := a.FlushSnapshot(ctx, room, full); err != nil {
+				t.Fatalf("FlushSnapshot: %v", err)
+			}
+		}
+	})
+	mk, err := a.readMarks(ctx, room)
+	if err != nil {
+		t.Fatalf("readMarks: %v", err)
+	}
+	if !mk.hasCov || mk.cov.live || mk.cov.clock < 10 {
+		t.Fatalf("after the inline compaction at 10: coverage = %+v (recorded %v), want clock >= 10 and not live", mk.cov, mk.hasCov)
+	}
+	got, err := a.MaterializeAt(ctx, room, persistence.Version(11))
+	if err != nil {
+		t.Fatalf("MaterializeAt(11): %v", err)
+	}
+	if s := textOf(t, got); s != "abcdefghijk" {
+		t.Errorf("MaterializeAt(11) = %q, want %q", s, "abcdefghijk")
+	}
+}

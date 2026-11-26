@@ -35,6 +35,18 @@ func (s kv) get(ctx context.Context, name string) ([]byte, error) {
 
 // generation is the object's GCS generation, which changes on every rewrite, or
 // 0 when it does not exist.
+// attrs returns an object's generation and custom metadata, zero values when it is absent.
+func (s kv) attrs(ctx context.Context, name string) (int64, map[string]string, error) {
+	at, err := s.bucket.Object(name).Attrs(ctx)
+	if errors.Is(err, storage.ErrObjectNotExist) {
+		return 0, nil, nil
+	}
+	if err != nil {
+		return 0, nil, err
+	}
+	return at.Generation, at.Metadata, nil
+}
+
 func (s kv) generation(ctx context.Context, name string) (int64, error) {
 	attrs, err := s.bucket.Object(name).Attrs(ctx)
 	if errors.Is(err, storage.ErrObjectNotExist) {
@@ -126,11 +138,17 @@ var errGenerationMoved = errors.New("gcs: object rewritten since it was read")
 // putIfGeneration writes data only while the object's generation is gen, or
 // while it does not exist when gen is 0. It returns errGenerationMoved otherwise.
 func (s kv) putIfGeneration(ctx context.Context, name string, data []byte, gen int64) (int64, error) {
+	return s.putIfGenerationMeta(ctx, name, data, gen, nil)
+}
+
+// putIfGenerationMeta is putIfGeneration, also attaching custom metadata.
+func (s kv) putIfGenerationMeta(ctx context.Context, name string, data []byte, gen int64, meta map[string]string) (int64, error) {
 	cond := storage.Conditions{GenerationMatch: gen}
 	if gen == 0 {
 		cond = storage.Conditions{DoesNotExist: true}
 	}
 	w := s.bucket.Object(name).If(cond).NewWriter(ctx)
+	w.Metadata = meta
 	if _, err := w.Write(data); err != nil {
 		_ = w.Close()
 		return 0, asGenerationMoved(err)

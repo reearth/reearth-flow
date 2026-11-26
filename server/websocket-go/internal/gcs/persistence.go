@@ -203,6 +203,19 @@ type marks struct {
 	// v2Gen catches a rollback whose later appends brought cp and the ceiling
 	// back to the values read before it.
 	v2Gen int64
+	// cov is doc_v2's recorded coverage; hasCov is false for a doc_v2 written
+	// before coverage was recorded.
+	cov    coverage
+	hasCov bool
+}
+
+// covers is what doc_v2 holds. Without recorded coverage it is taken to be the
+// checkpoint, which is how every rebuild treated it before coverage existed.
+func (m marks) covers() coverage {
+	if m.hasCov {
+		return m.cov
+	}
+	return coverage{clock: m.cp}
 }
 
 func (a *Adapter) readMarks(ctx context.Context, room DocID) (marks, error) {
@@ -214,11 +227,12 @@ func (a *Adapter) readMarks(ctx context.Context, room DocID) (marks, error) {
 	if err != nil {
 		return marks{}, err
 	}
-	gen, err := a.store.generation(ctx, a.layout.DocV2Name(room))
+	gen, meta, err := a.store.attrs(ctx, a.layout.DocV2Name(room))
 	if err != nil {
 		return marks{}, err
 	}
-	return marks{cp: cp, ceil: ceil, hasCeil: hasCeil, v2Gen: gen}, nil
+	cov, hasCov := coverageOf(meta)
+	return marks{cp: cp, ceil: ceil, hasCeil: hasCeil, v2Gen: gen, cov: cov, hasCov: hasCov}, nil
 }
 
 // readState reads doc_v2 (or the v1 base) and every update object above the
@@ -425,7 +439,13 @@ func (a *Adapter) writeUnionOnce(ctx context.Context, room DocID, oid uint32, ca
 	} else if st.empty {
 		return nil
 	}
-	_, err = a.writeV2DocIf(ctx, room, oid, st.doc, st.v2Gen)
+	prev := st.marks.covers()
+	cov := coverage{clock: max(prev.clock, st.head)}
+	// A live candidate can carry edits no update object holds yet. A union from
+	// the store alone that reaches past the earlier coverage has folded in what
+	// raced that flush, so it clears the flag.
+	cov.live = len(candidate) > 0 || (prev.live && cov.clock <= prev.clock)
+	_, err = a.writeV2DocIf(ctx, room, oid, st.doc, st.v2Gen, cov)
 	return err
 }
 
@@ -743,10 +763,16 @@ func (a *Adapter) MaterializeAt(ctx context.Context, room string, v persistence.
 		}
 	}
 
-	cp, err := a.checkpoint(ctx, room)
+	m, err := a.readMarks(ctx, room)
 	if err != nil {
 		return nil, err
 	}
+	cp := m.cp
+	// The base is usable for a version only if it holds nothing past it. The
+	// checkpoint used to stand in for that, but a flush or snapshot from the store
+	// rewrites doc_v2 without moving the checkpoint, so recorded coverage decides.
+	cov := m.covers()
+	base := cov.clock
 
 	var parts [][]byte
 	// Include the base snapshot when the checkpoint is at or below target. The
@@ -755,7 +781,7 @@ func (a *Adapter) MaterializeAt(ctx context.Context, room string, v persistence.
 	// and gating on cp>0 dropped it — materializing empty and letting a rollback
 	// overwrite real content with an empty snapshot. CRDT merge is idempotent, so
 	// folding the full base plus replayed updates never double-applies.
-	if cp <= target {
+	if base <= target {
 		if v1, ok, err := a.loadV2(ctx, room); err != nil {
 			return nil, err
 		} else if ok {
@@ -775,11 +801,30 @@ func (a *Adapter) MaterializeAt(ctx context.Context, room string, v persistence.
 		return nil, err
 	}
 	clocks := sortedClocks(updates)
+	// A live base can hold edits that raced its flush and only reached the log at
+	// later clocks, so used for a version below the head it can run past it.
+	if base <= target && cov.live {
+		head := base
+		visible := clocks
+		if m.hasCeil {
+			visible = clocksUpTo(visible, m.ceil)
+		}
+		if n := len(visible); n > 0 && visible[n-1] > head {
+			head = visible[n-1]
+		}
+		if target < head {
+			err := &notRebuildable{detail: fmt.Sprintf(
+				"version %d is below the head %d, and the base was flushed from a live room that can hold later edits", target, head)}
+			a.log.Warn("gcs materialize: refusing a version a live base can overtake",
+				"room", room, "version", target, "covers", base, "head", head)
+			return nil, err
+		}
+	}
 	// The base was left out above, so the update objects are the only source for
 	// this version. A compaction that folded the oldest ones into a base already
 	// past target leaves a log that cannot rebuild it: refuse rather than hand a
 	// fragment to a caller that will write it over doc_v2.
-	if cp > target {
+	if base > target {
 		if err := ensureReplayComplete(clocks, target); err != nil {
 			a.log.Warn("gcs materialize: refusing a version the update log can no longer rebuild",
 				"room", room, "version", target, "checkpoint", cp, "err", err)
@@ -794,8 +839,8 @@ func (a *Adapter) MaterializeAt(ctx context.Context, room string, v persistence.
 		}
 		if imported {
 			rerr := &notRebuildable{detail: fmt.Sprintf(
-				"version %d is below checkpoint %d, and this room's base was imported from the legacy layout, which no update object carries",
-				target, cp)}
+				"version %d is below what the base covers (%d), and this room's base was imported from the legacy layout, which no update object carries",
+				target, base)}
 			a.log.Warn("gcs materialize: refusing a version below an imported base",
 				"room", room, "version", target, "checkpoint", cp)
 			return nil, rerr
@@ -805,7 +850,7 @@ func (a *Adapter) MaterializeAt(ctx context.Context, room string, v persistence.
 		if c > target {
 			break
 		}
-		if cp <= target && c <= cp {
+		if base <= target && c <= base {
 			continue // already in the base snapshot
 		}
 		b, err := a.store.get(ctx, updates[c])
@@ -824,8 +869,8 @@ func (a *Adapter) MaterializeAt(ctx context.Context, room string, v persistence.
 		}
 	}
 	var checkpointed []uint32
-	if cp <= target {
-		checkpointed = clocksUpTo(clocks, cp)
+	if base <= target {
+		checkpointed = clocksUpTo(clocks, base)
 	}
 	if _, err := a.foldParked(ctx, room, doc, updates, checkpointed); err != nil {
 		return nil, err
