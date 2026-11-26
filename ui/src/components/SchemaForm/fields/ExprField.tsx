@@ -43,14 +43,18 @@ const ExprField: React.FC<FieldProps<ExprFieldNode>> = ({
 
   const handleInlineChange = useCallback(
     (event: React.ChangeEvent<HTMLInputElement>) => {
-      const text = event.target.value;
-      onChange(path, {
-        type: inlineCodeType(text, flowExprAllowed),
-        value: text,
-      });
+      onChange(path, { type: "string", value: event.target.value });
     },
-    [onChange, path, flowExprAllowed],
+    [onChange, path],
   );
+
+  const handleInlineBlur = useCallback(() => {
+    const text = codeValue?.value ?? "";
+    if (inlineCodeType(text, flowExprAllowed) === "flowExpr") {
+      onChange(path, { type: "flowExpr", value: text });
+    }
+    field.onBlur();
+  }, [codeValue, flowExprAllowed, onChange, path, field]);
 
   const handleReset = useCallback(() => {
     onChange(path, defaultValue.current ?? { type: fallbackType, value: "" });
@@ -129,7 +133,7 @@ const ExprField: React.FC<FieldProps<ExprFieldNode>> = ({
             value={codeValue?.value ?? ""}
             onChange={handleInlineChange}
             onFocus={field.onFocus}
-            onBlur={field.onBlur}
+            onBlur={handleInlineBlur}
             placeholder={node.description || t("Enter value...")}
             disabled={field.readonly}
             aria-invalid={field.hasErrors}

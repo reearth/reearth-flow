@@ -58,6 +58,7 @@ export default ({
 
   const lastProbedParams = useRef<Map<string, string>>(new Map());
   const pendingNodeIds = useRef<Set<string>>(new Set());
+  const latestRequest = useRef<Map<string, number>>(new Map());
 
   // Probes this client started. Their outcome is part of the user's edit, so
   // this client writes it. Every other client watches the same probe
@@ -137,12 +138,17 @@ export default ({
       );
       if (!engineReadyWorkflow) return;
 
+      const request = (latestRequest.current.get(nodeId) ?? 0) + 1;
+      latestRequest.current.set(nodeId, request);
+
       const data = await previewSchema(
         currentProject.id,
         currentProject.workspaceId,
         engineReadyWorkflow,
         sampleSize,
       );
+
+      if (latestRequest.current.get(nodeId) !== request) return;
 
       if (!data.job?.id) {
         markFailed(nodeId);

@@ -192,6 +192,40 @@ describe("usePreviewSchema", () => {
     public: false,
   });
 
+  test("ignores a probe request that a newer one superseded", async () => {
+    vi.useFakeTimers();
+    let resolveFirst: (value: { job: { id: string } }) => void = () => {};
+    previewSchema
+      .mockImplementationOnce(
+        () =>
+          new Promise((resolve) => {
+            resolveFirst = resolve;
+          }),
+      )
+      .mockImplementationOnce(async () => ({ job: { id: "job-second" } }));
+    const { hook, persisted } = setup();
+
+    act(() => hook.result.current.handleNodeParamsSaved(readerNode()));
+    await act(() => vi.runAllTimersAsync());
+    act(() =>
+      hook.result.current.handleNodeParamsSaved({
+        ...readerNode(),
+        data: { ...readerNode().data, params: { path: "b.csv" } },
+      }),
+    );
+    await act(() => vi.runAllTimersAsync());
+    expect(persisted.get("reader")).toEqual({
+      status: "running",
+      jobId: "job-second",
+    });
+
+    await act(async () => resolveFirst({ job: { id: "job-first" } }));
+    expect(persisted.get("reader")).toEqual({
+      status: "running",
+      jobId: "job-second",
+    });
+  });
+
   test("re-probes a reader when a variable it references changes", async () => {
     vi.useFakeTimers();
     projectVariables = [urlVariable("https://example.com/a.geojson")];
