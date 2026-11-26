@@ -11,7 +11,7 @@ import {
 } from "@flow/components";
 import { useUser, useWorkspace } from "@flow/lib/gql";
 import { useT } from "@flow/lib/i18n";
-import { usePermissions } from "@flow/lib/permissions";
+import { usePermissions, useRoleLabel } from "@flow/lib/permissions";
 import type { AppColumnDef } from "@flow/lib/table/features";
 import { useCurrentWorkspace } from "@flow/stores";
 import type { UserMember } from "@flow/types";
@@ -25,6 +25,7 @@ const MembersSettings: React.FC = () => {
   const t = useT();
   const [currentWorkspace] = useCurrentWorkspace();
   const { manageMembers } = usePermissions();
+  const roleLabel = useRoleLabel();
 
   const {
     addMemberToWorkspace,
@@ -131,6 +132,7 @@ const MembersSettings: React.FC = () => {
     {
       accessorKey: "role",
       header: t("Role"),
+      cell: (row) => roleLabel(row.row.original.role),
     },
     {
       accessorKey: "actions",
@@ -152,7 +154,7 @@ const MembersSettings: React.FC = () => {
                     onClick={() =>
                       handleChangeRole(row.row.original.userId, role)
                     }>
-                    {role}
+                    {roleLabel(role)}
                   </DropdownMenuItem>
                 ))}
               </DropdownMenuContent>

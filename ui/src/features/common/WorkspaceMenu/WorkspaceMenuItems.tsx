@@ -15,9 +15,9 @@ import {
   menuRowClass,
 } from "@flow/features/common/ThemeLanguageMenu";
 import { useRestrictedWorkspaces } from "@flow/hooks";
-import { useWorkspace } from "@flow/lib/gql";
+import { useUser, useWorkspace } from "@flow/lib/gql";
 import { useT } from "@flow/lib/i18n";
-import { usePermissions } from "@flow/lib/permissions";
+import { roleOf, usePermissions, useRoleLabel } from "@flow/lib/permissions";
 import { useCurrentWorkspace } from "@flow/stores";
 import type { Workspace } from "@flow/types";
 import {
@@ -37,6 +37,20 @@ const WorkspaceAvatar: React.FC<{ name?: string; personal?: boolean }> = ({
   </div>
 );
 
+const WorkspaceName: React.FC<{ name?: string; detail?: string }> = ({
+  name,
+  detail,
+}) => (
+  <div className="flex min-w-0 flex-1 flex-col">
+    <p className="-mb-0.5 truncate">{name}</p>
+    {detail && (
+      <p className="truncate text-xs leading-4 text-muted-foreground">
+        {detail}
+      </p>
+    )}
+  </div>
+);
+
 type Props = {
   onNewWorkspace: () => void;
   onWorkspaceSelect?: (workspace: Workspace) => void;
@@ -49,6 +63,9 @@ const WorkspaceMenuItems: React.FC<Props> = ({
   const t = useT();
   const [currentWorkspace] = useCurrentWorkspace();
   const { viewMembers } = usePermissions();
+  const roleLabel = useRoleLabel();
+  const { useGetMe } = useUser();
+  const { me } = useGetMe();
   const { useGetWorkspaces } = useWorkspace();
   const navigate = useNavigate();
   const { workspaces: rawWorkspaces } = useGetWorkspaces();
@@ -102,14 +119,14 @@ const WorkspaceMenuItems: React.FC<Props> = ({
         className={`gap-2 rounded-md px-4 py-[5px] font-light ${currentWorkspace?.id === workspace.id ? "bg-accent" : ""}`}
         onClick={() => handleWorkspaceChange(workspace)}>
         <WorkspaceAvatar name={workspace.name} personal={workspace.personal} />
-        <div className="flex min-w-0 flex-1 flex-col">
-          <p className="truncate">{workspace.name}</p>
-          {isRestricted && (
-            <p className="text-[10px] text-muted-foreground">
-              {t("Not available")}
-            </p>
-          )}
-        </div>
+        <WorkspaceName
+          name={workspace.name}
+          detail={
+            isRestricted
+              ? t("Not available")
+              : roleLabel(roleOf(workspace, me?.id))
+          }
+        />
       </DropdownMenuItem>
     );
   };
@@ -125,7 +142,10 @@ const WorkspaceMenuItems: React.FC<Props> = ({
             name={currentWorkspace?.name}
             personal={currentWorkspace?.personal}
           />
-          <p className="min-w-0 flex-1 truncate">{currentWorkspace?.name}</p>
+          <WorkspaceName
+            name={currentWorkspace?.name}
+            detail={roleLabel(roleOf(currentWorkspace, me?.id))}
+          />
         </DropdownMenuSubTrigger>
         <DropdownMenuSubContent className="flex w-[230px] flex-col gap-0.5 rounded-lg">
           {personalWorkspace && (

@@ -1,5 +1,7 @@
+import { useT } from "@flow/lib/i18n";
 import { useCurrentUserRole } from "@flow/stores";
 import { Role } from "@flow/types";
+import type { UserMember, Workspace } from "@flow/types";
 
 export type Permissions = {
   editWorkflow: boolean;
@@ -50,4 +52,32 @@ export const permissionsFor = (role: Role | undefined): Permissions => {
 export const usePermissions = (): Permissions => {
   const [role] = useCurrentUserRole();
   return permissionsFor(role);
+};
+
+export const roleOf = (
+  workspace: Workspace | undefined,
+  userId: string | undefined,
+): Role | undefined => {
+  if (!workspace || !userId) return undefined;
+  return workspace.members?.find(
+    (m): m is UserMember => "userId" in m && m.userId === userId,
+  )?.role;
+};
+
+export const useRoleLabel = () => {
+  const t = useT();
+  return (role: Role | undefined): string | undefined => {
+    switch (role) {
+      case Role.Owner:
+        return t("Owner");
+      case Role.Maintainer:
+        return t("Maintainer");
+      case Role.Writer:
+        return t("Writer");
+      case Role.Reader:
+        return t("Reader");
+      default:
+        return undefined;
+    }
+  };
 };

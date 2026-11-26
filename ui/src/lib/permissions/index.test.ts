@@ -1,8 +1,9 @@
 import { describe, expect, it } from "vitest";
 
 import { Role } from "@flow/types";
+import type { Workspace } from "@flow/types";
 
-import { permissionsFor } from ".";
+import { permissionsFor, roleOf } from ".";
 import type { Permissions } from ".";
 
 const allowed = (role: Role | undefined) =>
@@ -50,5 +51,25 @@ describe("permissionsFor", () => {
     expect(allowed(Role.Owner)).toEqual(
       [...maintainerUp, "manageWorkspace"].sort(),
     );
+  });
+});
+
+describe("roleOf", () => {
+  const workspace = {
+    id: "w1",
+    members: [
+      { userId: "u1", role: Role.Maintainer },
+      { integrationId: "i1", role: Role.Owner },
+    ],
+  } as unknown as Workspace;
+
+  it("finds the user's role in the workspace", () => {
+    expect(roleOf(workspace, "u1")).toBe(Role.Maintainer);
+  });
+
+  it("is undefined for a non-member or an unknown user", () => {
+    expect(roleOf(workspace, "u2")).toBeUndefined();
+    expect(roleOf(workspace, undefined)).toBeUndefined();
+    expect(roleOf(undefined, "u1")).toBeUndefined();
   });
 });
