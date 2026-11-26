@@ -25,6 +25,11 @@ func (a *Adapter) PruneAfter(ctx context.Context, room string, target persistenc
 	}
 	t := uint32(target)
 	return a.locker.WithLock(ctx, gcsDocLockKey(room), func(ctx context.Context) error {
+		// (0) announce the rollback before changing anything, so a flush candidate
+		// built earlier is dropped even if this rollback dies partway.
+		if err := a.store.put(ctx, a.rollbackEpochName(room), be32(t)); err != nil {
+			return err
+		}
 		// (1) durable rolled-back snapshot.
 		if err := a.writeV2Snapshot(ctx, room, oid, rolledBack); err != nil {
 			return err

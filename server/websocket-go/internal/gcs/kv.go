@@ -55,6 +55,22 @@ func (s kv) put(ctx context.Context, name string, data []byte) error {
 	return w.Close()
 }
 
+// putGen is put, returning the generation it created (0 if GCS did not say).
+func (s kv) putGen(ctx context.Context, name string, data []byte) (int64, error) {
+	w := s.bucket.Object(name).NewWriter(ctx)
+	if _, err := w.Write(data); err != nil {
+		_ = w.Close()
+		return 0, err
+	}
+	if err := w.Close(); err != nil {
+		return 0, err
+	}
+	if at := w.Attrs(); at != nil {
+		return at.Generation, nil
+	}
+	return 0, nil
+}
+
 // putWithMeta writes data and attaches custom object metadata, so listAttrs can
 // return a snapshot's label and uncompressed size without reading its payload.
 func (s kv) putWithMeta(ctx context.Context, name string, data []byte, meta map[string]string) error {

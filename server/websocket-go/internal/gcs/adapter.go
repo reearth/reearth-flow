@@ -394,9 +394,10 @@ func (a *Adapter) writeV2Snapshot(ctx context.Context, room DocID, oid uint32, v
 // transient keys from doc first.
 func (a *Adapter) writeV2Doc(ctx context.Context, room DocID, oid uint32, doc *crdt.Doc) error {
 	return a.writeV2DocWith(ctx, room, oid, doc, func(name string, b []byte) (int64, error) {
-		// Unconditional: rollback and backfill hold the lock and publish outright,
-		// so there is no generation of ours for the mirrors to be tied to.
-		return 0, a.store.put(ctx, name, b)
+		// Unconditional: rollback and backfill hold the lock and publish doc_v2
+		// outright. The generation still fences their mirrors, since a rollback
+		// whose lease lapsed can resume after a newer one published.
+		return a.store.putGen(ctx, name, b)
 	})
 }
 
@@ -427,7 +428,7 @@ func (a *Adapter) writeV2DocWith(ctx context.Context, room DocID, oid uint32, do
 	}
 	docState := crdt.EncodeStateAsUpdateV1(doc, nil)
 	stateVec := crdt.EncodeStateVectorV1(doc)
-	// Unconditional writers (rollback, backfill) publish outright.
+	// Without a generation to tie them to, publish the mirrors outright.
 	if gen == 0 {
 		if err := a.store.put(ctx, a.layout.DocStateName(room, oid), docState); err != nil {
 			return err

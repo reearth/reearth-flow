@@ -27,6 +27,21 @@ func legacyCeilingName(room DocID) string {
 	return hexb([]byte("prune_ceiling:" + hexb([]byte(room))))
 }
 
+// rollbackEpochName is rewritten by every PruneAfter and by nothing else, so a
+// change in its generation means a rollback started. The ceiling cannot say
+// that on its own: the next append clears it, after which the marks look like
+// an ordinary checkpoint advance.
+func (a *Adapter) rollbackEpochName(room DocID) string {
+	if a.phase2 {
+		return ProjectPrefix(room) + "rollback_epoch"
+	}
+	return legacyRollbackEpochName(room)
+}
+
+func legacyRollbackEpochName(room DocID) string {
+	return hexb([]byte("rollback_epoch:" + hexb([]byte(room))))
+}
+
 func legacySnapshotPrefix(room DocID) string {
 	return hexb([]byte("snapshot:" + hexb([]byte(room)) + ":"))
 }
@@ -203,6 +218,24 @@ type marks struct {
 	// v2Gen catches a rollback whose later appends brought cp and the ceiling
 	// back to the values read before it.
 	v2Gen int64
+	// epochGen is the rollback epoch's generation. Only readFlushMarks reads it
+	// (epochRead), so the marks Load and Compact compare are unaffected.
+	epochGen  int64
+	epochRead bool
+}
+
+// readFlushMarks is readMarks plus the rollback epoch, for a flush candidate
+// that must be dropped once any rollback starts after it was built.
+func (a *Adapter) readFlushMarks(ctx context.Context, room DocID) (marks, error) {
+	m, err := a.readMarks(ctx, room)
+	if err != nil {
+		return marks{}, err
+	}
+	if m.epochGen, err = a.store.generation(ctx, a.rollbackEpochName(room)); err != nil {
+		return marks{}, err
+	}
+	m.epochRead = true
+	return m, nil
 }
 
 func (a *Adapter) readMarks(ctx context.Context, room DocID) (marks, error) {
@@ -372,7 +405,7 @@ func (a *Adapter) writeUnion(ctx context.Context, room DocID, oid uint32, candid
 	// generation cannot tell a rollback from a competing checkpoint, so capture the
 	// rollback marks here and recheck them before the candidate is applied, on the
 	// retry as well as the first attempt.
-	before, err := a.readMarks(ctx, room)
+	before, err := a.readFlushMarks(ctx, room)
 	if err != nil {
 		return err
 	}
@@ -392,8 +425,13 @@ func (a *Adapter) writeUnionSince(ctx context.Context, room DocID, oid uint32, c
 
 // rollbackCommitted reports whether a rollback published between two marks
 // reads. A ceiling being cleared is an ordinary append after a rollback the
-// candidate already reflects, so that direction does not count.
+// candidate already reflects, so that direction does not count. The rollback
+// epoch, when both reads have it, catches a rollback whose ceiling an append
+// already cleared.
 func rollbackCommitted(before, now marks) bool {
+	if before.epochRead && now.epochRead && before.epochGen != now.epochGen {
+		return true
+	}
 	if !before.hasCeil && now.hasCeil {
 		return true
 	}
@@ -409,7 +447,7 @@ func (a *Adapter) writeUnionOnce(ctx context.Context, room DocID, oid uint32, ca
 		return err
 	}
 	if len(candidate) > 0 {
-		now, err := a.readMarks(ctx, room)
+		now, err := a.readFlushMarks(ctx, room)
 		if err != nil {
 			return err
 		}
@@ -571,7 +609,7 @@ func (a *Adapter) flushMarks(ctx context.Context, room string) (marks, error) {
 	if err := a.validate(room); err != nil {
 		return marks{}, err
 	}
-	return a.readMarks(ctx, room)
+	return a.readFlushMarks(ctx, room)
 }
 
 // flushSnapshotSince is FlushSnapshot for a state built after before was read,
@@ -971,6 +1009,7 @@ func (a *Adapter) Delete(ctx context.Context, room string) error {
 		a.layout.StateVectorName(room, oid),
 		a.layout.OIDIndexName(room),
 		a.ceilingName(room),
+		a.rollbackEpochName(room),
 		// NB: SnapNextIDName is deliberately NOT here — see the deferred delete
 		// after the prefix sweep below.
 	}
@@ -1027,6 +1066,7 @@ func (a *Adapter) deleteLegacyRoot(ctx context.Context, room DocID) error {
 		leg.StateVectorName(room, oid),
 		leg.OIDIndexName(room),
 		legacyCeilingName(room),
+		legacyRollbackEpochName(room),
 		// SnapNextIDName deferred to after the sweep, as in the Phase-1 path.
 	}
 	for _, n := range names {
