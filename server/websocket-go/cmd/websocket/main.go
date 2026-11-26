@@ -99,10 +99,11 @@ func run() error {
 		Logger:    log,
 	})
 	apiRouter := flowhttp.NewRouter(flowhttp.Deps{
-		Store:     store,
-		Signaler:  srv,
-		Versioner: srv,
-		Logger:    log,
+		Store:       store,
+		Signaler:    srv,
+		Versioner:   srv,
+		KeepUpdates: cfg.KeepUpdates,
+		Logger:      log,
 	})
 
 	// Wire the real /health probes. A client-construction failure is non-fatal:

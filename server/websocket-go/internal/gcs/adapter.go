@@ -50,6 +50,30 @@ type Adapter struct {
 	// beforeUpdatePut, when set, runs between choosing an update's clock and
 	// writing it (test injection only).
 	beforeUpdatePut func(clock uint32)
+	// afterReadBase, when set, runs in readState between reading doc_v2 and
+	// listing the update log (test injection only).
+	afterReadBase func()
+	// afterCheckMarks, when set, runs in readState between its marks check and
+	// reading the update objects (test injection only).
+	afterCheckMarks func()
+	// beforeV2Write, when set, runs in writeV2DocIf before its conditional
+	// doc_v2 write (test injection only).
+	beforeV2Write func()
+	// afterCompactSelect, when set, runs in Compact between choosing the cutoff
+	// and reading the state it folds (test injection only).
+	afterCompactSelect func()
+	// afterCompactBase, when set, runs in Compact between the base write and the
+	// checkpoint publish (test injection only).
+	afterCompactBase func()
+	// afterCompactPublish, when set, runs in Compact between the checkpoint
+	// publish and the check before its deletes (test injection only).
+	afterCompactPublish func()
+	// beforeCompactDelete, when set, runs in Compact between that check and the
+	// deletes (test injection only).
+	beforeCompactDelete func()
+	// beforeMirrorPut, when set, runs in writeV2DocIf between confirming doc_v2 is
+	// still ours and writing the named v1 mirror (test injection only).
+	beforeMirrorPut func(name string)
 
 	// oidCache memoizes allocated OIDs per room. Phase 2 pins OID=0.
 	oidCache map[string]uint32
@@ -319,43 +343,22 @@ func stateFromV2(v2 []byte) ([]byte, error) {
 	return crdt.EncodeStateAsUpdateV1(doc, nil), nil
 }
 
-// pendingIn reports the items in the V1 update state that cannot be integrated
-// yet because an edit they build on is missing.
-func pendingIn(state []byte) (crdt.PendingStats, error) {
-	d := crdt.New()
-	if err := crdt.ApplyUpdateV1(d, state, nil); err != nil {
-		return crdt.PendingStats{}, err
+// foldParked applies the update objects at clocks to doc when doc holds parked
+// items. The checkpoint claims those objects are already in doc_v2, but a doc_v2
+// written from a copy that missed one of them is not.
+func (a *Adapter) foldParked(ctx context.Context, room DocID, doc *crdt.Doc, updates map[uint32]string, clocks []uint32) (bool, error) {
+	before := doc.PendingStats().Items
+	if before == 0 || len(clocks) == 0 {
+		return false, nil
 	}
-	return d.PendingStats(), nil
-}
-
-// foldParked folds the update objects at clocks into state when state holds
-// parked items, and returns the result with what is still parked. The checkpoint
-// claims those objects are already in doc_v2, but a doc_v2 written from a copy
-// that missed one of them is not.
-func (a *Adapter) foldParked(ctx context.Context, room DocID, state []byte, updates map[uint32]string, clocks []uint32) ([]byte, crdt.PendingStats, error) {
-	ps, err := pendingIn(state)
-	if err != nil || ps.Items == 0 || len(clocks) == 0 {
-		return state, ps, err
-	}
-	before := ps.Items
-	parts := [][]byte{state}
 	for _, c := range clocks {
-		b, err := a.store.get(ctx, updates[c])
-		if err != nil {
-			return nil, ps, err
+		if err := a.applyObject(ctx, doc, updates[c]); err != nil {
+			return false, err
 		}
-		parts = append(parts, b)
 	}
-	out, err := crdt.MergeUpdatesV1(parts...)
-	if err != nil {
-		return nil, ps, err
-	}
-	if ps, err = pendingIn(out); err != nil {
-		return nil, ps, err
-	}
-	a.log.Info("gcs: folded checkpointed update objects into a state with parked items", "room", room, "parked_before", before, "parked_after", ps.Items)
-	return out, ps, nil
+	a.log.Info("gcs: folded checkpointed update objects into a state with parked items",
+		"room", room, "parked_before", before, "parked_after", doc.PendingStats().Items)
+	return true, nil
 }
 
 // clocksUpTo returns the leading clocks of the ascending slice that are <= max.
@@ -377,27 +380,116 @@ func docFromV1(v1 []byte) (*crdt.Doc, error) {
 }
 
 // writeV2Snapshot writes state (a V1 update) as the brotli(V2) doc_v2 object and
-// refreshes the v1 SUB_DOC + SUB_STATE_VEC so both representations agree.
+// refreshes the v1 SUB_DOC + SUB_STATE_VEC so both representations agree. It
+// replaces doc_v2 outright; only rollback and backfill write this way.
 func (a *Adapter) writeV2Snapshot(ctx context.Context, room DocID, oid uint32, v1State []byte) error {
 	doc, err := docFromV1(v1State)
 	if err != nil {
 		return err
 	}
+	return a.writeV2Doc(ctx, room, oid, doc)
+}
+
+// writeV2Doc writes doc as doc_v2, SUB_DOC and SUB_STATE_VEC. It strips the
+// transient keys from doc first.
+func (a *Adapter) writeV2Doc(ctx context.Context, room DocID, oid uint32, doc *crdt.Doc) error {
+	return a.writeV2DocWith(ctx, room, oid, doc, func(name string, b []byte) (int64, error) {
+		// Unconditional: rollback and backfill hold the lock and publish doc_v2
+		// outright. The generation still fences their mirrors, since a rollback
+		// whose lease lapsed can resume after a newer one published.
+		return a.store.putGen(ctx, name, b)
+	})
+}
+
+// writeV2DocIf is writeV2Doc, but writes nothing and returns errGenerationMoved
+// once doc_v2 is no longer at generation gen (0 for absent).
+func (a *Adapter) writeV2DocIf(ctx context.Context, room DocID, oid uint32, doc *crdt.Doc, gen int64) (int64, error) {
+	var wrote int64
+	err := a.writeV2DocWith(ctx, room, oid, doc, func(name string, b []byte) (int64, error) {
+		if a.beforeV2Write != nil {
+			a.beforeV2Write()
+		}
+		g, err := a.store.putIfGeneration(ctx, name, b, gen)
+		wrote = g
+		return g, err
+	})
+	return wrote, err
+}
+
+func (a *Adapter) writeV2DocWith(ctx context.Context, room DocID, oid uint32, doc *crdt.Doc, putV2 func(name string, b []byte) (int64, error)) error {
 	// Strip ephemeral UI keys (e.g. metadata.rollbackInProgress) before persisting:
 	// they ride the CRDT for live broadcast but must never survive in doc_v2, which
 	// the Rust reader loads on its own with no tail updates to clear them.
 	a.stripTransient(doc)
 	v2 := crdt.EncodeStateAsUpdateV2(doc, nil)
-	if err := a.store.put(ctx, a.layout.DocV2Name(room), compressBrotli(v2)); err != nil {
+	gen, err := putV2(a.layout.DocV2Name(room), compressBrotli(v2))
+	if err != nil {
 		return err
 	}
-	if err := a.store.put(ctx, a.layout.DocStateName(room, oid), crdt.EncodeStateAsUpdateV1(doc, nil)); err != nil {
-		return err
+	docState := crdt.EncodeStateAsUpdateV1(doc, nil)
+	stateVec := crdt.EncodeStateVectorV1(doc)
+	// Without a generation to tie them to, publish the mirrors outright.
+	if gen == 0 {
+		if err := a.store.put(ctx, a.layout.DocStateName(room, oid), docState); err != nil {
+			return err
+		}
+		return a.store.put(ctx, a.layout.StateVectorName(room, oid), stateVec)
 	}
-	if err := a.store.put(ctx, a.layout.StateVectorName(room, oid), crdt.EncodeStateVectorV1(doc)); err != nil {
-		return err
+	// The V1 mirrors belong to the doc_v2 just written. A writer whose lease
+	// lapsed can reach them after a newer doc_v2 was published, so each mirror is
+	// fenced the same way as doc_v2 itself.
+	for _, m := range []struct {
+		name string
+		data []byte
+	}{
+		{a.layout.DocStateName(room, oid), docState},
+		{a.layout.StateVectorName(room, oid), stateVec},
+	} {
+		ours, err := a.putMirror(ctx, room, m.name, m.data, gen)
+		if err != nil || !ours {
+			return err
+		}
 	}
 	return nil
+}
+
+// mirrorPutAttempts bounds how often putMirror retries after losing a mirror
+// write to another writer while doc_v2 is still ours.
+const mirrorPutAttempts = 4
+
+// putMirror writes one v1 mirror of the doc_v2 at generation ours. The mirror's
+// generation is read before confirming doc_v2 is still ours, and the write is
+// conditional on it: a newer doc_v2 is always published before its mirrors, so
+// any newer writer's mirror write lands after that read and makes this one fail.
+// It returns false, writing nothing, once doc_v2 has moved on.
+func (a *Adapter) putMirror(ctx context.Context, room DocID, name string, data []byte, ours int64) (bool, error) {
+	for attempt := 1; ; attempt++ {
+		mg, err := a.store.generation(ctx, name)
+		if err != nil {
+			return false, err
+		}
+		cur, err := a.store.generation(ctx, a.layout.DocV2Name(room))
+		if err != nil {
+			return false, err
+		}
+		if cur != ours {
+			a.log.Warn("gcs: doc_v2 moved on after our write, leaving the v1 mirrors to the newer writer",
+				"room", room, "wrote", ours, "current", cur)
+			return false, nil
+		}
+		if a.beforeMirrorPut != nil {
+			a.beforeMirrorPut(name)
+		}
+		_, err = a.store.putIfGeneration(ctx, name, data, mg)
+		if err == nil {
+			return true, nil
+		}
+		// Lost to another writer's mirror. While doc_v2 is still ours that writer
+		// is older, so read again and take the mirror back.
+		if !errors.Is(err, errGenerationMoved) || attempt == mirrorPutAttempts {
+			return false, err
+		}
+	}
 }
 
 // stripTransient deletes the configured ephemeral map keys from doc. No-op when
