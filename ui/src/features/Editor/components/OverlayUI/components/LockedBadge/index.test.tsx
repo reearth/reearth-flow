@@ -3,6 +3,14 @@ import { afterEach, beforeEach, describe, expect, test, vi } from "vitest";
 
 import LockedBadge from "./index";
 
+const getBadge = () => {
+  const badge = screen
+    .getByText("Locked")
+    .closest<HTMLElement>("div.rounded-xl");
+  if (!badge) throw new Error("badge container not found");
+  return badge;
+};
+
 const hoverPastDelay = (el: HTMLElement) => {
   fireEvent.mouseEnter(el);
   act(() => {
@@ -17,9 +25,9 @@ describe("LockedBadge", () => {
   test("offers unlock on a locked project when an unlock handler is given", () => {
     const onUnlock = vi.fn();
     render(<LockedBadge reason="locked" onUnlock={onUnlock} />);
-    const badge = screen.getByText("Locked").closest("div.rounded-xl")!;
+    const badge = getBadge();
 
-    hoverPastDelay(badge as HTMLElement);
+    hoverPastDelay(badge);
     fireEvent.doubleClick(badge);
 
     expect(onUnlock).toHaveBeenCalledOnce();
@@ -27,9 +35,9 @@ describe("LockedBadge", () => {
 
   test("never offers unlock without an unlock handler", () => {
     render(<LockedBadge reason="locked" />);
-    const badge = screen.getByText("Locked").closest("div.rounded-xl")!;
+    const badge = getBadge();
 
-    hoverPastDelay(badge as HTMLElement);
+    hoverPastDelay(badge);
 
     expect(badge).toHaveClass("cursor-default");
   });
