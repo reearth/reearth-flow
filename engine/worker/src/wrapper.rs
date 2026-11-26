@@ -426,7 +426,6 @@ pub async fn serve_run(
     };
     let child = running.child.as_mut().expect("the child was just spawned");
 
-    // Check exit before cancel flag: COMPLETED wins if both arrive simultaneously.
     loop {
         match child.try_wait() {
             Ok(Some(status)) => {
@@ -438,8 +437,6 @@ pub async fn serve_run(
                 };
             }
             Ok(None) => {}
-            // The child may still be running, so `running` is left to kill it
-            // before the root goes.
             Err(e) => return failed(e.to_string()),
         }
 
@@ -979,8 +976,6 @@ mod bounded_tests {
         panic!("the scratch root outlived the dropped run");
     }
 
-    /// A stand-in for `reearth-flow-worker` that ignores its arguments and
-    /// runs `body`.
     fn fake_worker(dir: &Path, body: &str) -> String {
         use std::os::unix::fs::PermissionsExt;
         let path = dir.join("fake-worker.sh");
@@ -1219,6 +1214,25 @@ mod bounded_tests {
         assert_eq!(status, StatusCode::OK);
         assert_eq!(body["status"], "CANCELLED");
         assert_stopped_and_gone(&helper, &root).await;
+    }
+
+    #[tokio::test]
+    async fn a_worker_that_exits_after_its_cancel_flag_appears_is_completed() {
+        let dir = tempfile::tempdir().unwrap();
+        let work_base = dir.path().join("work");
+        let worker = fake_worker(dir.path(), "sleep 1; exit 0");
+
+        let run = start_run(&worker, &work_base, &run_request(dir.path()));
+        tokio::time::sleep(Duration::from_millis(500)).await;
+        std::fs::write(dir.path().join("cancel"), b"").unwrap();
+        let (status, body) = tokio::time::timeout(Duration::from_secs(10), run)
+            .await
+            .expect("the run ended")
+            .unwrap();
+
+        assert_eq!(status, StatusCode::OK);
+        assert_eq!(body["status"], "COMPLETED");
+        assert!(is_empty(&work_base));
     }
 
     #[tokio::test]

@@ -34,7 +34,6 @@ async fn version() -> Json<serde_json::Value> {
     Json(json!({"engineVersion": reearth_flow_worker::ENGINE_VERSION}))
 }
 
-/// Handle a `/run` POST request. See [`serve_run`].
 async fn run(
     State(st): State<AppState>,
     Json(req): Json<RunRequest>,
