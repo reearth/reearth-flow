@@ -89,7 +89,18 @@ func (a *Adapter) Compact(ctx context.Context, room string, keep int) (int, erro
 		if err != nil {
 			return err
 		}
+		m, err := a.readMarks(ctx, room)
+		if err != nil {
+			return err
+		}
 		clocks := sortedClocks(updates)
+		// An interrupted rollback leaves update objects above the ceiling. Those are
+		// abandoned rather than history, so a cutoff chosen among them would publish
+		// a checkpoint the surviving log does not reach. Rollback recovery removes
+		// them; compaction leaves them alone.
+		if m.hasCeil {
+			clocks = clocksUpTo(clocks, m.ceil)
+		}
 		if len(clocks) <= keep {
 			return nil
 		}
@@ -104,14 +115,10 @@ func (a *Adapter) Compact(ctx context.Context, room string, keep int) (int, erro
 		if err != nil {
 			return err
 		}
-		m, err := a.readMarks(ctx, room)
-		if err != nil {
-			return err
-		}
 		// readState applied the objects above the checkpoint. The checkpointed ones
 		// go in too: a doc_v2 written before checkpoints were unions can lack one.
 		for _, c := range clocks[:foldUpto] {
-			if c > m.cp || (m.hasCeil && c > m.ceil) {
+			if c > m.cp {
 				continue
 			}
 			if err := a.applyObject(ctx, st.doc, updates[c]); err != nil {

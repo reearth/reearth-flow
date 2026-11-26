@@ -177,3 +177,71 @@ func TestCompact_ValidatesTheRoomBeforeTheKeepGuard(t *testing.T) {
 		}
 	}
 }
+
+// TestCompact_LeavesAbandonedUpdatesOutOfTheCutoff: an interrupted PruneAfter
+// leaves update objects above the rollback ceiling. Compact must not choose its
+// cutoff among them, or it publishes a checkpoint the surviving log cannot reach
+// and the next append assigns a clock past the abandoned ones.
+func TestCompact_LeavesAbandonedUpdatesOutOfTheCutoff(t *testing.T) {
+	t.Parallel()
+
+	ctx := context.Background()
+	client, bucket := newFakeGCS(t)
+	a, err := New(Options{Client: client, Bucket: bucket, Locker: NewNoLock()})
+	if err != nil {
+		t.Fatalf("New: %v", err)
+	}
+	const room = "abandoned"
+
+	doc := crdt.New(crdt.WithClientID(7))
+	txt := doc.GetText("t")
+	var prev []byte
+	for i := 0; i < 9; i++ {
+		doc.Transact(func(txn *crdt.Transaction) { txt.Insert(txn, 0, string(rune('a'+i)), nil) })
+		full := crdt.EncodeStateAsUpdateV1(doc, nil)
+		inc := full
+		if prev != nil {
+			d, derr := crdt.DiffUpdateV1(full, svOf(t, prev))
+			if derr != nil {
+				t.Fatalf("DiffUpdateV1: %v", derr)
+			}
+			inc = d
+		}
+		if _, err := a.AppendUpdate(ctx, room, inc); err != nil {
+			t.Fatalf("AppendUpdate: %v", err)
+		}
+		prev = full
+	}
+
+	// A rollback to 5 that died before deleting clocks 6..9.
+	const ceil = uint32(5)
+	if err := a.store.put(ctx, a.ceilingName(room), be32(ceil)); err != nil {
+		t.Fatalf("seed ceiling: %v", err)
+	}
+
+	if _, err := a.Compact(ctx, room, 2); err != nil {
+		t.Fatalf("Compact: %v", err)
+	}
+
+	cp, err := a.checkpoint(ctx, room)
+	if err != nil {
+		t.Fatalf("checkpoint: %v", err)
+	}
+	if cp > ceil {
+		t.Errorf("checkpoint = %d, want <= the rollback ceiling %d", cp, ceil)
+	}
+
+	oid, err := a.oidFor(ctx, room)
+	if err != nil {
+		t.Fatalf("oidFor: %v", err)
+	}
+	updates, err := a.listUpdates(ctx, room, oid)
+	if err != nil {
+		t.Fatalf("listUpdates: %v", err)
+	}
+	for _, c := range []uint32{6, 7, 8, 9} {
+		if _, ok := updates[c]; !ok {
+			t.Errorf("clock %d was deleted; abandoned objects are rollback recovery's to remove", c)
+		}
+	}
+}

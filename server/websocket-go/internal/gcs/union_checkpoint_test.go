@@ -757,3 +757,56 @@ func TestLoad_StillRefusesAStateThatKeepsMoving(t *testing.T) {
 		t.Fatalf("Load error = %v, want errStateMoved", err)
 	}
 }
+
+// TestMaterializeAt_RefusesAVersionBelowAnImportedBase: Backfill copies the
+// legacy root into doc_v2 and writes no update objects, so a log that is
+// contiguous from clock 1 still does not carry that content. Below the
+// checkpoint the base is excluded, so such a version rebuilds short.
+func TestMaterializeAt_RefusesAVersionBelowAnImportedBase(t *testing.T) {
+	ctx := context.Background()
+	client, bucket := newFakeGCS(t)
+	const room = "proj-imported-base"
+	seedLegacy(t, client, bucket, room)
+
+	p2, err := New(Options{Client: client, Bucket: bucket, Locker: NewNoLock(), Phase2: true})
+	if err != nil {
+		t.Fatalf("New phase2: %v", err)
+	}
+	if err := p2.Backfill(ctx, room); err != nil {
+		t.Fatalf("Backfill: %v", err)
+	}
+
+	// Twelve primary edits: the tenth trips the inline compaction, so the
+	// checkpoint lands at 10 with clocks 1..12 all still on disk.
+	doc := crdt.New(crdt.WithClientID(11))
+	txt := doc.GetText("p")
+	var prev []byte
+	for i := 0; i < 12; i++ {
+		doc.Transact(func(txn *crdt.Transaction) { txt.Insert(txn, 0, "x", nil) })
+		full := crdt.EncodeStateAsUpdateV1(doc, nil)
+		inc := full
+		if prev != nil {
+			d, derr := crdt.DiffUpdateV1(full, svOf(t, prev))
+			if derr != nil {
+				t.Fatalf("DiffUpdateV1: %v", derr)
+			}
+			inc = d
+		}
+		if _, err := p2.AppendUpdate(ctx, room, inc); err != nil {
+			t.Fatalf("AppendUpdate: %v", err)
+		}
+		prev = full
+	}
+
+	cp, err := p2.checkpoint(ctx, room)
+	if err != nil {
+		t.Fatalf("checkpoint: %v", err)
+	}
+	if cp == 0 {
+		t.Fatal("setup: the inline compaction never advanced the checkpoint")
+	}
+
+	if _, err := p2.MaterializeAt(ctx, room, persistence.Version(5)); !errors.Is(err, ErrVersionNotRebuildable) {
+		t.Errorf("MaterializeAt(5) with checkpoint %d = %v, want ErrVersionNotRebuildable", cp, err)
+	}
+}

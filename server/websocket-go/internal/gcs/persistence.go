@@ -749,6 +749,21 @@ func (a *Adapter) MaterializeAt(ctx context.Context, room string, v persistence.
 				"room", room, "version", target, "checkpoint", cp, "err", err)
 			return nil, err
 		}
+		// A contiguous log from clock 1 rebuilds the whole document only when the
+		// document started empty. Backfill copies the legacy root into doc_v2 and
+		// writes no update objects, so that content rides in the excluded base alone.
+		imported, err := a.hasImportedBase(ctx, room)
+		if err != nil {
+			return nil, err
+		}
+		if imported {
+			rerr := &notRebuildable{detail: fmt.Sprintf(
+				"version %d is below checkpoint %d, and this room's base was imported from the legacy layout, which no update object carries",
+				target, cp)}
+			a.log.Warn("gcs materialize: refusing a version below an imported base",
+				"room", room, "version", target, "checkpoint", cp)
+			return nil, rerr
+		}
 	}
 	for _, c := range clocks {
 		if c > target {
