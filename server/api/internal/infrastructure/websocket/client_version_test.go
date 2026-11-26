@@ -86,3 +86,31 @@ func TestClient_SaveVersion_ReportsAServerError(t *testing.T) {
 	assert.NotErrorIs(t, err, interfaces.ErrWebsocketRequestRejected)
 	assert.False(t, interfaces.IsVersionSaveSkipped(err))
 }
+
+// TestClient_RollbackRefusesAVersionTheStoreCannotRebuild: the websocket
+// server answers 409 when it cannot rebuild the version exactly. That used to
+// arrive as a bare status string, so the UI could not tell a refused entry from
+// an outage.
+func TestClient_RollbackRefusesAVersionTheStoreCannotRebuild(t *testing.T) {
+	t.Parallel()
+
+	_, err := versionServer(t, http.StatusConflict, `{"error":"this version can no longer be restored"}`).Rollback(context.Background(), "proj1", 3)
+	assert.ErrorIs(t, err, interfaces.ErrVersionNotRebuildable)
+}
+
+func TestClient_CreateSnapshotRefusesAVersionTheStoreCannotRebuild(t *testing.T) {
+	t.Parallel()
+
+	_, err := versionServer(t, http.StatusConflict, `{"error":"this version can no longer be captured"}`).CreateSnapshot(context.Background(), "proj1", 3, "")
+	assert.ErrorIs(t, err, interfaces.ErrVersionNotRebuildable)
+}
+
+// TestClient_RollbackFailureIsNotARefusal: only a 409 is a refusal; a server
+// error must not tell the UI the entry is unusable.
+func TestClient_RollbackFailureIsNotARefusal(t *testing.T) {
+	t.Parallel()
+
+	_, err := versionServer(t, http.StatusInternalServerError, `{"error":"rollback failed"}`).Rollback(context.Background(), "proj1", 3)
+	require.Error(t, err)
+	assert.NotErrorIs(t, err, interfaces.ErrVersionNotRebuildable)
+}

@@ -53,6 +53,11 @@ var (
 	ErrVersionsUnsupported = errors.New("websocket server does not keep versions")
 )
 
+// ErrVersionNotRebuildable reports that the websocket server can no longer
+// rebuild a history entry exactly, so previewing or restoring it is refused.
+// Restoring it anyway would replace the project with a fragment.
+var ErrVersionNotRebuildable = errors.New("this version can no longer be restored")
+
 // IsVersionSaveSkipped reports whether a SaveVersion error leaves nothing
 // wrong for the caller: no version was saved, and none is missing.
 func IsVersionSaveSkipped(err error) bool {
