@@ -550,7 +550,6 @@
   "Variables": "Variables",
   "No value set": "No se ha establecido ningún valor",
   "Expression": "Expresión",
-  "Literal string": "Cadena literal",
   "e.g. variables[\"BASE_DIR\"] + \"/filename\"": "p.ej. variables[\"BASE_DIR\"] + \"/filename\"",
   "Enter a literal string value": "Ingrese un valor de cadena literal",
   "FlowExpr: variables[\"VAR\"], attributes[\"attr\"], \"a\" + \"b\", math.sin(...). API is still stabilising.": "FlowExpr: variables[\"VAR\"], attributes[\"attr\"], \"a\" + \"b\", math.sin(...). La API aún se está estabilizando.",

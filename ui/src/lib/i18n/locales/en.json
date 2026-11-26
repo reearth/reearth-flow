@@ -546,7 +546,6 @@
   "Variables": "",
   "No value set": "",
   "Expression": "",
-  "Literal string": "",
   "e.g. variables[\"BASE_DIR\"] + \"/filename\"": "",
   "Enter a literal string value": "",
   "FlowExpr: variables[\"VAR\"], attributes[\"attr\"], \"a\" + \"b\", math.sin(...). API is still stabilising.": "",

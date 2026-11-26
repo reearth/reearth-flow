@@ -542,7 +542,6 @@
   "Variables": "变量",
   "No value set": "未设置值",
   "Expression": "FlowExpr",
-  "Literal string": "字面字符串",
   "e.g. variables[\"BASE_DIR\"] + \"/filename\"": "例如: variables[\"BASE_DIR\"] + \"/filename\"",
   "Enter a literal string value": "输入字面字符串值",
   "FlowExpr: variables[\"VAR\"], attributes[\"attr\"], \"a\" + \"b\", math.sin(...). API is still stabilising.": "FlowExpr: variables[\"VAR\"], attributes[\"attr\"], \"a\" + \"b\", math.sin(...). API仍在稳定中。",
