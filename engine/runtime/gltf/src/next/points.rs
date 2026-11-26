@@ -2,8 +2,9 @@
 //! quantized to `u16` (`KHR_mesh_quantization`) and the position view
 //! optionally compressed with `EXT_meshopt_compression` (vertex codec v0).
 //!
-//! Each point's feature ID shares the position view, at the first 4-byte
-//! boundary after the position, as glTF requires of vertex attributes.
+//! Positions, feature IDs and colours each take a view of their own, padded
+//! to a 4-byte stride as glTF requires of vertex attributes. Colours are never
+//! meshopt-compressed.
 
 use gltf::json;
 use gltf::json::validation::{Checked, USize64};
@@ -259,79 +260,40 @@ fn meshopt_v0(bytes: &[u8], stride: usize) -> Vec<u8> {
             .expect("meshopt vertex encoding never fails on a sized buffer")
     }
     match stride {
+        4 => encode::<4>(bytes),
+        8 => encode::<8>(bytes),
         12 => encode::<12>(bytes),
-        16 => encode::<16>(bytes),
-        _ => unreachable!("point strides are 12 or 16 bytes"),
+        _ => unreachable!("point attribute strides are 4, 8 or 12 bytes"),
     }
 }
 
-fn accessor(
-    view: json::Index<json::buffer::View>,
-    byte_offset: usize,
-    count: usize,
+/// The accessor shape of one per-point attribute.
+struct Shape {
     component: json::accessor::ComponentType,
     type_: json::accessor::Type,
     normalized: bool,
     bounds: Option<(serde_json::Value, serde_json::Value)>,
-) -> json::Accessor {
-    let (min, max) = bounds.unzip();
-    json::Accessor {
-        buffer_view: Some(view),
-        byte_offset: Some(USize64::from(byte_offset)),
-        count: USize64::from(count),
-        component_type: Checked::Valid(json::accessor::GenericComponentType(component)),
-        extensions: Default::default(),
-        extras: Default::default(),
-        name: None,
-        type_: Checked::Valid(type_),
-        min,
-        max,
-        normalized,
-        sparse: None,
-    }
 }
 
-/// Push `points` as a `POINTS` primitive carrying `POSITION`, `_FEATURE_ID_0`
-/// and, if given, `COLOR_0`. The node must be translated by the returned
-/// `offset` on top of its origin and scaled by `scale`. `points` must not be
-/// empty.
-pub fn push_points(
+/// Push one per-point attribute in a view of its own: `write(i, out)` fills
+/// point `i`'s `element_size` bytes, and the stride pads them to a multiple
+/// of 4, as glTF requires of vertex attributes. `meshopt` compresses the view
+/// with `EXT_meshopt_compression`.
+fn push_attribute(
     builder: &mut Builder,
-    points: &Points<'_>,
-    material: MaterialDesc,
-    encoding: PointEncoding,
-) -> PushedPoints {
-    let count = points.positions.len();
-    assert!(count > 0, "a points primitive needs at least one point");
-    debug_assert_eq!(points.feature_ids.len(), count);
-
-    let positions = match encoding.quantization.error() {
-        Some(error) => quantize(points.positions, error),
-        None => Positions::Float(
-            points
-                .positions
-                .iter()
-                .map(|p| p.map(|c| c as f32))
-                .collect(),
-        ),
-    };
-    let id_type = IdType::for_count(points.feature_count);
-    // glTF requires every vertex attribute's byte offset and stride to be
-    // multiples of 4.
-    let id_offset = positions.size().next_multiple_of(4);
-    let stride = (id_offset + id_type.size()).next_multiple_of(4);
-
+    count: usize,
+    element_size: usize,
+    write: impl Fn(usize, &mut [u8]),
+    shape: Shape,
+    meshopt: bool,
+) -> json::Index<json::Accessor> {
+    let stride = element_size.next_multiple_of(4);
     let mut bytes = vec![0u8; count * stride];
-    for (i, (vertex, &id)) in bytes
-        .chunks_exact_mut(stride)
-        .zip(points.feature_ids)
-        .enumerate()
-    {
-        positions.write(i, &mut vertex[..positions.size()]);
-        id_type.write(id, &mut vertex[id_offset..id_offset + id_type.size()]);
+    for (i, element) in bytes.chunks_exact_mut(stride).enumerate() {
+        write(i, &mut element[..element_size]);
     }
 
-    let view = if encoding.meshopt {
+    let view = if meshopt {
         let encoded = meshopt_v0(&bytes, stride);
         let byte_offset = builder.push_bytes(&encoded, 4);
         builder.require_extension(EXT_MESHOPT_COMPRESSION);
@@ -352,6 +314,47 @@ pub fn push_points(
         builder.push_vertex_view(&bytes, stride)
     };
 
+    let (min, max) = shape.bounds.unzip();
+    builder.push_accessor(json::Accessor {
+        buffer_view: Some(view),
+        byte_offset: Some(USize64(0)),
+        count: USize64::from(count),
+        component_type: Checked::Valid(json::accessor::GenericComponentType(shape.component)),
+        extensions: Default::default(),
+        extras: Default::default(),
+        name: None,
+        type_: Checked::Valid(shape.type_),
+        min,
+        max,
+        normalized: shape.normalized,
+        sparse: None,
+    })
+}
+
+/// Push `points` as a `POINTS` primitive carrying `POSITION`, `_FEATURE_ID_0`
+/// and, if given, `COLOR_0`, each in a view of its own. The node must be
+/// translated by the returned `offset` on top of its origin and scaled by
+/// `scale`. `points` must not be empty.
+pub fn push_points(
+    builder: &mut Builder,
+    points: &Points<'_>,
+    material: MaterialDesc,
+    encoding: PointEncoding,
+) -> PushedPoints {
+    let count = points.positions.len();
+    assert!(count > 0, "a points primitive needs at least one point");
+    debug_assert_eq!(points.feature_ids.len(), count);
+
+    let positions = match encoding.quantization.error() {
+        Some(error) => quantize(points.positions, error),
+        None => Positions::Float(
+            points
+                .positions
+                .iter()
+                .map(|p| p.map(|c| c as f32))
+                .collect(),
+        ),
+    };
     let (component, offset, scale) = match &positions {
         Positions::Quantized { offset, step, .. } => {
             builder.require_extension(KHR_MESH_QUANTIZATION);
@@ -363,24 +366,35 @@ pub fn push_points(
         }
         Positions::Float(_) => (json::accessor::ComponentType::F32, [0.0; 3], None),
     };
-    let position = builder.push_accessor(accessor(
-        view,
-        0,
+    let position = push_attribute(
+        builder,
         count,
-        component,
-        json::accessor::Type::Vec3,
-        false,
-        Some(positions.bounds()),
-    ));
-    let feature_id = builder.push_accessor(accessor(
-        view,
-        id_offset,
+        positions.size(),
+        |i, out| positions.write(i, out),
+        Shape {
+            component,
+            type_: json::accessor::Type::Vec3,
+            normalized: false,
+            bounds: Some(positions.bounds()),
+        },
+        encoding.meshopt,
+    );
+
+    let id_type = IdType::for_count(points.feature_count);
+    let feature_id = push_attribute(
+        builder,
         count,
-        id_type.component(),
-        json::accessor::Type::Scalar,
-        false,
-        None,
-    ));
+        id_type.size(),
+        |i, out| id_type.write(points.feature_ids[i], out),
+        Shape {
+            component: id_type.component(),
+            type_: json::accessor::Type::Scalar,
+            normalized: false,
+            bounds: None,
+        },
+        encoding.meshopt,
+    );
+
     let mut attributes = vec![
         (json::mesh::Semantic::Positions, position),
         (
@@ -391,22 +405,25 @@ pub fn push_points(
 
     if let Some(colors) = points.colors {
         debug_assert_eq!(colors.len(), count);
-        let mut bytes = vec![0u8; count * 8];
-        for (vertex, rgb) in bytes.as_chunks_mut::<8>().0.iter_mut().zip(colors) {
-            for (c, v) in rgb.iter().enumerate() {
-                vertex[c * 2..c * 2 + 2].copy_from_slice(&v.to_le_bytes());
-            }
-        }
-        let view = builder.push_vertex_view(&bytes, 8);
-        let color = builder.push_accessor(accessor(
-            view,
-            0,
+        // Uncompressed: without the COLOR filter (KHR-only), meshopt makes
+        // colour bigger.
+        let color = push_attribute(
+            builder,
             count,
-            json::accessor::ComponentType::U16,
-            json::accessor::Type::Vec3,
-            true,
-            None,
-        ));
+            6,
+            |i, out| {
+                for (c, v) in colors[i].iter().enumerate() {
+                    out[c * 2..c * 2 + 2].copy_from_slice(&v.to_le_bytes());
+                }
+            },
+            Shape {
+                component: json::accessor::ComponentType::U16,
+                type_: json::accessor::Type::Vec3,
+                normalized: true,
+                bounds: None,
+            },
+            false,
+        );
         attributes.push((json::mesh::Semantic::Colors(0), color));
     }
 
@@ -478,15 +495,13 @@ mod tests {
             .unwrap_or(vec![1.0; 3]);
         let attrs = &json["meshes"][0]["primitives"][0]["attributes"];
         let pos = &json["accessors"][attrs["POSITION"].as_u64().unwrap() as usize];
-        let id = &json["accessors"][attrs["_FEATURE_ID_0"].as_u64().unwrap() as usize];
-        let view = &json["bufferViews"][pos["bufferView"].as_u64().unwrap() as usize];
-        let stride = view["byteStride"].as_u64().unwrap() as usize;
-        let base = view["byteOffset"].as_u64().unwrap() as usize;
         let quantized = pos["componentType"] == 5123;
-        let id_offset = id["byteOffset"].as_u64().unwrap() as usize;
-        (0..pos["count"].as_u64().unwrap() as usize)
-            .map(|i| {
-                let v = &bin[base + i * stride..base + (i + 1) * stride];
+        let positions = elements(json, bin, "POSITION");
+        let ids = elements(json, bin, "_FEATURE_ID_0");
+        positions
+            .iter()
+            .zip(&ids)
+            .map(|(v, id)| {
                 let p = std::array::from_fn(|a| {
                     let raw = if quantized {
                         u16::from_le_bytes([v[a * 2], v[a * 2 + 1]]) as f64
@@ -495,10 +510,25 @@ mod tests {
                     };
                     raw * s[a] + t[a]
                 });
-                let id = u16::from_le_bytes([v[id_offset], v[id_offset + 1]]) as u32;
-                (p, id)
+                (p, u16::from_le_bytes([id[0], id[1]]) as u32)
             })
             .collect()
+    }
+
+    /// The accessor of `attribute`, its view, and that view's stride.
+    fn view_of<'a>(json: &'a serde_json::Value, attribute: &str) -> (&'a serde_json::Value, usize) {
+        let attrs = &json["meshes"][0]["primitives"][0]["attributes"];
+        let accessor = &json["accessors"][attrs[attribute].as_u64().unwrap() as usize];
+        let view = &json["bufferViews"][accessor["bufferView"].as_u64().unwrap() as usize];
+        (view, view["byteStride"].as_u64().unwrap() as usize)
+    }
+
+    /// Each point's bytes of an uncompressed `attribute`.
+    fn elements<'a>(json: &serde_json::Value, bin: &'a [u8], attribute: &str) -> Vec<&'a [u8]> {
+        let (view, stride) = view_of(json, attribute);
+        let base = view["byteOffset"].as_u64().unwrap() as usize;
+        let len = view["byteLength"].as_u64().unwrap() as usize;
+        bin[base..base + len].chunks_exact(stride).collect()
     }
 
     #[test]
@@ -571,27 +601,46 @@ mod tests {
         let (plain_json, plain_bin) = build(encoding(false), Some(&colors));
         let (json, bin) = build(encoding(true), Some(&colors));
 
+        let mut required: Vec<&str> = json["extensionsRequired"]
+            .as_array()
+            .unwrap()
+            .iter()
+            .map(|e| e.as_str().unwrap())
+            .collect();
+        required.sort();
         assert_eq!(
-            json["extensionsRequired"],
-            serde_json::json!(["EXT_meshopt_compression", "KHR_mesh_quantization"])
+            required,
+            ["EXT_meshopt_compression", "KHR_mesh_quantization"]
         );
         assert_eq!(
             json["buffers"][1]["extensions"]["EXT_meshopt_compression"]["fallback"],
             true
         );
-        let view = &json["bufferViews"][0];
-        assert_eq!(view["buffer"], 1);
-        let ext = &view["extensions"]["EXT_meshopt_compression"];
-        assert_eq!(ext["mode"], "ATTRIBUTES");
-        let start = ext["byteOffset"].as_u64().unwrap() as usize;
-        let len = ext["byteLength"].as_u64().unwrap() as usize;
-        let encoded = &bin[start..start + len];
-        assert_eq!(meshopt::encoding::decode_vertex_version(encoded), Some(0));
-        let decoded: Vec<[u8; 12]> = meshopt::encoding::decode_vertex_buffer(encoded, 100).unwrap();
-
-        let plain_view = &plain_json["bufferViews"][0];
-        let plain_start = plain_view["byteOffset"].as_u64().unwrap() as usize;
-        assert_eq!(decoded.concat(), plain_bin[plain_start..plain_start + 1200]);
+        // Positions and feature IDs each decode to their uncompressed bytes.
+        for (attribute, stride) in [("POSITION", 8), ("_FEATURE_ID_0", 4)] {
+            let (view, view_stride) = view_of(&json, attribute);
+            assert_eq!(view_stride, stride, "{attribute}");
+            assert_eq!(view["buffer"], 1, "{attribute}");
+            let ext = &view["extensions"]["EXT_meshopt_compression"];
+            assert_eq!(ext["mode"], "ATTRIBUTES");
+            let start = ext["byteOffset"].as_u64().unwrap() as usize;
+            let len = ext["byteLength"].as_u64().unwrap() as usize;
+            let encoded = &bin[start..start + len];
+            assert_eq!(meshopt::encoding::decode_vertex_version(encoded), Some(0));
+            let decoded = match stride {
+                8 => meshopt::encoding::decode_vertex_buffer::<[u8; 8]>(encoded, 100)
+                    .unwrap()
+                    .concat(),
+                _ => meshopt::encoding::decode_vertex_buffer::<[u8; 4]>(encoded, 100)
+                    .unwrap()
+                    .concat(),
+            };
+            assert_eq!(
+                decoded,
+                elements(&plain_json, &plain_bin, attribute).concat(),
+                "{attribute}"
+            );
+        }
 
         // Colours stay in an uncompressed BIN view.
         let color = &json["meshes"][0]["primitives"][0]["attributes"]["COLOR_0"];
