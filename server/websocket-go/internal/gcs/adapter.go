@@ -68,6 +68,11 @@ type Adapter struct {
 	// afterCompactPublish, when set, runs in Compact between the checkpoint
 	// publish and the deletes (test injection only).
 	afterCompactPublish func()
+	// afterRollbackMark and afterRollbackDocV2, when set, run in PruneAfter after
+	// marking the ceiling and after publishing doc_v2; returning true stops it
+	// there, as a crash would (test injection only).
+	afterRollbackMark  func() bool
+	afterRollbackDocV2 func() bool
 
 	// oidCache memoizes allocated OIDs per room. Phase 2 pins OID=0.
 	oidCache map[string]uint32

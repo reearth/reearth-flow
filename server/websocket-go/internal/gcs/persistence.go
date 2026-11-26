@@ -33,17 +33,46 @@ func legacySnapshotPrefix(room DocID) string {
 
 // ceiling reads the rollback ceiling. ok=false means no ceiling is set.
 func (a *Adapter) ceiling(ctx context.Context, room DocID) (uint32, bool, error) {
+	c, ok, _, _, err := a.ceilingState(ctx, room)
+	return c, ok, err
+}
+
+// noCeiling stands in for "no ceiling" inside a marked ceiling object. As a
+// ceiling it hides nothing, so a reader that ignores the mark sees no change.
+const noCeiling = ^uint32(0)
+
+// rollMark is an in-progress rollback recorded on the ceiling object: the
+// ceiling it replaced and the version being rolled back to.
+type rollMark struct {
+	prev, target uint32
+}
+
+// markedCeiling keeps prev in the first four bytes, which is all an older build
+// reads, and appends the mark and the target.
+func markedCeiling(prev, target uint32) []byte {
+	b := make([]byte, 9)
+	copy(b, be32(prev))
+	b[4] = 1
+	copy(b[5:], be32(target))
+	return b
+}
+
+// ceilingState reads the ceiling and any in-progress rollback mark in one get.
+func (a *Adapter) ceilingState(ctx context.Context, room DocID) (uint32, bool, rollMark, bool, error) {
 	b, err := a.store.get(ctx, a.ceilingName(room))
 	if err == errNotFound {
-		return 0, false, nil
+		return 0, false, rollMark{}, false, nil
 	}
 	if err != nil {
-		return 0, false, err
+		return 0, false, rollMark{}, false, err
 	}
 	if len(b) < 4 {
-		return 0, false, nil
+		return 0, false, rollMark{}, false, nil
 	}
-	return be32ToU32(b), true, nil
+	if len(b) >= 9 && b[4] == 1 {
+		return be32ToU32(b), true, rollMark{prev: be32ToU32(b[:4]), target: be32ToU32(b[5:9])}, true, nil
+	}
+	return be32ToU32(b), true, rollMark{}, false, nil
 }
 
 // filterByCeiling drops any update clock strictly above an active rollback
@@ -142,6 +171,9 @@ func (a *Adapter) readStateRetrying(ctx context.Context, room DocID, oid uint32)
 	ran := false
 	if lockErr := a.locker.WithLock(ctx, gcsDocLockKey(room), func(ctx context.Context) error {
 		ran = true
+		if err = a.settleRollback(ctx, room, oid); err != nil {
+			return err
+		}
 		st, err = a.readState(ctx, room, oid)
 		return err
 	}); lockErr != nil && !ran {
@@ -207,6 +239,9 @@ type marks struct {
 	// before coverage was recorded.
 	cov    coverage
 	hasCov bool
+	// rolling means a rollback has marked the ceiling and not yet cleared it.
+	rolling bool
+	mark    rollMark
 }
 
 // covers is what doc_v2 holds. Without recorded coverage it is taken to be the
@@ -223,7 +258,7 @@ func (a *Adapter) readMarks(ctx context.Context, room DocID) (marks, error) {
 	if err != nil {
 		return marks{}, err
 	}
-	ceil, hasCeil, err := a.ceiling(ctx, room)
+	ceil, hasCeil, mark, rolling, err := a.ceilingState(ctx, room)
 	if err != nil {
 		return marks{}, err
 	}
@@ -232,7 +267,7 @@ func (a *Adapter) readMarks(ctx context.Context, room DocID) (marks, error) {
 		return marks{}, err
 	}
 	cov, hasCov := coverageOf(meta)
-	return marks{cp: cp, ceil: ceil, hasCeil: hasCeil, v2Gen: gen, cov: cov, hasCov: hasCov}, nil
+	return marks{cp: cp, ceil: ceil, hasCeil: hasCeil, v2Gen: gen, cov: cov, hasCov: hasCov, rolling: rolling, mark: mark}, nil
 }
 
 // readState reads doc_v2 (or the v1 base) and every update object above the
@@ -257,6 +292,11 @@ func (a *Adapter) readStateUpTo(ctx context.Context, room DocID, oid uint32, upT
 	before, err := a.readMarks(ctx, room)
 	if err != nil {
 		return storedState{}, err
+	}
+	// A marked ceiling means doc_v2, the ceiling and the checkpoint may disagree
+	// mid-rollback. Only a holder of the doc lock can settle that.
+	if before.rolling {
+		return storedState{}, errStateMoved
 	}
 	doc := crdt.New()
 	hasBase := false
@@ -381,6 +421,9 @@ func (a *Adapter) applyObject(ctx context.Context, doc *crdt.Doc, name string) e
 // The write only lands on the doc_v2 it read, so a caller whose lock expired
 // cannot replace a newer checkpoint. It reads the state again once, then fails.
 func (a *Adapter) writeUnion(ctx context.Context, room DocID, oid uint32, candidate []byte) error {
+	if err := a.settleRollback(ctx, room, oid); err != nil {
+		return err
+	}
 	// A rollback committing after the candidate was built deliberately removed
 	// edits the candidate still carries, and the union would restore them. doc_v2's
 	// generation cannot tell a rollback from a competing checkpoint, so capture the
@@ -483,6 +526,11 @@ func (a *Adapter) AppendUpdate(ctx context.Context, room string, update []byte) 
 const appendClockAttempts = 5
 
 func (a *Adapter) appendLocked(ctx context.Context, room DocID, oid uint32, update []byte) (uint32, error) {
+	// The recovery below treats any ceiling as a finished prune and clears it,
+	// which would drop an in-progress mark without settling it.
+	if err := a.settleRollback(ctx, room, oid); err != nil {
+		return 0, err
+	}
 	// Recovery path: if a ceiling is present, a prior PruneAfter may have crashed
 	// mid-delete. Finish the interrupted prune, then clear the ceiling BEFORE
 	// writing the new update below — so a crash after the write can never leave a

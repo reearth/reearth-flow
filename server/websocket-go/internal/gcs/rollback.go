@@ -25,12 +25,34 @@ func (a *Adapter) PruneAfter(ctx context.Context, room string, target persistenc
 	}
 	t := uint32(target)
 	return a.locker.WithLock(ctx, gcsDocLockKey(room), func(ctx context.Context) error {
+		if err := a.settleRollback(ctx, room, oid); err != nil {
+			return err
+		}
+		prev, has, err := a.ceiling(ctx, room)
+		if err != nil {
+			return err
+		}
+		if !has {
+			prev = noCeiling
+		}
+		// (0) Mark the ceiling first. Until (2a) clears it, doc_v2 can hold the
+		// rolled-back document while the ceiling and checkpoint still describe the
+		// old head, and a reader that sees the mark does not serve that mix.
+		if err := a.store.put(ctx, a.ceilingName(room), markedCeiling(prev, t)); err != nil {
+			return err
+		}
+		if a.afterRollbackMark != nil && a.afterRollbackMark() {
+			return nil
+		}
 		// (1) durable rolled-back snapshot.
 		if err := a.writeV2Snapshot(ctx, room, oid, rolledBack, coverage{clock: t}); err != nil {
 			return err
 		}
-		// (2a) ceiling = target, written before the delete so a crash hides any
-		// surviving update > target.
+		if a.afterRollbackDocV2 != nil && a.afterRollbackDocV2() {
+			return nil
+		}
+		// (2a) ceiling = target, which also clears the mark, written before the
+		// delete so a crash hides any surviving update > target.
 		if err := a.store.put(ctx, a.ceilingName(room), be32(t)); err != nil {
 			return err
 		}
@@ -49,6 +71,39 @@ func (a *Adapter) PruneAfter(ctx context.Context, room string, target persistenc
 		// (3) delete every update > target.
 		return a.deleteUpdatesAfter(ctx, room, oid, t)
 	})
+}
+
+// settleRollback finishes or abandons a rollback whose writer stopped after
+// marking the ceiling. The caller holds gcsDocLockKey, which PruneAfter holds for
+// its whole run, so a mark seen here belongs to a writer that is gone.
+func (a *Adapter) settleRollback(ctx context.Context, room DocID, oid uint32) error {
+	_, _, mark, rolling, err := a.ceilingState(ctx, room)
+	if err != nil || !rolling {
+		return err
+	}
+	_, meta, err := a.store.attrs(ctx, a.layout.DocV2Name(room))
+	if err != nil {
+		return err
+	}
+	// Holding the lock shows no rollback is running, not that the last one
+	// finished. doc_v2 covering exactly the target, from no live room, means it
+	// had published the rolled-back document, so finish from there.
+	if cov, ok := coverageOf(meta); ok && cov == (coverage{clock: mark.target}) {
+		a.log.Warn("gcs: finishing a rollback whose writer stopped", "room", room, "target", mark.target)
+		if err := a.store.put(ctx, a.ceilingName(room), be32(mark.target)); err != nil {
+			return err
+		}
+		if err := a.store.put(ctx, a.layout.CheckpointName(room), be32(mark.target)); err != nil {
+			return err
+		}
+		return a.deleteUpdatesAfter(ctx, room, oid, mark.target)
+	}
+	// Otherwise it stopped before replacing doc_v2 and took no effect.
+	a.log.Warn("gcs: abandoning a rollback that stopped before publishing", "room", room, "target", mark.target)
+	if mark.prev == noCeiling {
+		return a.store.delete(ctx, a.ceilingName(room))
+	}
+	return a.store.put(ctx, a.ceilingName(room), be32(mark.prev))
 }
 
 // deleteUpdatesAfter removes every update object whose clock > target.
@@ -85,6 +140,9 @@ func (a *Adapter) Compact(ctx context.Context, room string, keep int) (int, erro
 	}
 	var deleted int
 	err = a.locker.WithLock(ctx, gcsDocLockKey(room), func(ctx context.Context) error {
+		if err := a.settleRollback(ctx, room, oid); err != nil {
+			return err
+		}
 		// Read before anything else, so a rollback that rewrites the checkpoint at
 		// any later point makes the conditional publish below fail.
 		cpGen, err := a.store.generation(ctx, a.layout.CheckpointName(room))
