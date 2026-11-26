@@ -223,6 +223,101 @@ func TestCoverage_AStoreCheckpointPastTheFlushClearsLive(t *testing.T) {
 	}
 }
 
+// TestMaterializeAt_KeepsAFlushedEditOutOfVersionsBeforeItsAppend: an edit can
+// reach a live flush before the log, and other edits can be logged ahead of it.
+// No version before its append may show it: the versions the live base could
+// overtake are refused, and the older ones rebuild from the log alone. Nothing
+// rewrites the base here; the store-checkpoint test above covers that case.
+func TestMaterializeAt_KeepsAFlushedEditOutOfVersionsBeforeItsAppend(t *testing.T) {
+	t.Parallel()
+	ctx := context.Background()
+	a := newCoverageAdapter(t)
+	const room = "flushed-before-logged"
+	logged := appendLetters(t, a, room, 3, nil) // "abc" at clocks 1..3
+
+	// Another client's edit X reaches the room and a flush, but not the log yet.
+	live := crdt.New(crdt.WithClientID(88))
+	if err := crdt.ApplyUpdateV1(live, logged, nil); err != nil {
+		t.Fatalf("apply: %v", err)
+	}
+	lt := live.GetText("t")
+	live.Transact(func(txn *crdt.Transaction) { lt.Insert(txn, lt.Len(), "X", nil) })
+	liveFull := crdt.EncodeStateAsUpdateV1(live, nil)
+	if err := a.FlushSnapshot(ctx, room, liveFull); err != nil {
+		t.Fatalf("FlushSnapshot: %v", err)
+	}
+	xUpdate, err := crdt.DiffUpdateV1(liveFull, svOf(t, logged))
+	if err != nil {
+		t.Fatalf("DiffUpdateV1: %v", err)
+	}
+
+	// Unrelated edits are logged ahead of X, at clocks 4 and 5.
+	writer := crdt.New(crdt.WithClientID(31))
+	if err := crdt.ApplyUpdateV1(writer, logged, nil); err != nil {
+		t.Fatalf("apply: %v", err)
+	}
+	wt := writer.GetText("t")
+	prev := logged
+	for _, s := range []string{"d", "e"} {
+		writer.Transact(func(txn *crdt.Transaction) { wt.Insert(txn, wt.Len(), s, nil) })
+		full := crdt.EncodeStateAsUpdateV1(writer, nil)
+		inc, err := crdt.DiffUpdateV1(full, svOf(t, prev))
+		if err != nil {
+			t.Fatalf("DiffUpdateV1: %v", err)
+		}
+		if _, err := a.AppendUpdate(ctx, room, inc); err != nil {
+			t.Fatalf("AppendUpdate(%q): %v", s, err)
+		}
+		prev = full
+	}
+	// X reaches the log last, at clock 6.
+	if v, err := a.AppendUpdate(ctx, room, xUpdate); err != nil || v != 6 {
+		t.Fatalf("AppendUpdate(X) = %d, %v; want version 6", v, err)
+	}
+
+	// The premise: nothing rewrote the base since the flush, so it is still the
+	// live base at clock 3.
+	mk, err := a.readMarks(ctx, room)
+	if err != nil {
+		t.Fatalf("readMarks: %v", err)
+	}
+	if !mk.hasCov || !mk.cov.live || mk.cov.clock != 3 {
+		t.Fatalf("setup: coverage = %+v (recorded %v), want the live base at clock 3", mk.cov, mk.hasCov)
+	}
+
+	for v, want := range map[int]string{1: "a", 2: "ab"} {
+		got, err := a.MaterializeAt(ctx, room, persistence.Version(v))
+		if err != nil {
+			t.Errorf("MaterializeAt(%d): %v", v, err)
+			continue
+		}
+		if s := textOf(t, got); s != want {
+			t.Errorf("MaterializeAt(%d) = %q, want %q", v, s, want)
+		}
+	}
+	for _, v := range []int{3, 4, 5} {
+		if got, err := a.MaterializeAt(ctx, room, persistence.Version(v)); !errors.Is(err, ErrVersionNotRebuildable) {
+			t.Errorf("MaterializeAt(%d) = %q, %v; want ErrVersionNotRebuildable, since the base already holds X", v, textOf(t, got), err)
+		}
+	}
+
+	// The head is the whole room, X included.
+	merged := crdt.New()
+	for _, u := range [][]byte{prev, liveFull} {
+		if err := crdt.ApplyUpdateV1(merged, u, nil); err != nil {
+			t.Fatalf("apply: %v", err)
+		}
+	}
+	want := merged.GetText("t").ToString()
+	got, err := a.MaterializeAt(ctx, room, persistence.Version(6))
+	if err != nil {
+		t.Fatalf("MaterializeAt(6), the head: %v", err)
+	}
+	if s := textOf(t, got); s != want {
+		t.Errorf("MaterializeAt(6) = %q, want %q", s, want)
+	}
+}
+
 // TestRebuildableVersions_AgreesWithMaterializeAt: the recovery list and the
 // rebuild must not disagree, so every listed version is judged both ways. The
 // room carries both kinds of refusal: entries the trimmed log no longer reaches,
