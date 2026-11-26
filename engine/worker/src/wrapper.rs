@@ -10,7 +10,7 @@ use serde_json::{Value, json};
 
 #[derive(Debug, Deserialize, Clone)]
 pub struct RunRequest {
-    /// Used by the wrapper to build the work-root path; not passed to the worker CLI.
+    /// Validated and logged by the wrapper; not passed to the worker CLI.
     pub job_id: String,
     pub workflow_url: String,
     pub metadata_path: String,
@@ -218,15 +218,9 @@ pub fn cleanup_work_root(root: &Path) {
 pub struct ScratchRoot(PathBuf);
 
 impl ScratchRoot {
-    /// A root under a fresh name, for a request that carries no job id.
+    /// A root under a fresh name, so no other request is ever handed it.
     pub fn new(base: &Path) -> std::io::Result<Self> {
-        Self::for_job(base, &uuid::Uuid::new_v4().to_string())
-    }
-
-    /// The root `base/<job_id>`. `job_id` must already have passed
-    /// [`validate_job_id`].
-    pub fn for_job(base: &Path, job_id: &str) -> std::io::Result<Self> {
-        make_work_root(base, job_id).map(Self)
+        make_work_root(base, &uuid::Uuid::new_v4().to_string()).map(Self)
     }
 
     pub fn path(&self) -> &Path {
@@ -344,12 +338,11 @@ impl Drop for Running {
     }
 }
 
-/// Serve one `/run` request: run the worker under `base/<job_id>` until it
-/// exits or the request's cancel flag appears.
+/// Serve one `/run` request: run the worker under a work root of its own until
+/// it exits or the request's cancel flag appears.
 ///
-/// The child and its work root are held by [`Running`], so a request that goes
-/// away mid-run kills the child and removes the root only after it has exited,
-/// the same as a dropped [`run_bounded`].
+/// Dropping the returned future kills the worker and removes its work root once
+/// the worker has exited.
 ///
 /// Response: `{"status": "COMPLETED"|"CANCELLED"|"FAILED", "error"?: string}`.
 pub async fn serve_run(
@@ -360,7 +353,6 @@ pub async fn serve_run(
 ) -> (StatusCode, Value) {
     use std::str::FromStr;
 
-    // Validated before touching the filesystem, since it names the root removed.
     if let Err(e) = validate_job_id(&req.job_id) {
         return (
             StatusCode::BAD_REQUEST,
@@ -376,7 +368,7 @@ pub async fn serve_run(
             );
         }
     };
-    let scratch = match ScratchRoot::for_job(work_base, &req.job_id) {
+    let scratch = match ScratchRoot::new(work_base) {
         Ok(s) => s,
         Err(e) => return failed(e.to_string()),
     };
@@ -965,7 +957,6 @@ mod bounded_tests {
             ),
         );
         let req = run_request(dir.path());
-        let root = work_base.join(&req.job_id);
 
         let resolver = Arc::new(StorageResolver::new());
         let dropped = tokio::time::timeout(
@@ -977,13 +968,17 @@ mod bounded_tests {
 
         let pid = read_pid(&pid_file).await;
         for _ in 0..100 {
-            if !root.exists() {
+            if is_empty(&work_base) {
                 assert!(!is_running(&pid), "pid {pid} outlived its work root");
                 return;
             }
             tokio::time::sleep(Duration::from_millis(20)).await;
         }
         panic!("the work root outlived the dropped run");
+    }
+
+    fn is_empty(dir: &Path) -> bool {
+        std::fs::read_dir(dir).map_or(true, |mut entries| entries.next().is_none())
     }
 
     #[tokio::test]
@@ -996,7 +991,6 @@ mod bounded_tests {
             &format!("echo $$ > '{}'; exec sleep 30", pid_file.display()),
         );
         let req = run_request(dir.path());
-        let root = work_base.join(&req.job_id);
 
         let run = tokio::spawn({
             let (worker, work_base, req) = (worker.clone(), work_base.clone(), req.clone());
@@ -1014,7 +1008,7 @@ mod bounded_tests {
 
         assert_eq!(status, StatusCode::OK);
         assert_eq!(body["status"], "CANCELLED");
-        assert!(!root.exists());
+        assert!(is_empty(&work_base));
         assert!(!is_running(&pid));
     }
 
@@ -1186,7 +1180,7 @@ mod bounded_tests {
             body["error"].as_str().unwrap().starts_with("worker exit:"),
             "{body}"
         );
-        assert!(!work_base.join(&req.job_id).exists());
+        assert!(is_empty(&work_base));
     }
 }
 
