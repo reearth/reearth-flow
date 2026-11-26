@@ -971,6 +971,9 @@ func (a *Adapter) materializeOnce(ctx context.Context, room string, target uint3
 	} else if m != rs.m {
 		return nil, errStateMoved
 	}
+	if a.afterMaterializeCheck != nil {
+		a.afterMaterializeCheck()
+	}
 	if len(parts) == 0 {
 		return nil, nil // empty state
 	}
@@ -984,8 +987,19 @@ func (a *Adapter) materializeOnce(ctx context.Context, room string, target uint3
 	if useBase {
 		checkpointed = clocksUpTo(rs.clocks, base)
 	}
-	if _, err := a.foldParked(ctx, room, doc, rs.updates, checkpointed); err != nil {
+	folded, err := a.foldParked(ctx, room, doc, rs.updates, checkpointed)
+	if err != nil {
 		return nil, err
+	}
+	// Folding read more objects after the check above. A rollback and an append
+	// meanwhile can put a later edit under a listed name, so check again, as
+	// readState does.
+	if folded {
+		if m, err := a.readMarks(ctx, room); err != nil {
+			return nil, err
+		} else if m != rs.m {
+			return nil, errStateMoved
+		}
 	}
 	if ps := doc.PendingStats(); ps.Items > 0 {
 		a.log.Debug("gcs materialize: state holds parked items; an edit they build on is missing from storage",

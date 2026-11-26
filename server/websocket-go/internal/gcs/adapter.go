@@ -81,6 +81,18 @@ type Adapter struct {
 	afterRollbackDocV2 func() bool
 	// afterRollbackCheckpoint is the same, after the checkpoint write.
 	afterRollbackCheckpoint func() bool
+	// beforeRollbackDelete, when set, runs in a committed rollback's cleanup
+	// between its ceiling check and its deletes (test injection only).
+	beforeRollbackDelete func()
+	// afterSettleRead, when set, runs in settleRollback after it read the mark and
+	// before it writes anything; afterSettleFence runs after it fenced doc_v2 to
+	// abandon a rollback and before it clears the mark (test injection only).
+	afterSettleRead  func()
+	afterSettleFence func()
+	// afterMaterializeCheck, when set, runs in MaterializeAt between its marks
+	// check and folding checkpointed objects into a parked base (test injection
+	// only).
+	afterMaterializeCheck func()
 	// beforeMaterializeBase, when set, runs in MaterializeAt between sampling the
 	// marks and reading the base (test injection only).
 	beforeMaterializeBase func()

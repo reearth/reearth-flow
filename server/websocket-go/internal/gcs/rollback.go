@@ -154,6 +154,13 @@ func newRollbackOp() ([8]byte, string, error) {
 // deleteUpdatesAfterFenced deletes every update above target, each only at the
 // generation listed, and only while the ceiling is the one this rollback wrote:
 // an append clears it, after which a reused clock is someone's new edit.
+//
+// It runs only once the rollback has committed, with ceilGen the ceiling write
+// that committed it. Losing either check then means another holder took over
+// the cleanup: an append deletes everything above the ceiling before clearing
+// it, and any later ceiling still hides what is left. The rollback took effect
+// either way, so this reports success rather than a failure that would invite
+// the client to restore again over the edits made since.
 func (a *Adapter) deleteUpdatesAfterFenced(ctx context.Context, room DocID, oid, target uint32, ceilGen int64) error {
 	listed, err := a.listUpdatesAttrs(ctx, room, oid)
 	if err != nil {
@@ -162,14 +169,25 @@ func (a *Adapter) deleteUpdatesAfterFenced(ctx context.Context, room DocID, oid,
 	if g, err := a.store.generation(ctx, a.ceilingName(room)); err != nil {
 		return err
 	} else if g != ceilGen {
-		return lostLease(errGenerationMoved)
+		a.log.Warn("gcs: the ceiling moved after the rollback committed, leaving its cleanup to the next holder",
+			"room", room, "target", target)
+		return nil
+	}
+	if a.beforeRollbackDelete != nil {
+		a.beforeRollbackDelete()
 	}
 	for c, at := range listed {
 		if c <= target {
 			continue
 		}
-		if err := a.store.deleteIfGeneration(ctx, at.Name, at.Generation); err != nil {
-			return lostLease(err)
+		err := a.store.deleteIfGeneration(ctx, at.Name, at.Generation)
+		if errors.Is(err, errGenerationMoved) {
+			a.log.Warn("gcs: an update was rewritten after the rollback committed, leaving its cleanup to the next holder",
+				"room", room, "target", target, "clock", c)
+			return nil
+		}
+		if err != nil {
+			return err
 		}
 	}
 	return nil
@@ -182,13 +200,38 @@ func (a *Adapter) settleRollback(ctx context.Context, room DocID, oid uint32) er
 	// Each pass either settles the rollback or sees its writer publish doc_v2
 	// meanwhile, after which the next pass finishes it.
 	for attempt := 1; ; attempt++ {
+		// This holder's lease can lapse too, so every write below lands only on the
+		// generations read here, and a holder that settled this mark and started
+		// another rollback meanwhile is never overwritten. The ceiling's generation
+		// is read before its bytes, so bytes newer than it fail those writes.
+		ceilGen, err := a.store.generation(ctx, a.ceilingName(room))
+		if err != nil {
+			return err
+		}
 		_, _, mark, rolling, err := a.ceilingState(ctx, room)
 		if err != nil || !rolling {
+			return err
+		}
+		cpGen, err := a.store.generation(ctx, a.layout.CheckpointName(room))
+		if err != nil {
 			return err
 		}
 		v2Gen, meta, err := a.store.attrs(ctx, a.layout.DocV2Name(room))
 		if err != nil {
 			return err
+		}
+		// A rollback writes its mark before its checkpoint, so an unchanged mark
+		// here means cpGen was read before any newer rollback moved the checkpoint.
+		if g, err := a.store.generation(ctx, a.ceilingName(room)); err != nil {
+			return err
+		} else if g != ceilGen {
+			if attempt < settleAttempts {
+				continue
+			}
+			return lostLease(errGenerationMoved)
+		}
+		if a.afterSettleRead != nil {
+			a.afterSettleRead()
 		}
 		// Holding the lock shows no rollback is running, not that the last one
 		// finished. Equal coverage is no proof either, since a store snapshot can
@@ -197,17 +240,19 @@ func (a *Adapter) settleRollback(ctx context.Context, room DocID, oid uint32) er
 		if cov, ok := coverageOf(meta); ok && mark.op != "" && cov.rollbackOp == mark.op && cov.clock == mark.target {
 			a.log.Warn("gcs: finishing a rollback whose writer stopped", "room", room, "target", mark.target)
 			// Checkpoint first: the mark keeps the append path off until it is durable.
-			if err := a.store.put(ctx, a.layout.CheckpointName(room), be32(mark.target)); err != nil {
-				return err
+			if _, err := a.store.putIfGeneration(ctx, a.layout.CheckpointName(room), be32(mark.target), cpGen); err != nil {
+				return lostLease(err)
 			}
-			// Committing it is a rollback a flush candidate must not outlive.
+			// Committing it is a rollback a flush candidate must not outlive. A
+			// stale rewrite only makes a racing flush or rollback back off.
 			if err := a.store.put(ctx, a.rollbackEpochName(room), be32(mark.target)); err != nil {
 				return err
 			}
-			if err := a.store.put(ctx, a.ceilingName(room), be32(mark.target)); err != nil {
-				return err
+			g, err := a.store.putIfGeneration(ctx, a.ceilingName(room), be32(mark.target), ceilGen)
+			if err != nil {
+				return lostLease(err)
 			}
-			return a.deleteUpdatesAfter(ctx, room, oid, mark.target)
+			return a.deleteUpdatesAfterFenced(ctx, room, oid, mark.target, g)
 		}
 		// Otherwise it stopped before replacing doc_v2 and took no effect so far.
 		// Its writer may only have lost its lease, though, and can still resume:
@@ -221,11 +266,17 @@ func (a *Adapter) settleRollback(ctx context.Context, room DocID, oid uint32) er
 		if err != nil {
 			return err
 		}
-		a.log.Warn("gcs: abandoning a rollback that stopped before publishing", "room", room, "target", mark.target)
-		if mark.prev == noCeiling {
-			return a.store.delete(ctx, a.ceilingName(room))
+		if a.afterSettleFence != nil {
+			a.afterSettleFence()
 		}
-		return a.store.put(ctx, a.ceilingName(room), be32(mark.prev))
+		a.log.Warn("gcs: abandoning a rollback that stopped before publishing", "room", room, "target", mark.target)
+		// Only the mark read above is cleared: one written since belongs to a newer
+		// rollback, which readers must keep refusing until it settles.
+		if mark.prev == noCeiling {
+			return lostLease(a.store.deleteIfGeneration(ctx, a.ceilingName(room), ceilGen))
+		}
+		_, err = a.store.putIfGeneration(ctx, a.ceilingName(room), be32(mark.prev), ceilGen)
+		return lostLease(err)
 	}
 }
 
