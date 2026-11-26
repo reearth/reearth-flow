@@ -19,8 +19,8 @@ import {
 import { ALLOWED_ASSET_IMPORT_EXTENSIONS } from "@flow/global-constants";
 import { useAssets } from "@flow/hooks";
 import { useT } from "@flow/lib/i18n";
-import { useCurrentUserRole, useCurrentWorkspace } from "@flow/stores";
-import { Role } from "@flow/types";
+import { usePermissions } from "@flow/lib/permissions";
+import { useCurrentWorkspace } from "@flow/stores";
 import type { Asset } from "@flow/types";
 
 import {
@@ -33,8 +33,7 @@ import {
 const AssetsManager: React.FC = () => {
   const t = useT();
   const [currentWorkspace] = useCurrentWorkspace();
-  const [currentUserRole] = useCurrentUserRole();
-  const disabled = currentUserRole === Role.Reader;
+  const disabled = !usePermissions().manageAssets;
   const {
     assets,
     isFetching,

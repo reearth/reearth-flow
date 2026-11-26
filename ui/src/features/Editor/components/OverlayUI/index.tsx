@@ -7,6 +7,7 @@ import {
   useIsReadOnly,
 } from "@flow/features/Editor/editorContext";
 import type { DeploymentChangeStatus } from "@flow/hooks/useDeploymentChanges";
+import { usePermissions } from "@flow/lib/permissions";
 import type { OpenWorkflow } from "@flow/lib/yjs/useWorkflowTabs";
 import type {
   ActionNodeType,
@@ -172,6 +173,7 @@ const OverlayUI: React.FC<OverlayUIProps> = ({
   onUserFocusedElement,
 }) => {
   const { isReaderRestricted } = useEditorContext();
+  const permissions = usePermissions();
   const isReadOnly = useIsReadOnly();
   const { showDialog, handleDialogOpen, handleDialogClose } = useHooks({
     onUserFocusedElement,
@@ -223,7 +225,11 @@ const OverlayUI: React.FC<OverlayUIProps> = ({
               <div className="pointer-events-auto z-10">
                 <LockedBadge
                   reason={isReaderRestricted ? "reader" : "locked"}
-                  onUnlock={() => onProjectLockChange(false)}
+                  onUnlock={
+                    permissions.lockProject
+                      ? () => onProjectLockChange(false)
+                      : undefined
+                  }
                 />
               </div>
             )}

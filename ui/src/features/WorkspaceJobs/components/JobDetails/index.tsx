@@ -7,6 +7,7 @@ import ConfirmationDialog from "@flow/features/ConfirmationDialog";
 import LogsConsole from "@flow/features/LogsConsole";
 import { useJobSubscriptionsSetup } from "@flow/hooks";
 import { useT } from "@flow/lib/i18n";
+import { usePermissions } from "@flow/lib/permissions";
 
 import useHooks from "./hooks";
 
@@ -22,6 +23,7 @@ const JobDetails: React.FC<Props> = ({ jobId, accessToken }) => {
 
   const [isConfirmingCancel, setIsConfirmingCancel] = useState(false);
 
+  const { cancelJob } = usePermissions();
   const { job, details, outputFiles, jobStatus, handleBack, handleCancelJob } =
     useHooks({
       jobId,
@@ -34,7 +36,7 @@ const JobDetails: React.FC<Props> = ({ jobId, accessToken }) => {
           <Button size="icon" variant="ghost" onClick={handleBack}>
             <CaretLeftIcon />
           </Button>
-          {(jobStatus === "queued" || jobStatus === "running") && (
+          {cancelJob && (jobStatus === "queued" || jobStatus === "running") && (
             <Button
               variant="destructive"
               size="sm"

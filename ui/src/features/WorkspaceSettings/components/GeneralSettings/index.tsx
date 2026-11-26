@@ -4,8 +4,8 @@ import { useEffect, useState } from "react";
 import { Button, Input, Label } from "@flow/components";
 import { useWorkspace } from "@flow/lib/gql";
 import { useT } from "@flow/lib/i18n";
-import { useCurrentUserRole, useCurrentWorkspace } from "@flow/stores";
-import { Role } from "@flow/types";
+import { usePermissions } from "@flow/lib/permissions";
+import { useCurrentWorkspace } from "@flow/stores";
 
 import { WorkspaceDeletionDialog } from "./components";
 
@@ -14,7 +14,7 @@ type Errors = "delete" | "update";
 const GeneralSettings: React.FC = () => {
   const t = useT();
   const [currentWorkspace] = useCurrentWorkspace();
-  const [currentUserRole] = useCurrentUserRole();
+  const { manageWorkspace } = usePermissions();
   const { deleteWorkspace, updateWorkspace } = useWorkspace();
   const navigate = useNavigate();
   const [showError, setShowError] = useState<Errors | undefined>(undefined);
@@ -54,8 +54,7 @@ const GeneralSettings: React.FC = () => {
   useEffect(() => {
     setWorkspaceName(currentWorkspace?.name);
   }, [currentWorkspace]);
-  const disabled =
-    currentWorkspace?.personal || currentUserRole !== Role.Owner || loading;
+  const disabled = currentWorkspace?.personal || !manageWorkspace || loading;
   return (
     <>
       <div className="flex h-[50px] items-center justify-between gap-2 border-b pb-4">

@@ -3,6 +3,8 @@ import { beforeEach, describe, expect, test, vi } from "vitest";
 
 import { EditorProvider } from "@flow/features/Editor/editorContext";
 import type { EditorContextType } from "@flow/features/Editor/editorContext";
+import type * as PermissionsModule from "@flow/lib/permissions";
+import { Role } from "@flow/types";
 import type { AwarenessUser } from "@flow/types";
 
 import DebugActionBar from "./index";
@@ -11,6 +13,16 @@ import DebugActionBar from "./index";
 // one. Stopping matters as much as starting here: joining writes the other
 // person's job into the local debug state, so an ungated stop button would
 // cancel THEIR run.
+
+const roleState = vi.hoisted(() => ({ role: "writer" as Role }));
+
+vi.mock("@flow/lib/permissions", async (importOriginal) => {
+  const actual = await importOriginal<typeof PermissionsModule>();
+  return {
+    ...actual,
+    usePermissions: () => actual.permissionsFor(roleState.role),
+  };
+});
 
 const state = {
   jobStatus: undefined as string | undefined,
@@ -58,13 +70,14 @@ const activeUsersDebugRuns = [
   },
 ] as unknown as AwarenessUser[];
 
-const renderBar = (isReaderRestricted: boolean) =>
-  render(
+const renderBar = (role: Role) => {
+  roleState.role = role;
+  return render(
     <EditorProvider
       value={
         {
           isLocked: false,
-          isReaderRestricted,
+          isReaderRestricted: role === Role.Reader,
           canViewIntermediateData: false,
         } as EditorContextType
       }>
@@ -81,6 +94,7 @@ const renderBar = (isReaderRestricted: boolean) =>
       />
     </EditorProvider>,
   );
+};
 
 // The bar is all icon buttons with no text, so its controls are addressed by
 // position. Popover triggers add role="button" wrapper divs; dropping those
@@ -99,15 +113,15 @@ describe("DebugActionBar reader restrictions", () => {
   });
 
   test("a reader cannot start a run, but can still join one", () => {
-    renderBar(true);
+    renderBar(Role.Reader);
 
-    // expect(startButton()).toBeDisabled();
+    expect(startButton()).toBeDisabled();
     // Joining is a read: it stays available so a reader can watch a run.
     expect(joinButton()).toBeEnabled();
   });
 
   test("a writer can start a run under the same conditions", () => {
-    renderBar(false);
+    renderBar(Role.Writer);
 
     // Same state, only the role differs — so the role is what disables start.
     expect(startButton()).toBeEnabled();
@@ -117,16 +131,16 @@ describe("DebugActionBar reader restrictions", () => {
     state.jobStatus = "running";
     state.jobs = [{ projectId: "p1", jobId: "j-other", status: "running" }];
 
-    renderBar(true);
+    renderBar(Role.Reader);
 
-    // expect(stopButton()).toBeDisabled();
+    expect(stopButton()).toBeDisabled();
   });
 
   test("a writer can stop a running job", () => {
     state.jobStatus = "running";
     state.jobs = [{ projectId: "p1", jobId: "j-mine", status: "running" }];
 
-    renderBar(false);
+    renderBar(Role.Writer);
 
     expect(stopButton()).toBeEnabled();
   });
