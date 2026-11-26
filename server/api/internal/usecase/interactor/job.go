@@ -184,7 +184,6 @@ func (i *Job) RunCloudRunWorker(j *job.Job, p gateway.RunJobParam, notStarted fu
 		defer i.holdDispatchLease(ctx, j.ID())()
 
 		status, err := i.dispatchWhenFree(ctx, j.ID(), runDispatchPolicy, func(ctx context.Context) (gateway.JobStatus, error) {
-			i.markCloudRunJobRunning(ctx, j.ID())
 			return i.runCloudRunAttempt(ctx, p)
 		})
 		if errors.Is(err, errFinishedWhileWaiting) {
@@ -241,7 +240,6 @@ func (i *Job) PreviewSchemaCloudRunWorker(j *job.Job, p gateway.ProbeSchemaParam
 		defer i.holdDispatchLease(ctx, j.ID())()
 
 		status, err := i.dispatchWhenFree(ctx, j.ID(), probeDispatchPolicy, func(ctx context.Context) (gateway.JobStatus, error) {
-			i.markCloudRunJobRunning(ctx, j.ID())
 			return i.cloudRunWorker.PreviewSchema(ctx, p)
 		})
 		if errors.Is(err, errFinishedWhileWaiting) {
@@ -258,31 +256,6 @@ func (i *Job) PreviewSchemaCloudRunWorker(j *job.Job, p gateway.ProbeSchemaParam
 			i.failCloudRunJob(ctx, j.ID())
 		}
 	}()
-}
-
-// markCloudRunJobRunning flips a dispatched job to RUNNING: Cloud Run jobs are
-// never polled (no GCPJobID) and the worker only ever publishes a terminal
-// event, so without this they sit in PENDING for their entire run.
-func (i *Job) markCloudRunJobRunning(ctx context.Context, jobID id.JobID) {
-	lock := i.getJobLock(jobID.String())
-	lock.Lock()
-	defer lock.Unlock()
-
-	j, err := i.jobRepo.FindByID(ctx, jobID)
-	if err != nil {
-		log.Errorfc(ctx, "job: failed to reload cloud run job %s: %v", jobID, err)
-		return
-	}
-	if j.Status() != job.StatusPending {
-		return
-	}
-
-	j.SetStatus(job.StatusRunning)
-	if err := i.jobRepo.Save(ctx, j); err != nil {
-		log.Errorfc(ctx, "job: failed to save cloud run job %s: %v", jobID, err)
-		return
-	}
-	i.subscriptions.Notify(jobID.String(), job.StatusRunning)
 }
 
 // failCloudRunJob marks a debug job failed when the worker call fails. A
@@ -389,7 +362,8 @@ func (i *Job) GetStatus(ctx context.Context, jobID id.JobID) (job.Status, error)
 
 // Refresh checks only Batch jobs that this server is not monitoring already.
 // A Cloud Run job has no Batch job to ask, so it is returned as it is, unless
-// it is queued with nothing dispatching it, which fails it.
+// it is queued with nothing dispatching it: then it turns running if its worker
+// has logged, and fails if not.
 func (i *Job) Refresh(ctx context.Context, j *job.Job) (*job.Job, error) {
 	if i.mayBeAbandoned(j) && i.refreshAbandonedDispatch(ctx, j.ID()) {
 		return i.jobRepo.FindByID(ctx, j.ID())
@@ -409,7 +383,8 @@ func (i *Job) Refresh(ctx context.Context, j *job.Job) (*job.Job, error) {
 	return i.jobRepo.FindByID(ctx, j.ID())
 }
 
-// refreshAbandonedDispatch fails the stored job if its dispatcher is gone.
+// refreshAbandonedDispatch fails the stored job if its dispatcher is gone and
+// its worker has not logged, and reports whether it changed the job.
 func (i *Job) refreshAbandonedDispatch(ctx context.Context, jobID id.JobID) bool {
 	lock := i.getJobLock(jobID.String())
 	lock.Lock()
@@ -418,6 +393,9 @@ func (i *Job) refreshAbandonedDispatch(ctx context.Context, jobID id.JobID) bool
 	current, err := i.jobRepo.FindByID(ctx, jobID)
 	if err != nil || current == nil {
 		return false
+	}
+	if started, err := i.startRunningOnFirstLog(ctx, current); started || err != nil {
+		return started
 	}
 	return i.failAbandonedDispatch(ctx, current)
 }
@@ -556,8 +534,14 @@ func (i *Job) checkJobStatus(ctx context.Context, j *job.Job) error {
 		}
 	}
 
-	if workerEvent == nil && !batchStatusChanged && i.failAbandonedDispatch(ctx, currentJob) {
-		return nil
+	if workerEvent == nil && !batchStatusChanged {
+		started, err := i.startRunningOnFirstLog(ctx, currentJob)
+		if err != nil {
+			return err
+		}
+		if started || i.failAbandonedDispatch(ctx, currentJob) {
+			return nil
+		}
 	}
 
 	statusChanged := batchStatusChanged || workerEvent != nil

@@ -214,6 +214,34 @@ func (i *Job) claimAbandonedDispatch(ctx context.Context, j *job.Job) bool {
 	return false
 }
 
+// lastLogTime bounds the log window from above. Logs carry the worker's clock,
+// so a window ending at the API's now could miss a log from a worker ahead of it.
+var lastLogTime = time.Date(9999, time.December, 31, 0, 0, 0, 0, time.UTC)
+
+// startRunningOnFirstLog moves a queued Cloud Run job to RUNNING once its
+// worker has logged, the first sign that a worker has the run: until then the
+// request may still be waiting for an instance. It reports whether it did. The
+// caller holds the job's lock and passes the stored job.
+func (i *Job) startRunningOnFirstLog(ctx context.Context, current *job.Job) (bool, error) {
+	if current.Status() != job.StatusPending || !isCloudRunDebug(current) {
+		return false, nil
+	}
+	logs, err := i.redis.GetLogs(ctx, time.Time{}, lastLogTime, current.ID())
+	if err != nil {
+		log.Warnfc(ctx, "job: could not read the logs of queued cloud run job %s: %v", current.ID(), err)
+		return false, nil
+	}
+	if len(logs) == 0 {
+		return false, nil
+	}
+	current.SetStatus(job.StatusRunning)
+	if err := i.jobRepo.Save(ctx, current); err != nil {
+		return false, fmt.Errorf("failed to save started cloud run job %s: %w", current.ID(), err)
+	}
+	i.subscriptions.Notify(current.ID().String(), current.Status())
+	return true, nil
+}
+
 // failAbandonedDispatch fails current when its dispatcher is gone, and reports
 // whether it did. The caller holds the job's lock and passes the stored job.
 func (i *Job) failAbandonedDispatch(ctx context.Context, current *job.Job) bool {

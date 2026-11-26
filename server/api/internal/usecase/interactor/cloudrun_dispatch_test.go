@@ -12,6 +12,7 @@ import (
 	"github.com/reearth/reearth-flow/api/internal/usecase/gateway"
 	"github.com/reearth/reearth-flow/api/pkg/id"
 	"github.com/reearth/reearth-flow/api/pkg/job"
+	pkglog "github.com/reearth/reearth-flow/api/pkg/log"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
@@ -297,7 +298,7 @@ func TestJob_PreviewSchemaCloudRunWorker_WaitsForAFreeInstance(t *testing.T) {
 
 	require.Eventually(t, func() bool { return worker.calls.Load() == 3 }, 5*time.Second, time.Millisecond)
 	assert.Never(t, func() bool { return worker.calls.Load() > 3 }, 200*time.Millisecond, 10*time.Millisecond)
-	assert.NotContains(t, repo.savedStatuses(), job.StatusFailed)
+	assert.Empty(t, repo.savedStatuses(), "a probe stays queued until its worker logs")
 }
 
 func TestJob_PreviewSchemaCloudRunWorker_GivesUpSoonerThanARun(t *testing.T) {
@@ -403,6 +404,19 @@ func TestJob_Refresh_FailsAnAbandonedDispatchOnce(t *testing.T) {
 		assert.Empty(t, repo.savedStatuses())
 	})
 
+	t.Run("a job whose worker has logged is running, not abandoned", func(t *testing.T) {
+		t.Parallel()
+
+		i, repo, _, queued := setup(t, 3*time.Minute)
+		i.redis = &mockCheckStatusRedis{logs: []*pkglog.Log{pkglog.NewLog(queued.ID(), nil, i.clock(), pkglog.LevelInfo, "started")}}
+
+		got, err := i.Refresh(context.Background(), queued)
+
+		require.NoError(t, err)
+		assert.Equal(t, job.StatusRunning, got.Status())
+		assert.Equal(t, []job.Status{job.StatusRunning}, repo.savedStatuses())
+	})
+
 	t.Run("without a usage counter no job is read as abandoned", func(t *testing.T) {
 		t.Parallel()
 
@@ -430,4 +444,129 @@ func TestJob_checkJobStatus_FailsAnAbandonedDispatch(t *testing.T) {
 
 	assert.Equal(t, job.StatusFailed, repo.status())
 	assert.Equal(t, []job.Status{job.StatusFailed, job.StatusFailed}, repo.savedStatuses(), "failed by the first check only")
+}
+
+func TestJob_RunCloudRunWorker_StaysQueuedWhileItWaits(t *testing.T) {
+	t.Parallel()
+
+	clock := &dispatchClock{t: time.Unix(1_000_000, 0)}
+	queued := queuedDebugJob(t, clock.now())
+	repo := newDispatchJobRepo(queued)
+	var mu sync.Mutex
+	var seen []job.Status
+	worker := &fakeRunWorker{answers: []error{busy, busy, nil}}
+	worker.onCall = func(context.Context, int) {
+		mu.Lock()
+		defer mu.Unlock()
+		seen = append(seen, repo.status())
+	}
+	i := newDispatchJob(repo, worker, newFakeLeases(), clock)
+
+	i.RunCloudRunWorker(queued, gateway.RunJobParam{JobID: queued.ID()}, nil)
+
+	require.Eventually(t, func() bool { return worker.calls.Load() == 3 }, 5*time.Second, time.Millisecond)
+	assert.Never(t, func() bool { return worker.calls.Load() > 3 }, 200*time.Millisecond, 10*time.Millisecond)
+	mu.Lock()
+	defer mu.Unlock()
+	assert.Equal(t, []job.Status{job.StatusPending, job.StatusPending, job.StatusPending}, seen)
+	assert.Empty(t, repo.savedStatuses(), "only the monitoring loop moves a queued job")
+}
+
+// notified drains the statuses sent to ch so far.
+func notified(ch chan job.Status) []job.Status {
+	var got []job.Status
+	for {
+		select {
+		case s := <-ch:
+			got = append(got, s)
+		default:
+			return got
+		}
+	}
+}
+
+func TestJob_checkJobStatus_AQueuedJobRunsFromItsFirstLog(t *testing.T) {
+	t.Parallel()
+
+	setup := func(t *testing.T, age time.Duration) (*Job, *dispatchJobRepo, *mockCheckStatusRedis, *job.Job, chan job.Status) {
+		t.Helper()
+		clock := &dispatchClock{t: time.Unix(1_000_000, 0)}
+		queued := queuedDebugJob(t, clock.now().Add(-age))
+		repo := newDispatchJobRepo(queued)
+		store := &mockCheckStatusRedis{}
+		i := newDispatchJob(repo, &fakeRunWorker{answers: []error{nil}}, newFakeLeases(), clock)
+		i.redis = store
+		return i, repo, store, queued, i.subscriptions.Subscribe(queued.ID().String())
+	}
+	firstLog := func(j *job.Job) []*pkglog.Log {
+		return []*pkglog.Log{pkglog.NewLog(j.ID(), nil, time.Unix(1_000_000, 0), pkglog.LevelInfo, "started")}
+	}
+
+	t.Run("with no log it stays queued and nothing is notified", func(t *testing.T) {
+		t.Parallel()
+
+		i, repo, _, queued, ch := setup(t, 0)
+
+		require.NoError(t, i.checkJobStatus(context.Background(), queued))
+		require.NoError(t, i.checkJobStatus(context.Background(), queued))
+
+		assert.Equal(t, job.StatusPending, repo.status())
+		assert.Empty(t, repo.savedStatuses())
+		assert.Empty(t, notified(ch))
+	})
+
+	t.Run("the first log makes it running once", func(t *testing.T) {
+		t.Parallel()
+
+		i, repo, store, queued, ch := setup(t, 0)
+		require.NoError(t, i.checkJobStatus(context.Background(), queued))
+		store.logs = firstLog(queued)
+
+		require.NoError(t, i.checkJobStatus(context.Background(), queued))
+		require.NoError(t, i.checkJobStatus(context.Background(), queued))
+
+		assert.Equal(t, job.StatusRunning, repo.status())
+		assert.Equal(t, []job.Status{job.StatusRunning}, repo.savedStatuses())
+		assert.Equal(t, []job.Status{job.StatusRunning}, notified(ch))
+		assert.Equal(t, 2, store.logsCalls, "a running job reads no logs")
+	})
+
+	t.Run("a run that finishes before any log goes straight to completed", func(t *testing.T) {
+		t.Parallel()
+
+		i, repo, store, queued, ch := setup(t, 0)
+		store.event = &gateway.JobCompleteEvent{JobID: queued.ID().String(), Result: "success"}
+
+		require.NoError(t, i.checkJobStatus(context.Background(), queued))
+
+		assert.Equal(t, job.StatusCompleted, repo.status())
+		assert.NotContains(t, repo.savedStatuses(), job.StatusRunning)
+		assert.Equal(t, []job.Status{job.StatusCompleted}, notified(ch))
+	})
+
+	t.Run("a logged job with no dispatcher left is running, not abandoned", func(t *testing.T) {
+		t.Parallel()
+
+		i, repo, store, queued, _ := setup(t, 2*abandonedDispatchAge)
+		store.logs = firstLog(queued)
+
+		require.NoError(t, i.checkJobStatus(context.Background(), queued))
+		require.NoError(t, i.checkJobStatus(context.Background(), queued))
+
+		assert.Equal(t, job.StatusRunning, repo.status())
+		assert.Equal(t, []job.Status{job.StatusRunning}, repo.savedStatuses())
+	})
+
+	t.Run("a log read error leaves it queued", func(t *testing.T) {
+		t.Parallel()
+
+		i, repo, store, queued, ch := setup(t, 0)
+		store.logs = firstLog(queued)
+		store.logsErr = fmt.Errorf("live store down")
+
+		require.NoError(t, i.checkJobStatus(context.Background(), queued))
+
+		assert.Equal(t, job.StatusPending, repo.status())
+		assert.Empty(t, notified(ch))
+	})
 }
