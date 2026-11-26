@@ -40,12 +40,10 @@ type Job struct {
 	subscriptions       *subscription.JobManager
 	activeWatchers      map[string]bool
 	jobLocks            map[string]*sync.Mutex
-	// now and sleep are the clock and wait the Cloud Run dispatch reads; nil
-	// is the real one.
-	now        func() time.Time
-	sleep      func(context.Context, time.Duration) error
-	jobLocksMu sync.RWMutex
-	watchersMu sync.Mutex
+	now                 func() time.Time
+	sleep               func(context.Context, time.Duration) error
+	jobLocksMu          sync.RWMutex
+	watchersMu          sync.Mutex
 }
 
 type NotificationPayload struct {
@@ -205,8 +203,6 @@ func (i *Job) RunCloudRunWorker(j *job.Job, p gateway.RunJobParam, notStarted fu
 	}()
 }
 
-// runCloudRunAttempt makes one request for the run. Its time limit starts
-// with the request, so waiting for an instance does not use it up.
 func (i *Job) runCloudRunAttempt(ctx context.Context, p gateway.RunJobParam) (gateway.JobStatus, error) {
 	runCtx := ctx
 	if p.MaxRunDuration > 0 {
@@ -215,7 +211,6 @@ func (i *Job) runCloudRunAttempt(ctx context.Context, p gateway.RunJobParam) (ga
 		defer cancel()
 	}
 	status, err := i.cloudRunWorker.RunJob(runCtx, p)
-	// Dropping the request does not stop the worker: the cancel flag does.
 	if errors.Is(runCtx.Err(), context.DeadlineExceeded) {
 		log.Infofc(ctx, "job: cloud run worker %s ran past its %s limit, cancelling it", p.JobID, p.MaxRunDuration)
 		if cerr := i.cloudRunWorker.CancelJob(ctx, p.JobID); cerr != nil {
@@ -271,9 +266,6 @@ func (i *Job) failCloudRunJob(ctx context.Context, jobID id.JobID) {
 	i.failCloudRunJobNow(ctx, jobID)
 }
 
-// failCloudRunJobNow marks a debug job failed unless it is already terminal or
-// a worker result has arrived. It waits for nothing, so it suits a job the
-// worker never started.
 func (i *Job) failCloudRunJobNow(ctx context.Context, jobID id.JobID) {
 	lock := i.getJobLock(jobID.String())
 	lock.Lock()
@@ -383,8 +375,6 @@ func (i *Job) Refresh(ctx context.Context, j *job.Job) (*job.Job, error) {
 	return i.jobRepo.FindByID(ctx, j.ID())
 }
 
-// refreshAbandonedDispatch fails the stored job if its dispatcher is gone and
-// its worker has not logged, and reports whether it changed the job.
 func (i *Job) refreshAbandonedDispatch(ctx context.Context, jobID id.JobID) bool {
 	lock := i.getJobLock(jobID.String())
 	lock.Lock()

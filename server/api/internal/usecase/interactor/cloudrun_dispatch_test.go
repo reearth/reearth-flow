@@ -17,8 +17,6 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-// dispatchJobRepo stores one job for goroutines that read and write it at
-// once, and remembers every status saved.
 type dispatchJobRepo struct {
 	*mockCheckStatusJobRepo
 	stored *job.Job
@@ -58,7 +56,6 @@ func (r *dispatchJobRepo) savedStatuses() []job.Status {
 	return append([]job.Status(nil), r.saved...)
 }
 
-// fakeLeases is gateway.UsageCounter's lease half, in memory.
 type fakeLeases struct {
 	leases map[string]map[string]time.Time
 	mu     sync.Mutex
@@ -95,7 +92,6 @@ func (f *fakeLeases) Increment(context.Context, string, time.Time) (int64, error
 }
 func (f *fakeLeases) Decrement(context.Context, string, time.Time) error { panic("unused") }
 
-// dispatchClock is a clock that moves only when the dispatch waits.
 type dispatchClock struct {
 	t      time.Time
 	waited []time.Duration
@@ -122,14 +118,11 @@ func (c *dispatchClock) waits() int {
 	return len(c.waited)
 }
 
-// fakeRunWorker answers each RunJob with the next of answers, repeating the
-// last one, and counts the calls.
 type fakeRunWorker struct {
 	mockCloudRunWorker
 	answers []error
 	calls   atomic.Int32
-	// onCall, when set, sees each call's context.
-	onCall func(ctx context.Context, n int)
+	onCall  func(ctx context.Context, n int)
 }
 
 func (w *fakeRunWorker) answer() (gateway.JobStatus, error) {
@@ -152,7 +145,6 @@ func (w *fakeRunWorker) PreviewSchema(context.Context, gateway.ProbeSchemaParam)
 	return w.answer()
 }
 
-// busy is the error a full pool comes back as from the Cloud Run client.
 var busy = fmt.Errorf("cloudrunworker: run refused (http 429): %w: %w", gateway.ErrWorkerBusy, gateway.ErrRunNotStarted)
 
 func queuedDebugJob(t *testing.T, startedAt time.Time) *job.Job {
@@ -191,7 +183,6 @@ func TestDispatchPolicy_Backoff(t *testing.T) {
 	t.Run("the ceiling doubles until it reaches the cap", func(t *testing.T) {
 		t.Parallel()
 
-		// r just under 1 lands on the ceiling, give or take rounding.
 		ceiling := func(n int) time.Duration { return p.backoff(n, 1).Round(time.Second) }
 		assert.Equal(t, 4*time.Second, ceiling(1))
 		assert.Equal(t, 8*time.Second, ceiling(2))
@@ -231,7 +222,6 @@ func TestJob_RunCloudRunWorker_FailsWhenThePoolStaysFull(t *testing.T) {
 
 	i.RunCloudRunWorker(queued, gateway.RunJobParam{JobID: queued.ID()}, func() { refunds.Add(1) })
 
-	// Well inside the 30s grace a run that may have started gets.
 	require.Eventually(t, func() bool { return repo.status() == job.StatusFailed }, 5*time.Second, time.Millisecond)
 	assert.Never(t, func() bool { return refunds.Load() > 1 }, 200*time.Millisecond, 10*time.Millisecond)
 	assert.EqualValues(t, 1, refunds.Load(), "the run never started, so its count is given back once")
@@ -317,8 +307,6 @@ func TestJob_PreviewSchemaCloudRunWorker_GivesUpSoonerThanARun(t *testing.T) {
 	assert.Less(t, waited, probeDispatchPolicy.MaxWait+probeDispatchPolicy.MaxBackoff)
 }
 
-// A job whose dispatching API instance stopped stays PENDING with nothing to
-// move it. Any replica that looks at it fails it, once.
 func TestJob_Refresh_FailsAnAbandonedDispatchOnce(t *testing.T) {
 	t.Parallel()
 
@@ -368,7 +356,6 @@ func TestJob_Refresh_FailsAnAbandonedDispatchOnce(t *testing.T) {
 			wg.Add(1)
 			go func() {
 				defer wg.Done()
-				// The stale copy each replica read before the other wrote.
 				_, err := replica.Refresh(context.Background(), queued)
 				assert.NoError(t, err)
 			}()
@@ -472,7 +459,6 @@ func TestJob_RunCloudRunWorker_StaysQueuedWhileItWaits(t *testing.T) {
 	assert.Empty(t, repo.savedStatuses(), "only the monitoring loop moves a queued job")
 }
 
-// notified drains the statuses sent to ch so far.
 func notified(ch chan job.Status) []job.Status {
 	var got []job.Status
 	for {
