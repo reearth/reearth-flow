@@ -1018,6 +1018,158 @@ mod bounded_tests {
         assert!(!is_running(&pid));
     }
 
+    async fn read_lines(path: &Path, n: usize) -> Vec<String> {
+        for _ in 0..100 {
+            if let Ok(text) = std::fs::read_to_string(path) {
+                let lines: Vec<String> = text.lines().map(str::to_string).collect();
+                if lines.len() >= n && text.ends_with('\n') {
+                    return lines;
+                }
+            }
+            tokio::time::sleep(Duration::from_millis(20)).await;
+        }
+        panic!(
+            "{path:?} never had {n} lines: {:?}",
+            std::fs::read_to_string(path)
+        );
+    }
+
+    async fn eventually(what: &str, done: impl Fn() -> bool) {
+        for _ in 0..100 {
+            if done() {
+                return;
+            }
+            tokio::time::sleep(Duration::from_millis(20)).await;
+        }
+        panic!("{what}");
+    }
+
+    /// Serve `req` on a task, which drops the run when aborted.
+    fn start_run(
+        worker: &str,
+        work_base: &Path,
+        req: &RunRequest,
+    ) -> tokio::task::JoinHandle<(StatusCode, Value)> {
+        let (worker, work_base, req) = (worker.to_string(), work_base.to_path_buf(), req.clone());
+        tokio::spawn(async move {
+            let resolver = Arc::new(StorageResolver::new());
+            serve_run(&worker, &work_base, &resolver, &req).await
+        })
+    }
+
+    #[tokio::test]
+    async fn a_retry_with_the_same_job_id_keeps_its_files_after_the_first_run_is_dropped() {
+        let dir = tempfile::tempdir().unwrap();
+        let work_base = dir.path().join("work");
+        let runs = dir.path().join("runs");
+        let worker = fake_worker(
+            dir.path(),
+            &format!(
+                r#"R="$FLOW_RUNTIME_WORKING_DIRECTORY"; touch "$R/blob"; echo "$$ $R" >> '{}'; exec sleep 30"#,
+                runs.display()
+            ),
+        );
+        let req = run_request(dir.path());
+
+        let first = start_run(&worker, &work_base, &req);
+        let first_pid = read_lines(&runs, 1).await[0]
+            .split_once(' ')
+            .unwrap()
+            .0
+            .to_string();
+        first.abort();
+        let retry = start_run(&worker, &work_base, &req);
+
+        let runs = read_lines(&runs, 2).await;
+        let (retry_pid, retry_root) = runs[1].split_once(' ').unwrap();
+        eventually("the first run's worker outlived its request", || {
+            !is_running(&first_pid)
+        })
+        .await;
+        tokio::time::sleep(Duration::from_millis(300)).await;
+
+        assert!(!retry.is_finished(), "the retry should still be running");
+        assert!(is_running(retry_pid), "the retry's worker was stopped");
+        assert!(
+            Path::new(retry_root).join("blob").exists(),
+            "the retry's files were removed while it ran"
+        );
+        retry.abort();
+    }
+
+    /// A worker that starts a background process writing into its work root,
+    /// recording the root's path and the background process's pid.
+    fn worker_with_a_background_writer(dir: &Path, root_file: &Path, helper_pid: &Path) -> String {
+        fake_worker(
+            dir,
+            &format!(
+                r#"R="$FLOW_RUNTIME_WORKING_DIRECTORY"; echo "$R" > '{}'; ( while :; do mkdir -p "$R"; date >> "$R/out"; sleep 0.1; done ) & echo $! > '{}'; wait"#,
+                root_file.display(),
+                helper_pid.display()
+            ),
+        )
+    }
+
+    /// Kills the pid when dropped, so a failing test does not leave it writing.
+    struct KillOnDrop(String);
+
+    impl Drop for KillOnDrop {
+        fn drop(&mut self) {
+            let _ = std::process::Command::new("kill")
+                .args(["-9", &self.0])
+                .stderr(std::process::Stdio::null())
+                .status();
+        }
+    }
+
+    async fn assert_stopped_and_gone(helper: &KillOnDrop, root: &Path) {
+        let helper = &helper.0;
+        eventually(
+            &format!("pid {helper}, started by the worker, outlived the run"),
+            || !is_running(helper),
+        )
+        .await;
+        eventually("the work root outlived the run", || !root.exists()).await;
+        tokio::time::sleep(Duration::from_millis(500)).await;
+        assert!(!root.exists(), "the work root came back after the run");
+    }
+
+    #[tokio::test]
+    async fn a_dropped_run_stops_what_its_worker_started_in_the_background() {
+        let dir = tempfile::tempdir().unwrap();
+        let work_base = dir.path().join("work");
+        let (root_file, helper_pid) = (dir.path().join("root"), dir.path().join("helper"));
+        let worker = worker_with_a_background_writer(dir.path(), &root_file, &helper_pid);
+
+        let run = start_run(&worker, &work_base, &run_request(dir.path()));
+        let helper = KillOnDrop(read_pid(&helper_pid).await);
+        let root = PathBuf::from(read_lines(&root_file, 1).await.remove(0));
+        run.abort();
+
+        assert_stopped_and_gone(&helper, &root).await;
+    }
+
+    #[tokio::test]
+    async fn a_cancelled_run_stops_what_its_worker_started_in_the_background() {
+        let dir = tempfile::tempdir().unwrap();
+        let work_base = dir.path().join("work");
+        let (root_file, helper_pid) = (dir.path().join("root"), dir.path().join("helper"));
+        let worker = worker_with_a_background_writer(dir.path(), &root_file, &helper_pid);
+
+        let run = start_run(&worker, &work_base, &run_request(dir.path()));
+        let helper = KillOnDrop(read_pid(&helper_pid).await);
+        let root = PathBuf::from(read_lines(&root_file, 1).await.remove(0));
+        std::fs::write(dir.path().join("cancel"), b"").unwrap();
+        let (status, body) = tokio::time::timeout(Duration::from_secs(10), run)
+            .await
+            .expect("the cancel was seen")
+            .unwrap();
+
+        assert_eq!(status, StatusCode::OK);
+        assert_eq!(body["status"], "CANCELLED");
+        assert_stopped_and_gone(&helper, &root).await;
+    }
+
     #[tokio::test]
     async fn a_run_whose_worker_fails_reports_its_exit_and_is_cleaned_up() {
         let dir = tempfile::tempdir().unwrap();
