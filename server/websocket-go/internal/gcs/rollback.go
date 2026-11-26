@@ -91,9 +91,15 @@ func (a *Adapter) Compact(ctx context.Context, room string, keep int) (int, erro
 		if err != nil {
 			return err
 		}
-		updates, err := a.listUpdates(ctx, room, oid)
+		// Attrs rather than names: the deletes below are pinned to the generation
+		// listed here, so an object recreated under the same clock survives them.
+		listed, err := a.listUpdatesAttrs(ctx, room, oid)
 		if err != nil {
 			return err
+		}
+		updates := make(map[uint32]string, len(listed))
+		for c, at := range listed {
+			updates[c] = at.Name
 		}
 		m, err := a.readMarks(ctx, room)
 		if err != nil {
@@ -183,8 +189,21 @@ func (a *Adapter) Compact(ctx context.Context, room string, keep int) (int, erro
 				"room", room, "cutoff", cutoff)
 			return errStateMoved
 		}
+		if a.beforeCompactDelete != nil {
+			a.beforeCompactDelete()
+		}
+		// The check above cannot cover the deletes themselves: a lease can lapse
+		// after it, and another holder can roll back and reuse a folded clock's
+		// name. Each delete only lands on the object generation that was folded.
 		for i := 0; i < foldUpto; i++ {
-			if err := a.store.delete(ctx, updates[clocks[i]]); err != nil {
+			at := listed[clocks[i]]
+			err := a.store.deleteIfGeneration(ctx, at.Name, at.Generation)
+			if errors.Is(err, errGenerationMoved) {
+				a.log.Warn("gcs compact: an update was rewritten after it was folded, deleting no further",
+					"room", room, "clock", clocks[i])
+				return errStateMoved
+			}
+			if err != nil {
 				return err
 			}
 			deleted++

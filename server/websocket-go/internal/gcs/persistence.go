@@ -376,7 +376,14 @@ func (a *Adapter) writeUnion(ctx context.Context, room DocID, oid uint32, candid
 	if err != nil {
 		return err
 	}
-	err = a.writeUnionOnce(ctx, room, oid, candidate, before)
+	return a.writeUnionSince(ctx, room, oid, candidate, before)
+}
+
+// writeUnionSince is writeUnion for a candidate built after before was read. A
+// caller that builds the candidate itself reads the marks first, so a rollback
+// landing between the build and the lock is seen too.
+func (a *Adapter) writeUnionSince(ctx context.Context, room DocID, oid uint32, candidate []byte, before marks) error {
+	err := a.writeUnionOnce(ctx, room, oid, candidate, before)
 	if errors.Is(err, errGenerationMoved) {
 		err = a.writeUnionOnce(ctx, room, oid, candidate, before)
 	}
@@ -555,6 +562,30 @@ func (a *Adapter) FlushSnapshot(ctx context.Context, room string, state []byte) 
 	}
 	return a.locker.WithLock(ctx, gcsDocLockKey(room), func(ctx context.Context) error {
 		return a.writeUnion(ctx, room, oid, state)
+	})
+}
+
+// flushMarks reads the rollback marks for a flush whose candidate the caller is
+// about to build. Pass them to flushSnapshotSince with that candidate.
+func (a *Adapter) flushMarks(ctx context.Context, room string) (marks, error) {
+	if err := a.validate(room); err != nil {
+		return marks{}, err
+	}
+	return a.readMarks(ctx, room)
+}
+
+// flushSnapshotSince is FlushSnapshot for a state built after before was read,
+// so a rollback committing before the doc lock is taken still drops the state.
+func (a *Adapter) flushSnapshotSince(ctx context.Context, room string, state []byte, before marks) error {
+	if err := a.validate(room); err != nil {
+		return err
+	}
+	oid, err := a.oidFor(ctx, room)
+	if err != nil {
+		return err
+	}
+	return a.locker.WithLock(ctx, gcsDocLockKey(room), func(ctx context.Context) error {
+		return a.writeUnionSince(ctx, room, oid, state, before)
 	})
 }
 

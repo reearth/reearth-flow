@@ -431,3 +431,68 @@ func TestCompact_DeletesNothingOnceThePublishIsOvertaken(t *testing.T) {
 		t.Errorf("Load text = %q, want %q: the edit after the rollback was deleted", s, "abcdefghijklZ")
 	}
 }
+
+// TestCompact_DeletesNoEditRecreatedAfterItsLastCheck: the lease lapses after
+// Compact's last check, and another holder rolls back and appends under clock
+// 13's name. Deleting by name would remove that edit without it ever reaching
+// the base, so each delete is pinned to the generation that was folded.
+func TestCompact_DeletesNoEditRecreatedAfterItsLastCheck(t *testing.T) {
+	t.Parallel()
+	ctx := context.Background()
+	client, bucket := newFakeGCS(t)
+	a, err := New(Options{Client: client, Bucket: bucket, Locker: NewNoLock()})
+	if err != nil {
+		t.Fatalf("New: %v", err)
+	}
+	const room = "race-delete-late"
+	_, rolled := seedCompactRace(t, a, room)
+
+	fired := false
+	a.beforeCompactDelete = func() {
+		if fired {
+			return
+		}
+		fired = true
+		if err := a.PruneAfter(ctx, room, persistence.Version(12), rolled); err != nil {
+			t.Errorf("PruneAfter: %v", err)
+		}
+		d := crdt.New(crdt.WithClientID(99))
+		if err := crdt.ApplyUpdateV1(d, rolled, nil); err != nil {
+			t.Errorf("apply rolled: %v", err)
+			return
+		}
+		sv := d.StateVector()
+		txt := d.GetText("t")
+		d.Transact(func(txn *crdt.Transaction) { txt.Insert(txn, txt.Len(), "Z", nil) })
+		inc, err := crdt.DiffUpdateV1(crdt.EncodeStateAsUpdateV1(d, nil), sv)
+		if err != nil {
+			t.Errorf("diff: %v", err)
+			return
+		}
+		v, err := a.AppendUpdate(ctx, room, inc)
+		if err != nil {
+			t.Errorf("AppendUpdate: %v", err)
+		}
+		if v != 13 {
+			t.Errorf("setup: the post-rollback edit took clock %d, want 13 (reusing a folded name)", v)
+		}
+	}
+
+	if _, err := a.Compact(ctx, room, 2); !errors.Is(err, errStateMoved) {
+		t.Errorf("Compact = %v, want errStateMoved", err)
+	}
+	if !fired {
+		t.Fatal("setup: Compact never reached its deletes")
+	}
+	lr, err := a.Load(ctx, room)
+	if err != nil {
+		t.Fatalf("Load: %v", err)
+	}
+	got := crdt.New()
+	if err := crdt.ApplyUpdateV1(got, lr.Update, nil); err != nil {
+		t.Fatalf("ApplyUpdateV1: %v", err)
+	}
+	if s := got.GetText("t").ToString(); s != "abcdefghijklZ" {
+		t.Errorf("Load text = %q, want %q: the edit after the rollback was deleted", s, "abcdefghijklZ")
+	}
+}

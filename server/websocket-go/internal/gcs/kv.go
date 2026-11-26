@@ -164,6 +164,17 @@ func (s kv) delete(ctx context.Context, name string) error {
 	return err
 }
 
+// deleteIfGeneration deletes the object only while its generation is gen, so a
+// writer that recreated it under the same name keeps its object. It returns
+// errGenerationMoved in that case, and nil when the object is already gone.
+func (s kv) deleteIfGeneration(ctx context.Context, name string, gen int64) error {
+	err := s.bucket.Object(name).If(storage.Conditions{GenerationMatch: gen}).Delete(ctx)
+	if errors.Is(err, storage.ErrObjectNotExist) {
+		return nil
+	}
+	return asGenerationMoved(err)
+}
+
 // list returns every object name with the given prefix. The caller MUST scope
 // the prefix to a project (no unscoped bucket list).
 func (s kv) list(ctx context.Context, prefix string) ([]string, error) {
