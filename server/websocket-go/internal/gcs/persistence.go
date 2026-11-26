@@ -2,6 +2,7 @@ package gcs
 
 import (
 	"context"
+	"encoding/hex"
 	"errors"
 	"fmt"
 	"sort"
@@ -60,15 +61,19 @@ const noCeiling = ^uint32(0)
 // ceiling it replaced and the version being rolled back to.
 type rollMark struct {
 	prev, target uint32
+	// op names the rollback, so a later holder can tell whether doc_v2 is the
+	// document it published.
+	op string
 }
 
 // markedCeiling keeps prev in the first four bytes, which is all an older build
 // reads, and appends the mark and the target.
-func markedCeiling(prev, target uint32) []byte {
-	b := make([]byte, 9)
+func markedCeiling(prev, target uint32, op [8]byte) []byte {
+	b := make([]byte, 17)
 	copy(b, be32(prev))
 	b[4] = 1
 	copy(b[5:], be32(target))
+	copy(b[9:], op[:])
 	return b
 }
 
@@ -85,7 +90,11 @@ func (a *Adapter) ceilingState(ctx context.Context, room DocID) (uint32, bool, r
 		return 0, false, rollMark{}, false, nil
 	}
 	if len(b) >= 9 && b[4] == 1 {
-		return be32ToU32(b), true, rollMark{prev: be32ToU32(b[:4]), target: be32ToU32(b[5:9])}, true, nil
+		m := rollMark{prev: be32ToU32(b[:4]), target: be32ToU32(b[5:9])}
+		if len(b) >= 17 {
+			m.op = hex.EncodeToString(b[9:17])
+		}
+		return be32ToU32(b), true, m, true, nil
 	}
 	return be32ToU32(b), true, rollMark{}, false, nil
 }
@@ -222,6 +231,16 @@ func (a *Adapter) readStateUnlocked(ctx context.Context, room DocID, oid uint32)
 // errStateMoved reports that a writer changed the room's stored state while it
 // was being read without the doc lock.
 var errStateMoved = errors.New("gcs: stored state changed while it was read")
+
+// errRollbackInProgress reports a rollback whose writer still holds the doc
+// lock, so the room cannot be read consistently yet and the caller should retry.
+var errRollbackInProgress error = rollbackInProgressError{}
+
+type rollbackInProgressError struct{}
+
+func (rollbackInProgressError) Error() string            { return "gcs: a rollback of this room is in progress" }
+func (rollbackInProgressError) Is(target error) bool     { return target == errStateMoved }
+func (rollbackInProgressError) RollbackInProgress() bool { return true }
 
 // storedState is a room's stored state decoded into one document.
 type storedState struct {
@@ -872,11 +891,12 @@ func (a *Adapter) MaterializeAt(ctx context.Context, room string, v persistence.
 		return nil, err
 	}
 	base := rs.m.covers().clock
+	useBase := usesBase(rs, target)
 
 	var parts [][]byte
 	// CRDT merge is idempotent, so folding the base plus replayed updates never
 	// double-applies.
-	if base <= target {
+	if useBase {
 		if v1, ok, err := a.loadV2(ctx, room); err != nil {
 			return nil, err
 		} else if ok {
@@ -893,7 +913,7 @@ func (a *Adapter) MaterializeAt(ctx context.Context, room string, v persistence.
 		if c > target {
 			break
 		}
-		if base <= target && c <= base {
+		if useBase && c <= base {
 			continue // already in the base snapshot
 		}
 		b, err := a.store.get(ctx, rs.updates[c])
@@ -912,7 +932,7 @@ func (a *Adapter) MaterializeAt(ctx context.Context, room string, v persistence.
 		}
 	}
 	var checkpointed []uint32
-	if base <= target {
+	if useBase {
 		checkpointed = clocksUpTo(rs.clocks, base)
 	}
 	if _, err := a.foldParked(ctx, room, doc, rs.updates, checkpointed); err != nil {
@@ -972,7 +992,22 @@ func (a *Adapter) readRebuildState(ctx context.Context, room string) (*rebuildSt
 	// Mid-rollback, doc_v2, the ceiling and the checkpoint may disagree, and a
 	// rebuild from that mix would be written somewhere durable.
 	if m.rolling {
-		return nil, errStateMoved
+		// A writer that stopped is settled here, so recovery is not stuck waiting
+		// for something to open the room. A live one still holds the lock.
+		ran := false
+		lockErr := a.locker.WithLock(ctx, gcsDocLockKey(room), func(ctx context.Context) error {
+			ran = true
+			return a.settleRollback(ctx, room, oid)
+		})
+		if ran && lockErr != nil {
+			return nil, lockErr
+		}
+		if m, err = a.readMarks(ctx, room); err != nil {
+			return nil, err
+		}
+		if m.rolling {
+			return nil, errRollbackInProgress
+		}
 	}
 	updates, err := a.listUpdates(ctx, room, oid)
 	if err != nil {
@@ -981,35 +1016,48 @@ func (a *Adapter) readRebuildState(ctx context.Context, room string) (*rebuildSt
 	return &rebuildState{oid: oid, m: m, updates: updates, clocks: sortedClocks(updates)}, nil
 }
 
+// usesBase reports whether target rebuilds from doc_v2 plus the log above it
+// rather than from the log alone. The base must hold nothing past target, which
+// recorded coverage decides: a flush or store snapshot rewrites doc_v2 without
+// moving the checkpoint. A live base is the room's current state, so it serves
+// the head, where content it alone holds belongs, and nothing below it.
+func usesBase(rs *rebuildState, target uint32) bool {
+	cov := rs.m.covers()
+	if cov.clock > target {
+		return false
+	}
+	return !cov.live || target >= visibleHead(rs, cov.clock)
+}
+
+// visibleHead is the newest clock a reader sees, never below base.
+func visibleHead(rs *rebuildState, base uint32) uint32 {
+	visible := rs.clocks
+	if rs.m.hasCeil {
+		visible = clocksUpTo(visible, rs.m.ceil)
+	}
+	if n := len(visible); n > 0 && visible[n-1] > base {
+		return visible[n-1]
+	}
+	return base
+}
+
 // rebuildRefusal reports why target cannot be rebuilt exactly from rs, or nil
 // when it can. A refusal is a *notRebuildable.
 func (a *Adapter) rebuildRefusal(ctx context.Context, room string, rs *rebuildState, target uint32) error {
 	if rs.legacyOnly {
 		return nil
 	}
-	// The base is usable for a version only if it holds nothing past it. The
-	// checkpoint used to stand in for that, but a flush or snapshot from the store
-	// rewrites doc_v2 without moving the checkpoint, so recorded coverage decides.
+	if usesBase(rs, target) {
+		return nil
+	}
 	cov := rs.m.covers()
 	base := cov.clock
-	// A live base can hold edits that raced its flush and only reached the log at
-	// later clocks, so used for a version below the head it can run past it.
-	if base <= target && cov.live {
-		head := base
-		visible := rs.clocks
-		if rs.m.hasCeil {
-			visible = clocksUpTo(visible, rs.m.ceil)
-		}
-		if n := len(visible); n > 0 && visible[n-1] > head {
-			head = visible[n-1]
-		}
-		if target < head {
-			return &notRebuildable{detail: fmt.Sprintf(
-				"version %d is below the head %d, and the base was flushed from a live room that can hold later edits", target, head)}
-		}
-	}
+	// A live base can hold edits that raced its flush and reached the log only at
+	// later clocks, so below the head it can run past the version.
 	if base <= target {
-		return nil
+		return &notRebuildable{detail: fmt.Sprintf(
+			"version %d is below the head %d, and the base was flushed from a live room that can hold later edits",
+			target, visibleHead(rs, base))}
 	}
 	// The base is left out, so the update objects are the only source for this
 	// version, and a compaction may have folded the oldest ones away.

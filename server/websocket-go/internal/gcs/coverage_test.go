@@ -58,16 +58,50 @@ func newCoverageAdapter(t *testing.T) *Adapter {
 	return a
 }
 
-// TestMaterializeAt_RefusesAVersionALiveFlushOvertook: the last-instance flush
-// writes the live room into doc_v2 and leaves the checkpoint alone. A live room
-// can hold edits that only reach the log at later clocks, so once the head moves
-// on, a version at the flush point is refused rather than rebuilt from a base
-// that may run past it. Versions the base does not reach still rebuild exactly.
-func TestMaterializeAt_RefusesAVersionALiveFlushOvertook(t *testing.T) {
+// TestMaterializeAt_LiveBaseServesTheHeadOnly: a live base is the room's current
+// state. Below the head it can run past the version and is refused, but the head
+// keeps what only the base holds: rebuilding it from the log alone would drop a
+// real edit, and a rollback to it would then delete that edit.
+func TestMaterializeAt_LiveBaseServesTheHeadOnly(t *testing.T) {
 	t.Parallel()
 	ctx := context.Background()
 	a := newCoverageAdapter(t)
-	const room = "live-flush"
+	const room = "live-head"
+	logged := appendLetters(t, a, room, 3, nil)
+
+	live := crdt.New(crdt.WithClientID(88))
+	if err := crdt.ApplyUpdateV1(live, logged, nil); err != nil {
+		t.Fatalf("apply: %v", err)
+	}
+	lt := live.GetText("t")
+	live.Transact(func(txn *crdt.Transaction) { lt.Insert(txn, lt.Len(), "X", nil) })
+	if err := a.FlushSnapshot(ctx, room, crdt.EncodeStateAsUpdateV1(live, nil)); err != nil {
+		t.Fatalf("FlushSnapshot: %v", err)
+	}
+
+	got, err := a.MaterializeAt(ctx, room, persistence.Version(3))
+	if err != nil {
+		t.Fatalf("MaterializeAt(3), the head: %v", err)
+	}
+	if s := textOf(t, got); s != "abcX" {
+		t.Errorf("MaterializeAt(3) = %q, want %q: the edit only the base holds was dropped", s, "abcX")
+	}
+	got, err = a.MaterializeAt(ctx, room, persistence.Version(1))
+	if err != nil {
+		t.Fatalf("MaterializeAt(1): %v", err)
+	}
+	if s := textOf(t, got); s != "a" {
+		t.Errorf("MaterializeAt(1) = %q, want %q", s, "a")
+	}
+}
+
+// TestMaterializeAt_RefusesBelowTheHeadOfALiveBase: once the head moves past a
+// live flush, a version at the flush point could hold edits that raced it.
+func TestMaterializeAt_RefusesBelowTheHeadOfALiveBase(t *testing.T) {
+	t.Parallel()
+	ctx := context.Background()
+	a := newCoverageAdapter(t)
+	const room = "live-below"
 	appendLetters(t, a, room, 4, func(clock int, full []byte) {
 		if clock == 3 {
 			if err := a.FlushSnapshot(ctx, room, full); err != nil {
@@ -78,16 +112,6 @@ func TestMaterializeAt_RefusesAVersionALiveFlushOvertook(t *testing.T) {
 
 	if got, err := a.MaterializeAt(ctx, room, persistence.Version(3)); !errors.Is(err, ErrVersionNotRebuildable) {
 		t.Errorf("MaterializeAt(3) = %q, %v; want ErrVersionNotRebuildable", textOf(t, got), err)
-	}
-	for v, want := range map[int]string{1: "a", 4: "abcd"} {
-		got, err := a.MaterializeAt(ctx, room, persistence.Version(v))
-		if err != nil {
-			t.Errorf("MaterializeAt(%d): %v", v, err)
-			continue
-		}
-		if s := textOf(t, got); s != want {
-			t.Errorf("MaterializeAt(%d) = %q, want %q", v, s, want)
-		}
 	}
 }
 

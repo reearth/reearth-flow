@@ -79,6 +79,8 @@ type Adapter struct {
 	// there, as a crash would (test injection only).
 	afterRollbackMark  func() bool
 	afterRollbackDocV2 func() bool
+	// afterRollbackCheckpoint is the same, after the checkpoint write.
+	afterRollbackCheckpoint func() bool
 
 	// oidCache memoizes allocated OIDs per room. Phase 2 pins OID=0.
 	oidCache map[string]uint32

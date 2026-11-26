@@ -2,7 +2,10 @@ package gcs
 
 import (
 	"context"
+	"crypto/rand"
+	"encoding/hex"
 	"errors"
+	"fmt"
 
 	"github.com/reearth/ygo/persistence"
 )
@@ -29,9 +32,19 @@ func (a *Adapter) PruneAfter(ctx context.Context, room string, target persistenc
 		if err := a.settleRollback(ctx, room, oid); err != nil {
 			return err
 		}
-		// (0a) announce the rollback before changing anything, so a flush candidate
-		// built earlier is dropped even if this rollback dies partway.
-		if err := a.store.put(ctx, a.rollbackEpochName(room), be32(t)); err != nil {
+		// The lock callback keeps running after a lapsed lease, so each write below
+		// lands only on the generation read here. A holder that resumes after
+		// another rollback committed fails instead of overwriting it.
+		v2Gen, err := a.store.generation(ctx, a.layout.DocV2Name(room))
+		if err != nil {
+			return err
+		}
+		cpGen, err := a.store.generation(ctx, a.layout.CheckpointName(room))
+		if err != nil {
+			return err
+		}
+		ceilGen, err := a.store.generation(ctx, a.ceilingName(room))
+		if err != nil {
 			return err
 		}
 		prev, has, err := a.ceiling(ctx, room)
@@ -41,30 +54,49 @@ func (a *Adapter) PruneAfter(ctx context.Context, room string, target persistenc
 		if !has {
 			prev = noCeiling
 		}
-		// (0b) Mark the ceiling. Until (2a) clears it, doc_v2 can hold the
-		// rolled-back document while the ceiling and checkpoint still describe the
-		// old head, and a reader that sees the mark does not serve that mix.
-		if err := a.store.put(ctx, a.ceilingName(room), markedCeiling(prev, t)); err != nil {
+		doc, err := docFromV1(rolledBack)
+		if err != nil {
 			return err
+		}
+		op, opID, err := newRollbackOp()
+		if err != nil {
+			return err
+		}
+		// (0a) announce the rollback before changing anything, so a flush candidate
+		// built earlier is dropped even if this rollback dies partway.
+		if err := a.store.put(ctx, a.rollbackEpochName(room), be32(t)); err != nil {
+			return err
+		}
+		// (0b) Mark the ceiling, naming this rollback. Until (3) clears it, doc_v2,
+		// the checkpoint and the ceiling may disagree, and readers refuse the mix.
+		markGen, err := a.store.putIfGeneration(ctx, a.ceilingName(room), markedCeiling(prev, t, op), ceilGen)
+		if err != nil {
+			return lostLease(err)
 		}
 		if a.afterRollbackMark != nil && a.afterRollbackMark() {
 			return nil
 		}
-		// (1) durable rolled-back snapshot.
-		if err := a.writeV2Snapshot(ctx, room, oid, rolledBack, coverage{clock: t}); err != nil {
-			return err
+		// (1) The rolled-back document, carrying this rollback's id so a later
+		// holder can tell that it was published.
+		if _, err := a.writeV2DocIf(ctx, room, oid, doc, v2Gen, coverage{clock: t, rollbackOp: opID}); err != nil {
+			return lostLease(err)
 		}
 		if a.afterRollbackDocV2 != nil && a.afterRollbackDocV2() {
 			return nil
 		}
-		// (2a) ceiling = target, which also clears the mark, written before the
-		// delete so a crash hides any surviving update > target.
-		if err := a.store.put(ctx, a.ceilingName(room), be32(t)); err != nil {
-			return err
+		// (2) checkpoint = target, while the mark still holds readers and the
+		// append path off, so a failure here is settled rather than skipped.
+		if _, err := a.store.putIfGeneration(ctx, a.layout.CheckpointName(room), be32(t), cpGen); err != nil {
+			return lostLease(err)
 		}
-		// (2b) checkpoint = target.
-		if err := a.store.put(ctx, a.layout.CheckpointName(room), be32(t)); err != nil {
-			return err
+		if a.afterRollbackCheckpoint != nil && a.afterRollbackCheckpoint() {
+			return nil
+		}
+		// (3) ceiling = target, clearing the mark. It hides any update above the
+		// target that survives a stop before (4).
+		ceilGen, err = a.store.putIfGeneration(ctx, a.ceilingName(room), be32(t), markGen)
+		if err != nil {
+			return lostLease(err)
 		}
 		// Conformance crash injection: return after the durable checkpoint+ceiling
 		// but before deleting future updates.
@@ -74,9 +106,51 @@ func (a *Adapter) PruneAfter(ctx context.Context, room string, target persistenc
 		if crash != nil && crash() {
 			return nil
 		}
-		// (3) delete every update > target.
-		return a.deleteUpdatesAfter(ctx, room, oid, t)
+		// (4) delete every update > target.
+		return a.deleteUpdatesAfterFenced(ctx, room, oid, t, ceilGen)
 	})
+}
+
+// lostLease reports a conditional write that lost to another holder, which
+// only happens once this holder's lease has lapsed.
+func lostLease(err error) error {
+	if errors.Is(err, errGenerationMoved) {
+		return fmt.Errorf("%w: another holder changed the room mid-rollback", errStateMoved)
+	}
+	return err
+}
+
+// newRollbackOp names one rollback.
+func newRollbackOp() ([8]byte, string, error) {
+	var b [8]byte
+	if _, err := rand.Read(b[:]); err != nil {
+		return b, "", err
+	}
+	return b, hex.EncodeToString(b[:]), nil
+}
+
+// deleteUpdatesAfterFenced deletes every update above target, each only at the
+// generation listed, and only while the ceiling is the one this rollback wrote:
+// an append clears it, after which a reused clock is someone's new edit.
+func (a *Adapter) deleteUpdatesAfterFenced(ctx context.Context, room DocID, oid, target uint32, ceilGen int64) error {
+	listed, err := a.listUpdatesAttrs(ctx, room, oid)
+	if err != nil {
+		return err
+	}
+	if g, err := a.store.generation(ctx, a.ceilingName(room)); err != nil {
+		return err
+	} else if g != ceilGen {
+		return lostLease(errGenerationMoved)
+	}
+	for c, at := range listed {
+		if c <= target {
+			continue
+		}
+		if err := a.store.deleteIfGeneration(ctx, at.Name, at.Generation); err != nil {
+			return lostLease(err)
+		}
+	}
+	return nil
 }
 
 // settleRollback finishes or abandons a rollback whose writer stopped after
@@ -92,14 +166,16 @@ func (a *Adapter) settleRollback(ctx context.Context, room DocID, oid uint32) er
 		return err
 	}
 	// Holding the lock shows no rollback is running, not that the last one
-	// finished. doc_v2 covering exactly the target, from no live room, means it
-	// had published the rolled-back document, so finish from there.
-	if cov, ok := coverageOf(meta); ok && cov == (coverage{clock: mark.target}) {
+	// finished. Equal coverage is no proof either, since a store snapshot can
+	// already cover the target: only doc_v2 naming this rollback means it
+	// published, so only then is it finished.
+	if cov, ok := coverageOf(meta); ok && mark.op != "" && cov.rollbackOp == mark.op && cov.clock == mark.target {
 		a.log.Warn("gcs: finishing a rollback whose writer stopped", "room", room, "target", mark.target)
-		if err := a.store.put(ctx, a.ceilingName(room), be32(mark.target)); err != nil {
+		// Checkpoint first: the mark keeps the append path off until it is durable.
+		if err := a.store.put(ctx, a.layout.CheckpointName(room), be32(mark.target)); err != nil {
 			return err
 		}
-		if err := a.store.put(ctx, a.layout.CheckpointName(room), be32(mark.target)); err != nil {
+		if err := a.store.put(ctx, a.ceilingName(room), be32(mark.target)); err != nil {
 			return err
 		}
 		return a.deleteUpdatesAfter(ctx, room, oid, mark.target)

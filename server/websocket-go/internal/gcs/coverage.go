@@ -10,17 +10,23 @@ type coverage struct {
 	// live means the base was built from a live room, which can hold edits that
 	// no update object carries yet, so it may also run past clock.
 	live bool
+	// rollbackOp names the rollback that published this base, if one did.
+	rollbackOp string
 }
 
 const (
-	metaCovers = "covers"
-	metaLive   = "live"
+	metaCovers     = "covers"
+	metaLive       = "live"
+	metaRollbackOp = "rollback_op"
 )
 
 func (c coverage) meta() map[string]string {
 	m := map[string]string{metaCovers: strconv.FormatUint(uint64(c.clock), 10)}
 	if c.live {
 		m[metaLive] = "1"
+	}
+	if c.rollbackOp != "" {
+		m[metaRollbackOp] = c.rollbackOp
 	}
 	return m
 }
@@ -36,5 +42,5 @@ func coverageOf(meta map[string]string) (coverage, bool) {
 	if err != nil {
 		return coverage{}, false
 	}
-	return coverage{clock: uint32(n), live: meta[metaLive] == "1"}, true
+	return coverage{clock: uint32(n), live: meta[metaLive] == "1", rollbackOp: meta[metaRollbackOp]}, true
 }

@@ -27,9 +27,11 @@ type fakeStore struct {
 	materializeErr error
 	// unrebuildable marks versions RebuildableVersions reports as not rebuildable.
 	unrebuildable map[uint64]bool
-	rolledBack    bool
-	prunedTarget  uint64
-	flushed       bool
+	// rebuildableErr, if set, is returned by RebuildableVersions.
+	rebuildableErr error
+	rolledBack     bool
+	prunedTarget   uint64
+	flushed        bool
 	// captureSnapshotCalled must stay false: the snapshot endpoint is read-only.
 	captureSnapshotCalled bool
 	copied                [2]string // [dst, src]
@@ -80,6 +82,9 @@ func (f *fakeStore) MaterializeAt(ctx context.Context, room string, v uint64) ([
 	return f.materialized, nil
 }
 func (f *fakeStore) RebuildableVersions(ctx context.Context, room string, versions []uint64) (map[uint64]bool, error) {
+	if f.rebuildableErr != nil {
+		return nil, f.rebuildableErr
+	}
 	out := make(map[uint64]bool, len(versions))
 	for _, v := range versions {
 		out[v] = !f.unrebuildable[v]
@@ -519,6 +524,49 @@ type refusedRebuild struct{}
 
 func (refusedRebuild) Error() string        { return "the update log was compacted past this version" }
 func (refusedRebuild) NotRebuildable() bool { return true }
+
+// rollbackRunning is a store error for a rollback whose writer holds the lock.
+type rollbackRunning struct{}
+
+func (rollbackRunning) Error() string            { return "a rollback of this room is in progress" }
+func (rollbackRunning) RollbackInProgress() bool { return true }
+
+// TestRecoveryRoutesAskForARetryDuringARollback: the state is unreadable only
+// until the rollback's writer finishes, so the routes answer 503, not the 500 of
+// a failure or the 409 of a final refusal.
+func TestRecoveryRoutesAskForARetryDuringARollback(t *testing.T) {
+	t.Parallel()
+
+	t.Run("rollback", func(t *testing.T) {
+		t.Parallel()
+		store := &fakeStore{materializeErr: rollbackRunning{}}
+		rec := do(t, newTestRouter(store), "POST", "/api/document/proj1/rollback", `{"doc_id":"proj1","version":4}`)
+		if rec.Code != http.StatusServiceUnavailable {
+			t.Errorf("status = %d, want %d", rec.Code, http.StatusServiceUnavailable)
+		}
+		if store.rolledBack {
+			t.Error("PruneAfter ran while a rollback was in progress")
+		}
+	})
+
+	t.Run("snapshot", func(t *testing.T) {
+		t.Parallel()
+		store := &fakeStore{materializeErr: rollbackRunning{}}
+		rec := do(t, newTestRouter(store), "POST", "/api/document/snapshot", `{"doc_id":"proj1","version":4}`)
+		if rec.Code != http.StatusServiceUnavailable {
+			t.Errorf("status = %d, want %d", rec.Code, http.StatusServiceUnavailable)
+		}
+	})
+
+	t.Run("history", func(t *testing.T) {
+		t.Parallel()
+		store := &fakeStore{versions: []VersionInfo{{Version: 1}}, rebuildableErr: rollbackRunning{}}
+		rec := do(t, newTestRouter(store), "GET", "/api/document/proj1/history/metadata", "")
+		if rec.Code != http.StatusServiceUnavailable {
+			t.Errorf("status = %d, want %d", rec.Code, http.StatusServiceUnavailable)
+		}
+	})
+}
 
 // TestRollbackRefusesAVersionTheStoreCannotRebuild: a rebuild the store refuses
 // must never reach PruneAfter. PruneAfter replaces doc_v2 with what it is given

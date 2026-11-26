@@ -36,6 +36,19 @@ var ErrNotFound = errors.New("document not found")
 // sentinel so this package keeps no dependency on the storage implementation.
 type notRebuildable interface{ NotRebuildable() bool }
 
+// rollbackInProgress is reported by a store that will not read a room while a
+// rollback of it is unfinished and its writer still holds the lock.
+type rollbackInProgress interface{ RollbackInProgress() bool }
+
+// retryLater reports whether err is transient in that way. A refused rebuild is
+// final; this is not, so it answers 503 rather than 409.
+func retryLater(err error) bool {
+	var ri rollbackInProgress
+	return errors.As(err, &ri) && ri.RollbackInProgress()
+}
+
+const msgRollbackInProgress = "a restore of this project is in progress, try again shortly"
+
 // rebuildRefused reports whether err is a store refusing to rebuild a version.
 // It is a conflict with the stored history, not a server fault, so the handlers
 // answer 409 rather than 500.
@@ -201,6 +214,10 @@ func (r *router) getHistory(w http.ResponseWriter, req *http.Request) {
 	if err == nil {
 		versions, err = r.rebuildable(req.Context(), id, versions)
 	}
+	if retryLater(err) {
+		writeErr(w, http.StatusServiceUnavailable, msgRollbackInProgress)
+		return
+	}
 	if err != nil {
 		r.fail(w, "history failed", err, "doc", id)
 		return
@@ -230,6 +247,10 @@ func (r *router) getHistoryMetadata(w http.ResponseWriter, req *http.Request) {
 	versions, err := r.store.ListVersions(req.Context(), id)
 	if err == nil {
 		versions, err = r.rebuildable(req.Context(), id, versions)
+	}
+	if retryLater(err) {
+		writeErr(w, http.StatusServiceUnavailable, msgRollbackInProgress)
+		return
 	}
 	if err != nil {
 		r.fail(w, "history metadata failed", err, "doc", id)
@@ -301,6 +322,10 @@ func (r *router) rollback(w http.ResponseWriter, req *http.Request) {
 	}
 	ctx := req.Context()
 	rolledBack, err := r.store.MaterializeAt(ctx, id, body.Version)
+	if retryLater(err) {
+		writeErr(w, http.StatusServiceUnavailable, msgRollbackInProgress)
+		return
+	}
 	// Refused before the prune: the rebuild would be a fragment, and PruneAfter
 	// writes it over doc_v2 and deletes the log above the target. Failing the
 	// restore is recoverable, destroying the history above it is not.
@@ -393,6 +418,10 @@ func (r *router) createSnapshot(w http.ResponseWriter, req *http.Request) {
 		return
 	}
 	state, err := r.store.MaterializeAt(req.Context(), body.DocID, body.Version)
+	if retryLater(err) {
+		writeErr(w, http.StatusServiceUnavailable, msgRollbackInProgress)
+		return
+	}
 	// Same refusal as rollback: a snapshot of a fragment would be stored as if it
 	// were that version.
 	if rebuildRefused(err) {
