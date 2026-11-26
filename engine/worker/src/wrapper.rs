@@ -210,7 +210,7 @@ pub fn cleanup_work_root(root: &Path) {
     }
 }
 
-/// A work root for a request that carries no job id, removed when dropped.
+/// A work root for one request, removed when dropped.
 ///
 /// Removal is tied to `Drop` rather than called at each return so it also runs
 /// when the request itself is dropped mid-await. A child that is killed never
@@ -218,8 +218,15 @@ pub fn cleanup_work_root(root: &Path) {
 pub struct ScratchRoot(PathBuf);
 
 impl ScratchRoot {
+    /// A root under a fresh name, for a request that carries no job id.
     pub fn new(base: &Path) -> std::io::Result<Self> {
-        make_work_root(base, &uuid::Uuid::new_v4().to_string()).map(Self)
+        Self::for_job(base, &uuid::Uuid::new_v4().to_string())
+    }
+
+    /// The root `base/<job_id>`. `job_id` must already have passed
+    /// [`validate_job_id`].
+    pub fn for_job(base: &Path, job_id: &str) -> std::io::Result<Self> {
+        make_work_root(base, job_id).map(Self)
     }
 
     pub fn path(&self) -> &Path {
@@ -334,6 +341,101 @@ impl Drop for Running {
             }
             Err(_) => drop((child, scratch)),
         }
+    }
+}
+
+/// Serve one `/run` request: run the worker under `base/<job_id>` until it
+/// exits or the request's cancel flag appears.
+///
+/// The child and its work root are held by [`Running`], so a request that goes
+/// away mid-run kills the child and removes the root only after it has exited,
+/// the same as a dropped [`run_bounded`].
+///
+/// Response: `{"status": "COMPLETED"|"CANCELLED"|"FAILED", "error"?: string}`.
+pub async fn serve_run(
+    worker_bin: &str,
+    work_base: &Path,
+    resolver: &Arc<StorageResolver>,
+    req: &RunRequest,
+) -> (StatusCode, Value) {
+    use std::str::FromStr;
+
+    // Validated before touching the filesystem, since it names the root removed.
+    if let Err(e) = validate_job_id(&req.job_id) {
+        return (
+            StatusCode::BAD_REQUEST,
+            json!({"status": "FAILED", "error": e}),
+        );
+    }
+    let cancel_uri = match Uri::from_str(&req.cancel_flag_uri) {
+        Ok(u) => u,
+        Err(e) => {
+            return (
+                StatusCode::BAD_REQUEST,
+                json!({"status": "FAILED", "error": format!("bad cancel_flag_uri: {e}")}),
+            );
+        }
+    };
+    let scratch = match ScratchRoot::for_job(work_base, &req.job_id) {
+        Ok(s) => s,
+        Err(e) => return failed(e.to_string()),
+    };
+
+    let child = match tokio::process::Command::new(worker_bin)
+        .args(build_worker_args(req))
+        .env("FLOW_RUNTIME_WORKING_DIRECTORY", scratch.path())
+        .env("TMPDIR", scratch.path())
+        .stdout(std::process::Stdio::inherit())
+        .stderr(std::process::Stdio::inherit())
+        .kill_on_drop(true)
+        .spawn()
+    {
+        Ok(c) => c,
+        Err(e) => return failed(e.to_string()),
+    };
+    eprintln!(
+        "[wrapper] spawned job {} pid={}",
+        req.job_id,
+        child.id().unwrap_or(0)
+    );
+    let mut running = Running {
+        child: Some(child),
+        scratch: Some(scratch),
+    };
+    let child = running.child.as_mut().expect("the child was just spawned");
+
+    // Check exit before cancel flag: COMPLETED wins if both arrive simultaneously.
+    loop {
+        match child.try_wait() {
+            Ok(Some(status)) => {
+                running.release();
+                return if status.success() {
+                    (StatusCode::OK, json!({"status": "COMPLETED"}))
+                } else {
+                    failed(format!("worker exit: {status}"))
+                };
+            }
+            Ok(None) => {}
+            // The child may still be running, so `running` is left to kill it
+            // before the root goes.
+            Err(e) => return failed(e.to_string()),
+        }
+
+        let cancelled = tokio::time::timeout(
+            std::time::Duration::from_secs(5),
+            cancel_requested(resolver, &cancel_uri),
+        )
+        .await
+        .unwrap_or(false);
+        if cancelled {
+            eprintln!("[wrapper] cancel flag seen for {} -> killing", req.job_id);
+            // `kill` also waits, so the child has exited before the root goes.
+            let _ = child.kill().await;
+            running.release();
+            return (StatusCode::OK, json!({"status": "CANCELLED"}));
+        }
+
+        tokio::time::sleep(std::time::Duration::from_secs(2)).await;
     }
 }
 
@@ -826,6 +928,113 @@ mod bounded_tests {
             tokio::time::sleep(Duration::from_millis(20)).await;
         }
         panic!("the scratch root outlived the dropped run");
+    }
+
+    /// A stand-in for `reearth-flow-worker` that ignores its arguments and
+    /// runs `body`.
+    fn fake_worker(dir: &Path, body: &str) -> String {
+        use std::os::unix::fs::PermissionsExt;
+        let path = dir.join("fake-worker.sh");
+        std::fs::write(&path, format!("#!/bin/sh\n{body}\n")).unwrap();
+        std::fs::set_permissions(&path, std::fs::Permissions::from_mode(0o755)).unwrap();
+        path.display().to_string()
+    }
+
+    fn run_request(dir: &Path) -> RunRequest {
+        RunRequest {
+            job_id: "job-1".into(),
+            workflow_url: "file:///wf.yml".into(),
+            metadata_path: "file:///md".into(),
+            variables: Default::default(),
+            previous_job_id: None,
+            start_node_id: None,
+            cancel_flag_uri: format!("file://{}", dir.join("cancel").display()),
+        }
+    }
+
+    #[tokio::test]
+    async fn a_dropped_run_kills_its_worker_and_removes_its_work_root() {
+        let dir = tempfile::tempdir().unwrap();
+        let work_base = dir.path().join("work");
+        let pid_file = dir.path().join("pid");
+        let worker = fake_worker(
+            dir.path(),
+            &format!(
+                r#": > "$FLOW_RUNTIME_WORKING_DIRECTORY/blob"; echo $$ > '{}'; exec sleep 30"#,
+                pid_file.display()
+            ),
+        );
+        let req = run_request(dir.path());
+        let root = work_base.join(&req.job_id);
+
+        let resolver = Arc::new(StorageResolver::new());
+        let dropped = tokio::time::timeout(
+            Duration::from_millis(500),
+            serve_run(&worker, &work_base, &resolver, &req),
+        )
+        .await;
+        assert!(dropped.is_err(), "the run should still have been going");
+
+        let pid = read_pid(&pid_file).await;
+        for _ in 0..100 {
+            if !root.exists() {
+                assert!(!is_running(&pid), "pid {pid} outlived its work root");
+                return;
+            }
+            tokio::time::sleep(Duration::from_millis(20)).await;
+        }
+        panic!("the work root outlived the dropped run");
+    }
+
+    #[tokio::test]
+    async fn a_run_whose_cancel_flag_appears_is_cancelled_and_cleaned_up() {
+        let dir = tempfile::tempdir().unwrap();
+        let work_base = dir.path().join("work");
+        let pid_file = dir.path().join("pid");
+        let worker = fake_worker(
+            dir.path(),
+            &format!("echo $$ > '{}'; exec sleep 30", pid_file.display()),
+        );
+        let req = run_request(dir.path());
+        let root = work_base.join(&req.job_id);
+
+        let run = tokio::spawn({
+            let (worker, work_base, req) = (worker.clone(), work_base.clone(), req.clone());
+            async move {
+                let resolver = Arc::new(StorageResolver::new());
+                serve_run(&worker, &work_base, &resolver, &req).await
+            }
+        });
+        let pid = read_pid(&pid_file).await;
+        std::fs::write(dir.path().join("cancel"), b"").unwrap();
+        let (status, body) = tokio::time::timeout(Duration::from_secs(10), run)
+            .await
+            .expect("the cancel was seen")
+            .unwrap();
+
+        assert_eq!(status, StatusCode::OK);
+        assert_eq!(body["status"], "CANCELLED");
+        assert!(!root.exists());
+        assert!(!is_running(&pid));
+    }
+
+    #[tokio::test]
+    async fn a_run_whose_worker_fails_reports_its_exit_and_is_cleaned_up() {
+        let dir = tempfile::tempdir().unwrap();
+        let work_base = dir.path().join("work");
+        let worker = fake_worker(dir.path(), "exit 3");
+        let req = run_request(dir.path());
+
+        let resolver = Arc::new(StorageResolver::new());
+        let (status, body) = serve_run(&worker, &work_base, &resolver, &req).await;
+
+        assert_eq!(status, StatusCode::INTERNAL_SERVER_ERROR);
+        assert_eq!(body["status"], "FAILED");
+        assert!(
+            body["error"].as_str().unwrap().starts_with("worker exit:"),
+            "{body}"
+        );
+        assert!(!work_base.join(&req.job_id).exists());
     }
 }
 
