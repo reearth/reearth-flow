@@ -514,6 +514,7 @@
   "{{remaining}} more": "他 {{remaining}} 人",
   "Current Version": "現在のバージョン",
   "Version ": "バージョン ",
+  "The version history could not be loaded. Close this dialog and try again.": "バージョン履歴を読み込めませんでした。このダイアログを閉じて、もう一度お試しください。",
   "There is nothing to restore here. Saved versions are in the Version History panel.": "ここで復元できるものはありません。保存済みのバージョンはバージョン履歴パネルにあります。",
   "Are you sure you want to revert to this version?": "このバージョンに戻しますか？",
   "By clicking continue you will be reverting to version {{version}}.": "続行をクリックすると、バージョン{{version}}に戻ります。",

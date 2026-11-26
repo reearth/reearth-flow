@@ -73,4 +73,24 @@ describe("RecoveryVersionHistoryList", () => {
       ),
     ).toBeInTheDocument();
   });
+
+  // A failed request is not an empty history: saved entries may exist.
+  test("says the history could not be loaded when the request failed", () => {
+    render(
+      <RecoveryVersionHistoryList
+        latestProjectSnapshotVersion={latestProjectSnapshotVersion}
+        history={undefined}
+        isError
+        selectedProjectSnapshotVersion={null}
+        onVersionSelection={vi.fn()}
+      />,
+    );
+
+    expect(
+      screen.getByText(
+        "The version history could not be loaded. Close this dialog and try again.",
+      ),
+    ).toBeInTheDocument();
+    expect(screen.queryByText(/nothing to restore/)).not.toBeInTheDocument();
+  });
 });

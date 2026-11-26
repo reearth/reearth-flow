@@ -514,6 +514,7 @@
   "{{remaining}} more": "另外 {{remaining}} 人",
   "Current Version": "当前版本",
   "Version ": "版本 ",
+  "The version history could not be loaded. Close this dialog and try again.": "无法加载版本历史。请关闭此对话框后重试。",
   "There is nothing to restore here. Saved versions are in the Version History panel.": "这里没有可恢复的内容。已保存的版本位于版本历史面板中。",
   "Are you sure you want to revert to this version?": "您确定要恢复到此版本吗？",
   "By clicking continue you will be reverting to version {{version}}.": "点击继续，您将恢复到版本{{version}}。",

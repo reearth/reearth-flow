@@ -8,6 +8,7 @@ const hook = vi.hoisted(() => ({
   selectedProjectSnapshotVersion: null as number | null,
   isRefusedVersion: false,
   isEmptyPreview: false,
+  isHistoryError: false,
 }));
 
 // recoveryHooks reaches the network and the yjs document; neither is under test
@@ -17,6 +18,7 @@ const hook = vi.hoisted(() => ({
 vi.mock("./recoveryHooks", () => ({
   default: () => ({
     history: [],
+    isHistoryError: hook.isHistoryError,
     latestProjectSnapshotVersion: undefined,
     previewDocRef: { current: null },
     previewDocYWorkflows: null,
@@ -52,6 +54,7 @@ describe("ProjectRecoveryDialog", () => {
     hook.selectedProjectSnapshotVersion = null;
     hook.isRefusedVersion = false;
     hook.isEmptyPreview = false;
+    hook.isHistoryError = false;
   });
 
   // This dialog renders from the route's errorComponent, which REPLACES the
@@ -100,5 +103,17 @@ describe("ProjectRecoveryDialog", () => {
       screen.getByText("This version has no workflows"),
     ).toBeInTheDocument();
     expect(revertButton()).toBeDisabled();
+  });
+
+  test("tells a failed history load apart from an empty one", () => {
+    hook.isHistoryError = true;
+    render(<ProjectRecoveryDialog yDoc={null} onDialogClose={vi.fn()} />);
+
+    expect(
+      screen.getByText(
+        "The version history could not be loaded. Close this dialog and try again.",
+      ),
+    ).toBeInTheDocument();
+    expect(screen.queryByText(/nothing to restore/)).not.toBeInTheDocument();
   });
 });

@@ -522,6 +522,7 @@
   "{{remaining}} more": "{{remaining}} de plus",
   "Current Version": "Version actuelle",
   "Version ": "Version ",
+  "The version history could not be loaded. Close this dialog and try again.": "Impossible de charger l'historique des versions. Fermez cette fenêtre et réessayez.",
   "There is nothing to restore here. Saved versions are in the Version History panel.": "Il n'y a rien à restaurer ici. Les versions enregistrées se trouvent dans le panneau Historique des versions.",
   "Are you sure you want to revert to this version?": "Êtes-vous sûr de vouloir revenir à cette version?",
   "By clicking continue you will be reverting to version {{version}}.": "En cliquant sur continuer, vous allez revenir à la version {{version}}.",

@@ -12,7 +12,11 @@ const calls = vi.hoisted(() => ({
 
 vi.mock("@flow/lib/gql/document/useApi", () => ({
   useDocument: () => ({
-    useGetProjectHistory: () => ({ history: [], isFetching: false }),
+    useGetProjectHistory: () => ({
+      history: [],
+      isFetching: false,
+      isError: false,
+    }),
     useGetLatestProjectSnapshot: () => ({ projectDocument: undefined }),
     useRollbackProject: vi.fn(),
     useGetPreviewProjectSnapshot: calls.previewSnapshot,
@@ -105,5 +109,91 @@ describe("recovery hooks", () => {
     expect(result.current.isEmptyPreview).toBe(false);
     expect(result.current.isRefusedVersion).toBe(false);
     expect(result.current.previewDocYWorkflows?.size).toBe(2);
+  });
+
+  // Preview requests are not serialized. Each test below lets the earlier
+  // selection's response arrive last, the only order in which it can do harm.
+  type Preview = { previewSnapshot?: { updates: number[] }; refused: boolean };
+  function deferred() {
+    let resolve!: (v: Preview) => void;
+    const promise = new Promise<Preview>((r) => (resolve = r));
+    return { promise, resolve };
+  }
+  const selectBoth = (result: ReturnType<typeof render>["result"]) => {
+    let earlier: Promise<unknown> = Promise.resolve();
+    let latest: Promise<unknown> = Promise.resolve();
+    act(() => {
+      earlier = result.current.onVersionSelection(2);
+    });
+    act(() => {
+      latest = result.current.onVersionSelection(3);
+    });
+    return { earlier, latest };
+  };
+
+  test("a stale refusal cannot clear the refusal of the version still selected", async () => {
+    const first = deferred();
+    const second = deferred();
+    calls.previewSnapshot
+      .mockReturnValueOnce(first.promise)
+      .mockReturnValueOnce(second.promise);
+    const { result } = render();
+    const { earlier, latest } = selectBoth(result);
+
+    await act(async () => {
+      second.resolve({ previewSnapshot: undefined, refused: true });
+      await latest;
+    });
+    await act(async () => {
+      first.resolve({ previewSnapshot: undefined, refused: true });
+      await earlier;
+    });
+
+    expect(result.current.selectedProjectSnapshotVersion).toBe(3);
+    expect(result.current.isRefusedVersion).toBe(true);
+  });
+
+  test("a stale empty preview cannot disable Revert for the version selected", async () => {
+    const first = deferred();
+    const second = deferred();
+    calls.previewSnapshot
+      .mockReturnValueOnce(first.promise)
+      .mockReturnValueOnce(second.promise);
+    const { result } = render();
+    const { earlier, latest } = selectBoth(result);
+
+    await act(async () => {
+      second.resolve(previewWith(1));
+      await latest;
+    });
+    await act(async () => {
+      first.resolve(previewWith(0));
+      await earlier;
+    });
+
+    expect(result.current.isEmptyPreview).toBe(false);
+    expect(result.current.previewDocYWorkflows?.size).toBe(1);
+  });
+
+  test("an earlier request finishing does not end the latest one's loading", async () => {
+    const first = deferred();
+    const second = deferred();
+    calls.previewSnapshot
+      .mockReturnValueOnce(first.promise)
+      .mockReturnValueOnce(second.promise);
+    const { result } = render();
+    const { earlier, latest } = selectBoth(result);
+
+    await act(async () => {
+      first.resolve(previewWith(1));
+      await earlier;
+    });
+    expect(result.current.isLoadingPreview).toBe(true);
+
+    await act(async () => {
+      second.resolve(previewWith(1));
+      await latest;
+    });
+    expect(result.current.isLoadingPreview).toBe(false);
   });
 });

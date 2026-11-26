@@ -518,6 +518,7 @@
   "{{remaining}} more": "",
   "Current Version": "",
   "Version ": "",
+  "The version history could not be loaded. Close this dialog and try again.": "",
   "There is nothing to restore here. Saved versions are in the Version History panel.": "",
   "Are you sure you want to revert to this version?": "",
   "By clicking continue you will be reverting to version {{version}}.": "",

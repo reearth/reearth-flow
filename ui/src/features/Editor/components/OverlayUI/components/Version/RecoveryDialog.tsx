@@ -51,6 +51,7 @@ const ProjectRecoveryDialog: React.FC<Props> = ({
   const [animate, setAnimate] = useState<boolean>(false);
   const {
     history,
+    isHistoryError,
     latestProjectSnapshotVersion,
     previewDocRef,
     previewDocYWorkflows,
@@ -176,6 +177,7 @@ const ProjectRecoveryDialog: React.FC<Props> = ({
                 <RecoveryVersionHistoryList
                   latestProjectSnapshotVersion={latestProjectSnapshotVersion}
                   history={history}
+                  isError={isHistoryError}
                   selectedProjectSnapshotVersion={
                     selectedProjectSnapshotVersion
                   }
