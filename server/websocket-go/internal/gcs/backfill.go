@@ -52,6 +52,41 @@ func (a *Adapter) Backfill(ctx context.Context, room string) error {
 	return nil
 }
 
+// hasImportedBase reports whether this room's base can hold content that no
+// update object carries. Backfill copies the legacy root into doc_v2 without
+// writing update objects, so a replay that excludes the base rebuilds short.
+func (a *Adapter) hasImportedBase(ctx context.Context, room string) (bool, error) {
+	if a.fallback == nil {
+		return false, nil
+	}
+	if _, err := a.store.get(ctx, a.fallback.DocV2Name(room)); err == nil {
+		return true, nil
+	} else if err != errNotFound {
+		return false, err
+	}
+	oid, err := a.legacyOID(ctx, room)
+	if err != nil {
+		return false, err
+	}
+	if _, err := a.store.get(ctx, a.fallback.DocStateName(room, oid)); err == nil {
+		return true, nil
+	} else if err != errNotFound {
+		return false, err
+	}
+	// A legacy room often has no base at all: its content is the update objects
+	// alone, which materializeLegacy folds. Backfill imports those the same way.
+	names, err := a.store.list(ctx, a.fallback.UpdatePrefix(room, oid))
+	if err != nil {
+		return false, err
+	}
+	for _, n := range names {
+		if _, ok := updateClock(n); ok {
+			return true, nil
+		}
+	}
+	return false, nil
+}
+
 // materializeLegacy rebuilds the full legacy-root V1 state for room (doc_v2-first,
 // then SUB_DOC base + replayed updates).
 func (a *Adapter) materializeLegacy(ctx context.Context, room string) ([]byte, error) {

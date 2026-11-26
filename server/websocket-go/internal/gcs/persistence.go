@@ -3,6 +3,7 @@ package gcs
 import (
 	"context"
 	"errors"
+	"fmt"
 	"sort"
 
 	"github.com/reearth/ygo/crdt"
@@ -24,6 +25,21 @@ func (a *Adapter) ceilingName(room DocID) string {
 // coexistence, so they must stay byte-identical to the non-Phase-2 branches.
 func legacyCeilingName(room DocID) string {
 	return hexb([]byte("prune_ceiling:" + hexb([]byte(room))))
+}
+
+// rollbackEpochName is rewritten by every PruneAfter and by nothing else, so a
+// change in its generation means a rollback started. The ceiling cannot say
+// that on its own: the next append clears it, after which the marks look like
+// an ordinary checkpoint advance.
+func (a *Adapter) rollbackEpochName(room DocID) string {
+	if a.phase2 {
+		return ProjectPrefix(room) + "rollback_epoch"
+	}
+	return legacyRollbackEpochName(room)
+}
+
+func legacyRollbackEpochName(room DocID) string {
+	return hexb([]byte("rollback_epoch:" + hexb([]byte(room))))
 }
 
 func legacySnapshotPrefix(room DocID) string {
@@ -79,6 +95,11 @@ func (a *Adapter) snapshotPrefix(room DocID) string {
 	return legacySnapshotPrefix(room)
 }
 
+// loadAttempts bounds one round of Load's unlocked reads of a state other
+// writers keep changing. Load tries a round, then the same read under
+// gcsDocLockKey, then a further round if the lock was unavailable.
+const loadAttempts = 4
+
 // Load returns the latest merged state for room (v2-first → v1 fallback), folding
 // any tail update objects on top.
 //
@@ -98,105 +119,359 @@ func (a *Adapter) Load(ctx context.Context, room string) (res persistence.LoadRe
 	if err != nil {
 		return persistence.LoadResult{}, err
 	}
-
-	// v2-first → v1 SUB_DOC fallback, primary layout only (the OID differs between
-	// layouts, so a cross-layout v1 fallback is not byte-valid).
-	var base []byte
-	primaryHasV2 := false
-	if v1, ok, err := a.loadPrimaryV2(ctx, room); err != nil {
-		return persistence.LoadResult{}, err
-	} else if ok {
-		base = v1
-		primaryHasV2 = true
-	} else if b, err := a.store.get(ctx, a.layout.DocStateName(room, oid)); err == nil {
-		base = b
-	} else if err != errNotFound {
-		return persistence.LoadResult{}, err
-	}
-
-	updates, err := a.listUpdates(ctx, room, oid)
+	st, err := a.readStateRetrying(ctx, room, oid)
 	if err != nil {
 		return persistence.LoadResult{}, err
+	}
+	if st.empty {
+		return persistence.LoadResult{Version: persistence.Version(st.head)}, nil
+	}
+	// Served anyway: the parked items stay in every later encode, so they are
+	// kept until the edit they wait for arrives, whereas refusing withholds the
+	// whole project.
+	if ps := st.doc.PendingStats(); ps.Items > 0 {
+		a.log.Error("gcs load: serving a document with parked items; an edit they build on is missing from storage",
+			"room", room, "parked", ps.Items, "awaiting_clients", len(ps.MissingFor))
+	}
+	return persistence.LoadResult{Update: crdt.EncodeStateAsUpdateV1(st.doc, nil), Version: persistence.Version(st.head)}, nil
+}
+
+// readStateRetrying reads the stored state without the doc lock, retrying while
+// a writer changes it underneath, and takes the lock for the last attempt.
+//
+// The lock is an optimisation for this read, never a correctness requirement:
+// every unlocked attempt checks the marks around what it reads, so a read that
+// returns at all is consistent. Load is the connect path, so when the lock is
+// unavailable it must degrade to another unlocked read rather than fail the
+// room open. A room being written hard is exactly when the lock is contended,
+// and it is also exactly when someone is trying to open the room.
+func (a *Adapter) readStateRetrying(ctx context.Context, room DocID, oid uint32) (storedState, error) {
+	st, err := a.readStateUnlocked(ctx, room, oid)
+	if !errors.Is(err, errStateMoved) {
+		return st, err
+	}
+
+	// ran distinguishes "the lock was not acquired" from "the read under it
+	// failed". Each Locker has its own timeout error, so the flag is the only
+	// implementation-independent way to tell them apart.
+	ran := false
+	if lockErr := a.locker.WithLock(ctx, gcsDocLockKey(room), func(ctx context.Context) error {
+		ran = true
+		st, err = a.readState(ctx, room, oid)
+		return err
+	}); lockErr != nil && !ran {
+		a.log.Warn("gcs load: the doc lock was unavailable, reading without it",
+			"room", room, "err", lockErr)
+	}
+	if ran && !errors.Is(err, errStateMoved) {
+		return st, err
+	}
+
+	// Either the lock never came free, or the state moved even under it (a lapsed
+	// lease). Another unlocked round still has to come back clean, so this widens
+	// the window Load tolerates without ever serving a state a writer moved.
+	return a.readStateUnlocked(ctx, room, oid)
+}
+
+// readStateUnlocked reads the state without the doc lock, retrying while a
+// writer keeps changing it underneath. The last attempt's result is returned,
+// so the caller still sees errStateMoved when none of them came back clean.
+func (a *Adapter) readStateUnlocked(ctx context.Context, room DocID, oid uint32) (storedState, error) {
+	var st storedState
+	var err error
+	for attempt := 1; attempt < loadAttempts; attempt++ {
+		if st, err = a.readState(ctx, room, oid); !errors.Is(err, errStateMoved) {
+			break
+		}
+	}
+	return st, err
+}
+
+// errStateMoved reports that a writer changed the room's stored state while it
+// was being read without the doc lock.
+var errStateMoved = errors.New("gcs: stored state changed while it was read")
+
+// storedState is a room's stored state decoded into one document.
+type storedState struct {
+	doc  *crdt.Doc
+	head uint32
+	// empty means nothing is stored for the room.
+	empty bool
+	// v2Gen is the generation of the doc_v2 that doc was read from, 0 for none.
+	v2Gen int64
+	// updates are the listed update objects, and checkpointed the clocks among
+	// them at or below the checkpoint. folded reports that doc already has those.
+	updates      map[uint32]string
+	checkpointed []uint32
+	folded       bool
+	// marks are the ones this read validated, so a caller that chose what to fold
+	// or delete beforehand can check its choice still describes this state.
+	marks marks
+}
+
+// marks are the checkpoint, the rollback ceiling and doc_v2's generation. Every
+// writer that rewrites doc_v2, folds the update log or prunes it changes one of them.
+type marks struct {
+	cp      uint32
+	ceil    uint32
+	hasCeil bool
+	// v2Gen catches a rollback whose later appends brought cp and the ceiling
+	// back to the values read before it.
+	v2Gen int64
+	// epochGen is the rollback epoch's generation. Only readFlushMarks reads it
+	// (epochRead), so the marks Load and Compact compare are unaffected.
+	epochGen  int64
+	epochRead bool
+}
+
+// readFlushMarks is readMarks plus the rollback epoch, for a flush candidate
+// that must be dropped once any rollback starts after it was built.
+func (a *Adapter) readFlushMarks(ctx context.Context, room DocID) (marks, error) {
+	m, err := a.readMarks(ctx, room)
+	if err != nil {
+		return marks{}, err
+	}
+	if m.epochGen, err = a.store.generation(ctx, a.rollbackEpochName(room)); err != nil {
+		return marks{}, err
+	}
+	m.epochRead = true
+	return m, nil
+}
+
+func (a *Adapter) readMarks(ctx context.Context, room DocID) (marks, error) {
+	cp, err := a.checkpoint(ctx, room)
+	if err != nil {
+		return marks{}, err
+	}
+	ceil, hasCeil, err := a.ceiling(ctx, room)
+	if err != nil {
+		return marks{}, err
+	}
+	gen, err := a.store.generation(ctx, a.layout.DocV2Name(room))
+	if err != nil {
+		return marks{}, err
+	}
+	return marks{cp: cp, ceil: ceil, hasCeil: hasCeil, v2Gen: gen}, nil
+}
+
+// readState reads doc_v2 (or the v1 base) and every update object above the
+// checkpoint into one document, adding the checkpointed objects when items are
+// left parked. Without gcsDocLockKey a concurrent writer can change what it
+// reads, which it reports as errStateMoved.
+func (a *Adapter) readState(ctx context.Context, room DocID, oid uint32) (storedState, error) {
+	return a.readStateUpTo(ctx, room, oid, noClockLimit)
+}
+
+// noClockLimit reads every update object, which is what every caller but Compact
+// wants: a checkpoint must cover the whole stored state.
+const noClockLimit = ^uint32(0)
+
+// readStateUpTo is readState bounded to the update objects at or below upTo.
+// Compact passes its cutoff so the base it writes does not run ahead of the
+// checkpoint it sets: an object above the checkpoint is one MaterializeAt still
+// replays on top of the base, so folding it in would make every version above
+// the checkpoint rebuild as the latest state. The base still starts from the
+// stored doc_v2, so bounding the read can never shrink it.
+func (a *Adapter) readStateUpTo(ctx context.Context, room DocID, oid uint32, upTo uint32) (storedState, error) {
+	before, err := a.readMarks(ctx, room)
+	if err != nil {
+		return storedState{}, err
+	}
+	doc := crdt.New()
+	hasBase := false
+	if b, err := a.store.get(ctx, a.layout.DocV2Name(room)); err == nil {
+		v2, err := decompressBrotli(b)
+		if err != nil {
+			return storedState{}, err
+		}
+		if err := crdt.ApplyUpdateV2(doc, v2, nil); err != nil {
+			return storedState{}, err
+		}
+		hasBase = true
+	} else if err != errNotFound {
+		return storedState{}, err
+	} else if b, err := a.store.get(ctx, a.layout.DocStateName(room, oid)); err == nil {
+		// v1 SUB_DOC fallback, primary layout only: the OID differs between
+		// layouts, so a cross-layout v1 fallback is not byte-valid.
+		if err := crdt.ApplyUpdateV1(doc, b, nil); err != nil {
+			return storedState{}, err
+		}
+		hasBase = len(b) > 0
+	} else if err != errNotFound {
+		return storedState{}, err
+	}
+	if a.afterReadBase != nil {
+		a.afterReadBase()
+	}
+	updates, err := a.listUpdates(ctx, room, oid)
+	if err != nil {
+		return storedState{}, err
+	}
+	m, err := a.readMarks(ctx, room)
+	if err != nil {
+		return storedState{}, err
+	}
+	if m != before {
+		return storedState{}, errStateMoved
+	}
+	if a.afterCheckMarks != nil {
+		a.afterCheckMarks()
 	}
 
 	// Phase-2 dual-read: when the primary prefix holds nothing, materialize the
 	// legacy-root state for the same validated doc id. Never folds across layouts.
-	if !primaryHasV2 && len(base) == 0 && len(updates) == 0 && a.fallback != nil {
-		legacy, lerr := a.materializeLegacy(ctx, room)
-		if lerr != nil {
-			return persistence.LoadResult{}, lerr
+	if !hasBase && len(updates) == 0 && a.fallback != nil {
+		legacy, err := a.materializeLegacy(ctx, room)
+		if err != nil || len(legacy) == 0 {
+			return storedState{doc: doc, empty: true, v2Gen: before.v2Gen, marks: m}, err
 		}
-		if len(legacy) == 0 {
-			return persistence.LoadResult{}, nil
+		if err := crdt.ApplyUpdateV1(doc, legacy, nil); err != nil {
+			return storedState{}, err
 		}
-		return persistence.LoadResult{Update: legacy, Version: persistence.Version(legacyHeadClock(ctx, a, room))}, nil
-	}
-	cp, err := a.checkpoint(ctx, room)
-	if err != nil {
-		return persistence.LoadResult{}, err
-	}
-	ceil, hasCeil, err := a.ceiling(ctx, room)
-	if err != nil {
-		return persistence.LoadResult{}, err
+		return storedState{doc: doc, head: legacyHeadClock(ctx, a, room), v2Gen: before.v2Gen, marks: m}, nil
 	}
 
 	clocks := sortedClocks(updates)
 	// Drop any update > ceiling a crashed prune failed to delete; the v2 base
 	// already reflects the rolled-back state.
-	if hasCeil {
-		kept := clocks[:0:0]
-		for _, x := range clocks {
-			if x <= ceil {
-				kept = append(kept, x)
-			}
-		}
-		clocks = kept
+	if m.hasCeil {
+		clocks = clocksUpTo(clocks, m.ceil)
 	}
-	merged := base
+	clocks = clocksUpTo(clocks, upTo)
 	// Clamp the reported head to an active ceiling. After a crash between the
 	// ceiling write and the checkpoint lowering in PruneAfter, the checkpoint can
 	// still hold the stale pre-rollback value, but no version above the ceiling is
 	// visible — so the head must never exceed it.
-	head := cp
-	if hasCeil && head > ceil {
-		head = ceil
+	head := m.cp
+	if m.hasCeil && head > m.ceil {
+		head = m.ceil
 	}
-	parts := [][]byte{}
-	if len(merged) > 0 {
-		parts = append(parts, merged)
-	}
+	readObjects := false
 	for _, c := range clocks {
-		if c <= cp {
+		if c <= m.cp {
 			continue // already folded into the snapshot/base
 		}
-		b, err := a.store.get(ctx, updates[c])
+		if err := a.applyObject(ctx, doc, updates[c]); err != nil {
+			return storedState{}, err
+		}
+		readObjects = true
+		head = c
+	}
+	st := storedState{doc: doc, head: head, v2Gen: before.v2Gen, updates: updates, checkpointed: clocksUpTo(clocks, m.cp), marks: m}
+	if !hasBase && !readObjects {
+		st.empty = true
+		return st, nil
+	}
+	folded, err := a.foldParked(ctx, room, doc, updates, st.checkpointed)
+	if err != nil {
+		return storedState{}, err
+	}
+	st.folded = folded
+	// A rollback and appends after the marks check can replace a listed object
+	// with a later edit, which only the marks show.
+	if readObjects || folded {
+		m, err := a.readMarks(ctx, room)
 		if err != nil {
-			return persistence.LoadResult{}, err
+			return storedState{}, err
 		}
-		parts = append(parts, b)
-		if c > head {
-			head = c
+		if m != before {
+			return storedState{}, errStateMoved
 		}
 	}
-	if len(parts) == 0 {
-		return persistence.LoadResult{Version: persistence.Version(head)}, nil
+	return st, nil
+}
+
+// applyObject applies the update object name to doc. An object deleted since it
+// was listed means a compaction ran meanwhile, reported as errStateMoved.
+func (a *Adapter) applyObject(ctx context.Context, doc *crdt.Doc, name string) error {
+	b, err := a.store.get(ctx, name)
+	if err == errNotFound {
+		return errStateMoved
 	}
-	out, err := crdt.MergeUpdatesV1(parts...)
 	if err != nil {
-		return persistence.LoadResult{}, err
+		return err
 	}
-	out, ps, err := a.foldParked(ctx, room, out, updates, clocksUpTo(clocks, cp))
+	return crdt.ApplyUpdateV1(doc, b, nil)
+}
+
+// writeUnion writes doc_v2 as the union of the stored state and candidate (a V1
+// update, or nil), so doc_v2 never loses an item. The caller holds gcsDocLockKey.
+//
+// The write only lands on the doc_v2 it read, so a caller whose lock expired
+// cannot replace a newer checkpoint. It reads the state again once, then fails.
+func (a *Adapter) writeUnion(ctx context.Context, room DocID, oid uint32, candidate []byte) error {
+	// A rollback committing after the candidate was built deliberately removed
+	// edits the candidate still carries, and the union would restore them. doc_v2's
+	// generation cannot tell a rollback from a competing checkpoint, so capture the
+	// rollback marks here and recheck them before the candidate is applied, on the
+	// retry as well as the first attempt.
+	before, err := a.readFlushMarks(ctx, room)
 	if err != nil {
-		return persistence.LoadResult{}, err
+		return err
 	}
-	// Served anyway: the parked items stay in every later encode, so they are
-	// kept until the edit they wait for arrives, whereas refusing withholds the
-	// whole project.
-	if ps.Items > 0 {
-		a.log.Error("gcs load: serving a document with parked items; an edit they build on is missing from storage",
-			"room", room, "parked", ps.Items, "awaiting_clients", len(ps.MissingFor))
+	return a.writeUnionSince(ctx, room, oid, candidate, before)
+}
+
+// writeUnionSince is writeUnion for a candidate built after before was read. A
+// caller that builds the candidate itself reads the marks first, so a rollback
+// landing between the build and the lock is seen too.
+func (a *Adapter) writeUnionSince(ctx context.Context, room DocID, oid uint32, candidate []byte, before marks) error {
+	err := a.writeUnionOnce(ctx, room, oid, candidate, before)
+	if errors.Is(err, errGenerationMoved) {
+		err = a.writeUnionOnce(ctx, room, oid, candidate, before)
 	}
-	return persistence.LoadResult{Update: out, Version: persistence.Version(head)}, nil
+	return err
+}
+
+// rollbackCommitted reports whether a rollback published between two marks
+// reads. A ceiling being cleared is an ordinary append after a rollback the
+// candidate already reflects, so that direction does not count. The rollback
+// epoch, when both reads have it, catches a rollback whose ceiling an append
+// already cleared.
+func rollbackCommitted(before, now marks) bool {
+	if before.epochRead && now.epochRead && before.epochGen != now.epochGen {
+		return true
+	}
+	if !before.hasCeil && now.hasCeil {
+		return true
+	}
+	if before.hasCeil && now.hasCeil && before.ceil != now.ceil {
+		return true
+	}
+	return now.cp < before.cp
+}
+
+func (a *Adapter) writeUnionOnce(ctx context.Context, room DocID, oid uint32, candidate []byte, before marks) error {
+	st, err := a.readState(ctx, room, oid)
+	if err != nil {
+		return err
+	}
+	if len(candidate) > 0 {
+		now, err := a.readFlushMarks(ctx, room)
+		if err != nil {
+			return err
+		}
+		if rollbackCommitted(before, now) {
+			a.log.Warn("gcs: dropping a flush candidate built before a rollback",
+				"room", room, "cp_before", before.cp, "cp_now", now.cp,
+				"ceil_before", before.ceil, "ceil_now", now.ceil)
+			return nil
+		}
+		if err := crdt.ApplyUpdateV1(st.doc, candidate, nil); err != nil {
+			return err
+		}
+		// The candidate can park items on an edit that only a checkpointed object
+		// holds, which readState did not fold when nothing was parked before.
+		if !st.folded {
+			if _, err := a.foldParked(ctx, room, st.doc, st.updates, st.checkpointed); err != nil {
+				return err
+			}
+		}
+	} else if st.empty {
+		return nil
+	}
+	_, err = a.writeV2DocIf(ctx, room, oid, st.doc, st.v2Gen)
+	return err
 }
 
 // AppendUpdate persists one incremental V1 update at clock+1 and returns the
@@ -312,6 +587,9 @@ func (a *Adapter) appendLocked(ctx context.Context, room DocID, oid uint32, upda
 // (yrs load_doc_v2) folds no tail update objects. The last-instance flush uses
 // this so a Rust instance can cold-load a Go-flushed room once the Redis stream
 // is gone. state is the room's full current state as one V1 update.
+//
+// What is written is the union of state and the stored state, so a copy that
+// missed an edit cannot remove it from doc_v2.
 func (a *Adapter) FlushSnapshot(ctx context.Context, room string, state []byte) error {
 	if err := a.validate(room); err != nil {
 		return err
@@ -320,24 +598,49 @@ func (a *Adapter) FlushSnapshot(ctx context.Context, room string, state []byte) 
 	if err != nil {
 		return err
 	}
-	return a.writeV2Snapshot(ctx, room, oid, state)
+	return a.locker.WithLock(ctx, gcsDocLockKey(room), func(ctx context.Context) error {
+		return a.writeUnion(ctx, room, oid, state)
+	})
 }
 
-// SnapshotFromStore reconstructs the room's complete state from GCS (Load folds
-// doc_v2 + tail updates) and rewrites it as a complete doc_v2. Used by the
-// last-instance flush: ygo removes the live doc from GetDoc before firing
-// RoomDeactivated, but it first drains the per-update persistence worker, so the
-// full state is already in GCS and reconstructable without the live doc. No-op
-// when nothing is persisted yet.
-func (a *Adapter) SnapshotFromStore(ctx context.Context, room string) error {
-	lr, err := a.Load(ctx, room)
+// flushMarks reads the rollback marks for a flush whose candidate the caller is
+// about to build. Pass them to flushSnapshotSince with that candidate.
+func (a *Adapter) flushMarks(ctx context.Context, room string) (marks, error) {
+	if err := a.validate(room); err != nil {
+		return marks{}, err
+	}
+	return a.readFlushMarks(ctx, room)
+}
+
+// flushSnapshotSince is FlushSnapshot for a state built after before was read,
+// so a rollback committing before the doc lock is taken still drops the state.
+func (a *Adapter) flushSnapshotSince(ctx context.Context, room string, state []byte, before marks) error {
+	if err := a.validate(room); err != nil {
+		return err
+	}
+	oid, err := a.oidFor(ctx, room)
 	if err != nil {
 		return err
 	}
-	if len(lr.Update) == 0 {
-		return nil
+	return a.locker.WithLock(ctx, gcsDocLockKey(room), func(ctx context.Context) error {
+		return a.writeUnionSince(ctx, room, oid, state, before)
+	})
+}
+
+// SnapshotFromStore rewrites doc_v2 from the stored state alone (doc_v2 plus the
+// update log). Used when no live copy is resident. No-op when nothing is
+// persisted yet.
+func (a *Adapter) SnapshotFromStore(ctx context.Context, room string) error {
+	if err := a.validate(room); err != nil {
+		return err
 	}
-	return a.FlushSnapshot(ctx, room, lr.Update)
+	oid, err := a.oidFor(ctx, room)
+	if err != nil {
+		return err
+	}
+	return a.locker.WithLock(ctx, gcsDocLockKey(room), func(ctx context.Context) error {
+		return a.writeUnion(ctx, room, oid, nil)
+	})
 }
 
 // lastClock returns the highest update clock present (0 if none, falling back to
@@ -430,6 +733,48 @@ func (a *Adapter) GetUpdate(ctx context.Context, room string, v persistence.Vers
 	return b, persistence.VersionMeta{Version: v, UpdatedAt: at.Updated}, true, nil
 }
 
+// ErrVersionNotRebuildable reports that the update log no longer reaches back
+// far enough to reconstruct the requested version, because a compaction folded
+// the updates below it into a base that is itself past the version.
+//
+// Refusing matters because MaterializeAt's callers write the result somewhere
+// durable: rollback replaces doc_v2 with it and deletes the log above the
+// target, and a snapshot stores it. Returning a fragment of the document would
+// destroy the history above the version while restoring nothing.
+var ErrVersionNotRebuildable = errors.New("gcs: the update log was compacted past this version")
+
+// notRebuildable carries ErrVersionNotRebuildable with the detail, and reports
+// itself through a NotRebuildable method so a caller in another package can map
+// it to a status without importing this one.
+type notRebuildable struct{ detail string }
+
+func (e *notRebuildable) Error() string        { return ErrVersionNotRebuildable.Error() + ": " + e.detail }
+func (e *notRebuildable) Is(target error) bool { return target == ErrVersionNotRebuildable }
+func (e *notRebuildable) NotRebuildable() bool { return true }
+
+// ensureReplayComplete reports whether clocks (ascending) holds every update
+// from 1 through target. Below the checkpoint MaterializeAt leaves the base out
+// and replays update objects alone, so only an unbroken run from the first
+// update rebuilds the whole state.
+func ensureReplayComplete(clocks []uint32, target uint32) error {
+	want := uint32(1)
+	for _, c := range clocks {
+		if c > target {
+			break
+		}
+		if c != want {
+			return &notRebuildable{detail: fmt.Sprintf(
+				"version %d needs update %d, the oldest one retained is %d", target, want, c)}
+		}
+		want++
+	}
+	if want <= target {
+		return &notRebuildable{detail: fmt.Sprintf(
+			"version %d needs updates through %d, the log holds only %d", target, target, want-1)}
+	}
+	return nil
+}
+
 // MaterializeAt rebuilds the full state at version v as one V1 update. Read-only.
 func (a *Adapter) MaterializeAt(ctx context.Context, room string, v persistence.Version) ([]byte, error) {
 	if err := a.validate(room); err != nil {
@@ -499,6 +844,32 @@ func (a *Adapter) MaterializeAt(ctx context.Context, room string, v persistence.
 		return nil, err
 	}
 	clocks := sortedClocks(updates)
+	// The base was left out above, so the update objects are the only source for
+	// this version. A compaction that folded the oldest ones into a base already
+	// past target leaves a log that cannot rebuild it: refuse rather than hand a
+	// fragment to a caller that will write it over doc_v2.
+	if cp > target {
+		if err := ensureReplayComplete(clocks, target); err != nil {
+			a.log.Warn("gcs materialize: refusing a version the update log can no longer rebuild",
+				"room", room, "version", target, "checkpoint", cp, "err", err)
+			return nil, err
+		}
+		// A contiguous log from clock 1 rebuilds the whole document only when the
+		// document started empty. Backfill copies the legacy root into doc_v2 and
+		// writes no update objects, so that content rides in the excluded base alone.
+		imported, err := a.hasImportedBase(ctx, room)
+		if err != nil {
+			return nil, err
+		}
+		if imported {
+			rerr := &notRebuildable{detail: fmt.Sprintf(
+				"version %d is below checkpoint %d, and this room's base was imported from the legacy layout, which no update object carries",
+				target, cp)}
+			a.log.Warn("gcs materialize: refusing a version below an imported base",
+				"room", room, "version", target, "checkpoint", cp)
+			return nil, rerr
+		}
+	}
 	for _, c := range clocks {
 		if c > target {
 			break
@@ -515,23 +886,24 @@ func (a *Adapter) MaterializeAt(ctx context.Context, room string, v persistence.
 	if len(parts) == 0 {
 		return nil, nil // empty state
 	}
-	merged, err := crdt.MergeUpdatesV1(parts...)
-	if err != nil {
-		return nil, err
+	doc := crdt.New()
+	for _, p := range parts {
+		if err := crdt.ApplyUpdateV1(doc, p, nil); err != nil {
+			return nil, err
+		}
 	}
 	var checkpointed []uint32
 	if cp <= target {
 		checkpointed = clocksUpTo(clocks, cp)
 	}
-	merged, ps, err := a.foldParked(ctx, room, merged, updates, checkpointed)
-	if err != nil {
+	if _, err := a.foldParked(ctx, room, doc, updates, checkpointed); err != nil {
 		return nil, err
 	}
-	if ps.Items > 0 {
+	if ps := doc.PendingStats(); ps.Items > 0 {
 		a.log.Debug("gcs materialize: state holds parked items; an edit they build on is missing from storage",
 			"room", room, "version", target, "parked", ps.Items, "awaiting_clients", len(ps.MissingFor))
 	}
-	return merged, nil
+	return crdt.EncodeStateAsUpdateV1(doc, nil), nil
 }
 
 // CaptureSnapshot stores a named snapshot of state and returns the current head
@@ -637,6 +1009,7 @@ func (a *Adapter) Delete(ctx context.Context, room string) error {
 		a.layout.StateVectorName(room, oid),
 		a.layout.OIDIndexName(room),
 		a.ceilingName(room),
+		a.rollbackEpochName(room),
 		// NB: SnapNextIDName is deliberately NOT here — see the deferred delete
 		// after the prefix sweep below.
 	}
@@ -693,6 +1066,7 @@ func (a *Adapter) deleteLegacyRoot(ctx context.Context, room DocID) error {
 		leg.StateVectorName(room, oid),
 		leg.OIDIndexName(room),
 		legacyCeilingName(room),
+		legacyRollbackEpochName(room),
 		// SnapNextIDName deferred to after the sweep, as in the Phase-1 path.
 	}
 	for _, n := range names {
