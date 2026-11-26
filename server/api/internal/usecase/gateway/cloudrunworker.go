@@ -12,7 +12,9 @@ import (
 
 // ErrWorkerBusy is a request the worker Service turned away because every
 // instance it may run was busy. The Service takes one request per instance,
-// so this is what a full pool looks like. Nothing ran.
+// so this is what a full pool looks like. Nothing ran, so an error that wraps
+// it also wraps ErrRunNotStarted. RunJob, PreviewSchema and RenderView may all
+// return it.
 var ErrWorkerBusy = errors.New("the worker service has no free instance")
 
 // CloudRunWorker runs debug jobs on a min=0 Cloud Run Service.
@@ -20,6 +22,10 @@ var ErrWorkerBusy = errors.New("the worker service has no free instance")
 type CloudRunWorker interface {
 	// RunJob POSTs to the Service and blocks until the workflow completes.
 	// Returns the terminal infra status (COMPLETED / FAILED / CANCELLED).
+	//
+	// It makes one attempt. When the pool is full it returns ErrWorkerBusy
+	// rather than waiting: whether and how long to wait for an instance is the
+	// caller's policy, because only the caller can see the run cancelled.
 	RunJob(ctx context.Context, p RunJobParam) (JobStatus, error)
 	// PreviewSchema POSTs to the Service's dedicated probe-schema route and blocks
 	// until the probe completes. Returns the terminal infra status. This is a
