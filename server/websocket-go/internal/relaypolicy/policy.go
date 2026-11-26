@@ -7,6 +7,7 @@ import (
 	"errors"
 	"time"
 
+	"github.com/reearth/ygo/crdt"
 	ygows "github.com/reearth/ygo/provider/websocket"
 )
 
@@ -36,7 +37,10 @@ func ClassifyInject(ctx context.Context, err error) InjectOutcome {
 		return Applied
 	case ctx.Err() != nil, errors.Is(err, context.Canceled), errors.Is(err, ygows.ErrServerShutdown):
 		return Stop
-	case errors.Is(err, ygows.ErrInvalidUpdate), errors.Is(err, ygows.ErrUpdateTooLarge), errors.Is(err, ygows.ErrInvalidRoomName):
+	// ygo's server returns the decoder's own crdt.ErrInvalidUpdate for a malformed
+	// update, a different sentinel from the websocket package's of the same name.
+	case errors.Is(err, crdt.ErrInvalidUpdate), errors.Is(err, ygows.ErrInvalidUpdate),
+		errors.Is(err, ygows.ErrUpdateTooLarge), errors.Is(err, ygows.ErrInvalidRoomName):
 		return Skip
 	default:
 		return Retry

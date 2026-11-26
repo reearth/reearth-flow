@@ -203,10 +203,10 @@ func TestWriter_FlagsTheRoomOnceInsertRetriesRunOut(t *testing.T) {
 	relay.RoomActivated(deliveryRoom)
 
 	publishSync(t, relay, 7)
-	eventually(t, 8*time.Second, "the batch to be dropped", func() bool { return relay.DroppedWrites() == 1 })
-	if !relay.OutboundGap(deliveryRoom) {
-		t.Error("a room whose update was dropped is not flagged")
-	}
+	// droppedWrites is counted before the room is flagged, so wait for both.
+	eventually(t, 8*time.Second, "the batch to be dropped and the room flagged", func() bool {
+		return relay.DroppedWrites() == 1 && relay.OutboundGap(deliveryRoom)
+	})
 }
 
 // TestPublish_FlagsTheRoomWhenTheInsertQueueIsFull: a full queue still drops,

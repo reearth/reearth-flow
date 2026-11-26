@@ -3,6 +3,8 @@ package redis
 import (
 	"context"
 	"errors"
+	"fmt"
+	"strings"
 	"sync"
 	"testing"
 	"time"
@@ -168,10 +170,8 @@ func TestWriter_FlagsTheRoomOnceRetriesRunOut(t *testing.T) {
 	relay.RoomActivated(room)
 
 	publish(t, relay, room, 7)
-	waitFor(t, 8*time.Second, func() bool { return relay.DroppedWrites() == 1 })
-	if !relay.OutboundGap(room) {
-		t.Error("a room whose update was dropped is not flagged")
-	}
+	// droppedWrites is counted before the room is flagged, so wait for both.
+	waitFor(t, 8*time.Second, func() bool { return relay.DroppedWrites() == 1 && relay.OutboundGap(room) })
 }
 
 // TestPublish_FlagsTheRoomWhenTheQueueIsFull: Publish cannot block ygo's lane
@@ -261,5 +261,110 @@ func TestReader_SkipsAnEntryTheRoomCannotApply(t *testing.T) {
 	waitFor(t, 5*time.Second, func() bool { return sinkB.timesApplied("\x02") == 1 })
 	if n := sinkB.tries("\x01"); n != 1 {
 		t.Errorf("the bad entry was tried %d times, want 1", n)
+	}
+}
+
+// TestCatchUp_StopsOnShutdownWithoutClaimingToBeCaughtUp: a shutdown error with
+// the context still live made catch-up report success with an empty cursor, so
+// the reader marked the room caught up and read on from the wrong place.
+func TestCatchUp_StopsOnShutdownWithoutClaimingToBeCaughtUp(t *testing.T) {
+	t.Parallel()
+	c, mr := newTestClient(t)
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+	const room = "shutdown-room"
+
+	if err := c.XAdd(ctx, &goredis.XAddArgs{Stream: streamKey(room), ID: "*", Values: xaddValues(msgTypeSync, []byte{4}, 424242)}).Err(); err != nil {
+		t.Fatalf("seed: %v", err)
+	}
+	sink := newScriptedSink()
+	sink.failWith["\x04"] = []error{ygows.ErrServerShutdown}
+	relay := mustRelay(t, mr.Addr())
+	t.Cleanup(func() { _ = relay.Close() })
+	if err := relay.Start(ctx, sink); err != nil {
+		t.Fatalf("Start: %v", err)
+	}
+	relay.RoomActivated(room)
+	relay.mu.Lock()
+	rs := relay.rooms[room]
+	relay.mu.Unlock()
+
+	select {
+	case <-rs.done:
+	case <-time.After(5 * time.Second):
+		t.Fatal("the reader kept reading after the server reported shutdown")
+	}
+	select {
+	case <-rs.caughtUp:
+		t.Error("catch-up was marked complete though it stopped partway")
+	default:
+	}
+}
+
+// TestTrimStream_WaitsForAPendingReplay: a replay that has not finished can
+// still need entries below the live cursor that the resident document lacks, so
+// flushing and trimming then would discard the only copy. Trimming resumes once
+// the replay is done.
+func TestTrimStream_WaitsForAPendingReplay(t *testing.T) {
+	t.Parallel()
+	c, mr := newTestClient(t)
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+	const room = "replay-trim"
+	key := streamKey(room)
+
+	now := time.Now().UnixMilli()
+	old := now - (streamRetention + time.Minute).Milliseconds()
+	recent := now - (streamRetention - time.Minute).Milliseconds()
+	for _, id := range []string{fmt.Sprintf("%d-0", old), fmt.Sprintf("%d-0", recent)} {
+		if err := c.XAdd(ctx, &goredis.XAddArgs{Stream: key, ID: id, Values: xaddValues(msgTypeSync, []byte{1}, 424242)}).Err(); err != nil {
+			t.Fatalf("seed %s: %v", id, err)
+		}
+	}
+	relay := mustRelay(t, mr.Addr())
+	t.Cleanup(func() { _ = relay.Close() })
+	if err := relay.Start(ctx, &fakeSink{}); err != nil {
+		t.Fatalf("Start: %v", err)
+	}
+	relay.RoomActivated(room)
+	relay.mu.Lock()
+	rs := relay.rooms[room]
+	relay.mu.Unlock()
+	waitFor(t, 3*time.Second, func() bool {
+		relay.mu.Lock()
+		defer relay.mu.Unlock()
+		return rs.lastID != "0" && rs.lastID != ""
+	})
+	oldLeft := func() bool {
+		left, err := c.XRange(ctx, key, "-", "+").Result()
+		if err != nil {
+			t.Fatalf("XRANGE: %v", err)
+		}
+		for _, m := range left {
+			if strings.HasPrefix(m.ID, fmt.Sprintf("%d-", old)) {
+				return true
+			}
+		}
+		return false
+	}
+
+	relay.mu.Lock()
+	rs.replayed = make(chan struct{}) // a replay asked for and not yet finished
+	relay.mu.Unlock()
+	if err := relay.trimStream(ctx, room, rs); err != nil {
+		t.Fatalf("trimStream: %v", err)
+	}
+	if !oldLeft() {
+		t.Fatal("the stream was trimmed while a replay was pending")
+	}
+
+	relay.mu.Lock()
+	rs.replayed = nil
+	relay.mu.Unlock()
+	if err := relay.trimStream(ctx, room, rs); err != nil {
+		t.Fatalf("trimStream: %v", err)
+	}
+	if oldLeft() {
+		t.Error("trimming did not resume once the replay was done")
 	}
 }

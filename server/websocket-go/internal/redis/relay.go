@@ -463,7 +463,7 @@ func (r *Relay) catchUp(ctx context.Context, room string, sink cluster.Sink) (st
 			if !e.isSelf {
 				switch r.inject(ctx, room, sink, e, false) { // catch-up: replay depth, not latency
 				case relaypolicy.Stop:
-					return "", context.Cause(ctx)
+					return "", errStopReading
 				case relaypolicy.Retry:
 					return "", errInjectRetry
 				}
@@ -523,7 +523,13 @@ func (r *Relay) trimLoop(ctx context.Context, room string, rs *roomState) {
 func (r *Relay) trimStream(ctx context.Context, room string, rs *roomState) error {
 	r.mu.Lock()
 	cursor := rs.lastID
+	replaying := rs.replayed != nil
 	r.mu.Unlock()
+	// A replay asked for and not yet finished can still need entries below the
+	// cursor that the resident document lacks, so neither flush nor trim until it is.
+	if replaying {
+		return nil
+	}
 	ms, ok := streamIDMillis(cursor)
 	if !ok {
 		return nil
@@ -591,7 +597,7 @@ func (r *Relay) readLoop(ctx context.Context, room string, rs *roomState, sink c
 		if lastID, err = r.catchUp(ctx, room, sink); err == nil {
 			break
 		}
-		if ctx.Err() != nil {
+		if ctx.Err() != nil || errors.Is(err, errStopReading) {
 			return
 		}
 		r.log.Debug("relay catch-up XRANGE failed", "room", room, "err", err)
@@ -610,7 +616,9 @@ func (r *Relay) readLoop(ctx context.Context, room string, rs *roomState, sink c
 		if ctx.Err() != nil {
 			return
 		}
-		r.replayIfAsked(ctx, room, rs, sink)
+		if r.replayIfAsked(ctx, room, rs, sink) {
+			return
+		}
 		r.mu.Lock()
 		from := rs.lastID
 		r.mu.Unlock()
@@ -670,24 +678,28 @@ func (r *Relay) readLoop(ctx context.Context, room string, rs *roomState, sink c
 }
 
 // replayIfAsked replays the stream into the room when an activation asked for it.
-// The cursor only moves forward; a failed replay is asked for again.
-func (r *Relay) replayIfAsked(ctx context.Context, room string, rs *roomState, sink cluster.Sink) {
+// The cursor only moves forward; a failed replay is asked for again. It reports
+// true when the server is shutting down and the reader should exit.
+func (r *Relay) replayIfAsked(ctx context.Context, room string, rs *roomState, sink cluster.Sink) bool {
 	r.mu.Lock()
 	asked := rs.replay
 	rs.replay = false
 	r.mu.Unlock()
 	if !asked {
-		return
+		return false
 	}
 	last, err := r.catchUp(ctx, room, sink)
 	r.mu.Lock()
 	defer r.mu.Unlock()
 	if err != nil {
 		rs.replay = true
-		if ctx.Err() == nil {
-			r.log.Debug("relay replay XRANGE failed", "room", room, "err", err)
+		if errors.Is(err, errStopReading) {
+			return true
 		}
-		return
+		if ctx.Err() == nil {
+			r.log.Debug("relay replay failed", "room", room, "err", err)
+		}
+		return false
 	}
 	if streamIDBefore(rs.lastID, last) {
 		rs.lastID = last
@@ -696,11 +708,16 @@ func (r *Relay) replayIfAsked(ctx context.Context, room string, rs *roomState, s
 		close(rs.replayed)
 		rs.replayed = nil
 	}
+	return false
 }
 
 // errInjectRetry reports an entry the room could not take yet; the reader keeps
 // its cursor before it and reads it again.
 var errInjectRetry = errors.New("relay: an entry could not be injected yet")
+
+// errStopReading reports that the server is shutting down, so the reader exits
+// rather than recording a catch-up or replay it did not finish.
+var errStopReading = errors.New("relay: the server is shutting down")
 
 // inject routes a parsed sync/awareness entry to the sink and reports what the
 // reader should do with it.
