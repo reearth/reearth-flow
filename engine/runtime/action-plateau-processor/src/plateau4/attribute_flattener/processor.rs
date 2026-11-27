@@ -307,15 +307,40 @@ fn remove_keys_recursive(mut map: Attributes, is_removed: &impl Fn(&str) -> bool
     map
 }
 
+/// Returns `key` with every `:` replaced by `__`.
+fn output_key(key: Attribute) -> Attribute {
+    match key.as_ref().contains(':') {
+        true => Attribute::new(key.as_ref().replace(':', "__")),
+        false => key,
+    }
+}
+
 /// Returns `attributes` with every `:` in their keys replaced by `__`, keeping the order.
 fn with_output_keys(attributes: Attributes) -> Attributes {
     attributes
         .into_iter()
-        .map(|(key, value)| match key.as_ref().contains(':') {
-            true => (Attribute::new(key.as_ref().replace(':', "__")), value),
-            false => (key, value),
-        })
+        .map(|(key, value)| (output_key(key), value))
         .collect()
+}
+
+/// Returns `value` with `with_output_keys` applied to every map in it, at any depth.
+fn with_nested_output_keys(value: AttributeValue) -> AttributeValue {
+    match value {
+        AttributeValue::Map(map) => AttributeValue::Map(
+            map.into_iter()
+                .map(|(key, value)| (output_key(key), with_nested_output_keys(value)))
+                .collect(),
+        ),
+        AttributeValue::Array(arr) => {
+            AttributeValue::Array(arr.into_iter().map(with_nested_output_keys).collect())
+        }
+        other => other,
+    }
+}
+
+/// Serializes `value` as JSON with output keys at every depth.
+fn output_json(value: AttributeValue) -> String {
+    serde_json::to_string(&serde_json::Value::from(with_nested_output_keys(value))).unwrap()
 }
 
 /// Placeholder value carrying the schema type of a flatten-list `data_type`, or `None` for unknown types.
@@ -536,7 +561,7 @@ impl AttributeFlattener {
         } else {
             remove_keys_recursive(attrs, &|key| self.nested_excluded_keys.contains(key))
         };
-        serde_json::to_string(&serde_json::Value::from(AttributeValue::Map(attrs))).unwrap()
+        output_json(AttributeValue::Map(attrs))
     }
 
     fn insert_common_attributes(feature: &Feature, citygml_attributes: &mut Attributes) {
@@ -591,9 +616,7 @@ impl AttributeFlattener {
                 let key = key.as_str().replace("uro:", "dm_");
                 feature.insert(key.clone(), value.clone());
             }
-            let dm_attributes_value = AttributeValue::Map(citygml_attributes);
-            let json_string =
-                serde_json::to_string(&serde_json::Value::from(dm_attributes_value)).unwrap();
+            let json_string = output_json(AttributeValue::Map(citygml_attributes));
             feature.insert(
                 "dm_attributes".to_string(),
                 AttributeValue::String(json_string),
@@ -1440,7 +1463,7 @@ mod tests {
             Some(AttributeValue::String(json_str)) => {
                 let parsed: serde_json::Value = serde_json::from_str(json_str).unwrap();
                 let survey_year_in_json =
-                    &parsed["uro:BuildingDetailAttribute"][0]["uro:surveyYear"];
+                    &parsed["uro__BuildingDetailAttribute"][0]["uro__surveyYear"];
                 assert!(
                     survey_year_in_json.is_i64(),
                     "uro:surveyYear in attributes JSON should be integer, got {:?}",
@@ -1612,7 +1635,7 @@ mod tests {
         match attributes_json {
             Some(AttributeValue::String(json_str)) => {
                 let parsed: serde_json::Value = serde_json::from_str(json_str).unwrap();
-                let address_in_json = &parsed["bldg:address"];
+                let address_in_json = &parsed["bldg__address"];
                 assert!(
                     address_in_json.is_string(),
                     "bldg:address in attributes JSON should be string, got {:?}",
@@ -2181,10 +2204,13 @@ mod tests {
             panic!("attributes should be String");
         };
         let parsed: serde_json::Value = serde_json::from_str(json).unwrap();
-        assert_eq!(parsed["gml:id"], "bldg_child");
+        assert_eq!(parsed["gml__id"], "bldg_child");
         assert_eq!(parsed["feature_type"], "bldg:BuildingPart");
-        assert_eq!(parsed["uro:DataQualityAttribute"][0]["uro:lodType"], "2.2");
-        assert_eq!(parsed["ancestors"][0]["gml:id"], "bldg_parent");
+        assert_eq!(
+            parsed["uro__DataQualityAttribute"][0]["uro__lodType"],
+            "2.2"
+        );
+        assert_eq!(parsed["ancestors"][0]["gml__id"], "bldg_parent");
     }
 
     /// Test that a BuildingPart's own attribute is not merged with the root's same-named one
@@ -2223,8 +2249,8 @@ mod tests {
             panic!("attributes should be String");
         };
         let parsed: serde_json::Value = serde_json::from_str(json).unwrap();
-        assert!(parsed.get("uro:DataQualityAttribute").is_none());
-        assert!(parsed.get("bldg:measuredHeight").is_none());
+        assert!(parsed.get("uro__DataQualityAttribute").is_none());
+        assert!(parsed.get("bldg__measuredHeight").is_none());
     }
 
     /// Test that sentinel values 9999 and -9999 are filtered out
@@ -2312,8 +2338,12 @@ mod tests {
             panic!("attributes should be String");
         };
         let parsed: serde_json::Value = serde_json::from_str(json_str).unwrap();
-        assert_eq!(parsed["bldg:class"], "普通建物");
-        for key in ["bldg:WallSurface", "bldg:RoofSurface", "bldg:GroundSurface"] {
+        assert_eq!(parsed["bldg__class"], "普通建物");
+        for key in [
+            "bldg__WallSurface",
+            "bldg__RoofSurface",
+            "bldg__GroundSurface",
+        ] {
             assert!(parsed.get(key).is_none(), "{key} should be skipped");
         }
     }
@@ -2474,8 +2504,8 @@ mod tests {
         assert_eq!(tnm, ["tnm_3_name", "tnm_3_rank"]);
     }
 
-    /// Test that every column of the features and both schemas is a valid 3D Tiles property ID,
-    /// while the nested `attributes` JSON keeps the CityGML keys
+    /// Test that every column of the features and both schemas, and every key of the nested
+    /// `attributes` JSON, is a valid 3D Tiles property ID, while values keep their colons
     #[test]
     fn test_output_keys_are_valid_property_ids() {
         let attrs = citygml_attrs_from_json(
@@ -2529,7 +2559,29 @@ mod tests {
             panic!("attributes should be a JSON string");
         };
         let parsed: serde_json::Value = serde_json::from_str(json).unwrap();
-        assert_eq!(parsed["bldg:class"], "普通建物");
+        assert_eq!(parsed["bldg__class"], "普通建物");
+        assert_eq!(parsed["feature_type"], "bldg:Building");
+        assert_eq!(
+            parsed["uro__BuildingDetailAttribute"][0]["uro__landUseType"],
+            "住宅用地"
+        );
+        fn nested_keys(value: &serde_json::Value, out: &mut Vec<String>) {
+            match value {
+                serde_json::Value::Object(map) => {
+                    for (key, value) in map {
+                        out.push(key.clone());
+                        nested_keys(value, out);
+                    }
+                }
+                serde_json::Value::Array(arr) => arr.iter().for_each(|v| nested_keys(v, out)),
+                _ => {}
+            }
+        }
+        let mut keys = Vec::new();
+        nested_keys(&parsed, &mut keys);
+        for key in keys {
+            assert!(!key.contains(':'), "{key} in attributes JSON has a colon");
+        }
     }
 
     #[test]
@@ -2705,15 +2757,15 @@ mod tests {
             .keys()
             .map(String::as_str)
             .collect();
-        assert!(!top_keys.contains(&"gml:id"));
-        assert!(top_keys.contains(&"luse:class_code"));
-        let detail_keys: Vec<&str> = parsed["uro:LandUseDetailAttribute"][0]
+        assert!(!top_keys.contains(&"gml__id"));
+        assert!(top_keys.contains(&"luse__class_code"));
+        let detail_keys: Vec<&str> = parsed["uro__LandUseDetailAttribute"][0]
             .as_object()
             .unwrap()
             .keys()
             .map(String::as_str)
             .collect();
-        assert_eq!(detail_keys, vec!["uro:orgLandUse", "uro:city"]);
+        assert_eq!(detail_keys, vec!["uro__orgLandUse", "uro__city"]);
 
         assert!(result
             .get("uro__LandUseDetailAttribute_uro__areaInSquareMeter")
