@@ -66,6 +66,13 @@ func (m *memPersist) GetUpdate(ctx context.Context, room string, v persistence.V
 	}
 	return us[i], persistence.VersionMeta{Version: v, UpdatedAt: time.Unix(int64(v), 0).UTC()}, true, nil
 }
+func (m *memPersist) RebuildableVersions(ctx context.Context, room string, versions []persistence.Version) (map[persistence.Version]bool, error) {
+	out := make(map[persistence.Version]bool, len(versions))
+	for _, v := range versions {
+		out[v] = true
+	}
+	return out, nil
+}
 func (m *memPersist) MaterializeAt(ctx context.Context, room string, v persistence.Version) ([]byte, error) {
 	us := m.updates[room]
 	var all []byte

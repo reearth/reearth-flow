@@ -58,7 +58,15 @@ func writeOldCheckpoint(t *testing.T, a *Adapter, room string, state []byte) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if err := a.writeV2Snapshot(ctx, room, oid, state); err != nil {
+	doc, err := docFromV1(state)
+	if err != nil {
+		t.Fatal(err)
+	}
+	// No coverage metadata: those builds wrote none, so this also covers how an
+	// unstamped doc_v2 is read.
+	if err := a.writeV2DocWith(ctx, room, oid, doc, coverage{}, func(name string, b []byte, _ map[string]string) (int64, error) {
+		return 0, a.store.put(ctx, name, b)
+	}); err != nil {
 		t.Fatal(err)
 	}
 }

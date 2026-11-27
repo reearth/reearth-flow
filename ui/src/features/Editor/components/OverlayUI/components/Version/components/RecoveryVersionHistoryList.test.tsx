@@ -55,7 +55,7 @@ describe("RecoveryVersionHistoryList", () => {
     expect(onVersionSelection).toHaveBeenCalledWith(2);
   });
 
-  test("renders nothing below the head when there is no other history", () => {
+  test("says there is nothing to restore when only the head is left", () => {
     render(
       <RecoveryVersionHistoryList
         latestProjectSnapshotVersion={latestProjectSnapshotVersion}
@@ -65,8 +65,32 @@ describe("RecoveryVersionHistoryList", () => {
       />,
     );
 
-    // Recovery mode restores the pre-existing behaviour verbatim: no
-    // "empty state" message, just nothing rendered below the head.
-    expect(screen.queryByText(/no versions/i)).not.toBeInTheDocument();
+    // The server lists only entries it can rebuild, so an empty list is a real
+    // answer rather than a gap, and it points to where saved versions live.
+    expect(
+      screen.getByText(
+        "There is nothing to restore here. Saved versions are in the Version History panel.",
+      ),
+    ).toBeInTheDocument();
+  });
+
+  // A failed request is not an empty history: saved entries may exist.
+  test("says the history could not be loaded when the request failed", () => {
+    render(
+      <RecoveryVersionHistoryList
+        latestProjectSnapshotVersion={latestProjectSnapshotVersion}
+        history={undefined}
+        isError
+        selectedProjectSnapshotVersion={null}
+        onVersionSelection={vi.fn()}
+      />,
+    );
+
+    expect(
+      screen.getByText(
+        "The version history could not be loaded. Close this dialog and try again.",
+      ),
+    ).toBeInTheDocument();
+    expect(screen.queryByText(/nothing to restore/)).not.toBeInTheDocument();
   });
 });

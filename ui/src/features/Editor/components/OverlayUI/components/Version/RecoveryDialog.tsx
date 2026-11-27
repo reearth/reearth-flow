@@ -51,6 +51,7 @@ const ProjectRecoveryDialog: React.FC<Props> = ({
   const [animate, setAnimate] = useState<boolean>(false);
   const {
     history,
+    isHistoryError,
     latestProjectSnapshotVersion,
     previewDocRef,
     previewDocYWorkflows,
@@ -59,6 +60,8 @@ const ProjectRecoveryDialog: React.FC<Props> = ({
     isLoadingPreview,
     isReverting,
     isCorruptedVersion,
+    isRefusedVersion,
+    isEmptyPreview,
     openVersionConfirmationDialog,
     setOpenVersionConfirmationDialog,
     onProjectRollback,
@@ -141,6 +144,20 @@ const ProjectRecoveryDialog: React.FC<Props> = ({
           <div className="flex-1 overflow-auto">
             {isLoadingPreview ? (
               <LoadingSkeleton className="h-full w-full" />
+            ) : isRefusedVersion ? (
+              <PreviewNotice
+                title={t("This version can no longer be restored")}
+                description={t(
+                  "The project's history no longer holds everything needed to rebuild this version exactly, so it cannot be previewed or restored.",
+                )}
+              />
+            ) : isEmptyPreview ? (
+              <PreviewNotice
+                title={t("This version has no workflows")}
+                description={t(
+                  "Restoring it would remove every workflow in the project.",
+                )}
+              />
             ) : (
               <VersionEditorComponent
                 yDoc={yDoc}
@@ -160,6 +177,7 @@ const ProjectRecoveryDialog: React.FC<Props> = ({
                 <RecoveryVersionHistoryList
                   latestProjectSnapshotVersion={latestProjectSnapshotVersion}
                   history={history}
+                  isError={isHistoryError}
                   selectedProjectSnapshotVersion={
                     selectedProjectSnapshotVersion
                   }
@@ -173,6 +191,8 @@ const ProjectRecoveryDialog: React.FC<Props> = ({
                   !selectedProjectSnapshotVersion ||
                   isLoadingPreview ||
                   isCorruptedVersion ||
+                  isRefusedVersion ||
+                  isEmptyPreview ||
                   isReaderRestricted
                 }
                 variant={"ghost"}
@@ -197,5 +217,20 @@ const ProjectRecoveryDialog: React.FC<Props> = ({
     </div>
   );
 };
+
+// Shown in place of the preview canvas when an entry must not be restored.
+const PreviewNotice: React.FC<{ title: string; description: string }> = ({
+  title,
+  description,
+}) => (
+  <div
+    role="status"
+    className="flex h-full w-full flex-col items-center justify-center gap-2 p-8 text-center">
+    <p className="text-sm font-light">{title}</p>
+    <p className="max-w-md text-xs font-thin text-muted-foreground">
+      {description}
+    </p>
+  </div>
+);
 
 export default memo(ProjectRecoveryDialog);

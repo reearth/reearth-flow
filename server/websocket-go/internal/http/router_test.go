@@ -25,6 +25,10 @@ type fakeStore struct {
 	materialized []byte
 	// materializeErr, when set, is returned by MaterializeAt instead of materialized.
 	materializeErr error
+	// unrebuildable marks versions RebuildableVersions reports as not rebuildable.
+	unrebuildable map[uint64]bool
+	// rebuildableErr, if set, is returned by RebuildableVersions.
+	rebuildableErr error
 	rolledBack     bool
 	prunedTarget   uint64
 	flushed        bool
@@ -77,6 +81,16 @@ func (f *fakeStore) MaterializeAt(ctx context.Context, room string, v uint64) ([
 	}
 	return f.materialized, nil
 }
+func (f *fakeStore) RebuildableVersions(ctx context.Context, room string, versions []uint64) (map[uint64]bool, error) {
+	if f.rebuildableErr != nil {
+		return nil, f.rebuildableErr
+	}
+	out := make(map[uint64]bool, len(versions))
+	for _, v := range versions {
+		out[v] = !f.unrebuildable[v]
+	}
+	return out, nil
+}
 func (f *fakeStore) PruneAfter(ctx context.Context, room string, target uint64, rolledBack []byte) error {
 	f.rolledBack = true
 	f.prunedTarget = target
@@ -84,6 +98,16 @@ func (f *fakeStore) PruneAfter(ctx context.Context, room string, target uint64, 
 		f.onPrune()
 	}
 	return nil
+}
+func (f *fakeStore) Rollback(ctx context.Context, room string, v uint64, beforePublish func()) ([]byte, error) {
+	rolled, err := f.MaterializeAt(ctx, room, v)
+	if err != nil {
+		return nil, err
+	}
+	if beforePublish != nil {
+		beforePublish()
+	}
+	return rolled, f.PruneAfter(ctx, room, v, rolled)
 }
 func (f *fakeStore) Flush(ctx context.Context, room string) error { f.flushed = true; return nil }
 func (f *fakeStore) Copy(ctx context.Context, dst, src string) error {
@@ -208,6 +232,55 @@ func TestGetHistory(t *testing.T) {
 	if len(items) != 2 || items[0].Version != 2 {
 		t.Fatalf("items = %+v", items)
 	}
+}
+
+// TestGetHistory_ListsOnlyRebuildableVersions: the recovery view used to list
+// entries the store could not rebuild, and reverting to one wiped the project.
+// Both lists now carry only what preview and rollback will accept.
+func TestGetHistory_ListsOnlyRebuildableVersions(t *testing.T) {
+	t.Parallel()
+
+	newStore := func() *fakeStore {
+		return &fakeStore{
+			versions: []VersionInfo{
+				{Version: 3, UpdatedAt: time.Unix(0, 0).UTC()},
+				{Version: 2, UpdatedAt: time.Unix(0, 0).UTC()},
+				{Version: 1, UpdatedAt: time.Unix(0, 0).UTC()},
+			},
+			updateAt:      map[uint64][]byte{1: {9}, 2: {8}, 3: {7}},
+			unrebuildable: map[uint64]bool{1: true, 2: true},
+		}
+	}
+
+	t.Run("history", func(t *testing.T) {
+		t.Parallel()
+		rec := do(t, newTestRouter(newStore()), "GET", "/api/document/proj1/history", "")
+		if rec.Code != 200 {
+			t.Fatalf("status = %d, body=%s", rec.Code, rec.Body.String())
+		}
+		var items []DocumentResponse
+		if err := json.Unmarshal(rec.Body.Bytes(), &items); err != nil {
+			t.Fatalf("decode: %v", err)
+		}
+		if len(items) != 1 || items[0].Version != 3 {
+			t.Errorf("items = %+v, want only version 3", items)
+		}
+	})
+
+	t.Run("metadata", func(t *testing.T) {
+		t.Parallel()
+		rec := do(t, newTestRouter(newStore()), "GET", "/api/document/proj1/history/metadata", "")
+		if rec.Code != 200 {
+			t.Fatalf("status = %d, body=%s", rec.Code, rec.Body.String())
+		}
+		var items []HistoryMetadataItem
+		if err := json.Unmarshal(rec.Body.Bytes(), &items); err != nil {
+			t.Fatalf("decode: %v", err)
+		}
+		if len(items) != 1 || items[0].Version != 3 {
+			t.Errorf("items = %+v, want only version 3", items)
+		}
+	})
 }
 
 func TestGetHistoryMetadata(t *testing.T) {
@@ -461,6 +534,49 @@ type refusedRebuild struct{}
 
 func (refusedRebuild) Error() string        { return "the update log was compacted past this version" }
 func (refusedRebuild) NotRebuildable() bool { return true }
+
+// rollbackRunning is a store error for a rollback whose writer holds the lock.
+type rollbackRunning struct{}
+
+func (rollbackRunning) Error() string            { return "a rollback of this room is in progress" }
+func (rollbackRunning) RollbackInProgress() bool { return true }
+
+// TestRecoveryRoutesAskForARetryDuringARollback: the state is unreadable only
+// until the rollback's writer finishes, so the routes answer 503, not the 500 of
+// a failure or the 409 of a final refusal.
+func TestRecoveryRoutesAskForARetryDuringARollback(t *testing.T) {
+	t.Parallel()
+
+	t.Run("rollback", func(t *testing.T) {
+		t.Parallel()
+		store := &fakeStore{materializeErr: rollbackRunning{}}
+		rec := do(t, newTestRouter(store), "POST", "/api/document/proj1/rollback", `{"doc_id":"proj1","version":4}`)
+		if rec.Code != http.StatusServiceUnavailable {
+			t.Errorf("status = %d, want %d", rec.Code, http.StatusServiceUnavailable)
+		}
+		if store.rolledBack {
+			t.Error("PruneAfter ran while a rollback was in progress")
+		}
+	})
+
+	t.Run("snapshot", func(t *testing.T) {
+		t.Parallel()
+		store := &fakeStore{materializeErr: rollbackRunning{}}
+		rec := do(t, newTestRouter(store), "POST", "/api/document/snapshot", `{"doc_id":"proj1","version":4}`)
+		if rec.Code != http.StatusServiceUnavailable {
+			t.Errorf("status = %d, want %d", rec.Code, http.StatusServiceUnavailable)
+		}
+	})
+
+	t.Run("history", func(t *testing.T) {
+		t.Parallel()
+		store := &fakeStore{versions: []VersionInfo{{Version: 1}}, rebuildableErr: rollbackRunning{}}
+		rec := do(t, newTestRouter(store), "GET", "/api/document/proj1/history/metadata", "")
+		if rec.Code != http.StatusServiceUnavailable {
+			t.Errorf("status = %d, want %d", rec.Code, http.StatusServiceUnavailable)
+		}
+	})
+}
 
 // TestRollbackRefusesAVersionTheStoreCannotRebuild: a rebuild the store refuses
 // must never reach PruneAfter. PruneAfter replaces doc_v2 with what it is given

@@ -319,7 +319,7 @@ func TestCompact_StandsDownWhenARollbackLandsBeforeItsRead(t *testing.T) {
 			return
 		}
 		fired = true
-		if err := a.writeV2Snapshot(ctx, room, oid, rolled); err != nil {
+		if err := a.writeV2Snapshot(ctx, room, oid, rolled, coverage{clock: 12}); err != nil {
 			t.Errorf("crashed rollback, doc_v2: %v", err)
 		}
 		if err := a.store.put(ctx, a.ceilingName(room), be32(12)); err != nil {

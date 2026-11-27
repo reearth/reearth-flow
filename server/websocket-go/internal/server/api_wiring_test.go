@@ -62,8 +62,11 @@ func (nopStore) GetUpdate(ctx context.Context, room string, v uint64) ([]byte, f
 func (nopStore) MaterializeAt(ctx context.Context, room string, v uint64) ([]byte, error) {
 	return nil, nil
 }
-func (nopStore) PruneAfter(ctx context.Context, room string, target uint64, rolledBack []byte) error {
-	return nil
+func (nopStore) RebuildableVersions(ctx context.Context, room string, versions []uint64) (map[uint64]bool, error) {
+	return nil, nil
+}
+func (nopStore) Rollback(ctx context.Context, room string, v uint64, beforePublish func()) ([]byte, error) {
+	return nil, nil
 }
 func (nopStore) Flush(ctx context.Context, room string) error { return nil }
 func (nopStore) CaptureSnapshot(ctx context.Context, room, name string, state []byte) (uint64, error) {

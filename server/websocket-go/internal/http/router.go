@@ -36,6 +36,19 @@ var ErrNotFound = errors.New("document not found")
 // sentinel so this package keeps no dependency on the storage implementation.
 type notRebuildable interface{ NotRebuildable() bool }
 
+// rollbackInProgress is reported by a store that will not read a room while a
+// rollback of it is unfinished and its writer still holds the lock.
+type rollbackInProgress interface{ RollbackInProgress() bool }
+
+// retryLater reports whether err is transient in that way. A refused rebuild is
+// final; this is not, so it answers 503 rather than 409.
+func retryLater(err error) bool {
+	var ri rollbackInProgress
+	return errors.As(err, &ri) && ri.RollbackInProgress()
+}
+
+const msgRollbackInProgress = "a restore of this project is in progress, try again shortly"
+
 // rebuildRefused reports whether err is a store refusing to rebuild a version.
 // It is a conflict with the stored history, not a server fault, so the handlers
 // answer 409 rather than 500.
@@ -68,8 +81,13 @@ type DocStore interface {
 	GetUpdate(ctx context.Context, room string, v uint64) ([]byte, VersionInfo, bool, error)
 	// MaterializeAt rebuilds the full state at v.
 	MaterializeAt(ctx context.Context, room string, v uint64) ([]byte, error)
-	// PruneAfter persists the rolled-back state and prunes updates > target.
-	PruneAfter(ctx context.Context, room string, target uint64, rolledBack []byte) error
+	// RebuildableVersions reports which versions MaterializeAt can rebuild.
+	RebuildableVersions(ctx context.Context, room string, versions []uint64) (map[uint64]bool, error)
+	// Rollback rebuilds v and publishes it as the room's state, calling
+	// beforePublish (if set) once in between, and returns the rebuilt state. A
+	// rebuild and a separate publish would let another rollback commit between
+	// them, so the store does both and refuses that race as retryable.
+	Rollback(ctx context.Context, room string, v uint64, beforePublish func()) ([]byte, error)
 	// Flush forces a GCS snapshot of the room's current state.
 	Flush(ctx context.Context, room string) error
 	// (No CaptureSnapshot: the snapshot endpoint is read-only.)
@@ -196,6 +214,13 @@ func (r *router) getLatest(w http.ResponseWriter, req *http.Request) {
 func (r *router) getHistory(w http.ResponseWriter, req *http.Request) {
 	id := req.PathValue("id")
 	versions, err := r.store.ListVersions(req.Context(), id)
+	if err == nil {
+		versions, err = r.rebuildable(req.Context(), id, versions)
+	}
+	if retryLater(err) {
+		writeErr(w, http.StatusServiceUnavailable, msgRollbackInProgress)
+		return
+	}
 	if err != nil {
 		r.fail(w, "history failed", err, "doc", id)
 		return
@@ -223,6 +248,13 @@ func (r *router) getHistory(w http.ResponseWriter, req *http.Request) {
 func (r *router) getHistoryMetadata(w http.ResponseWriter, req *http.Request) {
 	id := req.PathValue("id")
 	versions, err := r.store.ListVersions(req.Context(), id)
+	if err == nil {
+		versions, err = r.rebuildable(req.Context(), id, versions)
+	}
+	if retryLater(err) {
+		writeErr(w, http.StatusServiceUnavailable, msgRollbackInProgress)
+		return
+	}
 	if err != nil {
 		r.fail(w, "history metadata failed", err, "doc", id)
 		return
@@ -235,6 +267,26 @@ func (r *router) getHistoryMetadata(w http.ResponseWriter, req *http.Request) {
 		})
 	}
 	writeJSON(w, http.StatusOK, items)
+}
+
+// rebuildable keeps only the versions the store can rebuild exactly, so the
+// recovery list offers nothing that preview and rollback would then refuse.
+func (r *router) rebuildable(ctx context.Context, id string, versions []VersionInfo) ([]VersionInfo, error) {
+	vs := make([]uint64, len(versions))
+	for i, v := range versions {
+		vs[i] = v.Version
+	}
+	ok, err := r.store.RebuildableVersions(ctx, id, vs)
+	if err != nil {
+		return nil, err
+	}
+	out := make([]VersionInfo, 0, len(versions))
+	for _, v := range versions {
+		if ok[v.Version] {
+			out = append(out, v)
+		}
+	}
+	return out, nil
 }
 
 func (r *router) getHistoryByVersion(w http.ResponseWriter, req *http.Request) {
@@ -272,8 +324,24 @@ func (r *router) rollback(w http.ResponseWriter, req *http.Request) {
 		return
 	}
 	ctx := req.Context()
-	rolledBack, err := r.store.MaterializeAt(ctx, id, body.Version)
-	// Refused before the prune: the rebuild would be a fragment, and PruneAfter
+	// The live room is flagged only once the rebuild succeeded, right before the
+	// store publishes it.
+	signaled := false
+	rolledBack, err := r.store.Rollback(ctx, id, body.Version, func() {
+		r.signal(ctx, id, true)
+		signaled = true
+	})
+	if signaled {
+		// Always clear the flag, even on prune failure or client disconnect:
+		// WithoutCancel keeps the clear off client liveness (else the canvas stays
+		// hidden until the room next reloads).
+		defer r.signal(context.WithoutCancel(ctx), id, false)
+	}
+	if retryLater(err) {
+		writeErr(w, http.StatusServiceUnavailable, msgRollbackInProgress)
+		return
+	}
+	// Refused before the prune: the rebuild would be a fragment, and publishing
 	// writes it over doc_v2 and deletes the log above the target. Failing the
 	// restore is recoverable, destroying the history above it is not.
 	if rebuildRefused(err) {
@@ -283,17 +351,11 @@ func (r *router) rollback(w http.ResponseWriter, req *http.Request) {
 		return
 	}
 	if err != nil {
-		r.fail(w, "rollback materialize failed", err, "doc", id, "version", body.Version)
-		return
-	}
-	r.signal(ctx, id, true)
-	// Always clear the flag, even on prune failure or client disconnect:
-	// WithoutCancel keeps the clear off client liveness (else the canvas stays
-	// hidden until the room next reloads).
-	clearCtx := context.WithoutCancel(ctx)
-	defer r.signal(clearCtx, id, false)
-	if err := r.store.PruneAfter(ctx, id, body.Version, rolledBack); err != nil {
-		r.fail(w, "rollback prune failed", err, "doc", id, "version", body.Version)
+		msg := "rollback materialize failed"
+		if signaled {
+			msg = "rollback prune failed"
+		}
+		r.fail(w, msg, err, "doc", id, "version", body.Version)
 		return
 	}
 	// Return the full rolled-back document, matching the Rust server's
@@ -365,6 +427,10 @@ func (r *router) createSnapshot(w http.ResponseWriter, req *http.Request) {
 		return
 	}
 	state, err := r.store.MaterializeAt(req.Context(), body.DocID, body.Version)
+	if retryLater(err) {
+		writeErr(w, http.StatusServiceUnavailable, msgRollbackInProgress)
+		return
+	}
 	// Same refusal as rollback: a snapshot of a fragment would be stored as if it
 	// were that version.
 	if rebuildRefused(err) {

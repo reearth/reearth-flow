@@ -289,6 +289,10 @@ func (c *Client) Rollback(ctx context.Context, id string, version int) (*websock
 		}
 	}(resp.Body)
 
+	if resp.StatusCode == http.StatusConflict {
+		body, _ := io.ReadAll(resp.Body)
+		return nil, fmt.Errorf("%w: %s", interfaces.ErrVersionNotRebuildable, body)
+	}
 	if resp.StatusCode != http.StatusOK {
 		body, _ := io.ReadAll(resp.Body)
 		return nil, fmt.Errorf("server returned non-200 status: %d %s", resp.StatusCode, body)
@@ -471,6 +475,10 @@ func (c *Client) CreateSnapshot(ctx context.Context, docID string, version int, 
 		}
 	}(resp.Body)
 
+	if resp.StatusCode == http.StatusConflict {
+		body, _ := io.ReadAll(resp.Body)
+		return nil, fmt.Errorf("%w: %s", interfaces.ErrVersionNotRebuildable, body)
+	}
 	if resp.StatusCode != http.StatusOK {
 		body, _ := io.ReadAll(resp.Body)
 		return nil, fmt.Errorf("server returned non-200 status: %d %s", resp.StatusCode, body)
