@@ -347,7 +347,7 @@ jobs:
           registry: ghcr.io
           username: ${{ github.actor }}
           password: ${{ secrets.GITHUB_TOKEN }}
-      - uses: reearth/actions/deploy-cloud-run-with-tag@f11fdfe98bfdcd44a697577ba0ae2d4f56a45ea5 # main
+      - uses: reearth/actions/deploy-cloud-run-with-tag@aa5f70528d1adbe1047d282c4f47ea64ff8014d0 # main
         id: deploy
         with:
           image: ghcr.io/reearth/reearth-flow/reearth-flow-web:${{ needs.prepare-info-pr.outputs.sha_short }}
