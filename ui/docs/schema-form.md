@@ -253,8 +253,8 @@ this reason.
 **`compile(null)`** is valid input. 30 of the engine's actions publish
 `parameter: null`, and `buildNewCanvasNode` hands it straight through.
 
-**Four actions have a union at the schema root** — Feature Reader, JSON
-Fragmenter, XML Fragmenter, PLATEAU4.SolarPositionCalculator. Anything reading
+**Three actions have a union at the schema root** — Feature Reader, JSON
+Fragmenter, PLATEAU4.SolarPositionCalculator. Anything reading
 `schema.properties` to decide something will be wrong for them: changing a
 variant writes the whole params object at path `""`, which is a real path and
 not "no path".

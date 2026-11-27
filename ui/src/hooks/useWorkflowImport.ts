@@ -60,8 +60,8 @@ export default () => {
         AnyWorkflowVariable,
         "id" | "createdAt" | "updatedAt" | "projectId"
       >[],
-    ) => {
-      if (!currentWorkspace) return;
+    ): Promise<boolean> => {
+      if (!currentWorkspace) return false;
 
       const { project } = await createProject({
         workspaceId: currentWorkspace.id,
@@ -69,7 +69,10 @@ export default () => {
         description: resultsObject.description,
       });
 
-      if (!project) return console.error("Failed to create project");
+      if (!project) {
+        console.error("Failed to create project");
+        return false;
+      }
 
       // Create workflow variables if provided
       if (workflowVariables && workflowVariables.length > 0) {
@@ -118,6 +121,7 @@ export default () => {
         });
         yWebSocketProvider.destroy();
       }
+      return true;
     },
     [
       currentWorkspace,
@@ -135,14 +139,25 @@ export default () => {
         "id" | "createdAt" | "updatedAt" | "projectId"
       >[],
     ) => {
-      if (pendingWorkflowData) {
-        await executeWorkflowImport(
+      if (!pendingWorkflowData) return;
+
+      try {
+        const imported = await executeWorkflowImport(
           pendingWorkflowData.canvasReadyWorkflows,
           pendingWorkflowData.resultsObject,
           workflowVariables,
         );
-        setPendingWorkflowData(null);
-        setShowVariableMapping(false);
+        if (!imported) return;
+      } catch (error) {
+        console.error("Failed to import workflow:", error);
+        return;
+      }
+
+      setPendingWorkflowData(null);
+      setShowVariableMapping(false);
+      // Reset file input so same file can be imported again
+      if (fileInputRef.current) {
+        fileInputRef.current.value = "";
       }
     },
     [pendingWorkflowData, executeWorkflowImport],

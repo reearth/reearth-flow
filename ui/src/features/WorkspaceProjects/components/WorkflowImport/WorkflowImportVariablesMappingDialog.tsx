@@ -15,6 +15,7 @@ import {
   TextArea,
 } from "@flow/components";
 import { useT } from "@flow/lib/i18n";
+import { cn } from "@flow/lib/utils";
 import type { AnyWorkflowVariable, VarType } from "@flow/types";
 import type { WorkflowVariable } from "@flow/utils/fromEngineWorkflow/deconstructedEngineWorkflow";
 
@@ -44,7 +45,7 @@ type WorkflowImportVariablesMappingDialogProps = {
       AnyWorkflowVariable,
       "id" | "createdAt" | "updatedAt" | "projectId"
     >[],
-  ) => void;
+  ) => Promise<void>;
   onCancel: () => void;
 };
 
@@ -57,6 +58,7 @@ export default function WorkflowImportVariablesMappingDialog({
   onCancel,
 }: WorkflowImportVariablesMappingDialogProps) {
   const t = useT();
+  const [isImporting, setIsImporting] = useState(false);
 
   // Initialize variable mappings with inferred types
   const [variableMappings, setVariableMappings] = useState<VariableMapping[]>(
@@ -115,7 +117,7 @@ export default function WorkflowImportVariablesMappingDialog({
     );
   };
 
-  const handleConfirm = () => {
+  const handleConfirm = async () => {
     const workflowVariables = variableMappings.map((mapping) => ({
       name: mapping.name,
       type: mapping.type,
@@ -125,12 +127,21 @@ export default function WorkflowImportVariablesMappingDialog({
       config: undefined, // Basic implementation without specific config
     }));
 
-    onConfirm(workflowVariables);
+    setIsImporting(true);
+    try {
+      await onConfirm(workflowVariables);
+    } finally {
+      setIsImporting(false);
+    }
   };
 
   const handleCancel = () => {
     onCancel();
     onOpenChange(false);
+  };
+
+  const handleOpenChange = (open: boolean) => {
+    if (!isImporting) onOpenChange(open);
   };
 
   const renderValuePreview = (value: any) => {
@@ -147,7 +158,7 @@ export default function WorkflowImportVariablesMappingDialog({
   };
 
   return (
-    <Dialog open={isOpen} onOpenChange={onOpenChange}>
+    <Dialog open={isOpen} onOpenChange={handleOpenChange}>
       <DialogContent size="xl">
         <DialogHeader>
           <DialogTitle>{t("Configure Workflow Variables")}</DialogTitle>
@@ -162,114 +173,127 @@ export default function WorkflowImportVariablesMappingDialog({
           </DialogDescription>
         </DialogHeader>
         <DialogContentWrapper className="h-[400px] overflow-auto">
-          {variableMappings.map((mapping, index) => (
-            <div key={mapping.name} className="space-y-4 rounded-lg border p-4">
-              <div className="flex items-start justify-between">
-                <div className="space-y-1">
-                  <Label className="text-sm font-semibold">
-                    {mapping.name}
-                  </Label>
-                  <div className="text-xs text-muted-foreground">
-                    {t("Original value: ")}{" "}
-                    {renderValuePreview(mapping.originalValue)}
-                  </div>
-                </div>
-                <div className="flex items-center space-x-4">
-                  <div className="flex items-center space-x-2">
-                    <Checkbox
-                      id={`required-${index}`}
-                      checked={mapping.required}
-                      onCheckedChange={(checked) =>
-                        handleRequiredChange(index, checked as boolean)
-                      }
-                    />
-                    <Label htmlFor={`required-${index}`} className="text-sm">
-                      {t("Required")}
+          <div
+            inert={isImporting}
+            className={cn("flex flex-col gap-4", isImporting && "opacity-50")}>
+            {variableMappings.map((mapping, index) => (
+              <div
+                key={mapping.name}
+                className="space-y-4 rounded-lg border p-4">
+                <div className="flex items-start justify-between">
+                  <div className="space-y-1">
+                    <Label className="text-sm font-semibold">
+                      {mapping.name}
                     </Label>
+                    <div className="text-xs text-muted-foreground">
+                      {t("Original value: ")}{" "}
+                      {renderValuePreview(mapping.originalValue)}
+                    </div>
                   </div>
+                  <div className="flex items-center space-x-4">
+                    <div className="flex items-center space-x-2">
+                      <Checkbox
+                        id={`required-${index}`}
+                        checked={mapping.required}
+                        onCheckedChange={(checked) =>
+                          handleRequiredChange(index, checked as boolean)
+                        }
+                      />
+                      <Label htmlFor={`required-${index}`} className="text-sm">
+                        {t("Required")}
+                      </Label>
+                    </div>
 
-                  <div className="flex items-center space-x-2">
-                    <Checkbox
-                      id={`public-${index}`}
-                      checked={mapping.public}
-                      onCheckedChange={(checked) =>
-                        handlePublicChange(index, checked as boolean)
-                      }
-                    />
-                    <Label htmlFor={`public-${index}`} className="text-sm">
-                      {t("Public")}
+                    <div className="flex items-center space-x-2">
+                      <Checkbox
+                        id={`public-${index}`}
+                        checked={mapping.public}
+                        onCheckedChange={(checked) =>
+                          handlePublicChange(index, checked as boolean)
+                        }
+                      />
+                      <Label htmlFor={`public-${index}`} className="text-sm">
+                        {t("Public")}
+                      </Label>
+                    </div>
+                  </div>
+                </div>
+
+                <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
+                  <div className="space-y-2">
+                    <Label htmlFor={`type-${index}`}>
+                      {t("Variable Type")}
                     </Label>
+                    <VariableTypeSelector
+                      value={mapping.type}
+                      onValueChange={(newType) =>
+                        handleTypeChange(index, newType)
+                      }
+                    />
                   </div>
-                </div>
-              </div>
 
-              <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
-                <div className="space-y-2">
-                  <Label htmlFor={`type-${index}`}>{t("Variable Type")}</Label>
-                  <VariableTypeSelector
-                    value={mapping.type}
-                    onValueChange={(newType) =>
-                      handleTypeChange(index, newType)
-                    }
-                  />
-                </div>
-
-                <div className="space-y-2">
-                  <Label htmlFor={`default-${index}`}>
-                    {t("Default Value")}
-                  </Label>
-                  {mapping.type === "array" ? (
-                    <SimpleArrayInput
-                      value={
-                        Array.isArray(mapping.defaultValue)
-                          ? mapping.defaultValue
-                          : []
-                      }
-                      onChange={(newValue) =>
-                        handleDefaultValueChange(index, newValue)
-                      }
-                    />
-                  ) : mapping.type === "text" &&
-                    typeof mapping.defaultValue === "string" &&
-                    mapping.defaultValue.length > 50 ? (
-                    <TextArea
-                      id={`default-${index}`}
-                      value={mapping.defaultValue}
-                      onChange={(e) =>
-                        handleDefaultValueChange(index, e.target.value)
-                      }
-                      className="min-h-[60px]"
-                    />
-                  ) : (
-                    <Input
-                      id={`default-${index}`}
-                      type={
-                        mapping.type === "number"
-                          ? "number"
-                          : mapping.type === "password"
-                            ? "password"
-                            : "text"
-                      }
-                      value={mapping.defaultValue}
-                      onChange={(e) => {
-                        const value =
+                  <div className="space-y-2">
+                    <Label htmlFor={`default-${index}`}>
+                      {t("Default Value")}
+                    </Label>
+                    {mapping.type === "array" ? (
+                      <SimpleArrayInput
+                        value={
+                          Array.isArray(mapping.defaultValue)
+                            ? mapping.defaultValue
+                            : []
+                        }
+                        onChange={(newValue) =>
+                          handleDefaultValueChange(index, newValue)
+                        }
+                      />
+                    ) : mapping.type === "text" &&
+                      typeof mapping.defaultValue === "string" &&
+                      mapping.defaultValue.length > 50 ? (
+                      <TextArea
+                        id={`default-${index}`}
+                        value={mapping.defaultValue}
+                        onChange={(e) =>
+                          handleDefaultValueChange(index, e.target.value)
+                        }
+                        className="min-h-[60px]"
+                      />
+                    ) : (
+                      <Input
+                        id={`default-${index}`}
+                        type={
                           mapping.type === "number"
-                            ? parseFloat(e.target.value) || 0
-                            : e.target.value;
-                        handleDefaultValueChange(index, value);
-                      }}
-                    />
-                  )}
+                            ? "number"
+                            : mapping.type === "password"
+                              ? "password"
+                              : "text"
+                        }
+                        value={mapping.defaultValue}
+                        onChange={(e) => {
+                          const value =
+                            mapping.type === "number"
+                              ? parseFloat(e.target.value) || 0
+                              : e.target.value;
+                          handleDefaultValueChange(index, value);
+                        }}
+                      />
+                    )}
+                  </div>
                 </div>
               </div>
-            </div>
-          ))}
+            ))}
+          </div>
         </DialogContentWrapper>
         <DialogFooter className="mt-2">
-          <Button variant="outline" onClick={handleCancel}>
+          <Button
+            variant="outline"
+            disabled={isImporting}
+            onClick={handleCancel}>
             {t("Cancel")}
           </Button>
-          <Button onClick={handleConfirm}>{t("Import with Variables")}</Button>
+          <Button disabled={isImporting} onClick={handleConfirm}>
+            {isImporting ? t("Importing...") : t("Import with Variables")}
+          </Button>
         </DialogFooter>
       </DialogContent>
     </Dialog>

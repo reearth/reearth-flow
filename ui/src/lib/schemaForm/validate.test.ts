@@ -4,7 +4,7 @@
  * A choice that fails is reported by AJV once for the choice and again for
  * every branch it tried. What reaches the user should be the complaint from
  * the field they are actually filling in, not the shallow one above it — and
- * the root is a field like any other, since four actions have a union there.
+ * the root is a field like any other, since three actions have a union there.
  */
 import { readFileSync } from "fs";
 
@@ -30,12 +30,11 @@ describe("root-level pruning", () => {
       (action.parameter.oneOf || action.parameter.anyOf),
   );
 
-  it("still finds the four union-rooted actions", () => {
+  it("still finds the three union-rooted actions", () => {
     expect(rootUnions.map((action) => action.name).sort()).toEqual([
       "Feature Reader",
       "JSON Fragmenter",
       "PLATEAU4.SolarPositionCalculator",
-      "XML Fragmenter",
     ]);
   });
 

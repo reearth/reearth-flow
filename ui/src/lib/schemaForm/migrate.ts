@@ -4,7 +4,7 @@
  *
  * What this replaces kept the top-level keys that the new schema also declared,
  * which assumed every schema is an object with `properties`. The compiler
- * supports a union or a map at the root — four actions have one today — and for
+ * supports a union or a map at the root — three actions have one today — and for
  * those the assumption held nothing, so the whole stored value was discarded
  * before the migration form was shown.
  *
