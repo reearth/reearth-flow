@@ -5,6 +5,7 @@ package relaypolicy
 import (
 	"context"
 	"errors"
+	"math"
 	"time"
 
 	"github.com/reearth/ygo/awareness"
@@ -61,7 +62,12 @@ func ClassifyInject(ctx context.Context, in cluster.Inbound, err error) InjectOu
 func payloadInvalid(in cluster.Inbound) bool {
 	switch in.Kind {
 	case cluster.KindSync:
-		_, _, err := crdt.ApplyUpdateV1Held(crdt.New(), in.Data, nil)
+		// No pending cap, as ygo's VersionedPersistence.AppendUpdate asks of a
+		// scratch check: without the room's state an incremental update parks
+		// every dependent item, and a bare document refuses past 100,000 of them,
+		// which would skip a large update the room can take.
+		scratch := crdt.New(crdt.WithMaxPendingItems(math.MaxInt))
+		_, _, err := crdt.ApplyUpdateV1Held(scratch, in.Data, nil)
 		return err != nil
 	case cluster.KindAwareness:
 		_, err := awareness.New(0).ApplyUpdateWith(in.Data, nil, awareness.ApplyOptions{Foreign: true})

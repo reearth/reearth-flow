@@ -19,11 +19,11 @@ var (
 	malformed      = []byte{1}
 )
 
-func sync(data []byte) cluster.Inbound {
+func syncIn(data []byte) cluster.Inbound {
 	return cluster.Inbound{Room: "r", Kind: cluster.KindSync, Data: data}
 }
 
-func aware(data []byte) cluster.Inbound {
+func awareIn(data []byte) cluster.Inbound {
 	return cluster.Inbound{Room: "r", Kind: cluster.KindAwareness, Data: data}
 }
 
@@ -35,14 +35,14 @@ func TestClassifyInject(t *testing.T) {
 
 	t.Run("payloads the empty state takes", func(t *testing.T) {
 		t.Parallel()
-		if payloadInvalid(sync(validSync)) || payloadInvalid(aware(validAwareness)) {
+		if payloadInvalid(syncIn(validSync)) || payloadInvalid(awareIn(validAwareness)) {
 			t.Fatal("setup: a valid payload was judged invalid")
 		}
 	})
 
 	t.Run("applied", func(t *testing.T) {
 		t.Parallel()
-		if got := ClassifyInject(context.Background(), sync(validSync), nil); got != Applied {
+		if got := ClassifyInject(context.Background(), syncIn(validSync), nil); got != Applied {
 			t.Errorf("got %d, want Applied", got)
 		}
 	})
@@ -54,7 +54,7 @@ func TestClassifyInject(t *testing.T) {
 		if err == nil {
 			t.Fatal("setup: a malformed update decoded")
 		}
-		if got := ClassifyInject(context.Background(), sync(malformed), err); got != Skip {
+		if got := ClassifyInject(context.Background(), syncIn(malformed), err); got != Skip {
 			t.Errorf("got %d, want Skip", got)
 		}
 	})
@@ -67,7 +67,7 @@ func TestClassifyInject(t *testing.T) {
 		if err == nil {
 			t.Fatal("setup: a malformed awareness update decoded")
 		}
-		if got := ClassifyInject(context.Background(), aware(malformed), err); got != Skip {
+		if got := ClassifyInject(context.Background(), awareIn(malformed), err); got != Skip {
 			t.Errorf("got %d, want Skip", got)
 		}
 	})
@@ -78,10 +78,10 @@ func TestClassifyInject(t *testing.T) {
 		// error too, wrapped, for a payload that is itself fine.
 		_, _, decodeErr := crdt.ApplyUpdateV1Held(crdt.New(), malformed, nil)
 		loadErr := fmt.Errorf("bootstrapping room %q: %w", "r", decodeErr)
-		if got := ClassifyInject(context.Background(), sync(validSync), loadErr); got != Retry {
+		if got := ClassifyInject(context.Background(), syncIn(validSync), loadErr); got != Retry {
 			t.Errorf("sync: got %d, want Retry", got)
 		}
-		if got := ClassifyInject(context.Background(), aware(validAwareness), loadErr); got != Retry {
+		if got := ClassifyInject(context.Background(), awareIn(validAwareness), loadErr); got != Retry {
 			t.Errorf("awareness: got %d, want Retry", got)
 		}
 	})
@@ -89,10 +89,10 @@ func TestClassifyInject(t *testing.T) {
 	t.Run("load failure is retried", func(t *testing.T) {
 		t.Parallel()
 		err := errors.New("gcs: load failed")
-		if got := ClassifyInject(context.Background(), sync(validSync), err); got != Retry {
+		if got := ClassifyInject(context.Background(), syncIn(validSync), err); got != Retry {
 			t.Errorf("sync: got %d, want Retry", got)
 		}
-		if got := ClassifyInject(context.Background(), aware(validAwareness), err); got != Retry {
+		if got := ClassifyInject(context.Background(), awareIn(validAwareness), err); got != Retry {
 			t.Errorf("awareness: got %d, want Retry", got)
 		}
 	})
@@ -100,7 +100,7 @@ func TestClassifyInject(t *testing.T) {
 	t.Run("server sentinels are skipped", func(t *testing.T) {
 		t.Parallel()
 		for _, sentinel := range []error{ygows.ErrInvalidUpdate, ygows.ErrUpdateTooLarge, ygows.ErrInvalidRoomName} {
-			if got := ClassifyInject(context.Background(), sync(validSync), fmt.Errorf("inject: %w", sentinel)); got != Skip {
+			if got := ClassifyInject(context.Background(), syncIn(validSync), fmt.Errorf("inject: %w", sentinel)); got != Skip {
 				t.Errorf("%v: got %d, want Skip", sentinel, got)
 			}
 		}
@@ -109,7 +109,7 @@ func TestClassifyInject(t *testing.T) {
 	t.Run("shutdown stops", func(t *testing.T) {
 		t.Parallel()
 		err := fmt.Errorf("inject: %w", ygows.ErrServerShutdown)
-		if got := ClassifyInject(context.Background(), sync(malformed), err); got != Stop {
+		if got := ClassifyInject(context.Background(), syncIn(malformed), err); got != Stop {
 			t.Errorf("got %d, want Stop", got)
 		}
 	})
@@ -118,7 +118,7 @@ func TestClassifyInject(t *testing.T) {
 		t.Parallel()
 		ctx, cancel := context.WithCancel(context.Background())
 		cancel()
-		if got := ClassifyInject(ctx, sync(malformed), errors.New("anything")); got != Stop {
+		if got := ClassifyInject(ctx, syncIn(malformed), errors.New("anything")); got != Stop {
 			t.Errorf("got %d, want Stop", got)
 		}
 	})
