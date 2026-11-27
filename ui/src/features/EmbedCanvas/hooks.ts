@@ -127,7 +127,9 @@ export default ({ projectId }: { projectId: string }) => {
 
   useEffect(() => {
     if (!nodes.length) return;
-    const frame = requestAnimationFrame(() => fitView({ padding: 0.5 }));
+    const frame = requestAnimationFrame(() =>
+      fitView({ padding: 0.5, maxZoom: 1 }),
+    );
     return () => cancelAnimationFrame(frame);
   }, [nodes, fitView]);
 

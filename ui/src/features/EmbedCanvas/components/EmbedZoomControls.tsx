@@ -32,7 +32,7 @@ const EmbedZoomControls: React.FC = () => {
         className="size-6 rounded-[4px]"
         tooltipText={t("All actions in viewport")}
         icon={<FrameCornersIcon size={14} weight="light" />}
-        onClick={() => fitView({ duration: 300, padding: 0.5 })}
+        onClick={() => fitView({ duration: 300, padding: 0.5, maxZoom: 1 })}
       />
     </div>
   );
