@@ -14,6 +14,7 @@ generate_truth = true
 path = "13999_tokyo_udx-mlit_2023_citygml_2_sample-takeshiba_op_ubld_3dtiles_lod2_jgd2024"
 truth_path = "cesium_ubld_3dtiles_lod2_jgd2024_truth.json"
 generate_truth = true
+legacy_keys = true
 
 [convs.cesium_attributes.ubld_3dtiles_lod2_jgd2024.casts]
 "" = "ordered_dict"

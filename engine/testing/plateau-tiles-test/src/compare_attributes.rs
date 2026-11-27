@@ -32,13 +32,18 @@ pub fn make_feature_key(props: &Value, path: Option<&str>) -> String {
     // For risk types, use path/rank_code as the key
     if let Some(p) = path {
         if is_risk_type(p) {
-            let rank_code = getter("uro:rank_code");
-            if !rank_code.is_empty() {
-                return format!("{}/{}", p, rank_code);
-            }
-            let rankorg_code = getter("uro:rankOrg_code");
-            if !rankorg_code.is_empty() {
-                return format!("{}/{}", p, rankorg_code);
+            // The legacy key first, then the current one with `__` for `:`
+            let code = [
+                "uro:rank_code",
+                "uro__rank_code",
+                "uro:rankOrg_code",
+                "uro__rankOrg_code",
+            ]
+            .into_iter()
+            .map(getter)
+            .find(|code| !code.is_empty());
+            if let Some(code) = code {
+                return format!("{}/{}", p, code);
             }
             panic!(
                 "both uro:rank_code and uro:rankOrg_code are missing in {}",

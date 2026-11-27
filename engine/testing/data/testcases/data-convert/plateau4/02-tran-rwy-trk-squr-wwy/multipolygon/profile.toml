@@ -8,6 +8,7 @@ citygml_zip_name = "13115_suginami-ku_city_2024_citygml_1_op_tran.zip"
 path = "13115_suginami-ku_city_2024_citygml_1_op_tran_mvt_lod1"
 truth_path = "mvt_tran_mvt_lod1_truth.json"
 generate_truth = true
+legacy_keys = true
 
 [convs.mvt_attributes.tran_mvt_lod1.casts]
 "" = "ordered_dict"
@@ -22,6 +23,7 @@ path = "mvt_tran_mvt_lod1_truth.json"
 path = "13115_suginami-ku_city_2024_citygml_1_op_tran_mvt_lod2"
 truth_path = "mvt_tran_mvt_lod2_truth.json"
 generate_truth = true
+legacy_keys = true
 
 [convs.mvt_attributes.tran_mvt_lod2.casts]
 "" = "ordered_dict"

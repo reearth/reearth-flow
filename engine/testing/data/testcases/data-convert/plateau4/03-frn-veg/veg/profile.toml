@@ -35,6 +35,7 @@ generate_truth = true
 path = "08220_tsukuba-shi_city_2023_citygml_2_op_veg_PlantCover_3dtiles_lod1_jgd2024"
 truth_path = "cesium_veg_PlantCover_3dtiles_lod1_jgd2024_truth.json"
 generate_truth = true
+legacy_keys = true
 
 [convs.cesium_attributes.veg_PlantCover_3dtiles_lod1_jgd2024.casts]
 "" = "ordered_dict"
@@ -49,6 +50,7 @@ path = "cesium_veg_PlantCover_3dtiles_lod1_jgd2024_truth.json"
 path = "08220_tsukuba-shi_city_2023_citygml_2_op_veg_PlantCover_3dtiles_lod2_jgd2024"
 truth_path = "cesium_veg_PlantCover_3dtiles_lod2_jgd2024_truth.json"
 generate_truth = true
+legacy_keys = true
 
 [convs.cesium_attributes.veg_PlantCover_3dtiles_lod2_jgd2024.casts]
 "" = "ordered_dict"
@@ -63,6 +65,7 @@ path = "cesium_veg_PlantCover_3dtiles_lod2_jgd2024_truth.json"
 path = "08220_tsukuba-shi_city_2023_citygml_2_op_veg_PlantCover_3dtiles_lod3_jgd2024"
 truth_path = "cesium_veg_PlantCover_3dtiles_lod3_jgd2024_truth.json"
 generate_truth = true
+legacy_keys = true
 
 [convs.cesium_attributes.veg_PlantCover_3dtiles_lod3_jgd2024.casts]
 "" = "ordered_dict"
@@ -77,6 +80,7 @@ path = "cesium_veg_PlantCover_3dtiles_lod3_jgd2024_truth.json"
 path = "08220_tsukuba-shi_city_2023_citygml_2_op_veg_PlantCover_dm_geometric_attributes"
 truth_path = "mvt_veg_PlantCover_dm_geometric_attributes_truth.json"
 generate_truth = true
+legacy_keys = true
 
 [convs.mvt_attributes.veg_PlantCover_dm_geometric_attributes.casts]
 "" = "ordered_dict"
@@ -91,6 +95,7 @@ path = "mvt_veg_PlantCover_dm_geometric_attributes_truth.json"
 path = "08220_tsukuba-shi_city_2023_citygml_2_op_veg_SolitaryVegetationObject_3dtiles_lod1_jgd2024"
 truth_path = "cesium_veg_SolitaryVegetationObject_3dtiles_lod1_jgd2024_truth.json"
 generate_truth = true
+legacy_keys = true
 
 [convs.cesium_attributes.veg_SolitaryVegetationObject_3dtiles_lod1_jgd2024.casts]
 "" = "ordered_dict"
@@ -105,6 +110,7 @@ path = "cesium_veg_SolitaryVegetationObject_3dtiles_lod1_jgd2024_truth.json"
 path = "08220_tsukuba-shi_city_2023_citygml_2_op_veg_SolitaryVegetationObject_3dtiles_lod2_jgd2024"
 truth_path = "cesium_veg_SolitaryVegetationObject_3dtiles_lod2_jgd2024_truth.json"
 generate_truth = true
+legacy_keys = true
 
 [convs.cesium_attributes.veg_SolitaryVegetationObject_3dtiles_lod2_jgd2024.casts]
 "" = "ordered_dict"
@@ -119,6 +125,7 @@ path = "cesium_veg_SolitaryVegetationObject_3dtiles_lod2_jgd2024_truth.json"
 path = "08220_tsukuba-shi_city_2023_citygml_2_op_veg_SolitaryVegetationObject_3dtiles_lod3_jgd2024"
 truth_path = "cesium_veg_SolitaryVegetationObject_3dtiles_lod3_jgd2024_truth.json"
 generate_truth = true
+legacy_keys = true
 
 [convs.cesium_attributes.veg_SolitaryVegetationObject_3dtiles_lod3_jgd2024.casts]
 "" = "ordered_dict"
@@ -133,6 +140,7 @@ path = "cesium_veg_SolitaryVegetationObject_3dtiles_lod3_jgd2024_truth.json"
 path = "08220_tsukuba-shi_city_2023_citygml_2_op_veg_SolitaryVegetationObject_dm_geometric_attributes"
 truth_path = "mvt_veg_SolitaryVegetationObject_dm_geometric_attributes_truth.json"
 generate_truth = true
+legacy_keys = true
 
 [convs.mvt_attributes.veg_SolitaryVegetationObject_dm_geometric_attributes.casts]
 "" = "ordered_dict"
@@ -160,6 +168,7 @@ threshold = 0.001
 [tests.json_attributes.tilesets_plantcover_lod1]
 path = "08220_tsukuba-shi_city_2023_citygml_2_op_veg_PlantCover_3dtiles_lod1_jgd2024/tileset.json"
 extracted = true
+legacy_keys = true
 
 [tests.json_attributes.tilesets_plantcover_lod1.casts]
 ".geometricError" = "ignore_both"
@@ -169,6 +178,7 @@ extracted = true
 [tests.json_attributes.tilesets_plantcover_lod2]
 path = "08220_tsukuba-shi_city_2023_citygml_2_op_veg_PlantCover_3dtiles_lod2_jgd2024/tileset.json"
 extracted = true
+legacy_keys = true
 
 [tests.json_attributes.tilesets_plantcover_lod2.casts]
 ".geometricError" = "ignore_both"
@@ -178,6 +188,7 @@ extracted = true
 [tests.json_attributes.tilesets_plantcover_lod3]
 path = "08220_tsukuba-shi_city_2023_citygml_2_op_veg_PlantCover_3dtiles_lod3_jgd2024/tileset.json"
 extracted = true
+legacy_keys = true
 
 [tests.json_attributes.tilesets_plantcover_lod3.casts]
 ".geometricError" = "ignore_both"
@@ -187,6 +198,7 @@ extracted = true
 [tests.json_attributes.tilesets_solitaryveg_lod1]
 path = "08220_tsukuba-shi_city_2023_citygml_2_op_veg_SolitaryVegetationObject_3dtiles_lod1_jgd2024/tileset.json"
 extracted = true
+legacy_keys = true
 
 [tests.json_attributes.tilesets_solitaryveg_lod1.casts]
 ".geometricError" = "ignore_both"

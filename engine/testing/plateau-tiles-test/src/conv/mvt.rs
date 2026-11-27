@@ -1,5 +1,6 @@
 use crate::cast_config::{convert_casts, CastConfigValue};
 use crate::compare_attributes::{apply_casts_to_value, make_feature_key};
+use crate::legacy_keys::legacy_feature;
 use indexmap::IndexMap;
 use prost::Message;
 use serde_json::{json, Value};
@@ -29,9 +30,10 @@ pub fn tinymvt_value_to_json(value: &tinymvt::tag::Value) -> Value {
     }
 }
 
-/// Loads all MVT attributes from a directory, keyed by ident (or composite key for DM features).
+/// Loads all MVT attributes from a directory, keyed by ident (or composite key for DM features),
+/// converting the keys to the legacy keys when `legacy_keys` is set.
 /// Returns an IndexMap to preserve stable insertion order across runs.
-pub fn load_mvt_attr(dir: &Path) -> Result<IndexMap<String, Value>, String> {
+pub fn load_mvt_attr(dir: &Path, legacy_keys: bool) -> Result<IndexMap<String, Value>, String> {
     if !dir.exists() {
         return Err(format!("MVT directory does not exist: {:?}", dir));
     }
@@ -63,7 +65,12 @@ pub fn load_mvt_attr(dir: &Path) -> Result<IndexMap<String, Value>, String> {
                             let json_value = tinymvt_value_to_json(&value);
                             map.insert(key.to_string(), json_value);
                         }
-                        Value::Object(map)
+                        match legacy_keys {
+                            true => Value::Object(legacy_feature(map).map_err(|e| {
+                                format!("Failed to convert keys in {:?}: {}", path, e)
+                            })?),
+                            false => Value::Object(map),
+                        }
                     }
                     Err(e) => {
                         return Err(format!("Failed to decode tags: {}", e));
@@ -92,10 +99,12 @@ pub fn load_mvt_attr(dir: &Path) -> Result<IndexMap<String, Value>, String> {
 }
 
 /// Converts MVT tiles in `mvt_dir` to a JSON file at `output_path`, applying optional casts.
+/// The keys are converted to the legacy keys first when `legacy_keys` is set.
 pub fn write_mvt_json(
     mvt_dir: &Path,
     output_path: &Path,
     casts_cfg: Option<&HashMap<String, CastConfigValue>>,
+    legacy_keys: bool,
 ) -> Result<(), String> {
     let casts = if let Some(cfg) = casts_cfg {
         convert_casts(cfg)?
@@ -103,7 +112,7 @@ pub fn write_mvt_json(
         HashMap::new()
     };
 
-    let raw = load_mvt_attr(mvt_dir)?;
+    let raw = load_mvt_attr(mvt_dir, legacy_keys)?;
 
     let normalized: serde_json::Map<String, Value> = raw
         .into_iter()

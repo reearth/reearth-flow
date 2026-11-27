@@ -10,6 +10,7 @@ generate_truth = true
 path = "08220_tsukuba-shi_city_2023_citygml_2_op_trk_3dtiles_lod3_jgd2024"
 truth_path = "cesium_trk_3dtiles_lod3_jgd2024_truth.json"
 generate_truth = true
+legacy_keys = true
 
 [convs.cesium_attributes.trk_3dtiles_lod3_jgd2024.casts]
 "" = "ordered_dict"
@@ -25,6 +26,7 @@ path = "cesium_trk_3dtiles_lod3_jgd2024_truth.json"
 path = "08220_tsukuba-shi_city_2023_citygml_2_op_trk_dm_geometric_attributes"
 truth_path = "mvt_trk_dm_geometric_attributes_truth.json"
 generate_truth = true
+legacy_keys = true
 
 [convs.mvt_attributes.trk_dm_geometric_attributes.casts]
 "" = "ordered_dict"
@@ -40,6 +42,7 @@ path = "mvt_trk_dm_geometric_attributes_truth.json"
 path = "08220_tsukuba-shi_city_2023_citygml_2_op_trk_mvt_lod1"
 truth_path = "mvt_trk_mvt_lod1_truth.json"
 generate_truth = true
+legacy_keys = true
 
 [convs.mvt_attributes.trk_mvt_lod1.casts]
 "" = "ordered_dict"
@@ -55,6 +58,7 @@ path = "mvt_trk_mvt_lod1_truth.json"
 path = "08220_tsukuba-shi_city_2023_citygml_2_op_trk_mvt_lod2"
 truth_path = "mvt_trk_mvt_lod2_truth.json"
 generate_truth = true
+legacy_keys = true
 
 [convs.mvt_attributes.trk_mvt_lod2.casts]
 "" = "ordered_dict"
@@ -70,6 +74,7 @@ path = "mvt_trk_mvt_lod2_truth.json"
 flow_path = "08220_tsukuba-shi_city_2023_citygml_2_op_trk_3dtiles_lod3_jgd2024/tileset.json"
 output_path = "3dtiles_lod3_tileset.json"
 generate_truth = true
+legacy_keys = true
 json_path = ".properties"
 
 [convs.json.tilesets_lod3.casts]

@@ -4,6 +4,7 @@ citygml_zip_name = "22203_numazu-shi_city_2023_citygml_3_op_wwy.zip"
 path = "22203_numazu-shi_city_2023_citygml_3_op_wwy_mvt_lod1"
 truth_path = "mvt_wwy_mvt_lod1_truth.json"
 generate_truth = true
+legacy_keys = true
 
 [convs.mvt_attributes.wwy_mvt_lod1.casts]
 "" = "ordered_dict"

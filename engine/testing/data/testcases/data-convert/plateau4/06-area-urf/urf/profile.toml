@@ -4,6 +4,7 @@ citygml_zip_name = "08220_tsukuba-shi_city_2023_citygml_2_op_urf.zip"
 path = "08220_tsukuba-shi_city_2023_citygml_2_op_urf_AreaClassification_mvt_lod1"
 truth_path = "mvt_urf_AreaClassification_mvt_lod1_truth.json"
 generate_truth = true
+legacy_keys = true
 
 [convs.mvt_attributes.urf_AreaClassification_mvt_lod1.casts]
 "" = "ordered_dict"
@@ -19,6 +20,7 @@ path = "mvt_urf_AreaClassification_mvt_lod1_truth.json"
 path = "08220_tsukuba-shi_city_2023_citygml_2_op_urf_HeightControlDistrict_mvt_lod1"
 truth_path = "mvt_urf_HeightControlDistrict_mvt_lod1_truth.json"
 generate_truth = true
+legacy_keys = true
 
 [convs.mvt_attributes.urf_HeightControlDistrict_mvt_lod1.casts]
 "" = "ordered_dict"
@@ -34,6 +36,7 @@ path = "mvt_urf_HeightControlDistrict_mvt_lod1_truth.json"
 path = "08220_tsukuba-shi_city_2023_citygml_2_op_urf_SpecialUseDistrict_mvt_lod1"
 truth_path = "mvt_urf_SpecialUseDistrict_mvt_lod1_truth.json"
 generate_truth = true
+legacy_keys = true
 
 [convs.mvt_attributes.urf_SpecialUseDistrict_mvt_lod1.casts]
 "" = "ordered_dict"
@@ -49,6 +52,7 @@ path = "mvt_urf_SpecialUseDistrict_mvt_lod1_truth.json"
 path = "08220_tsukuba-shi_city_2023_citygml_2_op_urf_UrbanPlanningArea_mvt_lod1"
 truth_path = "mvt_urf_UrbanPlanningArea_mvt_lod1_truth.json"
 generate_truth = true
+legacy_keys = true
 
 [convs.mvt_attributes.urf_UrbanPlanningArea_mvt_lod1.casts]
 "" = "ordered_dict"
@@ -64,6 +68,7 @@ path = "mvt_urf_UrbanPlanningArea_mvt_lod1_truth.json"
 path = "08220_tsukuba-shi_city_2023_citygml_2_op_urf_UseDistrict_mvt_lod1"
 truth_path = "mvt_urf_UseDistrict_mvt_lod1_truth.json"
 generate_truth = true
+legacy_keys = true
 
 [convs.mvt_attributes.urf_UseDistrict_mvt_lod1.casts]
 "" = "ordered_dict"

@@ -12,6 +12,9 @@ pub struct ConvMvtEntry {
     pub path: String,
     pub truth_path: String,
     pub generate_truth: bool,
+    /// Whether the truth uses the legacy attribute keys, to which Flow's keys are converted
+    #[serde(default)]
+    pub legacy_keys: bool,
     #[serde(default)]
     pub casts: Option<HashMap<String, CastConfigValue>>,
 }
@@ -34,6 +37,9 @@ pub struct ConvJsonEntry {
     pub flow_path: String,
     pub output_path: String,
     pub generate_truth: bool,
+    /// Whether the truth uses the legacy attribute keys, to which Flow's keys are converted
+    #[serde(default)]
+    pub legacy_keys: bool,
     #[serde(default)]
     pub json_path: Option<String>,
     #[serde(default)]
@@ -47,6 +53,9 @@ pub struct ConvCesiumEntry {
     /// Path to truth JSON file, relative to flow_extracted
     pub truth_path: String,
     pub generate_truth: bool,
+    /// Whether the truth uses the legacy attribute keys, to which Flow's keys are converted
+    #[serde(default)]
+    pub legacy_keys: bool,
     #[serde(default)]
     pub casts: Option<HashMap<String, CastConfigValue>>,
 }

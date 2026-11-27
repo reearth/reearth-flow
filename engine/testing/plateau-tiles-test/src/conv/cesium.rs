@@ -1,6 +1,7 @@
 use crate::align_cesium::load_tileset;
 use crate::cast_config::{convert_casts, CastConfigValue};
 use crate::compare_attributes::{apply_casts_to_value, make_feature_key};
+use crate::legacy_keys::legacy_feature;
 use crate::tileset::collect_tile_contents;
 use indexmap::IndexMap;
 use reearth_flow_gltf::{extract_feature_properties, parse_gltf};
@@ -10,9 +11,13 @@ use std::fs;
 use std::path::{Path, PathBuf};
 
 /// Loads all Cesium 3D Tiles feature attributes from a tileset directory,
-/// keyed by feature identifier (via `make_feature_key`).
+/// keyed by feature identifier (via `make_feature_key`), converting the keys to the legacy keys
+/// when `legacy_keys` is set.
 /// Returns an IndexMap to preserve stable insertion order across runs.
-pub fn load_cesium_attr(tileset_dir: &Path) -> Result<IndexMap<String, Value>, String> {
+pub fn load_cesium_attr(
+    tileset_dir: &Path,
+    legacy_keys: bool,
+) -> Result<IndexMap<String, Value>, String> {
     let tileset_info = load_tileset(tileset_dir)?;
     let dir_name = tileset_dir.file_name().and_then(|n| n.to_str());
 
@@ -38,6 +43,11 @@ pub fn load_cesium_attr(tileset_dir: &Path) -> Result<IndexMap<String, Value>, S
             .map_err(|e| format!("Failed to extract features from {:?}: {}", glb_path, e))?;
 
         for props in features {
+            let props = match legacy_keys {
+                true => legacy_feature(props)
+                    .map_err(|e| format!("Failed to convert keys in {:?}: {}", glb_path, e))?,
+                false => props,
+            };
             let props_value = Value::Object(props);
             let feature_key = make_feature_key(&props_value, dir_name);
 
@@ -60,10 +70,12 @@ pub fn load_cesium_attr(tileset_dir: &Path) -> Result<IndexMap<String, Value>, S
 }
 
 /// Converts Cesium 3D Tiles attributes to a JSON file at `output_path`, applying optional casts.
+/// The keys are converted to the legacy keys first when `legacy_keys` is set.
 pub fn write_cesium_json(
     tileset_dir: &Path,
     output_path: &Path,
     casts_cfg: Option<&HashMap<String, CastConfigValue>>,
+    legacy_keys: bool,
 ) -> Result<(), String> {
     let casts = if let Some(cfg) = casts_cfg {
         convert_casts(cfg)?
@@ -71,7 +83,7 @@ pub fn write_cesium_json(
         HashMap::new()
     };
 
-    let raw = load_cesium_attr(tileset_dir)?;
+    let raw = load_cesium_attr(tileset_dir, legacy_keys)?;
 
     let normalized: serde_json::Map<String, Value> = raw
         .into_iter()
