@@ -178,6 +178,10 @@ pub(crate) fn variant_sub_parameters<'a>(
 /// - an externally-tagged variant carrying fields — `{"required": ["csv"],
 ///   "properties": {"csv": {...}}}`
 ///
+/// An untagged variant carrying data has no name at all, so it is keyed by its
+/// shape: a bare value by its type (`"number"`), an object by its required
+/// fields joined with `+` (`"xColumn+yColumn"`).
+///
 /// Keying only off the first shape is why every variant that carries
 /// sub-parameters used to be invisible to both the scaffold and the applier, so
 /// the labels a user picks between stayed English however the enum was written.
@@ -189,6 +193,12 @@ pub(crate) fn enum_variant_key(variant: &serde_json::Value) -> Option<String> {
         .and_then(|v| v.as_str())
     {
         return Some(value.to_string());
+    }
+
+    if let Some(kind) = variant.get("type").and_then(|t| t.as_str())
+        && kind != "object"
+    {
+        return Some(kind.to_string());
     }
 
     let properties = variant.get("properties").and_then(|p| p.as_object())?;
@@ -208,9 +218,17 @@ pub(crate) fn enum_variant_key(variant: &serde_json::Value) -> Option<String> {
     }
 
     // Externally tagged: the variant is an object holding exactly one required
-    // property, named for the variant itself.
+    // property, named for the variant itself. Untagged: no single field names
+    // the variant, so all its required fields do together.
     match required.as_slice() {
         [serde_json::Value::String(name)] if properties.contains_key(name) => Some(name.clone()),
+        [_, _, ..] => Some(
+            required
+                .iter()
+                .filter_map(|r| r.as_str())
+                .collect::<Vec<_>>()
+                .join("+"),
+        ),
         _ => None,
     }
 }
@@ -506,6 +524,43 @@ mod tests {
             variant["properties"]["enabled"]["properties"]["quantizationError"]["title"],
             "量子化誤差"
         );
+    }
+
+    #[test]
+    fn untagged_variants_are_keyed_by_their_shape() {
+        let number = serde_json::json!({"title": "Number", "type": "number"});
+        assert_eq!(enum_variant_key(&number).as_deref(), Some("number"));
+
+        let columns = serde_json::json!({
+            "title": "Coordinate Columns",
+            "type": "object",
+            "required": ["xColumn", "yColumn"],
+            "properties": {
+                "xColumn": {"title": "X Column Name", "type": "string"},
+                "yColumn": {"title": "Y Column Name", "type": "string"}
+            }
+        });
+        assert_eq!(
+            enum_variant_key(&columns).as_deref(),
+            Some("xColumn+yColumn")
+        );
+
+        let mut patched = columns.clone();
+        let i18n = PropertyI18n {
+            title: Some("座標列".to_string()),
+            description: None,
+            properties: Some(BTreeMap::from([(
+                "xColumn".to_string(),
+                PropertyI18n {
+                    title: Some("X 列名".to_string()),
+                    description: None,
+                    properties: None,
+                },
+            )])),
+        };
+        patch_variant(&mut patched, "xColumn+yColumn", &i18n);
+        assert_eq!(patched["title"], "座標列");
+        assert_eq!(patched["properties"]["xColumn"]["title"], "X 列名");
     }
 
     #[test]

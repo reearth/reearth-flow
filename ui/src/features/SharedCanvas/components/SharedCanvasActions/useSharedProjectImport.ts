@@ -29,50 +29,53 @@ export default ({
 
   const { isProjectImporting, handleProjectImport } = useProjectImport();
   const { workflowVariables } = useSharedWorkflowVariables();
-  const handleSharedProjectImport = useCallback(async () => {
+  const handleSharedProjectImport = useCallback(async (): Promise<boolean> => {
+    const showImportFailed = () =>
+      toast({
+        title: t("Project Import Failed"),
+        description: t(
+          "Project could not be imported into the selected workspace",
+        ),
+        variant: "destructive",
+      });
+
     if (!sharedYdoc || !sharedProject || !accessToken || !selectedWorkspace) {
       console.error(
         "Missing either sharedYdoc, sharedProject, accessToken, or selectedWorkspace",
       );
-      toast({
-        title: t("Project Import Failed"),
-        description: t(
-          "Project could not be imported into the selected workspace",
-        ),
-      });
-      return;
+      showImportFailed();
+      return false;
     }
 
     const yDocBinary = Y.encodeStateAsUpdate(sharedYdoc);
 
-    try {
-      await handleProjectImport({
-        yDocBinary,
-        projectName: sharedProject.name,
-        projectDescription: sharedProject.description,
-        workspace: selectedWorkspace,
-        workflowVariables,
-      });
-      toast({
-        title: t("Project Imported"),
-        description: t(
-          "{{project}} has successfully been imported into {{workspace}}",
-          {
-            project: sharedProject.name,
-            workspace: selectedWorkspace.name,
-          },
-        ),
-      });
-      navigate({ to: `/workspaces/${selectedWorkspace.id}/projects` });
-    } catch (error) {
-      console.error("Failed to import shared project:", error);
-      toast({
-        title: t("Project Import Failed"),
-        description: t(
-          "Project could not be imported into the selected workspace",
-        ),
-      });
+    const importedProject = await handleProjectImport({
+      yDocBinary,
+      projectName: sharedProject.name,
+      projectDescription: sharedProject.description,
+      workspace: selectedWorkspace,
+      workflowVariables,
+    });
+
+    if (!importedProject) {
+      showImportFailed();
+      return false;
     }
+
+    toast({
+      title: t("Project Imported"),
+      description: t(
+        "{{project}} has successfully been imported into {{workspace}}",
+        {
+          project: sharedProject.name,
+          workspace: selectedWorkspace.name,
+        },
+      ),
+    });
+    navigate({
+      to: `/workspaces/${selectedWorkspace.id}/projects/${importedProject.id}`,
+    });
+    return true;
   }, [
     accessToken,
     selectedWorkspace,

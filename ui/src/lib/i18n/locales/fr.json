@@ -676,6 +676,7 @@
   "Go to Home": "Aller à l'accueil",
   "Import Project": "Importer le projet",
   "Import Project to Workspace: ": "Importer le projet dans l'espace de travail : ",
+  "Importing...": "Importation...",
   "Import": "Importer",
   "Import into Workspace": "Importer dans l'espace de travail",
   "Project Import Failed": "Échec de l'importation du projet",

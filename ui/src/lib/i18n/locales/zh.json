@@ -668,6 +668,7 @@
   "Go to Home": "回到主页",
   "Import Project": "导入项目",
   "Import Project to Workspace: ": "导入项目到工作区: ",
+  "Importing...": "导入中...",
   "Import": "导入",
   "Import into Workspace": "导入到工作区",
   "Project Import Failed": "项目导入失败",

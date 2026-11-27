@@ -150,6 +150,8 @@ Give the action a normal parameter object with the enum as one property instead.
 
 **Moving the enum into `definitions` is necessary but was not, on its own, sufficient — read this before trusting a past review on it.** Until 2026-09-11 the i18n pass identified a variant by a **top-level `enum` key** on the variant object, and `schemars` emits that only for a variant carrying no fields. Every variant that carried sub-parameters — the entire reason to reach for the idiom — was invisible to both the scaffold and the applier, so the recommended fix silently delivered nothing for exactly the case it was recommended for. `Coordinate Frame Reprojector` shipped in that state: its `crs` variant and all three `BasePoint` variants were untranslatable, and `BasePoint` had no i18n entry at all. Both halves are fixed (`enum_variant_key` in `cli/src/utils.rs` now recognises internally- and externally-tagged variants, and `PropertyI18n` gained a nested `properties` map so a variant's own fields translate too), so the idiom now does what this section says. The lesson generalises: a translation path is not working because the schema has the recommended shape — check that the key actually appears in `schema/i18n/actions/ja.json`.
 
+**Untagged enums (`#[serde(untagged)]`) translate too, keyed by shape.** Their variants carry no name, so `enum_variant_key` keys a bare value by its type (`number`) and an object by its required fields joined with `+` (`xColumn+yColumn`). An untagged object variant with no required fields still has no key, and its text cannot be translated.
+
 **Single-variant enums** are a design smell — they present the user with a parameter that has no real choice. If only one variant exists and no others are planned, remove the parameter and hard-code the behavior. If additional variants are planned but not yet implemented, keep the `oneOf` and note the intent in a code comment (`// TODO: add X, Y variants`).
 
 ### 3.5 Parameter usability
@@ -280,6 +282,8 @@ Check by confirming an implementation exists for the default feature set, not me
 ### 7.2 Should it be exposed?
 
 `server/api/internal/app/base_actions.go` gates which actions appear in the palette. It is a separate file in a separate language from the action itself, so the two drift silently. An action must not be listed there unless it runs per §7.1.
+
+**Nor while its Japanese text is English.** `cargo make schema-base` seeds every new i18n key with its English text, and the schema check only confirms the generated files match their source, so an untranslated key looks finished. `base_actions_test.go` fails when a listed action has a title or description in `schema/actions_ja.json` with no Japanese in it; translate the value in `schema/i18n/actions/ja.json`. The exceptions it carries are named in the test.
 
 This cuts both ways, and both have happened:
 
@@ -453,6 +457,12 @@ run genuinely needs an auditable list of what was refused.
 ## Changelog
 
 Material rule changes, newest first. **A rule added here does not retroactively apply to actions already reviewed** — when a change would alter a past verdict, say so in the entry, and treat previously-reviewed actions as owing a re-check against the new rule.
+
+### 2026-11-27
+
+- **§7.2 — listing an action now requires its Japanese text.** The keys added on 2026-09-11 were never translated, and neither were most keys added since, so 28 listed actions were showing English in the Japanese UI. Coordinate Frame Reprojector, HTTP Caller, Date Time Converter and both TransitiveLinkResolvers were the worst. They are translated, and an API test now fails on any listed action whose Japanese title or description contains no Japanese. **No past verdict changes.**
+- **§3.4 — `XML Fragmenter` restructured**, its root-level `oneOf` replaced by a `source` property. Its stored parameters keep the same shape, so it needed no migration; it is translated and no longer exempt from the check.
+- **§3.4 — untagged enums are now translatable.** CSV Reader's and CSV Writer's coordinate-column variant and Attribute Range Mapper's value types had no key, and were English regardless of the i18n file.
 
 ### 2026-09-18
 

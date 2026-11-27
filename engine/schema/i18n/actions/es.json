@@ -402,6 +402,22 @@
             "description": "The maximum value of the range (exclusive)"
           }
         }
+      },
+      "enumI18n": {
+        "MappedValue": {
+          "boolean": {
+            "title": "True or False",
+            "description": "Written as a true/false value."
+          },
+          "number": {
+            "title": "Number",
+            "description": "Written as a number."
+          },
+          "string": {
+            "title": "Text",
+            "description": "Written as text."
+          }
+        }
       }
     },
     {
@@ -684,6 +700,24 @@
                 "description": "Name of the column containing WKT geometry"
               }
             }
+          },
+          "xColumn+yColumn": {
+            "title": "Coordinate Columns",
+            "description": "Geometry stored as separate X, Y, (optional Z) columns",
+            "properties": {
+              "xColumn": {
+                "title": "X Column Name",
+                "description": "Name of the column containing X coordinate (longitude)"
+              },
+              "yColumn": {
+                "title": "Y Column Name",
+                "description": "Name of the column containing Y coordinate (latitude)"
+              },
+              "zColumn": {
+                "title": "Z Column Name",
+                "description": "Optional name of the column containing Z coordinate (elevation)"
+              }
+            }
           }
         }
       }
@@ -736,6 +770,24 @@
               "column": {
                 "title": "WKT Column Name",
                 "description": "Name of the column to write WKT geometry"
+              }
+            }
+          },
+          "xColumn+yColumn": {
+            "title": "Coordinate Columns",
+            "description": "Write geometry as separate X, Y, (optional Z) columns\nNote: Only supports Point geometries. Non-point geometries will be skipped with a warning.",
+            "properties": {
+              "xColumn": {
+                "title": "X Column Name",
+                "description": "Name of the column for X coordinate (longitude)"
+              },
+              "yColumn": {
+                "title": "Y Column Name",
+                "description": "Name of the column for Y coordinate (latitude)"
+              },
+              "zColumn": {
+                "title": "Z Column Name",
+                "description": "Optional name of the column for Z coordinate (elevation)"
               }
             }
           }
@@ -4858,6 +4910,34 @@
         "": {
           "title": "XML Fragmenter Parameters",
           "description": "Configures where the XML document comes from and which of its elements become features."
+        },
+        "attribute": {
+          "title": "XML Attribute",
+          "description": "Attribute holding the XML document: the file path or URL to read when the source is a file, or the XML text itself when the source is text."
+        },
+        "elementsToExclude": {
+          "title": "Elements to Exclude",
+          "description": "Expression returning the list of element names to skip even when they also appear in the matched elements. Return an empty list to match everything."
+        },
+        "elementsToMatch": {
+          "title": "Elements to Match",
+          "description": "Expression returning the list of element names whose subtrees are emitted as fragments. Names include the namespace prefix as written in the document, such as `bldg:Building`."
+        },
+        "source": {
+          "title": "Source",
+          "description": "Whether the XML attribute holds a file path or URL to read, or the XML text itself."
+        }
+      },
+      "enumI18n": {
+        "XmlSource": {
+          "file": {
+            "title": "XML File",
+            "description": "Reads the XML document from the file path or URL held in the attribute."
+          },
+          "text": {
+            "title": "XML Text",
+            "description": "Uses the attribute value itself as the XML document."
+          }
         }
       }
     },

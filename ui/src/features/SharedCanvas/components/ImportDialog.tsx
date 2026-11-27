@@ -17,27 +17,33 @@ import type { Workspace } from "@flow/types";
 type Props = {
   workspaces: Workspace[];
   selectedWorkspace: Workspace | null;
+  isImporting: boolean;
   onSelectWorkspace: (workspace: Workspace) => void;
-  onImportProject: () => void;
+  onImportProject: () => Promise<boolean>;
   onDialogClose: () => void;
 };
 
 const ImportDialog: React.FC<Props> = ({
   workspaces,
   selectedWorkspace,
+  isImporting,
   onSelectWorkspace,
   onImportProject,
   onDialogClose,
 }) => {
   const t = useT();
 
-  const handleSubmitImportProject = useCallback(() => {
-    onImportProject();
-    onDialogClose();
+  const handleSubmitImportProject = useCallback(async () => {
+    const imported = await onImportProject();
+    if (imported) onDialogClose();
   }, [onImportProject, onDialogClose]);
 
+  const handleOpenChange = useCallback(() => {
+    if (!isImporting) onDialogClose();
+  }, [isImporting, onDialogClose]);
+
   return (
-    <Dialog open={true} onOpenChange={onDialogClose}>
+    <Dialog open={true} onOpenChange={handleOpenChange}>
       <DialogContent size="sm">
         <DialogTitle>{t("Import Project")}</DialogTitle>
         <DialogContentWrapper>
@@ -57,9 +63,9 @@ const ImportDialog: React.FC<Props> = ({
         </DialogContentWrapper>
         <DialogFooter>
           <Button
-            disabled={!selectedWorkspace}
+            disabled={!selectedWorkspace || isImporting}
             onClick={handleSubmitImportProject}>
-            {t("Import")}
+            {isImporting ? t("Importing...") : t("Import")}
           </Button>
         </DialogFooter>
       </DialogContent>

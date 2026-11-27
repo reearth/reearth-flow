@@ -7,7 +7,9 @@ import useSharedProjectImport from "./useSharedProjectImport";
 
 type ImportArgs = { workflowVariables: AnyWorkflowVariable[] };
 
-const handleProjectImport = vi.fn(async (_args: ImportArgs) => {});
+const handleProjectImport = vi.fn(
+  async (_args: ImportArgs): Promise<Project | undefined> => undefined,
+);
 const navigate = vi.fn();
 
 const variable = (
@@ -63,8 +65,8 @@ vi.mock("@flow/lib/gql", () => ({
   useWorkflowVariables: () => ({ useGetWorkflowVariables }),
 }));
 
-const runImport = async () => {
-  const { result } = renderHook(() =>
+const renderImport = () =>
+  renderHook(() =>
     useSharedProjectImport({
       sharedYdoc: new Y.Doc(),
       sharedProject: {
@@ -77,6 +79,9 @@ const runImport = async () => {
     }),
   );
 
+const runImport = async () => {
+  const { result } = renderImport();
+
   await act(async () => {
     await result.current.handleSharedProjectImport();
   });
@@ -88,6 +93,7 @@ const runImport = async () => {
 describe("useSharedProjectImport", () => {
   beforeEach(() => {
     handleProjectImport.mockClear();
+    navigate.mockClear();
     useGetSharedProject.mockClear();
     useGetWorkflowVariables.mockClear();
   });
@@ -129,5 +135,32 @@ describe("useSharedProjectImport", () => {
 
     expect(payload).not.toContain("sk-live-do-not-leak");
     expect(payload).not.toContain("hunter2");
+  });
+
+  test("opens the imported project in the editor once the import succeeds", async () => {
+    handleProjectImport.mockResolvedValueOnce({ id: "new-project" } as Project);
+    const { result } = renderImport();
+
+    let imported: boolean | undefined;
+    await act(async () => {
+      imported = await result.current.handleSharedProjectImport();
+    });
+
+    expect(imported).toBe(true);
+    expect(navigate).toHaveBeenCalledWith({
+      to: "/workspaces/workspace-1/projects/new-project",
+    });
+  });
+
+  test("stays on the shared page when the import fails", async () => {
+    const { result } = renderImport();
+
+    let imported: boolean | undefined;
+    await act(async () => {
+      imported = await result.current.handleSharedProjectImport();
+    });
+
+    expect(imported).toBe(false);
+    expect(navigate).not.toHaveBeenCalled();
   });
 });

@@ -38,6 +38,7 @@ const SharedCanvasActions: React.FC<Props> = ({
   const {
     showDialog,
     selectedWorkspace,
+    isProjectImporting,
     handleSelectWorkspace,
     handleSharedProjectExport,
     handleSharedProjectImport,
@@ -90,6 +91,7 @@ const SharedCanvasActions: React.FC<Props> = ({
         <ImportDialog
           workspaces={importableWorkspaces}
           selectedWorkspace={selectedWorkspace}
+          isImporting={isProjectImporting}
           onSelectWorkspace={handleSelectWorkspace}
           onImportProject={handleSharedProjectImport}
           onDialogClose={handleDialogClose}
