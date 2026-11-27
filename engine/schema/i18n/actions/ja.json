@@ -5032,6 +5032,34 @@
         "": {
           "title": "XML Fragmenter パラメータ",
           "description": "XML ドキュメントの取得元と、どの要素を地物にするかを設定する"
+        },
+        "attribute": {
+          "title": "XML 属性",
+          "description": "XML ドキュメントを持つ属性。取得元がファイルの場合は読み込むファイルのパスまたは URL、テキストの場合は XML テキストそのものを持つ。"
+        },
+        "elementsToExclude": {
+          "title": "除外する要素",
+          "description": "一致する要素に含まれていても読み飛ばす要素名のリストを返す式。空のリストを返すと何も除外しない。"
+        },
+        "elementsToMatch": {
+          "title": "一致させる要素",
+          "description": "サブツリーをフラグメントとして出力する要素名のリストを返す式。要素名には、ドキュメントに記述されたとおりの名前空間接頭辞を含める（`bldg:Building` など）。"
+        },
+        "source": {
+          "title": "取得元",
+          "description": "XML 属性が、読み込むファイルのパスまたは URL を持つか、XML テキストそのものを持つか。"
+        }
+      },
+      "enumI18n": {
+        "XmlSource": {
+          "file": {
+            "title": "XML ファイル",
+            "description": "属性が持つファイルパスまたは URL から XML ドキュメントを読み込む。"
+          },
+          "text": {
+            "title": "XML テキスト",
+            "description": "属性の値そのものを XML ドキュメントとして使う。"
+          }
         }
       }
     },

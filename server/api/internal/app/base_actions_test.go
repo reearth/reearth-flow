@@ -25,12 +25,6 @@ var untranslatedInJapanese = map[string]bool{
 	"gml:id": true,
 }
 
-// Palette actions whose parameter text the i18n tooling cannot reach yet.
-var untranslatableActions = map[string]string{
-	// Its parameter block is a root-level oneOf (action-standard §3.4).
-	"XML Fragmenter": "parameter block must be restructured before it can be translated",
-}
-
 // The i18n scaffold seeds every new key with its English text, and the schema check
 // only confirms the generated files match their source, so an action can reach the
 // palette with English in the Japanese UI. This fails until those values are replaced.
@@ -59,9 +53,6 @@ func TestBaseActionsAreTranslatedToJapanese(t *testing.T) {
 
 	for _, name := range names {
 		t.Run(name, func(t *testing.T) {
-			if reason, ok := untranslatableActions[name]; ok {
-				t.Skip(reason)
-			}
 			action, ok := byName[name]
 			if !ok {
 				t.Fatalf("not in actions_ja.json")
