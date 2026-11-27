@@ -402,6 +402,22 @@
             "description": "範囲の最大値（未満）"
           }
         }
+      },
+      "enumI18n": {
+        "MappedValue": {
+          "boolean": {
+            "title": "真偽値",
+            "description": "真偽値（true/false）として書き込む。"
+          },
+          "number": {
+            "title": "数値",
+            "description": "数値として書き込む。"
+          },
+          "string": {
+            "title": "テキスト",
+            "description": "テキストとして書き込む。"
+          }
+        }
       }
     },
     {
@@ -428,28 +444,28 @@
       "definitionI18n": {
         "ExtractRule": {
           "dataType": {
-            "title": "Value Type",
-            "description": "Converts the extracted value before writing it. Leave unset to write it unchanged."
+            "title": "値の型",
+            "description": "抽出した値を書き込む前に変換する。未設定の場合は変換せずに書き込む。"
           },
           "destinationPath": {
-            "title": "Destination Path",
-            "description": "Where the value is written, as a space-separated chain of keys. A single segment writes a top-level attribute; several segments write into a nested map, creating it and any missing intermediate map as needed."
+            "title": "コピー先パス",
+            "description": "値の書き込み先。スペース区切りのキーの並びで指定する。セグメントが 1 つの場合はトップレベルの属性に書き込み、複数の場合はネストされたマップに書き込む。そのマップや途中で欠けているマップは必要に応じて作成される。"
           },
           "sourcePath": {
-            "title": "Source Path",
-            "description": "Where the value is read from, as whitespace-separated steps walked from the feature's top level: `k` takes key `k` of a map, `[]` makes a single value a one-item list, `[*]` expands a list into its items, `[n]` takes item `n` of a list (negative counts from the end), and `[k]` gathers the `k` values of all results into one list. The value is written only when exactly one result remains, e.g. `__city_gml_attributes bldg:adeOfAbstractBuilding [] [*] [uro:BuildingIDAttribute] [0] uro:buildingID`."
+            "title": "コピー元パス",
+            "description": "値の読み取り元。地物のトップレベルからたどる空白区切りのステップで指定する。`k` はマップのキー `k` を取り出し、`[]` は単一の値を 1 要素のリストにし、`[*]` はリストを要素に展開し、`[n]` はリストの `n` 番目の要素を取り出し（負の値は末尾から数える）、`[k]` はすべての結果の `k` の値を 1 つのリストに集める。値は結果がちょうど 1 つ残った場合にのみ書き込まれる。例: `__city_gml_attributes bldg:adeOfAbstractBuilding [] [*] [uro:BuildingIDAttribute] [0] uro:buildingID`"
           }
         }
       },
       "enumI18n": {
         "ExtractDataType": {
           "float": {
-            "title": "Float",
-            "description": "Parses a string value as a floating point number."
+            "title": "浮動小数点数",
+            "description": "文字列の値を浮動小数点数として解析する。"
           },
           "int": {
-            "title": "Integer",
-            "description": "Parses a string value as an integer."
+            "title": "整数",
+            "description": "文字列の値を整数として解析する。"
           }
         }
       }
@@ -676,12 +692,30 @@
         },
         "GeometryConfig": {
           "column": {
-            "title": "WKT Column",
-            "description": "Geometry stored as Well-Known Text in a single column",
+            "title": "WKT 列",
+            "description": "1 つの列に WKT（Well-Known Text）として格納されたジオメトリ",
             "properties": {
               "column": {
-                "title": "WKT Column Name",
-                "description": "Name of the column containing WKT geometry"
+                "title": "WKT 列名",
+                "description": "WKT ジオメトリを含む列の名前"
+              }
+            }
+          },
+          "xColumn+yColumn": {
+            "title": "座標列",
+            "description": "X、Y（任意で Z）の別々の列に格納されたジオメトリ",
+            "properties": {
+              "xColumn": {
+                "title": "X 列名",
+                "description": "X 座標（経度）を含む列の名前"
+              },
+              "yColumn": {
+                "title": "Y 列名",
+                "description": "Y 座標（緯度）を含む列の名前"
+              },
+              "zColumn": {
+                "title": "Z 列名",
+                "description": "Z 座標（標高）を含む列の名前（任意）"
               }
             }
           }
@@ -712,8 +746,8 @@
       "definitionI18n": {
         "GeometryExportConfig": {
           "epsgColumn": {
-            "title": "EPSG Column Name",
-            "description": "Optional name of a column to write the geometry's EPSG code into. Left empty when the geometry does not resolve to a single EPSG code (no coordinate reference system, or more than one)."
+            "title": "EPSG 列名",
+            "description": "ジオメトリの EPSG コードを書き込む列の名前（任意）。ジオメトリが単一の EPSG コードに解決されない場合（座標参照系がない、または複数ある場合）は空になる。"
           }
         }
       },
@@ -730,12 +764,30 @@
         },
         "GeometryExportConfig": {
           "column": {
-            "title": "WKT Column",
-            "description": "Write geometry as Well-Known Text in a single column",
+            "title": "WKT 列",
+            "description": "ジオメトリを 1 つの列に WKT（Well-Known Text）として書き出す",
             "properties": {
               "column": {
-                "title": "WKT Column Name",
-                "description": "Name of the column to write WKT geometry"
+                "title": "WKT 列名",
+                "description": "WKT ジオメトリを書き出す列の名前"
+              }
+            }
+          },
+          "xColumn+yColumn": {
+            "title": "座標列",
+            "description": "ジオメトリを X、Y（任意で Z）の別々の列に書き出す\n注意: ポイントジオメトリのみに対応する。ポイント以外のジオメトリは警告を出してスキップされる。",
+            "properties": {
+              "xColumn": {
+                "title": "X 列名",
+                "description": "X 座標（経度）を書き出す列の名前"
+              },
+              "yColumn": {
+                "title": "Y 列名",
+                "description": "Y 座標（緯度）を書き出す列の名前"
+              },
+              "zColumn": {
+                "title": "Z 列名",
+                "description": "Z 座標（標高）を書き出す列の名前（任意）"
               }
             }
           }
@@ -922,8 +974,8 @@
           "description": "ダブルアンダースコアで始まる属性をスキップするか"
         },
         "targetTileSize": {
-          "title": "Target Tile Size",
-          "description": "Target content size per tile, in gzipped bytes as served. Tiles are split when they'd exceed it and merged with neighbours when they'd otherwise be smaller; a single feature that alone exceeds it is kept whole (features are never clipped). A tile carries at most 15 contents, so a cell needing more than that keeps contents over the target. A value of 0 splits as far as that limit allows. Defaults to 1,048,576 (1 MiB)."
+          "title": "目標タイルサイズ",
+          "description": "タイルごとのコンテンツの目標サイズ（配信時の gzip 圧縮後のバイト数）。超えそうなタイルは分割され、小さすぎるタイルは隣接タイルと統合される。単独でこのサイズを超える地物はそのまま 1 つに保たれる（地物が切り取られることはない）。1 つのタイルが持てるコンテンツは最大 15 個のため、それ以上を必要とするセルでは目標を超えるコンテンツが残る。0 を指定すると、その上限が許す限り分割する。デフォルトは 1,048,576（1 MiB）。"
         },
         "texelSize": {
           "title": "テクセルサイズ",
@@ -949,8 +1001,8 @@
             "description": "メッシュジオメトリを Draco で圧縮する。",
             "properties": {
               "quantizationError": {
-                "title": "Quantization Error",
-                "description": "Upper bound, in meters, on how far compression may move a vertex. Must be positive. When unset, the encoder's default resolution is used."
+                "title": "量子化誤差",
+                "description": "圧縮によって頂点が移動しうる距離の上限（メートル）。正の値でなければならない。未設定の場合はエンコーダーのデフォルトの解像度が使われる。"
               }
             }
           }
@@ -1003,7 +1055,7 @@
           "description": "ファイルパスから読み込む代わりに、ファイル内容をテキストで返す式"
         },
         "keepAbsoluteCodeSpace": {
-          "title": "Keep Absolute Code Space",
+          "title": "codeSpace の絶対 URL を保持",
           "description": "`hoistAttributes`に含まれていなくても、すべての`codeSpace`を、ドキュメントを基準にURLに解決した場所として、兄弟キー`{name}@codeSpace`に持ち上げる。デフォルトはfalse。"
         }
       }
@@ -1021,8 +1073,8 @@
           "description": "設定した場合、解析されたCityGML属性はこのキーの下にネストされて地物に出力される。nullの場合、属性はトップレベルに出力される。デフォルトはnull"
         },
         "coordinateHandling": {
-          "title": "Coordinate Handling",
-          "description": "Whether written coordinates are normalized to the form each geometry type expects or preserved as written. Defaults to `normalize`."
+          "title": "座標の扱い",
+          "description": "書き出す座標を、ジオメトリタイプごとに想定される形に正規化するか、記述どおりに保持するか。デフォルトは `normalize`。"
         },
         "dataset": {
           "title": "ファイルパス",
@@ -1041,19 +1093,19 @@
           "description": "ファイルパスから読み込む代わりに、ファイル内容をテキストで返す式"
         },
         "keepAbsoluteCodeSpace": {
-          "title": "Keep Absolute Code Space",
+          "title": "codeSpace の絶対 URL を保持",
           "description": "`hoistAttributes`に含まれていなくても、すべての`codeSpace`を、ドキュメントを基準にURLに解決した場所として、兄弟キー`{name}@codeSpace`に持ち上げる。デフォルトはfalse。"
         }
       },
       "enumI18n": {
         "CoordinateHandling": {
           "normalize": {
-            "title": "Normalize",
-            "description": "Builds each geometry in the form its type expects, using only the positions needed for that form, so slightly malformed input still yields usable geometry."
+            "title": "正規化",
+            "description": "各ジオメトリを、そのタイプが想定する形で、その形に必要な位置だけを使って構築する。多少不正な入力からでも使えるジオメトリが得られる。"
           },
           "preserve": {
-            "title": "Preserve",
-            "description": "Keeps positions exactly as written, so malformed input such as a wrong vertex count or an unclosed ring stays visible to a later check."
+            "title": "保持",
+            "description": "位置を記述どおりに保持する。頂点数の誤りや閉じていないリングなどの不正な入力が、後段のチェックで検出できるまま残る。"
           }
         }
       }
@@ -1246,43 +1298,44 @@
     },
     {
       "name": "Coordinate Frame Reprojector",
+      "description": "座標参照系の間でジオメトリを再投影し、座標参照系とユークリッド座標系の間で変換する",
       "parameterI18n": {
         "": {
-          "title": "Coordinate Frame Reprojector Parameters",
-          "description": "Reproject geometry across coordinate reference systems and convert between a CRS and a Euclidean frame. Converting across the Euclidean/CRS boundary reinterprets coordinates as-is: values and ring winding are left unchanged, so orientation follows the destination frame's axis order.\n\nReprojecting across coordinate reference systems takes 2D geometry lying at a single elevation into 3D."
+          "title": "Coordinate Frame Reprojector パラメータ",
+          "description": "座標参照系の間でジオメトリを再投影し、座標参照系とユークリッド座標系の間で変換する。ユークリッド座標系と座標参照系の境界をまたぐ変換では、座標をそのまま解釈し直す。値もリングの回り順も変わらないため、向きは変換先の座標系の軸順に従う。\n\n座標参照系の間で再投影すると、単一の標高にある 2D ジオメトリは 3D になる。"
         },
         "basePointSource": {
-          "title": "Base Point",
-          "description": "How coordinates bridge the Euclidean/CRS boundary."
+          "title": "基準点",
+          "description": "ユークリッド座標系と座標参照系の境界をまたぐときに座標をどう対応させるか。"
         },
         "destinationFrame": {
-          "title": "Destination Frame",
-          "description": "Coordinate frame to convert geometry into. Choosing a CRS also requires its EPSG code."
+          "title": "変換先の座標系",
+          "description": "ジオメトリの変換先となる座標系。座標参照系を選ぶ場合は EPSG コードも指定する。"
         }
       },
       "enumI18n": {
         "BasePoint": {
           "asIs": {
-            "title": "As Is",
-            "description": "Reinterpret coordinate values unchanged across the boundary."
+            "title": "そのまま",
+            "description": "座標値を変えずに、境界の向こう側の値として解釈し直す。"
           },
           "fromPort": {
-            "title": "From Port",
-            "description": "Offset by a base point taken from the base-point input port, matched to each feature by a key.",
+            "title": "ポートから",
+            "description": "基準点入力ポートから受け取った基準点でオフセットする。どの基準点を使うかは地物ごとにキーで照合する。",
             "properties": {
               "matchKey": {
-                "title": "Match Key",
-                "description": "Expression identifying which base-point feature applies to a given feature. Evaluated against both streams."
+                "title": "照合キー",
+                "description": "ある地物にどの基準点地物を適用するかを識別する式。両方のストリームに対して評価される。"
               }
             }
           },
           "value": {
-            "title": "Value",
-            "description": "Offset by a base point given as an expression evaluating to `[x, y, z]`.",
+            "title": "値",
+            "description": "`[x, y, z]` を返す式で指定した基準点でオフセットする。",
             "properties": {
               "basePoint": {
-                "title": "Base Point",
-                "description": "Expression evaluating to an `[x, y, z]` origin in CRS space, in the CRS's declared axis order."
+                "title": "基準点",
+                "description": "座標参照系の空間における原点 `[x, y, z]` を返す式。座標参照系で宣言された軸順で指定する。"
               }
             }
           }
@@ -1290,11 +1343,11 @@
         "DestinationFrame": {
           "crs": {
             "title": "CRS",
-            "description": "Reproject to a coordinate reference system identified by an EPSG code."
+            "description": "EPSG コードで指定した座標参照系に再投影する。"
           },
           "euclidean": {
-            "title": "Euclidean",
-            "description": "Convert to a non-georeferenced Euclidean frame. This is the frame the planar geometry operations work in, so it is the on-ramp for actions that require flat 2D input."
+            "title": "ユークリッド",
+            "description": "地理参照を持たないユークリッド座標系に変換する。平面上のジオメトリ処理はこの座標系で行われるため、平坦な 2D 入力を必要とするアクションの前に使う。"
           }
         }
       }
@@ -1334,37 +1387,37 @@
       "parameterI18n": {
         "": {
           "title": "Date Time Converter パラメータ",
-          "description": "Selects the attribute to convert, how to interpret its current value, and the format to write back."
+          "description": "変換する属性、その現在の値の解釈方法、および書き戻す形式を選択する"
         },
         "attribute": {
-          "title": "Source Attribute",
+          "title": "変換元の属性",
           "description": "変換する日時値を含む属性"
         },
         "inputFormat": {
-          "title": "Input Format",
+          "title": "入力形式",
           "description": "入力値の形式（デフォルト: auto）"
         },
         "outputAttribute": {
-          "title": "Output Attribute",
+          "title": "出力属性",
           "description": "結果を別の属性に書き込む（入力をそのまま保持）。デフォルトは `attribute` と同じ。"
         },
         "outputFormat": {
-          "title": "Output Format",
+          "title": "出力形式",
           "description": "希望する出力形式（デフォルト: auto）。`auto` は型付き DateTime 値として格納（パーサーモード）。その他の形式は文字列/数値として出力（フォーマッターモード）。"
         }
       },
       "enumI18n": {
         "DateTimeInputFormat": {
           "auto": {
-            "title": "Detect Automatically",
+            "title": "自動検出",
             "description": "既知の形式から自動検出する。数値は常に Unix 秒として解釈される。ミリ秒の場合は `unixMs` 入力形式を明示的に指定する。"
           },
           "custom": {
-            "title": "Custom Pattern",
-            "description": "Field-by-field pattern, for values none of the fixed formats match."
+            "title": "カスタムパターン",
+            "description": "固定の形式のどれにも一致しない値のための、フィールドごとのパターン。"
           },
           "date": {
-            "title": "Date Only",
+            "title": "日付のみ",
             "description": "日付のみの形式（YYYY-MM-DD）"
           },
           "rfc3339": {
@@ -1372,25 +1425,25 @@
             "description": "RFC3339 / ISO 8601 形式"
           },
           "unixMs": {
-            "title": "Unix Milliseconds",
-            "description": "Milliseconds elapsed since 1970-01-01 UTC."
+            "title": "Unix ミリ秒",
+            "description": "1970-01-01 UTC からの経過ミリ秒。"
           },
           "unixS": {
-            "title": "Unix Seconds",
-            "description": "Seconds elapsed since 1970-01-01 UTC."
+            "title": "Unix 秒",
+            "description": "1970-01-01 UTC からの経過秒。"
           }
         },
         "DateTimeOutputFormat": {
           "auto": {
-            "title": "Typed Datetime",
+            "title": "型付き日時",
             "description": "自動: 型付き DateTime 値として格納する（ネイティブのバリアントを保持）。日時を文字列ではなく適切な DateTime 型として扱いたい場合に使用する。"
           },
           "custom": {
-            "title": "Custom Pattern",
-            "description": "Writes a string built from a field-by-field pattern."
+            "title": "カスタムパターン",
+            "description": "フィールドごとのパターンから組み立てた文字列を書き込む。"
           },
           "date": {
-            "title": "Date Only",
+            "title": "日付のみ",
             "description": "日付のみの形式（YYYY-MM-DD）"
           },
           "rfc3339": {
@@ -1398,12 +1451,12 @@
             "description": "RFC3339 / ISO 8601 形式"
           },
           "unixMs": {
-            "title": "Unix Milliseconds",
-            "description": "Writes a number: milliseconds elapsed since 1970-01-01 UTC."
+            "title": "Unix ミリ秒",
+            "description": "1970-01-01 UTC からの経過ミリ秒を数値として書き込む。"
           },
           "unixS": {
-            "title": "Unix Seconds",
-            "description": "Writes a number: seconds elapsed since 1970-01-01 UTC."
+            "title": "Unix 秒",
+            "description": "1970-01-01 UTC からの経過秒を数値として書き込む。"
           }
         }
       }
@@ -1650,7 +1703,7 @@
       "parameterI18n": {
         "": {
           "title": "Feature CityGML 2 Reader パラメータ",
-          "description": "Which file to read, and how its elements become feature attributes."
+          "description": "読み込むファイル、およびその要素を地物の属性に変換する方法"
         },
         "cityGmlAttributesKey": {
           "title": "CityGML属性キー",
@@ -1673,7 +1726,7 @@
           "description": "trueの場合、入力地物の属性がそのファイルから解析されたすべての地物にマージされる。デフォルトはtrue"
         },
         "keepAbsoluteCodeSpace": {
-          "title": "Keep Absolute Code Space",
+          "title": "codeSpace の絶対 URL を保持",
           "description": "`hoistAttributes`に含まれていなくても、すべての`codeSpace`を、ドキュメントを基準にURLに解決した場所として、兄弟キー`{name}@codeSpace`に持ち上げる。デフォルトはfalse。"
         }
       }
@@ -1691,8 +1744,8 @@
           "description": "設定した場合、解析されたCityGML属性はこのキーの下にネストされてフィーチャーに出力される。nullの場合、属性はトップレベルに出力される。デフォルトはnull。"
         },
         "coordinateHandling": {
-          "title": "Coordinate Handling",
-          "description": "Whether written coordinates are normalized to the form each geometry type expects or preserved as written. Defaults to `normalize`."
+          "title": "座標の扱い",
+          "description": "書き出す座標を、ジオメトリタイプごとに想定される形に正規化するか、記述どおりに保持するか。デフォルトは `normalize`。"
         },
         "dataset": {
           "title": "データセット",
@@ -1707,27 +1760,27 @@
           "description": "持ち上げるXML属性名を、ドキュメントでの表記のまま（例: `uom`、`gml:id`）列挙し、任意の深さで親の兄弟キー`{element}@{attribute}`として持ち上げる。挙げていない属性は破棄され、空のリスト（デフォルト）では何も持ち上げない。"
         },
         "includeRejectedDetails": {
-          "title": "Include Rejected Details",
-          "description": "When true, the `rejectedResult` map of each rejected feature also carries `kind` (what was wrong) and `cityObjectId` and `cityObjectType` (the top-level city object it was found in). Defaults to false."
+          "title": "リジェクトの詳細を含める",
+          "description": "true の場合、リジェクトされた各地物の `rejectedResult` マップに、`kind`（何が問題だったか）と、`cityObjectId` および `cityObjectType`（問題が見つかったトップレベルの都市オブジェクト）も含める。デフォルトは false。"
         },
         "inheritInputAttributes": {
           "title": "入力属性の継承",
           "description": "trueの場合、入力地物の属性がそのファイルから解析されたすべての地物にマージされる。デフォルトはtrue"
         },
         "keepAbsoluteCodeSpace": {
-          "title": "Keep Absolute Code Space",
+          "title": "codeSpace の絶対 URL を保持",
           "description": "`hoistAttributes`に含まれていなくても、すべての`codeSpace`を、ドキュメントを基準にURLに解決した場所として、兄弟キー`{name}@codeSpace`に持ち上げる。デフォルトはfalse。"
         }
       },
       "enumI18n": {
         "CoordinateHandling": {
           "normalize": {
-            "title": "Normalize",
-            "description": "Builds each geometry in the form its type expects, using only the positions needed for that form, so slightly malformed input still yields usable geometry."
+            "title": "正規化",
+            "description": "各ジオメトリを、そのタイプが想定する形で、その形に必要な位置だけを使って構築する。多少不正な入力からでも使えるジオメトリが得られる。"
           },
           "preserve": {
-            "title": "Preserve",
-            "description": "Keeps positions exactly as written, so malformed input such as a wrong vertex count or an unclosed ring stays visible to a later check."
+            "title": "保持",
+            "description": "位置を記述どおりに保持する。頂点数の誤りや閉じていないリングなどの不正な入力が、後段のチェックで検出できるまま残る。"
           }
         }
       }
@@ -1795,11 +1848,11 @@
       "description": "各値について最初の地物を通過させ、それを繰り返す地物を分離する。比較する属性を指定しない場合は、地物の内容全体で比較する",
       "parameterI18n": {
         "": {
-          "title": "Feature Duplicate Filter Parameters",
+          "title": "Feature Duplicate Filter パラメータ",
           "description": "どの地物を互いの重複とみなすか"
         },
         "filterBy": {
-          "title": "Filter Attributes",
+          "title": "判定に使う属性",
           "description": "重複を判定する属性の組み合わせ。ある組み合わせを最初に持つ地物が通過し、以降の地物は分離される。属性が存在しないこと自体も組み合わせの一部として扱われるため、空の値を持つ場合とは区別される。省略した場合は、すべての属性とジオメトリを含む内容全体で比較する"
         }
       }
@@ -1861,12 +1914,12 @@
           "description": "GeoJSON の書き出し先、および座標について宣言する内容"
         },
         "output": {
-          "title": "Output",
-          "description": "Path (or expression evaluated per feature) of the GeoJSON file to write. Features sharing a resolved path are written to the same file, so the expression can split features across files by attribute value."
+          "title": "出力",
+          "description": "書き出す GeoJSON ファイルのパス（または地物ごとに評価される式）。解決されたパスが同じ地物は同じファイルに書き出されるため、式を使って属性値ごとに地物を別ファイルに分けられる。"
         },
         "writeCrs": {
-          "title": "Write CRS",
-          "description": "Whether to declare the coordinate reference system of the written coordinates in a legacy GeoJSON 2008 `crs` member. Defaults to false; enable it when the coordinates are not WGS84 longitude / latitude and the consumer reads that member."
+          "title": "CRS を書き出す",
+          "description": "書き出す座標の座標参照系を、旧仕様である GeoJSON 2008 の `crs` メンバーで宣言するかどうか。デフォルトは false。座標が WGS84 の経度・緯度ではなく、利用側がこのメンバーを読み取る場合に有効にする。"
         }
       }
     },
@@ -2141,26 +2194,26 @@
       "enumI18n": {
         "ProjectionPlane": {
           "custom": {
-            "title": "Custom Plane",
-            "description": "Projects along a plane's normal onto that plane. The footprint is expressed in in-plane coordinates anchored at the plane origin.",
+            "title": "任意の平面",
+            "description": "平面の法線に沿ってその平面に投影する。フットプリントは、平面の原点を基準とした平面内の座標で表される。",
             "properties": {
               "normal": {
-                "title": "Normal",
-                "description": "Expression evaluating to the plane normal `[x, y, z]` in the geometry's coordinate frame; any non-zero length."
+                "title": "法線",
+                "description": "ジオメトリの座標系における平面の法線 `[x, y, z]` を返す式。長さは 0 以外であれば任意。"
               },
               "origin": {
-                "title": "Origin",
-                "description": "Expression evaluating to the plane origin `[x, y, z]` in the geometry's coordinate frame. Defaults to `[0, 0, 0]`."
+                "title": "原点",
+                "description": "ジオメトリの座標系における平面の原点 `[x, y, z]` を返す式。デフォルトは `[0, 0, 0]`。"
               },
               "xAxis": {
-                "title": "X Axis",
-                "description": "Expression evaluating to a direction `[x, y, z]` whose in-plane component becomes the footprint's x axis. When omitted, the footprint's y axis is the in-plane direction closest to vertical."
+                "title": "X 軸",
+                "description": "方向 `[x, y, z]` を返す式。その平面内の成分がフットプリントの x 軸になる。省略した場合、フットプリントの y 軸は平面内で鉛直に最も近い方向になる。"
               }
             }
           },
           "horizontal": {
-            "title": "Horizontal",
-            "description": "Projects along the vertical axis onto the horizontal plane, dropping height. The footprint stays in the geometry's horizontal coordinate system."
+            "title": "水平",
+            "description": "鉛直軸に沿って水平面に投影し、高さを取り除く。フットプリントはジオメトリの水平座標系のまま表される。"
           }
         }
       }
@@ -2200,8 +2253,8 @@
           "description": "作成するGeoJSONファイルの出力パスまたは式"
         },
         "writeCrs": {
-          "title": "Write CRS",
-          "description": "Whether to declare the coordinate reference system of the written coordinates in a legacy GeoJSON 2008 `crs` member. Defaults to false; enable it when the coordinates are not WGS84 longitude / latitude and the consumer reads that member."
+          "title": "CRS を書き出す",
+          "description": "書き出す座標の座標参照系を、旧仕様である GeoJSON 2008 の `crs` メンバーで宣言するかどうか。デフォルトは false。座標が WGS84 の経度・緯度ではなく、利用側がこのメンバーを読み取る場合に有効にする。"
         }
       }
     },
@@ -2491,8 +2544,8 @@
           "description": "無効化する補助チェック。無効化されたチェックは実行されず、合格として扱われる。コアの妥当性チェックは常に実行される。デフォルトは空で、すべての任意チェックが実行される"
         },
         "duplicateCounting": {
-          "title": "Duplicate Counting",
-          "description": "What one problem of the duplicate-points check stands for: `extraPoints` (the default) counts each coordinate close to an earlier one, `closePairs` counts each pair of close coordinates."
+          "title": "重複の数え方",
+          "description": "重複点チェックで問題 1 件が何を表すか。`extraPoints`（デフォルト）は、先にある座標に近い座標を 1 件ずつ数え、`closePairs` は近接する座標の組を 1 件ずつ数える。"
         },
         "duplicateTolerance": {
           "title": "重複点の許容誤差",
@@ -2526,12 +2579,12 @@
       "enumI18n": {
         "DuplicateCounting": {
           "closePairs": {
-            "title": "Close Pairs",
-            "description": "One problem per pair of close coordinates, located at both coordinates of the pair as a two-point geometry."
+            "title": "近接する組",
+            "description": "近接する座標の組ごとに 1 件の問題とし、組の両方の座標を 2 点のジオメトリとして位置を示す。"
           },
           "extraPoints": {
-            "title": "Extra Points",
-            "description": "One problem per coordinate close to an earlier one: the points to drop so that no two remain close."
+            "title": "余分な点",
+            "description": "先にある座標に近い座標ごとに 1 件の問題とする。近接する 2 点が残らないように取り除くべき点を表す。"
           }
         },
         "OptionalCheck": {
@@ -2554,12 +2607,12 @@
         },
         "PlanarityThreshold": {
           "maxHeight": {
-            "title": "Max Height",
-            "description": "Absolute maximum out-of-plane height, in the coordinate unit (metres). Applied only in a linear-unit frame, where the planarity check runs."
+            "title": "最大高さ",
+            "description": "平面からのずれの高さの絶対的な上限（座標の単位、メートル）。平面性チェックが実行される線形単位の座標系でのみ適用される。"
           },
           "ratio": {
-            "title": "Ratio",
-            "description": "Dimensionless ratio of the face's convex-hull minimum height to its diameter; scale-invariant."
+            "title": "比率",
+            "description": "面の凸包の最小高さと直径の比（無次元）。スケールに依存しない。"
           }
         }
       }
@@ -2782,66 +2835,66 @@
         },
         "Authentication": {
           "apiKey": {
-            "title": "API Key",
-            "description": "API key authentication in header or query parameter",
+            "title": "API キー",
+            "description": "ヘッダーまたはクエリパラメータに含める API キーによる認証",
             "properties": {
               "keyName": {
-                "title": "Key Name",
-                "description": "The name of the API key parameter"
+                "title": "キー名",
+                "description": "API キーのパラメータ名"
               },
               "keyValue": {
-                "title": "Key Value",
-                "description": "The API key value"
+                "title": "キーの値",
+                "description": "API キーの値"
               },
               "location": {
-                "title": "Location",
-                "description": "Where to include the API key (header or query parameter)"
+                "title": "送信場所",
+                "description": "API キーを含める場所（ヘッダーまたはクエリパラメータ）"
               }
             }
           },
           "basic": {
-            "title": "Basic Authentication",
-            "description": "HTTP Basic authentication with username and password",
+            "title": "Basic 認証",
+            "description": "ユーザー名とパスワードによる HTTP Basic 認証",
             "properties": {
               "password": {
-                "title": "Password",
-                "description": "The password for basic authentication"
+                "title": "パスワード",
+                "description": "Basic 認証のパスワード"
               },
               "username": {
-                "title": "Username",
-                "description": "The username for basic authentication"
+                "title": "ユーザー名",
+                "description": "Basic 認証のユーザー名"
               }
             }
           },
           "bearer": {
-            "title": "Bearer Token",
-            "description": "Bearer token authentication (OAuth 2.0)",
+            "title": "Bearer トークン",
+            "description": "Bearer トークンによる認証（OAuth 2.0）",
             "properties": {
               "token": {
-                "title": "Token",
-                "description": "The bearer token value"
+                "title": "トークン",
+                "description": "Bearer トークンの値"
               }
             }
           }
         },
         "BinarySource": {
           "base64": {
-            "title": "Base64 Encoded",
-            "description": "Binary data encoded as base64 string",
+            "title": "Base64 エンコード",
+            "description": "base64 文字列としてエンコードされたバイナリデータ",
             "properties": {
               "data": {
-                "title": "Data",
-                "description": "Base64-encoded binary data (supports expressions)"
+                "title": "データ",
+                "description": "base64 エンコードされたバイナリデータ（式に対応）"
               }
             }
           },
           "file": {
-            "title": "From File",
-            "description": "Read binary data from a file",
+            "title": "ファイルから",
+            "description": "ファイルからバイナリデータを読み込む",
             "properties": {
               "path": {
-                "title": "File Path",
-                "description": "Path to the file to read (supports expressions)"
+                "title": "ファイルパス",
+                "description": "読み込むファイルのパス（式に対応）"
               }
             }
           }
@@ -2878,88 +2931,88 @@
         },
         "MultipartPart": {
           "file": {
-            "title": "File Upload",
-            "description": "A file upload in the multipart form",
+            "title": "ファイルアップロード",
+            "description": "マルチパートフォーム内のファイルアップロード",
             "properties": {
               "contentType": {
-                "title": "Content Type",
-                "description": "MIME type of the file"
+                "title": "コンテンツタイプ",
+                "description": "ファイルの MIME タイプ"
               },
               "filename": {
-                "title": "Filename",
-                "description": "The filename to send in the Content-Disposition header"
+                "title": "ファイル名",
+                "description": "Content-Disposition ヘッダーで送信するファイル名"
               },
               "name": {
-                "title": "Field Name",
-                "description": "The name of the file upload field"
+                "title": "フィールド名",
+                "description": "ファイルアップロードフィールドの名前"
               },
               "source": {
-                "title": "File Source",
-                "description": "Source of the file data (base64 or file path)"
+                "title": "ファイルの取得元",
+                "description": "ファイルデータの取得元（base64 またはファイルパス）"
               }
             }
           },
           "text": {
-            "title": "Text Field",
-            "description": "A text field in the multipart form",
+            "title": "テキストフィールド",
+            "description": "マルチパートフォーム内のテキストフィールド",
             "properties": {
               "name": {
-                "title": "Field Name",
-                "description": "The name of the form field"
+                "title": "フィールド名",
+                "description": "フォームフィールドの名前"
               },
               "value": {
-                "title": "Field Value",
-                "description": "The value of the form field (supports expressions)"
+                "title": "フィールド値",
+                "description": "フォームフィールドの値（式に対応）"
               }
             }
           }
         },
         "RequestBody": {
           "binary": {
-            "title": "Binary Body",
-            "description": "Send binary data from base64 or file",
+            "title": "バイナリボディ",
+            "description": "base64 またはファイルからバイナリデータを送信する",
             "properties": {
               "contentType": {
-                "title": "Content Type",
-                "description": "Content-Type header for the body (default: application/octet-stream)"
+                "title": "コンテンツタイプ",
+                "description": "ボディの Content-Type ヘッダー（デフォルト: application/octet-stream）"
               },
               "source": {
-                "title": "Binary Source",
-                "description": "Source of the binary data (base64 string or file path)"
+                "title": "バイナリの取得元",
+                "description": "バイナリデータの取得元（base64 文字列またはファイルパス）"
               }
             }
           },
           "formUrlEncoded": {
-            "title": "Form URL Encoded",
-            "description": "Send application/x-www-form-urlencoded data",
+            "title": "URL エンコードフォーム",
+            "description": "application/x-www-form-urlencoded 形式のデータを送信する",
             "properties": {
               "fields": {
-                "title": "Form Fields",
-                "description": "List of form field name-value pairs"
+                "title": "フォームフィールド",
+                "description": "フォームフィールドの名前と値の組のリスト"
               }
             }
           },
           "multipart": {
-            "title": "Multipart Form Data",
-            "description": "Send multipart/form-data (for file uploads); cannot be combined with retry",
+            "title": "マルチパートフォームデータ",
+            "description": "multipart/form-data を送信する（ファイルアップロード用）。リトライとは併用できない",
             "properties": {
               "parts": {
-                "title": "Parts",
-                "description": "List of multipart form parts (text fields or file uploads)"
+                "title": "パート",
+                "description": "マルチパートフォームのパートのリスト（テキストフィールドまたはファイルアップロード）"
               }
             }
           },
           "text": {
-            "title": "Text Body",
-            "description": "Send text or JSON content",
+            "title": "テキストボディ",
+            "description": "テキストまたは JSON のコンテンツを送信する",
             "properties": {
               "content": {
-                "title": "Content",
-                "description": "The text content to send (supports expressions)"
+                "title": "コンテンツ",
+                "description": "送信するテキストコンテンツ（式に対応）"
               },
               "contentType": {
-                "title": "Content Type",
-                "description": "Content-Type header for the body, such as application/json or text/plain"
+                "title": "コンテンツタイプ",
+                "description": "ボディの Content-Type ヘッダー（application/json や text/plain など）"
               }
             }
           }
@@ -2976,16 +3029,16 @@
         },
         "ResponseHandling": {
           "attribute": {
-            "title": "Store in Attribute",
-            "description": "Store the response body in a feature attribute"
+            "title": "属性に格納",
+            "description": "レスポンスボディを地物属性に格納する"
           },
           "file": {
-            "title": "Save to File",
-            "description": "Save the response body to a file under the job's output directory, recording its location in the `_response_file_path` attribute",
+            "title": "ファイルに保存",
+            "description": "レスポンスボディをジョブの出力ディレクトリ配下のファイルに保存し、その場所を `_response_file_path` 属性に記録する",
             "properties": {
               "path": {
-                "title": "File Path",
-                "description": "Relative path under the job's output directory where the response is saved (supports expressions)"
+                "title": "ファイルパス",
+                "description": "レスポンスを保存する、ジョブの出力ディレクトリからの相対パス（式に対応）"
               }
             }
           }
@@ -3255,19 +3308,19 @@
           "description": "読み込むリスト、その要素から取り出す属性、および結果の格納先"
         },
         "elementAttribute": {
-          "title": "Element Attribute",
+          "title": "要素の属性",
           "description": "リストの各要素から取り出す属性。キーと値の組でない要素、およびこの属性を持たない要素は何も寄与しない"
         },
         "list": {
-          "title": "List",
+          "title": "リスト",
           "description": "読み込むリストを保持する属性。この属性を持たない地物、およびリストでない場合は、そのまま通過する"
         },
         "outputAttribute": {
-          "title": "Output Attribute",
+          "title": "出力属性",
           "description": "連結した文字列を格納する属性"
         },
         "separator": {
-          "title": "Separator",
+          "title": "区切り文字",
           "description": "連続する値の間に挿入する文字列。既定はカンマ"
         }
       }
@@ -3295,19 +3348,19 @@
           "description": "読み込むリスト、コピーする要素、およびコピーした属性名の付け方"
         },
         "copiedAttributePrefix": {
-          "title": "Copied Attribute Prefix",
+          "title": "コピーした属性の接頭辞",
           "description": "コピーした各属性名の前に付ける文字列。既定では付けない"
         },
         "copiedAttributeSuffix": {
-          "title": "Copied Attribute Suffix",
+          "title": "コピーした属性の接尾辞",
           "description": "コピーした各属性名の後に付ける文字列。既定では付けない"
         },
         "index": {
-          "title": "Index",
+          "title": "インデックス",
           "description": "コピーする要素の位置。0 から数える。リストがこれより短い地物、およびこの位置の要素がキーと値の組でない地物は、そのまま通過する"
         },
         "list": {
-          "title": "List",
+          "title": "リスト",
           "description": "読み込むリストを保持する属性。この属性を持たない地物、およびリストでない場合は、そのまま通過する"
         }
       }
@@ -3546,36 +3599,36 @@
         },
         "NullReplacement": {
           "boolean": {
-            "title": "True or False",
-            "description": "Written as a true/false value.",
+            "title": "真偽値",
+            "description": "真偽値（true/false）として書き込む。",
             "properties": {
               "value": {
-                "title": "Value",
-                "description": "The value to write."
+                "title": "値",
+                "description": "書き込む値。"
               }
             }
           },
           "number": {
-            "title": "Number",
-            "description": "Written as a number.",
+            "title": "数値",
+            "description": "数値として書き込む。",
             "properties": {
               "value": {
-                "title": "Value",
-                "description": "The number to write."
+                "title": "値",
+                "description": "書き込む数値。"
               }
             }
           },
           "remove": {
-            "title": "Remove",
-            "description": "Removes the attribute from the feature instead of writing a value."
+            "title": "削除",
+            "description": "値を書き込む代わりに、地物からその属性を削除する。"
           },
           "text": {
-            "title": "Text",
-            "description": "Written as text.",
+            "title": "テキスト",
+            "description": "テキストとして書き込む。",
             "properties": {
               "value": {
-                "title": "Value",
-                "description": "The text to write."
+                "title": "値",
+                "description": "書き込むテキスト。"
               }
             }
           }
@@ -3870,7 +3923,7 @@
           "description": "CityGML フィーチャーの定義域を検証する設定"
         },
         "codelistsPath": {
-          "title": "Codelists Path",
+          "title": "コードリストのパス",
           "description": "フォールバックのコードリストディレクトリパス式。GML ファイルからの相対位置にコードリストが見つからない場合、codeSpace 参照を解決するベースディレクトリとして使用される。"
         }
       }
@@ -4037,22 +4090,23 @@
     },
     {
       "name": "PLATEAU4.TransitiveLinkResolver",
+      "description": "各地物のリンク先 ID を持つ属性をたどり、どの地物どうしが直接または推移的にリンクしているかを解決する。スコープごとに、各地物に所属するリンク集合のインデックスとサイズ、およびその集合がスコープの 1 つ、一部、すべてのどれにまたがるかを付与する",
       "parameterI18n": {
         "": {
-          "title": "TransitiveLinkResolver Parameters",
-          "description": "Names the attribute identifying each feature, the attribute listing the features it links to, and the attributes delimiting the scope a verdict is computed over."
+          "title": "TransitiveLinkResolver パラメータ",
+          "description": "各地物を識別する属性、リンク先の地物を列挙する属性、および判定を計算するスコープを区切る属性を指定する"
         },
         "groupBy": {
-          "title": "Group By",
-          "description": "Attributes delimiting the scope a verdict is computed over, such as a parent feature, a level of detail and a source file. When omitted, all input features form a single scope. Linked IDs naming a feature outside the scope are ignored."
+          "title": "グループ化属性",
+          "description": "判定を計算するスコープを区切る属性（親地物、詳細度、ソースファイルなど）。省略した場合、すべての入力地物が 1 つのスコープになる。スコープ外の地物を指すリンク ID は無視される。"
         },
         "idAttribute": {
-          "title": "ID Attribute",
-          "description": "Attribute holding the identifier of the feature, such as its gml:id. Entries of the linked IDs attribute are matched against this value."
+          "title": "ID 属性",
+          "description": "地物の識別子（gml:id など）を持つ属性。リンク ID 属性の各要素はこの値と照合される。"
         },
         "linkedIdsAttribute": {
-          "title": "Linked IDs Attribute",
-          "description": "Attribute holding an array of the identifiers of the features this one links to. An absent or null value means it links to nothing; a link recorded on only one side still connects the pair."
+          "title": "リンク ID 属性",
+          "description": "この地物のリンク先となる地物の識別子の配列を持つ属性。値がない場合や null の場合はどこにもリンクしない。リンクが片方の地物にしか記録されていなくても、その 2 つはつながる。"
         }
       }
     },
@@ -4145,7 +4199,7 @@
           "description": "CityGML フィーチャーの定義域を検証する設定"
         },
         "codelistsPath": {
-          "title": "Codelists Path",
+          "title": "コードリストのパス",
           "description": "フォールバックのコードリストディレクトリパス式。GML ファイルからの相対位置にコードリストが見つからない場合、codeSpace 参照を解決するベースディレクトリとして使用される。"
         }
       }
@@ -4164,20 +4218,22 @@
     },
     {
       "name": "PLATEAU6.MissingAttributeDetector",
+      "description": "PLATEAU6データの欠落属性を検出する",
       "parameterI18n": {
         "": {
-          "title": "MissingAttributeDetector Parameters",
-          "description": "Configuration for detecting missing attributes in PLATEAU features."
+          "title": "MissingAttributeDetector パラメータ",
+          "description": "PLATEAU6 フィーチャーの欠落属性を検出する設定"
         },
         "packageAttribute": {}
       }
     },
     {
       "name": "PLATEAU6.ObjectListExtractor",
+      "description": "PLATEAU6データからオブジェクトリストを抽出する",
       "parameterI18n": {
         "": {
-          "title": "ObjectListExtractor Parameters",
-          "description": "Configuration for extracting object lists from PLATEAU data."
+          "title": "ObjectListExtractor パラメータ",
+          "description": "PLATEAU6 データからオブジェクトリストを抽出する設定"
         },
         "objectListPathAttribute": {}
       }
@@ -4202,30 +4258,32 @@
     },
     {
       "name": "PLATEAU6.TransitiveLinkResolver",
+      "description": "各地物のリンク先 ID を持つ属性をたどり、どの地物どうしが直接または推移的にリンクしているかを解決する。スコープごとに、各地物に所属するリンク集合のインデックスとサイズ、およびその集合がスコープの 1 つ、一部、すべてのどれにまたがるかを付与する",
       "parameterI18n": {
         "": {
-          "title": "TransitiveLinkResolver Parameters",
-          "description": "Names the attribute identifying each feature, the attribute listing the features it links to, and the attributes delimiting the scope a verdict is computed over."
+          "title": "TransitiveLinkResolver パラメータ",
+          "description": "各地物を識別する属性、リンク先の地物を列挙する属性、および判定を計算するスコープを区切る属性を指定する"
         },
         "groupBy": {
-          "title": "Group By",
-          "description": "Attributes delimiting the scope a verdict is computed over, such as a parent feature, a level of detail and a source file. When omitted, all input features form a single scope. Linked IDs naming a feature outside the scope are ignored."
+          "title": "グループ化属性",
+          "description": "判定を計算するスコープを区切る属性（親地物、詳細度、ソースファイルなど）。省略した場合、すべての入力地物が 1 つのスコープになる。スコープ外の地物を指すリンク ID は無視される。"
         },
         "idAttribute": {
-          "title": "ID Attribute",
-          "description": "Attribute holding the identifier of the feature, such as its gml:id. Entries of the linked IDs attribute are matched against this value."
+          "title": "ID 属性",
+          "description": "地物の識別子（gml:id など）を持つ属性。リンク ID 属性の各要素はこの値と照合される。"
         },
         "linkedIdsAttribute": {
-          "title": "Linked IDs Attribute",
-          "description": "Attribute holding an array of the identifiers of the features this one links to. An absent or null value means it links to nothing; a link recorded on only one side still connects the pair."
+          "title": "リンク ID 属性",
+          "description": "この地物のリンク先となる地物の識別子の配列を持つ属性。値がない場合や null の場合はどこにもリンクしない。リンクが片方の地物にしか記録されていなくても、その 2 つはつながる。"
         }
       }
     },
     {
       "name": "PLATEAU6.TransportationXlinkDetector",
+      "description": "PLATEAU交通モデルの未参照サーフェスを検出する（L-TRAN-03）",
       "parameterI18n": {
         "": {
-          "title": "TransportationXlinkDetectorParam"
+          "title": "TransportationXlinkDetector パラメータ"
         },
         "cityGmlPath": {}
       }
@@ -4550,8 +4608,8 @@
           "description": "フィルタージオメトリと候補ジオメトリの間でテストする空間関係と、通過した候補がフィルターから引き継ぐ内容を設定する"
         },
         "groupBy": {
-          "title": "Group By Attributes",
-          "description": "Attributes whose values decide which filter features a candidate is tested against — only filters matching the candidate on all of them. A candidate whose group has no filter fails. When omitted, every candidate is tested against every filter."
+          "title": "グループ化属性",
+          "description": "候補をどのフィルター地物に対してテストするかを決める属性。これらすべての値が候補と一致するフィルターだけが対象になる。グループにフィルターがない候補は失敗する。省略した場合、すべての候補をすべてのフィルターに対してテストする"
         },
         "matchMode": {
           "title": "マッチモード",
