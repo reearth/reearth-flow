@@ -9,6 +9,7 @@ generate_truth = true
 path = "13421_ogasawara-mura_pref_2025_citygml_1_op_bldg_3dtiles_lod1_jgd2024_full"
 truth_path = "cesium_bldg_3dtiles_lod1_jgd2024_full_truth.json"
 generate_truth = true
+legacy_keys = true
 
 [convs.cesium_attributes.bldg_3dtiles_lod1_jgd2024_full.casts]
 "" = "ordered_dict"
@@ -24,6 +25,7 @@ path = "cesium_bldg_3dtiles_lod1_jgd2024_full_truth.json"
 flow_path = "13421_ogasawara-mura_pref_2025_citygml_1_op_bldg_3dtiles_lod1_jgd2024_full/tileset.json"
 output_path = "3dtiles_lod1_tileset.json"
 generate_truth = true
+legacy_keys = true
 json_path = ".properties"
 
 [convs.json.tilesets_lod1.casts]

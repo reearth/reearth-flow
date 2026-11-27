@@ -14,6 +14,7 @@ generate_truth = true
 path = "15202_nagaoka-shi_city_2024_citygml_1_op_unf_Manhole_3dtiles_lod3_jgd2024"
 truth_path = "cesium_unf_Manhole_3dtiles_lod3_jgd2024_truth.json"
 generate_truth = true
+legacy_keys = true
 
 [convs.cesium_attributes.unf_Manhole_3dtiles_lod3_jgd2024.casts]
 "" = "ordered_dict"
@@ -27,6 +28,7 @@ path = "cesium_unf_Manhole_3dtiles_lod3_jgd2024_truth.json"
 path = "15202_nagaoka-shi_city_2024_citygml_1_op_unf_Manhole_dm_geometric_attributes"
 truth_path = "mvt_unf_Manhole_dm_geometric_attributes_truth.json"
 generate_truth = true
+legacy_keys = true
 
 [convs.mvt_attributes.unf_Manhole_dm_geometric_attributes.casts]
 "" = "ordered_dict"
@@ -40,6 +42,7 @@ path = "mvt_unf_Manhole_dm_geometric_attributes_truth.json"
 path = "15202_nagaoka-shi_city_2024_citygml_1_op_unf_SewerPipe_3dtiles_lod3_jgd2024"
 truth_path = "cesium_unf_SewerPipe_3dtiles_lod3_jgd2024_truth.json"
 generate_truth = true
+legacy_keys = true
 
 [convs.cesium_attributes.unf_SewerPipe_3dtiles_lod3_jgd2024.casts]
 "" = "ordered_dict"
@@ -53,6 +56,7 @@ path = "cesium_unf_SewerPipe_3dtiles_lod3_jgd2024_truth.json"
 path = "15202_nagaoka-shi_city_2024_citygml_1_op_unf_SewerPipe_dm_geometric_attributes"
 truth_path = "mvt_unf_SewerPipe_dm_geometric_attributes_truth.json"
 generate_truth = true
+legacy_keys = true
 
 [convs.mvt_attributes.unf_SewerPipe_dm_geometric_attributes.casts]
 "" = "ordered_dict"

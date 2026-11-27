@@ -5,6 +5,7 @@ pub mod compare_attributes;
 pub mod conv;
 pub mod file;
 pub mod geom_stats;
+pub mod legacy_keys;
 pub mod profile_config;
 pub mod rasterize;
 pub mod runner;

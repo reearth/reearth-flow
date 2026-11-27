@@ -1,5 +1,6 @@
 use crate::cast_config::{convert_casts, CastConfigValue};
 use crate::compare_attributes::analyze_attributes;
+use crate::conv::json::sibling_labels;
 use serde::Deserialize;
 use serde_json::Value;
 use std::collections::HashMap;
@@ -13,6 +14,9 @@ pub struct JsonFileConfig {
     pub extracted: bool,
     #[serde(default)]
     pub must_not_exist: bool,
+    /// Whether the truth uses the legacy attribute keys, to which Flow's keys are converted
+    #[serde(default)]
+    pub legacy_keys: bool,
     pub casts: Option<HashMap<String, CastConfigValue>>,
     pub values: Option<HashMap<String, Value>>,
 }
@@ -58,6 +62,16 @@ pub fn test_json_attributes(
         let flow_content = fs::read(&flow_file).map_err(|e| e.to_string())?;
         let flow_data: serde_json::Value = serde_json::from_slice(&flow_content)
             .map_err(|e| format!("Failed to parse Flow JSON: {}", e))?;
+        let flow_data = if file_cfg.legacy_keys {
+            let dir = flow_file
+                .parent()
+                .ok_or_else(|| format!("{:?} has no parent directory", flow_file))?;
+            sibling_labels(dir)?
+                .legacy_value(flow_data)
+                .map_err(|e| format!("Failed to convert keys in {:?}: {}", flow_file, e))?
+        } else {
+            flow_data
+        };
 
         let casts = if let Some(casts_cfg) = &file_cfg.casts {
             convert_casts(casts_cfg)?

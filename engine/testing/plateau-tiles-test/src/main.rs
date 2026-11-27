@@ -308,6 +308,7 @@ fn run_testcase(testcases_dir: &Path, results_dir: &Path, name: &str, stages: &s
                         &output_path,
                         entry.json_path.as_deref(),
                         &entry.casts,
+                        entry.legacy_keys,
                     )?;
                 }
                 Ok(())
@@ -319,7 +320,12 @@ fn run_testcase(testcases_dir: &Path, results_dir: &Path, name: &str, stages: &s
                 for entry in profile.convs.mvt_attributes.values() {
                     let mvt_dir = output_dir.join("flow_extracted").join(&entry.path);
                     let output_path = output_dir.join("flow_extracted").join(&entry.truth_path);
-                    mvt::write_mvt_json(&mvt_dir, &output_path, entry.casts.as_ref())?;
+                    mvt::write_mvt_json(
+                        &mvt_dir,
+                        &output_path,
+                        entry.casts.as_ref(),
+                        entry.legacy_keys,
+                    )?;
                 }
                 Ok(())
             });
@@ -353,6 +359,7 @@ fn run_testcase(testcases_dir: &Path, results_dir: &Path, name: &str, stages: &s
                         &tileset_dir,
                         &output_path,
                         entry.casts.as_ref(),
+                        entry.legacy_keys,
                     )?;
                 }
                 Ok(())

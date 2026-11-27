@@ -3,20 +3,20 @@ use std::collections::HashMap;
 use indexmap::IndexMap;
 use reearth_flow_types::{Attribute, AttributeValue, Attributes};
 
-/// Sort key for flooding risk schema attributes, matching FME's fldAttrsSorter.
+/// Sort key for river flooding risk schema columns, matching FME's fldAttrsSorter.
 /// Sorted by (desc_code, admin_code, scale_code, order) where desc_code
 /// is compared numerically when parseable as i64.
 #[derive(Debug, Clone, Eq, PartialEq)]
 pub(super) struct FldSortEntry {
-    /// uro:description_code — river system identifier, e.g. "1" for "利根川水系利根川"
+    /// `uro:description_code`: the river system identifier, e.g. "1" for "利根川水系利根川"
     pub desc_code: String,
-    /// uro:adminType_code — admin jurisdiction code, e.g. "1" for "国", "2" for "都道府県"
+    /// `uro:adminType_code`: the admin jurisdiction code, e.g. "1" for "国", "2" for "都道府県"
     pub admin_code: String,
-    /// uro:scale_code — flood scale code, e.g. "1" for "L1（計画規模）", "2" for "L2（想定最大規模）"
+    /// `uro:scale_code`: the flood scale code, e.g. "1" for "L1（計画規模）", "2" for "L2（想定最大規模）"
     pub scale_code: String,
-    /// Sub-attribute ordering: 1=浸水ランク, 2=浸水ランクコード, 3=浸水深, 4=浸水継続時間
+    /// Position of the column within its group, `_name` first, then rank, rank_code, depth, duration
     pub order: u8,
-    /// Full flattened attribute name, e.g. "利根川水系利根川（国管理区間）_L1（計画規模）_浸水ランク"
+    /// Full column name, e.g. `fld_1_1_2_rank`
     pub attr_name: String,
 }
 
@@ -53,6 +53,60 @@ fn push_strings(value: &AttributeValue, out: &mut Vec<String>) {
     }
 }
 
+/// Returns the code of the code-typed attribute `key` in `obj`: its `{key}_code` companion,
+/// or the value itself when the codelist was not resolved.
+fn code_of(obj: &Attributes, key: &str) -> Option<String> {
+    obj.get(format!("{key}_code").as_str())
+        .or_else(|| obj.get(key))
+        .map(|v| v.to_string())
+}
+
+/// Whether `code` can be used as a part of a column key.
+fn is_key_code(code: &str) -> bool {
+    !code.is_empty() && code.chars().all(|c| c.is_ascii_alphanumeric())
+}
+
+/// Returns the codes as they are if all of them can be used in a column key, logging a warning
+/// that names the dropped risk entry otherwise.
+fn key_codes<const N: usize>(tag: &str, codes: [Option<String>; N]) -> Option<[String; N]> {
+    if codes.iter().all(|c| c.as_deref().is_some_and(is_key_code)) {
+        return Some(codes.map(Option::unwrap_or_default));
+    }
+    tracing::warn!("Dropping {tag} entry whose codes {codes:?} cannot form a column key");
+    None
+}
+
+/// The columns of one risk group: `{group}_name` followed by the value columns.
+struct RiskGroup<'a> {
+    /// Column key prefix, e.g. "fld_1_1_2"
+    key: String,
+    /// Value of the `{key}_name` column
+    name: String,
+    /// (column suffix, schema type, value) of each value column
+    columns: Vec<(&'a str, AttributeValue, Option<AttributeValue>)>,
+}
+
+impl RiskGroup<'_> {
+    /// Returns the (column key, schema type, value) of each present column, `_name` first,
+    /// or nothing when no value column is present.
+    fn into_columns(self) -> Vec<(String, AttributeValue, AttributeValue)> {
+        if self.columns.iter().all(|(_, _, value)| value.is_none()) {
+            return Vec::new();
+        }
+        let name = (
+            format!("{}_name", self.key),
+            AttributeValue::default_string(),
+            AttributeValue::String(self.name),
+        );
+        let key = self.key;
+        std::iter::once(name)
+            .chain(self.columns.into_iter().filter_map(|(suffix, typ, value)| {
+                value.map(|value| (format!("{key}_{suffix}"), typ, value))
+            }))
+            .collect()
+    }
+}
+
 #[derive(Debug, Clone, Default)]
 pub(super) struct Flattener {
     pub(super) risk_to_attribute_definitions: HashMap<String, IndexMap<String, AttributeValue>>,
@@ -61,6 +115,8 @@ pub(super) struct Flattener {
 }
 
 impl Flattener {
+    /// Flattens `uro:RiverFloodingRiskAttribute` into one `fld_{description}_{adminType}_{scale}`
+    /// column group per entry, keyed by codes.
     pub(super) fn extract_fld_risk_attribute(
         &mut self,
         attributes: &Attributes,
@@ -84,15 +140,19 @@ impl Flattener {
             let desc = risk_obj.get("uro:description").map(|v| v.to_string());
             let admin = risk_obj.get("uro:adminType").map(|v| v.to_string());
             let scale = risk_obj.get("uro:scale").map(|v| v.to_string());
-
-            if desc.is_none() || admin.is_none() || scale.is_none() {
+            let (Some(desc), Some(admin), Some(scale)) = (desc, admin, scale) else {
                 continue;
-            }
-            let desc = desc.unwrap();
-            let admin = admin.unwrap();
-            let scale = scale.unwrap();
-
-            let basename = format!("{desc}（{admin}管理区間）_{scale}");
+            };
+            let Some([desc_code, admin_code, scale_code]) = key_codes(
+                "uro:RiverFloodingRiskAttribute",
+                [
+                    code_of(&risk_obj, "uro:description"),
+                    code_of(&risk_obj, "uro:adminType"),
+                    code_of(&risk_obj, "uro:scale"),
+                ],
+            ) else {
+                continue;
+            };
 
             let mut rank = risk_obj.get("uro:rank").map(|v| v.to_string());
             let mut rank_code = risk_obj.get("uro:rank_code").map(|v| v.to_string());
@@ -100,60 +160,42 @@ impl Flattener {
                 rank = risk_obj.get("uro:rankOrg").map(|v| v.to_string());
                 rank_code = risk_obj.get("uro:rankOrg_code").map(|v| v.to_string());
             }
-
             let depth = risk_obj.get("uro:depth").map(|v| v.to_string());
             let duration = risk_obj.get("uro:duration").map(|v| v.to_string());
 
-            // Extract code values for schema sort order (matching FME's fldAttrsSorter)
-            let desc_code = risk_obj
-                .get("uro:description_code")
-                .map(|v| v.to_string())
-                .unwrap_or_else(|| desc.clone());
-            let admin_code = risk_obj
-                .get("uro:adminType_code")
-                .map(|v| v.to_string())
-                .unwrap_or_else(|| admin.clone());
-            let scale_code = risk_obj
-                .get("uro:scale_code")
-                .map(|v| v.to_string())
-                .unwrap_or_else(|| scale.clone());
-
-            let attribs = vec![
-                ("浸水ランク", AttributeValue::default_string(), rank, 1u8),
-                (
-                    "浸水ランクコード",
-                    AttributeValue::default_number(),
-                    rank_code,
-                    2,
-                ),
-                ("浸水深", AttributeValue::default_float(), depth, 3),
-                ("浸水継続時間", AttributeValue::default_float(), duration, 4),
-            ];
-
-            for (label, value, value_opt, order) in attribs {
-                if let Some(value_str) = value_opt {
-                    let name = format!("{basename}_{label}");
-                    result.insert(
-                        Attribute::new(name.clone()),
-                        AttributeValue::String(value_str),
-                    );
-                    self.risk_to_attribute_definitions
-                        .entry("fld".to_string())
-                        .or_default()
-                        .insert(name.clone(), value);
-                    self.fld_sort_entries.push(FldSortEntry {
-                        desc_code: desc_code.clone(),
-                        admin_code: admin_code.clone(),
-                        scale_code: scale_code.clone(),
-                        order,
-                        attr_name: name,
-                    });
-                }
+            let group = RiskGroup {
+                key: format!("fld_{desc_code}_{admin_code}_{scale_code}"),
+                name: format!("{desc}（{admin}管理区間）_{scale}"),
+                columns: vec![
+                    ("rank", AttributeValue::default_string(), rank),
+                    ("rank_code", AttributeValue::default_number(), rank_code),
+                    ("depth", AttributeValue::default_float(), depth),
+                    ("duration", AttributeValue::default_float(), duration),
+                ]
+                .into_iter()
+                .map(|(suffix, typ, value)| (suffix, typ, value.map(AttributeValue::String)))
+                .collect(),
+            };
+            for (order, (name, typ, value)) in group.into_columns().into_iter().enumerate() {
+                result.insert(Attribute::new(name.clone()), value);
+                self.risk_to_attribute_definitions
+                    .entry("fld".to_string())
+                    .or_default()
+                    .insert(name.clone(), typ);
+                self.fld_sort_entries.push(FldSortEntry {
+                    desc_code: desc_code.clone(),
+                    admin_code: admin_code.clone(),
+                    scale_code: scale_code.clone(),
+                    order: order as u8,
+                    attr_name: name,
+                });
             }
         }
         result
     }
 
+    /// Flattens the tsunami, high tide, inland flooding and reservoir flooding risk attributes into
+    /// one `{package}_{description}` column group per entry, keyed by the description code.
     pub(super) fn extract_tnm_htd_ifld_risk_attribute(
         &mut self,
         attributes: &Attributes,
@@ -188,12 +230,13 @@ impl Flattener {
                     None => continue,
                 };
 
-                let desc_opt = risk_obj.get("uro:description").map(|v| v.to_string());
-                if desc_opt.is_none() {
+                let Some(desc) = risk_obj.get("uro:description").map(|v| v.to_string()) else {
                     continue;
-                }
-                let desc = desc_opt.unwrap();
-                let basename = format!("{title}_{desc}");
+                };
+                let Some([desc_code]) = key_codes(tag, [code_of(&risk_obj, "uro:description")])
+                else {
+                    continue;
+                };
 
                 let mut rank_opt = risk_obj.get("uro:rank").map(|v| v.to_string());
                 let mut rank_code_opt = risk_obj.get("uro:rank_code").map(|v| v.to_string());
@@ -201,37 +244,34 @@ impl Flattener {
                     rank_opt = risk_obj.get("uro:rankOrg").map(|v| v.to_string());
                     rank_code_opt = risk_obj.get("uro:rankOrg_code").map(|v| v.to_string());
                 }
-
                 let depth_opt = risk_obj.get("uro:depth").map(|v| v.to_string());
 
-                let attribs = vec![
-                    ("浸水ランク", rank_opt, AttributeValue::default_string()),
-                    (
-                        "浸水ランクコード",
-                        rank_code_opt,
-                        AttributeValue::default_number(),
-                    ),
-                    ("浸水深", depth_opt, AttributeValue::default_float()),
-                ];
-
-                for (label, value_str_opt, value_type) in attribs {
-                    if let Some(value_str) = value_str_opt {
-                        let name = format!("{basename}_{label}");
-                        result.insert(
-                            Attribute::new(name.clone()),
-                            AttributeValue::String(value_str),
-                        );
-                        self.risk_to_attribute_definitions
-                            .entry(package.to_string())
-                            .or_default()
-                            .insert(name, value_type);
-                    }
+                let group = RiskGroup {
+                    key: format!("{package}_{desc_code}"),
+                    name: format!("{title}_{desc}"),
+                    columns: vec![
+                        ("rank", AttributeValue::default_string(), rank_opt),
+                        ("rank_code", AttributeValue::default_number(), rank_code_opt),
+                        ("depth", AttributeValue::default_float(), depth_opt),
+                    ]
+                    .into_iter()
+                    .map(|(suffix, typ, value)| (suffix, typ, value.map(AttributeValue::String)))
+                    .collect(),
+                };
+                for (name, typ, value) in group.into_columns() {
+                    result.insert(Attribute::new(name.clone()), value);
+                    self.risk_to_attribute_definitions
+                        .entry(package.to_string())
+                        .or_default()
+                        .insert(name, typ);
                 }
             }
         }
         result
     }
 
+    /// Flattens `uro:LandSlideRiskAttribute` into one `lsld_{description}` column group per entry,
+    /// keyed by the description code.
     pub(super) fn extract_lsld_risk_attribute(
         &mut self,
         attributes: &Attributes,
@@ -257,11 +297,9 @@ impl Flattener {
             let area_type_opt = risk_obj.get("uro:areaType").map(|v| v.to_string());
             let type_code_opt = risk_obj.get("uro:areaType_code").map(|v| v.to_string());
 
-            if desc_opt.is_none() || type_code_opt.is_none() {
+            let (Some(desc), Some(type_code_str)) = (desc_opt, type_code_opt) else {
                 continue;
-            }
-            let desc = desc_opt.unwrap();
-            let type_code_str = type_code_opt.unwrap();
+            };
 
             let type_code_int: i32 = match type_code_str.parse() {
                 Ok(n) => n,
@@ -270,39 +308,37 @@ impl Flattener {
             if type_code_int > 2 {
                 continue;
             }
+            let Some([desc_code]) = key_codes(
+                "uro:LandSlideRiskAttribute",
+                [code_of(&risk_obj, "uro:description")],
+            ) else {
+                continue;
+            };
 
-            let entries = vec![
-                (
-                    format!("土砂災害リスク_{desc}_区域区分"),
-                    area_type_opt.unwrap_or("".to_string()),
-                    AttributeValue::default_string(),
-                ),
-                (
-                    format!("土砂災害リスク_{desc}_区域区分コード"),
-                    type_code_str,
-                    AttributeValue::default_number(),
-                ),
-            ];
-
-            for (attr_key, attr_value, value_type) in entries {
-                if attr_value.is_empty() {
-                    continue;
-                }
-                let attr_value = match &value_type {
-                    AttributeValue::Number(_) => {
-                        if let Ok(n) = attr_value.parse::<i64>() {
-                            AttributeValue::Number(n.into())
-                        } else {
-                            AttributeValue::String(attr_value.clone())
-                        }
-                    }
-                    _ => AttributeValue::String(attr_value.clone()),
-                };
-                result.insert(Attribute::new(attr_key.clone()), attr_value);
+            let group = RiskGroup {
+                key: format!("lsld_{desc_code}"),
+                name: format!("土砂災害リスク_{desc}"),
+                columns: vec![
+                    (
+                        "area_type",
+                        AttributeValue::default_string(),
+                        area_type_opt
+                            .filter(|v| !v.is_empty())
+                            .map(AttributeValue::String),
+                    ),
+                    (
+                        "area_type_code",
+                        AttributeValue::default_number(),
+                        Some(AttributeValue::Number(type_code_int.into())),
+                    ),
+                ],
+            };
+            for (name, typ, value) in group.into_columns() {
+                result.insert(Attribute::new(name.clone()), value);
                 self.risk_to_attribute_definitions
                     .entry("lsld".to_string())
                     .or_default()
-                    .insert(attr_key, value_type);
+                    .insert(name, typ);
             }
         }
         result
@@ -372,39 +408,75 @@ impl Flattener {
     }
 }
 
+/// Column group assigned to one generic attribute name.
+#[derive(Debug, Clone)]
+struct GenericColumn {
+    /// Group number, starting at 1 in the order the names are first seen
+    index: usize,
+    /// Generic attribute type of the values, or "string" when the name is seen with different types
+    value_type: String,
+    /// Whether some value of this name has a unit
+    has_uom: bool,
+}
+
 #[allow(dead_code)]
 #[derive(Debug, Clone, Default)]
 pub(super) struct CommonAttributeProcessor {
     max_lod: i64,
     gml_path_to_max_lod: HashMap<String, i64>,
-    attribute_to_attribute_type: IndexMap<String, String>,
+    /// Generic attribute name, prefixed by its attribute set names -> its column group
+    generic_columns: IndexMap<String, GenericColumn>,
 }
 
 impl CommonAttributeProcessor {
+    /// Schema of the generic attribute column groups seen so far: `gen_{i}_name`, `gen_{i}_value`
+    /// and, for measures, `gen_{i}_uom`.
     pub(super) fn get_generic_schema(&self) -> IndexMap<Attribute, AttributeValue> {
         let mut result = IndexMap::new();
-        for (key, value) in self.attribute_to_attribute_type.iter() {
-            match value.as_str() {
-                "string" | "date" | "buffer" => {
-                    result.insert(
-                        Attribute::new(key.clone()),
-                        AttributeValue::default_string(),
-                    );
-                }
-                "int" => {
-                    result.insert(
-                        Attribute::new(key.clone()),
-                        AttributeValue::default_number(),
-                    );
-                }
-                "double" | "measure" => {
-                    result.insert(Attribute::new(key.clone()), AttributeValue::default_float());
-                }
-                _ => {}
+        for column in self.generic_columns.values() {
+            let i = column.index;
+            result.insert(
+                Attribute::new(format!("gen_{i}_name")),
+                AttributeValue::default_string(),
+            );
+            let value_type = match column.value_type.as_str() {
+                "string" | "date" | "buffer" => Some(AttributeValue::default_string()),
+                "int" => Some(AttributeValue::default_number()),
+                "double" | "measure" => Some(AttributeValue::default_float()),
+                _ => None,
+            };
+            if let Some(value_type) = value_type {
+                result.insert(Attribute::new(format!("gen_{i}_value")), value_type);
+            }
+            if column.has_uom {
+                result.insert(
+                    Attribute::new(format!("gen_{i}_uom")),
+                    AttributeValue::default_string(),
+                );
             }
         }
         result
     }
+
+    /// Returns the column group of the generic attribute `name` of type `typ`, assigning the next
+    /// group number to a new name.
+    fn generic_column(&mut self, name: &str, typ: &str, has_uom: bool) -> usize {
+        let next_index = self.generic_columns.len() + 1;
+        let column = self
+            .generic_columns
+            .entry(name.to_string())
+            .or_insert_with(|| GenericColumn {
+                index: next_index,
+                value_type: typ.to_string(),
+                has_uom: false,
+            });
+        if column.value_type != typ {
+            column.value_type = "string".to_string();
+        }
+        column.has_uom |= has_uom;
+        column.index
+    }
+
     fn flatten_generic_attribute(
         &mut self,
         attribute: &Attributes,
@@ -421,7 +493,8 @@ impl CommonAttributeProcessor {
                     for attribute in attribute_set {
                         if let AttributeValue::Map(attribute) = attribute {
                             let prefix = format!("{name}_");
-                            self.flatten_generic_attribute(attribute, prefix.as_str());
+                            result
+                                .extend(self.flatten_generic_attribute(attribute, prefix.as_str()));
                         }
                     }
                     return result;
@@ -429,21 +502,22 @@ impl CommonAttributeProcessor {
             } else if matches!(value, AttributeValue::Null) {
                 return result;
             }
-            result.insert(Attribute::new(name.clone()), value.clone());
-            self.attribute_to_attribute_type
-                .insert(name.clone(), typ.clone());
-            if typ == "measure" {
-                if let Some(uom) = attribute.get("uom") {
-                    let name = format!("{name}_uom");
-                    result.insert(Attribute::new(name.clone()), uom.clone());
-                    self.attribute_to_attribute_type
-                        .insert(name, "string".to_string());
-                }
+            let uom = attribute.get("uom").filter(|_| typ == "measure");
+            let i = self.generic_column(&name, typ, uom.is_some());
+            result.insert(
+                Attribute::new(format!("gen_{i}_name")),
+                AttributeValue::String(name),
+            );
+            result.insert(Attribute::new(format!("gen_{i}_value")), value.clone());
+            if let Some(uom) = uom {
+                result.insert(Attribute::new(format!("gen_{i}_uom")), uom.clone());
             }
         }
         result
     }
 
+    /// Flattens `gen:genericAttribute` into `gen_{i}_name`, `gen_{i}_value` and `gen_{i}_uom`
+    /// column groups, one per distinct name.
     pub(super) fn flatten_generic_attributes(
         &mut self,
         attributes: &Attributes,

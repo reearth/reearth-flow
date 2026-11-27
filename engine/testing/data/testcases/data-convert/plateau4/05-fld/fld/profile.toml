@@ -10,6 +10,7 @@ generate_truth = true
 path = "16202_takaoka-shi_city_2024_citygml_1_op_fld_pref_oyabegawa_gandogawa_3dtiles_l2_no_texture_jgd2024"
 truth_path = "cesium_fld_pref_oyabegawa_gandogawa_3dtiles_l2_no_texture_jgd2024_truth.json"
 generate_truth = true
+legacy_keys = true
 
 [convs.cesium_attributes.fld_pref_oyabegawa_gandogawa_3dtiles_l2_no_texture_jgd2024.casts]
 "" = "ordered_dict"
@@ -28,6 +29,7 @@ key = ".name"
 [tests.json_attributes.tilesets_l2]
 path = "16202_takaoka-shi_city_2024_citygml_1_op_fld_pref_oyabegawa_gandogawa_3dtiles_l2_no_texture_jgd2024/tileset.json"
 extracted = true
+legacy_keys = true
 
 [tests.json_attributes.tilesets_l2.casts]
 ".geometricError" = "ignore_both"

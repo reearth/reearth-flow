@@ -4,6 +4,7 @@ citygml_zip_name = "36201_tokushima-shi_city_2023_citygml_2_op_urf.zip"
 path = "36201_tokushima-shi_city_2023_citygml_2_op_urf_DistrictDevelopmentPlan_mvt_lod1"
 truth_path = "mvt_urf_DistrictDevelopmentPlan_mvt_lod1_truth.json"
 generate_truth = true
+legacy_keys = true
 
 [convs.mvt_attributes.urf_DistrictDevelopmentPlan_mvt_lod1.casts]
 "" = "ordered_dict"
@@ -19,6 +20,7 @@ path = "mvt_urf_DistrictDevelopmentPlan_mvt_lod1_truth.json"
 path = "36201_tokushima-shi_city_2023_citygml_2_op_urf_DistrictPlan_mvt_lod1"
 truth_path = "mvt_urf_DistrictPlan_mvt_lod1_truth.json"
 generate_truth = true
+legacy_keys = true
 
 [convs.mvt_attributes.urf_DistrictPlan_mvt_lod1.casts]
 "" = "ordered_dict"

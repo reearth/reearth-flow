@@ -6908,7 +6908,7 @@ Writes vector features to Mapbox Vector Tiles (MVT) format with TileJSON 3.0.0 m
   "properties": {
     "colonToUnderscore": {
       "title": "Colon to Underscore",
-      "description": "Replace colons in attribute keys (e.g., from XML Namespaces) with underscores",
+      "description": "Replace colons in attribute keys (e.g., from XML Namespaces) with underscores. Double underscores standing for colons also become single underscores; leading underscores are kept.",
       "type": [
         "boolean",
         "null"

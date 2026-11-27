@@ -40,6 +40,7 @@ fn run(profile_path: &Path) -> Result<(), String> {
             &output_path,
             entry.json_path.as_deref(),
             &entry.casts,
+            false,
         );
         remove_extracted(&tmp_dir);
         result?;
@@ -56,7 +57,7 @@ fn run(profile_path: &Path) -> Result<(), String> {
         let zip_path = truth_dir.join(stem).with_extension("zip");
         let tmp_dir = extract_zip_to_tmp(&zip_path)?;
         let output_path = truth_dir.join(&entry.truth_path);
-        let result = mvt::write_mvt_json(&tmp_dir, &output_path, entry.casts.as_ref());
+        let result = mvt::write_mvt_json(&tmp_dir, &output_path, entry.casts.as_ref(), false);
         remove_extracted(&tmp_dir);
         result?;
         println!("wrote mvt_attributes/{} -> {}", id, output_path.display());
@@ -112,7 +113,8 @@ fn run(profile_path: &Path) -> Result<(), String> {
         let zip_path = truth_dir.join(stem).with_extension("zip");
         let tmp_dir = extract_zip_to_tmp(&zip_path)?;
         let output_path = truth_dir.join(&entry.truth_path);
-        let result = conv_cesium::write_cesium_json(&tmp_dir, &output_path, entry.casts.as_ref());
+        let result =
+            conv_cesium::write_cesium_json(&tmp_dir, &output_path, entry.casts.as_ref(), false);
         remove_extracted(&tmp_dir);
         result?;
         println!(

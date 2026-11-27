@@ -97,11 +97,11 @@ graphs:
             - attribute: code
               method: create
               value: |
-                env.get("__value")["gml:name_code"]
+                env.get("__value")["gml__name_code"]
             - attribute: description
               method: create
               value: |
-                env.get("__value")["gml:name"]
+                env.get("__value")["gml__name"]
 
       - id: abc6a99c-5730-423c-a449-38911ab4a4e7
         name: AttributeDuplicateFilterDict
@@ -149,14 +149,14 @@ graphs:
             - attribute: package
               method: rename
               value: __package
-            - attribute: gml:name_code
+            - attribute: gml__name_code
               method: rename
               value: __gml_name_code
             - attribute: __z_group
               method: create
               value: |
                 let v = env.get("__value");
-                v["gml:name_code"] + "_lod" + v.lod
+                v["gml__name_code"] + "_lod" + v.lod
 
       # 2D/3D routing: a (gml:name code, LOD) group goes to MVT only if all its geometry is flat
       - id: 0bc6c431-db8f-4823-ae2a-c389e171c454

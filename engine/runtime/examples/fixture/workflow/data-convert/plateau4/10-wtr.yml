@@ -398,12 +398,12 @@ graphs:
         valueAttribute: gml_id
       - attribute: attributes
         valueAttribute: attributes
-      - attribute: core:creationDate
-        valueAttribute: core:creationDate
-      - attribute: uro:geometrySrcDescLod1
-        valueAttribute: uro:geometrySrcDescLod1
-      - attribute: uro:lodType
-        valueAttribute: uro:lodType
+      - attribute: core__creationDate
+        valueAttribute: core__creationDate
+      - attribute: uro__geometrySrcDescLod1
+        valueAttribute: uro__geometrySrcDescLod1
+      - attribute: uro__lodType
+        valueAttribute: uro__lodType
   - id: d3e4f5a6-b7c8-9d0e-1f2a-3b4c5d6e7f8a
     name: MVTWriterLod0
     type: action
