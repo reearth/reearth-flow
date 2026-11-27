@@ -85,5 +85,8 @@ tracing-subscriber.workspace = true
 uuid.workspace = true
 walkdir.workspace = true
 
+[target.'cfg(unix)'.dependencies]
+libc.workspace = true
+
 [dev-dependencies]
 reearth-flow-expr.workspace = true
