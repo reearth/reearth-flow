@@ -734,8 +734,9 @@ func (r *Relay) inject(ctx context.Context, room string, sink cluster.Sink, e pa
 	if len(e.data) == 0 {
 		return relaypolicy.Applied
 	}
-	err := sink.Inject(ctx, cluster.Inbound{Room: room, Kind: kind, Data: e.data})
-	outcome := relaypolicy.ClassifyInject(ctx, err)
+	in := cluster.Inbound{Room: room, Kind: kind, Data: e.data}
+	err := sink.Inject(ctx, in)
+	outcome := relaypolicy.ClassifyInject(ctx, in, err)
 	switch outcome {
 	case relaypolicy.Applied:
 		// Measure only live deliveries. Catch-up replays entries that may be hours

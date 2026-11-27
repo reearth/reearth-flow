@@ -213,7 +213,9 @@ func TestReader_RetriesAnEntryWhoseInjectFailed(t *testing.T) {
 	const room = "inject-room"
 
 	sinkB := newScriptedSink()
-	sinkB.failWith["\x09"] = []error{errors.New("gcs: load failed")}
+	// An empty V1 update: a payload the room could take, so the failure is
+	// the load's and not the entry's, and the entry is retried, not skipped.
+	sinkB.failWith["\x00\x00"] = []error{errors.New("gcs: load failed")}
 	relayB := mustRelay(t, mr.Addr())
 	t.Cleanup(func() { _ = relayB.Close() })
 	if err := relayB.Start(ctx, sinkB); err != nil {
@@ -226,9 +228,9 @@ func TestReader_RetriesAnEntryWhoseInjectFailed(t *testing.T) {
 	relayA := startedRelay(t, ctx, mr.Addr(), &fakeSink{})
 	relayA.RoomActivated(room)
 
-	publish(t, relayA, room, 9)
-	waitFor(t, 5*time.Second, func() bool { return sinkB.timesApplied("\x09") == 1 })
-	if n := sinkB.tries("\x09"); n != 2 {
+	publish(t, relayA, room, 0, 0)
+	waitFor(t, 5*time.Second, func() bool { return sinkB.timesApplied("\x00\x00") == 1 })
+	if n := sinkB.tries("\x00\x00"); n != 2 {
 		t.Errorf("the entry was tried %d times, want 2: one failure, one success", n)
 	}
 }
@@ -313,10 +315,11 @@ func TestTrimStream_WaitsForAPendingReplay(t *testing.T) {
 	const room = "replay-trim"
 	key := streamKey(room)
 
+	// The cursor lands on the newest entry, so seed one at now: the old entry is
+	// then past retention on its own, without leaning on the marker Start adds.
 	now := time.Now().UnixMilli()
 	old := now - (streamRetention + time.Minute).Milliseconds()
-	recent := now - (streamRetention - time.Minute).Milliseconds()
-	for _, id := range []string{fmt.Sprintf("%d-0", old), fmt.Sprintf("%d-0", recent)} {
+	for _, id := range []string{fmt.Sprintf("%d-0", old), fmt.Sprintf("%d-0", now)} {
 		if err := c.XAdd(ctx, &goredis.XAddArgs{Stream: key, ID: id, Values: xaddValues(msgTypeSync, []byte{1}, 424242)}).Err(); err != nil {
 			t.Fatalf("seed %s: %v", id, err)
 		}

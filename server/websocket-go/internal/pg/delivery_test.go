@@ -239,7 +239,9 @@ func TestReader_RetriesARowWhoseInjectFailed(t *testing.T) {
 	ctx := context.Background()
 
 	sinkB := newScriptedSink()
-	sinkB.failWith["\x09"] = []error{errors.New("gcs: load failed")}
+	// An empty V1 update: a payload the room could take, so the failure is
+	// the load's and not the entry's, and the entry is retried, not skipped.
+	sinkB.failWith["\x00\x00"] = []error{errors.New("gcs: load failed")}
 	relayB := startRelay(t, pool, sinkB, noopFlusher{})
 	relayB.RoomActivated(deliveryRoom)
 	if err := relayB.WaitCaughtUp(ctx, deliveryRoom); err != nil {
@@ -248,9 +250,9 @@ func TestReader_RetriesARowWhoseInjectFailed(t *testing.T) {
 	relayA := startRelay(t, pool, &fakeSink{}, noopFlusher{})
 	relayA.RoomActivated(deliveryRoom)
 
-	publishSync(t, relayA, 9)
-	eventually(t, 5*time.Second, "the row to be applied once", func() bool { return sinkB.timesApplied("\x09") == 1 })
-	if n := sinkB.tries("\x09"); n != 2 {
+	publishSync(t, relayA, 0, 0)
+	eventually(t, 5*time.Second, "the row to be applied once", func() bool { return sinkB.timesApplied("\x00\x00") == 1 })
+	if n := sinkB.tries("\x00\x00"); n != 2 {
 		t.Errorf("the row was tried %d times, want 2: one failure, one success", n)
 	}
 }

@@ -926,8 +926,9 @@ func (r *Relay) drain(ctx context.Context, room string, rs *roomState, sink clus
 				last = e.id
 				continue
 			}
-			err := sink.Inject(ctx, cluster.Inbound{Room: room, Kind: e.kind, Data: e.data})
-			outcome := relaypolicy.ClassifyInject(ctx, err)
+			in := cluster.Inbound{Room: room, Kind: e.kind, Data: e.data}
+			err := sink.Inject(ctx, in)
+			outcome := relaypolicy.ClassifyInject(ctx, in, err)
 			if outcome == relaypolicy.Stop {
 				held = errStopReading
 				break
