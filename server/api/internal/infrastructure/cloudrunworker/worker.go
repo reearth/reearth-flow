@@ -138,6 +138,9 @@ func (w *Worker) RunJob(ctx context.Context, p gateway.RunJobParam) (gateway.Job
 	defer resp.Body.Close()
 
 	raw, _ := io.ReadAll(resp.Body)
+	if err := busyError("run", resp.StatusCode, raw); err != nil {
+		return gateway.JobStatusFailed, err
+	}
 	var rr runResponse
 	_ = json.Unmarshal(raw, &rr)
 
@@ -149,11 +152,7 @@ func (w *Worker) RunJob(ctx context.Context, p gateway.RunJobParam) (gateway.Job
 	default:
 		detail := rr.Error
 		if detail == "" {
-			if len(raw) > 256 {
-				detail = string(raw[:256])
-			} else {
-				detail = string(raw)
-			}
+			detail = truncated(raw)
 		}
 		err := fmt.Errorf("cloudrunworker: run failed (http %d): %s", resp.StatusCode, detail)
 		// The wrapper answers 4xx only when it refuses a request before
@@ -201,6 +200,9 @@ func (w *Worker) PreviewSchema(ctx context.Context, p gateway.ProbeSchemaParam) 
 	defer resp.Body.Close()
 
 	raw, _ := io.ReadAll(resp.Body)
+	if err := busyError("probe-schema", resp.StatusCode, raw); err != nil {
+		return gateway.JobStatusFailed, err
+	}
 	var rr runResponse
 	_ = json.Unmarshal(raw, &rr)
 
@@ -212,11 +214,7 @@ func (w *Worker) PreviewSchema(ctx context.Context, p gateway.ProbeSchemaParam) 
 	default:
 		detail := rr.Error
 		if detail == "" {
-			if len(raw) > 256 {
-				detail = string(raw[:256])
-			} else {
-				detail = string(raw)
-			}
+			detail = truncated(raw)
 		}
 		return gateway.JobStatusFailed, fmt.Errorf(
 			"cloudrunworker: probe-schema failed (http %d): %s", resp.StatusCode, detail,
@@ -270,13 +268,8 @@ func (w *Worker) RenderView(ctx context.Context, p gateway.RenderViewParam) (gat
 	defer resp.Body.Close()
 
 	raw, _ := io.ReadAll(resp.Body)
-
-	// Cloud Run answers 429 itself, without reaching the worker, when every
-	// instance it may run is busy. The worker never sends one.
-	if resp.StatusCode == http.StatusTooManyRequests {
-		return gateway.JobStatusFailed, fmt.Errorf(
-			"cloudrunworker: render-view refused (http %d): %s: %w", resp.StatusCode, truncated(raw), gateway.ErrWorkerBusy,
-		)
+	if err := busyError("render-view", resp.StatusCode, raw); err != nil {
+		return gateway.JobStatusFailed, err
 	}
 
 	var rr runResponse
@@ -296,6 +289,19 @@ func (w *Worker) RenderView(ctx context.Context, p gateway.RenderViewParam) (gat
 			"cloudrunworker: render-view failed (http %d): %s", resp.StatusCode, detail,
 		)
 	}
+}
+
+// busyError is the error for Cloud Run's own 429, which it answers without
+// reaching the worker when every instance it may run is busy. The worker never
+// sends a 429, so nothing ran.
+func busyError(route string, code int, raw []byte) error {
+	if code != http.StatusTooManyRequests {
+		return nil
+	}
+	return fmt.Errorf(
+		"cloudrunworker: %s refused (http %d): %s: %w: %w",
+		route, code, truncated(raw), gateway.ErrWorkerBusy, gateway.ErrRunNotStarted,
+	)
 }
 
 // truncated is a response body short enough to quote in an error.

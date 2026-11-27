@@ -568,3 +568,106 @@ func TestRunJob_TellsARunNotStarted(t *testing.T) {
 		assert.ErrorIs(t, err, gateway.ErrRunNotStarted)
 	})
 }
+
+func callRoute(t *testing.T, route, srvURL string, client *http.Client) error {
+	t.Helper()
+	w := &Worker{serviceURL: srvURL, file: &fakeFile{bucket: "b"}, httpClient: client}
+	ctx := context.Background()
+	var err error
+	switch route {
+	case "/run":
+		_, err = w.RunJob(ctx, gateway.RunJobParam{JobID: id.NewJobID()})
+	case "/probe-schema":
+		_, err = w.PreviewSchema(ctx, gateway.ProbeSchemaParam{JobID: id.NewJobID()})
+	case "/render-view":
+		_, err = w.RenderView(ctx, gateway.RenderViewParam{Name: "k", Shape: featureview.ShapeTiles, Options: featureview.DefaultOptions()})
+	default:
+		t.Fatalf("unknown route %s", route)
+	}
+	return err
+}
+
+func answerOn(t *testing.T, route string, code int, body string) error {
+	t.Helper()
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		assert.Equal(t, route, r.URL.Path)
+		w.WriteHeader(code)
+		_, _ = w.Write([]byte(body))
+	}))
+	defer srv.Close()
+	return callRoute(t, route, srv.URL, srv.Client())
+}
+
+// Cloud Run's answer when the pool is full, as observed on the dev Service on
+// 2026-11-26.
+func cloudRunBusyOn(t *testing.T, route string) error {
+	t.Helper()
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		assert.Equal(t, route, r.URL.Path)
+		w.Header().Set("Content-Type", "text/html")
+		w.WriteHeader(http.StatusTooManyRequests)
+		_, _ = w.Write([]byte("Rate exceeded."))
+	}))
+	defer srv.Close()
+	return callRoute(t, route, srv.URL, srv.Client())
+}
+
+func TestWorker_OnlyCloudRuns429IsABusyPool(t *testing.T) {
+	t.Parallel()
+
+	for _, route := range []string{"/run", "/probe-schema", "/render-view"} {
+		t.Run(route+": a 429 is a busy pool and nothing ran", func(t *testing.T) {
+			t.Parallel()
+
+			err := cloudRunBusyOn(t, route)
+
+			assert.ErrorIs(t, err, gateway.ErrWorkerBusy)
+			assert.ErrorIs(t, err, gateway.ErrRunNotStarted)
+			assert.Contains(t, err.Error(), route[1:], "the log still says which call was turned away")
+		})
+
+		t.Run(route+": a 400 is not a busy pool", func(t *testing.T) {
+			t.Parallel()
+
+			err := answerOn(t, route, http.StatusBadRequest, `{"status":"FAILED","error":"bad request"}`)
+
+			require.Error(t, err)
+			assert.NotErrorIs(t, err, gateway.ErrWorkerBusy)
+		})
+
+		t.Run(route+": a 500 is not a busy pool", func(t *testing.T) {
+			t.Parallel()
+
+			err := answerOn(t, route, http.StatusInternalServerError, `{"status":"FAILED","error":"boom"}`)
+
+			require.Error(t, err)
+			assert.NotErrorIs(t, err, gateway.ErrWorkerBusy)
+		})
+
+		t.Run(route+": a 503 is not a busy pool", func(t *testing.T) {
+			t.Parallel()
+
+			err := answerOn(t, route, http.StatusServiceUnavailable, "Service Unavailable")
+
+			require.Error(t, err)
+			assert.NotErrorIs(t, err, gateway.ErrWorkerBusy)
+		})
+
+		t.Run(route+": a dropped connection is not a busy pool", func(t *testing.T) {
+			t.Parallel()
+
+			srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+				conn, _, err := w.(http.Hijacker).Hijack()
+				if assert.NoError(t, err) {
+					_ = conn.Close()
+				}
+			}))
+			defer srv.Close()
+
+			err := callRoute(t, route, srv.URL, srv.Client())
+
+			require.Error(t, err)
+			assert.NotErrorIs(t, err, gateway.ErrWorkerBusy)
+		})
+	}
+}

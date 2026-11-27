@@ -16,7 +16,7 @@ require (
 	github.com/kelseyhightower/envconfig v1.4.0
 	github.com/redis/go-redis/v9 v9.14.0
 	github.com/reearth/reearth-flow/db v0.0.0-00010101000000-000000000000
-	github.com/reearth/reearthx v0.0.0-20260618134917-663d9623c331
+	github.com/reearth/reearthx v0.0.0-20261126113950-961ea2e2b719
 	github.com/stretchr/testify v1.11.1
 	go.mongodb.org/mongo-driver v1.17.6
 	go.opentelemetry.io/contrib/instrumentation/go.mongodb.org/mongo-driver/mongo/otelmongo v0.63.0
