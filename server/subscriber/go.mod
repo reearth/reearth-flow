@@ -10,7 +10,7 @@ require (
 	cloud.google.com/go/pubsub/v2 v2.0.0
 	github.com/GoogleCloudPlatform/opentelemetry-operations-go/exporter/trace v1.30.0
 	github.com/hellofresh/health-go/v5 v5.5.5
-	github.com/jackc/pgx/v5 v5.7.2
+	github.com/jackc/pgx/v5 v5.9.2
 	github.com/joho/godotenv v1.5.1
 	github.com/k0kubun/pp/v3 v3.5.0
 	github.com/kelseyhightower/envconfig v1.4.0
