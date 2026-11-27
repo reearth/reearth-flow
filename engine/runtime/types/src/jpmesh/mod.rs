@@ -92,6 +92,15 @@ pub struct JPMeshCode {
     seed: JPMeshCodeSeed,
 }
 
+/// How a ten-digit mesh code is read: it is a 1/4 mesh (two quadrant digits) or
+/// a 1/10 mesh (two digits 0-9) depending on the dataset, and the digits alone
+/// cannot say which.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum TenDigitReading {
+    QuarterMesh,
+    TenthMesh,
+}
+
 /// Whether a geographic coordinate has a JIS X 0410 mesh code: the 1st mesh
 /// code's two-digit latitude and longitude fields only cover this range.
 pub fn in_jis_range(lng: f64, lat: f64) -> bool {
@@ -103,6 +112,48 @@ impl JPMeshCode {
     /// or `None` outside the range the code can express.
     pub fn try_new(coords: Coordinate2D<f64>, mesh_type: JPMeshType) -> Option<Self> {
         in_jis_range(coords.x, coords.y).then(|| Self::new(coords, mesh_type))
+    }
+
+    /// Reads a mesh code from text, accepting `-`, space and `_` as separators.
+    /// `None` for any other character, any length that is not a mesh level,
+    /// or digits that break the JIS X 0410 rules. A ten-digit code is judged
+    /// only under `ten_digit`, never retried as the other reading.
+    pub fn parse(text: &str, ten_digit: TenDigitReading) -> Option<Self> {
+        let digits: Vec<u8> = text
+            .chars()
+            .filter(|c| !matches!(c, '-' | ' ' | '_'))
+            .map(|c| {
+                c.to_digit(10)
+                    .filter(|_| c.is_ascii_digit())
+                    .map(|d| d as u8)
+            })
+            .collect::<Option<_>>()?;
+        let mesh_type = match digits.len() {
+            4 => JPMeshType::Mesh80km,
+            6 => JPMeshType::Mesh10km,
+            8 => JPMeshType::Mesh1km,
+            9 => JPMeshType::Mesh500m,
+            10 => match ten_digit {
+                TenDigitReading::QuarterMesh => JPMeshType::Mesh250m,
+                TenDigitReading::TenthMesh => JPMeshType::Mesh100m,
+            },
+            11 => JPMeshType::Mesh125m,
+            _ => return None,
+        };
+        // q and v (digits 5 and 6) run 0-7.
+        if digits.len() >= 6 && digits[4..6].iter().any(|&d| d > 7) {
+            return None;
+        }
+        // Quadrant digits run 1-4; the 1/10 mesh's two digits are free.
+        let quadrants = match mesh_type {
+            JPMeshType::Mesh100m => &[][..],
+            _ => digits.get(8..).unwrap_or(&[]),
+        };
+        if quadrants.iter().any(|d| !(1..=4).contains(d)) {
+            return None;
+        }
+        let number = digits.iter().fold(0u64, |acc, &d| acc * 10 + u64::from(d));
+        Some(Self::from_number(number, mesh_type))
     }
 
     pub fn mesh_type(&self) -> JPMeshType {
@@ -717,5 +768,77 @@ mod tests {
         let b = JPMeshCode::new(point, JPMeshType::Mesh10km).bounds();
         assert_approx_eq!(b.min().y, 36.0 + 35.0 / 60.0);
         assert_approx_eq!(b.min().x, 137.0);
+    }
+
+    #[test]
+    fn parse_reads_every_level() {
+        use TenDigitReading::{QuarterMesh, TenthMesh};
+        let cases = [
+            ("5339", JPMeshType::Mesh80km, QuarterMesh),
+            ("533946", JPMeshType::Mesh10km, QuarterMesh),
+            ("53394611", JPMeshType::Mesh1km, QuarterMesh),
+            ("533946111", JPMeshType::Mesh500m, QuarterMesh),
+            ("5339461111", JPMeshType::Mesh250m, QuarterMesh),
+            ("53394611111", JPMeshType::Mesh125m, QuarterMesh),
+            ("5339461127", JPMeshType::Mesh100m, TenthMesh),
+        ];
+        for (text, mesh_type, reading) in cases {
+            let code = JPMeshCode::parse(text, reading).unwrap_or_else(|| panic!("{text}"));
+            assert_eq!(code.mesh_type(), mesh_type, "{text}");
+            assert_eq!(code.to_number().to_string(), text);
+        }
+    }
+
+    #[test]
+    fn parse_accepts_separators() {
+        for text in ["5339-46-11", "5339 4611", "5339_46_11"] {
+            let code = JPMeshCode::parse(text, TenDigitReading::QuarterMesh).unwrap();
+            assert_eq!(code.to_number(), 53394611, "{text}");
+        }
+    }
+
+    #[test]
+    fn parse_rejects_bad_input() {
+        for text in [
+            "5339.4611",
+            "abc53394611",
+            "53394",
+            "533986",
+            "533946115",
+            "",
+        ] {
+            assert!(
+                JPMeshCode::parse(text, TenDigitReading::QuarterMesh).is_none(),
+                "{text:?}"
+            );
+        }
+        // 7 is not a quadrant, and a failed reading is never retried as the other.
+        assert!(JPMeshCode::parse("5339461127", TenDigitReading::QuarterMesh).is_none());
+        assert!(JPMeshCode::parse("5339461111", TenDigitReading::TenthMesh).is_some());
+    }
+
+    #[test]
+    fn parse_round_trips_to_number() {
+        let at = Coordinate2D::new_(139.7671, 35.6812);
+        for mesh_type in [
+            JPMeshType::Mesh80km,
+            JPMeshType::Mesh10km,
+            JPMeshType::Mesh1km,
+            JPMeshType::Mesh500m,
+            JPMeshType::Mesh250m,
+            JPMeshType::Mesh125m,
+            JPMeshType::Mesh100m,
+        ] {
+            let code = JPMeshCode::new(at, mesh_type);
+            let reading = if mesh_type == JPMeshType::Mesh100m {
+                TenDigitReading::TenthMesh
+            } else {
+                TenDigitReading::QuarterMesh
+            };
+            let parsed = JPMeshCode::parse(&code.to_number().to_string(), reading)
+                .unwrap_or_else(|| panic!("{mesh_type:?}"));
+            assert_eq!(parsed.to_number(), code.to_number(), "{mesh_type:?}");
+            assert_eq!(parsed.mesh_type(), mesh_type);
+        }
     }
 }
