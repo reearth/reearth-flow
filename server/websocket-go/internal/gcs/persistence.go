@@ -124,14 +124,20 @@ func (a *Adapter) Load(ctx context.Context, room string) (res persistence.LoadRe
 		return persistence.LoadResult{}, err
 	}
 	if st.empty {
+		a.parkedLog.resolved(room)
 		return persistence.LoadResult{Version: persistence.Version(st.head)}, nil
 	}
 	// Served anyway: the parked items stay in every later encode, so they are
 	// kept until the edit they wait for arrives, whereas refusing withholds the
-	// whole project.
+	// whole project. They are real user edits, so nothing here discards them.
 	if ps := st.doc.PendingStats(); ps.Items > 0 {
-		a.log.Error("gcs load: serving a document with parked items; an edit they build on is missing from storage",
-			"room", room, "parked", ps.Items, "awaiting_clients", len(ps.MissingFor))
+		if ok, suppressed := a.parkedLog.observe(room); ok {
+			a.log.Error("gcs load: serving a document with parked items; an edit they build on is missing from storage",
+				"room", room, "parked", ps.Items, "awaiting_clients", len(ps.MissingFor),
+				"suppressed_loads", suppressed, "parked_loads_total", a.ParkedLoads())
+		}
+	} else {
+		a.parkedLog.resolved(room)
 	}
 	return persistence.LoadResult{Update: crdt.EncodeStateAsUpdateV1(st.doc, nil), Version: persistence.Version(st.head)}, nil
 }

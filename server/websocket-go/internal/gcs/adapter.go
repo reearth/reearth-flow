@@ -39,6 +39,9 @@ type Adapter struct {
 
 	phase2 bool
 
+	// parkedLog rate limits Load's ERROR for a document served with parked items.
+	parkedLog parkedLog
+
 	// crashAfterCheckpoint, when set and true, simulates a crash after the
 	// durable checkpoint write but before deleting future updates in PruneAfter.
 	mu                   sync.Mutex
