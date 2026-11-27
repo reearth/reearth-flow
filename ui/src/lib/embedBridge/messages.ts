@@ -5,7 +5,7 @@ export type EmbedWorkflowPathItem = {
   name: string;
 };
 
-export type EmbedErrorReason = "unavailable" | "corrupted";
+export type EmbedErrorReason = "unavailable" | "corrupted" | "network";
 
 export type EmbedInboundMessage =
   | { type: "flow:init"; token?: string; theme?: EmbedTheme }

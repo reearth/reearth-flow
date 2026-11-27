@@ -8,6 +8,12 @@ import type { Edge, Node } from "@flow/types";
 
 import { snapshotToWorkflows } from "./snapshotToWorkflows";
 
+const NODE_A = "6f1c2b9e-1a3d-4c5e-9f70-2b8d4e6a1c01";
+const NODE_B = "6f1c2b9e-1a3d-4c5e-9f70-2b8d4e6a1c02";
+const NODE_C = "6f1c2b9e-1a3d-4c5e-9f70-2b8d4e6a1c03";
+const EDGE_1 = "6f1c2b9e-1a3d-4c5e-9f70-2b8d4e6a1e01";
+const SUB_1 = "6f1c2b9e-1a3d-4c5e-9f70-2b8d4e6a1f01";
+
 const node = (id: string, subworkflowId?: string): Node => ({
   id,
   type: subworkflowId ? "subworkflow" : "transformer",
@@ -25,9 +31,9 @@ const node = (id: string, subworkflowId?: string): Node => ({
 
 const edges: Edge[] = [
   {
-    id: "e1",
-    source: "a",
-    target: "b",
+    id: EDGE_1,
+    source: NODE_A,
+    target: NODE_B,
     sourceHandle: "default",
     targetHandle: "default",
   },
@@ -42,13 +48,13 @@ const encodeProject = () => {
       yWorkflowConstructor(
         DEFAULT_ENTRY_GRAPH_ID,
         "Main Workflow",
-        [node("a"), node("b", "sub-1")],
+        [node(NODE_A), node(NODE_B, SUB_1)],
         edges,
       ),
     );
     yWorkflows.set(
-      "sub-1",
-      yWorkflowConstructor("sub-1", "Flatten attributes", [node("c")], []),
+      SUB_1,
+      yWorkflowConstructor(SUB_1, "Flatten attributes", [node(NODE_C)], []),
     );
   });
   return Array.from(Y.encodeStateAsUpdate(doc));
@@ -61,11 +67,11 @@ describe("snapshotToWorkflows", () => {
 
     expect(byId.get(DEFAULT_ENTRY_GRAPH_ID)?.name).toBe("Main Workflow");
     expect(byId.get(DEFAULT_ENTRY_GRAPH_ID)?.nodes?.map((n) => n.id)).toEqual([
-      "a",
-      "b",
+      NODE_A,
+      NODE_B,
     ]);
     expect(byId.get(DEFAULT_ENTRY_GRAPH_ID)?.edges).toEqual(edges);
-    expect(byId.get("sub-1")?.nodes?.[0].data.params).toEqual({
+    expect(byId.get(SUB_1)?.nodes?.[0].data.params).toEqual({
       expression: "env.get('x')",
     });
   });

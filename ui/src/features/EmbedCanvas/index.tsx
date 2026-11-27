@@ -9,24 +9,28 @@ import { EditorProvider } from "../Editor/editorContext";
 import EmbedStatus from "./components/EmbedStatus";
 import EmbedZoomControls from "./components/EmbedZoomControls";
 import useHooks from "./hooks";
+import type { EmbedWorkflowRequest } from "./hooks";
 
 type Props = {
   projectId: string;
+  workflowRequest?: EmbedWorkflowRequest;
 };
 
-const EmbedCanvas: React.FC<Props> = ({ projectId }) => {
+const EmbedCanvas: React.FC<Props> = ({ projectId, workflowRequest }) => {
   const {
     nodes,
     edges,
     error,
     isLoading,
+    isRetrying,
     isEmpty,
     isMainWorkflow,
     openNode,
     handleWorkflowOpen,
     handleOpenNode,
     handleNodeSettings,
-  } = useHooks({ projectId });
+    handleRetry,
+  } = useHooks({ projectId, workflowRequest });
 
   const editorContext = useMemo(
     (): EditorContextType => ({
@@ -39,7 +43,12 @@ const EmbedCanvas: React.FC<Props> = ({ projectId }) => {
   );
 
   const status = error
-    ? ({ status: "error", reason: error } as const)
+    ? ({
+        status: "error",
+        reason: error,
+        isRetrying,
+        onRetry: error === "corrupted" ? undefined : handleRetry,
+      } as const)
     : isLoading
       ? ({ status: "loading" } as const)
       : isEmpty

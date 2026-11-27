@@ -1,4 +1,5 @@
 import { useReactFlow } from "@xyflow/react";
+import { ClientError } from "graphql-request";
 import type { MouseEvent } from "react";
 import { useCallback, useEffect, useMemo, useState } from "react";
 
@@ -6,7 +7,6 @@ import { ProjectCorruptionError } from "@flow/errors";
 import { DEFAULT_ENTRY_GRAPH_ID } from "@flow/global-constants";
 import type {
   EmbedErrorReason,
-  EmbedInboundMessage,
   EmbedWorkflowPathItem,
 } from "@flow/lib/embedBridge";
 import { useEmbedBridge } from "@flow/lib/embedBridge";
@@ -32,17 +32,35 @@ const loadWorkflows = (updates: number[]): LoadedWorkflows => {
   }
 };
 
-export default ({ projectId }: { projectId: string }) => {
+export type EmbedWorkflowRequest = { workflowId: string; seq: number };
+
+export const snapshotErrorReason = (error: unknown): EmbedErrorReason =>
+  error instanceof ClientError ? "unavailable" : "network";
+
+export default ({
+  projectId,
+  workflowRequest,
+}: {
+  projectId: string;
+  workflowRequest?: EmbedWorkflowRequest;
+}) => {
   const { fitView } = useReactFlow();
   const { useGetLatestProjectSnapshotOnce } = useDocument();
-  const { projectDocument, isLoading, isError } =
-    useGetLatestProjectSnapshotOnce(projectId);
+  const {
+    projectDocument,
+    isLoading,
+    isFetching,
+    isError,
+    error: queryError,
+    refetch,
+  } = useGetLatestProjectSnapshotOnce(projectId);
 
   const loaded = useMemo((): LoadedWorkflows | undefined => {
-    if (isError || projectDocument === null) return { error: "unavailable" };
+    if (isError) return { error: snapshotErrorReason(queryError) };
+    if (projectDocument === null) return { error: "unavailable" };
     if (!projectDocument) return;
     return loadWorkflows(projectDocument.updates);
-  }, [projectDocument, isError]);
+  }, [projectDocument, isError, queryError]);
 
   const workflows = loaded?.workflows;
   const error = loaded?.error;
@@ -97,15 +115,15 @@ export default ({ projectId }: { projectId: string }) => {
     [workflowsById],
   );
 
-  const handleBridgeMessage = useCallback(
-    (message: EmbedInboundMessage) => {
-      if (message.type === "flow:open-workflow")
-        handleWorkflowOpen(message.workflowId);
-    },
-    [handleWorkflowOpen],
-  );
+  useEffect(() => {
+    if (workflowRequest) handleWorkflowOpen(workflowRequest.workflowId);
+  }, [workflowRequest, handleWorkflowOpen]);
 
-  const { post } = useEmbedBridge(handleBridgeMessage);
+  const handleRetry = useCallback(() => {
+    refetch();
+  }, [refetch]);
+
+  const { post } = useEmbedBridge();
 
   useEffect(() => {
     if (error) post({ type: "flow:error", reason: error });
@@ -154,11 +172,13 @@ export default ({ projectId }: { projectId: string }) => {
     edges,
     error,
     isLoading: isLoading || (!loaded && !isError),
+    isRetrying: isFetching,
     isEmpty: !!workflows && !nodes.length,
     isMainWorkflow,
     openNode,
     handleWorkflowOpen,
     handleOpenNode,
     handleNodeSettings,
+    handleRetry,
   };
 };

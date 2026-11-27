@@ -4,6 +4,7 @@ import { useCallback, useEffect, useState } from "react";
 
 import { LoadingSplashscreen, TooltipProvider } from "@flow/components";
 import EmbedCanvas from "@flow/features/EmbedCanvas";
+import type { EmbedWorkflowRequest } from "@flow/features/EmbedCanvas/hooks";
 import { useAuth } from "@flow/lib/auth";
 import type { EmbedInboundMessage, EmbedTheme } from "@flow/lib/embedBridge";
 import { useEmbedBridge } from "@flow/lib/embedBridge";
@@ -21,13 +22,20 @@ export const Route = createLazyFileRoute("/embed/$projectId")({
 
 type Session = { accessToken?: string; theme?: EmbedTheme };
 
-const useEmbedSession = (): Session | undefined => {
+const useEmbedSession = () => {
   const [session, setSession] = useState<Session | undefined>();
+  const [workflowRequest, setWorkflowRequest] =
+    useState<EmbedWorkflowRequest>();
   const { getAccessToken } = useAuth();
 
   const handleMessage = useCallback((message: EmbedInboundMessage) => {
     if (message.type === "flow:init")
       setSession({ accessToken: message.token, theme: message.theme });
+    if (message.type === "flow:open-workflow")
+      setWorkflowRequest((prev) => ({
+        workflowId: message.workflowId,
+        seq: (prev?.seq ?? 0) + 1,
+      }));
   }, []);
 
   const { isConnected, post } = useEmbedBridge(handleMessage);
@@ -47,12 +55,12 @@ const useEmbedSession = (): Session | undefined => {
     };
   }, [isConnected, post, getAccessToken]);
 
-  return session;
+  return { session, workflowRequest };
 };
 
 const EmbedRoute = () => {
   const { projectId } = Route.useParams();
-  const session = useEmbedSession();
+  const { session, workflowRequest } = useEmbedSession();
   const { previewTheme } = useTheme();
 
   useEffect(() => {
@@ -66,7 +74,10 @@ const EmbedRoute = () => {
       <I18nProvider>
         <TooltipProvider>
           <ReactFlowProvider>
-            <EmbedCanvas projectId={projectId} />
+            <EmbedCanvas
+              projectId={projectId}
+              workflowRequest={workflowRequest}
+            />
           </ReactFlowProvider>
         </TooltipProvider>
       </I18nProvider>
