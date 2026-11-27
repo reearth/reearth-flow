@@ -26,7 +26,7 @@ type Worker struct {
 	file         gateway.File
 	versionErr   error
 	httpClient   *http.Client
-	// now is the clock the version cache reads; nil is time.Now.
+	// now is the clock; nil is time.Now.
 	now        func() time.Time
 	serviceURL string
 	version    string
@@ -126,7 +126,9 @@ func (w *Worker) RunJob(ctx context.Context, p gateway.RunJobParam) (gateway.Job
 	}
 	req.Header.Set("Content-Type", "application/json")
 
+	sent := w.clock()
 	resp, err := w.httpClient.Do(req)
+	waited := w.clock().Sub(sent)
 	if err != nil {
 		// Connection dropped / instance reclaimed = infra failure. Only a
 		// connection never made is known not to have started the run.
@@ -137,7 +139,10 @@ func (w *Worker) RunJob(ctx context.Context, p gateway.RunJobParam) (gateway.Job
 	}
 	defer resp.Body.Close()
 
-	raw, _ := io.ReadAll(resp.Body)
+	raw, readErr := io.ReadAll(resp.Body)
+	if err := busyError("run", resp.StatusCode, raw, readErr, waited); err != nil {
+		return gateway.JobStatusFailed, err
+	}
 	var rr runResponse
 	_ = json.Unmarshal(raw, &rr)
 
@@ -149,11 +154,7 @@ func (w *Worker) RunJob(ctx context.Context, p gateway.RunJobParam) (gateway.Job
 	default:
 		detail := rr.Error
 		if detail == "" {
-			if len(raw) > 256 {
-				detail = string(raw[:256])
-			} else {
-				detail = string(raw)
-			}
+			detail = truncated(raw)
 		}
 		err := fmt.Errorf("cloudrunworker: run failed (http %d): %s", resp.StatusCode, detail)
 		// The wrapper answers 4xx only when it refuses a request before
@@ -193,14 +194,19 @@ func (w *Worker) PreviewSchema(ctx context.Context, p gateway.ProbeSchemaParam) 
 	}
 	req.Header.Set("Content-Type", "application/json")
 
+	sent := w.clock()
 	resp, err := w.httpClient.Do(req)
+	waited := w.clock().Sub(sent)
 	if err != nil {
 		// Connection dropped / instance reclaimed = infra failure.
 		return gateway.JobStatusFailed, err
 	}
 	defer resp.Body.Close()
 
-	raw, _ := io.ReadAll(resp.Body)
+	raw, readErr := io.ReadAll(resp.Body)
+	if err := busyError("probe-schema", resp.StatusCode, raw, readErr, waited); err != nil {
+		return gateway.JobStatusFailed, err
+	}
 	var rr runResponse
 	_ = json.Unmarshal(raw, &rr)
 
@@ -212,11 +218,7 @@ func (w *Worker) PreviewSchema(ctx context.Context, p gateway.ProbeSchemaParam) 
 	default:
 		detail := rr.Error
 		if detail == "" {
-			if len(raw) > 256 {
-				detail = string(raw[:256])
-			} else {
-				detail = string(raw)
-			}
+			detail = truncated(raw)
 		}
 		return gateway.JobStatusFailed, fmt.Errorf(
 			"cloudrunworker: probe-schema failed (http %d): %s", resp.StatusCode, detail,
@@ -262,21 +264,18 @@ func (w *Worker) RenderView(ctx context.Context, p gateway.RenderViewParam) (gat
 	}
 	req.Header.Set("Content-Type", "application/json")
 
+	sent := w.clock()
 	resp, err := w.httpClient.Do(req)
+	waited := w.clock().Sub(sent)
 	if err != nil {
 		// Connection dropped / instance reclaimed = infra failure.
 		return gateway.JobStatusFailed, err
 	}
 	defer resp.Body.Close()
 
-	raw, _ := io.ReadAll(resp.Body)
-
-	// Cloud Run answers 429 itself, without reaching the worker, when every
-	// instance it may run is busy. The worker never sends one.
-	if resp.StatusCode == http.StatusTooManyRequests {
-		return gateway.JobStatusFailed, fmt.Errorf(
-			"cloudrunworker: render-view refused (http %d): %s: %w", resp.StatusCode, truncated(raw), gateway.ErrWorkerBusy,
-		)
+	raw, readErr := io.ReadAll(resp.Body)
+	if err := busyError("render-view", resp.StatusCode, raw, readErr, waited); err != nil {
+		return gateway.JobStatusFailed, err
 	}
 
 	var rr runResponse
@@ -296,6 +295,36 @@ func (w *Worker) RenderView(ctx context.Context, p gateway.RenderViewParam) (gat
 			"cloudrunworker: render-view failed (http %d): %s", resp.StatusCode, detail,
 		)
 	}
+}
+
+// frontEndAbortLimit is how long a non-JSON 500 may take and still count as
+// Cloud Run giving up on a request no instance took. Those arrive at ~10.4 s.
+const frontEndAbortLimit = 30 * time.Second
+
+// busyError is the error for a request Cloud Run refused before it reached the
+// worker, so nothing ran: its own 429, or a 500 that is not the wrapper's JSON.
+// The wrapper answers every request it receives with JSON. A 500 whose body
+// was cut off, or that came past frontEndAbortLimit, may follow a run that
+// started, so it is not busy.
+func busyError(route string, code int, raw []byte, readErr error, waited time.Duration) error {
+	switch code {
+	case http.StatusTooManyRequests:
+	case http.StatusInternalServerError:
+		if readErr != nil || fromWrapper(raw) || waited > frontEndAbortLimit {
+			return nil
+		}
+	default:
+		return nil
+	}
+	return fmt.Errorf(
+		"cloudrunworker: %s refused (http %d): %s: %w: %w",
+		route, code, truncated(raw), gateway.ErrWorkerBusy, gateway.ErrRunNotStarted,
+	)
+}
+
+func fromWrapper(raw []byte) bool {
+	var rr runResponse
+	return json.Unmarshal(raw, &rr) == nil && rr.Status != ""
 }
 
 // truncated is a response body short enough to quote in an error.

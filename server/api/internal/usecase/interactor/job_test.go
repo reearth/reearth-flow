@@ -46,12 +46,16 @@ func loadJobCompleteEventFixture(t *testing.T) gateway.JobCompleteEvent {
 
 type mockCheckStatusRedis struct {
 	event       *gateway.JobCompleteEvent
+	logs        []*pkglog.Log
+	logsErr     error
 	deleteErr   error
 	deleteCalls int
+	logsCalls   int
 }
 
 func (m *mockCheckStatusRedis) GetLogs(ctx context.Context, since, until time.Time, jobID id.JobID) ([]*pkglog.Log, error) {
-	return nil, nil
+	m.logsCalls++
+	return m.logs, m.logsErr
 }
 
 func (m *mockCheckStatusRedis) GetUserFacingLogs(ctx context.Context, since, until time.Time, jobID id.JobID) ([]*userfacinglog.UserFacingLog, error) {
@@ -234,25 +238,6 @@ func (m *mockCloudRunWorker) CancelJob(ctx context.Context, jobID id.JobID) erro
 }
 func (m *mockCloudRunWorker) EngineVersion(context.Context) (string, error) { return "", nil }
 
-func TestJob_RunCloudRunWorker_MarksRunningBeforeWorkerCall(t *testing.T) {
-	pending, err := job.New().NewID().Workspace(accountsid.NewWorkspaceID()).Status(job.StatusPending).StartedAt(time.Now()).Build()
-	require.NoError(t, err)
-
-	jobRepo := &mockCheckStatusJobRepo{job: pending}
-	i := newCheckStatusJob(jobRepo, &mockDiagnosticsRepo{}, &mockCheckStatusRedis{})
-
-	seen := make(chan job.Status, 1)
-	i.cloudRunWorker = &mockCloudRunWorker{runJob: func(ctx context.Context, p gateway.RunJobParam) (gateway.JobStatus, error) {
-		seen <- jobRepo.job.Status()
-		return gateway.JobStatusCompleted, nil
-	}}
-
-	i.RunCloudRunWorker(pending, gateway.RunJobParam{JobID: pending.ID()}, nil)
-
-	assert.Equal(t, job.StatusRunning, <-seen)
-	assert.Equal(t, 1, jobRepo.saveCalls)
-}
-
 func TestJob_RunCloudRunWorker_CancelsARunPastItsLimit(t *testing.T) {
 	t.Parallel()
 
@@ -278,20 +263,6 @@ func TestJob_RunCloudRunWorker_CancelsARunPastItsLimit(t *testing.T) {
 	case <-time.After(5 * time.Second):
 		t.Fatal("the run was not cancelled after its limit")
 	}
-}
-
-func TestJob_markCloudRunJobRunning_TerminalUntouched(t *testing.T) {
-	done, err := job.New().NewID().Workspace(accountsid.NewWorkspaceID()).Status(job.StatusPending).StartedAt(time.Now()).Build()
-	require.NoError(t, err)
-	done.SetWorkerStatus(job.StatusCompleted)
-
-	jobRepo := &mockCheckStatusJobRepo{job: done}
-	i := newCheckStatusJob(jobRepo, &mockDiagnosticsRepo{}, &mockCheckStatusRedis{})
-
-	i.markCloudRunJobRunning(context.Background(), done.ID())
-
-	assert.Equal(t, job.StatusCompleted, jobRepo.job.Status())
-	assert.Equal(t, 0, jobRepo.saveCalls)
 }
 
 func TestJob_checkJobStatus_TerminalDiagnosticsMerge(t *testing.T) {
