@@ -75,7 +75,18 @@ type roomLock struct {
 	// The value a document is loaded with is not enforced: a connection opened
 	// after the change was already checked by /auth/verify.
 	enforced bool
+	// gates counts the peer updates gateLockedWrite is applying to doc. The
+	// gate repairs the entry itself, before the room sends the update on.
+	gates int
+	// lastWarn and suppressed rate-limit the warning about unsigned entries,
+	// which a peer can drive as often as it writes.
+	lastWarn   time.Time
+	suppressed int
 }
+
+// unsignedLockWarnEvery is the most often a loaded document logs a warning
+// about lock entries the server did not sign.
+const unsignedLockWarnEvery = time.Minute
 
 // projectLocks tracks the loaded documents' lock state for the write gate.
 type projectLocks struct {
@@ -112,29 +123,88 @@ func (l *projectLocks) remove(room string) {
 func (l *projectLocks) locked(room string, doc *crdt.Doc) bool {
 	l.mu.Lock()
 	defer l.mu.Unlock()
-	for _, rl := range l.rooms[room] {
-		if rl.doc == doc {
-			return rl.enforced && rl.latest.Locked
-		}
-	}
-	return false
+	rl := l.get(room, doc)
+	return rl != nil && rl.enforced && rl.latest.Locked
 }
 
-// observe records the lock value the document now holds. It returns the newest
-// change seen when the document holds an older one, which the caller writes
-// again.
-func (l *projectLocks) observe(rl *roomLock, cur projectLock) (newest projectLock, reassert bool) {
+// get returns the state of room's loaded copy doc, or nil. l.mu must be held.
+func (l *projectLocks) get(room string, doc *crdt.Doc) *roomLock {
+	for _, rl := range l.rooms[room] {
+		if rl.doc == doc {
+			return rl
+		}
+	}
+	return nil
+}
+
+// observe records the lock value the document now holds. It reports whether
+// the document holds an older change than the newest seen, which the caller
+// must then repair.
+func (l *projectLocks) observe(rl *roomLock, cur projectLock) (stale bool) {
 	l.mu.Lock()
 	defer l.mu.Unlock()
 	if cur.At < rl.latest.At {
 		// Two instances set the entry concurrently and the document kept the
 		// older change, or a peer wrote back an older entry. Writing the newer
 		// one again puts it after both.
-		return rl.latest, true
+		return true
 	}
-	rl.latest = cur
-	rl.enforced = true
-	return projectLock{}, false
+	// The newest change written again, by a repair or a peer, is no new
+	// change: it keeps the enforcement it had, so the value the document was
+	// loaded with stays unenforced.
+	if cur != rl.latest {
+		rl.latest = cur
+		rl.enforced = true
+	}
+	return false
+}
+
+// newest returns the newest signed change seen for rl, if any. At is the unix
+// ms of a real change, so a zero value means none.
+func (l *projectLocks) newest(rl *roomLock) (projectLock, bool) {
+	l.mu.Lock()
+	defer l.mu.Unlock()
+	return rl.latest, rl.latest != (projectLock{})
+}
+
+// beginGate records that a peer update is being applied to room's copy doc and
+// returns that copy's state, or nil when doc is not tracked.
+func (l *projectLocks) beginGate(room string, doc *crdt.Doc) *roomLock {
+	l.mu.Lock()
+	defer l.mu.Unlock()
+	rl := l.get(room, doc)
+	if rl != nil {
+		rl.gates++
+	}
+	return rl
+}
+
+// endGate ends a beginGate.
+func (l *projectLocks) endGate(rl *roomLock) {
+	l.mu.Lock()
+	defer l.mu.Unlock()
+	rl.gates--
+}
+
+// gated reports whether a peer update is being applied to rl's document.
+func (l *projectLocks) gated(rl *roomLock) bool {
+	l.mu.Lock()
+	defer l.mu.Unlock()
+	return rl.gates > 0
+}
+
+// warnUnsigned reports whether to log an unsigned entry now, and how many were
+// left unlogged since the last warning.
+func (l *projectLocks) warnUnsigned(rl *roomLock, now time.Time) (warn bool, suppressed int) {
+	l.mu.Lock()
+	defer l.mu.Unlock()
+	if !rl.lastWarn.IsZero() && now.Sub(rl.lastWarn) < unsignedLockWarnEvery {
+		rl.suppressed++
+		return false, 0
+	}
+	suppressed = rl.suppressed
+	rl.lastWarn, rl.suppressed = now, 0
+	return true, suppressed
 }
 
 // wrote records and enforces a change this instance is about to write to doc.
@@ -168,6 +238,9 @@ func (s *Server) watchProjectLock(_ context.Context, room string, doc *crdt.Doc)
 	m := doc.GetMap(metadataMapName)
 	rl := &roomLock{doc: doc}
 	if v, ok := m.Get(projectLockKey); ok {
+		// An entry the server did not sign reads as no change. One written
+		// before entries were repaired came back with the document; the next
+		// peer update repairs it (see gateLockedWrite).
 		rl.latest, _ = s.signedLock(room, v)
 	}
 	s.locks.add(room, rl)
@@ -175,39 +248,114 @@ func (s *Server) watchProjectLock(_ context.Context, room string, doc *crdt.Doc)
 		if _, ok := ev.Keys[projectLockKey]; !ok {
 			return
 		}
+		v, present := m.Get(projectLockKey)
+		if cur, signed := s.signedLock(room, v); signed {
+			if !s.locks.observe(rl, cur) {
+				return
+			}
+		} else if present {
+			if warn, n := s.locks.warnUnsigned(rl, time.Now()); warn {
+				s.log.Warn("repairing a project lock entry the server did not sign", "room", room, "suppressed", n)
+			}
+		} else if _, ok := s.locks.newest(rl); !ok {
+			return // removed, and there is no signed change to put back
+		}
+		if s.locks.gated(rl) {
+			// gateLockedWrite repairs it before the room sends the update on.
+			// A repair from here could reach the document first but other
+			// peers only after the update.
+			return
+		}
+		// Observers run inside the transaction's caller; write from outside it.
+		go s.repairProjectLock(context.Background(), room, rl)
+	})
+	return nil
+}
+
+// lockEntryStale reports whether rl's document holds a lock entry other than
+// the newest signed change seen: one the server did not sign, an older change,
+// or none where there was one.
+func (s *Server) lockEntryStale(room string, rl *roomLock) bool {
+	v, present := rl.doc.GetMap(metadataMapName).Get(projectLockKey)
+	newest, known := s.locks.newest(rl)
+	if !present {
+		return known
+	}
+	cur, signed := s.signedLock(room, v)
+	return !signed || cur.At < newest.At
+}
+
+// repairProjectLock writes the newest signed change seen back into rl's
+// document, or removes the entry when there is none, so a peer's entry neither
+// stays in the document and its storage nor keeps clients fetching the project.
+func (s *Server) repairProjectLock(ctx context.Context, room string, rl *roomLock) {
+	if s.ws.GetDoc(room) != rl.doc {
+		return // unloaded or reloaded since: nobody to hold to the change
+	}
+	if !s.lockEntryStale(room, rl) {
+		return // repaired already, or a newer change landed
+	}
+	var err error
+	if newest, ok := s.locks.newest(rl); ok {
+		err = s.applyProjectLock(ctx, room, newest)
+	} else {
+		err = s.clearProjectLock(ctx, room)
+	}
+	if err != nil {
+		s.log.Warn("project lock repair failed", "room", room, "err", err)
+	}
+}
+
+// clearProjectLock removes a lock entry the server did not sign from the
+// room's document. A signed entry is left alone: it landed after the caller
+// found none.
+func (s *Server) clearProjectLock(ctx context.Context, room string) error {
+	err := s.ws.Apply(ctx, room, func(doc *crdt.Doc, transact func(func(*crdt.Transaction))) {
+		// GetMap must be called outside transact, which already holds the doc lock.
+		m := doc.GetMap(metadataMapName)
 		v, ok := m.Get(projectLockKey)
 		if !ok {
 			return
 		}
-		cur, ok := s.signedLock(room, v)
-		if !ok {
-			s.log.Warn("ignored a project lock entry the server did not sign", "room", room)
+		if _, ok := s.signedLock(room, v); ok {
 			return
 		}
-		if newest, reassert := s.locks.observe(rl, cur); reassert {
-			// Observers run inside the transaction's caller; write from outside it.
-			go func() {
-				if s.ws.GetDoc(room) == nil {
-					return // unloaded since: nobody to hold to the newer change
-				}
-				if err := s.applyProjectLock(context.Background(), room, newest); err != nil {
-					s.log.Warn("project lock reassert failed", "room", room, "err", err)
-				}
-			}()
-		}
+		transact(func(txn *crdt.Transaction) {
+			m.Delete(txn, projectLockKey)
+		})
 	})
-	return nil
+	if errors.Is(err, ygws.ErrNoChanges) {
+		err = nil
+	}
+	return err
 }
 
 // gateLockedWrite refuses a write to a project locked while the peer was
 // connected. Refusing closes the peer, whose reconnect is read-only. A write it
 // lets through is recorded as a user edit for versioning.
+//
+// A write that leaves the lock entry other than the newest signed change is
+// repaired before the hook returns. The room sends the peer's update on only
+// after that, so other peers receive the repair first. It builds on the peer's
+// entry, so they apply both together and see no change to the entry, which
+// would otherwise make each of them fetch the project again. The document is
+// read once the update is applied, rather than relying on its observer, which
+// can run after the hook returns.
 func (s *Server) gateLockedWrite(info ygws.PeerUpdateInfo, apply func() error) error {
 	if s.locks.locked(info.Room, info.Doc) {
 		s.log.Info("refused write to locked project", "room", info.Room)
 		return &ygws.PeerClose{Code: CloseProjectLocked, Reason: "project locked"}
 	}
-	return s.applyAndRecord(info, apply)
+	rl := s.locks.beginGate(info.Room, info.Doc)
+	err := s.applyAndRecord(info, apply)
+	if rl == nil {
+		return err
+	}
+	// An observer that ran while the gate was open left the repair to it, and
+	// ran after the change it saw, so the read below sees that change too.
+	s.locks.endGate(rl)
+	s.repairProjectLock(context.Background(), info.Room, rl)
+	return err
 }
 
 // SignalLock records a project lock change in the room's live document, which
