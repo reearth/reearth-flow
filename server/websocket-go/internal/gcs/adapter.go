@@ -74,6 +74,28 @@ type Adapter struct {
 	// beforeMirrorPut, when set, runs in writeV2DocIf between confirming doc_v2 is
 	// still ours and writing the named v1 mirror (test injection only).
 	beforeMirrorPut func(name string)
+	// afterRollbackMark and afterRollbackDocV2, when set, run in PruneAfter after
+	// marking the ceiling and after publishing doc_v2; returning true stops it
+	// there, as a crash would (test injection only).
+	afterRollbackMark  func() bool
+	afterRollbackDocV2 func() bool
+	// afterRollbackCheckpoint is the same, after the checkpoint write.
+	afterRollbackCheckpoint func() bool
+	// beforeRollbackDelete, when set, runs in a committed rollback's cleanup
+	// between its ceiling check and its deletes (test injection only).
+	beforeRollbackDelete func()
+	// afterSettleRead, when set, runs in settleRollback after it read the mark and
+	// before it writes anything; afterSettleFence runs after it fenced doc_v2 to
+	// abandon a rollback and before it clears the mark (test injection only).
+	afterSettleRead  func()
+	afterSettleFence func()
+	// afterMaterializeCheck, when set, runs in MaterializeAt between its marks
+	// check and folding checkpointed objects into a parked base (test injection
+	// only).
+	afterMaterializeCheck func()
+	// beforeMaterializeBase, when set, runs in MaterializeAt between sampling the
+	// marks and reading the base (test injection only).
+	beforeMaterializeBase func()
 
 	// oidCache memoizes allocated OIDs per room. Phase 2 pins OID=0.
 	oidCache map[string]uint32
@@ -382,47 +404,47 @@ func docFromV1(v1 []byte) (*crdt.Doc, error) {
 // writeV2Snapshot writes state (a V1 update) as the brotli(V2) doc_v2 object and
 // refreshes the v1 SUB_DOC + SUB_STATE_VEC so both representations agree. It
 // replaces doc_v2 outright; only rollback and backfill write this way.
-func (a *Adapter) writeV2Snapshot(ctx context.Context, room DocID, oid uint32, v1State []byte) error {
+func (a *Adapter) writeV2Snapshot(ctx context.Context, room DocID, oid uint32, v1State []byte, cov coverage) error {
 	doc, err := docFromV1(v1State)
 	if err != nil {
 		return err
 	}
-	return a.writeV2Doc(ctx, room, oid, doc)
+	return a.writeV2Doc(ctx, room, oid, doc, cov)
 }
 
 // writeV2Doc writes doc as doc_v2, SUB_DOC and SUB_STATE_VEC. It strips the
 // transient keys from doc first.
-func (a *Adapter) writeV2Doc(ctx context.Context, room DocID, oid uint32, doc *crdt.Doc) error {
-	return a.writeV2DocWith(ctx, room, oid, doc, func(name string, b []byte) (int64, error) {
+func (a *Adapter) writeV2Doc(ctx context.Context, room DocID, oid uint32, doc *crdt.Doc, cov coverage) error {
+	return a.writeV2DocWith(ctx, room, oid, doc, cov, func(name string, b []byte, meta map[string]string) (int64, error) {
 		// Unconditional: rollback and backfill hold the lock and publish doc_v2
 		// outright. The generation still fences their mirrors, since a rollback
 		// whose lease lapsed can resume after a newer one published.
-		return a.store.putGen(ctx, name, b)
+		return a.store.putGen(ctx, name, b, meta)
 	})
 }
 
 // writeV2DocIf is writeV2Doc, but writes nothing and returns errGenerationMoved
 // once doc_v2 is no longer at generation gen (0 for absent).
-func (a *Adapter) writeV2DocIf(ctx context.Context, room DocID, oid uint32, doc *crdt.Doc, gen int64) (int64, error) {
+func (a *Adapter) writeV2DocIf(ctx context.Context, room DocID, oid uint32, doc *crdt.Doc, gen int64, cov coverage) (int64, error) {
 	var wrote int64
-	err := a.writeV2DocWith(ctx, room, oid, doc, func(name string, b []byte) (int64, error) {
+	err := a.writeV2DocWith(ctx, room, oid, doc, cov, func(name string, b []byte, meta map[string]string) (int64, error) {
 		if a.beforeV2Write != nil {
 			a.beforeV2Write()
 		}
-		g, err := a.store.putIfGeneration(ctx, name, b, gen)
+		g, err := a.store.putIfGenerationMeta(ctx, name, b, gen, meta)
 		wrote = g
 		return g, err
 	})
 	return wrote, err
 }
 
-func (a *Adapter) writeV2DocWith(ctx context.Context, room DocID, oid uint32, doc *crdt.Doc, putV2 func(name string, b []byte) (int64, error)) error {
+func (a *Adapter) writeV2DocWith(ctx context.Context, room DocID, oid uint32, doc *crdt.Doc, cov coverage, putV2 func(name string, b []byte, meta map[string]string) (int64, error)) error {
 	// Strip ephemeral UI keys (e.g. metadata.rollbackInProgress) before persisting:
 	// they ride the CRDT for live broadcast but must never survive in doc_v2, which
 	// the Rust reader loads on its own with no tail updates to clear them.
 	a.stripTransient(doc)
 	v2 := crdt.EncodeStateAsUpdateV2(doc, nil)
-	gen, err := putV2(a.layout.DocV2Name(room), compressBrotli(v2))
+	gen, err := putV2(a.layout.DocV2Name(room), compressBrotli(v2), cov.meta())
 	if err != nil {
 		return err
 	}

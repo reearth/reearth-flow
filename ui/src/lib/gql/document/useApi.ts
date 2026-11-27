@@ -2,6 +2,7 @@ import { useToast } from "@flow/features/NotificationSystem/useToast";
 import { useT } from "@flow/lib/i18n";
 import type { RollbackProject, SaveSnapshot } from "@flow/types";
 
+import { isVersionNotRebuildable } from "./errors";
 import { useQueries } from "./useQueries";
 
 export const useDocument = () => {
@@ -73,9 +74,15 @@ export const useDocument = () => {
         version,
       });
 
-      return { previewSnapshot, ...rest };
-    } catch (_err) {
-      return { previewSnapshot: undefined, ...rest };
+      return { previewSnapshot, refused: false, ...rest };
+    } catch (err) {
+      // A refusal is an answer about the entry, not a failure: the caller shows
+      // it in place of the preview instead of treating the entry as empty.
+      return {
+        previewSnapshot: undefined,
+        refused: isVersionNotRebuildable(err),
+        ...rest,
+      };
     }
   };
 
@@ -99,12 +106,20 @@ export const useDocument = () => {
       });
 
       return { projectDocument, ...rest };
-    } catch (_err) {
-      toast({
-        title: t("Project Rollback Failed"),
-        description: t("There was an error rolling back the project."),
-        variant: "destructive",
-      });
+    } catch (err) {
+      toast(
+        isVersionNotRebuildable(err)
+          ? {
+              title: t("This version can no longer be restored"),
+              description: t("The project was left unchanged."),
+              variant: "destructive",
+            }
+          : {
+              title: t("Project Rollback Failed"),
+              description: t("There was an error rolling back the project."),
+              variant: "destructive",
+            },
+      );
 
       return { projectDocument: undefined, ...rest };
     }
