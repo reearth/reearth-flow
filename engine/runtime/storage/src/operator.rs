@@ -15,32 +15,37 @@ use tracing::debug;
 /// init_operator will init an opendal operator based on storage config.
 pub(crate) fn resolve_operator(uri: &Uri) -> Result<Operator> {
     match uri.protocol() {
-        Protocol::File => build_operator(init_fs_operator(uri)),
-        Protocol::Ram => build_operator(init_memory_operator()),
-        Protocol::Google => build_operator(init_gcs_operator(uri)),
-        Protocol::Http => build_operator(init_http_operator(uri)),
-        Protocol::Https => build_operator(init_https_operator(uri)),
+        Protocol::File => build_operator(init_fs_operator(uri), false),
+        Protocol::Ram => build_operator(init_memory_operator(), false),
+        Protocol::Google => build_operator(init_gcs_operator(uri), true),
+        Protocol::Http => build_operator(init_http_operator(uri), true),
+        Protocol::Https => build_operator(init_https_operator(uri), true),
     }
 }
 
-pub(crate) fn build_operator<B: Builder>(builder: B) -> Result<Operator> {
-    let ob = Operator::new(builder)?;
-    let op = ob
+/// Builds an operator with timeout, logging and metrics layers.
+///
+/// `retry` adds a [`RetryLayer`]. Use it only for remote backends: local IO
+/// errors are rarely transient, and retrying a partially completed local write
+/// can duplicate data.
+pub(crate) fn build_operator<B: Builder>(builder: B, retry: bool) -> Result<Operator> {
+    let op = Operator::new(builder)?
         .layer(
             TimeoutLayer::new()
-                // Return timeout error if the operation failed to finish in
-                // 10s
+                // Timeout for non-IO operations such as stat, delete and list.
                 .with_timeout(Duration::from_secs(30))
-                // Return timeout error if the operation failed to finish in
-                // 5s
+                // Timeout for each IO call, e.g. writing one chunk.
                 .with_io_timeout(Duration::from_secs(30)),
         )
-        // Add retry
-        .layer(RetryLayer::new().with_jitter())
-        .layer(LoggingLayer::default())
-        .layer(MetricsLayer::default())
         .finish();
-    Ok(op)
+    let op = if retry {
+        op.layer(RetryLayer::new().with_jitter())
+    } else {
+        op
+    };
+    Ok(op
+        .layer(LoggingLayer::default())
+        .layer(MetricsLayer::default()))
 }
 
 /// init_fs_operator will init a opendal fs operator.
