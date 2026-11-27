@@ -13,6 +13,7 @@ import { useGraphQLContext } from "../provider";
 
 export enum DocumentQueryKeys {
   GetLatestProjectSnapshot = "getLatestProjectSnapshot",
+  GetLatestProjectSnapshotOnce = "getLatestProjectSnapshotOnce",
   GetProjectSnapshot = "getProjectSnapshot",
   GetProjectHistory = "getProjectHistory",
   GetProjectNamedSnapshots = "getProjectNamedSnapshots",
@@ -36,6 +37,23 @@ export const useQueries = () => {
       // Read by the version dialogs, which mount on open: each open shows the
       // document as it is now.
       refetchOnMount: "always",
+    });
+
+  const useLatestProjectSnapshotOnceQuery = (projectId: string) =>
+    useQuery({
+      queryKey: [DocumentQueryKeys.GetLatestProjectSnapshotOnce, projectId],
+      queryFn: async () => {
+        const data = await graphQLContext?.GetLatestProjectSnapshot({
+          projectId,
+        });
+        if (!data?.latestProjectSnapshot) return null;
+        return toProjectDocument(data.latestProjectSnapshot);
+      },
+      enabled: !!projectId,
+      staleTime: Infinity,
+      refetchOnWindowFocus: false,
+      refetchOnReconnect: false,
+      retry: false,
     });
 
   const useProjectSnapshotQuery = (projectId: string, version: number) =>
@@ -208,6 +226,7 @@ export const useQueries = () => {
 
   return {
     useLatestProjectSnapshotQuery,
+    useLatestProjectSnapshotOnceQuery,
     useProjectSnapshotQuery,
     useProjectHistoryQuery,
     useProjectSnapshotsQuery,

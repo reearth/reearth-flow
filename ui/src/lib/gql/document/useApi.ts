@@ -7,6 +7,7 @@ import { useQueries } from "./useQueries";
 export const useDocument = () => {
   const {
     useLatestProjectSnapshotQuery,
+    useLatestProjectSnapshotOnceQuery,
     useProjectSnapshotQuery,
     useProjectHistoryQuery,
     useProjectSnapshotsQuery,
@@ -22,6 +23,14 @@ export const useDocument = () => {
 
   const useGetLatestProjectSnapshot = (projectId: string) => {
     const { data, ...rest } = useLatestProjectSnapshotQuery(projectId);
+    return {
+      projectDocument: data,
+      ...rest,
+    };
+  };
+
+  const useGetLatestProjectSnapshotOnce = (projectId: string) => {
+    const { data, ...rest } = useLatestProjectSnapshotOnceQuery(projectId);
     return {
       projectDocument: data,
       ...rest,
@@ -143,6 +152,7 @@ export const useDocument = () => {
 
   return {
     useGetLatestProjectSnapshot,
+    useGetLatestProjectSnapshotOnce,
     useGetProjectSnapshot,
     useGetProjectHistory,
     useGetProjectNamedSnapshots,
