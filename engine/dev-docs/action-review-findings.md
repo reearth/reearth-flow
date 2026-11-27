@@ -86,6 +86,9 @@ XML Fragmenter
              languages. Fixing this needs either i18n support for root-level oneOf
              variants or a flat param struct with a plain `source` enum. Not urgent: the
              root title/description do translate, and the English text is accurate.
+  RESOLVED 2026-11-27: now a flat struct with a `source` unit enum, translated. The saved
+             form is unchanged (`source` sat beside the other fields under the tagged enum
+             too), so existing workflows load as before.
 ```
 
 ---
@@ -599,6 +602,8 @@ Feature Reader · JSON Fragmenter
 XML Fragmenter  — ALREADY AUDITED, still non-compliant
   params:  Same root-level `oneOf`. It was audited and its oneOf was deliberately extended
              before §3.4 existed. Owed a re-check per the Changelog rule, not a new finding.
+  RESOLVED 2026-11-27: restructured to a flat struct with a `source` unit enum, without
+             a schema break — the stored parameters keep the same shape.
 ```
 
 This group is schema-breaking by nature and wants its own PR.

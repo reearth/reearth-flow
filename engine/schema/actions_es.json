@@ -14993,149 +14993,97 @@
         "$schema": "http://json-schema.org/draft-07/schema#",
         "title": "XML Fragmenter Parameters",
         "description": "Configures where the XML document comes from and which of its elements become features.",
-        "oneOf": [
-          {
-            "title": "XML File",
-            "description": "Reads the XML document from the file path or URL held in the attribute.",
+        "type": "object",
+        "required": [
+          "attribute",
+          "elementsToExclude",
+          "elementsToMatch",
+          "source"
+        ],
+        "properties": {
+          "source": {
+            "title": "Source",
+            "description": "Whether the XML attribute holds a file path or URL to read, or the XML text itself.",
+            "allOf": [
+              {
+                "$ref": "#/definitions/XmlSource"
+              }
+            ]
+          },
+          "attribute": {
+            "title": "XML Attribute",
+            "description": "Attribute holding the XML document: the file path or URL to read when the source is a file, or the XML text itself when the source is text.",
+            "allOf": [
+              {
+                "$ref": "#/definitions/Attribute"
+              }
+            ]
+          },
+          "elementsToMatch": {
+            "title": "Elements to Match",
+            "description": "Expression returning the list of element names whose subtrees are emitted as fragments. Names include the namespace prefix as written in the document, such as `bldg:Building`.",
             "type": "object",
+            "format": "code",
             "required": [
-              "attribute",
-              "elementsToExclude",
-              "elementsToMatch",
-              "source"
+              "type",
+              "value"
             ],
             "properties": {
-              "source": {
+              "type": {
+                "type": "string",
+                "enum": [
+                  "flowExpr"
+                ]
+              },
+              "value": {
+                "type": "string"
+              }
+            }
+          },
+          "elementsToExclude": {
+            "title": "Elements to Exclude",
+            "description": "Expression returning the list of element names to skip even when they also appear in the matched elements. Return an empty list to match everything.",
+            "type": "object",
+            "format": "code",
+            "required": [
+              "type",
+              "value"
+            ],
+            "properties": {
+              "type": {
+                "type": "string",
+                "enum": [
+                  "flowExpr"
+                ]
+              },
+              "value": {
+                "type": "string"
+              }
+            }
+          }
+        },
+        "definitions": {
+          "XmlSource": {
+            "description": "Where the XML document is read from.",
+            "oneOf": [
+              {
+                "title": "XML File",
+                "description": "Reads the XML document from the file path or URL held in the attribute.",
                 "type": "string",
                 "enum": [
                   "file"
                 ]
               },
-              "elementsToMatch": {
-                "title": "Elements to Match",
-                "description": "Expression returning the list of element names whose subtrees are emitted as fragments. Names include the namespace prefix as written in the document, such as `bldg:Building`.",
-                "type": "object",
-                "format": "code",
-                "required": [
-                  "type",
-                  "value"
-                ],
-                "properties": {
-                  "type": {
-                    "type": "string",
-                    "enum": [
-                      "flowExpr"
-                    ]
-                  },
-                  "value": {
-                    "type": "string"
-                  }
-                }
-              },
-              "elementsToExclude": {
-                "title": "Elements to Exclude",
-                "description": "Expression returning the list of element names to skip even when they also appear in the matched elements. Return an empty list to match everything.",
-                "type": "object",
-                "format": "code",
-                "required": [
-                  "type",
-                  "value"
-                ],
-                "properties": {
-                  "type": {
-                    "type": "string",
-                    "enum": [
-                      "flowExpr"
-                    ]
-                  },
-                  "value": {
-                    "type": "string"
-                  }
-                }
-              },
-              "attribute": {
-                "title": "XML Attribute",
-                "description": "Attribute holding the XML document: the file path or URL to read when the source is a file, or the XML text itself when the source is text.",
-                "allOf": [
-                  {
-                    "$ref": "#/definitions/Attribute"
-                  }
-                ]
-              }
-            }
-          },
-          {
-            "title": "XML Text",
-            "description": "Uses the attribute value itself as the XML document.",
-            "type": "object",
-            "required": [
-              "attribute",
-              "elementsToExclude",
-              "elementsToMatch",
-              "source"
-            ],
-            "properties": {
-              "source": {
+              {
+                "title": "XML Text",
+                "description": "Uses the attribute value itself as the XML document.",
                 "type": "string",
                 "enum": [
                   "text"
                 ]
-              },
-              "elementsToMatch": {
-                "title": "Elements to Match",
-                "description": "Expression returning the list of element names whose subtrees are emitted as fragments. Names include the namespace prefix as written in the document, such as `bldg:Building`.",
-                "type": "object",
-                "format": "code",
-                "required": [
-                  "type",
-                  "value"
-                ],
-                "properties": {
-                  "type": {
-                    "type": "string",
-                    "enum": [
-                      "flowExpr"
-                    ]
-                  },
-                  "value": {
-                    "type": "string"
-                  }
-                }
-              },
-              "elementsToExclude": {
-                "title": "Elements to Exclude",
-                "description": "Expression returning the list of element names to skip even when they also appear in the matched elements. Return an empty list to match everything.",
-                "type": "object",
-                "format": "code",
-                "required": [
-                  "type",
-                  "value"
-                ],
-                "properties": {
-                  "type": {
-                    "type": "string",
-                    "enum": [
-                      "flowExpr"
-                    ]
-                  },
-                  "value": {
-                    "type": "string"
-                  }
-                }
-              },
-              "attribute": {
-                "title": "XML Attribute",
-                "description": "Attribute holding the XML document: the file path or URL to read when the source is a file, or the XML text itself when the source is text.",
-                "allOf": [
-                  {
-                    "$ref": "#/definitions/Attribute"
-                  }
-                ]
               }
-            }
-          }
-        ],
-        "definitions": {
+            ]
+          },
           "Attribute": {
             "type": "string"
           }
