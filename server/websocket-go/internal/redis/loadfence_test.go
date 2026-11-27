@@ -57,10 +57,15 @@ func TestLoadFence_SetsAndClearsRedisField(t *testing.T) {
 	if !ok {
 		t.Fatal("a load did not write its fence")
 	}
-	if want := strconv.FormatInt(clk.now().Add(loadFenceTTL).Unix(), 10); v != want {
-		t.Errorf("fence deadline %s, want %s", v, want)
+	// While the load reads storage its fence runs to the cap; once it has, the
+	// fence lasts loadFenceTTL unless a pass refreshes it.
+	if want := strconv.FormatInt(clk.now().Add(loadFenceMax).Unix(), 10); v != want {
+		t.Errorf("fence deadline during the load %s, want %s", v, want)
 	}
 	done(nil)
+	if v, _ := fenceField(t, r, room); v != strconv.FormatInt(clk.now().Add(loadFenceTTL).Unix(), 10) {
+		t.Errorf("fence deadline after the load %s, want now + loadFenceTTL", v)
+	}
 	if !r.localFenceLive(room) {
 		t.Fatal("a load that succeeded stopped fencing before any pass")
 	}
@@ -122,10 +127,9 @@ func TestLoadFence_RefreshStopsAtCap(t *testing.T) {
 	const room = "fence-cap"
 
 	r.LoadStarting(ctx, room)(nil)
-	snap := r.passBegin(room)
 	for elapsed := time.Minute; elapsed <= 9*time.Minute; elapsed += time.Minute {
 		clk.advance(time.Minute)
-		r.passRefresh(ctx, room, snap)
+		r.passRefresh(ctx, room)
 	}
 	if !r.localFenceLive(room) {
 		t.Fatal("a refreshed fence lapsed during a long pass")
@@ -134,7 +138,7 @@ func TestLoadFence_RefreshStopsAtCap(t *testing.T) {
 		t.Fatalf("refreshed redis fence: fenced=%v err=%v", fenced, err)
 	}
 	clk.advance(time.Minute + time.Second) // past start + loadFenceMax
-	r.passRefresh(ctx, room, snap)
+	r.passRefresh(ctx, room)
 	if r.localFenceLive(room) {
 		t.Error("a pass that never ends kept the fence past its cap")
 	}
@@ -185,5 +189,83 @@ func TestLoadFence_RedisDownStillFencesLocally(t *testing.T) {
 	done(nil)
 	if !r.localFenceLive(room) {
 		t.Error("a load with no redis lost its local fence")
+	}
+}
+
+// TestLoadFence_LongLoadStaysFenced: a load that takes longer than the TTL is
+// still reading storage, and nothing has covered it yet.
+func TestLoadFence_LongLoadStaysFenced(t *testing.T) {
+	t.Parallel()
+	c, mr := newTestClient(t)
+	r, clk := clockedRelay(t, mr.Addr())
+	ctx := context.Background()
+	const room = "fence-long-load"
+
+	done := r.LoadStarting(ctx, room)
+	clk.advance(3 * time.Minute)
+	if !r.localFenceLive(room) {
+		t.Fatal("a load still in progress lost its local fence")
+	}
+	if fenced, err := loadFenced(ctx, c, room, clk.now().Unix()); err != nil || !fenced {
+		t.Fatalf("a load still in progress lost its redis fence: fenced=%v err=%v", fenced, err)
+	}
+	done(nil)
+	clk.advance(time.Minute)
+	if !r.localFenceLive(room) {
+		t.Fatal("a load that just finished is not fenced until its pass")
+	}
+	clk.advance(loadFenceMax)
+	if r.localFenceLive(room) {
+		t.Error("a load's fence outlived its cap")
+	}
+}
+
+// TestLoadFence_RunningPassKeepsALaterLoadFenced: a replacement's replay waits
+// behind a pass the reader is already running; that pass must keep the newer
+// load fenced, though it does not clear it.
+func TestLoadFence_RunningPassKeepsALaterLoadFenced(t *testing.T) {
+	t.Parallel()
+	_, mr := newTestClient(t)
+	r, clk := clockedRelay(t, mr.Addr())
+	ctx := context.Background()
+	const room = "fence-queued"
+
+	r.LoadStarting(ctx, room)(nil)
+	snap := r.passBegin(room)
+	r.LoadStarting(ctx, room)(nil)
+	for i := 0; i < 5; i++ {
+		clk.advance(time.Minute)
+		r.passRefresh(ctx, room)
+	}
+	r.passEnd(ctx, room, snap)
+	if !r.localFenceLive(room) {
+		t.Error("a load waiting behind a long pass lost its fence")
+	}
+}
+
+// TestLoadFence_DropRacingALoadKeepsItsFence: a room's fence state can be
+// dropped (its relay state torn down) just as a load of it begins.
+func TestLoadFence_DropRacingALoadKeepsItsFence(t *testing.T) {
+	t.Parallel()
+	_, mr := newTestClient(t)
+	r, _ := clockedRelay(t, mr.Addr())
+	ctx := context.Background()
+	const room = "fence-drop-race"
+	r.LoadStarting(ctx, room)(errors.New("prime the fence state"))
+
+	var once sync.Once
+	r.beforeFenceIO = func() {
+		once.Do(func() {
+			r.mu.Lock()
+			r.dropFenceIfIdleLocked(room)
+			r.mu.Unlock()
+		})
+	}
+	r.LoadStarting(ctx, room)(nil)
+	if !r.localFenceLive(room) {
+		t.Error("a load whose fence state was dropped as it began is not fenced")
+	}
+	if _, ok := fenceField(t, r, room); !ok {
+		t.Error("a load whose fence state was dropped as it began has no redis fence")
 	}
 }

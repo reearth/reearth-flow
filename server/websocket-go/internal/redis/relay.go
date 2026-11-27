@@ -103,6 +103,9 @@ type Relay struct {
 	// beforeEnqueue, when set, runs in Publish just before an update is queued.
 	// Tests use it to interleave RoomDeactivated.
 	beforeEnqueue func()
+	// beforeFenceIO, when set, runs in LoadStarting between finding the room's fence
+	// state and locking it (test injection only).
+	beforeFenceIO func()
 	// beforeRestore, when set, runs in restoreSuccessor between finding the
 	// successor and writing its heartbeat (test injection only).
 	beforeRestore func()
@@ -143,9 +146,9 @@ type roomState struct {
 	// for and finished while it was flushing.
 	replayAsks uint64
 	// selfApplyUntil: until then the live reader applies this instance's own sync
-	// entries too. A room activated onto this state, or one left on it by a
-	// deactivation, can lack updates the room it replaces published after the
-	// replacement's replay read the stream: the retiring room's lane drains after
+	// entries too. A room activated onto this state, onto a fresh state replacing
+	// an evicting one, or left on it by a deactivation, can lack updates the room
+	// it replaces published after the replacement's catch-up read the stream: the retiring room's lane drains after
 	// RoomDeactivated, and a write batch can be retried for about 2 s.
 	selfApplyUntil time.Time
 
@@ -452,6 +455,11 @@ func (r *Relay) RoomActivated(room string) {
 		caughtUp:    make(chan struct{}),
 		done:        make(chan struct{}),
 	}
+	if ok {
+		// It replaces a room whose state is still evicting, so that room can still
+		// publish after this state's catch-up; see roomState.selfApplyUntil.
+		rs.selfApplyUntil = r.now().Add(selfReplayWindow)
+	}
 	r.rooms[room] = rs
 	sink := r.sink
 	r.mu.Unlock()
@@ -482,7 +490,7 @@ func (r *Relay) catchUp(ctx context.Context, room string, sink cluster.Sink) (st
 	lastID := "0"
 	start := "-"
 	for {
-		r.passRefresh(ctx, room, covers)
+		r.passRefresh(ctx, room)
 		msgs, err := r.client.XRangeN(ctx, streamKey(room), start, "+", readCount).Result()
 		if err != nil {
 			return "", err
@@ -490,9 +498,8 @@ func (r *Relay) catchUp(ctx context.Context, room string, sink cluster.Sink) (st
 		for _, m := range msgs {
 			e := parseEntry(m, r.clientID)
 			// This instance's own sync entries are applied too: the room may have
-			// loaded storage that lacks them. Its own awareness entries are not, or
-			// clients that left with the room it replaces would reappear.
-			if !e.isSelf || e.kind == kindSync {
+			// loaded storage that lacks them. See applyOwn.
+			if !e.isSelf || r.applyOwn(room, sink, e) {
 				switch r.inject(ctx, room, sink, e, false) { // catch-up: replay depth, not latency
 				case relaypolicy.Stop:
 					return "", errStopReading
@@ -719,7 +726,7 @@ func (r *Relay) readLoop(ctx context.Context, room string, rs *roomState, sink c
 		for _, stream := range res {
 			for _, m := range stream.Messages {
 				e := parseEntry(m, r.clientID)
-				if !e.isSelf || (applyOwn && e.kind == kindSync) {
+				if !e.isSelf || (applyOwn && r.applyOwn(room, sink, e)) {
 					switch r.inject(ctx, room, sink, e, !e.isSelf) {
 					case relaypolicy.Stop:
 						return
@@ -777,6 +784,15 @@ func (r *Relay) replayIfAsked(ctx context.Context, room string, rs *roomState, s
 		rs.replayed = nil
 	}
 	return false
+}
+
+// applyOwn reports whether a reader applies e, one of this instance's own
+// entries. Only sync entries: its own awareness would bring back clients that
+// left with the room being replaced. And only into a resident room: Inject loads
+// a room that is not, which would bring back a room this instance is tearing
+// down. A room loaded later gets the entry from its own catch-up.
+func (r *Relay) applyOwn(room string, sink cluster.Sink, e parsedEntry) bool {
+	return e.kind == kindSync && sink.GetDoc(room) != nil
 }
 
 // errInjectRetry reports an entry the room could not take yet; the reader keeps

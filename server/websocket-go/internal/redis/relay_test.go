@@ -16,6 +16,8 @@ type fakeSink struct {
 	mu       sync.Mutex
 	injected []cluster.Inbound
 	rooms    []string
+	// absent makes GetDoc report no room resident; by default every room is.
+	absent bool
 }
 
 func (f *fakeSink) Inject(_ context.Context, in cluster.Inbound) error {
@@ -29,7 +31,14 @@ func (f *fakeSink) Rooms() []string { return f.rooms }
 func (f *fakeSink) GetAwareness(string) (*awareness.Awareness, bool) {
 	return nil, false
 }
-func (f *fakeSink) GetDoc(string) *crdt.Doc { return nil }
+func (f *fakeSink) GetDoc(string) *crdt.Doc {
+	f.mu.Lock()
+	defer f.mu.Unlock()
+	if f.absent {
+		return nil
+	}
+	return crdt.New()
+}
 
 func (f *fakeSink) count() int {
 	f.mu.Lock()

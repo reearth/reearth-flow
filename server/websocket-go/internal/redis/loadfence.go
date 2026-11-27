@@ -46,6 +46,9 @@ type loadFence struct {
 type fenceEntry struct {
 	started  time.Time
 	deadline time.Time
+	// loading: the load is still reading storage. Its fence lasts to the cap,
+	// however long the load takes, and is re-armed when the load ends.
+	loading bool
 }
 
 // fenceLocked returns room's fence, creating it. Caller holds r.mu.
@@ -58,6 +61,43 @@ func (r *Relay) fenceLocked(room string) *loadFence {
 	return f
 }
 
+// lockFence returns room's current fence state with its io lock and r.mu both
+// held, creating it when create is set; nil (nothing held) when there is none.
+// It re-checks after taking io, since the state can be dropped in between.
+func (r *Relay) lockFence(room string, create bool) *loadFence {
+	for {
+		r.mu.Lock()
+		f, ok := r.fences[room]
+		if !ok {
+			if !create {
+				r.mu.Unlock()
+				return nil
+			}
+			f = r.fenceLocked(room)
+		}
+		r.mu.Unlock()
+		if r.beforeFenceIO != nil {
+			r.beforeFenceIO()
+		}
+		f.io.Lock()
+		r.mu.Lock()
+		if r.fences[room] == f {
+			return f
+		}
+		r.mu.Unlock()
+		f.io.Unlock()
+	}
+}
+
+// capped is now + loadFenceTTL, but never past the load's cap.
+func (e fenceEntry) capped(now time.Time) time.Time {
+	d := now.Add(loadFenceTTL)
+	if limit := e.started.Add(loadFenceMax); d.After(limit) {
+		return limit
+	}
+	return d
+}
+
 // pruneLocked drops expired loads and returns the latest remaining deadline,
 // zero when none remain. Caller holds r.mu.
 func (r *Relay) pruneLocked(room string, f *loadFence) time.Time {
@@ -66,7 +106,7 @@ func (r *Relay) pruneLocked(room string, f *loadFence) time.Time {
 	for seq, e := range f.pending {
 		if !e.deadline.After(now) {
 			delete(f.pending, seq)
-			r.log.Warn("relay load fence expired before a pass covered it; trims of the room may resume", "room", room)
+			r.log.Warn("relay load fence expired before a pass covered it; trims of the room may resume", "room", room, "loading", e.loading)
 			continue
 		}
 		if e.deadline.After(latest) {
@@ -81,30 +121,35 @@ func (r *Relay) pruneLocked(room string, f *loadFence) time.Time {
 // failure is logged and never fails or stalls the load past
 // loadFenceWriteTimeout; the local fence still holds.
 func (r *Relay) LoadStarting(ctx context.Context, room string) func(err error) {
-	r.mu.Lock()
-	f := r.fenceLocked(room)
-	r.mu.Unlock()
-
-	f.io.Lock()
-	r.mu.Lock()
+	f := r.lockFence(room, true)
 	r.loadSeq++
 	seq := r.loadSeq
 	f.last = seq
 	now := r.now()
-	f.pending[seq] = fenceEntry{started: now, deadline: now.Add(loadFenceTTL)}
+	f.pending[seq] = fenceEntry{started: now, deadline: now.Add(loadFenceMax), loading: true}
 	latest := r.pruneLocked(room, f)
 	r.mu.Unlock()
 	r.writeFence(ctx, room, latest)
 	f.io.Unlock()
 
 	return func(err error) {
-		if err == nil {
-			return
-		}
 		f.io.Lock()
 		defer f.io.Unlock()
 		r.mu.Lock()
-		delete(f.pending, seq)
+		if r.fences[room] != f {
+			// Dropped as idle: this load's fence had already expired.
+			r.mu.Unlock()
+			return
+		}
+		if e, ok := f.pending[seq]; ok {
+			if err != nil {
+				delete(f.pending, seq)
+			} else {
+				e.loading = false
+				e.deadline = e.capped(r.now())
+				f.pending[seq] = e
+			}
+		}
 		latest := r.pruneLocked(room, f)
 		r.mu.Unlock()
 		r.writeFence(ctx, room, latest)
@@ -121,28 +166,21 @@ func (r *Relay) passBegin(room string) uint64 {
 	return 0
 }
 
-// passRefresh extends the loads a running pass covers, each up to its cap.
-func (r *Relay) passRefresh(ctx context.Context, room string, snapshot uint64) {
-	r.mu.Lock()
-	f, ok := r.fences[room]
-	r.mu.Unlock()
-	if !ok {
+// passRefresh keeps every finished load of room fenced while a pass runs, each
+// up to its cap: a load that began after the pass is waiting for the next pass,
+// which cannot start until this one ends.
+func (r *Relay) passRefresh(ctx context.Context, room string) {
+	f := r.lockFence(room, false)
+	if f == nil {
 		return
 	}
-	f.io.Lock()
 	defer f.io.Unlock()
-	r.mu.Lock()
 	now := r.now()
 	for seq, e := range f.pending {
-		if seq > snapshot {
-			continue
+		if !e.loading {
+			e.deadline = e.capped(now)
+			f.pending[seq] = e
 		}
-		d := now.Add(loadFenceTTL)
-		if limit := e.started.Add(loadFenceMax); d.After(limit) {
-			d = limit
-		}
-		e.deadline = d
-		f.pending[seq] = e
 	}
 	latest := r.pruneLocked(room, f)
 	r.mu.Unlock()
@@ -153,15 +191,11 @@ func (r *Relay) passRefresh(ctx context.Context, room string, snapshot uint64) {
 
 // passEnd clears the loads a completed pass covered.
 func (r *Relay) passEnd(ctx context.Context, room string, snapshot uint64) {
-	r.mu.Lock()
-	f, ok := r.fences[room]
-	r.mu.Unlock()
-	if !ok {
+	f := r.lockFence(room, false)
+	if f == nil {
 		return
 	}
-	f.io.Lock()
 	defer f.io.Unlock()
-	r.mu.Lock()
 	for seq := range f.pending {
 		if seq <= snapshot {
 			delete(f.pending, seq)

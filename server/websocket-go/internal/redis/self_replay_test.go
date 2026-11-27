@@ -143,3 +143,60 @@ func TestLiveLoop_SkipsOwnSyncOutsideWindow(t *testing.T) {
 		t.Error("the live reader applied its own entry with no replacement in progress")
 	}
 }
+
+// TestRoomActivated_OverAnEvictingStateOpensTheWindow: the usual replacement
+// order is the last peer leaving (the state starts evicting) and then a
+// reconnect, so the replacement gets a fresh state; the retiring room's late
+// updates still reach the stream after the replacement's catch-up.
+func TestRoomActivated_OverAnEvictingStateOpensTheWindow(t *testing.T) {
+	t.Parallel()
+	c, mr := newTestClient(t)
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+	const room = "own-over-evicting"
+	sink := &fakeSink{}
+	relay := startedRelay(t, ctx, mr.Addr(), sink)
+	relay.RoomActivated(room)
+	relay.mu.Lock()
+	old := relay.rooms[room]
+	old.evicting = true // its RoomDeactivated is under way
+	relay.mu.Unlock()
+	t.Cleanup(func() { old.cancel(); old.wg.Wait() })
+
+	relay.RoomActivated(room)
+	t.Cleanup(func() { relay.RoomDeactivated(room) })
+	if err := relay.WaitCaughtUp(ctx, room); err != nil {
+		t.Fatalf("WaitCaughtUp: %v", err)
+	}
+	addOwn(t, c, relay, room, msgTypeSync, []byte{12})
+	waitFor(t, 3*time.Second, func() bool { return injectedKind(sink, cluster.KindSync, []byte{12}) })
+}
+
+// TestLiveLoop_SkipsOwnSyncForAnAbsentRoom: Inject loads a room that is not
+// resident, so applying this instance's own echo would bring back a room that
+// is being torn down; the next room's catch-up applies the entry instead.
+func TestLiveLoop_SkipsOwnSyncForAnAbsentRoom(t *testing.T) {
+	t.Parallel()
+	c, mr := newTestClient(t)
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+	const room = "own-absent"
+	sink := &fakeSink{}
+	relay := startedRelay(t, ctx, mr.Addr(), sink)
+	relay.RoomActivated(room)
+	relay.RoomActivated(room) // the window is open
+	t.Cleanup(func() { relay.RoomDeactivated(room); relay.RoomDeactivated(room) })
+	if err := relay.WaitCaughtUp(ctx, room); err != nil {
+		t.Fatalf("WaitCaughtUp: %v", err)
+	}
+	sink.mu.Lock()
+	sink.absent = true // the room has left ygo's resident set
+	sink.mu.Unlock()
+
+	addOwn(t, c, relay, room, msgTypeSync, []byte{13})
+	addForeign(t, c, room, []byte{14})
+	waitFor(t, 3*time.Second, func() bool { return injectedKind(sink, cluster.KindSync, []byte{14}) })
+	if injectedKind(sink, cluster.KindSync, []byte{13}) {
+		t.Error("the live reader applied its own entry to a room that is not resident")
+	}
+}
