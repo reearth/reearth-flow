@@ -100,6 +100,27 @@ impl reearth_flow_runtime::event::EventHandler for NodeFailureHandler {
         }
     }
 }
+
+pub(crate) struct JobStartLogged(());
+
+pub(crate) async fn publish_job_started<P: Publisher>(
+    publisher: &P,
+    workflow_id: Uuid,
+    job_id: Uuid,
+) -> JobStartLogged {
+    let event = LogStreamEvent::new(
+        workflow_id,
+        job_id,
+        "INFO".to_string(),
+        None,
+        "Worker started".to_string(),
+    );
+    if let Err(e) = publisher.publish(event).await {
+        tracing::warn!("Failed to publish job started log: {}", e);
+    }
+    JobStartLogged(())
+}
+
 pub(crate) struct EventHandler<P: Publisher> {
     pub(crate) workflow_id: Uuid,
     pub(crate) job_id: Uuid,
@@ -243,6 +264,67 @@ mod tests {
         }
 
         async fn shutdown(&self) {}
+    }
+
+    #[derive(Debug, Default, Clone)]
+    struct RecordingPublisher {
+        messages: Arc<Mutex<Vec<(String, serde_json::Value)>>>,
+    }
+
+    #[async_trait::async_trait]
+    impl Publisher for RecordingPublisher {
+        type Error = CountingPublisherError;
+
+        async fn publish<M: EncodableMessage>(&self, message: M) -> Result<(), Self::Error> {
+            let encoded = message.encode().expect("message encodes");
+            let payload = serde_json::from_slice(&encoded.data).expect("payload is JSON");
+            self.messages
+                .lock()
+                .push((message.topic().to_string(), payload));
+            Ok(())
+        }
+
+        async fn shutdown(&self) {}
+    }
+
+    #[derive(Debug, Default, Clone)]
+    struct FailingPublisher;
+
+    #[async_trait::async_trait]
+    impl Publisher for FailingPublisher {
+        type Error = CountingPublisherError;
+
+        async fn publish<M: EncodableMessage>(&self, _message: M) -> Result<(), Self::Error> {
+            Err(CountingPublisherError)
+        }
+
+        async fn shutdown(&self) {}
+    }
+
+    #[tokio::test]
+    async fn publish_job_started_sends_one_node_less_info_log_for_the_job() {
+        let publisher = RecordingPublisher::default();
+        let workflow_id = Uuid::new_v4();
+        let job_id = Uuid::new_v4();
+
+        publish_job_started(&publisher, workflow_id, job_id).await;
+
+        let messages = publisher.messages.lock();
+        assert_eq!(messages.len(), 1);
+        let (topic, payload) = &messages[0];
+        let expected_topic = std::env::var("FLOW_WORKER_LOG_STREAM_TOPIC")
+            .unwrap_or_else(|_| "flow-log-stream-topic".to_string());
+        assert_eq!(topic, &expected_topic);
+        assert_eq!(payload["jobId"], job_id.to_string());
+        assert_eq!(payload["workflowId"], workflow_id.to_string());
+        assert_eq!(payload["logLevel"], "INFO");
+        assert!(payload["nodeId"].is_null());
+        assert!(!payload["message"].as_str().unwrap_or_default().is_empty());
+    }
+
+    #[tokio::test]
+    async fn publish_job_started_swallows_a_publish_failure() {
+        publish_job_started(&FailingPublisher, Uuid::new_v4(), Uuid::new_v4()).await;
     }
 
     fn sample_diagnostic() -> Diagnostic {
