@@ -37,6 +37,11 @@ const (
 	streamTrimEvery = time.Minute
 )
 
+// selfReplayWindow is how long after a room is activated onto a live relay
+// state, or a deactivation leaves the state in use, the live reader also applies
+// this instance's own sync entries; see roomState.selfApplyUntil.
+const selfReplayWindow = 30 * time.Second
+
 // evictTimeout bounds the last-instance durability I/O (heartbeat removal, active
 // re-check, GCS flush, stream delete). It runs on a fresh context so a cancelled
 // relay delivery context (graceful shutdown) cannot abort the flush.
@@ -137,6 +142,12 @@ type roomState struct {
 	// replayAsks counts replay requests, so a trim can tell that one was asked
 	// for and finished while it was flushing.
 	replayAsks uint64
+	// selfApplyUntil: until then the live reader applies this instance's own sync
+	// entries too. A room activated onto this state, or one left on it by a
+	// deactivation, can lack updates the room it replaces published after the
+	// replacement's replay read the stream: the retiring room's lane drains after
+	// RoomDeactivated, and a write batch can be retried for about 2 s.
+	selfApplyUntil time.Time
 
 	// writeCh is the bounded outbound queue; Publish enqueues non-blockingly.
 	writeCh chan writeItem
@@ -423,6 +434,7 @@ func (r *Relay) RoomActivated(room string) {
 		old.activations++
 		old.replay = true
 		old.replayAsks++
+		old.selfApplyUntil = r.now().Add(selfReplayWindow)
 		if old.replayed == nil {
 			old.replayed = make(chan struct{})
 		}
@@ -461,8 +473,9 @@ func (r *Relay) RoomActivated(room string) {
 
 // catchUp replays the whole stream into the sink, readCount entries per XRANGE so
 // a long stream is never materialized at once, and returns the last entry id so
-// the live reader does not re-apply replayed entries. Self entries are skipped on
-// apply but still advance the cursor.
+// the live reader does not re-apply replayed entries. This instance's own sync
+// entries are applied as well, its own awareness entries are skipped, and both
+// advance the cursor.
 func (r *Relay) catchUp(ctx context.Context, room string, sink cluster.Sink) (string, error) {
 	// A pass that completes clears the load fences of loads that began before it.
 	covers := r.passBegin(room)
@@ -476,7 +489,10 @@ func (r *Relay) catchUp(ctx context.Context, room string, sink cluster.Sink) (st
 		}
 		for _, m := range msgs {
 			e := parseEntry(m, r.clientID)
-			if !e.isSelf {
+			// This instance's own sync entries are applied too: the room may have
+			// loaded storage that lacks them. Its own awareness entries are not, or
+			// clients that left with the room it replaces would reappear.
+			if !e.isSelf || e.kind == kindSync {
 				switch r.inject(ctx, room, sink, e, false) { // catch-up: replay depth, not latency
 				case relaypolicy.Stop:
 					return "", errStopReading
@@ -671,6 +687,7 @@ func (r *Relay) readLoop(ctx context.Context, room string, rs *roomState, sink c
 		}
 		r.mu.Lock()
 		from := rs.lastID
+		applyOwn := r.now().Before(rs.selfApplyUntil)
 		r.mu.Unlock()
 
 		res, err := r.client.XRead(ctx, &goredis.XReadArgs{
@@ -702,8 +719,8 @@ func (r *Relay) readLoop(ctx context.Context, room string, rs *roomState, sink c
 		for _, stream := range res {
 			for _, m := range stream.Messages {
 				e := parseEntry(m, r.clientID)
-				if !e.isSelf {
-					switch r.inject(ctx, room, sink, e, true) {
+				if !e.isSelf || (applyOwn && e.kind == kindSync) {
+					switch r.inject(ctx, room, sink, e, !e.isSelf) {
 					case relaypolicy.Stop:
 						return
 					case relaypolicy.Retry:
@@ -952,6 +969,8 @@ func (r *Relay) RoomDeactivated(room string) {
 	}
 	rs.activations--
 	if rs.activations > 0 {
+		// The room that left may still publish: its lane drains after this call.
+		rs.selfApplyUntil = r.now().Add(selfReplayWindow)
 		r.mu.Unlock()
 		return
 	}
