@@ -2,7 +2,7 @@ import { useCallback, useState } from "react";
 
 import { useProject, useWorkflowVariables } from "@flow/lib/gql";
 import { useT } from "@flow/lib/i18n";
-import type { AnyWorkflowVariable, Workspace } from "@flow/types";
+import type { AnyWorkflowVariable, Project, Workspace } from "@flow/types";
 import { redactPrivateWorkflowVariableValues } from "@flow/utils";
 
 export default () => {
@@ -25,7 +25,7 @@ export default () => {
       workspace: Workspace;
       yDocBinary: Uint8Array<ArrayBufferLike>;
       workflowVariables?: AnyWorkflowVariable[];
-    }) => {
+    }): Promise<Project | undefined> => {
       try {
         setIsProjectImporting(true);
 
@@ -58,7 +58,14 @@ export default () => {
           });
         }
 
-        await importProject(project.id, yDocBinary, workspace.id);
+        const { success } = await importProject(
+          project.id,
+          yDocBinary,
+          workspace.id,
+        );
+        if (!success) return;
+
+        return project;
       } catch (error) {
         console.error("Failed to import project:", error);
       } finally {

@@ -668,6 +668,7 @@
   "Go to Home": "ホームに戻る",
   "Import Project": "プロジェクトをインポート",
   "Import Project to Workspace: ": "ワークスペースにプロジェクトをインポート: ",
+  "Importing...": "インポート中...",
   "Import": "インポート",
   "Import into Workspace": "ワークスペースにインポート",
   "Project Import Failed": "プロジェクトインポート失敗",

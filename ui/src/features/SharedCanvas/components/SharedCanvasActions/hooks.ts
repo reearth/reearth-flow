@@ -33,12 +33,13 @@ export default ({
     }
   }, [handleProjectExport, yDoc, project]);
 
-  const { handleSharedProjectImport } = useSharedProjectImport({
-    sharedYdoc: yDoc,
-    sharedProject: project,
-    selectedWorkspace,
-    accessToken,
-  });
+  const { isProjectImporting, handleSharedProjectImport } =
+    useSharedProjectImport({
+      sharedYdoc: yDoc,
+      sharedProject: project,
+      selectedWorkspace,
+      accessToken,
+    });
 
   const handleShowImportDialog = () => setShowDialog("import");
 
@@ -54,6 +55,7 @@ export default ({
   return {
     showDialog,
     selectedWorkspace,
+    isProjectImporting,
     handleSharedProjectImport,
     handleSharedProjectExport,
     handleShowImportDialog,
