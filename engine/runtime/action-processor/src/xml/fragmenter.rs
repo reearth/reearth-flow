@@ -78,13 +78,12 @@ impl ProcessorFactory for XmlFragmenterFactory {
             )
             .into());
         };
-        let property = params.property();
-        let elements_to_match_ast = property.elements_to_match.compile().map_err(|e| {
+        let elements_to_match_ast = params.elements_to_match.compile().map_err(|e| {
             XmlProcessorError::FragmenterFactory(format!(
                 "Failed to compile elements_to_match expression: {e:?}"
             ))
         })?;
-        let elements_to_exclude_ast = property.elements_to_exclude.compile().map_err(|e| {
+        let elements_to_exclude_ast = params.elements_to_exclude.compile().map_err(|e| {
             XmlProcessorError::FragmenterFactory(format!(
                 "Failed to compile elements_to_exclude expression: {e:?}"
             ))
@@ -105,9 +104,19 @@ pub struct XmlFragmenter {
     elements_to_exclude_ast: CompiledCode,
 }
 
+/// # XML Fragmenter Parameters
+///
+/// Configures where the XML document comes from and which of its elements become features.
 #[derive(Serialize, Deserialize, Debug, Clone, JsonSchema)]
 #[serde(rename_all = "camelCase")]
-pub struct PropertySchema {
+pub struct XmlFragmenterParam {
+    /// # Source
+    /// Whether the XML attribute holds a file path or URL to read, or the XML text itself.
+    pub(super) source: XmlSource,
+    /// # XML Attribute
+    /// Attribute holding the XML document: the file path or URL to read when the source is a
+    /// file, or the XML text itself when the source is text.
+    pub(super) attribute: Attribute,
     /// # Elements to Match
     /// Expression returning the list of element names whose subtrees are emitted as fragments.
     /// Names include the namespace prefix as written in the document, such as `bldg:Building`.
@@ -116,40 +125,18 @@ pub struct PropertySchema {
     /// Expression returning the list of element names to skip even when they also appear in the
     /// matched elements. Return an empty list to match everything.
     pub(super) elements_to_exclude: Code<{ CodeType::FlowExpr as u32 }>,
-    /// # XML Attribute
-    /// Attribute holding the XML document: the file path or URL to read when the source is a
-    /// file, or the XML text itself when the source is text.
-    pub(super) attribute: Attribute,
 }
 
-/// # XML Fragmenter Parameters
-///
-/// Configures where the XML document comes from and which of its elements become features.
-#[derive(Serialize, Deserialize, Debug, Clone, JsonSchema)]
-#[serde(tag = "source", rename_all = "camelCase")]
-pub enum XmlFragmenterParam {
+/// Where the XML document is read from.
+#[derive(Serialize, Deserialize, Debug, Clone, Copy, PartialEq, Eq, JsonSchema)]
+#[serde(rename_all = "camelCase")]
+pub enum XmlSource {
     /// # XML File
     /// Reads the XML document from the file path or URL held in the attribute.
-    File {
-        #[serde(flatten)]
-        property: PropertySchema,
-    },
+    File,
     /// # XML Text
     /// Uses the attribute value itself as the XML document.
-    Text {
-        #[serde(flatten)]
-        property: PropertySchema,
-    },
-}
-
-impl XmlFragmenterParam {
-    fn property(&self) -> &PropertySchema {
-        match self {
-            XmlFragmenterParam::File { property } | XmlFragmenterParam::Text { property } => {
-                property
-            }
-        }
-    }
+    Text,
 }
 
 #[derive(Serialize, Deserialize, Debug, Clone)]
@@ -292,15 +279,15 @@ fn send_xml_fragment(
     let t_gen = Instant::now();
     // `scope` namespaces the generated xmlId/xmlParentId hashes. A document read from a file is
     // scoped by its location; XML held in an attribute has none, so the carrying feature is used.
-    let result = match params {
-        XmlFragmenterParam::File { property } => {
-            let url = match feature.get(&property.attribute) {
+    let result = match params.source {
+        XmlSource::File => {
+            let url = match feature.get(&params.attribute) {
                 Some(AttributeValue::String(url)) => Uri::from_str(url)
                     .map_err(|e| XmlProcessorError::Fragmenter(format!("{e:?}")))?,
                 _ => {
                     return Err(Box::new(XmlProcessorError::Fragmenter(format!(
                         "No XML file path or URL found in attribute `{}`",
-                        property.attribute
+                        params.attribute
                     ))));
                 }
             };
@@ -314,11 +301,11 @@ fn send_xml_fragment(
                 .map_err(|e| XmlProcessorError::Fragmenter(format!("{e:?}")))?;
             generate_fragment_streaming(ctx, fw, feature, url.as_ref(), raw_xml, &match_tags)
         }
-        XmlFragmenterParam::Text { property } => {
-            let Some(AttributeValue::String(raw_xml)) = feature.get(&property.attribute) else {
+        XmlSource::Text => {
+            let Some(AttributeValue::String(raw_xml)) = feature.get(&params.attribute) else {
                 return Err(Box::new(XmlProcessorError::Fragmenter(format!(
                     "No XML text found in attribute `{}`",
-                    property.attribute
+                    params.attribute
                 ))));
             };
             generate_fragment_streaming(
@@ -594,6 +581,21 @@ mod tests {
     use reearth_flow_common::uri::Uri;
     use reearth_flow_runtime::forwarder::{NoopChannelForwarder, ProcessorChannelForwarder};
     use reearth_flow_types::{AttributeValue, Feature};
+
+    /// Saved workflows store `source` beside the other parameters, as the tagged enum this
+    /// struct replaced wrote them.
+    #[test]
+    fn reads_parameters_as_saved_workflows_store_them() {
+        let params: XmlFragmenterParam = serde_json::from_value(serde_json::json!({
+            "source": "file",
+            "attribute": "path",
+            "elementsToMatch": {"type": "flowExpr", "value": "[\"bldg:Building\"]"},
+            "elementsToExclude": {"type": "flowExpr", "value": "[]"}
+        }))
+        .unwrap();
+        assert_eq!(params.source, XmlSource::File);
+        assert_eq!(params.attribute, Attribute::new("path"));
+    }
 
     /// Helper: call generate_fragment_streaming with in-memory XML and return
     /// the xmlFragment strings produced.

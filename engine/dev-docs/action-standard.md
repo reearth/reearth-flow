@@ -460,7 +460,8 @@ Material rule changes, newest first. **A rule added here does not retroactively 
 
 ### 2026-11-27
 
-- **§7.2 — listing an action now requires its Japanese text.** The keys added on 2026-09-11 were never translated, and neither were most keys added since, so 28 listed actions were showing English in the Japanese UI. Coordinate Frame Reprojector, HTTP Caller, Date Time Converter and both TransitiveLinkResolvers were the worst. They are translated, and an API test now fails on any listed action whose Japanese title or description contains no Japanese. `XML Fragmenter` is exempt until its root-level `oneOf` (§3.4) is restructured. **No past verdict changes.**
+- **§7.2 — listing an action now requires its Japanese text.** The keys added on 2026-09-11 were never translated, and neither were most keys added since, so 28 listed actions were showing English in the Japanese UI. Coordinate Frame Reprojector, HTTP Caller, Date Time Converter and both TransitiveLinkResolvers were the worst. They are translated, and an API test now fails on any listed action whose Japanese title or description contains no Japanese. **No past verdict changes.**
+- **§3.4 — `XML Fragmenter` restructured**, its root-level `oneOf` replaced by a `source` property. Its stored parameters keep the same shape, so it needed no migration; it is translated and no longer exempt from the check.
 - **§3.4 — untagged enums are now translatable.** CSV Reader's and CSV Writer's coordinate-column variant and Attribute Range Mapper's value types had no key, and were English regardless of the i18n file.
 
 ### 2026-09-18

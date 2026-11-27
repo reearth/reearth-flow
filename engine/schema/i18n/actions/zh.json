@@ -4910,6 +4910,34 @@
         "": {
           "title": "XML Fragmenter Parameters",
           "description": "Configures where the XML document comes from and which of its elements become features."
+        },
+        "attribute": {
+          "title": "XML Attribute",
+          "description": "Attribute holding the XML document: the file path or URL to read when the source is a file, or the XML text itself when the source is text."
+        },
+        "elementsToExclude": {
+          "title": "Elements to Exclude",
+          "description": "Expression returning the list of element names to skip even when they also appear in the matched elements. Return an empty list to match everything."
+        },
+        "elementsToMatch": {
+          "title": "Elements to Match",
+          "description": "Expression returning the list of element names whose subtrees are emitted as fragments. Names include the namespace prefix as written in the document, such as `bldg:Building`."
+        },
+        "source": {
+          "title": "Source",
+          "description": "Whether the XML attribute holds a file path or URL to read, or the XML text itself."
+        }
+      },
+      "enumI18n": {
+        "XmlSource": {
+          "file": {
+            "title": "XML File",
+            "description": "Reads the XML document from the file path or URL held in the attribute."
+          },
+          "text": {
+            "title": "XML Text",
+            "description": "Uses the attribute value itself as the XML document."
+          }
         }
       }
     },
