@@ -28,6 +28,7 @@ var errorCodes = []struct {
 	{interfaces.ErrViewWorkersBusy, "VIEW_WORKERS_BUSY"},
 	{interfaces.ErrConcurrentRenderLimit, "VIEW_RENDER_LIMIT_REACHED"},
 	{interfaces.ErrProjectLocked, "PROJECT_LOCKED"},
+	{interfaces.ErrVersionNotRebuildable, "VERSION_NOT_REBUILDABLE"},
 }
 
 // ErrorCode is the code a client receives for err, or "" for an error that has

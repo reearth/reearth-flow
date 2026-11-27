@@ -31,7 +31,11 @@ export default ({
     useRollbackProject,
     useGetPreviewProjectSnapshot,
   } = useDocument();
-  const { history, isFetching } = useGetProjectHistory(projectId);
+  const {
+    history,
+    isFetching,
+    isError: isHistoryError,
+  } = useGetProjectHistory(projectId);
   const { projectDocument } = useGetLatestProjectSnapshot(projectId);
   const [selectedProjectSnapshotVersion, setSelectedProjectSnapshotVersion] =
     useState<number | null>(null);
@@ -46,6 +50,14 @@ export default ({
     useState<Y.Map<YWorkflow> | null>(null);
   const lastErroredVersionRef = useRef<number | null>(null);
   const [isCorruptedVersion, setIsCorruptedVersion] = useState<boolean>(false);
+  // The server refuses an entry it cannot rebuild exactly. Reverting to it, or
+  // to one that previews with no workflows, would replace the project with
+  // nothing, so both keep Revert disabled.
+  const [refusedVersion, setRefusedVersion] = useState<number | null>(null);
+  // Preview requests are not serialized, so only the latest selection may write
+  // the preview state; an earlier response arriving last is discarded.
+  const latestPreviewRef = useRef(0);
+  const [isEmptyPreview, setIsEmptyPreview] = useState<boolean>(false);
 
   const { toast } = useToast();
   const t = useT();
@@ -163,11 +175,15 @@ export default ({
 
       setSelectedProjectSnapshotVersion(version);
       if (version === null) return;
+      const request = ++latestPreviewRef.current;
+      const isStale = () => request !== latestPreviewRef.current;
       if (previewDocRef.current) {
         previewDocRef.current.destroy();
         previewDocRef.current = null;
       }
       setPreviewDocYWorkflows(null);
+      setRefusedVersion(null);
+      setIsEmptyPreview(false);
       setIsLoadingPreview(true);
 
       try {
@@ -175,6 +191,11 @@ export default ({
           projectId,
           version,
         );
+        if (isStale()) return;
+        if (previewData?.refused) {
+          setRefusedVersion(version);
+          return;
+        }
         if (!previewData) {
           console.error(
             "No project snapshot found for version: ",
@@ -202,8 +223,10 @@ export default ({
           return;
         }
 
+        setIsEmptyPreview(versionpreviewPreviewYWorkflows.size === 0);
         setPreviewDocYWorkflows(versionpreviewPreviewYWorkflows);
       } catch (error) {
+        if (isStale()) return;
         console.error("Version Preview Failed:", error);
         return toast({
           title: t("Version Preview Failed"),
@@ -213,7 +236,7 @@ export default ({
           variant: "destructive",
         });
       } finally {
-        setIsLoadingPreview(false);
+        if (!isStale()) setIsLoadingPreview(false);
       }
     },
     [
@@ -237,6 +260,7 @@ export default ({
 
   return {
     history,
+    isHistoryError,
     latestProjectSnapshotVersion,
     previewDocRef,
     previewDocYWorkflows,
@@ -246,6 +270,10 @@ export default ({
     isLoadingPreview,
     isReverting,
     isCorruptedVersion,
+    isRefusedVersion:
+      refusedVersion !== null &&
+      refusedVersion === selectedProjectSnapshotVersion,
+    isEmptyPreview,
     openVersionConfirmationDialog,
     setOpenVersionConfirmationDialog,
     setIsCorruptedVersion,

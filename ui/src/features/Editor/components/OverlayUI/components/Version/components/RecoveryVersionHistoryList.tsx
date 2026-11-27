@@ -7,6 +7,8 @@ import { formatDate } from "@flow/utils";
 type Props = {
   latestProjectSnapshotVersion?: ProjectDocument;
   history?: ProjectSnapshotMeta[];
+  // The history request failed, so an empty list says nothing about the project.
+  isError?: boolean;
   onVersionSelection: (version: number) => void;
   selectedProjectSnapshotVersion: number | null;
 };
@@ -14,6 +16,7 @@ type Props = {
 const RecoveryVersionHistoryList: React.FC<Props> = ({
   latestProjectSnapshotVersion,
   history,
+  isError,
   selectedProjectSnapshotVersion,
   onVersionSelection,
 }) => {
@@ -67,7 +70,21 @@ const RecoveryVersionHistoryList: React.FC<Props> = ({
             </div>
           ))}
         </div>
-      ) : null}
+      ) : isError ? (
+        <p className="px-2 py-4 text-xs font-thin text-muted-foreground">
+          {t(
+            "The version history could not be loaded. Close this dialog and try again.",
+          )}
+        </p>
+      ) : (
+        // The server lists only entries it can rebuild, so after a successful
+        // response an empty list is a real answer: nothing here can be restored.
+        <p className="px-2 py-4 text-xs font-thin text-muted-foreground">
+          {t(
+            "There is nothing to restore here. Saved versions are in the Version History panel.",
+          )}
+        </p>
+      )}
     </ScrollArea>
   );
 };
