@@ -107,18 +107,59 @@ graphs:
               valueAttribute: cityName
             - attribute: feature_type
               valueAttribute: featureType
+            - attribute: gml_id
+              valueAttribute: gmlId
+            - attribute: core_creationDate
+              expr: |
+                env.get("__value")["core:creationDate"]
             - attribute: luse_class
               expr: |
                 env.get("__value")["luse:class"]
             - attribute: luse_usage
               expr: |
                 env.get("__value")["luse:usage"]
-            - attribute: core_creationDate
+            - attribute: uro_id
               expr: |
-                env.get("__value")["core:creationDate"]
+                env.get("__value")["uro:LandUseDetailAttribute_uro:id"]
+            - attribute: uro_orgLandUse
+              expr: |
+                env.get("__value")["uro:LandUseDetailAttribute_uro:orgLandUse"]
+            - attribute: uro_nominalArea
+              expr: |
+                env.get("__value")["uro:LandUseDetailAttribute_uro:nominalArea"]
+            - attribute: uro_ownerType
+              expr: |
+                env.get("__value")["uro:LandUseDetailAttribute_uro:ownerType"]
+            - attribute: uro_areaInSquareMeter
+              expr: |
+                env.get("__value")["uro:LandUseDetailAttribute_uro:areaInSquareMeter"]
+            - attribute: uro_areaInHa
+              expr: |
+                env.get("__value")["uro:LandUseDetailAttribute_uro:areaInHa"]
+            - attribute: uro_buildingCoverageRate
+              expr: |
+                env.get("__value")["uro:LandUseDetailAttribute_uro:buildingCoverageRate"]
+            - attribute: uro_floorAreaRate
+              expr: |
+                env.get("__value")["uro:LandUseDetailAttribute_uro:floorAreaRate"]
+            - attribute: uro_specifiedBuildingCoverageRate
+              expr: |
+                env.get("__value")["uro:LandUseDetailAttribute_uro:specifiedBuildingCoverageRate"]
+            - attribute: uro_specifiedFloorAreaRate
+              expr: |
+                env.get("__value")["uro:LandUseDetailAttribute_uro:specifiedFloorAreaRate"]
+            - attribute: uro_standardFloorAreaRate
+              expr: |
+                env.get("__value")["uro:LandUseDetailAttribute_uro:standardFloorAreaRate"]
             - attribute: uro_urbanPlanType
               expr: |
                 env.get("__value")["uro:LandUseDetailAttribute_uro:urbanPlanType"]
+            - attribute: uro_areaClassificationType
+              expr: |
+                env.get("__value")["uro:LandUseDetailAttribute_uro:areaClassificationType"]
+            - attribute: uro_districtsAndZonesType
+              expr: |
+                env.get("__value")["uro:LandUseDetailAttribute_uro:districtsAndZonesType"]
             - attribute: uro_prefecture
               expr: |
                 env.get("__value")["uro:LandUseDetailAttribute_uro:prefecture"]
@@ -128,9 +169,6 @@ graphs:
             - attribute: uro_surveyYear
               expr: |
                 env.get("__value")["uro:LandUseDetailAttribute_uro:surveyYear"]
-            - attribute: uro_orgLandUse
-              expr: |
-                env.get("__value")["uro:LandUseDetailAttribute_uro:orgLandUse"]
             - attribute: uro_geometrySrcDescLod1
               expr: |
                 env.get("__value")["uro:DataQualityAttribute_uro:geometrySrcDescLod1"]

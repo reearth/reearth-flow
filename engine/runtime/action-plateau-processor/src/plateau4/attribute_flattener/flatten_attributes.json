@@ -12575,6 +12575,11 @@
 			"json_path": "urf:validFrom"
 		},
 		{
+			"attribute": "urf:validFromType",
+			"data_type": "string",
+			"json_path": "urf:validFromType"
+		},
+		{
 			"attribute": "urf:prefecture",
 			"data_type": "string",
 			"json_path": "urf:prefecture"
