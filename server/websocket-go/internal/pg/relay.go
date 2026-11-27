@@ -1018,13 +1018,10 @@ func (r *Relay) writeLoop(ctx context.Context, room string, rs *roomState) {
 }
 
 // writeWithRetry inserts a batch, retrying a failure before the writer takes
-// anything else off the queue so this instance's order holds. Once every attempt
-// fails the batch is dropped and the room flagged.
-//
-// The batch is off the queue, so drainRemaining will not see it. It is written
-// even when RoomDeactivated cancels ctx meanwhile: a room's last edits are
-// published just before it is deactivated, and losing them leaves every later
-// edit that builds on them unappliable elsewhere.
+// anything else off the queue so this instance's order holds; once every attempt
+// fails, the batch is dropped and the room flagged. It writes even after
+// RoomDeactivated cancels ctx, since a room's last edits are published just
+// before it deactivates and every later edit builds on them.
 func (r *Relay) writeWithRetry(ctx context.Context, room string, rs *roomState, batch []writeItem) {
 	for attempt := 0; ; attempt++ {
 		wctx, cancel := context.WithTimeout(context.WithoutCancel(ctx), writeTimeout)

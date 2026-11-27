@@ -34,12 +34,9 @@ const (
 )
 
 // ClassifyInject decides what the error from injecting in means for the reader.
-//
-// Whether the entry itself is bad is decided from its payload, not from the
-// error: the server returns the same decoder errors when the room's stored
-// document fails to load, and that failure must be retried, not skipped past.
-// So an entry is skipped when its payload fails on its own, and any other
-// failure, a load or persistence one included, is retried.
+// An entry is skipped only when its payload fails on its own, since the server
+// returns the same decoder errors when the room's stored document fails to load,
+// and that must be retried.
 func ClassifyInject(ctx context.Context, in cluster.Inbound, err error) InjectOutcome {
 	switch {
 	case err == nil:

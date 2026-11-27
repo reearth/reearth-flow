@@ -12,8 +12,8 @@ import (
 // needs; see the relay's loadfence.go.
 type LoadFence func(ctx context.Context, room string) func(err error)
 
-// SetLoadFence installs the fence for room loads. Install it before the relay is
-// attached so loads during startup are fenced too. Nil turns fencing off.
+// SetLoadFence installs the fence for room loads, or turns fencing off when f is
+// nil. Install it before the relay attaches so startup loads are fenced too.
 func (s *Server) SetLoadFence(f LoadFence) {
 	if f == nil {
 		s.loadFence.Store(nil)

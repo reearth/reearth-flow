@@ -9,16 +9,11 @@ import (
 	goredis "github.com/redis/go-redis/v9"
 )
 
-// Load fences. ygo loads a room from storage before it calls RoomActivated, so
-// the relay hears of a room only after the room has read storage. A room that
-// loaded storage lacking some update needs that update from the stream, and
-// until a pass over the stream that began after the load has put it there, no
-// trim or stream delete, on any instance, may remove it.
-//
-// LoadStarting fences each load before it reads storage: locally, and in the
-// Go-only doc:loads:{room} hash (field = clientId, value = deadline in unix
-// seconds) so other instances see it. A fence clears when a catch-up pass that
-// began after the load completes, when the load fails, or at its deadline.
+// ygo loads a room before it calls RoomActivated, so until a catch-up pass that
+// began after the load completes, no instance may trim or delete stream entries
+// the loaded room may lack. LoadStarting fences each load locally and in the
+// Go-only doc:loads:{room} hash (field clientId, value deadline in unix seconds),
+// cleared by such a pass, a failed load, or the deadline.
 const (
 	// loadFenceTTL is a fence's life without a pass refreshing it.
 	loadFenceTTL = 2 * time.Minute
@@ -116,10 +111,9 @@ func (r *Relay) pruneLocked(room string, f *loadFence) time.Time {
 	return latest
 }
 
-// LoadStarting fences a load of room before it reads storage. Call the returned
-// func with the load's result: a failed load drops its fence at once. A Redis
-// failure is logged and never fails or stalls the load past
-// loadFenceWriteTimeout; the local fence still holds.
+// LoadStarting fences a load of room before it reads storage; call the returned
+// func with the load's result, and a failed load drops its fence at once. A Redis
+// failure is logged and never fails or stalls the load past loadFenceWriteTimeout.
 func (r *Relay) LoadStarting(ctx context.Context, room string) func(err error) {
 	f := r.lockFence(room, true)
 	r.loadSeq++
@@ -220,7 +214,7 @@ func (r *Relay) loadGen(room string) uint64 {
 	return r.passBegin(room)
 }
 
-// dropFenceIfIdleLocked forgets room's fence state once nothing is pending. Called when
+// dropFenceIfIdleLocked forgets room's fence state, when nothing is pending, as
 // the room's relay state is torn down. Caller holds r.mu.
 func (r *Relay) dropFenceIfIdleLocked(room string) {
 	if f, ok := r.fences[room]; ok && r.pruneLocked(room, f).IsZero() {

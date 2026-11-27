@@ -120,8 +120,8 @@ type Relay struct {
 	rooms  map[string]*roomState
 	closed bool
 
-	// fences are the room loads this instance has fenced; see loadfence.go.
-	// loadSeq numbers loads across rooms. Both under mu.
+	// fences holds the room loads this instance has fenced (see loadfence.go),
+	// and loadSeq numbers loads across rooms. Both under mu.
 	fences  map[string]*loadFence
 	loadSeq uint64
 	// now is the relay's clock for load fences; tests replace it.
@@ -613,11 +613,10 @@ func (r *Relay) trimStream(ctx context.Context, room string, rs *roomState) erro
 	if err != nil || !live {
 		return err
 	}
-	// A load can start while the flush runs. Worse, on this instance a room can
-	// load, replay and clear its fence entirely inside it, after the flush took
-	// that room's document, which lacked the entries. So re-check the fences and
-	// refuse if a load or a replay began since the first check. A load that
-	// begins after this point reads storage the flush has already written.
+	// A load can start during the flush, and here a room can even load, replay
+	// and clear its fence inside it, after the flush took a document lacking the
+	// entries. So refuse if a load or replay began since the first check; a load
+	// starting after this point reads what the flush wrote.
 	if r.trimRaced(room, rs, gen, asks) {
 		return nil
 	}
@@ -751,8 +750,8 @@ func (r *Relay) readLoop(ctx context.Context, room string, rs *roomState, sink c
 	}
 }
 
-// replayIfAsked replays the stream into the room when an activation asked for it.
-// The cursor only moves forward; a failed replay is asked for again. It reports
+// replayIfAsked replays the stream into the room when an activation asked for it,
+// moving the cursor only forward and asking again after a failure. It reports
 // true when the server is shutting down and the reader should exit.
 func (r *Relay) replayIfAsked(ctx context.Context, room string, rs *roomState, sink cluster.Sink) bool {
 	r.mu.Lock()
@@ -787,10 +786,9 @@ func (r *Relay) replayIfAsked(ctx context.Context, room string, rs *roomState, s
 }
 
 // applyOwn reports whether a reader applies e, one of this instance's own
-// entries. Only sync entries: its own awareness would bring back clients that
-// left with the room being replaced. And only into a resident room: Inject loads
-// a room that is not, which would bring back a room this instance is tearing
-// down. A room loaded later gets the entry from its own catch-up.
+// entries: only sync, since own awareness would bring back clients that left
+// with the replaced room. And only into a resident room, since Inject would
+// reload a room being torn down; a room loaded later gets e from its catch-up.
 func (r *Relay) applyOwn(room string, sink cluster.Sink, e parsedEntry) bool {
 	return e.kind == kindSync && sink.GetDoc(room) != nil
 }
@@ -872,13 +870,10 @@ func (r *Relay) writeLoop(ctx context.Context, room string, rs *roomState) {
 }
 
 // writeWithRetry writes a batch, retrying a failure before the writer takes
-// anything else off the queue so this instance's order in the stream holds. Once
-// every attempt fails the batch is dropped and the room flagged.
-//
-// The batch is off the queue, so drainRemaining will not see it. It is written
-// even when RoomDeactivated cancels ctx meanwhile: a room's last edits are
-// published just before it is deactivated, and losing them leaves every later
-// edit that builds on them unappliable elsewhere.
+// anything else off the queue so this instance's order holds; once every attempt
+// fails, the batch is dropped and the room flagged. It writes even after
+// RoomDeactivated cancels ctx, since a room's last edits are published just
+// before it deactivates and every later edit builds on them.
 func (r *Relay) writeWithRetry(ctx context.Context, room, key string, rs *roomState, batch []writeItem) {
 	for attempt := 0; ; attempt++ {
 		wctx, cancel := context.WithTimeout(context.WithoutCancel(ctx), writeTimeout)
