@@ -125,6 +125,11 @@ func run() error {
 		return fmt.Errorf("build cluster relay: %w", err)
 	}
 	defer func() { _ = relay.Close() }()
+	// Fence room loads before the relay attaches, so loads during startup are
+	// fenced too: no instance may trim or delete what a loading room still needs.
+	if f := coord.LoadFence(relay); f != nil {
+		srv.SetLoadFence(f)
+	}
 	if err := srv.AttachRedisRelay(ctx, relay); err != nil {
 		return fmt.Errorf("attach cluster relay: %w", err)
 	}

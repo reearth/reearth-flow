@@ -35,9 +35,10 @@ func keepUpdatesOf(cfg *config.Config) int {
 func NewWithPersistence(ctx context.Context, cfg *config.Config, p persistence.VersionedPersistence) *Server {
 	s := &Server{
 		cfg: cfg,
-		ws:  ygws.NewServerWithPersistence(legacyAdapter(ctx, cfg, p)),
 		log: slog.Default(),
 	}
+	// Room loads go through the fence the relay installs; see SetLoadFence.
+	s.ws = ygws.NewServerWithPersistence(legacyAdapter(ctx, cfg, s.fencedStore(p)))
 	s.ws.AllowedOrigins = cfg.Origins
 	s.ws.Logger = s.log
 	// DoS caps must mirror New; ygo treats 0 as unlimited.

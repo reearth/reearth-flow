@@ -120,6 +120,18 @@ func Presence(r cluster.Relay) func(ctx context.Context, room string) (int, erro
 	return p.ActiveInstances
 }
 
+// LoadFence returns the relay's room-load fence, or nil when its backend needs
+// none (the Postgres relay never trims or deletes its log).
+func LoadFence(r cluster.Relay) func(ctx context.Context, room string) func(error) {
+	f, ok := r.(interface {
+		LoadStarting(ctx context.Context, room string) func(error)
+	})
+	if !ok {
+		return nil
+	}
+	return f.LoadStarting
+}
+
 // IsLockTimeout reports whether err is a lock store's bounded acquisition
 // running out, on any backend.
 func IsLockTimeout(err error) bool {
