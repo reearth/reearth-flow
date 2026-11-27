@@ -88,7 +88,7 @@ pub(crate) async fn upload_artifact(
 
                 info!("Uploading artifact from {:?} to {:?}", uri, location);
                 root_storage
-                    .put(location.path().as_path(), bytes)
+                    .put_idempotent(location.path().as_path(), bytes)
                     .await
                     .map_err(Error::failed_to_upload_artifact)?;
                 Ok(())

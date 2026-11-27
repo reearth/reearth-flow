@@ -18,6 +18,14 @@ use opendal::Buffer;
 use opendal::Operator;
 
 use reearth_flow_common::uri::Uri;
+use tracing::info;
+use tracing::warn;
+
+/// Chunk size for [`Storage::put`]. GCS multipart parts must be at least 5 MiB.
+const WRITE_CHUNK_SIZE: usize = 16 * 1024 * 1024;
+
+/// Maximum number of chunks in flight per [`Storage::put`].
+const WRITE_CONCURRENCY: usize = 4;
 
 #[derive(Debug)]
 pub struct Storage {
@@ -39,18 +47,81 @@ impl Storage {
         }
     }
 
+    /// Writes `bytes` to `location` in chunks of [`WRITE_CHUNK_SIZE`].
+    ///
+    /// Each chunk is a separate IO call, so the operator's IO timeout applies
+    /// per chunk rather than to the whole object. On object stores, data larger
+    /// than one chunk goes up as a multipart upload, which is aborted on failure.
     pub async fn put(&self, location: &Path, bytes: Bytes) -> Result<()> {
         let p = location.to_str().ok_or(object_store::Error::InvalidPath {
             source: object_store::path::Error::InvalidPath {
                 path: format!("{location:?}").into(),
             },
         })?;
-        let _ = self
+        let mut w = self
             .inner
-            .write(p, bytes)
+            .writer_with(p)
+            .chunk(WRITE_CHUNK_SIZE)
+            .concurrent(WRITE_CONCURRENCY)
             .await
             .map_err(|err| format_object_store_error(err, p))?;
+        let result = match w.write(bytes).await {
+            Ok(()) => w.close().await.map(|_| ()),
+            Err(err) => Err(err),
+        };
+        if let Err(err) = result {
+            // Discard uploaded parts. A no-op if no multipart upload was started.
+            if let Err(abort_err) = w.abort().await {
+                // Fs without an atomic write dir cannot abort.
+                if abort_err.kind() != opendal::ErrorKind::Unsupported {
+                    warn!("Failed to abort write to {p}: {abort_err}");
+                }
+            }
+            return Err(format_object_store_error(err, p));
+        }
         Ok(())
+    }
+
+    /// Like [`Storage::put`], but an existing object of the same size counts as
+    /// already written.
+    ///
+    /// Checked before writing, to skip objects that a rerun already uploaded,
+    /// and after a failed write, because a write can land even when its
+    /// response is lost and the retry then fails (e.g. overwrite not permitted).
+    /// Only use it for paths owned by a single writer, since any object of the
+    /// same size is accepted.
+    pub async fn put_idempotent(&self, location: &Path, bytes: Bytes) -> Result<()> {
+        let p = location.to_str().ok_or(object_store::Error::InvalidPath {
+            source: object_store::path::Error::InvalidPath {
+                path: format!("{location:?}").into(),
+            },
+        })?;
+        let size = bytes.len() as u64;
+        if self.has_object_with_size(p, size).await? {
+            info!("Object {p} already exists with the expected size; skipping write");
+            return Ok(());
+        }
+        match self.put(location, bytes).await {
+            Ok(()) => Ok(()),
+            Err(err) => {
+                if self.has_object_with_size(p, size).await.unwrap_or(false) {
+                    warn!(
+                        "Write to {p} reported an error, but the object exists with the expected size; treating as written: {err}"
+                    );
+                    Ok(())
+                } else {
+                    Err(err)
+                }
+            }
+        }
+    }
+
+    async fn has_object_with_size(&self, p: &str, size: u64) -> Result<bool> {
+        match self.inner.stat(p).await {
+            Ok(meta) => Ok(meta.content_length() == size),
+            Err(err) if err.kind() == opendal::ErrorKind::NotFound => Ok(false),
+            Err(err) => Err(format_object_store_error(err, p)),
+        }
     }
 
     pub async fn create_dir(&self, location: &Path) -> Result<()> {
@@ -314,6 +385,65 @@ mod tests {
         let bytes = Bytes::from_static(b"hello, world! I am nested.");
         object_store.put(path, bytes).await.unwrap();
         object_store
+    }
+
+    fn memory_store() -> Storage {
+        let op = Operator::new(services::Memory::default()).unwrap().finish();
+        Storage::new(Uri::for_test("ram://"), op)
+    }
+
+    async fn read_all(store: &Storage, path: &Path) -> Bytes {
+        store.get(path).await.unwrap().bytes().await.unwrap()
+    }
+
+    #[tokio::test]
+    async fn test_put_larger_than_chunk() {
+        let store = memory_store();
+        let path = Path::new("/data/large.bin");
+        let bytes: Bytes = (0..(2 * WRITE_CHUNK_SIZE + 123))
+            .map(|i| (i % 251) as u8)
+            .collect::<Vec<_>>()
+            .into();
+        store.put(path, bytes.clone()).await.unwrap();
+        assert_eq!(read_all(&store, path).await, bytes);
+    }
+
+    #[tokio::test]
+    async fn test_put_idempotent_writes_missing_object() {
+        let store = memory_store();
+        let path = Path::new("/data/new.txt");
+        store
+            .put_idempotent(path, Bytes::from_static(b"hello"))
+            .await
+            .unwrap();
+        assert_eq!(read_all(&store, path).await, Bytes::from_static(b"hello"));
+    }
+
+    #[tokio::test]
+    async fn test_put_idempotent_skips_object_with_same_size() {
+        let store = memory_store();
+        let path = Path::new("/data/existing.txt");
+        store.put(path, Bytes::from_static(b"first")).await.unwrap();
+        store
+            .put_idempotent(path, Bytes::from_static(b"other"))
+            .await
+            .unwrap();
+        assert_eq!(read_all(&store, path).await, Bytes::from_static(b"first"));
+    }
+
+    #[tokio::test]
+    async fn test_put_idempotent_writes_when_size_differs() {
+        let store = memory_store();
+        let path = Path::new("/data/existing.txt");
+        store.put(path, Bytes::from_static(b"short")).await.unwrap();
+        store
+            .put_idempotent(path, Bytes::from_static(b"much longer"))
+            .await
+            .unwrap();
+        assert_eq!(
+            read_all(&store, path).await,
+            Bytes::from_static(b"much longer")
+        );
     }
 
     #[tokio::test]
