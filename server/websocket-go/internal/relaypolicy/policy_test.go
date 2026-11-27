@@ -4,6 +4,8 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"math"
+	"strconv"
 	"testing"
 
 	"github.com/reearth/ygo/awareness"
@@ -122,4 +124,41 @@ func TestClassifyInject(t *testing.T) {
 			t.Errorf("got %d, want Stop", got)
 		}
 	})
+}
+
+// TestPayloadInvalid_LargeDependentUpdateIsValid: without the room's state an
+// incremental update parks every item that depends on it. A bare document caps
+// parked items at 100,000 and refuses a larger update the room can take, so the
+// check must not judge such an update invalid.
+func TestPayloadInvalid_LargeDependentUpdateIsValid(t *testing.T) {
+	t.Parallel()
+
+	base := crdt.New(crdt.WithClientID(1))
+	root := base.GetMap("m") // GetMap takes the doc lock: never inside Transact
+	base.Transact(func(txn *crdt.Transaction) { root.Set(txn, "inner", crdt.NewMapPrelim()) })
+	baseSV, err := crdt.DecodeStateVectorV1(crdt.EncodeStateVectorV1(base))
+	if err != nil {
+		t.Fatalf("state vector: %v", err)
+	}
+
+	editor := crdt.New(crdt.WithClientID(2), crdt.WithMaxPendingItems(math.MaxInt))
+	if err := crdt.ApplyUpdateV1(editor, crdt.EncodeStateAsUpdateV1(base, nil), nil); err != nil {
+		t.Fatalf("sync editor: %v", err)
+	}
+	v, ok := editor.GetMap("m").Get("inner")
+	inner, isMap := v.(*crdt.YMap)
+	if !ok || !isMap {
+		t.Fatalf("setup: inner map missing: %T", v)
+	}
+	// Every key is its own item, parented by a map only the base document holds.
+	editor.Transact(func(txn *crdt.Transaction) {
+		for i := 0; i < 100_001; i++ {
+			inner.Set(txn, strconv.Itoa(i), i)
+		}
+	})
+	diff := crdt.EncodeStateAsUpdateV1(editor, baseSV)
+
+	if payloadInvalid(syncIn(diff)) {
+		t.Error("a valid update that parks more than 100,000 items was judged invalid")
+	}
 }
