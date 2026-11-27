@@ -123,10 +123,11 @@ The log_subscriber uses the following environment variables
 | `FLOW_LOG_SUBSCRIBER_SUBSCRIPTION_ID` | The Pub/Sub subscription ID to use for the subscription | `flow-log-stream-topic-sub` |
 | `FLOW_LOG_SUBSCRIBER_REDIS_ADDR`      | The Redis address to connect to (in host:port format)   | `localhost:6379`            |
 | `FLOW_LOG_SUBSCRIBER_REDIS_PASSWORD`  | Redis password                                          | `""`                        |
-| `REEARTH_FLOW_SUBSCRIBER_DIAGNOSTIC_SUBSCRIPTION_ID` | The Pub/Sub subscription ID for per-node/job `DiagnosticEvent` ingestion (writes Redis `diagnostics:*` lists and the Mongo `nodeDiagnostics` collection) | `""` (unset — deliberately, unlike the sibling subscription IDs above; see "Diagnostics ingestion (deploy order)" below) |
+| `REEARTH_FLOW_SUBSCRIBER_DIAGNOSTIC_SUBSCRIPTION_ID` | The Pub/Sub subscription ID for per-node/job `DiagnosticEvent` ingestion (writes the live store and the durable store chosen by `REEARTH_FLOW_SUBSCRIBER_DIAGNOSTIC_BACKEND`) | `""` (unset — deliberately, unlike the sibling subscription IDs above; see "Diagnostics ingestion (deploy order)" below) |
 | `REEARTH_FLOW_SUBSCRIBER_LIVE_BACKEND` | Where job logs, user-facing logs, diagnostics and job-complete events are written: `redis` or `postgres` (see "Postgres live backend" below) | `redis` |
+| `REEARTH_FLOW_SUBSCRIBER_DIAGNOSTIC_BACKEND` | Where durable node diagnostics are written: `mongo` (the `nodeDiagnostics` collection) or `postgres` (the `node_diagnostics` table, via `REEARTH_FLOW_SUBSCRIBER_DB_PG`). Use `postgres` when the API runs with `REEARTH_FLOW_DB_DRIVER=postgres` | `mongo` |
 | `REEARTH_FLOW_SUBSCRIBER_REDIS_URL`   | Redis URL; used only when the live backend is `redis`    | `redis://localhost:6379`    |
-| `REEARTH_FLOW_SUBSCRIBER_DB_PG`       | The API's Postgres database (`postgres://…`); required when the live backend is `postgres` | `""` |
+| `REEARTH_FLOW_SUBSCRIBER_DB_PG`       | The API's Postgres database (`postgres://…`); required when the live or diagnostic backend is `postgres` | `""` |
 
 
 ```
@@ -148,7 +149,9 @@ database (`server/db/schema.hcl`), and never connects to Redis:
 | Diagnostics         | `job_diagnostics`      | 24h       | appended (like the Redis lists)  |
 | Job-complete event  | `job_complete_events`  | 24h       | upserted (like the Redis SET)    |
 
-Diagnostics are still also written to Mongo. Every subscriber instance runs a
+Durable diagnostics go to Mongo or to the logged `node_diagnostics` table,
+per `REEARTH_FLOW_SUBSCRIBER_DIAGNOSTIC_BACKEND`; the janitor never touches
+`node_diagnostics`. Every subscriber instance runs a
 janitor that deletes expired rows once a minute, in bounded batches. The API
 must run with `REEARTH_FLOW_LIVE_BACKEND=postgres` against the same database to
 read them back. The tables are created by the API's Atlas migrations, so apply

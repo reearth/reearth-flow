@@ -3,7 +3,6 @@ package infrastructure
 import (
 	"context"
 
-	"github.com/reearth/reearth-flow/subscriber/internal/infrastructure/mongo"
 	"github.com/reearth/reearth-flow/subscriber/internal/infrastructure/redis"
 	"github.com/reearth/reearth-flow/subscriber/internal/usecase/gateway"
 	"github.com/reearth/reearth-flow/subscriber/pkg/diagnostic"
@@ -74,15 +73,21 @@ func (s *userFacingLogStorageImpl) Save(ctx context.Context, event *userfacinglo
 	return s.live.SaveUserFacingLog(ctx, event)
 }
 
-type diagnosticStorageImpl struct {
-	live  LiveStore
-	mongo *mongo.MongoStorage
+// DurableDiagnosticStore keeps the diagnostics the API reads after the live data expires:
+// Mongo by default, or Postgres when REEARTH_FLOW_SUBSCRIBER_DIAGNOSTIC_BACKEND=postgres.
+type DurableDiagnosticStore interface {
+	SaveDurableDiagnostic(ctx context.Context, event *diagnostic.DiagnosticEvent) error
 }
 
-func NewDiagnosticStorageImpl(live LiveStore, m *mongo.MongoStorage) gateway.DiagnosticStorage {
+type diagnosticStorageImpl struct {
+	live    LiveStore
+	durable DurableDiagnosticStore
+}
+
+func NewDiagnosticStorageImpl(live LiveStore, durable DurableDiagnosticStore) gateway.DiagnosticStorage {
 	return &diagnosticStorageImpl{
-		live:  live,
-		mongo: m,
+		live:    live,
+		durable: durable,
 	}
 }
 
@@ -90,6 +95,6 @@ func (s *diagnosticStorageImpl) Save(ctx context.Context, event *diagnostic.Diag
 	return s.live.SaveDiagnostic(ctx, event)
 }
 
-func (s *diagnosticStorageImpl) SaveToMongo(ctx context.Context, event *diagnostic.DiagnosticEvent) error {
-	return s.mongo.SaveDiagnosticToMongo(ctx, event)
+func (s *diagnosticStorageImpl) SaveDurable(ctx context.Context, event *diagnostic.DiagnosticEvent) error {
+	return s.durable.SaveDurableDiagnostic(ctx, event)
 }

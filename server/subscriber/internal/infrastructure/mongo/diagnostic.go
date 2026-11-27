@@ -25,7 +25,7 @@ func (m *MongoStorage) Init(ctx context.Context) error {
 	return err
 }
 
-func (m *MongoStorage) SaveDiagnosticToMongo(ctx context.Context, event *diagnostic.DiagnosticEvent) error {
+func (m *MongoStorage) SaveDurableDiagnostic(ctx context.Context, event *diagnostic.DiagnosticEvent) error {
 	if event == nil {
 		log.Printf("ERROR: Attempted to save nil diagnostic event to MongoDB")
 		return fmt.Errorf("diagnostic event is nil")

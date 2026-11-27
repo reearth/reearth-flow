@@ -8,5 +8,5 @@ import (
 
 type DiagnosticStorage interface {
 	Save(ctx context.Context, event *diagnostic.DiagnosticEvent) error
-	SaveToMongo(ctx context.Context, event *diagnostic.DiagnosticEvent) error
+	SaveDurable(ctx context.Context, event *diagnostic.DiagnosticEvent) error
 }

@@ -862,6 +862,108 @@ table "auth_requests" {
   }
 }
 
+// Durable node diagnostics: streamed rows from the subscriber plus terminal rows from the job-complete merge.
+table "node_diagnostics" {
+  schema = schema.public
+
+  column "id" {
+    type    = text
+    comment = "deterministic, so Pub/Sub redeliveries and repeated terminal merges upsert"
+  }
+  column "job_id" {
+    type = text
+  }
+  column "workflow_id" {
+    type = text
+  }
+  column "node_id" {
+    type    = text
+    null    = true
+    comment = "NULL for job-level diagnostics"
+  }
+  column "ts" {
+    type = timestamptz
+  }
+  column "schema" {
+    type    = text
+    comment = "job-complete.v1 marks a terminal row"
+  }
+  column "code" {
+    type = text
+  }
+  column "category" {
+    type = text
+  }
+  column "severity" {
+    type = text
+  }
+  column "message" {
+    type    = bytea
+    comment = "bytea so a U+0000 from feature data round-trips"
+  }
+  column "effective_disposition" {
+    type = text
+    null = true
+  }
+  column "action_type" {
+    type = text
+    null = true
+  }
+  column "feature_id" {
+    type = text
+    null = true
+  }
+  column "help" {
+    type = text
+    null = true
+  }
+  column "source_span_offset" {
+    type = bigint
+    null = true
+  }
+  column "source_span_length" {
+    type = bigint
+    null = true
+  }
+  column "aggregated_count" {
+    type = bigint
+    null = true
+  }
+  column "aggregated_sample_feature_ids" {
+    type = sql("text[]")
+    null = true
+  }
+
+  primary_key {
+    columns = [column.id]
+  }
+
+  index "node_diagnostics_job_id_node_id_ts_idx" {
+    columns = [column.job_id, column.node_id, column.ts]
+  }
+  index "node_diagnostics_job_id_ts_idx" {
+    columns = [column.job_id, column.ts]
+  }
+}
+
+table "job_diagnostic_summaries" {
+  schema = schema.public
+
+  column "job_id" {
+    type = text
+  }
+  column "ts" {
+    type = timestamptz
+  }
+  column "dropped_event_count" {
+    type = bigint
+  }
+
+  primary_key {
+    columns = [column.job_id]
+  }
+}
+
 // Transient job live data for REEARTH_FLOW_LIVE_BACKEND=postgres, standing in for Redis.
 // UNLOGGED: expires within 24h via the subscriber's janitor and is never system-of-record.
 

@@ -20,7 +20,7 @@ func TestReadConfig_DiagnosticSubscriptionIDDefaultsEmpty(t *testing.T) {
 		require.NoError(t, os.Unsetenv(key))
 	}
 	// Keep the live-backend default independent of the developer's env and .env.
-	for _, key := range []string{"REEARTH_FLOW_SUBSCRIBER_LIVE_BACKEND", "REEARTH_FLOW_SUBSCRIBER_DB_PG"} {
+	for _, key := range []string{"REEARTH_FLOW_SUBSCRIBER_LIVE_BACKEND", "REEARTH_FLOW_SUBSCRIBER_DIAGNOSTIC_BACKEND", "REEARTH_FLOW_SUBSCRIBER_DB_PG"} {
 		t.Setenv(key, "")
 		require.NoError(t, os.Unsetenv(key))
 	}
@@ -38,6 +38,7 @@ func TestReadConfig_DiagnosticSubscriptionIDDefaultsEmpty(t *testing.T) {
 	assert.Equal(t, "flow-job-complete-main", conf.JobCompleteSubscriptionID)
 	assert.Equal(t, "flow-user-facing-log-main", conf.UserFacingLogSubscriptionID)
 	assert.Equal(t, LiveBackendRedis, conf.LiveBackend, "Redis must stay the default live backend")
+	assert.Equal(t, DiagnosticBackendMongo, conf.DiagnosticBackend, "Mongo must stay the default diagnostic backend")
 }
 
 func TestConfig_Validate_LiveBackend(t *testing.T) {
@@ -63,5 +64,31 @@ func TestConfig_Validate_LiveBackend(t *testing.T) {
 	t.Run("unknown backend", func(t *testing.T) {
 		t.Parallel()
 		assert.Error(t, (&Config{LiveBackend: "memcached"}).validate())
+	})
+}
+
+func TestConfig_Validate_DiagnosticBackend(t *testing.T) {
+	t.Parallel()
+
+	t.Run("mongo needs no Postgres", func(t *testing.T) {
+		t.Parallel()
+		assert.NoError(t, (&Config{LiveBackend: LiveBackendRedis, DiagnosticBackend: DiagnosticBackendMongo}).validate())
+	})
+
+	t.Run("postgres requires DB_PG", func(t *testing.T) {
+		t.Parallel()
+		err := (&Config{LiveBackend: LiveBackendRedis, DiagnosticBackend: DiagnosticBackendPostgres}).validate()
+		require.Error(t, err)
+		assert.Contains(t, err.Error(), "REEARTH_FLOW_SUBSCRIBER_DIAGNOSTIC_BACKEND")
+	})
+
+	t.Run("postgres with DB_PG", func(t *testing.T) {
+		t.Parallel()
+		assert.NoError(t, (&Config{LiveBackend: LiveBackendRedis, DiagnosticBackend: DiagnosticBackendPostgres, DBPG: "postgres://localhost/db"}).validate())
+	})
+
+	t.Run("unknown backend", func(t *testing.T) {
+		t.Parallel()
+		assert.Error(t, (&Config{LiveBackend: LiveBackendRedis, DiagnosticBackend: "redis"}).validate())
 	})
 }

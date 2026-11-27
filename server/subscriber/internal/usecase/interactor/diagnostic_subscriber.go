@@ -40,9 +40,9 @@ func (u *diagnosticSubscriberUseCase) ProcessDiagnosticEvent(ctx context.Context
 		return fmt.Errorf("failed to write diagnostic event to live store: %w", err)
 	}
 
-	// A Mongo failure is logged and swallowed; the message is still Acked.
-	if err := u.storage.SaveToMongo(ctx, event); err != nil {
-		log.Printf("WARNING: Failed to save diagnostic event to MongoDB for JobID=%s, NodeID=%v: %v",
+	// A durable-store failure is logged and swallowed; the message is still Acked.
+	if err := u.storage.SaveDurable(ctx, event); err != nil {
+		log.Printf("WARNING: Failed to save diagnostic event to the durable store for JobID=%s, NodeID=%v: %v",
 			event.JobID, event.NodeID, err)
 	}
 

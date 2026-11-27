@@ -20,11 +20,13 @@ func init() {
 type Config struct {
 	AssetBaseURL string `envconfig:"ASSET_BASE_URL" default:"http://localhost:8080/assets"`
 	DB           string `default:"mongodb://localhost"`
-	// DBPG is the API's Postgres database, required when LiveBackend is postgres.
+	// DBPG is the API's Postgres database, required when LiveBackend or DiagnosticBackend is postgres.
 	DBPG string `envconfig:"DB_PG" pp:",omitempty"`
 	Dev  bool   `pp:",omitempty"`
 	// No default: a defaulted value would crash-loop the whole subscriber.
-	DiagnosticSubscriptionID  string `envconfig:"DIAGNOSTIC_SUBSCRIPTION_ID" default:""`
+	DiagnosticSubscriptionID string `envconfig:"DIAGNOSTIC_SUBSCRIPTION_ID" default:""`
+	// DiagnosticBackend selects where durable node diagnostics are written: "mongo" (DB) or "postgres" (DBPG).
+	DiagnosticBackend         string `envconfig:"DIAGNOSTIC_BACKEND" default:"mongo"`
 	GCPProject                string `envconfig:"GOOGLE_CLOUD_PROJECT" pp:",omitempty"`
 	GCSBucket                 string `envconfig:"GCS_BUCKET" pp:",omitempty"`
 	JobCompleteSubscriptionID string `envconfig:"JOB_COMPLETE_SUBSCRIPTION_ID" default:"flow-job-complete-main"`
@@ -64,6 +66,12 @@ func ReadConfig(debug bool) (*Config, error) {
 	return &c, c.validate()
 }
 
+// Durable diagnostic backends.
+const (
+	DiagnosticBackendMongo    = "mongo"
+	DiagnosticBackendPostgres = "postgres"
+)
+
 // Live backends.
 const (
 	LiveBackendRedis    = "redis"
@@ -79,6 +87,15 @@ func (c *Config) validate() error {
 		}
 	default:
 		return fmt.Errorf("%s_LIVE_BACKEND=%q is not one of %s/%s", configPrefix, c.LiveBackend, LiveBackendRedis, LiveBackendPostgres)
+	}
+	switch c.DiagnosticBackend {
+	case "", DiagnosticBackendMongo:
+	case DiagnosticBackendPostgres:
+		if strings.TrimSpace(c.DBPG) == "" {
+			return fmt.Errorf("%s_DIAGNOSTIC_BACKEND=%s requires %s_DB_PG", configPrefix, DiagnosticBackendPostgres, configPrefix)
+		}
+	default:
+		return fmt.Errorf("%s_DIAGNOSTIC_BACKEND=%q is not one of %s/%s", configPrefix, c.DiagnosticBackend, DiagnosticBackendMongo, DiagnosticBackendPostgres)
 	}
 	return nil
 }
