@@ -111,6 +111,13 @@ type Relay struct {
 	ctx    context.Context // delivery lifetime, set in Start
 	rooms  map[string]*roomState
 	closed bool
+
+	// fences are the room loads this instance has fenced; see loadfence.go.
+	// loadSeq numbers loads across rooms. Both under mu.
+	fences  map[string]*loadFence
+	loadSeq uint64
+	// now is the relay's clock for load fences; tests replace it.
+	now func() time.Time
 }
 
 type roomState struct {
@@ -188,6 +195,8 @@ func New(opts Options) (*Relay, error) {
 		flusher:  fl,
 		latency:  latency.New(log, "redis"),
 		rooms:    make(map[string]*roomState),
+		fences:   make(map[string]*loadFence),
+		now:      time.Now,
 	}, nil
 }
 
