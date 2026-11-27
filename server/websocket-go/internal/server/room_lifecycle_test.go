@@ -19,6 +19,7 @@ import (
 	gws "github.com/gorilla/websocket"
 	goredis "github.com/redis/go-redis/v9"
 	"github.com/reearth/ygo/awareness"
+	"github.com/reearth/ygo/cluster"
 	ygws "github.com/reearth/ygo/provider/websocket"
 
 	"github.com/reearth/reearth-flow/websocket-go/internal/auth"
@@ -88,6 +89,12 @@ func (f lcFlusher) FlushLastInstance(ctx context.Context, room string) error {
 }
 
 func (e *lcEnv) instance(name string, cfg *config.Config) *lcInstance {
+	return e.instanceWith(name, cfg, nil)
+}
+
+// instanceWith is instance with the Redis relay passed through wrap, when set,
+// before it is attached.
+func (e *lcEnv) instanceWith(name string, cfg *config.Config, wrap func(*redisrelay.Relay) cluster.Relay) *lcInstance {
 	t := e.t
 	rc := goredis.NewClient(&goredis.Options{Addr: e.mr.Addr()})
 	t.Cleanup(func() { _ = rc.Close() })
@@ -130,7 +137,11 @@ func (e *lcEnv) instance(name string, cfg *config.Config) *lcInstance {
 		t.Fatal(err)
 	}
 	t.Cleanup(func() { _ = relay.Close() })
-	if err := s.AttachRedisRelay(e.ctx, relay); err != nil {
+	var attached cluster.Relay = relay
+	if wrap != nil {
+		attached = wrap(relay)
+	}
+	if err := s.AttachRedisRelay(e.ctx, attached); err != nil {
 		t.Fatal(err)
 	}
 	s.SetPresence(relay.ActiveInstances)

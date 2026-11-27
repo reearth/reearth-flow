@@ -34,8 +34,9 @@ func keepUpdatesOf(cfg *config.Config) int {
 // I/O-backed stores abort in-flight writes on shutdown.
 func NewWithPersistence(ctx context.Context, cfg *config.Config, p persistence.VersionedPersistence) *Server {
 	s := &Server{
-		cfg: cfg,
-		log: slog.Default(),
+		cfg:   cfg,
+		log:   slog.Default(),
+		heals: newHealer(),
 	}
 	// Room loads go through the fence the relay installs; see SetLoadFence.
 	s.ws = ygws.NewServerWithPersistence(legacyAdapter(ctx, cfg, s.fencedStore(p)))
