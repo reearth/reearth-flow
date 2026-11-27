@@ -33,12 +33,15 @@ type Job struct {
 	batch               gateway.Batch
 	cloudRunWorker      gateway.CloudRunWorker
 	redis               gateway.LiveStore
+	usage               gateway.UsageCounter
 	notifier            notification.Notifier
 	permissionChecker   gateway.PermissionChecker
 	monitor             *monitor.Monitor
 	subscriptions       *subscription.JobManager
 	activeWatchers      map[string]bool
 	jobLocks            map[string]*sync.Mutex
+	now                 func() time.Time
+	sleep               func(context.Context, time.Duration) error
 	jobLocksMu          sync.RWMutex
 	watchersMu          sync.Mutex
 }
@@ -64,6 +67,7 @@ func NewJob(
 		batch:               gr.Batch,
 		cloudRunWorker:      gr.CloudRunWorker,
 		redis:               gr.LiveStore,
+		usage:               gr.UsageCounter,
 		monitor:             monitor.NewMonitor(),
 		subscriptions:       subscription.NewJobManager(),
 		notifier:            notification.NewHTTPNotifier(),
@@ -129,8 +133,7 @@ func (i *Job) Cancel(ctx context.Context, jobID id.JobID) (*job.Job, error) {
 	}
 
 	if err := i.transaction.WithinTransaction(ctx, func(ctx context.Context) error {
-		// Cloud-Run debug jobs have an empty GCPJobID; batch-fallback jobs do not.
-		if j.Debug() != nil && *j.Debug() && j.GCPJobID() == "" && i.cloudRunWorker != nil {
+		if isCloudRunDebug(j) && i.cloudRunWorker != nil {
 			if err := i.cloudRunWorker.CancelJob(ctx, j.ID()); err != nil {
 				return err
 			}
@@ -165,6 +168,9 @@ const cloudRunInfraFailureGrace = 30 * time.Second
 // job. Only an infra failure (no result will ever arrive) is finalized here.
 // notStarted, when set, is called once the worker is known not to have started
 // the run, so a caller can give back what the run was counted as.
+//
+// While every worker instance is busy the job waits for one, up to
+// runDispatchPolicy.MaxWait.
 func (i *Job) RunCloudRunWorker(j *job.Job, p gateway.RunJobParam, notStarted func()) {
 	go func() {
 		ctx := context.Background()
@@ -174,33 +180,50 @@ func (i *Job) RunCloudRunWorker(j *job.Job, p gateway.RunJobParam, notStarted fu
 			}
 		}()
 
-		i.markCloudRunJobRunning(ctx, j.ID())
-
-		runCtx := ctx
-		if p.MaxRunDuration > 0 {
-			var cancel context.CancelFunc
-			runCtx, cancel = context.WithTimeout(ctx, p.MaxRunDuration)
-			defer cancel()
+		status, err := i.dispatchWhenFree(ctx, j.ID(), runDispatchPolicy, func(ctx context.Context) (gateway.JobStatus, error) {
+			return i.runCloudRunAttempt(ctx, p)
+		})
+		if errors.Is(err, errFinishedWhileWaiting) {
+			if notStarted != nil {
+				notStarted()
+			}
+			return
 		}
-		status, err := i.cloudRunWorker.RunJob(runCtx, p)
 		if err != nil {
 			log.Errorfc(ctx, "job: cloud run worker %s run error: %v", j.ID(), err)
 			if notStarted != nil && errors.Is(err, gateway.ErrRunNotStarted) {
 				notStarted()
 			}
 		}
-		// Dropping the request does not stop the worker: the cancel flag does.
-		if errors.Is(runCtx.Err(), context.DeadlineExceeded) {
-			log.Infofc(ctx, "job: cloud run worker %s ran past its %s limit, cancelling it", j.ID(), p.MaxRunDuration)
-			if cerr := i.cloudRunWorker.CancelJob(ctx, j.ID()); cerr != nil {
-				log.Errorfc(ctx, "job: could not cancel cloud run worker %s after its limit: %v", j.ID(), cerr)
-			}
+		if errors.Is(err, errPoolStayedFull) {
+			i.failCloudRunJobNow(ctx, j.ID())
+			return
 		}
-
 		if err != nil || status == gateway.JobStatusFailed {
 			i.failCloudRunJob(ctx, j.ID())
 		}
 	}()
+}
+
+func (i *Job) runCloudRunAttempt(ctx context.Context, p gateway.RunJobParam) (gateway.JobStatus, error) {
+	runCtx := ctx
+	if p.MaxRunDuration > 0 {
+		var cancel context.CancelFunc
+		runCtx, cancel = context.WithTimeout(ctx, p.MaxRunDuration)
+		defer cancel()
+	}
+	status, err := i.cloudRunWorker.RunJob(runCtx, p)
+	if errors.Is(runCtx.Err(), context.DeadlineExceeded) {
+		i.cancelOverrunWorker(ctx, p)
+	}
+	return status, err
+}
+
+func (i *Job) cancelOverrunWorker(ctx context.Context, p gateway.RunJobParam) {
+	log.Infofc(ctx, "job: cloud run worker %s ran past its %s limit, cancelling it", p.JobID, p.MaxRunDuration)
+	if err := i.cloudRunWorker.CancelJob(ctx, p.JobID); err != nil {
+		log.Errorfc(ctx, "job: could not cancel cloud run worker %s after its limit: %v", p.JobID, err)
+	}
 }
 
 // PreviewSchemaCloudRunWorker executes a preview-schema probe on the Cloud Run
@@ -216,42 +239,23 @@ func (i *Job) PreviewSchemaCloudRunWorker(j *job.Job, p gateway.ProbeSchemaParam
 			}
 		}()
 
-		i.markCloudRunJobRunning(ctx, j.ID())
-
-		status, err := i.cloudRunWorker.PreviewSchema(ctx, p)
+		status, err := i.dispatchWhenFree(ctx, j.ID(), probeDispatchPolicy, func(ctx context.Context) (gateway.JobStatus, error) {
+			return i.cloudRunWorker.PreviewSchema(ctx, p)
+		})
+		if errors.Is(err, errFinishedWhileWaiting) {
+			return
+		}
 		if err != nil {
 			log.Errorfc(ctx, "job: preview-schema cloud run worker %s run error: %v", j.ID(), err)
 		}
-
+		if errors.Is(err, errPoolStayedFull) {
+			i.failCloudRunJobNow(ctx, j.ID())
+			return
+		}
 		if err != nil || status == gateway.JobStatusFailed {
 			i.failCloudRunJob(ctx, j.ID())
 		}
 	}()
-}
-
-// markCloudRunJobRunning flips a dispatched job to RUNNING: Cloud Run jobs are
-// never polled (no GCPJobID) and the worker only ever publishes a terminal
-// event, so without this they sit in PENDING for their entire run.
-func (i *Job) markCloudRunJobRunning(ctx context.Context, jobID id.JobID) {
-	lock := i.getJobLock(jobID.String())
-	lock.Lock()
-	defer lock.Unlock()
-
-	j, err := i.jobRepo.FindByID(ctx, jobID)
-	if err != nil {
-		log.Errorfc(ctx, "job: failed to reload cloud run job %s: %v", jobID, err)
-		return
-	}
-	if j.Status() != job.StatusPending {
-		return
-	}
-
-	j.SetStatus(job.StatusRunning)
-	if err := i.jobRepo.Save(ctx, j); err != nil {
-		log.Errorfc(ctx, "job: failed to save cloud run job %s: %v", jobID, err)
-		return
-	}
-	i.subscriptions.Notify(jobID.String(), job.StatusRunning)
 }
 
 // failCloudRunJob marks a debug job failed when the worker call fails. A
@@ -264,7 +268,10 @@ func (i *Job) failCloudRunJob(ctx context.Context, jobID id.JobID) {
 		return
 	case <-time.After(cloudRunInfraFailureGrace):
 	}
+	i.failCloudRunJobNow(ctx, jobID)
+}
 
+func (i *Job) failCloudRunJobNow(ctx context.Context, jobID id.JobID) {
 	lock := i.getJobLock(jobID.String())
 	lock.Lock()
 	defer lock.Unlock()
@@ -274,7 +281,7 @@ func (i *Job) failCloudRunJob(ctx context.Context, jobID id.JobID) {
 		log.Errorfc(ctx, "job: failed to reload cloud run job %s: %v", jobID, err)
 		return
 	}
-	if s := latest.Status(); s == job.StatusCancelled || s == job.StatusCompleted || s == job.StatusFailed {
+	if isTerminal(latest.Status()) {
 		return
 	}
 	if ev, _ := i.redis.GetJobCompleteEvent(ctx, jobID); ev != nil {
@@ -351,8 +358,13 @@ func (i *Job) GetStatus(ctx context.Context, jobID id.JobID) (job.Status, error)
 }
 
 // Refresh checks only Batch jobs that this server is not monitoring already.
-// A Cloud Run job has no Batch job to ask, so it is returned as it is.
+// A Cloud Run job has no Batch job to ask, so it is returned as it is, unless
+// it is queued with nothing dispatching it and no result in the live store:
+// then it turns running if its worker has logged, and fails if not.
 func (i *Job) Refresh(ctx context.Context, j *job.Job) (*job.Job, error) {
+	if i.mayBeAbandoned(j) && i.refreshQueuedDispatch(ctx, j.ID()) {
+		return i.jobRepo.FindByID(ctx, j.ID())
+	}
 	if i.batch == nil || i.redis == nil || j.GCPJobID() == "" {
 		return j, nil
 	}
@@ -366,6 +378,24 @@ func (i *Job) Refresh(ctx context.Context, j *job.Job) (*job.Job, error) {
 		return nil, err
 	}
 	return i.jobRepo.FindByID(ctx, j.ID())
+}
+
+func (i *Job) refreshQueuedDispatch(ctx context.Context, jobID id.JobID) bool {
+	lock := i.getJobLock(jobID.String())
+	lock.Lock()
+	defer lock.Unlock()
+
+	if ev, err := i.redis.GetJobCompleteEvent(ctx, jobID); ev != nil || err != nil {
+		return false
+	}
+	current, err := i.jobRepo.FindByID(ctx, jobID)
+	if err != nil || current == nil {
+		return false
+	}
+	if logged, err := i.startRunningOnFirstLog(ctx, current); logged || err != nil {
+		return logged
+	}
+	return i.failAbandonedDispatch(ctx, current)
 }
 
 func (i *Job) StartMonitoring(ctx context.Context, j *job.Job, notificationURL *string) error {
@@ -499,6 +529,16 @@ func (i *Job) checkJobStatus(ctx context.Context, j *job.Job) error {
 		if workerStatus != "" {
 			currentJob.SetWorkerStatus(workerStatus)
 			log.Infof("Updated worker status for job %s to %s", currentJob.ID(), workerStatus)
+		}
+	}
+
+	if workerEvent == nil && !batchStatusChanged {
+		logged, err := i.startRunningOnFirstLog(ctx, currentJob)
+		if err != nil {
+			return err
+		}
+		if logged || i.failAbandonedDispatch(ctx, currentJob) {
+			return nil
 		}
 	}
 
