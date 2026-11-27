@@ -51,7 +51,7 @@ func (i *Websocket) authorizeWorkflowChange(ctx context.Context, projectID strin
 	return nil
 }
 
-func (i *Websocket) authorizeProject(ctx context.Context, projectID string, action string) (*project.Project, error) {
+func (i *Websocket) findProject(ctx context.Context, projectID string) (*project.Project, error) {
 	pid, err := id.ProjectIDFrom(projectID)
 	if err != nil {
 		return nil, rerror.ErrNotFound
@@ -63,6 +63,14 @@ func (i *Websocket) authorizeProject(ctx context.Context, projectID string, acti
 	if proj == nil {
 		return nil, rerror.ErrNotFound
 	}
+	return proj, nil
+}
+
+func (i *Websocket) authorizeProject(ctx context.Context, projectID string, action string) (*project.Project, error) {
+	proj, err := i.findProject(ctx, projectID)
+	if err != nil {
+		return nil, err
+	}
 	if err := checkPermission(ctx, i.permissionChecker, rbac.ResourceProject, action, proj.Workspace()); err != nil {
 		return nil, err
 	}
@@ -70,8 +78,14 @@ func (i *Websocket) authorizeProject(ctx context.Context, projectID string, acti
 }
 
 func (i *Websocket) GetLatest(ctx context.Context, docID string) (*ws.Document, error) {
-	if err := i.authorize(ctx, docID, rbac.ActionRead); err != nil {
+	proj, err := i.findProject(ctx, docID)
+	if err != nil {
 		return nil, err
+	}
+	if proj.Visibility() != project.VisibilityPublic {
+		if err := checkPermission(ctx, i.permissionChecker, rbac.ResourceProject, rbac.ActionRead, proj.Workspace()); err != nil {
+			return nil, err
+		}
 	}
 	return i.client.GetLatest(ctx, docID)
 }

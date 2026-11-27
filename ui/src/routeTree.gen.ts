@@ -25,6 +25,7 @@ import { Route as WorkspacesWorkspaceIdJobsJobIdRouteImport } from './routes/wor
 import { Route as WorkspacesWorkspaceIdSettingsTabRouteImport } from './routes/workspaces.$workspaceId.settings.$tab'
 import { Route as WorkspacesWorkspaceIdTriggersTriggerIdRouteImport } from './routes/workspaces.$workspaceId.triggers_.$triggerId'
 
+const EmbedProjectIdLazyRouteImport = createFileRoute('/embed/$projectId')()
 const SharedSharedTokenLazyRouteImport = createFileRoute(
   '/shared/$sharedToken',
 )()
@@ -47,6 +48,13 @@ const WorkspacesRoute = WorkspacesRouteImport.update({
   path: '/workspaces',
   getParentRoute: () => rootRouteImport,
 } as any)
+const EmbedProjectIdLazyRoute = EmbedProjectIdLazyRouteImport.update({
+  id: '/embed/$projectId',
+  path: '/embed/$projectId',
+  getParentRoute: () => rootRouteImport,
+} as any).lazy(() =>
+  import('./routes/embed.$projectId.lazy').then((d) => d.Route),
+)
 const SharedSharedTokenLazyRoute = SharedSharedTokenLazyRouteImport.update({
   id: '/shared/$sharedToken',
   path: '/shared/$sharedToken',
@@ -129,6 +137,7 @@ export interface FileRoutesByFullPath {
   '/dev': typeof DevRoute
   '/workspaces': typeof WorkspacesRouteWithChildren
   '/workspaces/$workspaceId': typeof WorkspacesWorkspaceIdRouteWithChildren
+  '/embed/$projectId': typeof EmbedProjectIdLazyRoute
   '/shared/$sharedToken': typeof SharedSharedTokenLazyRoute
   '/workspaces/$workspaceId/assets': typeof WorkspacesWorkspaceIdAssetsRoute
   '/workspaces/$workspaceId/deployments': typeof WorkspacesWorkspaceIdDeploymentsRoute
@@ -146,6 +155,7 @@ export interface FileRoutesByTo {
   '/dev': typeof DevRoute
   '/workspaces': typeof WorkspacesRouteWithChildren
   '/workspaces/$workspaceId': typeof WorkspacesWorkspaceIdRouteWithChildren
+  '/embed/$projectId': typeof EmbedProjectIdLazyRoute
   '/shared/$sharedToken': typeof SharedSharedTokenLazyRoute
   '/workspaces/$workspaceId/assets': typeof WorkspacesWorkspaceIdAssetsRoute
   '/workspaces/$workspaceId/deployments': typeof WorkspacesWorkspaceIdDeploymentsRoute
@@ -164,6 +174,7 @@ export interface FileRoutesById {
   '/dev': typeof DevRoute
   '/workspaces': typeof WorkspacesRouteWithChildren
   '/workspaces/$workspaceId': typeof WorkspacesWorkspaceIdRouteWithChildren
+  '/embed/$projectId': typeof EmbedProjectIdLazyRoute
   '/shared/$sharedToken': typeof SharedSharedTokenLazyRoute
   '/workspaces/$workspaceId/assets': typeof WorkspacesWorkspaceIdAssetsRoute
   '/workspaces/$workspaceId/deployments': typeof WorkspacesWorkspaceIdDeploymentsRoute
@@ -183,6 +194,7 @@ export interface FileRouteTypes {
     | '/dev'
     | '/workspaces'
     | '/workspaces/$workspaceId'
+    | '/embed/$projectId'
     | '/shared/$sharedToken'
     | '/workspaces/$workspaceId/assets'
     | '/workspaces/$workspaceId/deployments'
@@ -200,6 +212,7 @@ export interface FileRouteTypes {
     | '/dev'
     | '/workspaces'
     | '/workspaces/$workspaceId'
+    | '/embed/$projectId'
     | '/shared/$sharedToken'
     | '/workspaces/$workspaceId/assets'
     | '/workspaces/$workspaceId/deployments'
@@ -217,6 +230,7 @@ export interface FileRouteTypes {
     | '/dev'
     | '/workspaces'
     | '/workspaces/$workspaceId'
+    | '/embed/$projectId'
     | '/shared/$sharedToken'
     | '/workspaces/$workspaceId/assets'
     | '/workspaces/$workspaceId/deployments'
@@ -234,6 +248,7 @@ export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
   DevRoute: typeof DevRoute
   WorkspacesRoute: typeof WorkspacesRouteWithChildren
+  EmbedProjectIdLazyRoute: typeof EmbedProjectIdLazyRoute
   SharedSharedTokenLazyRoute: typeof SharedSharedTokenLazyRoute
 }
 
@@ -258,6 +273,13 @@ declare module '@tanstack/react-router' {
       path: '/workspaces'
       fullPath: '/workspaces'
       preLoaderRoute: typeof WorkspacesRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/embed/$projectId': {
+      id: '/embed/$projectId'
+      path: '/embed/$projectId'
+      fullPath: '/embed/$projectId'
+      preLoaderRoute: typeof EmbedProjectIdLazyRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/shared/$sharedToken': {
@@ -397,6 +419,7 @@ const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
   DevRoute: DevRoute,
   WorkspacesRoute: WorkspacesRouteWithChildren,
+  EmbedProjectIdLazyRoute: EmbedProjectIdLazyRoute,
   SharedSharedTokenLazyRoute: SharedSharedTokenLazyRoute,
 }
 export const routeTree = rootRouteImport

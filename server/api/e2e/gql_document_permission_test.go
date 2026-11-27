@@ -155,3 +155,29 @@ func TestDocumentOperations_UnknownProjectIsDenied(t *testing.T) {
 		})
 	}
 }
+
+func TestDocumentOperations_PublicProjectLatestSnapshotSkipsPermission(t *testing.T) {
+	e, projectRepo := startDocumentPermissionServer(t, false)
+
+	prj := project.New().NewID().Workspace(project.NewWorkspaceID()).Visibility(project.VisibilityPublic).MustBuild()
+	require.NoError(t, projectRepo.Save(context.Background(), prj))
+	p := prj.ID().String()
+
+	res := e.POST("/api/graphql").
+		WithHeader("Origin", "https://example.com").
+		WithHeader("Content-Type", "application/json").
+		WithJSON(map[string]any{
+			"query":     `query($projectId: ID!) { latestProjectSnapshot(projectId: $projectId) { version } }`,
+			"variables": map[string]any{"projectId": p},
+		}).
+		Expect().
+		Status(http.StatusOK).
+		JSON().Object()
+
+	res.ContainsKey("errors")
+	res.Value("errors").Array().Value(0).Object().Value("message").String().NotContains("operation denied")
+
+	assertDenied(t, e, "projectHistory",
+		`query($projectId: ID!) { projectHistory(projectId: $projectId) { version } }`,
+		map[string]any{"projectId": p})
+}

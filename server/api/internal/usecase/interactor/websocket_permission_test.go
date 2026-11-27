@@ -404,3 +404,18 @@ func TestWebsocket_LockIsNotRevealedWithoutPermission(t *testing.T) {
 	assert.ErrorIs(t, err, interfaces.ErrOperationDenied)
 	assert.NotErrorIs(t, err, interfaces.ErrProjectLocked)
 }
+
+func TestWebsocket_PublicProjectLatestIsReadableWithoutPermission(t *testing.T) {
+	ctx := context.Background()
+	projectRepo := memory.NewProject()
+	prj := project.New().NewID().Workspace(project.NewWorkspaceID()).Visibility(project.VisibilityPublic).MustBuild()
+	require.NoError(t, projectRepo.Save(ctx, prj))
+	client := &countingWSClient{}
+	i := NewWebsocket(client, projectRepo, &recordingChecker{allow: false})
+
+	require.NoError(t, getLatest(ctx, i, prj.ID().String()))
+	assert.Equal(t, 1, client.calls)
+
+	assert.ErrorIs(t, getHistory(ctx, i, prj.ID().String()), interfaces.ErrOperationDenied)
+	assert.Equal(t, 1, client.calls)
+}
