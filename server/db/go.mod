@@ -4,7 +4,7 @@ go 1.26.2
 
 require (
 	github.com/jackc/pgx/v5 v5.7.2
-	github.com/reearth/reearthx v0.0.0-20260618134917-663d9623c331
+	github.com/reearth/reearthx v0.0.0-20261126113950-961ea2e2b719
 	github.com/stretchr/testify v1.11.1
 )
 

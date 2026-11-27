@@ -17,7 +17,7 @@ use uuid::Uuid;
 use crate::{
     artifact::{upload_artifact, write_diagnostics_artifact},
     asset::download_asset,
-    event_handler::{EventHandler, NodeFailureHandler},
+    event_handler::{EventHandler, JobStartLogged, NodeFailureHandler, publish_job_started},
     factory::ALL_ACTION_FACTORIES,
     incremental::{DirCopySpec, prepare_incremental_artifacts, prepare_incremental_feature_store},
 };
@@ -218,6 +218,11 @@ impl RunWorkerCommand {
         set_pubsub_context(pubsub.clone(), workflow_id, meta.job_id, handle)
             .map_err(Error::init)?;
 
+        let start_logged = match &pubsub {
+            PubSubBackend::Google(p) => publish_job_started(p, workflow_id, meta.job_id).await,
+            PubSubBackend::Noop(p) => publish_job_started(p, workflow_id, meta.job_id).await,
+        };
+
         if let Some(name) = workflow_name
             && let Some(handler) = USER_FACING_LOG_HANDLER.get()
         {
@@ -239,7 +244,7 @@ impl RunWorkerCommand {
         };
 
         let (feature_state, logger_factory, incremental_run_config, artifact_uri) = self
-            .prepare_workflow(&storage_resolver, &meta, &mut workflow)
+            .prepare_workflow(&storage_resolver, &meta, &mut workflow, start_logged)
             .await?;
 
         let handler: Arc<dyn reearth_flow_runtime::event::EventHandler> = match pubsub.clone() {
@@ -412,6 +417,7 @@ impl RunWorkerCommand {
         storage_resolver: &Arc<StorageResolver>,
         meta: &Metadata,
         workflow: &mut Workflow,
+        _start_logged: JobStartLogged,
     ) -> errors::Result<(
         Arc<State>,
         Arc<LoggerFactory>,

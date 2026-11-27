@@ -384,11 +384,24 @@ func versionServer(t *testing.T, status int, body string) (*httptest.Server, *at
 	return srv, &calls
 }
 
-// fakeClock is a settable now, so cache windows can be crossed without waiting.
-type fakeClock struct{ t time.Time }
+// fakeClock is a settable now, so cache windows and waits can be crossed
+// without waiting.
+type fakeClock struct {
+	t  time.Time
+	mu sync.Mutex
+}
 
-func (c *fakeClock) now() time.Time          { return c.t }
-func (c *fakeClock) advance(d time.Duration) { c.t = c.t.Add(d) }
+func (c *fakeClock) now() time.Time {
+	c.mu.Lock()
+	defer c.mu.Unlock()
+	return c.t
+}
+
+func (c *fakeClock) advance(d time.Duration) {
+	c.mu.Lock()
+	defer c.mu.Unlock()
+	c.t = c.t.Add(d)
+}
 
 func TestEngineVersion_ReadsTheServicesVersion(t *testing.T) {
 	srv, _ := versionServer(t, http.StatusOK, `{"engineVersion":"0.0.583"}`)
@@ -567,4 +580,191 @@ func TestRunJob_TellsARunNotStarted(t *testing.T) {
 
 		assert.ErrorIs(t, err, gateway.ErrRunNotStarted)
 	})
+}
+
+func callRoute(t *testing.T, route, srvURL string, client *http.Client) error {
+	t.Helper()
+	return callRouteAt(t, route, srvURL, client, nil)
+}
+
+func callRouteAt(t *testing.T, route, srvURL string, client *http.Client, now func() time.Time) error {
+	t.Helper()
+	w := &Worker{serviceURL: srvURL, file: &fakeFile{bucket: "b"}, httpClient: client, now: now}
+	ctx := context.Background()
+	var err error
+	switch route {
+	case "/run":
+		_, err = w.RunJob(ctx, gateway.RunJobParam{JobID: id.NewJobID()})
+	case "/probe-schema":
+		_, err = w.PreviewSchema(ctx, gateway.ProbeSchemaParam{JobID: id.NewJobID()})
+	case "/render-view":
+		_, err = w.RenderView(ctx, gateway.RenderViewParam{Name: "k", Shape: featureview.ShapeTiles, Options: featureview.DefaultOptions()})
+	default:
+		t.Fatalf("unknown route %s", route)
+	}
+	return err
+}
+
+func answerOn(t *testing.T, route string, code int, body string) error {
+	t.Helper()
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		assert.Equal(t, route, r.URL.Path)
+		w.WriteHeader(code)
+		_, _ = w.Write([]byte(body))
+	}))
+	defer srv.Close()
+	return callRoute(t, route, srv.URL, srv.Client())
+}
+
+// Cloud Run's answer when the pool is full, as observed on the dev Service on
+// 2026-11-26.
+func cloudRunBusyOn(t *testing.T, route string) error {
+	t.Helper()
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		assert.Equal(t, route, r.URL.Path)
+		w.Header().Set("Content-Type", "text/html")
+		w.WriteHeader(http.StatusTooManyRequests)
+		_, _ = w.Write([]byte("Rate exceeded."))
+	}))
+	defer srv.Close()
+	return callRoute(t, route, srv.URL, srv.Client())
+}
+
+// Cloud Run's front end refusing a request while instances are still
+// starting, as observed on the dev Service on 2026-11-27: an HTML 500 after
+// ~10.4 s.
+func cloudRunAbortOn(t *testing.T, route string, hold time.Duration) error {
+	t.Helper()
+	clock := &fakeClock{t: time.Unix(1_000_000, 0)}
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		assert.Equal(t, route, r.URL.Path)
+		clock.advance(hold)
+		w.Header().Set("Content-Type", "text/html; charset=UTF-8")
+		w.WriteHeader(http.StatusInternalServerError)
+		_, _ = w.Write([]byte(`<html><head>
+<meta http-equiv="content-type" content="text/html;charset=utf-8">
+<title>500 Server Error</title>
+</head>
+<body text=#000000 bgcolor=#ffffff>
+<h1>Error: Server Error</h1>
+<h2>The server encountered an error and could not complete your request.<p>Please try again in 30 seconds.</h2>
+<h2></h2>
+</body></html>
+`))
+	}))
+	defer srv.Close()
+	return callRouteAt(t, route, srv.URL, srv.Client(), clock.now)
+}
+
+func TestWorker_OnlyARequestCloudRunRefusedIsABusyPool(t *testing.T) {
+	t.Parallel()
+
+	for _, route := range []string{"/run", "/probe-schema", "/render-view"} {
+		t.Run(route+": a 429 is a busy pool and nothing ran", func(t *testing.T) {
+			t.Parallel()
+
+			err := cloudRunBusyOn(t, route)
+
+			assert.ErrorIs(t, err, gateway.ErrWorkerBusy)
+			assert.ErrorIs(t, err, gateway.ErrRunNotStarted)
+			assert.Contains(t, err.Error(), route[1:], "the log still says which call was turned away")
+		})
+
+		t.Run(route+": a 400 is not a busy pool", func(t *testing.T) {
+			t.Parallel()
+
+			err := answerOn(t, route, http.StatusBadRequest, `{"status":"FAILED","error":"bad request"}`)
+
+			require.Error(t, err)
+			assert.NotErrorIs(t, err, gateway.ErrWorkerBusy)
+		})
+
+		t.Run(route+": the wrapper's 500 is a failed run, not a busy pool", func(t *testing.T) {
+			t.Parallel()
+
+			err := answerOn(t, route, http.StatusInternalServerError, `{"status":"FAILED","error":"boom"}`)
+
+			require.Error(t, err)
+			assert.NotErrorIs(t, err, gateway.ErrWorkerBusy)
+			assert.NotErrorIs(t, err, gateway.ErrRunNotStarted)
+		})
+
+		t.Run(route+": the front end's 500 within 30 s is a busy pool and nothing ran", func(t *testing.T) {
+			t.Parallel()
+
+			err := cloudRunAbortOn(t, route, 10400*time.Millisecond)
+
+			assert.ErrorIs(t, err, gateway.ErrWorkerBusy)
+			assert.ErrorIs(t, err, gateway.ErrRunNotStarted)
+			assert.Contains(t, err.Error(), route[1:], "the log still says which call was turned away")
+		})
+
+		t.Run(route+": the front end's 500 at exactly 30 s is still a busy pool", func(t *testing.T) {
+			t.Parallel()
+
+			err := cloudRunAbortOn(t, route, 30*time.Second)
+
+			assert.ErrorIs(t, err, gateway.ErrWorkerBusy)
+			assert.ErrorIs(t, err, gateway.ErrRunNotStarted)
+		})
+
+		t.Run(route+": the front end's 500 after 30 s may have started the run", func(t *testing.T) {
+			t.Parallel()
+
+			err := cloudRunAbortOn(t, route, 31*time.Second)
+
+			require.Error(t, err)
+			assert.NotErrorIs(t, err, gateway.ErrWorkerBusy)
+			assert.NotErrorIs(t, err, gateway.ErrRunNotStarted)
+		})
+
+		t.Run(route+": the wrapper's 500 cut off in transit is a failed run, not a busy pool", func(t *testing.T) {
+			t.Parallel()
+
+			srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+				w.Header().Set("Content-Type", "application/json")
+				w.Header().Set("Content-Length", "60")
+				w.WriteHeader(http.StatusInternalServerError)
+				_, _ = w.Write([]byte(`{"status":"FAILED","error":"worker exit`))
+				w.(http.Flusher).Flush()
+				conn, _, err := w.(http.Hijacker).Hijack()
+				if assert.NoError(t, err) {
+					_ = conn.Close()
+				}
+			}))
+			defer srv.Close()
+
+			err := callRoute(t, route, srv.URL, srv.Client())
+
+			require.Error(t, err)
+			assert.NotErrorIs(t, err, gateway.ErrWorkerBusy)
+			assert.NotErrorIs(t, err, gateway.ErrRunNotStarted)
+		})
+
+		t.Run(route+": a 503 is not a busy pool", func(t *testing.T) {
+			t.Parallel()
+
+			err := answerOn(t, route, http.StatusServiceUnavailable, "Service Unavailable")
+
+			require.Error(t, err)
+			assert.NotErrorIs(t, err, gateway.ErrWorkerBusy)
+		})
+
+		t.Run(route+": a dropped connection is not a busy pool", func(t *testing.T) {
+			t.Parallel()
+
+			srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+				conn, _, err := w.(http.Hijacker).Hijack()
+				if assert.NoError(t, err) {
+					_ = conn.Close()
+				}
+			}))
+			defer srv.Close()
+
+			err := callRoute(t, route, srv.URL, srv.Client())
+
+			require.Error(t, err)
+			assert.NotErrorIs(t, err, gateway.ErrWorkerBusy)
+		})
+	}
 }
