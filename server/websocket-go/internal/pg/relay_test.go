@@ -202,9 +202,10 @@ func TestPublishForUnknownRoomIsNoOp(t *testing.T) {
 	}
 }
 
-// TestRoomActivatedIsIdempotent: ygo may re-activate a resident room, and a second
-// set of goroutines per activation would double every write and leak on shutdown.
-func TestRoomActivatedIsIdempotent(t *testing.T) {
+// TestRepeatedActivationsShareTheRoomsGoroutines: ygo can activate a room again
+// before deactivating the one it replaces, and a second set of goroutines per
+// activation would double every write and leak on shutdown.
+func TestRepeatedActivationsShareTheRoomsGoroutines(t *testing.T) {
 	pool := newPool(t)
 
 	peerSink := &fakeSink{}
@@ -212,8 +213,18 @@ func TestRoomActivatedIsIdempotent(t *testing.T) {
 	peer := startRelay(t, pool, peerSink, nil)
 
 	writer.RoomActivated(room)
-	writer.RoomActivated(room)
-	writer.RoomActivated(room)
+	writer.mu.Lock()
+	first := writer.rooms[room]
+	writer.mu.Unlock()
+	for range 2 {
+		writer.RoomActivated(room)
+		writer.mu.Lock()
+		same := writer.rooms[room] == first
+		writer.mu.Unlock()
+		if !same {
+			t.Fatal("a repeated activation replaced the room's state")
+		}
+	}
 	peer.RoomActivated(room)
 
 	if err := writer.Publish(context.Background(), cluster.Outbound{

@@ -5,12 +5,17 @@ import { I18nextProvider } from "react-i18next";
 import { useUser } from "../gql";
 
 import i18n from "./i18n";
+import { availableLanguages } from "./locales";
 
 export default function Provider({ children }: { children?: ReactNode }) {
   const { useGetMe } = useUser();
   const { me } = useGetMe();
-  const selectedLanguage =
-    me?.lang && me.lang !== "und" ? me.lang : i18n.language;
+  const accountLanguage = (availableLanguages as readonly string[]).includes(
+    me?.lang ?? "",
+  )
+    ? me?.lang
+    : undefined;
+  const selectedLanguage = accountLanguage ?? i18n.resolvedLanguage;
 
   useEffect(() => {
     if (selectedLanguage) {

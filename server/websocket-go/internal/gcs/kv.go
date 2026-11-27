@@ -33,6 +33,19 @@ func (s kv) get(ctx context.Context, name string) ([]byte, error) {
 	return io.ReadAll(r)
 }
 
+// generation is the object's GCS generation, which changes on every rewrite, or
+// 0 when it does not exist.
+func (s kv) generation(ctx context.Context, name string) (int64, error) {
+	attrs, err := s.bucket.Object(name).Attrs(ctx)
+	if errors.Is(err, storage.ErrObjectNotExist) {
+		return 0, nil
+	}
+	if err != nil {
+		return 0, err
+	}
+	return attrs.Generation, nil
+}
+
 func (s kv) put(ctx context.Context, name string, data []byte) error {
 	w := s.bucket.Object(name).NewWriter(ctx)
 	if _, err := w.Write(data); err != nil {
@@ -40,6 +53,22 @@ func (s kv) put(ctx context.Context, name string, data []byte) error {
 		return err
 	}
 	return w.Close()
+}
+
+// putGen is put, returning the generation it created (0 if GCS did not say).
+func (s kv) putGen(ctx context.Context, name string, data []byte) (int64, error) {
+	w := s.bucket.Object(name).NewWriter(ctx)
+	if _, err := w.Write(data); err != nil {
+		_ = w.Close()
+		return 0, err
+	}
+	if err := w.Close(); err != nil {
+		return 0, err
+	}
+	if at := w.Attrs(); at != nil {
+		return at.Generation, nil
+	}
+	return 0, nil
 }
 
 // putWithMeta writes data and attaches custom object metadata, so listAttrs can
@@ -100,14 +129,47 @@ func (s kv) putWithMetaIfAbsent(ctx context.Context, name string, data []byte, m
 
 // asObjectExists maps a failed DoesNotExist precondition (412) to errObjectExists.
 func asObjectExists(err error) error {
-	if err == nil {
-		return nil
-	}
-	var gerr *googleapi.Error
-	if errors.As(err, &gerr) && gerr.Code == http.StatusPreconditionFailed {
+	if preconditionFailed(err) {
 		return errObjectExists
 	}
 	return err
+}
+
+// errGenerationMoved reports that a conditional write lost to a newer write of
+// the same object.
+var errGenerationMoved = errors.New("gcs: object rewritten since it was read")
+
+// putIfGeneration writes data only while the object's generation is gen, or
+// while it does not exist when gen is 0. It returns errGenerationMoved otherwise.
+func (s kv) putIfGeneration(ctx context.Context, name string, data []byte, gen int64) (int64, error) {
+	cond := storage.Conditions{GenerationMatch: gen}
+	if gen == 0 {
+		cond = storage.Conditions{DoesNotExist: true}
+	}
+	w := s.bucket.Object(name).If(cond).NewWriter(ctx)
+	if _, err := w.Write(data); err != nil {
+		_ = w.Close()
+		return 0, asGenerationMoved(err)
+	}
+	if err := asGenerationMoved(w.Close()); err != nil {
+		return 0, err
+	}
+	if at := w.Attrs(); at != nil {
+		return at.Generation, nil
+	}
+	return 0, nil
+}
+
+func asGenerationMoved(err error) error {
+	if preconditionFailed(err) {
+		return errGenerationMoved
+	}
+	return err
+}
+
+func preconditionFailed(err error) bool {
+	var gerr *googleapi.Error
+	return errors.As(err, &gerr) && gerr.Code == http.StatusPreconditionFailed
 }
 
 func (s kv) delete(ctx context.Context, name string) error {
@@ -116,6 +178,17 @@ func (s kv) delete(ctx context.Context, name string) error {
 		return nil // idempotent
 	}
 	return err
+}
+
+// deleteIfGeneration deletes the object only while its generation is gen, so a
+// writer that recreated it under the same name keeps its object. It returns
+// errGenerationMoved in that case, and nil when the object is already gone.
+func (s kv) deleteIfGeneration(ctx context.Context, name string, gen int64) error {
+	err := s.bucket.Object(name).If(storage.Conditions{GenerationMatch: gen}).Delete(ctx)
+	if errors.Is(err, storage.ErrObjectNotExist) {
+		return nil
+	}
+	return asGenerationMoved(err)
 }
 
 // list returns every object name with the given prefix. The caller MUST scope

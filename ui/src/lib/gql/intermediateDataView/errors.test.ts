@@ -38,6 +38,7 @@ describe("toIntermediateDataViewError", () => {
     ["INTERMEDIATE_DATA_NOT_FOUND", "dataNotFound"],
     ["OPERATION_DENIED", "permissionDenied"],
     ["VIEW_WORKERS_BUSY", "workersBusy"],
+    ["VIEW_RENDER_LIMIT_REACHED", "renderLimitReached"],
   ])("classifies the code %s", (code, kind) => {
     // The message is one the prefixes do not know, so only the code can
     // classify it.
@@ -61,10 +62,6 @@ describe("toIntermediateDataViewError", () => {
     ["the view did not finish rendering in time", "timedOut"],
     ["intermediate data views are not available", "unavailable"],
     ["operation denied", "permissionDenied"],
-    [
-      "this workspace already has as many views rendering as its plan allows",
-      "renderLimitReached",
-    ],
   ])("classifies %j", (message, kind) => {
     expect(toIntermediateDataViewError(serverError(message)).kind).toBe(kind);
   });

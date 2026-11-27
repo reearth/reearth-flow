@@ -1086,7 +1086,7 @@
     {
       "name": "Attribute Table Extractor",
       "type": "processor",
-      "description": "Mueve valores entre rutas de atributos de tipo mapa o lista anidados, siguiendo una tabla de pares de rutas origen/destino indexada por un atributo de tipo de entidad. Una ruta de destino con más de un segmento crea mapas anidados según sea necesario",
+      "description": "Copia valores entre rutas de atributos de tipo mapa o lista anidados, siguiendo una tabla de pares de rutas origen/destino indexada por un atributo de tipo de entidad. Una ruta de origen trata las listas de forma explícita con pasos como `[]`, `[*]` y `[n]`. Una ruta de destino con más de un segmento crea mapas anidados según sea necesario",
       "parameter": {
         "$schema": "http://json-schema.org/draft-07/schema#",
         "title": "Parámetros de Attribute Table Extractor",
@@ -1158,7 +1158,7 @@
               },
               "sourcePath": {
                 "title": "Source Path",
-                "description": "Where the value is read from, as a space-separated chain of keys walked from the feature's top level. A segment matches either a key in a map or the first matching element of a list, so it works whether a wrapper element appears once or many times.",
+                "description": "Where the value is read from, as whitespace-separated steps walked from the feature's top level: `k` takes key `k` of a map, `[]` makes a single value a one-item list, `[*]` expands a list into its items, `[n]` takes item `n` of a list (negative counts from the end), and `[k]` gathers the `k` values of all results into one list. The value is written only when exactly one result remains, e.g. `__city_gml_attributes bldg:adeOfAbstractBuilding [] [*] [uro:BuildingIDAttribute] [0] uro:buildingID`.",
                 "type": "string"
               },
               "dataType": {

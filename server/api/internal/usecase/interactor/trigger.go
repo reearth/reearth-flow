@@ -66,7 +66,7 @@ func (i *Trigger) Fetch(ctx context.Context, ids []id.TriggerID) ([]*trigger.Tri
 	}
 	triggers := alignToRequestedIDs(ids, got, nil, (*trigger.Trigger).ID)
 
-	if err := authorizeFetchByWorkspace(ctx, i.checkPermission, rbac.ActionAny, triggers, nil, (*trigger.Trigger).Workspace); err != nil {
+	if err := authorizeFetchByWorkspace(ctx, i.checkPermission, rbac.ActionRead, triggers, nil, (*trigger.Trigger).Workspace); err != nil {
 		return nil, err
 	}
 
@@ -74,7 +74,7 @@ func (i *Trigger) Fetch(ctx context.Context, ids []id.TriggerID) ([]*trigger.Tri
 }
 
 func (i *Trigger) FindByWorkspace(ctx context.Context, id accountsid.WorkspaceID, p *interfaces.PaginationParam, filter interfaces.TriggerFilter) ([]*trigger.Trigger, *interfaces.PageBasedInfo, error) {
-	if err := i.checkPermission(ctx, rbac.ActionAny, id); err != nil {
+	if err := i.checkPermission(ctx, rbac.ActionRead, id); err != nil {
 		return nil, nil, err
 	}
 
@@ -89,7 +89,7 @@ func (i *Trigger) FindByID(ctx context.Context, id id.TriggerID) (*trigger.Trigg
 	if t == nil {
 		return nil, rerror.ErrNotFound
 	}
-	if err := i.checkPermission(ctx, rbac.ActionAny, t.Workspace()); err != nil {
+	if err := i.checkPermission(ctx, rbac.ActionRead, t.Workspace()); err != nil {
 		return nil, err
 	}
 

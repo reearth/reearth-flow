@@ -10,6 +10,7 @@ import (
 	"time"
 
 	accountsid "github.com/reearth/reearth-accounts/server/pkg/id"
+	accountsuser "github.com/reearth/reearth-accounts/server/pkg/user"
 	"github.com/reearth/reearth-flow/api/internal/adapter"
 	"github.com/reearth/reearth-flow/api/internal/infrastructure/memory"
 	"github.com/reearth/reearth-flow/api/internal/usecase/gateway"
@@ -140,8 +141,18 @@ func (w *viewFakeWorker) EngineVersion(context.Context) (string, error) {
 
 const testFileID = "7c9e6679-7425-40de-944b-e07fc1f90ae7.default"
 
+var viewTestUser = accountsuser.New().NewID().Email("viewer@example.com").Name("viewer").MustBuild()
+
 func viewTestContext() context.Context {
-	return adapter.AttachAuthInfo(context.Background(), &appx.AuthInfo{Token: "token"})
+	return viewTestContextFor(viewTestUser)
+}
+
+func viewTestContextFor(u *accountsuser.User) context.Context {
+	ctx := adapter.AttachAuthInfo(context.Background(), &appx.AuthInfo{Token: "token"})
+	if u == nil {
+		return ctx
+	}
+	return adapter.AttachUser(ctx, u)
 }
 
 type viewHarness struct {
@@ -707,6 +718,7 @@ func TestIntermediateDataView_Render_ValidatesTheRequest(t *testing.T) {
 // as the generated policy does, so asking for an action the edge policy has no
 // rule for is denied even for an owner; the allow-all mock cannot tell.
 func TestIntermediateDataView_IsAuthorizedByTheEdgePolicy(t *testing.T) {
+	t.Parallel()
 	for _, tc := range []struct {
 		role    string
 		allowed bool
@@ -714,9 +726,10 @@ func TestIntermediateDataView_IsAuthorizedByTheEdgePolicy(t *testing.T) {
 		{role: "owner", allowed: true},
 		{role: "maintainer", allowed: true},
 		{role: "writer", allowed: true},
-		{role: "reader", allowed: false},
+		{role: "reader", allowed: true},
 	} {
 		t.Run(tc.role, func(t *testing.T) {
+			t.Parallel()
 			h := newViewHarness(t, job.StatusCompleted, true)
 			h.uc.permissionChecker = policyChecker(tc.role)
 			key := gltfReq(0).Key()
@@ -1045,14 +1058,42 @@ func TestIntermediateDataView_Render_RefusedWhenThePlansRendersAreAllInProgress(
 	t.Parallel()
 
 	h := newViewHarness(t, job.StatusCompleted, true)
-	usage := &usageCounter{counts: map[string]int64{renderSlotKeyPrefix + h.source.Workspace().String(): 2}}
+	usage := &usageCounter{counts: map[string]int64{renderSlotKey(h.source.Workspace(), viewTestUser.ID()): 2}}
 	h.uc.planLimits = planLimits{policyChecker: &planChecker{}, usage: usage, now: time.Now}
 
 	_, err := h.render(viewTestContext(), gltfReq(42))
 
 	assert.ErrorIs(t, err, interfaces.ErrConcurrentRenderLimit)
 	assert.Zero(t, h.worker.calls)
-	assert.Equal(t, int64(2), usage.counts[renderSlotKeyPrefix+h.source.Workspace().String()], "the refused render takes no slot")
+	assert.Equal(t, int64(2), usage.counts[renderSlotKey(h.source.Workspace(), viewTestUser.ID())], "the refused render takes no slot")
+}
+
+func TestIntermediateDataView_Render_AnotherMembersRendersDoNotCount(t *testing.T) {
+	t.Parallel()
+
+	h := newViewHarness(t, job.StatusCompleted, true)
+	h.worker.writes = `{"version":1,"status":"ready","shape":"gltf","format":"glb","row":42,
+	  "selectedFeatures":1,"renderedFeatures":1,"scanned":43,"entryPoint":"` + gltfReq(42).Key() + `.glb"}`
+	other := accountsuser.New().NewID().Email("other@example.com").Name("other").MustBuild()
+	usage := &usageCounter{counts: map[string]int64{renderSlotKey(h.source.Workspace(), other.ID()): 2}}
+	h.uc.planLimits = planLimits{policyChecker: &planChecker{}, usage: usage, now: time.Now}
+
+	_, err := h.render(viewTestContext(), gltfReq(42))
+
+	require.NoError(t, err)
+	assert.Equal(t, 1, h.worker.calls)
+}
+
+func TestIntermediateDataView_Render_RefusedWithoutAUserToCount(t *testing.T) {
+	t.Parallel()
+
+	h := newViewHarness(t, job.StatusCompleted, true)
+	h.uc.planLimits = planLimits{policyChecker: &planChecker{}, usage: &usageCounter{}, now: time.Now}
+
+	_, err := h.render(viewTestContextFor(nil), gltfReq(42))
+
+	assert.ErrorIs(t, err, interfaces.ErrOperationDenied)
+	assert.Zero(t, h.worker.calls)
 }
 
 func TestIntermediateDataView_Render_GivesItsSlotBack(t *testing.T) {
@@ -1068,7 +1109,7 @@ func TestIntermediateDataView_Render_GivesItsSlotBack(t *testing.T) {
 
 	require.NoError(t, err)
 	assert.Equal(t, 1, h.worker.calls)
-	assert.Zero(t, usage.counts[renderSlotKeyPrefix+h.source.Workspace().String()])
+	assert.Zero(t, usage.counts[renderSlotKey(h.source.Workspace(), viewTestUser.ID())])
 }
 
 func TestIntermediateDataView_Render_RefusedRetryKeepsTheFailedReport(t *testing.T) {
@@ -1077,7 +1118,7 @@ func TestIntermediateDataView_Render_RefusedRetryKeepsTheFailedReport(t *testing
 	h := newViewHarness(t, job.StatusCompleted, true)
 	h.file.report = `{"version":1,"status":"failed","shape":"gltf","row":9,
 	  "selectedFeatures":1,"renderedFeatures":0,"scanned":10,"error":"storage blip"}`
-	key := renderSlotKeyPrefix + h.source.Workspace().String()
+	key := renderSlotKey(h.source.Workspace(), viewTestUser.ID())
 	usage := &usageCounter{counts: map[string]int64{key: 2}}
 	h.uc.planLimits = planLimits{policyChecker: &planChecker{}, usage: usage, now: time.Now}
 
@@ -1102,5 +1143,5 @@ func TestIntermediateDataView_Render_GivesItsSlotBackWhenClearingFails(t *testin
 
 	assert.Error(t, err)
 	assert.Zero(t, h.worker.calls)
-	assert.Zero(t, usage.counts[renderSlotKeyPrefix+h.source.Workspace().String()])
+	assert.Zero(t, usage.counts[renderSlotKey(h.source.Workspace(), viewTestUser.ID())])
 }

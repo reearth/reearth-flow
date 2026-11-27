@@ -10,13 +10,32 @@ import (
 	"github.com/reearth/reearth-flow/websocket-go/internal/config"
 )
 
+// legacyAdapter wraps p for ygo. ygo compacts on every room unload with the
+// adapter's KeepVersions, and 0 would keep the whole update log. The retention
+// is cfg.KeepUpdates, the same one the admin cleanup routes trim to, so neither
+// undoes the other.
+func legacyAdapter(ctx context.Context, cfg *config.Config, p persistence.VersionedPersistence) *persistence.LegacyAdapter {
+	la := persistence.NewLegacyAdapterContext(ctx, p)
+	la.KeepVersions = keepUpdatesOf(cfg)
+	return la
+}
+
+// keepUpdatesOf is cfg.KeepUpdates, falling back to the default for a config
+// built without it (tests construct literals).
+func keepUpdatesOf(cfg *config.Config) int {
+	if cfg == nil || cfg.KeepUpdates < 1 {
+		return config.DefaultKeepUpdates
+	}
+	return cfg.KeepUpdates
+}
+
 // NewWithPersistence builds a Server whose ygo provider loads and stores room
 // state via the given VersionedPersistence. ctx is threaded into the adapter so
 // I/O-backed stores abort in-flight writes on shutdown.
 func NewWithPersistence(ctx context.Context, cfg *config.Config, p persistence.VersionedPersistence) *Server {
 	s := &Server{
 		cfg: cfg,
-		ws:  ygws.NewServerWithPersistence(persistence.NewLegacyAdapterContext(ctx, p)),
+		ws:  ygws.NewServerWithPersistence(legacyAdapter(ctx, cfg, p)),
 		log: slog.Default(),
 	}
 	s.ws.AllowedOrigins = cfg.Origins
@@ -25,6 +44,7 @@ func NewWithPersistence(ctx context.Context, cfg *config.Config, p persistence.V
 	s.ws.MaxConnections = cfg.MaxConnections
 	s.ws.MaxPeersPerRoom = cfg.MaxPeersPerRoom
 	s.ws.MaxRooms = cfg.MaxRooms
+	s.ws.RoomIdleTimeout = cfg.RoomIdleTimeout
 	if cfg.SlowPeerResync {
 		s.ws.SlowPeerPolicy = ygws.SlowPeerResync
 	}
@@ -37,19 +57,13 @@ func NewWithPersistence(ctx context.Context, cfg *config.Config, p persistence.V
 	return s
 }
 
-// CheckpointState returns room's live state for a checkpoint, or nil when the
-// checkpoint must be rebuilt from storage instead: when this instance does not
-// hold the room, or its copy holds parked updates. A copy with parked updates
-// missed an edit another instance applied and persisted, so storage is
-// complete where the copy is not.
+// CheckpointState returns room's live state for a checkpoint, or nil when this
+// instance does not hold the room and the checkpoint is rebuilt from storage. A
+// copy holding parked updates is offered too: the checkpoint is its union with
+// the stored state, which supplies any missed edit storage has.
 func (s *Server) CheckpointState(room string) []byte {
 	doc := s.ws.GetDoc(room)
 	if doc == nil {
-		return nil
-	}
-	if ps := doc.PendingStats(); ps.Items > 0 {
-		s.log.Warn("room holds parked updates; checkpointing it from storage",
-			"room", room, "parked", ps.Items, "awaitingClients", len(ps.MissingFor))
 		return nil
 	}
 	return encodeFullState(doc)

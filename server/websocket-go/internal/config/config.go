@@ -56,6 +56,11 @@ type Config struct {
 	// MaxRooms caps distinct rooms server-wide (doc_id is client-supplied).
 	MaxRooms int
 
+	// RoomIdleTimeout is how long a room with no connected peers stays loaded,
+	// counted from its last peer leaving or its last update from another
+	// instance. 0 unloads it as its last peer leaves.
+	RoomIdleTimeout time.Duration
+
 	// SlowPeerResync keeps slow peers connected and re-syncs them in place on
 	// queue overflow instead of disconnecting. Default ON; env REEARTH_FLOW_SLOW_PEER_RESYNC.
 	SlowPeerResync bool
@@ -71,6 +76,14 @@ type Config struct {
 	// class evicts another's. Always at least 1: a value below 1 selects the
 	// default.
 	KeepSnapshots int
+
+	// KeepUpdates bounds a room's retained update log. It is the one retention
+	// for that log: ygo's compaction on room unload and the admin cleanup routes
+	// both trim to it, so neither undoes the other. These updates are the entries
+	// the recovery view lists, and a source for edits a checkpoint missed. Always
+	// at least 1: a value below 1 selects the default, because 0 reaches the
+	// store as "keep every update" and would never trim.
+	KeepUpdates int
 
 	// OTLP tracing config.
 	OTLPEnabled            bool
@@ -113,8 +126,15 @@ const (
 	defaultMaxPeersPerRoom = 256
 	defaultMaxRooms        = 50000
 
+	defaultRoomIdleTimeout = time.Minute
+
 	defaultAutoVersionEvery = 15 * time.Minute
 	defaultKeepSnapshots    = 50
+
+	// DefaultKeepUpdates is KeepUpdates' default, exported so every package that
+	// needs a fallback shares this one value rather than each spelling it out.
+	// Never 0: ygo reads that as "keep every update" and would never trim.
+	DefaultKeepUpdates = 300
 
 	defaultOTLPExporterType       = "otlp"
 	defaultOTLPServiceName        = "reearth-flow-websocket"
@@ -161,10 +181,12 @@ func Load() *Config {
 		MaxPeersPerRoom: envPositive("REEARTH_FLOW_MAX_PEERS_PER_ROOM", defaultMaxPeersPerRoom),
 		MaxRooms:        envPositive("REEARTH_FLOW_MAX_ROOMS", defaultMaxRooms),
 
-		SlowPeerResync: envBool("REEARTH_FLOW_SLOW_PEER_RESYNC", true),
+		RoomIdleTimeout: envDuration("REEARTH_FLOW_ROOM_IDLE_TIMEOUT", defaultRoomIdleTimeout),
+		SlowPeerResync:  envBool("REEARTH_FLOW_SLOW_PEER_RESYNC", true),
 
 		AutoVersionEvery: envDuration("REEARTH_FLOW_AUTO_VERSION_EVERY", defaultAutoVersionEvery),
 		KeepSnapshots:    envPositive("REEARTH_FLOW_KEEP_SNAPSHOTS", defaultKeepSnapshots),
+		KeepUpdates:      envPositive("REEARTH_FLOW_KEEP_UPDATES", DefaultKeepUpdates),
 
 		OTLPEnabled:            envBool("REEARTH_FLOW_ENABLE_OTLP", false),
 		OTLPEndpoint:           os.Getenv("REEARTH_FLOW_OTLP_ENDPOINT"),

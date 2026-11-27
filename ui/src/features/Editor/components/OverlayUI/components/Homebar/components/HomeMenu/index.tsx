@@ -1,14 +1,13 @@
 import {
-  ArrowSquareOutIcon,
+  ArrowUpRightIcon,
   BookIcon,
   BroadcastIcon,
   CaretDownIcon,
-  CopyrightIcon,
   FileIcon,
-  GavelIcon,
+  FileTextIcon,
   KeyboardIcon,
+  PaletteIcon,
   RocketIcon,
-  SignOutIcon,
   SneakerMoveIcon,
   SquaresFourIcon,
   UserIcon,
@@ -20,26 +19,31 @@ import { useHotkeys } from "react-hotkeys-hook";
 import {
   DropdownMenu,
   DropdownMenuContent,
-  DropdownMenuGroup,
   DropdownMenuItem,
-  DropdownMenuLabel,
   DropdownMenuSeparator,
+  DropdownMenuSub,
+  DropdownMenuSubContent,
+  DropdownMenuSubTrigger,
   DropdownMenuTrigger,
   FlowLogo,
 } from "@flow/components";
 import { config } from "@flow/config";
+import { AttributionsDialog } from "@flow/features/common/AttributionsDialog";
+import { LegalMenuItems } from "@flow/features/common/LegalMenuItems";
+import { ThemeLanguageMenu } from "@flow/features/common/ThemeLanguageMenu";
+import { AccountMenuItems } from "@flow/features/common/UserMenu/AccountMenuItems";
 import { AccountUpdateDialog } from "@flow/features/common/UserMenu/AccountUpdateDialog";
 import KeyboardShortcutDialog from "@flow/features/KeyboardShortcutDialog";
 import { GENERAL_HOT_KEYS } from "@flow/global-constants";
 import { useDoubleClick } from "@flow/hooks";
-import { useAuth } from "@flow/lib/auth";
 import { useT } from "@flow/lib/i18n";
-import { dashboardAccountUrl, openLinkInNewTab } from "@flow/utils";
+import { openLinkInNewTab } from "@flow/utils";
 
-import { AttributionsDialog } from "./AttributionsDialog";
+const rowClass = "gap-3 rounded-md px-3 py-[5px] font-light";
+const subTriggerClass = `${rowClass} [&>svg:last-child]:text-muted-foreground`;
+const subContentClass = "flex w-[220px] flex-col gap-0.5 rounded-lg";
 
 type Props = {
-  className?: string;
   dropdownPosition?: "left" | "right" | "bottom" | "top";
   dropdownAlign?: "start" | "center" | "end";
   dropdownPositionOffset?: number;
@@ -47,17 +51,15 @@ type Props = {
 };
 
 const HomeMenu: React.FC<Props> = ({
-  // className,
   dropdownPosition = "bottom",
-  dropdownAlign,
+  dropdownAlign = "start",
   dropdownAlignOffset,
   dropdownPositionOffset,
 }) => {
   const t = useT();
   const navigate = useNavigate();
   const { workspaceId } = useParams({ strict: false });
-
-  const { logout: handleLogout } = useAuth();
+  const { documentationUrl } = config();
 
   const handleNavigationToDashboard = useCallback(
     (page: "projects" | "deployments" | "triggers" | "jobs" | "assets") => () =>
@@ -70,18 +72,39 @@ const HomeMenu: React.FC<Props> = ({
   const [openAttributionsDialog, setOpenAttributionsDialog] = useState(false);
   const [openDialog, setOpenDialog] = useState(false);
 
-  const { tosUrl, documentationUrl } = config();
-
-  const handleTosPageOpen = openLinkInNewTab(tosUrl ?? "");
-  const handleDocumentationPageOpen = openLinkInNewTab(documentationUrl ?? "");
-  // With a Dashboard, the account is managed there.
-  const externalAccountUrl = dashboardAccountUrl();
-
   useHotkeys(GENERAL_HOT_KEYS, () => setOpenShortcutDialog(true));
 
   const [, handleDoubleClick] = useDoubleClick(() => {
     setOpenDialog((o) => !o);
   }, handleNavigationToDashboard("projects"));
+
+  const navItems = [
+    {
+      page: "projects",
+      label: t("Projects"),
+      icon: <SquaresFourIcon weight="light" />,
+    },
+    {
+      page: "deployments",
+      label: t("Deployments"),
+      icon: <RocketIcon weight="light" />,
+    },
+    {
+      page: "triggers",
+      label: t("Triggers"),
+      icon: <BroadcastIcon weight="light" />,
+    },
+    {
+      page: "jobs",
+      label: t("Jobs"),
+      icon: <SneakerMoveIcon weight="light" />,
+    },
+    {
+      page: "assets",
+      label: t("Workspace Assets"),
+      icon: <FileIcon weight="light" />,
+    },
+  ] as const;
 
   return (
     <>
@@ -90,108 +113,80 @@ const HomeMenu: React.FC<Props> = ({
           nativeButton={false}
           onDoubleClick={handleDoubleClick}
           render={
-            <div className="group flex cursor-pointer items-center gap-1 self-center rounded-md p-1 hover:bg-primary">
+            <div
+              className={`group flex cursor-pointer items-center gap-1 rounded-md p-1 hover:bg-accent ${openDialog ? "bg-accent" : ""}`}>
               <FlowLogo className="size-7 transition-all group-hover:text-[#46ce7c]" />
-              <CaretDownIcon weight="thin" size={12} />
+              <CaretDownIcon
+                weight="light"
+                size={12}
+                className="text-muted-foreground"
+              />
             </div>
           }
         />
         <DropdownMenuContent
-          className="min-w-[175px] bg-primary/50 backdrop-blur"
+          className="flex w-56 flex-col gap-0.5"
           side={dropdownPosition}
           align={dropdownAlign}
           sideOffset={dropdownPositionOffset ?? 8}
           alignOffset={dropdownAlignOffset ?? 0}>
-          <DropdownMenuLabel>{t("Dashboard")}</DropdownMenuLabel>
-          {/* <DropdownMenuSeparator /> */}
-          <DropdownMenuGroup>
+          {navItems.map(({ page, label, icon }) => (
             <DropdownMenuItem
-              className="gap-3"
-              onClick={handleNavigationToDashboard("projects")}>
-              <SquaresFourIcon weight="light" />
-              <p>{t("Projects")}</p>
+              key={page}
+              className={rowClass}
+              onClick={handleNavigationToDashboard(page)}>
+              {icon}
+              <p className="flex-1 truncate">{label}</p>
             </DropdownMenuItem>
-            <DropdownMenuItem
-              className="gap-3"
-              onClick={handleNavigationToDashboard("deployments")}>
-              <RocketIcon weight="light" />
-              <p>{t("Deployments")}</p>
-            </DropdownMenuItem>
-            <DropdownMenuItem
-              className="gap-3"
-              onClick={handleNavigationToDashboard("triggers")}>
-              <BroadcastIcon weight="light" />
-              <p>{t("Triggers")}</p>
-            </DropdownMenuItem>
-            <DropdownMenuItem
-              className="gap-3"
-              onClick={handleNavigationToDashboard("jobs")}>
-              <SneakerMoveIcon weight="light" />
-              <p>{t("Jobs")}</p>
-            </DropdownMenuItem>
-          </DropdownMenuGroup>
-          <DropdownMenuSeparator />
-          <DropdownMenuItem
-            className="gap-3"
-            onClick={handleNavigationToDashboard("assets")}>
-            <FileIcon weight="light" />
-            <p>{t("Workspace Assets")}</p>
-          </DropdownMenuItem>
-          <DropdownMenuSeparator />
-          <DropdownMenuItem
-            className="gap-3"
-            onClick={
-              externalAccountUrl
-                ? openLinkInNewTab(externalAccountUrl)
-                : () => setOpenAccountUpdateDialog(true)
-            }>
-            <UserIcon weight="light" />
-            <div className="flex items-center gap-1">
-              <p>{t("Account Settings")}</p>
-              {externalAccountUrl && <ArrowSquareOutIcon weight="light" />}
-            </div>
-          </DropdownMenuItem>
-          <DropdownMenuSeparator />
-          <DropdownMenuItem
-            className="gap-3"
-            onClick={() => setOpenShortcutDialog(true)}>
-            <KeyboardIcon weight="light" />
-            <p>{t("Keyboard Shortcuts")}</p>
-          </DropdownMenuItem>
-          <DropdownMenuSeparator />
-          {tosUrl && (
-            <DropdownMenuItem className="gap-3" onClick={handleTosPageOpen}>
-              <GavelIcon weight="light" />
-              <div className="flex items-center gap-1">
-                <p>{t("Terms of Service")}</p>
-                <ArrowSquareOutIcon className="size-4" />
-              </div>
-            </DropdownMenuItem>
-          )}
+          ))}
+          <DropdownMenuSeparator className="mx-0 my-0" />
+          <DropdownMenuSub>
+            <DropdownMenuSubTrigger className={subTriggerClass}>
+              <UserIcon weight="light" />
+              <p className="flex-1 truncate">{t("Account")}</p>
+            </DropdownMenuSubTrigger>
+            <DropdownMenuSubContent className={subContentClass}>
+              <AccountMenuItems
+                onAccountSettingsOpen={() => setOpenAccountUpdateDialog(true)}
+              />
+            </DropdownMenuSubContent>
+          </DropdownMenuSub>
+          <DropdownMenuSeparator className="mx-0 my-0" />
           {documentationUrl && (
             <DropdownMenuItem
-              className="gap-3"
-              onClick={handleDocumentationPageOpen}>
+              className={rowClass}
+              onClick={openLinkInNewTab(documentationUrl)}>
               <BookIcon weight="light" />
-              <div className="flex items-center gap-1">
-                <p>{t("Documentation")}</p>
-                <ArrowSquareOutIcon weight="light" />
-              </div>
+              <p className="flex-1 truncate">{t("Documentation")}</p>
+              <ArrowUpRightIcon weight="light" />
             </DropdownMenuItem>
           )}
           <DropdownMenuItem
-            className="gap-3"
-            onClick={() => setOpenAttributionsDialog(true)}>
-            <CopyrightIcon weight="light" />
-            <p>{t("Attributions")}</p>
+            className={rowClass}
+            onClick={() => setOpenShortcutDialog(true)}>
+            <KeyboardIcon weight="light" />
+            <p className="flex-1 truncate">{t("Keyboard Shortcuts")}</p>
           </DropdownMenuItem>
-          <DropdownMenuSeparator />
-          <DropdownMenuItem
-            className="gap-3 text-warning"
-            onClick={handleLogout}>
-            <SignOutIcon weight="light" />
-            <p>{t("Log Out")}</p>
-          </DropdownMenuItem>
+          <DropdownMenuSub>
+            <DropdownMenuSubTrigger className={subTriggerClass}>
+              <PaletteIcon weight="light" />
+              <p className="flex-1 truncate">{t("Theme & Language")}</p>
+            </DropdownMenuSubTrigger>
+            <DropdownMenuSubContent className={subContentClass}>
+              <ThemeLanguageMenu />
+            </DropdownMenuSubContent>
+          </DropdownMenuSub>
+          <DropdownMenuSub>
+            <DropdownMenuSubTrigger className={subTriggerClass}>
+              <FileTextIcon weight="light" />
+              <p className="flex-1 truncate">{t("Legal & about")}</p>
+            </DropdownMenuSubTrigger>
+            <DropdownMenuSubContent className={subContentClass}>
+              <LegalMenuItems
+                onAttributionsOpen={() => setOpenAttributionsDialog(true)}
+              />
+            </DropdownMenuSubContent>
+          </DropdownMenuSub>
         </DropdownMenuContent>
       </DropdownMenu>
       {openAccountUpdateDialog && (

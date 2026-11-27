@@ -7,6 +7,7 @@ import (
 	"time"
 
 	accountsid "github.com/reearth/reearth-accounts/server/pkg/id"
+	"github.com/reearth/reearth-flow/api/internal/adapter"
 	"github.com/reearth/reearth-flow/api/internal/rbac"
 	"github.com/reearth/reearth-flow/api/internal/usecase/gateway"
 	"github.com/reearth/reearth-flow/api/internal/usecase/interfaces"
@@ -52,15 +53,10 @@ func NewIntermediateDataView(
 	}
 }
 
-// checkPermission guards views with the edge resource, which nothing else
-// checks yet. Like the job's, the edge rule grants the action "any" to a
-// workspace writer, maintainer or owner. "any" is an action name in its own
-// right, not a wildcard: the generated policy has no rule for any other action,
-// so checking "read" is denied for everyone. Views therefore check
-// rbac.ActionAny, as the job interactor does, so whoever can see a run's jobs
-// can render and read its views, and a reader can do neither. The intermediate
-// data itself is not behind this check: the table is fetched through the
-// /artifacts route.
+// checkPermission guards views with the edge resource. Viewing a run's
+// intermediate data is a read, so every role that can see the run's jobs can
+// render its views. The table itself is fetched through the /artifacts route,
+// not behind this check.
 func (i *IntermediateDataView) checkPermission(ctx context.Context, action string, workspaceID ...accountsid.WorkspaceID) error {
 	return checkPermission(ctx, i.permissionChecker, rbac.ResourceEdge, action, workspaceID...)
 }
@@ -121,7 +117,7 @@ func (i *IntermediateDataView) Render(
 	// the worker nothing. The slot is taken before the previous report is
 	// cleared, so a refused retry leaves that report's outcome in place, and
 	// it is given back however the render ends, a failed clear included.
-	done, err := i.planLimits.startRender(ctx, source.Workspace())
+	done, err := i.planLimits.startRender(ctx, source.Workspace(), adapter.User(ctx))
 	if err != nil {
 		return nil, err
 	}
@@ -290,7 +286,7 @@ func (i *IntermediateDataView) authorizedSourceJob(ctx context.Context, jobID id
 	if source == nil {
 		return nil, rerror.ErrNotFound
 	}
-	if err := i.checkPermission(ctx, rbac.ActionAny, source.Workspace()); err != nil {
+	if err := i.checkPermission(ctx, rbac.ActionRead, source.Workspace()); err != nil {
 		return nil, err
 	}
 

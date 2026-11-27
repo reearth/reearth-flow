@@ -188,6 +188,18 @@ func TestSlowPeerResyncDefaultAndOverride(t *testing.T) {
 	}
 }
 
+func TestRoomIdleTimeoutDefaultAndOverride(t *testing.T) {
+	clearEnv(t)
+	if c := Load(); c.RoomIdleTimeout != time.Minute {
+		t.Errorf("RoomIdleTimeout default = %v, want 1m", c.RoomIdleTimeout)
+	}
+
+	t.Setenv("REEARTH_FLOW_ROOM_IDLE_TIMEOUT", "0")
+	if c := Load(); c.RoomIdleTimeout != 0 {
+		t.Errorf("RoomIdleTimeout with env=0 = %v, want 0", c.RoomIdleTimeout)
+	}
+}
+
 func TestOTLPDefaults(t *testing.T) {
 	clearEnv(t)
 	c := Load()
@@ -291,16 +303,31 @@ func TestAutoVersioningDefaultsAndOverrides(t *testing.T) {
 	if c.KeepSnapshots != defaultKeepSnapshots {
 		t.Errorf("KeepSnapshots = %d, want %d", c.KeepSnapshots, defaultKeepSnapshots)
 	}
+	if c.KeepUpdates != DefaultKeepUpdates {
+		t.Errorf("KeepUpdates = %d, want %d", c.KeepUpdates, DefaultKeepUpdates)
+	}
 
 	clearEnv(t)
 	t.Setenv("REEARTH_FLOW_AUTO_VERSION_EVERY", "45s")
 	t.Setenv("REEARTH_FLOW_KEEP_SNAPSHOTS", "7")
+	t.Setenv("REEARTH_FLOW_KEEP_UPDATES", "500")
 	c = Load()
 	if c.AutoVersionEvery != 45*time.Second {
 		t.Errorf("AutoVersionEvery = %v, want 45s", c.AutoVersionEvery)
 	}
 	if c.KeepSnapshots != 7 {
 		t.Errorf("KeepSnapshots = %d, want 7", c.KeepSnapshots)
+	}
+	if c.KeepUpdates != 500 {
+		t.Errorf("KeepUpdates = %d, want 500", c.KeepUpdates)
+	}
+
+	// 0 would reach the store as "keep every update" and never trim, so it must
+	// fall back to the default rather than survive Load.
+	clearEnv(t)
+	t.Setenv("REEARTH_FLOW_KEEP_UPDATES", "0")
+	if c = Load(); c.KeepUpdates != DefaultKeepUpdates {
+		t.Errorf("KeepUpdates = %d for \"0\", want the default %d", c.KeepUpdates, DefaultKeepUpdates)
 	}
 
 	// "0" is the documented way to disable auto-versioning and must survive Load.
@@ -360,8 +387,10 @@ func clearEnv(t *testing.T) {
 		"REEARTH_FLOW_OTEL_MAX_EXPORT_BATCH_SIZE",
 		"REEARTH_FLOW_OTEL_MAX_QUEUE_SIZE",
 		"REEARTH_FLOW_SLOW_PEER_RESYNC",
+		"REEARTH_FLOW_ROOM_IDLE_TIMEOUT",
 		"REEARTH_FLOW_AUTO_VERSION_EVERY",
 		"REEARTH_FLOW_KEEP_SNAPSHOTS",
+		"REEARTH_FLOW_KEEP_UPDATES",
 		"REEARTH_FLOW_COORD_BACKEND",
 		"REEARTH_FLOW_PG_URL",
 		"REEARTH_FLOW_PG_FANOUT",

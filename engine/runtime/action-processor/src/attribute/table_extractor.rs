@@ -16,6 +16,7 @@ use serde::{Deserialize, Serialize};
 use serde_json::Value;
 
 use super::errors::AttributeProcessorError;
+use super::table_query::Query;
 
 #[derive(Debug, Clone, Default)]
 pub(super) struct AttributeTableExtractorFactory;
@@ -26,7 +27,7 @@ impl ProcessorFactory for AttributeTableExtractorFactory {
     }
 
     fn description(&self) -> &str {
-        "Moves values between nested map/list attribute paths, following a table of source/destination path pairs keyed by a feature type attribute. A destination path with more than one segment creates nested maps as needed."
+        "Copies values between nested map/list attribute paths, following a table of source/destination path pairs keyed by a feature type attribute. A source path handles lists explicitly with steps such as `[]`, `[*]` and `[n]`. A destination path with more than one segment creates nested maps as needed."
     }
 
     fn parameter_schema(&self) -> Option<schemars::schema::RootSchema> {
@@ -111,6 +112,17 @@ impl ProcessorFactory for AttributeTableExtractorFactory {
             .into());
         };
 
+        let table = table
+            .into_iter()
+            .map(|(feature_type, rules)| {
+                let rules = rules
+                    .into_iter()
+                    .map(CompiledRule::compile)
+                    .collect::<Result<Vec<_>, _>>()?;
+                Ok((feature_type, rules))
+            })
+            .collect::<Result<HashMap<_, _>, AttributeProcessorError>>()?;
+
         let process = AttributeTableExtractor {
             type_attribute: params
                 .type_attribute
@@ -157,9 +169,12 @@ struct ExtractRule {
     /// missing intermediate map as needed.
     destination_path: String,
     /// # Source Path
-    /// Where the value is read from, as a space-separated chain of keys walked from the
-    /// feature's top level. A segment matches either a key in a map or the first matching
-    /// element of a list, so it works whether a wrapper element appears once or many times.
+    /// Where the value is read from, as whitespace-separated steps walked from the feature's
+    /// top level: `k` takes key `k` of a map, `[]` makes a single value a one-item list, `[*]`
+    /// expands a list into its items, `[n]` takes item `n` of a list (negative counts from the
+    /// end), and `[k]` gathers the `k` values of all results into one list. The value is
+    /// written only when exactly one result remains, e.g.
+    /// `__city_gml_attributes bldg:adeOfAbstractBuilding [] [*] [uro:BuildingIDAttribute] [0] uro:buildingID`.
     source_path: String,
     /// # Value Type
     /// Converts the extracted value before writing it. Leave unset to write it unchanged.
@@ -179,9 +194,39 @@ enum ExtractDataType {
 }
 
 #[derive(Debug, Clone)]
+struct CompiledRule {
+    source: Query,
+    destination: Vec<String>,
+    data_type: Option<ExtractDataType>,
+}
+
+impl CompiledRule {
+    fn compile(rule: ExtractRule) -> Result<Self, AttributeProcessorError> {
+        let source = Query::parse(&rule.source_path)
+            .map_err(|e| AttributeProcessorError::TableExtractorFactory(e.to_string()))?;
+        let destination: Vec<String> = rule
+            .destination_path
+            .split_whitespace()
+            .map(str::to_string)
+            .collect();
+        if destination.is_empty() {
+            return Err(AttributeProcessorError::TableExtractorFactory(format!(
+                "empty destination path for source `{}`",
+                rule.source_path
+            )));
+        }
+        Ok(Self {
+            source,
+            destination,
+            data_type: rule.data_type,
+        })
+    }
+}
+
+#[derive(Debug, Clone)]
 struct AttributeTableExtractor {
     type_attribute: String,
-    table: HashMap<String, Vec<ExtractRule>>,
+    table: HashMap<String, Vec<CompiledRule>>,
 }
 
 impl Processor for AttributeTableExtractor {
@@ -199,14 +244,9 @@ impl Processor for AttributeTableExtractor {
             && let Some(rules) = self.table.get(&feature_type)
         {
             for rule in rules {
-                let src_segments: Vec<&str> = rule.source_path.split_whitespace().collect();
-                if let Some(value) = resolve_path(&feature, &src_segments) {
+                if let Some(value) = rule.source.evaluate(&feature.attributes) {
                     let value = coerce(&ctx, value, rule.data_type);
-                    let dst_segments: Vec<&str> =
-                        rule.destination_path.split_whitespace().collect();
-                    if !dst_segments.is_empty() {
-                        write_path(&mut feature, &dst_segments, value);
-                    }
+                    write_path(&mut feature, &rule.destination, value);
                 }
             }
         }
@@ -228,47 +268,25 @@ impl Processor for AttributeTableExtractor {
     }
 }
 
-/// Walks a dot-free, space-separated path of nested keys starting from the
-/// feature's top-level attributes. Each segment tolerates the value at that
-/// point being either a map (direct key lookup) or a list (searched
-/// element-by-element for the first match) — CityGML ADE wrapper elements
-/// may appear as either depending on cardinality.
-fn resolve_path(feature: &Feature, segments: &[&str]) -> Option<AttributeValue> {
-    let (first, rest) = segments.split_first()?;
-    let mut current = feature.get(*first)?.clone();
-    for segment in rest {
-        current = get_from_value(&current, segment)?;
-    }
-    Some(current)
-}
-
-fn get_from_value(value: &AttributeValue, key: &str) -> Option<AttributeValue> {
-    match value {
-        AttributeValue::Map(map) => map.get(key).cloned(),
-        AttributeValue::Array(list) => list.iter().find_map(|item| get_from_value(item, key)),
-        _ => None,
-    }
-}
-
 /// Writes `value` at a space-separated chain of keys under the feature's top level, creating
 /// (or replacing, if not already a map) any missing intermediate map along the way.
-fn write_path(feature: &mut Feature, segments: &[&str], value: AttributeValue) {
+fn write_path(feature: &mut Feature, segments: &[String], value: AttributeValue) {
     let (first, rest) = segments
         .split_first()
         .expect("segments is never empty: caller only calls with a non-empty path");
     if rest.is_empty() {
-        feature.insert(Attribute::new(*first), value);
+        feature.insert(Attribute::new(first.as_str()), value);
         return;
     }
     let mut top = feature
-        .get(*first)
+        .get(first)
         .cloned()
         .unwrap_or_else(|| AttributeValue::Map(Attributes::new()));
     set_nested(&mut top, rest, value);
-    feature.insert(Attribute::new(*first), top);
+    feature.insert(Attribute::new(first.as_str()), top);
 }
 
-fn set_nested(current: &mut AttributeValue, segments: &[&str], value: AttributeValue) {
+fn set_nested(current: &mut AttributeValue, segments: &[String], value: AttributeValue) {
     let (first, rest) = segments
         .split_first()
         .expect("segments is never empty: caller only recurses while rest is non-empty");
@@ -279,10 +297,10 @@ fn set_nested(current: &mut AttributeValue, segments: &[&str], value: AttributeV
         unreachable!()
     };
     if rest.is_empty() {
-        map.insert(Attribute::new(*first), value);
+        map.insert(Attribute::new(first.as_str()), value);
     } else {
         let child = map
-            .entry(Attribute::new(*first))
+            .entry(Attribute::new(first.as_str()))
             .or_insert_with(|| AttributeValue::Map(Attributes::new()));
         set_nested(child, rest, value);
     }
@@ -338,58 +356,8 @@ mod tests {
         Feature::from(attrs)
     }
 
-    #[test]
-    fn resolves_through_list_wrapper() {
-        let inner = Attributes::from([(
-            Attribute::new("uro:BuildingIDAttribute"),
-            AttributeValue::Map(Attributes::from([(
-                Attribute::new("uro:city"),
-                AttributeValue::String("Tokyo".to_string()),
-            )])),
-        )]);
-        let feature = feature_with(Attributes::from([(
-            Attribute::new("bldg:adeOfAbstractBuilding"),
-            AttributeValue::Array(vec![AttributeValue::Map(inner)]),
-        )]));
-        let segments = [
-            "bldg:adeOfAbstractBuilding",
-            "uro:BuildingIDAttribute",
-            "uro:city",
-        ];
-        assert_eq!(
-            resolve_path(&feature, &segments),
-            Some(AttributeValue::String("Tokyo".to_string()))
-        );
-    }
-
-    #[test]
-    fn resolves_through_direct_map() {
-        let inner = Attributes::from([(
-            Attribute::new("uro:BuildingIDAttribute"),
-            AttributeValue::Map(Attributes::from([(
-                Attribute::new("uro:city"),
-                AttributeValue::String("Osaka".to_string()),
-            )])),
-        )]);
-        let feature = feature_with(Attributes::from([(
-            Attribute::new("bldg:adeOfAbstractBuilding"),
-            AttributeValue::Map(inner),
-        )]));
-        let segments = [
-            "bldg:adeOfAbstractBuilding",
-            "uro:BuildingIDAttribute",
-            "uro:city",
-        ];
-        assert_eq!(
-            resolve_path(&feature, &segments),
-            Some(AttributeValue::String("Osaka".to_string()))
-        );
-    }
-
-    #[test]
-    fn missing_path_yields_none() {
-        let feature = feature_with(Attributes::new());
-        assert_eq!(resolve_path(&feature, &["bldg:class"]), None);
+    fn path(segments: &[&str]) -> Vec<String> {
+        segments.iter().map(|s| s.to_string()).collect()
     }
 
     #[test]
@@ -397,12 +365,12 @@ mod tests {
         let mut feature = feature_with(Attributes::new());
         write_path(
             &mut feature,
-            &["attributes", "bldg:usage"],
+            &path(&["attributes", "bldg:usage"]),
             AttributeValue::String("office".to_string()),
         );
         write_path(
             &mut feature,
-            &["attributes", "bldg:class"],
+            &path(&["attributes", "bldg:class"]),
             AttributeValue::String("residential".to_string()),
         );
         let AttributeValue::Map(nested) = feature.get("attributes").unwrap() else {
@@ -423,7 +391,7 @@ mod tests {
         let mut feature = feature_with(Attributes::new());
         write_path(
             &mut feature,
-            &["bldg:class"],
+            &path(&["bldg:class"]),
             AttributeValue::String("residential".to_string()),
         );
         assert_eq!(

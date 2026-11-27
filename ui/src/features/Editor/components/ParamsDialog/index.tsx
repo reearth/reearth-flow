@@ -1,5 +1,6 @@
 import { GearFineIcon } from "@phosphor-icons/react";
 import { useReactFlow } from "@xyflow/react";
+import { isEqual } from "lodash-es";
 import { memo, useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useY } from "react-yjs";
 import type { Doc } from "yjs";
@@ -13,6 +14,7 @@ import {
   PresenceAvatar,
 } from "@flow/components";
 import type { EditorContext as FieldContext } from "@flow/components/SchemaForm";
+import ConfirmationDialog from "@flow/features/ConfirmationDialog";
 import { useIsReadOnly } from "@flow/features/Editor/editorContext";
 import { useT } from "@flow/lib/i18n";
 import type { FlowSchema } from "@flow/lib/schemaForm";
@@ -96,6 +98,30 @@ const ParamsDialog: React.FC<Props> = ({
     if (!openNode) return undefined;
     return applyMergedPatch(openNode.data.params, nodeDrafts, "paramsPatch");
   }, [openNode, nodeDrafts]);
+
+  const hasUnsavedChanges = useMemo(() => {
+    const myDraft = nodeDrafts?.[clientId];
+    if (!openNode || !myDraft) return false;
+    const mine = { [clientId]: myDraft };
+    return (
+      !isEqual(
+        applyMergedPatch(openNode.data.params, mine, "paramsPatch"),
+        openNode.data.params ?? {},
+      ) ||
+      !isEqual(
+        applyMergedPatch(
+          openNode.data.customizations,
+          mine,
+          "customizationsPatch",
+        ),
+        openNode.data.customizations ?? {},
+      )
+    );
+  }, [openNode, nodeDrafts, clientId]);
+
+  const [discardConfirmNodeId, setDiscardConfirmNodeId] = useState<
+    string | undefined
+  >(undefined);
 
   const currentCustomizations = useMemo(() => {
     if (!openNode) return undefined;
@@ -368,6 +394,15 @@ const ParamsDialog: React.FC<Props> = ({
   };
 
   const handleOpenNode = useCallback(() => {
+    if (hasUnsavedChanges) {
+      setDiscardConfirmNodeId(openNode?.id);
+      return;
+    }
+    onOpenNode();
+  }, [hasUnsavedChanges, openNode?.id, onOpenNode]);
+
+  const handleDiscardChanges = useCallback(() => {
+    setDiscardConfirmNodeId(undefined);
     onOpenNode();
   }, [onOpenNode]);
 
@@ -457,6 +492,17 @@ const ParamsDialog: React.FC<Props> = ({
           onValueSubmit={handleFlowExprValueSubmit}
         />
       )}
+      <ConfirmationDialog
+        isOpen={!!openNode && discardConfirmNodeId === openNode.id}
+        title={t("Discard unsaved changes?")}
+        description={t(
+          "You have unsaved changes to this action. If you close the editor now, they will be lost.",
+        )}
+        confirmLabel={t("Discard")}
+        cancelLabel={t("Keep Editing")}
+        onClose={() => setDiscardConfirmNodeId(undefined)}
+        onConfirm={handleDiscardChanges}
+      />
     </>
   );
 };

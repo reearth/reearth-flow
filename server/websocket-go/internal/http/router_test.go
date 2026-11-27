@@ -23,9 +23,11 @@ type fakeStore struct {
 	versions     []VersionInfo
 	updateAt     map[uint64][]byte
 	materialized []byte
-	rolledBack   bool
-	prunedTarget uint64
-	flushed      bool
+	// materializeErr, when set, is returned by MaterializeAt instead of materialized.
+	materializeErr error
+	rolledBack     bool
+	prunedTarget   uint64
+	flushed        bool
 	// captureSnapshotCalled must stay false: the snapshot endpoint is read-only.
 	captureSnapshotCalled bool
 	copied                [2]string // [dst, src]
@@ -70,6 +72,9 @@ func (f *fakeStore) GetUpdate(ctx context.Context, room string, v uint64) ([]byt
 	return b, VersionInfo{Version: v, UpdatedAt: time.Unix(0, 0).UTC()}, true, nil
 }
 func (f *fakeStore) MaterializeAt(ctx context.Context, room string, v uint64) ([]byte, error) {
+	if f.materializeErr != nil {
+		return nil, f.materializeErr
+	}
 	return f.materialized, nil
 }
 func (f *fakeStore) PruneAfter(ctx context.Context, room string, target uint64, rolledBack []byte) error {
@@ -352,8 +357,10 @@ func TestCleanupUpdates(t *testing.T) {
 	store := &fakeStore{}
 	h := newTestRouter(store)
 	rec := do(t, h, "POST", "/api/document/proj1/cleanup", "")
-	if rec.Code != 200 || store.cleanupKeep != 10 {
-		t.Fatalf("status=%d keep=%d", rec.Code, store.cleanupKeep)
+	// Was 10, now the retention shared with ygo's unload compaction: a cleanup
+	// that kept fewer would discard entries the recovery view lists.
+	if rec.Code != 200 || store.cleanupKeep != defaultKeepUpdates {
+		t.Fatalf("status=%d keep=%d, want keep=%d", rec.Code, store.cleanupKeep, defaultKeepUpdates)
 	}
 }
 
@@ -373,8 +380,8 @@ func TestAdminCleanup(t *testing.T) {
 	store := &fakeStore{}
 	h := newTestRouter(store)
 	rec := do(t, h, "POST", "/api/admin/cleanup", "")
-	if rec.Code != 200 || !store.cleanupAll || store.cleanupKeep != 10 {
-		t.Fatalf("status=%d all=%v keep=%d", rec.Code, store.cleanupAll, store.cleanupKeep)
+	if rec.Code != 200 || !store.cleanupAll || store.cleanupKeep != defaultKeepUpdates {
+		t.Fatalf("status=%d all=%v keep=%d, want keep=%d", rec.Code, store.cleanupAll, store.cleanupKeep, defaultKeepUpdates)
 	}
 }
 
@@ -445,4 +452,94 @@ func TestRollbackClearSurvivesClientDisconnect(t *testing.T) {
 	if sig.clearCtxErr != nil {
 		t.Fatalf("clear ran on a cancelled context (err=%v) — unhiding the canvas must not depend on client liveness", sig.clearCtxErr)
 	}
+}
+
+// refusedRebuild models a store that cannot reconstruct a version because its
+// update log was compacted past it. It reports itself by method, the way the
+// GCS adapter's error does.
+type refusedRebuild struct{}
+
+func (refusedRebuild) Error() string        { return "the update log was compacted past this version" }
+func (refusedRebuild) NotRebuildable() bool { return true }
+
+// TestRollbackRefusesAVersionTheStoreCannotRebuild: a rebuild the store refuses
+// must never reach PruneAfter. PruneAfter replaces doc_v2 with what it is given
+// and deletes the log above the target, so pruning on a fragment destroys the
+// history above the version while restoring nothing. The caller gets 409, not
+// 500: the stored history conflicts with the request, the server is fine.
+func TestRollbackRefusesAVersionTheStoreCannotRebuild(t *testing.T) {
+	t.Parallel()
+
+	store := &fakeStore{materializeErr: refusedRebuild{}}
+	h := newTestRouter(store)
+	rec := do(t, h, "POST", "/api/document/proj1/rollback", `{"doc_id":"proj1","version":4}`)
+
+	if rec.Code != http.StatusConflict {
+		t.Errorf("status = %d, want %d", rec.Code, http.StatusConflict)
+	}
+	if store.rolledBack {
+		t.Error("PruneAfter ran on a rebuild the store refused")
+	}
+}
+
+// TestCreateSnapshotRefusesAVersionTheStoreCannotRebuild: the same refusal, so a
+// fragment is not stored as if it were that version.
+func TestCreateSnapshotRefusesAVersionTheStoreCannotRebuild(t *testing.T) {
+	t.Parallel()
+
+	store := &fakeStore{materializeErr: refusedRebuild{}}
+	h := newTestRouter(store)
+	rec := do(t, h, "POST", "/api/document/snapshot", `{"doc_id":"proj1","version":4}`)
+
+	if rec.Code != http.StatusConflict {
+		t.Errorf("status = %d, want %d", rec.Code, http.StatusConflict)
+	}
+}
+
+// TestCleanupRoutesTrimToTheConfiguredRetention: the cleanup routes and ygo's
+// unload compaction must trim a room's update log to the same number. They used
+// to differ, 10 here against 300 on unload, so one admin cleanup would have
+// discarded all but 10 of the entries the recovery view lists.
+func TestCleanupRoutesTrimToTheConfiguredRetention(t *testing.T) {
+	t.Parallel()
+
+	t.Run("per document", func(t *testing.T) {
+		t.Parallel()
+
+		store := &fakeStore{}
+		h := NewRouter(Deps{Store: store, KeepUpdates: 42})
+		if rec := do(t, h, "POST", "/api/document/proj1/cleanup", ""); rec.Code != http.StatusOK {
+			t.Fatalf("status = %d, want 200", rec.Code)
+		}
+		if store.cleanupKeep != 42 {
+			t.Errorf("Compact keep = %d, want 42", store.cleanupKeep)
+		}
+	})
+
+	t.Run("admin cleanup", func(t *testing.T) {
+		t.Parallel()
+
+		store := &fakeStore{}
+		h := NewRouter(Deps{Store: store, KeepUpdates: 42})
+		if rec := do(t, h, "POST", "/api/admin/cleanup", ""); rec.Code != http.StatusOK {
+			t.Fatalf("status = %d, want 200", rec.Code)
+		}
+		if store.cleanupKeep != 42 {
+			t.Errorf("CleanupAll keep = %d, want 42", store.cleanupKeep)
+		}
+	})
+
+	t.Run("unset falls back to the shared default, never zero", func(t *testing.T) {
+		t.Parallel()
+
+		store := &fakeStore{}
+		h := NewRouter(Deps{Store: store})
+		if rec := do(t, h, "POST", "/api/document/proj1/cleanup", ""); rec.Code != http.StatusOK {
+			t.Fatalf("status = %d, want 200", rec.Code)
+		}
+		// Zero would reach the store as "keep every update" and never trim.
+		if store.cleanupKeep != defaultKeepUpdates {
+			t.Errorf("Compact keep = %d, want %d", store.cleanupKeep, defaultKeepUpdates)
+		}
+	})
 }

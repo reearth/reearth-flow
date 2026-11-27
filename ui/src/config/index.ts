@@ -18,6 +18,7 @@ export type Config = {
   tosUrl?: string;
   documentationUrl?: string;
   feedbackUrl?: string;
+  earlyAccessUrl?: string;
   reearthHomeUrl?: string;
   reearthDashboardUrl?: string;
   reearthVisualizerUrl?: string;
