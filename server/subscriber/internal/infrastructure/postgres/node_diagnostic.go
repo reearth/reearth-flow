@@ -78,10 +78,13 @@ func (s *NodeDiagnostics) SaveDurableDiagnostic(ctx context.Context, event *diag
 	return nil
 }
 
-// Ping reports whether node_diagnostics exists and the current user can insert into it.
+// ON CONFLICT (id) needs SELECT on the key as well as INSERT.
+var nodeDiagnosticPrivileges = []string{"SELECT", "INSERT"}
+
+// Ping reports whether node_diagnostics exists and the current user can write to it.
 func (s *NodeDiagnostics) Ping(ctx context.Context) error {
 	var problems []string
-	if err := s.q.QueryRow(ctx, readySQL, []string{"node_diagnostics"}, []string{"INSERT"}).Scan(&problems); err != nil {
+	if err := s.q.QueryRow(ctx, readySQL, []string{"node_diagnostics"}, nodeDiagnosticPrivileges).Scan(&problems); err != nil {
 		return fmt.Errorf("check node_diagnostics: %w", err)
 	}
 	if len(problems) > 0 {

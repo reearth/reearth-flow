@@ -2,9 +2,12 @@ package postgres
 
 import (
 	"context"
+	"fmt"
 	"testing"
 	"time"
 
+	"github.com/jackc/pgx/v5"
+	"github.com/jackc/pgx/v5/pgxpool"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
@@ -131,14 +134,71 @@ func TestNodeDiagnostics_SaveDurableDiagnostic_Nil(t *testing.T) {
 
 func TestNodeDiagnostics_Ping(t *testing.T) {
 	t.Parallel()
-	pool := newPool(t)
+
+	t.Run("ready", func(t *testing.T) {
+		t.Parallel()
+		pool := newPool(t)
+		assert.NoError(t, NewNodeDiagnostics(pool).Ping(context.Background()))
+	})
+
+	t.Run("missing table", func(t *testing.T) {
+		t.Parallel()
+		ctx := context.Background()
+		pool := newPool(t)
+		_, err := pool.Exec(ctx, `DROP TABLE node_diagnostics`)
+		require.NoError(t, err)
+
+		err = NewNodeDiagnostics(pool).Ping(ctx)
+		require.Error(t, err)
+		assert.Contains(t, err.Error(), "node_diagnostics: missing")
+	})
+
+	t.Run("INSERT without SELECT is rejected", func(t *testing.T) {
+		t.Parallel()
+		ctx := context.Background()
+		pool := newPool(t)
+		conn := connAsRole(t, pool, "INSERT")
+
+		err := NewNodeDiagnostics(conn).Ping(ctx)
+		require.Error(t, err)
+		assert.Contains(t, err.Error(), "node_diagnostics: no SELECT privilege")
+		assert.ErrorContains(t, NewNodeDiagnostics(conn).SaveDurableDiagnostic(ctx, newDiagnosticEvent("job-ins", strp(testNodeID1))), "permission denied")
+	})
+
+	t.Run("SELECT and INSERT are enough", func(t *testing.T) {
+		t.Parallel()
+		ctx := context.Background()
+		pool := newPool(t)
+		conn := connAsRole(t, pool, "SELECT, INSERT")
+
+		require.NoError(t, NewNodeDiagnostics(conn).Ping(ctx))
+		require.NoError(t, NewNodeDiagnostics(conn).SaveDurableDiagnostic(ctx, newDiagnosticEvent("job-sel-ins", strp(testNodeID1))))
+	})
+}
+
+// connAsRole returns a connection switched to a fresh role holding only the given node_diagnostics privileges.
+func connAsRole(t *testing.T, pool *pgxpool.Pool, privileges string) *pgx.Conn {
+	t.Helper()
 	ctx := context.Background()
 
-	require.NoError(t, NewNodeDiagnostics(pool).Ping(ctx))
-
-	_, err := pool.Exec(ctx, `DROP TABLE node_diagnostics`)
+	// Roles are cluster-wide, so give this one a unique name and drop it.
+	role := fmt.Sprintf("node_diag_%d", time.Now().UnixNano())
+	_, err := pool.Exec(ctx, "CREATE ROLE "+role+" NOLOGIN")
 	require.NoError(t, err)
-	err = NewNodeDiagnostics(pool).Ping(ctx)
-	require.Error(t, err)
-	assert.Contains(t, err.Error(), "node_diagnostics: missing")
+	t.Cleanup(func() {
+		_, _ = pool.Exec(context.Background(), "DROP OWNED BY "+role)
+		_, _ = pool.Exec(context.Background(), "DROP ROLE "+role)
+	})
+	_, err = pool.Exec(ctx, "GRANT "+privileges+" ON node_diagnostics TO "+role)
+	require.NoError(t, err)
+
+	conn, err := pool.Acquire(ctx)
+	require.NoError(t, err)
+	t.Cleanup(func() {
+		_, _ = conn.Exec(context.Background(), "RESET ROLE")
+		conn.Release()
+	})
+	_, err = conn.Exec(ctx, "SET ROLE "+role)
+	require.NoError(t, err)
+	return conn.Conn()
 }
