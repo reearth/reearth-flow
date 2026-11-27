@@ -8,15 +8,15 @@ use reearth_flow_types::{Attribute, AttributeValue, Attributes};
 /// is compared numerically when parseable as i64.
 #[derive(Debug, Clone, Eq, PartialEq)]
 pub(super) struct FldSortEntry {
-    /// uro:description_code, the river system identifier, e.g. "1" for "利根川水系利根川"
+    /// `uro:description_code`: the river system identifier, e.g. "1" for "利根川水系利根川"
     pub desc_code: String,
-    /// uro:adminType_code, the admin jurisdiction code, e.g. "1" for "国", "2" for "都道府県"
+    /// `uro:adminType_code`: the admin jurisdiction code, e.g. "1" for "国", "2" for "都道府県"
     pub admin_code: String,
-    /// uro:scale_code, the flood scale code, e.g. "1" for "L1（計画規模）", "2" for "L2（想定最大規模）"
+    /// `uro:scale_code`: the flood scale code, e.g. "1" for "L1（計画規模）", "2" for "L2（想定最大規模）"
     pub scale_code: String,
     /// Position of the column within its group, `_name` first, then rank, rank_code, depth, duration
     pub order: u8,
-    /// Full column name, e.g. "fld_1_1_2_rank"
+    /// Full column name, e.g. `fld_1_1_2_rank`
     pub attr_name: String,
 }
 
