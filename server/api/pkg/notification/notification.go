@@ -24,9 +24,12 @@ type HTTPNotifier struct {
 	client *http.Client
 }
 
+// SendTimeout bounds one webhook request.
+const SendTimeout = 30 * time.Second
+
 func NewHTTPNotifier() *HTTPNotifier {
 	client := &http.Client{
-		Timeout: 30 * time.Second,
+		Timeout: SendTimeout,
 	}
 	return &HTTPNotifier{
 		client: client,

@@ -97,6 +97,9 @@ func jobIDListStrings(ids id.JobIDList) []string {
 	return s
 }
 
+// jobColumns lists gen.Job's columns in order, so a column added later does not break this code's positional scans.
+const jobColumns = "id, workspace_id, deployment_id, project_id, project_version, gcp_job_id, logs_url, worker_logs_url, user_facing_logs_url, status, batch_status, worker_status, started_at, completed_at, metadata_url, output_urls, debug, parameters, mode, trigger_id, scheduled_at, origin, run_by, notification_url, notified_at, artifacts_pending, notify_claimed_until"
+
 var jobOrderByColumns = map[string]string{
 	"startedAt":   "started_at",
 	"completedAt": "completed_at",
@@ -140,7 +143,7 @@ func (r *Job) FindByWorkspace(
 				dir = "DESC"
 			}
 		}
-		listSQL := fmt.Sprintf("SELECT * FROM jobs %s ORDER BY %s %s", whereSQL, orderCol, dir)
+		listSQL := fmt.Sprintf("SELECT %s FROM jobs %s ORDER BY %s %s", jobColumns, whereSQL, orderCol, dir)
 		rows, total, err := pgxx.CountAndList(ctx, db,
 			"SELECT count(*) FROM jobs "+whereSQL, listSQL, args,
 			int64(p.PageSize), int64((p.Page-1)*p.PageSize),
@@ -156,7 +159,7 @@ func (r *Job) FindByWorkspace(
 	}
 
 	rows, err := pgxx.List(ctx, db,
-		"SELECT * FROM jobs "+whereSQL+" ORDER BY started_at DESC", args,
+		"SELECT "+jobColumns+" FROM jobs "+whereSQL+" ORDER BY started_at DESC", args,
 		pgx.RowToStructByPos[gen.Job])
 	if err != nil {
 		return nil, nil, err
@@ -241,7 +244,7 @@ func (r *Job) FindByProject(ctx context.Context, pid id.ProjectID) ([]*job.Job, 
 	// but are not real runs. Legacy rows predate the mode column (default ''), so
 	// `mode <> 'preview-schema'` keeps them. Mirrors the Mongo FindByProject filter.
 	rows, err := pgxx.List(ctx, db,
-		"SELECT * FROM jobs WHERE project_id = $1 AND debug = true AND mode <> 'preview-schema'",
+		"SELECT "+jobColumns+" FROM jobs WHERE project_id = $1 AND debug = true AND mode <> 'preview-schema'",
 		[]any{pid.String()},
 		pgx.RowToStructByPos[gen.Job])
 	if err != nil {
@@ -281,6 +284,39 @@ func (r *Job) Save(ctx context.Context, j *job.Job) error {
 		if isScheduledRunConflict(err) {
 			return interfaces.ErrScheduledRunInProgress
 		}
+		return rerror.ErrInternalByWithContext(ctx, pgxx.WrapError(err))
+	}
+	return nil
+}
+
+func (r *Job) SaveIfNotTerminal(ctx context.Context, j *job.Job) (bool, error) {
+	if !r.f.CanWrite(j.Workspace()) {
+		return false, repo.ErrOperationDenied
+	}
+	params, err := jobToParams(j)
+	if err != nil {
+		return false, rerror.ErrInternalByWithContext(ctx, err)
+	}
+	n, err := r.q(ctx).SaveJobIfNotTerminal(ctx, gen.SaveJobIfNotTerminalParams(params))
+	if err != nil {
+		if isScheduledRunConflict(err) {
+			return false, interfaces.ErrScheduledRunInProgress
+		}
+		return false, rerror.ErrInternalByWithContext(ctx, pgxx.WrapError(err))
+	}
+	return n > 0, nil
+}
+
+func (r *Job) ClaimNotification(ctx context.Context, jid id.JobID, now, until time.Time) (bool, error) {
+	n, err := r.q(ctx).ClaimJobNotification(ctx, gen.ClaimJobNotificationParams{ID: jid.String(), Until: until, Now: now})
+	if err != nil {
+		return false, rerror.ErrInternalByWithContext(ctx, pgxx.WrapError(err))
+	}
+	return n > 0, nil
+}
+
+func (r *Job) MarkNotified(ctx context.Context, jid id.JobID, at time.Time) error {
+	if err := r.q(ctx).MarkJobNotified(ctx, gen.MarkJobNotifiedParams{ID: jid.String(), NotifiedAt: &at}); err != nil {
 		return rerror.ErrInternalByWithContext(ctx, pgxx.WrapError(err))
 	}
 	return nil
@@ -389,6 +425,9 @@ func jobToParams(j *job.Job) (gen.UpsertJobParams, error) {
 		p.Origin = b
 	}
 	p.RunBy = j.RunBy().StringRef()
+	p.NotificationUrl = j.NotificationURL()
+	p.NotifiedAt = j.NotifiedAt()
+	p.ArtifactsPending = j.ArtifactsPending()
 	return p, nil
 }
 
@@ -413,7 +452,10 @@ func jobFromRow(row gen.Job) (*job.Job, error) {
 		StartedAt(row.StartedAt).
 		CompletedAt(row.CompletedAt).
 		MetadataURL(row.MetadataUrl).
-		Debug(row.Debug)
+		Debug(row.Debug).
+		NotificationURL(row.NotificationUrl).
+		NotifiedAt(row.NotifiedAt).
+		ArtifactsPending(row.ArtifactsPending)
 
 	if row.DeploymentID != nil {
 		did, err := id.DeploymentIDFrom(*row.DeploymentID)

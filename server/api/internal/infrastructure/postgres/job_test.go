@@ -308,3 +308,19 @@ func TestJob_RunBy(t *testing.T) {
 		return postgres.NewJob(pgxx.NewClient(connect(t)))
 	})
 }
+
+func TestJob_SaveIfNotTerminal(t *testing.T) {
+	t.Parallel()
+	connect := pgtest.Connect(t)
+	repotest.JobSaveIfNotTerminal(t, func(t *testing.T) repo.Job {
+		return postgres.NewJob(pgxx.NewClient(connect(t)))
+	})
+}
+
+func TestJob_ClaimNotification(t *testing.T) {
+	t.Parallel()
+	connect := pgtest.Connect(t)
+	repotest.JobClaimNotification(t, func(t *testing.T) repo.Job {
+		return postgres.NewJob(pgxx.NewClient(connect(t)))
+	})
+}

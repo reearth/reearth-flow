@@ -78,6 +78,18 @@ func (m *mockJobRepo) Save(ctx context.Context, job *job.Job) error {
 	panic("unimplemented")
 }
 
+func (m *mockJobRepo) SaveIfNotTerminal(ctx context.Context, job *job.Job) (bool, error) {
+	panic("unimplemented")
+}
+
+func (m *mockJobRepo) ClaimNotification(context.Context, id.JobID, time.Time, time.Time) (bool, error) {
+	panic("unimplemented")
+}
+
+func (m *mockJobRepo) MarkNotified(context.Context, id.JobID, time.Time) error {
+	panic("unimplemented")
+}
+
 func (m *mockJobRepo) Filtered(filter repo.WorkspaceFilter) repo.Job {
 	return m
 }

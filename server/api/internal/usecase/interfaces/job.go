@@ -69,12 +69,14 @@ type Job interface {
 	// for jobs no monitoring loop is watching, such as ones left behind by a
 	// server restart.
 	Refresh(context.Context, *job.Job) (*job.Job, error)
+	// Reconcile syncs a job with Batch and its completion event; side effects run once across instances.
+	Reconcile(context.Context, id.JobID) (*job.Job, error)
 	// RunCloudRunWorker runs j on the Cloud Run worker in the background.
 	// notStarted, when set, is called if the worker is known not to have
 	// started the run.
 	RunCloudRunWorker(j *job.Job, p gateway.RunJobParam, notStarted func())
 	PreviewSchemaCloudRunWorker(j *job.Job, p gateway.ProbeSchemaParam)
-	StartMonitoring(context.Context, *job.Job, *string) error
+	StartMonitoring(context.Context, *job.Job) error
 	Subscribe(context.Context, id.JobID) (chan job.Status, error)
 	Unsubscribe(id.JobID, chan job.Status)
 }

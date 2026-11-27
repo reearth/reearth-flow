@@ -44,6 +44,8 @@ type Job struct {
 	sleep               func(context.Context, time.Duration) error
 	jobLocksMu          sync.RWMutex
 	watchersMu          sync.Mutex
+	// monitorInterval is the loop's poll interval; zero means defaultMonitorInterval.
+	monitorInterval time.Duration
 }
 
 type NotificationPayload struct {
@@ -132,33 +134,33 @@ func (i *Job) Cancel(ctx context.Context, jobID id.JobID) (*job.Job, error) {
 		return nil, fmt.Errorf("%w: current status is %s", interfaces.ErrJobNotCancellable, j.Status())
 	}
 
-	if err := i.transaction.WithinTransaction(ctx, func(ctx context.Context) error {
-		if isCloudRunDebug(j) && i.cloudRunWorker != nil {
-			if err := i.cloudRunWorker.CancelJob(ctx, j.ID()); err != nil {
-				return err
-			}
-		} else {
-			if err := i.batch.CancelJob(ctx, j.GCPJobID()); err != nil {
-				return err
-			}
+	if isCloudRunDebug(j) && i.cloudRunWorker != nil {
+		if err := i.cloudRunWorker.CancelJob(ctx, j.ID()); err != nil {
+			return nil, err
 		}
+	} else {
+		if err := i.batch.CancelJob(ctx, j.GCPJobID()); err != nil {
+			return nil, err
+		}
+	}
 
-		j.SetStatus(job.StatusCancelled)
-		now := time.Now()
-		j.SetCompletedAt(&now)
+	j.SetStatus(job.StatusCancelled)
+	// Status() follows the Batch status, so set it too or the job still reads as running.
+	if j.BatchStatus() != nil {
+		j.SetBatchStatus(job.StatusCancelled)
+	}
+	now := time.Now()
+	j.SetCompletedAt(&now)
 
-		return i.jobRepo.Save(ctx, j)
-	}); err != nil {
+	got, saved, err := i.finalize(ctx, j, nil)
+	if err != nil {
 		return nil, err
 	}
-
-	if err := i.handleJobCompletion(ctx, j); err != nil {
-		log.Errorfc(ctx, "job: completion handling failed: %v", err)
+	if !saved {
+		// It finished, possibly on another instance, while it was being cancelled.
+		return nil, fmt.Errorf("%w: current status is %s", interfaces.ErrJobNotCancellable, got.Status())
 	}
-
-	i.subscriptions.Notify(j.ID().String(), j.Status())
-
-	return j, nil
+	return got, nil
 }
 
 const cloudRunInfraFailureGrace = 30 * time.Second
@@ -276,29 +278,23 @@ func (i *Job) failCloudRunJobNow(ctx context.Context, jobID id.JobID) {
 	lock.Lock()
 	defer lock.Unlock()
 
-	latest, err := i.jobRepo.FindByID(ctx, jobID)
+	latest, err := i.reconcileLocked(ctx, jobID)
 	if err != nil {
-		log.Errorfc(ctx, "job: failed to reload cloud run job %s: %v", jobID, err)
+		log.Errorfc(ctx, "job: failed to reconcile cloud run job %s: %v", jobID, err)
 		return
 	}
-	if isTerminal(latest.Status()) {
+	if latest.Status().IsTerminal() {
 		return
 	}
+	// A worker event the reconcile did not act on still means a result arrived.
 	if ev, _ := i.redis.GetJobCompleteEvent(ctx, jobID); ev != nil {
 		return
 	}
 
 	latest.SetStatus(job.StatusFailed)
-
-	if err := i.jobRepo.Save(ctx, latest); err != nil {
+	if _, _, err := i.finalize(ctx, latest, nil); err != nil {
 		log.Errorfc(ctx, "job: failed to save cloud run job %s: %v", jobID, err)
-		return
 	}
-
-	if err := i.handleJobCompletion(ctx, latest); err != nil {
-		log.Errorfc(ctx, "job: completion handling failed for cloud run job %s: %v", jobID, err)
-	}
-	i.subscriptions.Notify(jobID.String(), latest.Status())
 }
 
 func (i *Job) FindByID(ctx context.Context, id id.JobID) (*job.Job, error) {
@@ -357,48 +353,15 @@ func (i *Job) GetStatus(ctx context.Context, jobID id.JobID) (job.Status, error)
 	return j.Status(), nil
 }
 
-// Refresh checks only Batch jobs that this server is not monitoring already.
-// A Cloud Run job has no Batch job to ask, so it is returned as it is, unless
-// it is queued with nothing dispatching it and no result in the live store:
-// then it turns running if its worker has logged, and fails if not.
+// Refresh reconciles an unfinished job; a finished one is returned as is.
 func (i *Job) Refresh(ctx context.Context, j *job.Job) (*job.Job, error) {
-	if i.mayBeAbandoned(j) && i.refreshQueuedDispatch(ctx, j.ID()) {
-		return i.jobRepo.FindByID(ctx, j.ID())
-	}
-	if i.batch == nil || i.redis == nil || j.GCPJobID() == "" {
+	if j.Status().IsTerminal() {
 		return j, nil
 	}
-	i.watchersMu.Lock()
-	watched := i.activeWatchers[j.ID().String()]
-	i.watchersMu.Unlock()
-	if watched {
-		return j, nil
-	}
-	if err := i.checkJobStatus(ctx, j); err != nil {
-		return nil, err
-	}
-	return i.jobRepo.FindByID(ctx, j.ID())
+	return i.Reconcile(ctx, j.ID())
 }
 
-func (i *Job) refreshQueuedDispatch(ctx context.Context, jobID id.JobID) bool {
-	lock := i.getJobLock(jobID.String())
-	lock.Lock()
-	defer lock.Unlock()
-
-	if ev, err := i.redis.GetJobCompleteEvent(ctx, jobID); ev != nil || err != nil {
-		return false
-	}
-	current, err := i.jobRepo.FindByID(ctx, jobID)
-	if err != nil || current == nil {
-		return false
-	}
-	if logged, err := i.startRunningOnFirstLog(ctx, current); logged || err != nil {
-		return logged
-	}
-	return i.failAbandonedDispatch(ctx, current)
-}
-
-func (i *Job) StartMonitoring(ctx context.Context, j *job.Job, notificationURL *string) error {
+func (i *Job) StartMonitoring(ctx context.Context, j *job.Job) error {
 	log.Debugfc(ctx, "job: starting monitoring for jobID=%s workspace=%s", j.ID(), j.Workspace())
 
 	i.watchersMu.Lock()
@@ -411,11 +374,6 @@ func (i *Job) StartMonitoring(ctx context.Context, j *job.Job, notificationURL *
 
 	if _, exists := i.activeWatchers[jobKey]; exists {
 		log.Debugfc(ctx, "job: monitoring already active for jobID=%s", jobKey)
-		if notificationURL != nil {
-			if config := i.monitor.Get(jobKey); config != nil {
-				config.NotificationURL = notificationURL
-			}
-		}
 		return nil
 	}
 
@@ -424,8 +382,7 @@ func (i *Job) StartMonitoring(ctx context.Context, j *job.Job, notificationURL *
 	monitorCtx, cancel := context.WithCancel(context.WithoutCancel(ctx))
 
 	i.monitor.Register(jobKey, &monitor.Config{
-		Cancel:          cancel,
-		NotificationURL: notificationURL,
+		Cancel: cancel,
 	})
 
 	go i.runMonitoringLoop(monitorCtx, j)
@@ -433,8 +390,14 @@ func (i *Job) StartMonitoring(ctx context.Context, j *job.Job, notificationURL *
 	return nil
 }
 
+const defaultMonitorInterval = 5 * time.Second
+
 func (i *Job) runMonitoringLoop(ctx context.Context, j *job.Job) {
-	ticker := time.NewTicker(5 * time.Second)
+	interval := i.monitorInterval
+	if interval <= 0 {
+		interval = defaultMonitorInterval
+	}
+	ticker := time.NewTicker(interval)
 	defer ticker.Stop()
 
 	jobID := j.ID().String()
@@ -463,177 +426,23 @@ func (i *Job) runMonitoringLoop(ctx context.Context, j *job.Job) {
 				return
 			}
 
-			currentJob, err := i.jobRepo.FindByID(ctx, j.ID())
+			// Reconcile notifies subscribers of a finished job, even one finished elsewhere.
+			currentJob, err := i.Reconcile(ctx, j.ID())
 			if err != nil {
-				log.Errorf("Failed to fetch current job state for job ID %s: %v", jobID, err)
+				log.Errorfc(ctx, "job: status check failed for job ID %s: %v", jobID, err)
 				continue
 			}
-
-			status := currentJob.Status()
-			if status == job.StatusCompleted || status == job.StatusFailed ||
-				status == job.StatusCancelled {
-				log.Infof(
-					"Job ID %s already in terminal state %s, stopping monitoring",
-					jobID,
-					status,
-				)
+			// A finished job with pending artifacts is polled until Reconcile lists them and sends the webhook.
+			if status := currentJob.Status(); status.IsTerminal() && !currentJob.ArtifactsPending() {
+				log.Infof("Job ID %s in terminal state %s, stopping monitoring", jobID, status)
 				return
 			}
-
-			if err := i.checkJobStatus(ctx, currentJob); err != nil {
-				log.Errorfc(ctx, "job: status check failed: %v", err)
-			}
 		}
 	}
-}
-
-func (i *Job) checkJobStatus(ctx context.Context, j *job.Job) error {
-	jobLock := i.getJobLock(j.ID().String())
-	jobLock.Lock()
-	defer jobLock.Unlock()
-
-	currentJob, err := i.jobRepo.FindByID(ctx, j.ID())
-	if err != nil {
-		return fmt.Errorf("failed to fetch current job state: %w", err)
-	}
-
-	var batchStatusChanged bool
-
-	// Cloud-Run debug jobs have an empty GCPJobID; skip Batch polling for them.
-	if j.GCPJobID() != "" {
-		status, err := i.batch.GetJobStatus(ctx, j.GCPJobID())
-		if err != nil {
-			return err
-		}
-		newBatchStatus := job.Status(status)
-		batchStatusChanged = currentJob.BatchStatus() == nil || *currentJob.BatchStatus() != newBatchStatus
-		if batchStatusChanged {
-			currentJob.SetBatchStatus(newBatchStatus)
-		}
-	}
-
-	workerEvent, err := i.redis.GetJobCompleteEvent(ctx, currentJob.ID())
-	if err != nil {
-		log.Warnf("Failed to get worker status from Redis for job %s: %v", currentJob.ID(), err)
-	}
-
-	if workerEvent != nil {
-		var workerStatus job.Status
-		switch workerEvent.Result {
-		case "success":
-			workerStatus = job.StatusCompleted
-		case "failed":
-			workerStatus = job.StatusFailed
-		}
-
-		if workerStatus != "" {
-			currentJob.SetWorkerStatus(workerStatus)
-			log.Infof("Updated worker status for job %s to %s", currentJob.ID(), workerStatus)
-		}
-	}
-
-	if workerEvent == nil && !batchStatusChanged {
-		logged, err := i.startRunningOnFirstLog(ctx, currentJob)
-		if err != nil {
-			return err
-		}
-		if logged || i.failAbandonedDispatch(ctx, currentJob) {
-			return nil
-		}
-	}
-
-	statusChanged := batchStatusChanged || workerEvent != nil
-
-	if statusChanged {
-		currentJob.SetStatus(currentJob.Status())
-
-		// Must run before the event is deleted below, or a failure here loses the diagnostics.
-		diagnosticsPersisted := true
-		if workerEvent != nil {
-			if err := i.persistTerminalDiagnostics(ctx, currentJob.ID(), workerEvent); err != nil {
-				diagnosticsPersisted = false
-				log.Warnf("Failed to persist terminal diagnostics for job %s: %v", currentJob.ID(), err)
-			}
-		}
-
-		if err := i.transaction.WithinTransaction(ctx, func(ctx context.Context) error {
-			if err := i.jobRepo.Save(ctx, currentJob); err != nil {
-				return fmt.Errorf("failed to save job: %w", err)
-			}
-			return nil
-		}); err != nil {
-			return err
-		}
-
-		if workerEvent != nil && diagnosticsPersisted {
-			if err := i.redis.DeleteJobCompleteEvent(ctx, currentJob.ID()); err != nil {
-				log.Warnf("Failed to delete job complete event from Redis for job %s: %v", currentJob.ID(), err)
-			}
-		}
-	}
-
-	computedStatus := currentJob.Status()
-	isTerminalState := computedStatus == job.StatusCompleted || computedStatus == job.StatusFailed ||
-		computedStatus == job.StatusCancelled
-	// statusChanged guard: don't re-run completion side-effects if another path
-	// (failCloudRunJob, Cancel) already finalized the job.
-	if statusChanged && isTerminalState {
-		log.Infof(
-			"Job %s transitioning to terminal state %s, handling completion",
-			currentJob.ID(),
-			computedStatus,
-		)
-
-		if err := i.handleJobCompletion(ctx, currentJob); err != nil {
-			log.Errorfc(ctx, "job: completion handling failed: %v", err)
-		}
-	}
-
-	if statusChanged {
-		i.subscriptions.Notify(currentJob.ID().String(), currentJob.Status())
-	}
-
-	return nil
-}
-
-func (i *Job) handleJobCompletion(ctx context.Context, j *job.Job) error {
-	if j == nil {
-		return fmt.Errorf("job cannot be nil")
-	}
-
-	jobID := j.ID().String()
-	log.Debugfc(ctx, "job: handling completion for jobID=%s with status=%s", jobID, j.Status())
-
-	config := i.monitor.Get(jobID)
-
-	if err := i.updateJobArtifacts(ctx, j); err != nil {
-		log.Errorfc(ctx, "job: failed to update artifacts for jobID=%s: %v", jobID, err)
-	}
-
-	if err := i.saveJobState(ctx, j); err != nil {
-		return fmt.Errorf("failed to save job state: %w", err)
-	}
-	logJobFinished(ctx, j)
-
-	if config == nil || config.NotificationURL == nil || *config.NotificationURL == "" {
-		return nil
-	}
-
-	if err := i.sendCompletionNotification(ctx, j, *config.NotificationURL); err != nil {
-		return fmt.Errorf("failed to send notification: %w", err)
-	}
-
-	return nil
 }
 
 func (i *Job) updateJobArtifacts(ctx context.Context, j *job.Job) error {
 	jobID := j.ID().String()
-
-	outputs, err := i.file.ListJobArtifacts(ctx, jobID)
-	if err != nil {
-		return fmt.Errorf("failed to list job artifacts: %w", err)
-	}
-	j.SetOutputURLs(outputs)
 
 	logURL := i.file.GetJobLogURL(jobID)
 	if logURL != "" {
@@ -650,6 +459,14 @@ func (i *Job) updateJobArtifacts(ctx context.Context, j *job.Job) error {
 		j.SetUserFacingLogsURL(userFacingLogURL)
 	}
 
+	outputs, err := i.file.ListJobArtifacts(ctx, jobID)
+	if err != nil {
+		// Retried by the next reconcile of the finished job.
+		j.SetArtifactsPending(true)
+		return fmt.Errorf("failed to list job artifacts: %w", err)
+	}
+	j.SetOutputURLs(outputs)
+
 	// A preview-schema job's only output is its SchemaReport; surface it via
 	// outputURLs (no dedicated Job field).
 	if j.Mode() == job.ModePreviewSchema {
@@ -658,16 +475,8 @@ func (i *Job) updateJobArtifacts(ctx context.Context, j *job.Job) error {
 		}
 	}
 
+	j.SetArtifactsPending(false)
 	return nil
-}
-
-func (i *Job) saveJobState(ctx context.Context, j *job.Job) error {
-	return i.transaction.WithinTransaction(ctx, func(ctx context.Context) error {
-		if err := i.jobRepo.Save(ctx, j); err != nil {
-			return fmt.Errorf("failed to save job: %w", err)
-		}
-		return nil
-	})
 }
 
 func (i *Job) sendCompletionNotification(
@@ -734,37 +543,33 @@ func (i *Job) Subscribe(ctx context.Context, jobID id.JobID) (chan job.Status, e
 
 	ch := i.subscriptions.Subscribe(jobID.String())
 
-	go func() {
-		j, err := i.jobRepo.FindByID(context.Background(), jobID)
-		if err != nil {
-			log.Warnfc(context.Background(), "job: failed to fetch initial status for subscription: %v", err)
-			return
-		}
-		if j != nil {
-			i.subscriptions.Notify(jobID.String(), j.Status())
-		}
-	}()
-
-	i.startMonitoringIfNeeded(jobID)
+	go i.startMonitoringIfNeeded(context.WithoutCancel(ctx), jobID)
 
 	return ch, nil
 }
 
-func (i *Job) startMonitoringIfNeeded(jobID id.JobID) {
-	j, err := i.jobRepo.FindByID(context.Background(), jobID)
-	if err != nil {
-		log.Errorfc(context.Background(), "job: failed to find job for monitoring: %v", err)
+// startMonitoringIfNeeded reconciles the job, sends its status, and watches it if unfinished.
+func (i *Job) startMonitoringIfNeeded(ctx context.Context, jobID id.JobID) {
+	j, err := i.Reconcile(ctx, jobID)
+	reconciled := err == nil
+	if !reconciled {
+		log.Warnfc(ctx, "job: failed to reconcile job %s for a subscription: %v", jobID, err)
+		if j, err = i.jobRepo.FindByID(ctx, jobID); err != nil {
+			log.Errorfc(ctx, "job: failed to find job %s for monitoring: %v", jobID, err)
+			return
+		}
+	}
+	if j.Status().IsTerminal() {
+		// Reconcile already sent a finished job's status; the fallback read has not.
+		if !reconciled {
+			i.subscriptions.Notify(jobID.String(), j.Status())
+		}
 		return
 	}
+	i.subscriptions.Notify(jobID.String(), j.Status())
 
-	status := j.Status()
-	if status == job.StatusCompleted || status == job.StatusFailed ||
-		status == job.StatusCancelled {
-		return
-	}
-
-	if err := i.StartMonitoring(context.Background(), j, nil); err != nil {
-		log.Errorfc(context.Background(), "job: failed to start monitoring: %v", err)
+	if err := i.StartMonitoring(ctx, j); err != nil {
+		log.Errorfc(ctx, "job: failed to start monitoring: %v", err)
 	}
 }
 

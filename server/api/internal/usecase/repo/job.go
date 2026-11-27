@@ -38,6 +38,12 @@ type Job interface {
 	// Save saves a job, and returns interfaces.ErrScheduledRunInProgress when
 	// another job already has its scheduled run.
 	Save(context.Context, *job.Job) error
+	// SaveIfNotTerminal saves atomically unless the stored job is terminal, and reports whether it saved.
+	SaveIfNotTerminal(context.Context, *job.Job) (bool, error)
+	// ClaimNotification takes the job's webhook delivery until until, unless it was sent or a claim is live at now.
+	ClaimNotification(ctx context.Context, jid id.JobID, now, until time.Time) (bool, error)
+	// MarkNotified records the webhook as sent at at, touching nothing else.
+	MarkNotified(ctx context.Context, jid id.JobID, at time.Time) error
 	Remove(context.Context, id.JobID) error
 }
 

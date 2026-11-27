@@ -18,20 +18,30 @@ import (
 
 type Job struct {
 	data map[id.JobID]*job.Job
-	f    repo.WorkspaceFilter
-	lock sync.Mutex
+	// saved is each job's status at its last save; data shares pointers, so it can't tell.
+	saved map[id.JobID]job.Status
+	// claims is until when each job's webhook delivery is held.
+	claims map[id.JobID]time.Time
+	lock   *sync.Mutex
+	f      repo.WorkspaceFilter
 }
 
 func NewJob() *Job {
 	return &Job{
-		data: map[id.JobID]*job.Job{},
+		data:   map[id.JobID]*job.Job{},
+		saved:  map[id.JobID]job.Status{},
+		claims: map[id.JobID]time.Time{},
+		lock:   &sync.Mutex{},
 	}
 }
 
 func (r *Job) Filtered(f repo.WorkspaceFilter) repo.Job {
 	return &Job{
-		data: r.data,
-		f:    r.f.Merge(f),
+		data:   r.data,
+		saved:  r.saved,
+		claims: r.claims,
+		f:      r.f.Merge(f),
+		lock:   r.lock,
 	}
 }
 
@@ -194,7 +204,27 @@ func (r *Job) Save(ctx context.Context, j *job.Job) error {
 		return interfaces.ErrScheduledRunInProgress
 	}
 	r.data[j.ID()] = j
+	r.saved[j.ID()] = j.Status()
 	return nil
+}
+
+func (r *Job) SaveIfNotTerminal(_ context.Context, j *job.Job) (bool, error) {
+	if !r.f.CanWrite(j.Workspace()) {
+		return false, repo.ErrOperationDenied
+	}
+
+	r.lock.Lock()
+	defer r.lock.Unlock()
+
+	if s, ok := r.saved[j.ID()]; ok && s.IsTerminal() {
+		return false, nil
+	}
+	if r.scheduledRunTaken(j) {
+		return false, interfaces.ErrScheduledRunInProgress
+	}
+	r.data[j.ID()] = j
+	r.saved[j.ID()] = j.Status()
+	return true, nil
 }
 
 // scheduledRunTaken reports whether another job already has j's scheduled run.
@@ -295,7 +325,31 @@ func (r *Job) RemoveByProject(ctx context.Context, projectID id.ProjectID) error
 			continue
 		}
 		delete(r.data, jid)
+		delete(r.saved, jid)
 	}
+	return nil
+}
+
+func (r *Job) ClaimNotification(_ context.Context, jid id.JobID, now, until time.Time) (bool, error) {
+	r.lock.Lock()
+	defer r.lock.Unlock()
+
+	if c, ok := r.claims[jid]; ok && !c.Before(now) {
+		return false, nil
+	}
+	r.claims[jid] = until
+	return true, nil
+}
+
+func (r *Job) MarkNotified(_ context.Context, jid id.JobID, at time.Time) error {
+	r.lock.Lock()
+	defer r.lock.Unlock()
+
+	if j, ok := r.data[jid]; ok {
+		j.SetNotifiedAt(&at)
+	}
+	// Held for good, so a stale save that clears notifiedAt cannot make it claimable again.
+	r.claims[jid] = time.Date(9999, 12, 31, 0, 0, 0, 0, time.UTC)
 	return nil
 }
 
@@ -305,6 +359,7 @@ func (r *Job) Remove(ctx context.Context, id id.JobID) error {
 
 	if j, ok := r.data[id]; ok && r.f.CanWrite(j.Workspace()) {
 		delete(r.data, id)
+		delete(r.saved, id)
 	}
 	return nil
 }

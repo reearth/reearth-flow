@@ -739,13 +739,13 @@ func (i *Project) Run(ctx context.Context, p interfaces.RunProjectParam) (_ *job
 			// Handed to the worker, which gives the use back itself if it
 			// refuses the run.
 			admission.markSubmitted(nil)
-			if err := i.job.StartMonitoring(ctx, j, nil); err != nil {
+			if err := i.job.StartMonitoring(ctx, j); err != nil {
 				return j, fmt.Errorf("failed to start job monitoring: %v", err)
 			}
 		}
 	} else {
 		if i.job != nil {
-			if err := i.job.StartMonitoring(ctx, j, nil); err != nil {
+			if err := i.job.StartMonitoring(ctx, j); err != nil {
 				return j, fmt.Errorf("failed to start job monitoring: %v", err)
 			}
 		}
@@ -874,13 +874,13 @@ func (i *Project) PreviewSchema(ctx context.Context, p interfaces.PreviewSchemaP
 				Variables:   variables,
 				SampleSize:  sampleSize,
 			})
-			if err := i.job.StartMonitoring(ctx, j, nil); err != nil {
+			if err := i.job.StartMonitoring(ctx, j); err != nil {
 				return j, fmt.Errorf("failed to start job monitoring: %v", err)
 			}
 		}
 	} else {
 		if i.job != nil {
-			if err := i.job.StartMonitoring(ctx, j, nil); err != nil {
+			if err := i.job.StartMonitoring(ctx, j); err != nil {
 				return j, fmt.Errorf("failed to start job monitoring: %v", err)
 			}
 		}
