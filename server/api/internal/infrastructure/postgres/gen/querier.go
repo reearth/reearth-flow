@@ -38,6 +38,7 @@ type Querier interface {
 	// The job a time-driven trigger started for one scheduled time.
 	GetJobByScheduledRun(ctx context.Context, arg GetJobByScheduledRunParams) (Job, error)
 	GetJobCompleteEvent(ctx context.Context, jobID string) ([]byte, error)
+	GetJobDiagnosticSummary(ctx context.Context, jobID string) (JobDiagnosticSummary, error)
 	GetParameter(ctx context.Context, id string) (Parameter, error)
 	GetProject(ctx context.Context, id string) (Project, error)
 	GetProjectAccessByProjectID(ctx context.Context, projectID string) (ProjectAccess, error)
@@ -51,6 +52,7 @@ type Querier interface {
 	ListEdgeExecutionsByJobID(ctx context.Context, jobID string) ([]EdgeExecution, error)
 	ListJobDiagnostics(ctx context.Context, jobID string) ([][]byte, error)
 	ListJobLevelDiagnostics(ctx context.Context, jobID string) ([][]byte, error)
+	ListJobLevelNodeDiagnostics(ctx context.Context, jobID string) ([]NodeDiagnostic, error)
 	// Transient job live data (REEARTH_FLOW_LIVE_BACKEND=postgres). Written by the
 	// subscriber, read here; see the unlogged section of db/schema.hcl.
 	ListJobLogs(ctx context.Context, arg ListJobLogsParams) ([]ListJobLogsRow, error)
@@ -59,6 +61,9 @@ type Querier interface {
 	ListJobsByIDs(ctx context.Context, dollar_1 []string) ([]Job, error)
 	// Diagnostics are returned newest first, matching the LPUSH'd Redis lists.
 	ListNodeDiagnostics(ctx context.Context, arg ListNodeDiagnosticsParams) ([][]byte, error)
+	ListNodeDiagnosticsByJobID(ctx context.Context, jobID string) ([]NodeDiagnostic, error)
+	// Diagnostics are returned oldest first, matching the Mongo repo's timestamp sort.
+	ListNodeDiagnosticsByJobNodeID(ctx context.Context, arg ListNodeDiagnosticsByJobNodeIDParams) ([]NodeDiagnostic, error)
 	ListParametersByIDs(ctx context.Context, dollar_1 []string) ([]Parameter, error)
 	ListParametersByProject(ctx context.Context, projectID string) ([]Parameter, error)
 	ListProjectsByIDs(ctx context.Context, dollar_1 []string) ([]Project, error)
@@ -77,6 +82,8 @@ type Querier interface {
 	UpsertDeployment(ctx context.Context, arg UpsertDeploymentParams) error
 	UpsertEdgeExecution(ctx context.Context, arg UpsertEdgeExecutionParams) error
 	UpsertJob(ctx context.Context, arg UpsertJobParams) error
+	UpsertJobDiagnosticSummary(ctx context.Context, arg UpsertJobDiagnosticSummaryParams) error
+	UpsertNodeDiagnostic(ctx context.Context, arg UpsertNodeDiagnosticParams) error
 	UpsertParameter(ctx context.Context, arg UpsertParameterParams) error
 	// starred_by is written only when the row is created: afterwards stars change
 	// through the star queries alone, so saving an edit made from a stale read

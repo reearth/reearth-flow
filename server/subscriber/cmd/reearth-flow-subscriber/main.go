@@ -119,14 +119,27 @@ func main() {
 		redisClient  *redis.Client
 		postgresPing func(context.Context) error
 		liveStore    infrastructure.LiveStore
+		pgPool       *pgxpool.Pool
 	)
+	// The live store and the diagnostic store share one pool when both are on Postgres.
+	postgresPool := func() *pgxpool.Pool {
+		if pgPool == nil {
+			p, err := pgxpool.New(ctx, conf.DBPG)
+			if err != nil {
+				log.Fatalf("Failed to create Postgres pool: %v", err)
+			}
+			pgPool = p
+		}
+		return pgPool
+	}
+	defer func() {
+		if pgPool != nil {
+			pgPool.Close()
+		}
+	}()
 	switch conf.LiveBackend {
 	case LiveBackendPostgres:
-		pool, err := pgxpool.New(ctx, conf.DBPG)
-		if err != nil {
-			log.Fatalf("Failed to create Postgres pool: %v", err)
-		}
-		defer pool.Close()
+		pool := postgresPool()
 
 		pgStorage := flow_postgres.NewStorage(pool)
 		// Don't consume events until the live tables exist and are writable.
@@ -171,7 +184,19 @@ func main() {
 	var mongoClient *mongo.Client
 	var diagnosticStorage gateway.DiagnosticStorage
 
-	if conf.DiagnosticSubscriptionID != "" {
+	switch {
+	case conf.DiagnosticSubscriptionID == "":
+	case conf.DiagnosticBackend == DiagnosticBackendPostgres:
+		nodeDiagnostics := flow_postgres.NewNodeDiagnostics(postgresPool())
+		readyCtx, readyCancel := context.WithTimeout(ctx, 10*time.Second)
+		err = nodeDiagnostics.Ping(readyCtx)
+		readyCancel()
+		if err != nil {
+			log.Fatalf("Postgres diagnostic store not ready: %v", err)
+		}
+		diagnosticStorage = infrastructure.NewDiagnosticStorageImpl(liveStore, nodeDiagnostics)
+		log.Println("[subscriber] Diagnostic backend: postgres")
+	default:
 		mongoClient, err = mongo.Connect(ctx, options.Client().ApplyURI(conf.DB).SetMonitor(otelmongo.NewMonitor()))
 		if err != nil {
 			log.Fatalf("Failed to connect to MongoDB: %v", err)
@@ -191,6 +216,7 @@ func main() {
 			log.Printf("[subscriber] failed to ensure nodeDiagnostics indexes: %v", err)
 		}
 		diagnosticStorage = infrastructure.NewDiagnosticStorageImpl(liveStore, mongoStorage)
+		log.Println("[subscriber] Diagnostic backend: mongo")
 	}
 
 	// Set up subscribers with respective subscriptions

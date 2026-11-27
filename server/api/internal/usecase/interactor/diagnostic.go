@@ -17,7 +17,7 @@ import (
 	"github.com/reearth/reearthx/rerror"
 )
 
-// Reads hit both Redis and Mongo: stopping at a non-empty Redis result would hide terminal rows.
+// Reads hit both the live store and the durable repo: stopping at a non-empty live result would hide terminal rows.
 // The diagnostics.json the worker uploads with the job's artifacts is the durable
 // fallback when the database has no rows (e.g. a driver without a diagnostics repo).
 type NodeDiagnostics struct {

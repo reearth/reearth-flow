@@ -121,6 +121,12 @@ type JobDiagnostic struct {
 	CreatedAt time.Time
 }
 
+type JobDiagnosticSummary struct {
+	JobID             string
+	Ts                time.Time
+	DroppedEventCount int64
+}
+
 type JobLog struct {
 	ID         int64
 	JobID      string
@@ -147,6 +153,31 @@ type JobUserFacingLog struct {
 	// sha256 of the serialized event; dedupes Pub/Sub redelivery
 	PayloadHash []byte
 	CreatedAt   time.Time
+}
+
+type NodeDiagnostic struct {
+	// deterministic, so Pub/Sub redeliveries and repeated terminal merges upsert
+	ID         string
+	JobID      string
+	WorkflowID string
+	// NULL for job-level diagnostics
+	NodeID *string
+	Ts     time.Time
+	// job-complete.v1 marks a terminal row
+	Schema   string
+	Code     string
+	Category string
+	Severity string
+	// bytea so a U+0000 from feature data round-trips
+	Message                    []byte
+	EffectiveDisposition       *string
+	ActionType                 *string
+	FeatureID                  *string
+	Help                       *string
+	SourceSpanOffset           *int64
+	SourceSpanLength           *int64
+	AggregatedCount            *int64
+	AggregatedSampleFeatureIds []string
 }
 
 type NodeExecution struct {

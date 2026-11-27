@@ -21,7 +21,7 @@ func (m *mockDiagnosticStorage) Save(ctx context.Context, event *diagnostic.Diag
 	return args.Error(0)
 }
 
-func (m *mockDiagnosticStorage) SaveToMongo(ctx context.Context, event *diagnostic.DiagnosticEvent) error {
+func (m *mockDiagnosticStorage) SaveDurable(ctx context.Context, event *diagnostic.DiagnosticEvent) error {
 	args := m.Called(ctx, event)
 	return args.Error(0)
 }
@@ -52,7 +52,7 @@ func TestDiagnosticSubscriberUseCase_ProcessDiagnosticEvent(t *testing.T) {
 		event := validDiagnosticEvent()
 
 		mockStorage.On("Save", ctx, event).Return(nil).Once()
-		mockStorage.On("SaveToMongo", ctx, event).Return(nil).Once()
+		mockStorage.On("SaveDurable", ctx, event).Return(nil).Once()
 
 		err := u.ProcessDiagnosticEvent(ctx, event)
 		assert.NoError(t, err)
@@ -66,7 +66,7 @@ func TestDiagnosticSubscriberUseCase_ProcessDiagnosticEvent(t *testing.T) {
 		event := validDiagnosticEvent()
 
 		mockStorage.On("Save", ctx, event).Return(nil).Once()
-		mockStorage.On("SaveToMongo", ctx, event).Return(errors.New("mongo down")).Once()
+		mockStorage.On("SaveDurable", ctx, event).Return(errors.New("durable store down")).Once()
 
 		err := u.ProcessDiagnosticEvent(ctx, event)
 		assert.NoError(t, err)
@@ -83,7 +83,7 @@ func TestDiagnosticSubscriberUseCase_ProcessDiagnosticEvent(t *testing.T) {
 		assert.Contains(t, err.Error(), "diagnostic event is nil")
 
 		mockStorage.AssertNotCalled(t, "Save")
-		mockStorage.AssertNotCalled(t, "SaveToMongo")
+		mockStorage.AssertNotCalled(t, "SaveDurable")
 	})
 
 	t.Run("Error: invalid schema", func(t *testing.T) {
@@ -97,7 +97,7 @@ func TestDiagnosticSubscriberUseCase_ProcessDiagnosticEvent(t *testing.T) {
 		assert.Contains(t, err.Error(), "unexpected schema")
 
 		mockStorage.AssertNotCalled(t, "Save")
-		mockStorage.AssertNotCalled(t, "SaveToMongo")
+		mockStorage.AssertNotCalled(t, "SaveDurable")
 	})
 
 	t.Run("Error: missing jobId", func(t *testing.T) {
@@ -111,7 +111,7 @@ func TestDiagnosticSubscriberUseCase_ProcessDiagnosticEvent(t *testing.T) {
 		assert.Contains(t, err.Error(), "missing job ID")
 
 		mockStorage.AssertNotCalled(t, "Save")
-		mockStorage.AssertNotCalled(t, "SaveToMongo")
+		mockStorage.AssertNotCalled(t, "SaveDurable")
 	})
 
 	t.Run("Error: storing to the live store fails", func(t *testing.T) {
@@ -126,7 +126,7 @@ func TestDiagnosticSubscriberUseCase_ProcessDiagnosticEvent(t *testing.T) {
 		assert.Contains(t, err.Error(), "failed to write diagnostic event to live store")
 
 		mockStorage.AssertExpectations(t)
-		mockStorage.AssertNotCalled(t, "SaveToMongo")
+		mockStorage.AssertNotCalled(t, "SaveDurable")
 	})
 
 	t.Run("Success: unknown severity/category strings pass through unvalidated", func(t *testing.T) {
@@ -137,7 +137,7 @@ func TestDiagnosticSubscriberUseCase_ProcessDiagnosticEvent(t *testing.T) {
 		event.Category = "future_category"
 
 		mockStorage.On("Save", ctx, event).Return(nil).Once()
-		mockStorage.On("SaveToMongo", ctx, event).Return(nil).Once()
+		mockStorage.On("SaveDurable", ctx, event).Return(nil).Once()
 
 		err := u.ProcessDiagnosticEvent(ctx, event)
 		assert.NoError(t, err)
