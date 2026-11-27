@@ -134,6 +134,9 @@ type roomState struct {
 	// replayed is closed once a replay finishes with none asked for since it
 	// began; nil when no replay is pending.
 	replayed chan struct{}
+	// replayAsks counts replay requests, so a trim can tell that one was asked
+	// for and finished while it was flushing.
+	replayAsks uint64
 
 	// writeCh is the bounded outbound queue; Publish enqueues non-blockingly.
 	writeCh chan writeItem
@@ -419,6 +422,7 @@ func (r *Relay) RoomActivated(room string) {
 	if ok && !old.evicting {
 		old.activations++
 		old.replay = true
+		old.replayAsks++
 		if old.replayed == nil {
 			old.replayed = make(chan struct{})
 		}
@@ -460,9 +464,12 @@ func (r *Relay) RoomActivated(room string) {
 // the live reader does not re-apply replayed entries. Self entries are skipped on
 // apply but still advance the cursor.
 func (r *Relay) catchUp(ctx context.Context, room string, sink cluster.Sink) (string, error) {
+	// A pass that completes clears the load fences of loads that began before it.
+	covers := r.passBegin(room)
 	lastID := "0"
 	start := "-"
 	for {
+		r.passRefresh(ctx, room, covers)
 		msgs, err := r.client.XRangeN(ctx, streamKey(room), start, "+", readCount).Result()
 		if err != nil {
 			return "", err
@@ -480,10 +487,12 @@ func (r *Relay) catchUp(ctx context.Context, room string, sink cluster.Sink) (st
 			lastID = e.id
 		}
 		if len(msgs) < readCount {
+			r.passEnd(ctx, room, covers)
 			return lastID, nil
 		}
 		next, ok := nextStreamID(lastID)
 		if !ok {
+			r.passEnd(ctx, room, covers)
 			return lastID, nil
 		}
 		start = next
@@ -508,7 +517,7 @@ func (r *Relay) trimLoop(ctx context.Context, room string, rs *roomState) {
 }
 
 // trimStream drops the prefix of the stream that is provably safe to lose, which
-// takes three independent bounds, all of which must hold:
+// takes four independent bounds, all of which must hold:
 //
 //   - Age: more than streamRetention older than this reader's cursor. Anchoring on
 //     the cursor (a Redis-clock id) keeps local clock skew out of the boundary and
@@ -525,7 +534,12 @@ func (r *Relay) trimLoop(ctx context.Context, room string, rs *roomState) {
 //     therefore gated on a successful FlushRoom, whose completion means the whole
 //     converged document — every entry at or below the boundary — is in GCS. On a
 //     GCS outage the flush fails, no trim happens, and Redis keeps the only replay
-//     copy until persistence recovers.
+//     copy until persistence recovers. A checkpoint rebuilt from storage, with no
+//     resident document, vouches for nothing the reader applied and allows no trim.
+//   - Loads: a room that loaded storage lacking an entry needs it from the stream
+//     until a pass over the stream has given it to the room. No instance trims
+//     while any instance holds a load fence (loadfence.go), and the fences and
+//     this instance's load and replay counts are checked again after the flush.
 //
 // The checkpoint is skipped when the stream holds nothing below the boundary, so
 // an idle room settles into cheap no-op ticks rather than a flush a minute.
@@ -533,12 +547,15 @@ func (r *Relay) trimStream(ctx context.Context, room string, rs *roomState) erro
 	r.mu.Lock()
 	cursor := rs.lastID
 	replaying := rs.replayed != nil
+	asks := rs.replayAsks
 	r.mu.Unlock()
-	// A replay asked for and not yet finished can still need entries below the
-	// cursor that the resident document lacks, so neither flush nor trim until it is.
-	if replaying {
+	// A replay asked for and not yet finished, or a load on this instance not yet
+	// read through, can still need entries below the cursor that the resident
+	// document lacks, so neither flush nor trim until it is.
+	if replaying || r.localFenceLive(room) {
 		return nil
 	}
+	gen := r.loadGen(room)
 	ms, ok := streamIDMillis(cursor)
 	if !ok {
 		return nil
@@ -553,7 +570,7 @@ func (r *Relay) trimStream(ctx context.Context, room string, rs *roomState) erro
 		return err
 	}
 	if !ok {
-		return nil // an active instance has not advertised a cursor
+		return nil // an active instance has not advertised a cursor, or one is loading
 	}
 	if floorMs < minMs {
 		minMs = floorMs
@@ -567,14 +584,38 @@ func (r *Relay) trimStream(ctx context.Context, room string, rs *roomState) erro
 	if err != nil || !has {
 		return err
 	}
-	// Durable checkpoint before anything is discarded.
-	if err := r.flusher.FlushRoom(ctx, room); err != nil {
+	// Durable checkpoint before anything is discarded. Only a resident document
+	// is known to hold every entry this reader applied.
+	live, err := checkpointLive(ctx, r.flusher, room)
+	if err != nil || !live {
+		return err
+	}
+	// A load can start while the flush runs. Worse, on this instance a room can
+	// load, replay and clear its fence entirely inside it, after the flush took
+	// that room's document, which lacked the entries. So re-check the fences and
+	// refuse if a load or a replay began since the first check. A load that
+	// begins after this point reads storage the flush has already written.
+	if r.trimRaced(room, rs, gen, asks) {
+		return nil
+	}
+	if fenced, err := loadFenced(ctx, r.client, room, nowSecs()); err != nil || fenced {
 		return err
 	}
 	// Approximate: exact MINID costs time proportional to the entries removed, so
 	// the first tick on an already-oversized stream would monopolize Redis. Matches
 	// the Rust backend's `MINID ~`.
 	return r.client.XTrimMinIDApprox(ctx, key, strconv.FormatInt(minMs, 10)+"-0", 0).Err()
+}
+
+// trimRaced reports whether, since a trim recorded gen and asks, a load or a
+// replay began on this instance or one is still pending.
+func (r *Relay) trimRaced(room string, rs *roomState, gen, asks uint64) bool {
+	if r.localFenceLive(room) || r.loadGen(room) != gen {
+		return true
+	}
+	r.mu.Lock()
+	defer r.mu.Unlock()
+	return rs.replayed != nil || rs.replayAsks != asks
 }
 
 // hasEntriesBelow reports whether the stream's oldest entry sits below minMs,
@@ -702,6 +743,7 @@ func (r *Relay) replayIfAsked(ctx context.Context, room string, rs *roomState, s
 	defer r.mu.Unlock()
 	if err != nil {
 		rs.replay = true
+		rs.replayAsks++
 		if errors.Is(err, errStopReading) {
 			return true
 		}

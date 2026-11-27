@@ -32,6 +32,22 @@ func flushLastInstance(ctx context.Context, f Flusher, room string) error {
 	return f.FlushRoom(ctx, room)
 }
 
+// LiveCheckpointer is a Flusher that can say whether its checkpoint wrote the
+// room's resident document or rebuilt it from storage. A trim needs the former:
+// only a resident document is known to hold every entry the reader applied.
+type LiveCheckpointer interface {
+	CheckpointLive(ctx context.Context, room string) (live bool, err error)
+}
+
+// checkpointLive checkpoints room and reports whether the checkpoint wrote its
+// resident document. A Flusher that cannot tell is taken at its word.
+func checkpointLive(ctx context.Context, f Flusher, room string) (bool, error) {
+	if lc, ok := f.(LiveCheckpointer); ok {
+		return lc.CheckpointLive(ctx, room)
+	}
+	return true, f.FlushRoom(ctx, room)
+}
+
 // noopFlusher is the default when no real Flusher is injected.
 type noopFlusher struct{}
 
