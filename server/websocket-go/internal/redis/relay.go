@@ -969,6 +969,7 @@ func (r *Relay) RoomDeactivated(room string) {
 	// key, which must stay.
 	if r.rooms[room] == rs {
 		delete(r.rooms, room)
+		r.dropFenceIfIdleLocked(room)
 	}
 	r.mu.Unlock()
 }
@@ -1059,6 +1060,10 @@ func (r *Relay) evict(room string, rs *roomState) {
 		return
 	}
 	if _, ok := r.successor(room, rs); ok {
+		return
+	}
+	// A load here whose fence never reached Redis still needs the stream.
+	if r.localFenceLive(room) {
 		return
 	}
 	if err := safeDeleteStream(ctx, r.client, room, r.instanceValue()); err != nil {
