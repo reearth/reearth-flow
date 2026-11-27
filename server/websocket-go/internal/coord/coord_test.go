@@ -301,3 +301,34 @@ func TestCatchUpComesFromASharedStore(t *testing.T) {
 		t.Fatal("the Redis relay must offer its catch-up")
 	}
 }
+
+// TestLoadFenceComesFromTheRedisRelay: only the Redis relay trims and deletes a
+// shared log, so only it fences room loads; a wrapper hiding LoadStarting would
+// turn the fence off without a sound.
+func TestLoadFenceComesFromTheRedisRelay(t *testing.T) {
+	t.Parallel()
+
+	t.Run("redis", func(t *testing.T) {
+		t.Parallel()
+		r, err := NewRelay(redisCfg(t), nil, nil, nil)
+		if err != nil {
+			t.Fatalf("NewRelay: %v", err)
+		}
+		defer func() { _ = r.Close() }()
+		if LoadFence(r) == nil {
+			t.Error("the redis relay has no load fence")
+		}
+	})
+
+	t.Run("memory", func(t *testing.T) {
+		t.Parallel()
+		r, err := NewRelay(&config.Config{CoordBackend: config.BackendMemory}, nil, nil, nil)
+		if err != nil {
+			t.Fatalf("NewRelay: %v", err)
+		}
+		defer func() { _ = r.Close() }()
+		if LoadFence(r) != nil {
+			t.Error("the in-memory relay fences loads; it keeps no shared log")
+		}
+	})
+}

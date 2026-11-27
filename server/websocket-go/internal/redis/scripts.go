@@ -86,13 +86,16 @@ end
 // safeDeleteScript, under the doc lock, atomically re-checks read-lock and
 // active-count and DELs the stream only when no instance is active. The election
 // lives inside the script so the re-count and DEL are atomic against concurrent
-// reconnects. KEYS = lock, instances, stream, read_lock; ARGV = instance_id, now,
+// reconnects. An instance that is loading the room is not active yet but needs
+// the stream, so a live load fence (doc:loads, see loadfence.go) also keeps it.
+// KEYS = lock, instances, stream, read_lock, loads; ARGV = instance_id, now,
 // timeout.
 const safeDeleteScript = `
 local lock_key = KEYS[1]
 local instances_key = KEYS[2]
 local stream_key = KEYS[3]
 local read_lock_key = KEYS[4]
+local loads_key = KEYS[5]
 
 local instance_id = ARGV[1]
 local now = tonumber(ARGV[2])
@@ -105,6 +108,14 @@ end
 if redis.call('GET', lock_key) ~= instance_id then
     if redis.call('SET', lock_key, instance_id, 'NX', 'EX', 10) == false then
         return {acquired=0, deleted=0, reason="lock_failed"}
+    end
+end
+
+local loads = redis.call('HGETALL', loads_key)
+for i = 1, #loads, 2 do
+    local deadline = tonumber(loads[i+1])
+    if deadline ~= nil and deadline > now then
+        return {acquired=1, deleted=0, reason="load_in_progress"}
     end
 end
 
@@ -140,11 +151,15 @@ end
 // Cursors belonging to instances that are no longer active are dropped, so a dead
 // reader cannot pin the stream forever.
 //
-// KEYS = instances hash, cursors hash.
+// A live load fence from any instance (doc:loads, see loadfence.go) also refuses:
+// the cursor is still published, but the caller must not trim.
+//
+// KEYS = instances hash, cursors hash, loads hash.
 // ARGV = self id, self cursor ms, now secs, active timeout secs, cursors hash ttl.
 const trimFloorScript = `
 local instances_key = KEYS[1]
 local cursors_key = KEYS[2]
+local loads_key = KEYS[3]
 local self_id = ARGV[1]
 local self_ms = tonumber(ARGV[2])
 local now = tonumber(ARGV[3])
@@ -153,6 +168,14 @@ local ttl = tonumber(ARGV[5])
 
 redis.call('HSET', cursors_key, self_id, self_ms)
 redis.call('EXPIRE', cursors_key, ttl)
+
+local loads = redis.call('HGETALL', loads_key)
+for i = 1, #loads, 2 do
+    local deadline = tonumber(loads[i+1])
+    if deadline ~= nil and deadline > now then
+        return -1
+    end
+end
 
 local known = {}
 local cursors = redis.call('HGETALL', cursors_key)
@@ -191,10 +214,11 @@ func nowSecs() int64 { return time.Now().Unix() }
 
 // publishTrimFloor advertises this reader's cursor and returns how far the stream
 // may safely be trimmed. ok is false when some active instance has not advertised
-// a cursor, in which case the caller must not trim at all.
+// a cursor, or some instance is loading the room, in which case the caller must
+// not trim at all.
 func publishTrimFloor(ctx context.Context, c goredis.Scripter, docID string, clientID uint64, cursorMs int64) (int64, bool, error) {
 	v, err := goredis.NewScript(trimFloorScript).Run(ctx, c,
-		[]string{instancesKey(docID), cursorsKey(docID)},
+		[]string{instancesKey(docID), cursorsKey(docID), loadsKey(docID)},
 		strconv.FormatUint(clientID, 10), cursorMs, nowSecs(), activeTimeoutSecs, heartbeatTTLSeconds,
 	).Int64()
 	if err != nil {
@@ -277,7 +301,7 @@ func safeDeleteStream(ctx context.Context, c goredis.Cmdable, docID, instanceVal
 		return nil
 	}
 
-	keys := []string{lockKey(docID), instancesKey(docID), streamKey(docID), readLockKey(docID)}
+	keys := []string{lockKey(docID), instancesKey(docID), streamKey(docID), readLockKey(docID), loadsKey(docID)}
 	if err := goredis.NewScript(safeDeleteScript).Run(ctx, c, keys,
 		instanceValue, nowSecs(), activeTimeoutSecs,
 	).Err(); err != nil {

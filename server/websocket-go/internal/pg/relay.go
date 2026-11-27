@@ -24,6 +24,7 @@ import (
 	"github.com/reearth/ygo/cluster"
 
 	"github.com/reearth/reearth-flow/websocket-go/internal/latency"
+	"github.com/reearth/reearth-flow/websocket-go/internal/relaypolicy"
 )
 
 // ErrRelayClosed is returned by Publish after Close.
@@ -41,6 +42,11 @@ const (
 	writeQueueCap  = 1024
 	syncBatch      = 100
 	awarenessBatch = 50
+
+	// writeTimeout bounds one batched insert attempt, and lateWriteTimeout one
+	// late write, matching the Redis relay.
+	writeTimeout     = 2 * time.Second
+	lateWriteTimeout = 2 * time.Second
 )
 
 // minNotifyConns is the smallest pool the notify fan-out can run on. The listener
@@ -135,8 +141,11 @@ type Relay struct {
 	pool     *pgxpool.Pool // non-nil only when notify is enabled
 	latency  *latency.Recorder
 
-	// droppedWrites counts outbound updates dropped on a full write queue.
+	// droppedWrites counts outbound updates that did not reach the stream.
 	droppedWrites atomic.Uint64
+	// lateWrites counts updates written after their room stopped being active
+	// here; see publishLate.
+	lateWrites atomic.Uint64
 
 	// bgWG tracks the relay-scoped goroutines (LISTEN, latency reporting) and
 	// bgCancel stops them. Close must be able to stop them ITSELF: waiting on
@@ -186,6 +195,12 @@ type roomState struct {
 
 	// cursor is the per-reader position, advanced past self-filtered rows too.
 	cursor int64
+
+	// outboundGap is set once an update for this room failed to reach the stream,
+	// so other instances may lack it until they reload the room. gapWarned keeps
+	// the warning to one per room.
+	outboundGap bool
+	gapWarned   bool
 
 	// wake nudges the reader out of its wait when a notification arrives. Capacity
 	// 1 and sent non-blockingly, so wakeups coalesce rather than queue.
@@ -312,13 +327,7 @@ func (r *Relay) Publish(_ context.Context, out cluster.Outbound) error {
 	rs, ok := r.rooms[out.Room]
 	if !ok || rs.evicting {
 		r.mu.Unlock()
-		if out.Kind == cluster.KindSync {
-			// ygo hands a room's last updates to Publish while tearing the room
-			// down, after RoomDeactivated. Instances still holding the room miss
-			// this one until they reload it.
-			r.droppedWrites.Add(1)
-			r.log.Warn("relay dropped an update for a room no longer active here", "room", out.Room)
-		}
+		r.publishLate(out)
 		return nil
 	}
 	// Enqueue while holding r.mu: RoomDeactivated sets evicting under it before
@@ -329,11 +338,77 @@ func (r *Relay) Publish(_ context.Context, out cluster.Outbound) error {
 	case rs.writeCh <- item:
 		r.mu.Unlock()
 	default:
+		// Blocking here would stall ygo's lane worker, so the update is dropped and
+		// the room flagged for repair from storage, where ygo has already persisted it.
+		r.markGapLocked(out.Room, rs, "write queue full", nil)
 		r.mu.Unlock()
 		r.droppedWrites.Add(1)
-		r.log.Debug("relay write queue full, dropping update", "room", out.Room, "kind", out.Kind.String())
 	}
 	return nil
+}
+
+// publishLate writes a document update that ygo hands over after deactivating
+// its room here, which other instances holding the room still need. With no other
+// holder the update is already persisted and nobody needs it, which is what the
+// Redis relay's NOMKSTREAM decides for its stream.
+func (r *Relay) publishLate(out cluster.Outbound) {
+	if out.Kind != cluster.KindSync {
+		return
+	}
+	ctx, cancel := context.WithTimeout(context.Background(), lateWriteTimeout)
+	defer cancel()
+	var others int
+	if err := r.q.QueryRow(ctx, otherInstancesSQL, out.Room, r.clientID, secs(activeTimeout)).Scan(&others); err != nil {
+		r.droppedWrites.Add(1)
+		r.log.Warn("relay could not check for other holders of a late update; they miss it until they reload the room",
+			"room", out.Room, "err", err)
+		return
+	}
+	if others == 0 {
+		return
+	}
+	item := writeItem{kind: out.Kind, data: append([]byte(nil), out.Data...)}
+	if err := r.append(ctx, out.Room, []writeItem{item}); err != nil {
+		r.droppedWrites.Add(1)
+		r.log.Warn("relay could not write a late update; instances holding the room miss it until they reload it",
+			"room", out.Room, "err", err)
+		return
+	}
+	r.lateWrites.Add(1)
+}
+
+// LateWrites returns the cumulative count of updates written after their room
+// stopped being active here.
+func (r *Relay) LateWrites() uint64 { return r.lateWrites.Load() }
+
+// markGap records that an update for the room did not reach the stream. It warns
+// once per room; droppedWrites counts every loss.
+func (r *Relay) markGap(room string, rs *roomState, reason string, err error) {
+	r.mu.Lock()
+	defer r.mu.Unlock()
+	r.markGapLocked(room, rs, reason, err)
+}
+
+func (r *Relay) markGapLocked(room string, rs *roomState, reason string, err error) {
+	rs.outboundGap = true
+	if rs.gapWarned {
+		return
+	}
+	rs.gapWarned = true
+	args := []any{"room", room, "reason", reason}
+	if err != nil {
+		args = append(args, "err", err)
+	}
+	r.log.Warn("relay lost an update; instances holding the room miss it until they reload the room", args...)
+}
+
+// OutboundGap reports whether an update for a room this instance holds failed to
+// reach the other instances holding it.
+func (r *Relay) OutboundGap(room string) bool {
+	r.mu.Lock()
+	defer r.mu.Unlock()
+	rs, ok := r.rooms[room]
+	return ok && rs.outboundGap
 }
 
 // DroppedWrites returns the cumulative count of updates dropped on a full queue
@@ -751,6 +826,9 @@ func (r *Relay) readLoop(ctx context.Context, room string, rs *roomState, sink c
 		}
 		r.mu.Unlock()
 		if err := r.drain(ctx, room, rs, sink, live && !replay); err != nil {
+			if errors.Is(err, errStopReading) {
+				return
+			}
 			if replay {
 				r.mu.Lock()
 				rs.replay = true
@@ -816,6 +894,13 @@ func (r *Relay) wakeRoom(room string) {
 	}
 }
 
+// errInjectRetry reports a row the room could not take yet; the reader keeps its
+// cursor before it and reads it again. errStopReading stops the reader.
+var (
+	errInjectRetry = errors.New("pg: a row could not be injected yet")
+	errStopReading = errors.New("pg: the server is shutting down")
+)
+
 // drain reads and injects every eligible row after the cursor, in batches, until it
 // catches up. Returns on the first error so readLoop can back off.
 func (r *Relay) drain(ctx context.Context, room string, rs *roomState, sink cluster.Sink, measure bool) error {
@@ -833,22 +918,35 @@ func (r *Relay) drain(ctx context.Context, room string, rs *roomState, sink clus
 		}
 
 		last := from
+		var held error
 		for _, e := range rows {
 			// Advance past self-originated and unknown-kind rows too, or a burst of
 			// our own writes would stall the cursor and we would re-read forever.
-			last = e.id
 			if e.isSelf || !e.known || len(e.data) == 0 {
+				last = e.id
 				continue
 			}
-			// Measure only live deliveries. Catch-up replays rows that may be hours
-			// old, and their age is replay depth, not the latency a remote editor
-			// experienced — recording it puts multi-minute values in the percentiles.
-			if measure {
+			in := cluster.Inbound{Room: room, Kind: e.kind, Data: e.data}
+			err := sink.Inject(ctx, in)
+			outcome := relaypolicy.ClassifyInject(ctx, in, err)
+			if outcome == relaypolicy.Stop {
+				held = errStopReading
+				break
+			}
+			if outcome == relaypolicy.Retry {
+				// Keep the cursor before the row and read it again after a backoff.
+				r.log.Debug("relay inject failed; reading the row again", "room", room, "kind", e.kind.String(), "err", err)
+				held = errInjectRetry
+				break
+			}
+			if outcome == relaypolicy.Skip {
+				r.log.Warn("relay skipped a row the room cannot apply", "room", room, "kind", e.kind.String(), "err", err)
+			} else if measure {
+				// Measure only live deliveries. Catch-up replays rows that may be hours
+				// old, and their age is replay depth, not the latency a remote editor saw.
 				r.latency.Observe(e.age)
 			}
-			if err := sink.Inject(ctx, cluster.Inbound{Room: room, Kind: e.kind, Data: e.data}); err != nil {
-				r.log.Debug("relay inject failed", "room", room, "kind", e.kind.String(), "err", err)
-			}
+			last = e.id
 		}
 
 		r.mu.Lock()
@@ -858,6 +956,9 @@ func (r *Relay) drain(ctx context.Context, room string, rs *roomState, sink clus
 			rs.cursor = last
 		}
 		r.mu.Unlock()
+		if held != nil {
+			return held
+		}
 
 		// A short batch means we have caught up; wait for the next tick.
 		if len(rows) < readLimit {
@@ -910,19 +1011,37 @@ func (r *Relay) writeLoop(ctx context.Context, room string, rs *roomState) {
 			r.drainRemaining(room, rs)
 			return
 		case first := <-rs.writeCh:
-			batch := r.collectBatch(rs, first)
-			if err := r.append(ctx, room, batch); err != nil {
-				if ctx.Err() == nil {
-					r.log.Debug("relay batched insert failed", "room", room, "count", len(batch), "err", err)
-				}
-			}
+			batch := r.collectBatch(room, rs, first)
+			r.writeWithRetry(ctx, room, rs, batch)
 		}
+	}
+}
+
+// writeWithRetry inserts a batch, retrying a failure before the writer takes
+// anything else off the queue so this instance's order holds; once every attempt
+// fails, the batch is dropped and the room flagged. It writes even after
+// RoomDeactivated cancels ctx, since a room's last edits are published just
+// before it deactivates and every later edit builds on them.
+func (r *Relay) writeWithRetry(ctx context.Context, room string, rs *roomState, batch []writeItem) {
+	for attempt := 0; ; attempt++ {
+		wctx, cancel := context.WithTimeout(context.WithoutCancel(ctx), writeTimeout)
+		err := r.append(wctx, room, batch)
+		cancel()
+		if err == nil {
+			return
+		}
+		if attempt == len(relaypolicy.WriteRetryDelays) {
+			r.droppedWrites.Add(uint64(len(batch)))
+			r.markGap(room, rs, "batched insert failed after retries", err)
+			return
+		}
+		time.Sleep(relaypolicy.WriteRetryDelays[attempt])
 	}
 }
 
 // collectBatch accumulates queued items of the same kind as first, up to that
 // kind's cap, stopping at a kind boundary or when the queue drains.
-func (r *Relay) collectBatch(rs *roomState, first writeItem) []writeItem {
+func (r *Relay) collectBatch(room string, rs *roomState, first writeItem) []writeItem {
 	limit := batchCap(first.kind)
 	batch := make([]writeItem, 0, limit)
 	batch = append(batch, first)
@@ -931,7 +1050,7 @@ func (r *Relay) collectBatch(rs *roomState, first writeItem) []writeItem {
 		case it := <-rs.writeCh:
 			if it.kind != first.kind {
 				out := batch
-				r.requeue(rs, it)
+				r.requeue(room, rs, it)
 				return out
 			}
 			batch = append(batch, it)
@@ -943,11 +1062,12 @@ func (r *Relay) collectBatch(rs *roomState, first writeItem) []writeItem {
 }
 
 // requeue puts an item back at the tail, non-blocking; a full channel drops+counts.
-func (r *Relay) requeue(rs *roomState, it writeItem) {
+func (r *Relay) requeue(room string, rs *roomState, it writeItem) {
 	select {
 	case rs.writeCh <- it:
 	default:
 		r.droppedWrites.Add(1)
+		r.markGap(room, rs, "write queue full", nil)
 	}
 }
 
@@ -977,7 +1097,9 @@ func (r *Relay) drainRemaining(room string, rs *roomState) {
 			end++
 		}
 		if err := r.append(ctx, room, pending[:end]); err != nil {
-			r.log.Debug("relay drain insert failed", "room", room, "count", end, "err", err)
+			r.droppedWrites.Add(uint64(end))
+			r.log.Warn("relay drain insert failed; instances holding the room miss these updates until they reload it",
+				"room", room, "count", end, "err", err)
 		}
 		pending = pending[end:]
 	}

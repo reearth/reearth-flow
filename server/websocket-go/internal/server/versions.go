@@ -350,6 +350,17 @@ func (f *VersionedFlusher) FlushRoom(ctx context.Context, room string) error {
 	return f.inner.FlushRoom(ctx, room)
 }
 
+// CheckpointLive checkpoints a room and reports whether the checkpoint wrote its
+// resident document, when the inner flusher can tell; otherwise it reports true.
+func (f *VersionedFlusher) CheckpointLive(ctx context.Context, room string) (bool, error) {
+	if lc, ok := f.inner.(interface {
+		CheckpointLive(ctx context.Context, room string) (bool, error)
+	}); ok {
+		return lc.CheckpointLive(ctx, room)
+	}
+	return true, f.inner.FlushRoom(ctx, room)
+}
+
 // FlushLastInstance saves the room as a version if users changed it, which
 // rewrites the checkpoint too, and otherwise only checkpoints it.
 func (f *VersionedFlusher) FlushLastInstance(ctx context.Context, room string) error {

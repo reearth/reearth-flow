@@ -181,3 +181,35 @@ func TestFlushRoomSnapshotsFromStoreWhenDocEvicted(t *testing.T) {
 var _ interface {
 	FlushRoom(ctx context.Context, room string) error
 } = (*Flusher)(nil)
+
+// TestFlusher_CheckpointLiveReportsResidentState: a trim may rely only on a
+// checkpoint that wrote the resident document, not one rebuilt from storage.
+func TestFlusher_CheckpointLiveReportsResidentState(t *testing.T) {
+	t.Parallel()
+
+	t.Run("resident document", func(t *testing.T) {
+		t.Parallel()
+		client, bucket := newFakeGCS(t)
+		a, _ := New(Options{Client: client, Bucket: bucket, Locker: NewNoLock()})
+		doc := crdt.New(crdt.WithClientID(5))
+		txt := doc.GetText("t") // not inside Transact: it takes the doc lock
+		doc.Transact(func(txn *crdt.Transaction) { txt.Insert(txn, 0, "abc", nil) })
+		state := crdt.EncodeStateAsUpdateV1(doc, nil)
+		f := NewFlusher(FlusherOptions{Adapter: a, StateOf: func(string) []byte { return state }})
+		live, err := f.CheckpointLive(context.Background(), "room")
+		if err != nil || !live {
+			t.Errorf("CheckpointLive = %v, %v; want true, nil", live, err)
+		}
+	})
+
+	t.Run("no resident document", func(t *testing.T) {
+		t.Parallel()
+		client, bucket := newFakeGCS(t)
+		a, _ := New(Options{Client: client, Bucket: bucket, Locker: NewNoLock()})
+		f := NewFlusher(FlusherOptions{Adapter: a, StateOf: func(string) []byte { return nil }})
+		live, err := f.CheckpointLive(context.Background(), "room")
+		if err != nil || live {
+			t.Errorf("CheckpointLive = %v, %v; want false, nil", live, err)
+		}
+	})
+}

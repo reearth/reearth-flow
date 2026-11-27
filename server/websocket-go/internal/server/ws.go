@@ -49,6 +49,9 @@ type Server struct {
 
 	health healthDeps
 
+	// loadFence, when set, fences every room load; see load_fence.go.
+	loadFence atomic.Pointer[LoadFence]
+
 	// shuttingDown refuses new WebSocket connections once Shutdown has begun.
 	shuttingDown atomic.Bool
 }

@@ -49,7 +49,16 @@ func readLockName(room string) string { return "read:lock:" + room }
 // FlushRoom persists the room's current in-memory state to GCS while holding
 // read:lock:{room}. No-op when there is no resident state.
 func (f *Flusher) FlushRoom(ctx context.Context, room string) error {
-	return f.withReadLock(ctx, room, func(ctx context.Context) error {
+	_, err := f.CheckpointLive(ctx, room)
+	return err
+}
+
+// CheckpointLive is FlushRoom that also reports whether it wrote the resident
+// document (true) or, with none resident, rebuilt the checkpoint from storage
+// (false). The relay trims a stream only after the former.
+func (f *Flusher) CheckpointLive(ctx context.Context, room string) (live bool, err error) {
+	err = f.withReadLock(ctx, room, func(ctx context.Context) error {
+		live = false
 		// Write the COMPLETE state as doc_v2 (not an incremental update): the Rust
 		// reader loads doc_v2 alone and folds no tail updates, so a Go-flushed room
 		// must leave a complete doc_v2 for cross-implementation cold-loads.
@@ -67,6 +76,7 @@ func (f *Flusher) FlushRoom(ctx context.Context, room string) error {
 				return err
 			}
 			if state := f.stateOf(room); len(state) > 0 {
+				live = true
 				return f.adapter.flushSnapshotSince(ctx, room, state, before)
 			}
 		}
@@ -75,6 +85,7 @@ func (f *Flusher) FlushRoom(ctx context.Context, room string) error {
 		// so the full state is already in GCS: reconstruct it and write doc_v2.
 		return f.adapter.SnapshotFromStore(ctx, room)
 	})
+	return live && err == nil, err
 }
 
 // withReadLock runs fn while holding read:lock:{room}. The lock is best-effort:

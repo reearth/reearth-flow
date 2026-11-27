@@ -74,6 +74,15 @@ INSERT INTO ws_instance (doc_id, client_id, seen_at)
 VALUES ($1, $2, now())
 ON CONFLICT (doc_id, client_id) DO UPDATE SET seen_at = now()`
 
+// otherInstancesSQL counts live instances for a document other than the caller.
+// A late write needs another holder: with none, the update is already persisted.
+const otherInstancesSQL = `
+SELECT count(*)
+  FROM ws_instance
+ WHERE doc_id = $1
+   AND client_id <> $2
+   AND seen_at > now() - make_interval(secs => $3)`
+
 // activeInstancesSQL counts live instances for a document (60s window, deliberately
 // shorter than the janitor's reap).
 const activeInstancesSQL = `
